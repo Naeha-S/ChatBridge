@@ -215,91 +215,76 @@
     document.body.appendChild(avatar); document.body.appendChild(host);
     const shadow = host.attachShadow({ mode: 'open' });
 
-    // Professional sidebar styling inside shadow DOM
+    // High-end professional dark theme styling inside shadow DOM
     const style = document.createElement('style');
     style.textContent = `
       :host { all: initial; }
-      .cb-panel { box-sizing: border-box; position:fixed; top:12px; right:12px; width:360px; max-height:84vh; overflow:hidden; border-radius:12px; background:linear-gradient(180deg,#071022,#081a2a); color:#e6f6ff; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; z-index:2147483647; box-shadow: 0 10px 30px rgba(2,6,23,0.6); border: 1px solid rgba(255,255,255,0.04); }
-      .cb-header { display:flex; align-items:center; justify-content:space-between; padding:12px 14px; gap:8px; }
-      .cb-title { font-weight:700; font-size:15px; letter-spacing:0.2px }
-      .cb-actions { padding:10px 14px; display:flex; gap:8px; }
-      .cb-btn { background:transparent; border:1px solid rgba(255,255,255,0.06); color:#e6f6ff; padding:8px 10px; border-radius:8px; cursor:pointer; font-size:13px }
-      .cb-btn:hover { transform:translateY(-1px); box-shadow: 0 6px 14px rgba(2,6,23,0.45); }
-      .cb-status { padding:0 14px 10px 14px; font-size:12px; color:#9fdfff }
-      .cb-history { padding:10px 14px; max-height:260px; overflow:auto; font-size:13px; background: rgba(255,255,255,0.02); margin:10px; border-radius:8px }
-      .cb-preview { padding:10px 14px; font-size:13px; color:#dbeffd; border-top:1px solid rgba(255,255,255,0.02) }
-      .cb-footer { display:flex; justify-content:flex-end; gap:8px; padding:10px 14px }
-      .cb-close { background:transparent; border:none; color:#9fdfff; cursor:pointer; font-size:14px }
+      .cb-panel { box-sizing: border-box; position:fixed; top:12px; right:12px; width:380px; max-height:86vh; overflow:hidden; border-radius:14px; background: linear-gradient(180deg, rgba(9,13,22,0.97), rgba(8,18,34,0.98)); color:#e9f1ff; font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; z-index:2147483647; box-shadow: 0 12px 40px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); backdrop-filter: blur(10px); }
+      .cb-header { display:flex; flex-direction:column; align-items:flex-start; justify-content:flex-start; padding:18px 18px 8px 18px; gap:6px; border-bottom: 1px solid rgba(255,255,255,0.04); }
+      .cb-title { font-weight:900; font-size:20px; letter-spacing:0.5px; color:#ffe7b3; text-shadow:0 2px 12px #1a1a1a; }
+      .cb-subtitle { font-size:13px; color:#b8c6e0; font-style:italic; margin-top:2px; margin-bottom:2px; }
+      .cb-actions { padding:16px 18px 8px 18px; display:flex; gap:10px; }
+      .cb-btn { background: linear-gradient(180deg, rgba(40,40,60,0.98), rgba(20,20,30,0.98)); border:1px solid rgba(255,255,255,0.12); color:#fff; padding:10px 12px; border-radius:10px; cursor:pointer; font-size:14px; transition: all .15s ease; font-weight:600; }
+      .cb-btn:hover { transform:translateY(-1px); box-shadow: 0 8px 18px rgba(210,180,120,0.18); border-color: rgba(255,255,255,0.22); background: linear-gradient(180deg, #2a2a3a, #18181f); }
+      .cb-btn-primary { background: linear-gradient(180deg, #f3e4b9, #d2b478); color:#0b0f19; border: 1px solid rgba(0,0,0,0.18); }
+      .cb-btn-primary:hover { box-shadow: 0 10px 24px rgba(210,180,120,0.35); }
+      .cb-toolbar { display:flex; align-items:center; gap:10px; padding:12px 18px 8px 18px; border-bottom: 1px solid rgba(255,255,255,0.04); }
+      .cb-label { font-size:12px; color:#a6c8ff; }
+      .cb-select { flex:1; appearance:none; background: linear-gradient(180deg, #181c2a 90%, #232a3a 100%); color:#fff; border:1px solid rgba(255,255,255,0.18); border-radius:10px; padding:10px 12px; font-size:14px; outline:none; font-weight:500; }
+      .cb-select:hover { border-color: #d2b478; box-shadow: 0 0 0 3px rgba(210, 180, 120, 0.12); }
+      .cb-status { padding:0 18px 10px 18px; font-size:12px; color:#a8d5ff }
+      .cb-history { padding:12px 18px; max-height:260px; overflow:auto; font-size:13px; background: rgba(20,20,30,0.18); margin:12px; border-radius:10px; white-space:pre-wrap }
+      .cb-preview { padding:12px 18px; font-size:13px; color:#dfeaff; border-top:1px solid rgba(255,255,255,0.04) }
+      .cb-footer { display:flex; justify-content:flex-end; gap:10px; padding:12px 18px }
+      .cb-close { background:transparent; border:none; color:#a8d5ff; cursor:pointer; font-size:15px }
+      textarea { background: #181c2a; color: #fff; border: 1px solid rgba(255,255,255,0.18); border-radius: 10px; font-size:14px; padding:10px; font-family:inherit; }
+      textarea:focus { outline: 2px solid #d2b478; }
+      select:focus { outline: 2px solid #d2b478; }
     `;
     shadow.appendChild(style);
 
     const panel = document.createElement('div'); panel.className = 'cb-panel';
+    // Header: Title and subtitle
     const header = document.createElement('div'); header.className = 'cb-header';
     const title = document.createElement('div'); title.className = 'cb-title'; title.textContent = 'ChatBridge';
+    const subtitle = document.createElement('div'); subtitle.className = 'cb-subtitle'; subtitle.textContent = 'Imagine you are a designer and design pls.';
     const controls = document.createElement('div');
     const btnClose = document.createElement('button'); btnClose.className = 'cb-close'; btnClose.textContent = '✕';
     controls.appendChild(btnClose);
-    header.appendChild(title); header.appendChild(controls);
+    header.appendChild(title);
+    header.appendChild(subtitle);
+    header.appendChild(controls);
     panel.appendChild(header);
 
+    // Actions: Scan, Restore, Generate
     const actions = document.createElement('div'); actions.className = 'cb-actions';
-    const btnScan = document.createElement('button'); btnScan.className = 'cb-btn'; btnScan.textContent = '📋 Scan Chat';
+    const btnScan = document.createElement('button'); btnScan.className = 'cb-btn cb-btn-primary'; btnScan.textContent = '📋 Scan Chat';
     const btnRestore = document.createElement('button'); btnRestore.className = 'cb-btn'; btnRestore.textContent = '🧠 Restore';
-  const btnGenerate = document.createElement('button'); btnGenerate.className = 'cb-btn'; btnGenerate.textContent = '🤖 Generate';
-  actions.appendChild(btnScan); actions.appendChild(btnRestore); actions.appendChild(btnGenerate);
+    const btnGenerate = document.createElement('button'); btnGenerate.className = 'cb-btn'; btnGenerate.textContent = '🤖 Generate';
+    actions.appendChild(btnScan); actions.appendChild(btnRestore); actions.appendChild(btnGenerate);
     panel.appendChild(actions);
 
-  // model and system prompt controls
-  const controlsWrap = document.createElement('div'); controlsWrap.style.padding = '8px 14px'; controlsWrap.style.display = 'flex'; controlsWrap.style.flexDirection = 'column'; controlsWrap.style.gap = '8px';
-  const modelSelect = document.createElement('select'); modelSelect.style.padding = '8px'; modelSelect.style.borderRadius = '8px';
-  ['gpt-4o-mini','gpt-4o','gpt-4','gpt-3.5-turbo'].forEach(m => { const o = document.createElement('option'); o.value = m; o.textContent = m; modelSelect.appendChild(o); });
-  const sysPrompt = document.createElement('textarea'); sysPrompt.placeholder = 'System prompt (optional)'; sysPrompt.style.padding = '8px'; sysPrompt.style.borderRadius = '8px'; sysPrompt.style.height = '64px'; sysPrompt.style.resize = 'vertical';
-  controlsWrap.appendChild(modelSelect); controlsWrap.appendChild(sysPrompt);
-  panel.appendChild(controlsWrap);
+    // Toolbar with Chat dropdown
+    const toolbar = document.createElement('div'); toolbar.className = 'cb-toolbar';
+    const lab = document.createElement('div'); lab.className = 'cb-label'; lab.textContent = 'Select Chat';
+    const chatSelect = document.createElement('select'); chatSelect.className = 'cb-select'; chatSelect.id = 'cb-chat-select';
+    toolbar.appendChild(lab); toolbar.appendChild(chatSelect);
+    panel.appendChild(toolbar);
+
+    // Model and system prompt controls
+    const controlsWrap = document.createElement('div'); controlsWrap.style.padding = '8px 18px'; controlsWrap.style.display = 'flex'; controlsWrap.style.flexDirection = 'column'; controlsWrap.style.gap = '8px';
+    const modelSelect = document.createElement('select'); modelSelect.style.padding = '8px'; modelSelect.style.borderRadius = '10px'; modelSelect.style.background = '#181c2a'; modelSelect.style.color = '#fff';
+    ['gpt-4o-mini','gpt-4o','gpt-4','gpt-3.5-turbo'].forEach(m => { const o = document.createElement('option'); o.value = m; o.textContent = m; modelSelect.appendChild(o); });
+    const sysPrompt = document.createElement('textarea'); sysPrompt.placeholder = 'System prompt (optional)'; sysPrompt.style.padding = '10px'; sysPrompt.style.borderRadius = '10px'; sysPrompt.style.height = '64px'; sysPrompt.style.resize = 'vertical'; sysPrompt.style.background = '#181c2a'; sysPrompt.style.color = '#fff';
+    controlsWrap.appendChild(modelSelect); controlsWrap.appendChild(sysPrompt);
+    panel.appendChild(controlsWrap);
 
     const status = document.createElement('div'); status.className = 'cb-status'; status.textContent = 'Status: idle'; panel.appendChild(status);
     const historyEl = document.createElement('div'); historyEl.className = 'cb-history'; historyEl.textContent = 'No sessions yet.'; panel.appendChild(historyEl);
     const preview = document.createElement('div'); preview.className = 'cb-preview'; preview.textContent = 'Preview: (none)'; panel.appendChild(preview);
     const footer = document.createElement('div'); footer.className = 'cb-footer'; panel.appendChild(footer);
 
-    // Debug: last scan info and controls
-    const debugWrap = document.createElement('div');
-    debugWrap.style.padding = '8px 14px'; debugWrap.style.display = 'flex'; debugWrap.style.flexDirection = 'column'; debugWrap.style.gap = '6px';
-    const dbgTitle = document.createElement('div'); dbgTitle.textContent = 'Debug: Last Scan'; dbgTitle.style.color = '#9fdfff'; dbgTitle.style.fontSize = '12px';
-    const dbgPre = document.createElement('pre'); dbgPre.style.whiteSpace = 'pre-wrap'; dbgPre.style.maxHeight = '140px'; dbgPre.style.overflow = 'auto'; dbgPre.style.fontSize = '11px'; dbgPre.style.background = 'rgba(255,255,255,0.03)'; dbgPre.style.padding = '6px 8px'; dbgPre.style.borderRadius = '6px'; dbgPre.textContent = '(none)';
-    const dbgBtnRow = document.createElement('div'); dbgBtnRow.style.display = 'flex'; dbgBtnRow.style.gap = '8px';
-    const btnShowContainer = document.createElement('button'); btnShowContainer.className = 'cb-btn'; btnShowContainer.textContent = 'Show container';
-    const btnToggleHighlight = document.createElement('button'); btnToggleHighlight.className = 'cb-btn'; btnToggleHighlight.textContent = 'Toggle highlight';
-    dbgBtnRow.appendChild(btnShowContainer); dbgBtnRow.appendChild(btnToggleHighlight);
-    debugWrap.appendChild(dbgTitle); debugWrap.appendChild(dbgPre); debugWrap.appendChild(dbgBtnRow);
-    panel.appendChild(debugWrap);
-
-    function renderLastScan() {
-      try {
-        const ls = (window.ChatBridge && window.ChatBridge._lastScan) || null;
-        if (!ls) { dbgPre.textContent = '(none)'; return; }
-        const small = {
-          adapterId: ls.adapterId || null,
-          chosenContainer: ls.chosenContainer || null,
-          nodesConsidered: ls.nodesConsidered || 0,
-          messageCount: ls.messageCount || 0,
-          timestamp: ls.timestamp ? new Date(ls.timestamp).toLocaleString() : null
-        };
-        dbgPre.textContent = JSON.stringify(small, null, 2);
-      } catch (e) { dbgPre.textContent = '(error)'; }
-    }
-
-    btnShowContainer.addEventListener('click', () => {
-      try {
-        const ls = (window.ChatBridge && window.ChatBridge._lastScan) || null;
-        const el = ls && ls.containerEl;
-        if (el) { highlightNodesByElements([el]); setTimeout(() => { try { clearHighlights(); } catch(e){} }, 2200); }
-        else toast('No container to show yet. Run a scan first.');
-      } catch (e) { toast('Unable to show container'); }
-    });
-    btnToggleHighlight.addEventListener('click', () => {
-      try { const enabled = window.ChatBridge && window.ChatBridge.highlightScan && window.ChatBridge.highlightScan(!CB_HIGHLIGHT_ENABLED); toast('Highlight ' + (enabled ? 'enabled' : 'disabled')); } catch (e) { toast('Unable to toggle highlight'); }
-    });
+    function renderLastScan() { /* end-user UI hides debug */ }
 
     shadow.appendChild(panel);
 
@@ -332,7 +317,15 @@
         getter(list => {
           const arr = Array.isArray(list) ? list : [];
           if (!arr.length) { toast('No saved conversations'); return; }
-          const sel = arr[0]; if (!sel || !sel.conversation || !sel.conversation.length) { toast('No messages in selected conversation'); return; }
+          // Use selected chat from dropdown if available (fallback to first)
+          let sel = null;
+          try {
+            if (chatSelect && chatSelect.value) {
+              const i = arr.findIndex(v => String(v.ts) === chatSelect.value);
+              sel = i >= 0 ? arr[i] : arr[0];
+            } else { sel = arr[0]; }
+          } catch (_) { sel = arr[0]; }
+          if (!sel || !sel.conversation || !sel.conversation.length) { toast('No messages in selected conversation'); return; }
           const formatted = sel.conversation.map(m => (m.role === 'user' ? 'User: ' : 'Assistant: ') + m.text).join('\n\n') + '\n\n🔄 Please continue the conversation.';
           // Find only visible textarea or contenteditable input
           let input = null;
@@ -432,8 +425,60 @@
 
     function refreshHistory() {
       const getter = (typeof window.getConversations === 'function') ? window.getConversations : (cb => cb(JSON.parse(localStorage.getItem('chatbridge:conversations') || '[]')));
-      getter(list => { const arr = Array.isArray(list) ? list : []; if (!arr.length) { historyEl.textContent = 'History: (none)'; preview.textContent = 'Preview: (none)'; return; } historyEl.textContent = arr.slice(0,6).map(s => `${s.platform} — ${(s.conversation||[]).length} msgs — ${new Date(s.ts).toLocaleString()}`).join('\n\n'); preview.textContent = 'Preview: ' + (arr[0] && arr[0].conversation && arr[0].conversation[0] ? arr[0].conversation[0].text.slice(0,200) : '(none)'); });
+      getter(list => {
+        const arr = Array.isArray(list) ? list : [];
+        if (!arr.length) {
+          historyEl.textContent = 'History: (none)';
+          preview.textContent = 'Preview: (none)';
+          // reset dropdown to a single disabled option
+          try {
+            const prev = chatSelect.value;
+            while (chatSelect.firstChild) chatSelect.removeChild(chatSelect.firstChild);
+            const o = document.createElement('option'); o.value = ''; o.textContent = 'No saved chats'; chatSelect.appendChild(o);
+            chatSelect.value = '';
+          } catch (e) {}
+          return;
+        }
+        // History text
+        historyEl.textContent = arr.slice(0,6).map(s => `${s.platform} — ${(s.conversation||[]).length} msgs — ${new Date(s.ts).toLocaleString()}`).join('\n\n');
+        // Default preview from first conversation
+        preview.textContent = 'Preview: ' + (arr[0] && arr[0].conversation && arr[0].conversation[0] ? arr[0].conversation[0].text.slice(0,200) : '(none)');
+
+        // Populate chat dropdown while preserving selection when possible
+        try {
+          const prev = chatSelect.value;
+          while (chatSelect.firstChild) chatSelect.removeChild(chatSelect.firstChild);
+          arr.forEach(s => {
+            const o = document.createElement('option');
+            o.value = String(s.ts);
+            const count = (s.conversation||[]).length;
+            let host = s.platform || 'chat';
+            try { host = new URL(s.url||location.href).hostname; } catch (_) {}
+            o.textContent = `${host} — ${count} msgs — ${new Date(s.ts).toLocaleString()}`;
+            chatSelect.appendChild(o);
+          });
+          // restore previous selection if still present, else select the latest (first in list)
+          if (prev && Array.from(chatSelect.options).some(o => o.value === prev)) chatSelect.value = prev; else chatSelect.selectedIndex = 0;
+        } catch (e) {}
+      });
     }
+
+    // Update preview when selecting a chat (use shadow DOM element reference)
+    try {
+      chatSelect.addEventListener('change', () => {
+        try {
+          const getter = (typeof window.getConversations === 'function') ? window.getConversations : (cb => cb(JSON.parse(localStorage.getItem('chatbridge:conversations') || '[]')));
+          getter(list => {
+            const arr = Array.isArray(list) ? list : [];
+            const idx = arr.findIndex(v => String(v.ts) === chatSelect.value);
+            const sel = idx >= 0 ? arr[idx] : arr[0];
+            if (!sel) { preview.textContent = 'Preview: (none)'; return; }
+            const text = sel.conversation && sel.conversation[0] ? sel.conversation[0].text.slice(0,200) : '(none)';
+            preview.textContent = 'Preview: ' + text;
+          });
+        } catch (e) {}
+      });
+    } catch (e) {}
 
     // load persisted model/prompt from chrome.storage.local with localStorage fallback
     try {
