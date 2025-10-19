@@ -1,0 +1,45 @@
+# Node modules
+node_modules/
+
+# Build output
+*.log
+dist/
+build/
+
+# VSCode
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test results
+/test-results/
+
+# Chrome extension artifacts
+*.crx
+
+# Environment
+.env
+.env.*
+
+# TypeScript
+*.tsbuildinfo
+
+# Misc
+*.swp
+*.swo
+
+# Python (if any)
+__pycache__/
+*.pyc
+
+# Coverage
+coverage/
+
+# Others
+*.bak
+*.tmp
+
+# Ignore local storage
+chatbridge:conversations
