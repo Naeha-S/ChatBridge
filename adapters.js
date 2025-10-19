@@ -253,32 +253,31 @@ function extractMessagesFromContainer(container, selectors) {
 const SiteAdapters = [
   {
     id: "chatgpt",
-    label: "ChatGPT (chat.openai.com)",
-    detect: () => location.hostname.includes("chat.openai.com"),
+    label: "ChatGPT (chat.openai.com, chatgpt.com)",
+    detect: () => location.hostname.includes("chat.openai.com") || location.hostname.includes("chatgpt.com"),
     scrollContainer: () => document.querySelector('[data-testid="conversation-turns"]')?.parentElement || document.querySelector('main') || document.scrollingElement,
     getMessages: () => {
+      // Always use ChatGPT adapter on chatgpt.com
       const container = document.querySelector('[data-testid="conversation-turns"]') || document.querySelector('main') || document.body;
       if (!container) return [];
       const wrappers = Array.from(container.querySelectorAll('[data-message-author-role]'));
       if (!wrappers.length) return [];
-      const entries = wrappers.map(w => {
+      const out = [];
+      wrappers.forEach((w, i) => {
         const body = w.querySelector('.markdown, .prose, .text-base, [data-testid*="message"]') || w;
-        if (!body) return null;
+        if (!body) return;
         const roleAttr = (w.getAttribute('data-message-author-role') || '').toLowerCase();
         const role = roleAttr.includes('user') ? 'user' : 'assistant';
-        return { el: body, role };
-      }).filter(Boolean);
-      if (!entries.length) return [];
-      const filteredNodes = applyCandidateFilter(entries.map(e => e.el));
-      const out = [];
-      for (const entry of entries) {
-        if (!filteredNodes.includes(entry.el)) continue;
+        const style = window.getComputedStyle(body);
+        if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') return;
         const text = (() => {
-          try { return (entry.el.innerText || '').trim(); } catch (err) { return ''; }
+          try { return (body.innerText || '').trim(); } catch (err) { return ''; }
         })();
-        if (!text) continue;
-        out.push({ role: entry.role, text, el: entry.el });
-      }
+        if (!text) return;
+        // Only include actual chat messages (exclude system/tip/label)
+        if (/^(new chat|system|tip:|regenerate|copy|share|model:|clear conversation|export|delete|upgrade|settings|custom instructions|beta|plus|team|help|log out|log in|sign up|quiz.com vs kahoot)$/i.test(text)) return;
+        out.push({ role, text, el: body });
+      });
       out.sort((a, b) => {
         try { return a.el.getBoundingClientRect().top - b.el.getBoundingClientRect().top; } catch (err) { return 0; }
       });
@@ -295,14 +294,14 @@ const SiteAdapters = [
     getMessages: () => {
       const container = document.querySelector('[data-testid="conversation-view"]') || document.querySelector('[data-testid="chat-scroll"]') || document.querySelector('main') || document.body;
       if (!container) return [];
-      let wrappers = Array.from(container.querySelectorAll('[data-testid="chat-message"], [data-testid="assistant-message"], [data-testid="user-message"]'));
-      if (!wrappers.length) {
-        wrappers = Array.from(container.querySelectorAll('.message, .message-text, .Message, article'));
-      }
+      // Broaden selectors to always get both user and assistant messages
+      let wrappers = Array.from(container.querySelectorAll('[data-testid="chat-message"], [data-testid="assistant-message"], [data-testid="user-message"], .message, .message-text, .Message, article, [data-testid="message-text"]'));
       if (!wrappers.length) return [];
 
       const entries = wrappers.map(w => {
-        const body = w.querySelector('.message-text, .content, [data-testid="message-text"], .text, .markdown, p') || w;
+        // Try to find the deepest message text node
+        let body = w.querySelector('.message-text, .content, [data-testid="message-text"], .text, .markdown, p');
+        if (!body || !body.innerText || body.innerText.trim().length < 2) body = w;
         if (!body) return null;
         let role = 'assistant';
         const testId = (w.getAttribute && w.getAttribute('data-testid')) || '';
@@ -312,23 +311,33 @@ const SiteAdapters = [
         } else if (/assistant|bot/.test(testId.toLowerCase()) || combinedCls.includes('assistant') || combinedCls.includes('bot')) {
           role = 'assistant';
         } else {
+          // If the element or its parent has a user/assistant marker
           const userAncestor = body.closest('[data-testid*="user"], [class*="user"]');
+          const assistantAncestor = body.closest('[data-testid*="assistant"], [class*="assistant"], [class*="bot"]');
           if (userAncestor) role = 'user';
+          else if (assistantAncestor) role = 'assistant';
         }
         return { el: body, role };
       }).filter(Boolean);
 
       if (!entries.length) return [];
-      const filteredNodes = applyCandidateFilter(entries.map(e => e.el));
       const out = [];
-      for (const entry of entries) {
-        if (!filteredNodes.includes(entry.el)) continue;
+      entries.forEach((entry, i) => {
         const text = (() => {
           try { return (entry.el.innerText || '').trim(); } catch (err) { return ''; }
         })();
-        if (!text) continue;
+        if (!text) {
+          console.log('[Claude Debug] Skipping empty:', i, entry.role);
+          return;
+        }
+        // Only skip system/tip/label messages
+        if (/^(new chat|system|tip:|regenerate|copy|share|model:|clear conversation|export|delete|upgrade|settings|custom instructions|beta|plus|team|help|log out|log in|sign up)$/i.test(text)) {
+          console.log('[Claude Debug] Skipping system/tip:', i, entry.role, text.slice(0,40));
+          return;
+        }
         out.push({ role: entry.role, text, el: entry.el });
-      }
+        console.log('[Claude Debug] Included:', i, entry.role, text.slice(0,40));
+      });
 
       out.sort((a, b) => {
         try { return a.el.getBoundingClientRect().top - b.el.getBoundingClientRect().top; } catch (err) { return 0; }

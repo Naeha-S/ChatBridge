@@ -334,9 +334,46 @@
           if (!arr.length) { toast('No saved conversations'); return; }
           const sel = arr[0]; if (!sel || !sel.conversation || !sel.conversation.length) { toast('No messages in selected conversation'); return; }
           const formatted = sel.conversation.map(m => (m.role === 'user' ? 'User: ' : 'Assistant: ') + m.text).join('\n\n') + '\n\n🔄 Please continue the conversation.';
-          const input = (typeof window.pickAdapter === 'function' && window.pickAdapter().getInput) ? window.pickAdapter().getInput() : document.querySelector('textarea, [contenteditable="true"]');
-          try { if (input && input.isContentEditable) input.textContent = formatted; else if (input) input.value = formatted; else throw new Error('no input'); input.dispatchEvent(new Event('input', { bubbles: true })); toast('Restored conversation'); }
-          catch (e) { navigator.clipboard.writeText(formatted).then(()=>toast('Copied to clipboard (fallback)')); }
+          // Find only visible textarea or contenteditable input
+          let input = null;
+          const candidates = Array.from(document.querySelectorAll('textarea, [contenteditable="true"]'));
+          for (const el of candidates) {
+            const style = window.getComputedStyle(el);
+            if (style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0') {
+              input = el;
+              break;
+            }
+          }
+          try {
+            if (input && input.isContentEditable) {
+              console.log('[ChatBridge Restore] Found contenteditable input:', input);
+              input.textContent = formatted;
+              input.dispatchEvent(new Event('input', { bubbles: true }));
+              input.focus();
+              input.blur();
+              console.log('[ChatBridge Restore] Set textContent and dispatched input event.');
+              toast('Restored conversation');
+              setTimeout(() => {
+                console.log('[ChatBridge Restore] Final input value:', input.textContent);
+              }, 100);
+            } else if (input) {
+              console.log('[ChatBridge Restore] Found textarea input:', input);
+              input.value = formatted;
+              input.dispatchEvent(new Event('input', { bubbles: true }));
+              input.focus();
+              input.blur();
+              const evt = new KeyboardEvent('keydown', { bubbles: true, cancelable: true, key: ' ' });
+              input.dispatchEvent(evt);
+              setTimeout(() => {
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+                console.log('[ChatBridge Restore] Final input value:', input.value);
+              }, 100);
+              toast('Restored conversation');
+            } else throw new Error('no input');
+          } catch (e) {
+            console.log('[ChatBridge Restore] Error during restore:', e);
+            navigator.clipboard.writeText(formatted).then(()=>toast('Copied to clipboard (fallback)'));
+          }
         });
       } catch (e) { toast('Restore failed'); }
     });

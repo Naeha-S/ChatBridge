@@ -96,6 +96,16 @@ function saveConversation(obj, cb) {
         fallbackToLocalStorage();
         return;
       }
+      if (e && e.message && e.message.includes('Extension context invalidated')) {
+        // Only show one toast and suppress repeated logs
+        if (!window.__CHATBRIDGE_CONTEXT_LOST) {
+          window.__CHATBRIDGE_CONTEXT_LOST = true;
+          showStorageErrorToast(e);
+        }
+        // fallback to localStorage
+        fallbackToLocalStorage();
+        return;
+      }
       console.warn('ChatBridge direct storage error:', e);
       showStorageErrorToast(e);
       if (cb) cb();
