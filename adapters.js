@@ -414,8 +414,27 @@ const SiteAdapters = [
     
     getMessages: () => {
       // Strategy: Gemini uses user-query and model-response custom elements
-        // Broaden selectors: look for both user and assistant messages
-        let wrappers = Array.from(container.querySelectorAll('[data-testid="user-message"], [data-testid="assistant-message"], [data-testid="message-wrapper"], .ProseMirror, .whitespace-pre-wrap, .break-words'));
+      // Identify the main chat container to avoid scanning sidebars or UI chrome
+      const candidates = [
+        document.querySelector('chat-window'),
+        document.querySelector('main[role="main"]'),
+        document.querySelector('.conversation-container'),
+        document.querySelector('[data-test-id="conversation-container"]'),
+        document.querySelector('main')
+      ].filter(Boolean);
+      let mainChat = null;
+      let maxWidth = 0;
+      for (const c of candidates) {
+        try {
+          const rect = c.getBoundingClientRect();
+          if (rect.width > maxWidth && rect.width > 400) {
+            maxWidth = rect.width;
+            mainChat = c;
+          }
+        } catch (e) {}
+      }
+      mainChat = mainChat || document.querySelector('main') || document.body;
+      console.log('[Gemini Debug] Using mainChat:', mainChat.tagName, (mainChat.className||''));
       
       // Gemini's structure: each message is wrapped in user-query or model-response tags
       const userQueries = Array.from(mainChat.querySelectorAll('user-query'));
