@@ -209,8 +209,8 @@
 
   function injectUI() {
     if (document.getElementById('cb-host')) return null;
-    const avatar = document.createElement('div'); avatar.id = 'cb-avatar'; avatar.setAttribute('data-cb-ignore', 'true'); avatar.textContent = '⚡';
-    avatar.style.cssText = 'position:fixed;top:18px;right:18px;width:46px;height:46px;border-radius:12px;z-index:2147483646;display:flex;align-items:center;justify-content:center;cursor:pointer;background:linear-gradient(180deg,#0b1220,#071022);color:#fff;box-shadow:0 6px 20px rgba(2,6,23,0.6);font-size:20px';
+  const avatar = document.createElement('div'); avatar.id = 'cb-avatar'; avatar.setAttribute('data-cb-ignore', 'true'); avatar.textContent = '⚡';
+  avatar.style.cssText = 'position:fixed;bottom:18px;right:18px;width:46px;height:46px;border-radius:12px;z-index:2147483646;display:flex;align-items:center;justify-content:center;cursor:pointer;background:linear-gradient(180deg,#0b1220,#071022);color:#d4af77;box-shadow:0 6px 20px rgba(2,6,23,0.6);font-size:20px';
     const host = document.createElement('div'); host.id = 'cb-host'; host.setAttribute('data-cb-ignore', 'true'); host.style.display = 'none';
     document.body.appendChild(avatar); document.body.appendChild(host);
     const shadow = host.attachShadow({ mode: 'open' });
@@ -220,25 +220,25 @@
     style.textContent = `
       @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
       :host { all: initial; }
-      .cb-panel { box-sizing: border-box; position:fixed; top:12px; right:12px; width:380px; max-height:86vh; overflow:hidden; border-radius:14px; background: linear-gradient(180deg, rgba(9,13,22,0.97), rgba(8,18,34,0.98)); color:#e9f1ff; font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; z-index:2147483647; box-shadow: 0 12px 40px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); backdrop-filter: blur(10px); }
+      .cb-panel { box-sizing: border-box; position:fixed; top:12px; right:12px; width:380px; max-height:86vh; overflow:hidden; border-radius:14px; background: linear-gradient(180deg, rgba(9,13,22,0.97), rgba(8,18,34,0.98)); color:#d4af77 !important; font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; z-index:2147483647; box-shadow: 0 12px 40px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); backdrop-filter: blur(10px); }
       .cb-header { display:flex; flex-direction:column; align-items:flex-start; justify-content:flex-start; padding:18px 18px 8px 18px; gap:6px; border-bottom: 1px solid rgba(255,255,255,0.04); }
       .cb-title { font-weight:900; font-size:20px; letter-spacing:0.5px; color:#ffe7b3; text-shadow:0 2px 12px #1a1a1a; }
       .cb-subtitle { font-size:13px; color:#d4af77; font-weight:500; margin-top:2px; margin-bottom:2px; letter-spacing:0.3px; }
       .cb-actions { padding:16px 18px 8px 18px; display:flex; gap:10px; }
-      .cb-btn { background: linear-gradient(180deg, rgba(40,40,60,0.98), rgba(20,20,30,0.98)); border:1px solid rgba(255,255,255,0.12); color:#fff; padding:10px 12px; border-radius:10px; cursor:pointer; font-size:14px; transition: all .15s ease; font-weight:600; }
+      .cb-btn { background: linear-gradient(180deg, rgba(40,40,60,0.98), rgba(20,20,30,0.98)); border:1px solid rgba(255,255,255,0.12); color:#d4af77 !important; padding:10px 12px; border-radius:10px; cursor:pointer; font-size:14px; transition: all .15s ease; font-weight:600; }
       .cb-btn:hover { transform:translateY(-1px); box-shadow: 0 8px 18px rgba(210,180,120,0.18); border-color: rgba(255,255,255,0.22); background: linear-gradient(180deg, #2a2a3a, #18181f); }
       .cb-btn-primary { background: linear-gradient(180deg, #f3e4b9, #d2b478); color:#0b0f19; border: 1px solid rgba(0,0,0,0.18); }
       .cb-btn-primary:hover { box-shadow: 0 10px 24px rgba(210,180,120,0.35); }
       .cb-toolbar { display:flex; align-items:center; gap:10px; padding:12px 18px 8px 18px; border-bottom: 1px solid rgba(255,255,255,0.04); }
-      .cb-label { font-size:12px; color:#a6c8ff; }
-      .cb-select { flex:1; appearance:none; background: linear-gradient(180deg, #181c2a 90%, #232a3a 100%); color:#fff; border:1px solid rgba(255,255,255,0.18); border-radius:10px; padding:10px 12px; font-size:14px; outline:none; font-weight:500; }
+      .cb-label { font-size:12px; color:#d4af77 !important; }
+      .cb-select { flex:1; appearance:none; background: linear-gradient(180deg, #181c2a 90%, #232a3a 100%); color:#d4af77 !important; border:1px solid rgba(255,255,255,0.18); border-radius:10px; padding:10px 12px; font-size:14px; outline:none; font-weight:500; }
       .cb-select:hover { border-color: #d2b478; box-shadow: 0 0 0 3px rgba(210, 180, 120, 0.12); }
-      .cb-status { padding:0 18px 10px 18px; font-size:12px; color:#a8d5ff }
-      .cb-history { padding:12px 18px; max-height:260px; overflow:auto; font-size:13px; background: rgba(20,20,30,0.18); margin:12px; border-radius:10px; white-space:pre-wrap }
-      .cb-preview { padding:12px 18px; font-size:13px; color:#dfeaff; border-top:1px solid rgba(255,255,255,0.04) }
+      .cb-status { padding:0 18px 10px 18px; font-size:12px; color:#d4af77 !important; }
+      .cb-history { padding:12px 18px; max-height:260px; overflow:auto; font-size:13px; background: rgba(20,20,30,0.18); margin:12px; border-radius:10px; white-space:pre-wrap; color:#d4af77 !important; }
+      .cb-preview { padding:12px 18px; font-size:13px; color:#d4af77 !important; border-top:1px solid rgba(255,255,255,0.04) }
       .cb-footer { display:flex; justify-content:flex-end; gap:10px; padding:12px 18px }
-      .cb-close { background:transparent; border:none; color:#a8d5ff; cursor:pointer; font-size:15px }
-      textarea { background: #181c2a; color: #fff; border: 1px solid rgba(255,255,255,0.18); border-radius: 10px; font-size:14px; padding:10px; font-family:inherit; }
+      .cb-close { background:transparent; border:none; color:#d4af77 !important; cursor:pointer; font-size:15px }
+      textarea { background: #181c2a; color: #d4af77 !important; border: 1px solid rgba(255,255,255,0.18); border-radius: 10px; font-size:14px; padding:10px; font-family:inherit; }
       textarea:focus { outline: 2px solid #d2b478; }
       select:focus { outline: 2px solid #d2b478; }
     `;
@@ -257,13 +257,28 @@
     header.appendChild(controls);
     panel.appendChild(header);
 
-    // Actions: Scan, Restore, Generate
-    const actions = document.createElement('div'); actions.className = 'cb-actions';
-    const btnScan = document.createElement('button'); btnScan.className = 'cb-btn cb-btn-primary'; btnScan.textContent = '� Scan Chat';
-    const btnRestore = document.createElement('button'); btnRestore.className = 'cb-btn'; btnRestore.textContent = '♻️ Restore';
-    const btnGenerate = document.createElement('button'); btnGenerate.className = 'cb-btn'; btnGenerate.textContent = '✨ Generate';
-    actions.appendChild(btnScan); actions.appendChild(btnRestore); actions.appendChild(btnGenerate);
-    panel.appendChild(actions);
+  // Actions: Scan, Restore, Gemini APIs
+  const actions = document.createElement('div'); actions.className = 'cb-actions';
+  actions.style.display = 'flex';
+  actions.style.flexWrap = 'wrap';
+  actions.style.gap = '10px';
+  actions.style.rowGap = '12px';
+  actions.style.justifyContent = 'flex-start';
+
+  const btnScan = document.createElement('button'); btnScan.className = 'cb-btn cb-btn-primary'; btnScan.textContent = '📸 Scan Chat';
+  const btnRestore = document.createElement('button'); btnRestore.className = 'cb-btn'; btnRestore.textContent = '♻️ Restore';
+  actions.appendChild(btnScan); actions.appendChild(btnRestore);
+
+  // Gemini API buttons
+  const btnPrompt = document.createElement('button'); btnPrompt.className = 'cb-btn'; btnPrompt.textContent = '🔮 Prompt';
+  const btnSummarize = document.createElement('button'); btnSummarize.className = 'cb-btn'; btnSummarize.textContent = '📝 Summarize';
+  const btnRewrite = document.createElement('button'); btnRewrite.className = 'cb-btn'; btnRewrite.textContent = '✍️ Rewrite';
+  const btnTranslate = document.createElement('button'); btnTranslate.className = 'cb-btn'; btnTranslate.textContent = '🌐 Translate';
+  actions.appendChild(btnPrompt);
+  actions.appendChild(btnSummarize);
+  actions.appendChild(btnRewrite);
+  actions.appendChild(btnTranslate);
+  panel.appendChild(actions);
 
     // Toolbar with Chat dropdown
     const toolbar = document.createElement('div'); toolbar.className = 'cb-toolbar';
@@ -272,13 +287,18 @@
     toolbar.appendChild(lab); toolbar.appendChild(chatSelect);
     panel.appendChild(toolbar);
 
-    // Model and system prompt controls
-    const controlsWrap = document.createElement('div'); controlsWrap.style.padding = '8px 18px'; controlsWrap.style.display = 'flex'; controlsWrap.style.flexDirection = 'column'; controlsWrap.style.gap = '8px';
-    const modelSelect = document.createElement('select'); modelSelect.style.padding = '8px'; modelSelect.style.borderRadius = '10px'; modelSelect.style.background = '#181c2a'; modelSelect.style.color = '#fff';
-    ['gpt-4o-mini','gpt-4o','gpt-4','gpt-3.5-turbo'].forEach(m => { const o = document.createElement('option'); o.value = m; o.textContent = m; modelSelect.appendChild(o); });
-    const sysPrompt = document.createElement('textarea'); sysPrompt.placeholder = 'System prompt (optional)'; sysPrompt.style.padding = '10px'; sysPrompt.style.borderRadius = '10px'; sysPrompt.style.height = '64px'; sysPrompt.style.resize = 'vertical'; sysPrompt.style.background = '#181c2a'; sysPrompt.style.color = '#fff';
-    controlsWrap.appendChild(modelSelect); controlsWrap.appendChild(sysPrompt);
-    panel.appendChild(controlsWrap);
+  // Gemini Nano input/output area
+  const geminiWrap = document.createElement('div'); geminiWrap.style.padding = '8px 18px'; geminiWrap.style.display = 'flex'; geminiWrap.style.flexDirection = 'column'; geminiWrap.style.gap = '8px';
+  const geminiTextarea = document.createElement('textarea');
+  geminiTextarea.placeholder = 'Enter text for Gemini Nano...';
+  geminiTextarea.style.padding = '10px';
+  geminiTextarea.style.borderRadius = '10px';
+  geminiTextarea.style.height = '64px';
+  geminiTextarea.style.resize = 'vertical';
+  geminiTextarea.style.background = '#181c2a';
+  geminiTextarea.style.color = '#fff';
+  geminiWrap.appendChild(geminiTextarea);
+  panel.appendChild(geminiWrap);
 
     const status = document.createElement('div'); status.className = 'cb-status'; status.textContent = 'Status: idle'; panel.appendChild(status);
     const historyEl = document.createElement('div'); historyEl.className = 'cb-history'; historyEl.textContent = 'No sessions yet.'; panel.appendChild(historyEl);
@@ -372,56 +392,67 @@
       } catch (e) { toast('Restore failed'); }
     });
 
-    // Generate via background OpenAI handler
-    btnGenerate.addEventListener('click', async () => {
-      btnGenerate.disabled = true; status.textContent = 'Status: generating...';
+
+    // Gemini Nano API handlers
+    async function loadAiUtils() {
+      if (!window.summarizeText || !window.rewriteText || !window.translateText || !window.waitForGeminiReady) {
+        try {
+          // Use relative path for extension context
+          const mod = await import('./aiUtils.js');
+          window.summarizeText = mod.summarizeText;
+          window.rewriteText = mod.rewriteText;
+          window.translateText = mod.translateText;
+          window.waitForGeminiReady = mod.waitForGeminiReady;
+        } catch (e) { toast('Failed to load Gemini utils'); return false; }
+      }
+      return true;
+    }
+
+    btnPrompt.addEventListener('click', async () => {
+      if (!(await loadAiUtils())) return;
+      btnPrompt.disabled = true; status.textContent = 'Status: prompting...';
       try {
-        const msgs = await scanChat();
-  const final = normalizeMessages(msgs);
-        if (!final || !final.length) { status.textContent = 'Status: idle'; toast('No messages to generate from'); btnGenerate.disabled = false; return; }
+        await window.waitForGeminiReady();
+        const session = await window.ai.createPromptSession();
+        const result = await session.prompt(geminiTextarea.value);
+        geminiTextarea.value = result;
+        status.textContent = 'Status: done';
+      } catch (e) { toast('Prompt failed'); status.textContent = 'Status: error'; }
+      btnPrompt.disabled = false;
+    });
 
-        // Build OpenAI messages (use AIClient helper if available)
-        let oaMessages = null;
-        try {
-          if (window.AIClient && typeof window.AIClient.toOpenAIMessages === 'function') oaMessages = window.AIClient.toOpenAIMessages(final, 'You are a helpful assistant. Continue the conversation.');
-          else oaMessages = final.map(m => ({ role: m.role, content: m.text }));
-        } catch (e) { oaMessages = final.map(m => ({ role: m.role, content: m.text })); }
+    btnSummarize.addEventListener('click', async () => {
+      if (!(await loadAiUtils())) return;
+      btnSummarize.disabled = true; status.textContent = 'Status: summarizing...';
+      try {
+        const result = await window.summarizeText(geminiTextarea.value);
+        geminiTextarea.value = result;
+        status.textContent = 'Status: done';
+      } catch (e) { toast('Summarize failed'); status.textContent = 'Status: error'; }
+      btnSummarize.disabled = false;
+    });
 
-        // ask background to call OpenAI
-        try {
-          // allow tests to inject a test API key via window.__CHATBRIDGE_TEST_API_KEY
-          const testApiKey = (typeof window !== 'undefined' && window.__CHATBRIDGE_TEST_API_KEY) ? window.__CHATBRIDGE_TEST_API_KEY : undefined;
-          const payload = { messages: oaMessages };
-          if (testApiKey) payload.apiKey = testApiKey;
-          chrome.runtime.sendMessage({ type: 'call_openai', payload }, (res) => {
-            try {
-              if (!res) { status.textContent = 'Status: error'; toast('No response from background'); return; }
-              if (!res.ok) {
-                if (res.error === 'no_api_key') {
-                  toast('No API key set. Open Options to save one.');
-                } else {
-                  toast('OpenAI error: ' + (res.error || res.message || JSON.stringify(res)) );
-                }
-                status.textContent = 'Status: error';
-                return;
-              }
-              const assistantText = (res.data && res.data.choices && res.data.choices[0] && res.data.choices[0].message && res.data.choices[0].message.content) || '';
-              if (!assistantText) { toast('No assistant content returned'); status.textContent = 'Status: error'; return; }
+    btnRewrite.addEventListener('click', async () => {
+      if (!(await loadAiUtils())) return;
+      btnRewrite.disabled = true; status.textContent = 'Status: rewriting...';
+      try {
+        const result = await window.rewriteText(geminiTextarea.value);
+        geminiTextarea.value = result;
+        status.textContent = 'Status: done';
+      } catch (e) { toast('Rewrite failed'); status.textContent = 'Status: error'; }
+      btnRewrite.disabled = false;
+    });
 
-              // try to insert into the page input; fallback to clipboard
-              const input = (typeof window.pickAdapter === 'function' && window.pickAdapter().getInput) ? window.pickAdapter().getInput() : document.querySelector('textarea, [contenteditable="true"]');
-              try {
-                if (input && input.isContentEditable) { input.textContent = assistantText; input.dispatchEvent(new Event('input', { bubbles: true })); toast('Generated text inserted'); }
-                else if (input) { input.value = assistantText; input.dispatchEvent(new Event('input', { bubbles: true })); toast('Generated text inserted'); }
-                else { navigator.clipboard.writeText(assistantText).then(()=>toast('Generated text copied to clipboard')); }
-              } catch (e) { navigator.clipboard.writeText(assistantText).then(()=>toast('Generated text copied to clipboard')); }
-
-              status.textContent = 'Status: generated';
-            } finally { btnGenerate.disabled = false; }
-          });
-        } catch (e) { status.textContent = 'Status: error'; toast('Generate failed: ' + (e && e.message)); btnGenerate.disabled = false; }
-
-      } catch (e) { status.textContent = 'Status: error'; toast('Generate failed: ' + (e && e.message)); btnGenerate.disabled = false; }
+    btnTranslate.addEventListener('click', async () => {
+      if (!(await loadAiUtils())) return;
+      btnTranslate.disabled = true; status.textContent = 'Status: translating...';
+      try {
+        const lang = prompt('Translate to which language? (e.g. Japanese, French, Spanish)', 'Japanese') || 'Japanese';
+        const result = await window.translateText(geminiTextarea.value, lang);
+        geminiTextarea.value = result;
+        status.textContent = 'Status: done';
+      } catch (e) { toast('Translate failed'); status.textContent = 'Status: error'; }
+      btnTranslate.disabled = false;
     });
 
     function refreshHistory() {
