@@ -218,11 +218,12 @@
     // High-end professional dark theme styling inside shadow DOM
     const style = document.createElement('style');
     style.textContent = `
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
       :host { all: initial; }
-      .cb-panel { box-sizing: border-box; position:fixed; top:12px; right:12px; width:380px; max-height:86vh; overflow:hidden; border-radius:14px; background: linear-gradient(180deg, rgba(9,13,22,0.97), rgba(8,18,34,0.98)); color:#e9f1ff; font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; z-index:2147483647; box-shadow: 0 12px 40px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); backdrop-filter: blur(10px); }
+      .cb-panel { box-sizing: border-box; position:fixed; top:12px; right:12px; width:380px; max-height:86vh; overflow:hidden; border-radius:14px; background: linear-gradient(180deg, rgba(9,13,22,0.97), rgba(8,18,34,0.98)); color:#e9f1ff; font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; z-index:2147483647; box-shadow: 0 12px 40px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); backdrop-filter: blur(10px); }
       .cb-header { display:flex; flex-direction:column; align-items:flex-start; justify-content:flex-start; padding:18px 18px 8px 18px; gap:6px; border-bottom: 1px solid rgba(255,255,255,0.04); }
       .cb-title { font-weight:900; font-size:20px; letter-spacing:0.5px; color:#ffe7b3; text-shadow:0 2px 12px #1a1a1a; }
-      .cb-subtitle { font-size:13px; color:#b8c6e0; font-style:italic; margin-top:2px; margin-bottom:2px; }
+      .cb-subtitle { font-size:13px; color:#d4af77; font-weight:500; margin-top:2px; margin-bottom:2px; letter-spacing:0.3px; }
       .cb-actions { padding:16px 18px 8px 18px; display:flex; gap:10px; }
       .cb-btn { background: linear-gradient(180deg, rgba(40,40,60,0.98), rgba(20,20,30,0.98)); border:1px solid rgba(255,255,255,0.12); color:#fff; padding:10px 12px; border-radius:10px; cursor:pointer; font-size:14px; transition: all .15s ease; font-weight:600; }
       .cb-btn:hover { transform:translateY(-1px); box-shadow: 0 8px 18px rgba(210,180,120,0.18); border-color: rgba(255,255,255,0.22); background: linear-gradient(180deg, #2a2a3a, #18181f); }
@@ -246,8 +247,8 @@
     const panel = document.createElement('div'); panel.className = 'cb-panel';
     // Header: Title and subtitle
     const header = document.createElement('div'); header.className = 'cb-header';
-    const title = document.createElement('div'); title.className = 'cb-title'; title.textContent = 'ChatBridge';
-    const subtitle = document.createElement('div'); subtitle.className = 'cb-subtitle'; subtitle.textContent = 'Imagine you are a designer and design pls.';
+    const title = document.createElement('div'); title.className = 'cb-title'; title.textContent = '⚡ ChatBridge';
+    const subtitle = document.createElement('div'); subtitle.className = 'cb-subtitle'; subtitle.textContent = 'Effortlessly continue conversations across models';
     const controls = document.createElement('div');
     const btnClose = document.createElement('button'); btnClose.className = 'cb-close'; btnClose.textContent = '✕';
     controls.appendChild(btnClose);
@@ -258,15 +259,15 @@
 
     // Actions: Scan, Restore, Generate
     const actions = document.createElement('div'); actions.className = 'cb-actions';
-    const btnScan = document.createElement('button'); btnScan.className = 'cb-btn cb-btn-primary'; btnScan.textContent = '📋 Scan Chat';
-    const btnRestore = document.createElement('button'); btnRestore.className = 'cb-btn'; btnRestore.textContent = '🧠 Restore';
-    const btnGenerate = document.createElement('button'); btnGenerate.className = 'cb-btn'; btnGenerate.textContent = '🤖 Generate';
+    const btnScan = document.createElement('button'); btnScan.className = 'cb-btn cb-btn-primary'; btnScan.textContent = '� Scan Chat';
+    const btnRestore = document.createElement('button'); btnRestore.className = 'cb-btn'; btnRestore.textContent = '♻️ Restore';
+    const btnGenerate = document.createElement('button'); btnGenerate.className = 'cb-btn'; btnGenerate.textContent = '✨ Generate';
     actions.appendChild(btnScan); actions.appendChild(btnRestore); actions.appendChild(btnGenerate);
     panel.appendChild(actions);
 
     // Toolbar with Chat dropdown
     const toolbar = document.createElement('div'); toolbar.className = 'cb-toolbar';
-    const lab = document.createElement('div'); lab.className = 'cb-label'; lab.textContent = 'Select Chat';
+    const lab = document.createElement('div'); lab.className = 'cb-label'; lab.textContent = '💬 Select Chat';
     const chatSelect = document.createElement('select'); chatSelect.className = 'cb-select'; chatSelect.id = 'cb-chat-select';
     toolbar.appendChild(lab); toolbar.appendChild(chatSelect);
     panel.appendChild(toolbar);
