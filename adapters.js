@@ -292,59 +292,71 @@ const SiteAdapters = [
     detect: () => location.hostname.includes("claude.ai"),
     scrollContainer: () => document.querySelector('[data-testid="chat-scroll"]') || document.querySelector('[data-testid="conversation-view"]') || document.querySelector('main') || document.scrollingElement,
     getMessages: () => {
-      const container = document.querySelector('[data-testid="conversation-view"]') || document.querySelector('[data-testid="chat-scroll"]') || document.querySelector('main') || document.body;
-      if (!container) return [];
-      // Broaden selectors to always get both user and assistant messages
-      let wrappers = Array.from(container.querySelectorAll('[data-testid="chat-message"], [data-testid="assistant-message"], [data-testid="user-message"], .message, .message-text, .Message, article, [data-testid="message-text"]'));
-      if (!wrappers.length) return [];
-
-      const entries = wrappers.map(w => {
-        // Try to find the deepest message text node
-        let body = w.querySelector('.message-text, .content, [data-testid="message-text"], .text, .markdown, p');
-        if (!body || !body.innerText || body.innerText.trim().length < 2) body = w;
-        if (!body) return null;
-        let role = 'assistant';
-        const testId = (w.getAttribute && w.getAttribute('data-testid')) || '';
-        const combinedCls = ((w.className || '') + ' ' + (w.parentElement?.className || '')).toLowerCase();
-        if (/user/.test(testId.toLowerCase()) || combinedCls.includes('user')) {
-          role = 'user';
-        } else if (/assistant|bot/.test(testId.toLowerCase()) || combinedCls.includes('assistant') || combinedCls.includes('bot')) {
-          role = 'assistant';
+      // Try to find the actual conversation container, not just body
+      let container = document.querySelector('[data-testid="conversation-view"]') || 
+                      document.querySelector('[data-testid="chat-scroll"]') || 
+                      document.querySelector('main[role="main"]') ||
+                      document.querySelector('main') ||
+                      document.querySelector('[class*="conversation"]') ||
+                      document.querySelector('[class*="chat"]');
+      
+      // If still body, look for a container with multiple message-like children
+      if (!container || container === document.body) {
+        const candidates = Array.from(document.querySelectorAll('div')).filter(d => {
+          const msgCount = d.querySelectorAll('[data-testid*="message"], .message, p, .markdown').length;
+          return msgCount >= 2;
+        });
+        if (candidates.length > 0) {
+          container = candidates[0];
+          console.log('[Claude Debug] Found better container with', container.querySelectorAll('[data-testid*="message"]').length, 'message elements');
         } else {
-          // If the element or its parent has a user/assistant marker
-          const userAncestor = body.closest('[data-testid*="user"], [class*="user"]');
-          const assistantAncestor = body.closest('[data-testid*="assistant"], [class*="assistant"], [class*="bot"]');
-          if (userAncestor) role = 'user';
-          else if (assistantAncestor) role = 'assistant';
+          container = document.body;
         }
-        return { el: body, role };
-      }).filter(Boolean);
-
-      if (!entries.length) return [];
-      const out = [];
-      entries.forEach((entry, i) => {
-        const text = (() => {
-          try { return (entry.el.innerText || '').trim(); } catch (err) { return ''; }
-        })();
-        if (!text) {
-          console.log('[Claude Debug] Skipping empty:', i, entry.role);
-          return;
-        }
-        // Only skip system/tip/label messages
-        if (/^(new chat|system|tip:|regenerate|copy|share|model:|clear conversation|export|delete|upgrade|settings|custom instructions|beta|plus|team|help|log out|log in|sign up)$/i.test(text)) {
-          console.log('[Claude Debug] Skipping system/tip:', i, entry.role, text.slice(0,40));
-          return;
-        }
-        out.push({ role: entry.role, text, el: entry.el });
-        console.log('[Claude Debug] Included:', i, entry.role, text.slice(0,40));
+      }
+      
+      if (!container) {
+        console.log('[Claude Debug] No container found');
+        return [];
+      }
+      console.log('[Claude Debug] Container found:', container.tagName, container.className);
+      
+      // Broaden selectors to always get both user and assistant messages
+      // Deep scan for all <p>, .whitespace-pre-wrap, .break-words inside container
+      let candidates = Array.from(container.querySelectorAll('p, .whitespace-pre-wrap, .break-words'));
+      console.log('[Claude Debug] Candidate message nodes found:', candidates.length);
+      candidates.forEach((node, i) => {
+        const tag = node.tagName;
+        const cls = node.className || '';
+        const testid = node.getAttribute && node.getAttribute('data-testid');
+        const text = (node.innerText || '').trim();
+        const parentTag = node.parentElement ? node.parentElement.tagName : '';
+        const parentCls = node.parentElement ? node.parentElement.className : '';
+        console.log(`[Claude Debug] Candidate ${i}: <${tag}> class="${cls}" testid="${testid}" parent=<${parentTag}> class="${parentCls}" text="${text.slice(0,60)}"`);
       });
-
-      out.sort((a, b) => {
-        try { return a.el.getBoundingClientRect().top - b.el.getBoundingClientRect().top; } catch (err) { return 0; }
+      // Filter out nodes with very short or empty text and UI/system messages
+      candidates = candidates.filter(n => {
+        const t = (n.innerText || '').trim();
+        return t.length > 2 && !/^(User:|Please continue the conversation|Claude can make mistakes|new chat|system|tip:|regenerate|copy|share|model:|clear conversation|export|delete|upgrade|settings|custom instructions|beta|plus|team|help|log out|log in|sign up)$/i.test(t);
       });
-
-      adapterDebug('adapter:claude', { nodes: wrappers.length, filtered: out.length, sample: out.slice(0, 5).map(m => m.text.slice(0, 80)) });
-      return out;
+      // Infer roles by order: first is user, rest are assistant
+      let messages = candidates.map((node, i) => {
+        let role = (i === 0) ? 'user' : 'assistant';
+        let text = (node.innerText || '').trim();
+        // Clean user message
+        if (role === 'user') {
+          text = text.replace(/^N\s*/i, '').replace(/^User:\s*/i, '').replace(/\s+/g, ' ').trim();
+        }
+        console.log(`[Claude Debug] Message ${i}: role=${role} text="${text.slice(0,60)}"`);
+        return { role, text };
+      });
+      // Merge consecutive assistant messages into one
+      if (messages.length > 2) {
+        const userMsg = messages[0];
+        const assistantMsgs = messages.slice(1).map(m => m.text).filter(Boolean);
+        messages = [userMsg, { role: 'assistant', text: assistantMsgs.join(' ') }];
+      }
+      adapterDebug('adapter:claude', { nodes: candidates.length, filtered: messages.length, sample: messages.slice(0, 2).map(m => m.text.slice(0, 80)) });
+      return messages;
     },
     getInput: () => {
       // Try obvious inputs
@@ -402,9 +414,8 @@ const SiteAdapters = [
     
     getMessages: () => {
       // Strategy: Gemini uses user-query and model-response custom elements
-      // Extract directly from these tags - they are the authoritative containers
-      const mainChat = SiteAdapters.find(a => a.id === 'gemini').scrollContainer();
-      if (!mainChat) return [];
+        // Broaden selectors: look for both user and assistant messages
+        let wrappers = Array.from(container.querySelectorAll('[data-testid="user-message"], [data-testid="assistant-message"], [data-testid="message-wrapper"], .ProseMirror, .whitespace-pre-wrap, .break-words'));
       
       // Gemini's structure: each message is wrapped in user-query or model-response tags
       const userQueries = Array.from(mainChat.querySelectorAll('user-query'));
