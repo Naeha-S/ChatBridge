@@ -257,30 +257,56 @@ const SiteAdapters = [
     detect: () => location.hostname.includes("chat.openai.com") || location.hostname.includes("chatgpt.com"),
     scrollContainer: () => document.querySelector('[data-testid="conversation-turns"]')?.parentElement || document.querySelector('main') || document.scrollingElement,
     getMessages: () => {
-      // Always use ChatGPT adapter on chatgpt.com
       const container = document.querySelector('[data-testid="conversation-turns"]') || document.querySelector('main') || document.body;
-      if (!container) return [];
+      if (!container) {
+        console.log('[ChatGPT Debug] No container found');
+        return [];
+      }
       const wrappers = Array.from(container.querySelectorAll('[data-message-author-role]'));
+      console.log('[ChatGPT Debug] Found wrappers:', wrappers.length);
+      
       if (!wrappers.length) return [];
       const out = [];
       wrappers.forEach((w, i) => {
-        const body = w.querySelector('.markdown, .prose, .text-base, [data-testid*="message"]') || w;
-        if (!body) return;
         const roleAttr = (w.getAttribute('data-message-author-role') || '').toLowerCase();
         const role = roleAttr.includes('user') ? 'user' : 'assistant';
+        
+        const body = w.querySelector('.markdown, .prose, .text-base, [data-testid*="message"]') || w;
+        if (!body) {
+          console.log(`[ChatGPT Debug] Wrapper ${i}: SKIPPED (no body)`);
+          return;
+        }
+        
         const style = window.getComputedStyle(body);
-        if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') return;
+        if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') {
+          console.log(`[ChatGPT Debug] Wrapper ${i}: SKIPPED (hidden) role=${role}`);
+          return;
+        }
+        
         const text = (() => {
           try { return (body.innerText || '').trim(); } catch (err) { return ''; }
         })();
-        if (!text) return;
+        
+        if (!text || text.length === 0) {
+          console.log(`[ChatGPT Debug] Wrapper ${i}: SKIPPED (no text) role=${role}`);
+          return;
+        }
+        
         // Only include actual chat messages (exclude system/tip/label)
-        if (/^(new chat|system|tip:|regenerate|copy|share|model:|clear conversation|export|delete|upgrade|settings|custom instructions|beta|plus|team|help|log out|log in|sign up|quiz.com vs kahoot)$/i.test(text)) return;
+        if (/^(new chat|system|tip:|regenerate|copy|share|model:|clear conversation|export|delete|upgrade|settings|custom instructions|beta|plus|team|help|log out|log in|sign up|quiz.com vs kahoot)$/i.test(text)) {
+          console.log(`[ChatGPT Debug] Wrapper ${i}: SKIPPED (system message) role=${role} text="${text.slice(0,40)}"`);
+          return;
+        }
+        
+        console.log(`[ChatGPT Debug] Wrapper ${i}: INCLUDED role=${role} text="${text.slice(0,60)}"`);
         out.push({ role, text, el: body });
       });
+      
       out.sort((a, b) => {
         try { return a.el.getBoundingClientRect().top - b.el.getBoundingClientRect().top; } catch (err) { return 0; }
       });
+      
+      console.log('[ChatGPT Debug] FINAL:', out.length, 'messages');
       adapterDebug('adapter:chatgpt', { wrappers: wrappers.length, filtered: out.length, sample: out.slice(0, 5).map(m => m.text.slice(0, 80)) });
       return out;
     },
@@ -319,43 +345,145 @@ const SiteAdapters = [
         return [];
       }
       console.log('[Claude Debug] Container found:', container.tagName, container.className);
-      
-      // Broaden selectors to always get both user and assistant messages
-      // Deep scan for all <p>, .whitespace-pre-wrap, .break-words inside container
-      let candidates = Array.from(container.querySelectorAll('p, .whitespace-pre-wrap, .break-words'));
-      console.log('[Claude Debug] Candidate message nodes found:', candidates.length);
-      candidates.forEach((node, i) => {
-        const tag = node.tagName;
-        const cls = node.className || '';
-        const testid = node.getAttribute && node.getAttribute('data-testid');
-        const text = (node.innerText || '').trim();
-        const parentTag = node.parentElement ? node.parentElement.tagName : '';
-        const parentCls = node.parentElement ? node.parentElement.className : '';
-        console.log(`[Claude Debug] Candidate ${i}: <${tag}> class="${cls}" testid="${testid}" parent=<${parentTag}> class="${parentCls}" text="${text.slice(0,60)}"`);
-      });
-      // Filter out nodes with very short or empty text and UI/system messages
-      candidates = candidates.filter(n => {
-        const t = (n.innerText || '').trim();
-        return t.length > 2 && !/^(User:|Please continue the conversation|Claude can make mistakes|new chat|system|tip:|regenerate|copy|share|model:|clear conversation|export|delete|upgrade|settings|custom instructions|beta|plus|team|help|log out|log in|sign up)$/i.test(t);
-      });
-      // Infer roles by order: first is user, rest are assistant
-      let messages = candidates.map((node, i) => {
-        let role = (i === 0) ? 'user' : 'assistant';
-        let text = (node.innerText || '').trim();
-        // Clean user message
-        if (role === 'user') {
-          text = text.replace(/^N\s*/i, '').replace(/^User:\s*/i, '').replace(/\s+/g, ' ').trim();
-        }
-        console.log(`[Claude Debug] Message ${i}: role=${role} text="${text.slice(0,60)}"`);
-        return { role, text };
-      });
-      // Merge consecutive assistant messages into one
-      if (messages.length > 2) {
-        const userMsg = messages[0];
-        const assistantMsgs = messages.slice(1).map(m => m.text).filter(Boolean);
-        messages = [userMsg, { role: 'assistant', text: assistantMsgs.join(' ') }];
+
+      // Robust wrapper selection for user and assistant messages
+      // Look for message wrapper containers first (more reliable than scanning all p tags)
+      // NOTE: Keep selectors specific; avoid generic classes (e.g., .prose/.markdown) that appear in both roles.
+      const userSelectors = [
+        '[data-testid="user-message"]',
+        '[class*="font-user-message"]',
+        '[class*="from-user"]',
+        '[class*="user-message"]'
+      ];
+      const assistantSelectors = [
+        '[data-testid="assistant-message"]',
+        '.standard-markdown',
+        '[class*="font-claude-message"]',
+        '[class*="from-claude"]',
+        '[class*="assistant-message"]',
+        '[class*="assistant"]'
+      ];
+
+      let userWrappers = Array.from(container.querySelectorAll(userSelectors.join(', ')));
+      let assistantWrappers = Array.from(container.querySelectorAll(assistantSelectors.join(', ')));
+      // Derive structural candidates likely representing message turns
+      const structuralSelector = '[data-testid*="message"], .standard-markdown, .markdown, .whitespace-pre-wrap, .break-words, [class*="message"], [class*="chat-bubble"]';
+      const structuralCandidates = Array.from(container.querySelectorAll(structuralSelector));
+
+      // Find top-level wrappers for each candidate (closest ancestor whose parent is the container)
+      const toTopLevelWrapper = (el) => {
+        try {
+          if (!el) return null;
+          let node = el;
+          let top = el;
+          let steps = 0;
+          while (node && node !== container && node.parentElement && steps < 10) {
+            if (node.parentElement === container) { top = node; break; }
+            top = node;
+            node = node.parentElement;
+            steps++;
+          }
+          return top || el;
+        } catch (e) { return el; }
+      };
+
+      const structuralWrappers = structuralCandidates.map(toTopLevelWrapper).filter(Boolean);
+
+      // Merge all wrapper sources and dedupe by top-level element
+      let combinedWrappers = [...userWrappers, ...assistantWrappers, ...structuralWrappers];
+      combinedWrappers = combinedWrappers.filter((el, idx, arr) => el && !arr.some((other, j) => j !== idx && other.contains(el)));
+      // Remove duplicates by identity
+      const uniq = new Set();
+      combinedWrappers = combinedWrappers.filter(el => { if (uniq.has(el)) return false; uniq.add(el); return true; });
+
+      console.log('[Claude Debug] Wrapper sources -> user:', userWrappers.length, 'assistant:', assistantWrappers.length, 'struct:', structuralWrappers.length, 'combinedTopLevel:', combinedWrappers.length);
+
+      // Helper to infer role using specific cues; avoid generic class traps
+      const inferRole = (el) => {
+        try {
+          if (!el) return '';
+          const testEl = el.closest('*');
+          if (!testEl) return '';
+          if (testEl.matches(userSelectors.join(',')) || testEl.closest(userSelectors.join(','))) return 'user';
+          if (testEl.matches(assistantSelectors.join(',')) || testEl.closest(assistantSelectors.join(','))) return 'assistant';
+          // data-testid hints
+          const ancWithTestId = testEl.closest('[data-testid]');
+          const tid = ancWithTestId && ancWithTestId.getAttribute('data-testid');
+          if (tid) {
+            if (/user/i.test(tid)) return 'user';
+            if (/assistant|model|claude/i.test(tid)) return 'assistant';
+          }
+          // aria-label hints
+          const ancWithAria = testEl.closest('[aria-label]');
+          const aria = ancWithAria && ancWithAria.getAttribute('aria-label');
+          if (aria) {
+            if (/you|user/i.test(aria)) return 'user';
+            if (/assistant|claude|response/i.test(aria)) return 'assistant';
+          }
+          return '';
+        } catch (e) { return ''; }
+      };
+
+      // If no wrappers found, fallback to p-scan (last resort)
+      let entries = [];
+      if (combinedWrappers.length) {
+        // Sort by DOM order
+        combinedWrappers.sort((a, b) => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) ? -1 : 1);
+        // Assign roles with inference and alternation fallback
+        let lastRole = '';
+        entries = combinedWrappers.map((el, i) => {
+          let role = inferRole(el);
+          if (!role) role = lastRole === 'user' ? 'assistant' : 'user';
+          lastRole = role;
+          return { el, role };
+        });
+      } else {
+        // Fallback: use p-scan but group by nearest role-like ancestor
+        const ps = Array.from(container.querySelectorAll('p, .whitespace-pre-wrap, .break-words'));
+        const grouped = new Map();
+        ps.forEach(p => {
+          let a = p.closest(userSelectors.join(',')) || p.closest(assistantSelectors.join(','));
+          if (!a) return; // skip if no role-like ancestor
+          const role = a.matches(userSelectors.join(',')) ? 'user' : 'assistant';
+          if (!grouped.has(a)) grouped.set(a, { el: a, role, nodes: [] });
+          grouped.get(a).nodes.push(p);
+        });
+        entries = Array.from(grouped.values());
+        // Sort by DOM order
+        entries.sort((a, b) => (a.el.compareDocumentPosition(b.el) & Node.DOCUMENT_POSITION_FOLLOWING) ? -1 : 1);
       }
-      adapterDebug('adapter:claude', { nodes: candidates.length, filtered: messages.length, sample: messages.slice(0, 2).map(m => m.text.slice(0, 80)) });
+
+      const sanitize = (text, role) => {
+        // Remove UI/system lines and echoes
+        let t = (text || '').replace(/\u00A0/g, ' ');
+        // Remove UI lines
+        t = t.split('\n').filter(line => !/continue the conversation|claude can make mistakes|new chat|system|tip:|regenerate|copy|share|model:|clear conversation|export|delete|upgrade|settings|custom instructions|beta|plus|team|help|log out|log in|sign up/i.test(line)).join('\n');
+        if (role === 'assistant') {
+          t = t.replace(/^User:\s.*$/gim, '');
+        }
+        if (role === 'user') {
+          t = t.replace(/^N\s*/i, '').replace(/^User:\s*/i, '');
+        }
+        // Normalize whitespace
+        t = t.replace(/[ \t]+/g, ' ').replace(/\s*\n\s*/g, '\n').trim();
+        return t;
+      };
+
+      const messages = [];
+      entries.forEach((entry, i) => {
+        // Collect text nodes inside the wrapper
+        const nodes = entry.nodes || Array.from(entry.el.querySelectorAll('p, .whitespace-pre-wrap, .whitespace-normal, .break-words'));
+        let text = nodes.length ? nodes.map(n => (n.innerText || '').trim()).filter(Boolean).join('\n') : (entry.el.innerText || '').trim();
+        text = sanitize(text, entry.role);
+        if (!text || text.length <= 2) {
+          console.log(`[Claude Debug] Skipping empty/filtered message ${i} role=${entry.role}`);
+          return;
+        }
+        console.log(`[Claude Debug] Message ${i}: role=${entry.role} text="${text.slice(0,60)}"`);
+        messages.push({ role: entry.role, text });
+      });
+
+      adapterDebug('adapter:claude', { wrappers: entries.length, filtered: messages.length, sample: messages.slice(0, 8).map(m => m.text.slice(0, 80)) });
       return messages;
     },
     getInput: () => {
