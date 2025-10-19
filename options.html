@@ -1,0 +1,50 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>ChatBridge — Options</title>
+  <style>
+    body { font-family: system-ui, -apple-system, "Segoe UI", Roboto; margin:16px; background:#f7fbff; color:#072034; }
+    h2 { margin-top:0; }
+    textarea { width:100%; height:160px; font-family:monospace; margin-top:8px; }
+    button { padding:8px 12px; border-radius:8px; border:none; background:#0b74ff; color:white; cursor:pointer; }
+    .row { display:flex; gap:8px; align-items:center; margin-bottom:8px; }
+    .small { font-size:13px; color:#334; }
+    #viewer { white-space:pre-wrap; background:#eef7ff; padding:12px; border-radius:8px; border:1px solid #cfe6ff; max-height:400px; overflow:auto; }
+  </style>
+</head>
+<body>
+  <h2>ChatBridge — Options</h2>
+  <div>
+    <div class="small">Saved sessions (local):</div>
+    <div id="viewer">Loading...</div>
+    <div style="margin-top:8px;">
+      <button id="btn-clear">Clear All Saved Sessions</button>
+    </div>
+  </div>
+
+  <hr/>
+
+  <div style="margin-top:12px;">
+    <h3>Adapter debug (advanced)</h3>
+    <div class="small">This shows the adapter picked for the active page when you open this options page from that page. You can edit adapters in code later — this is an advanced view.</div>
+    <pre id="adapterInfo" style="background:#fff; padding:8px; border-radius:6px; border:1px solid #ddd;"></pre>
+    <div style="margin-top:8px;">
+      <button id="btn-refresh-adapter">Refresh Adapter Info</button>
+    </div>
+  </div>
+  
+  <hr/>
+
+  <div style="margin-top:12px;">
+    <h3>OpenAI API Key</h3>
+    <div class="small">Store your OpenAI API key locally for the extension to make safe background calls. This value is stored in extension storage (chrome.storage.local).</div>
+    <div class="row" style="margin-top:8px;">
+      <input id="apiKey" type="password" placeholder="sk-..." style="flex:1;padding:8px;border-radius:8px;border:1px solid #d0e6ff;" />
+      <button id="btn-save-key">Save</button>
+    </div>
+    <div style="margin-top:8px;" class="small">Saved key is used by background requests. Leave empty to remove.</div>
+  </div>
+  <script src="options.js"></script>
+</body>
+</html>
