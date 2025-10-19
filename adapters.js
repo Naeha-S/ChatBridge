@@ -362,93 +362,193 @@ const SiteAdapters = [
   {
     id: "gemini",
     label: "Gemini (gemini.google.com)",
-    detect: () => location.hostname.includes("gemini.google.com"),
-    scrollContainer: () => document.querySelector("main") || document.scrollingElement,
-    getMessages: () => {
-      // Prefer the container near the composer/input to avoid scraping sidebars or suggestion cards
-      let main = document.querySelector('main');
-      if (!main) main = document.body;
-
-      // try to find an input/composer and nearby chat container
-      let input = document.querySelector('textarea, [contenteditable="true"], input[type=text], [role="textbox"]');
-      try { if (!input) input = document.querySelector('[aria-label*="Message"], [placeholder*="Message"]'); } catch (e) {}
-      let chatArea = null;
-      try {
-        if (input) {
-          const nearby = findChatContainerNearby(input);
-          if (nearby && nearby !== document.body) chatArea = nearby;
-        }
-      } catch (e) { /* ignore */ }
-
-      // Fallback: search main for best candidate but be more conservative
-      if (!chatArea) {
-        const candidates = Array.from(main.querySelectorAll('div')).filter(div => {
-          const cls = (div.className||'').toLowerCase();
-          if (cls.includes('sidebar') || cls.includes('nav') || cls.includes('drawer') || cls.includes('list') || cls.includes('history') || cls.includes('suggestion') || cls.includes('card')) return false;
-          if (div.getAttribute('aria-label') && /sidebar|history|chats|conversations|list|suggestion/i.test(div.getAttribute('aria-label'))) return false;
-          // require at least two message-like children to consider it the chat area
-          const msgCount = div.querySelectorAll('.result, .message, .assistant, .UserMessage, .answer, .chat-bubble').length;
-          return msgCount >= 2;
-        });
-        if (candidates.length) chatArea = candidates.reduce((a,b) => (a.scrollHeight > b.scrollHeight ? a : b));
-        else chatArea = main;
-      }
-
-      // Extract only from chatArea, using message selectors
-      let msgs = extractMessagesFromContainer(chatArea, ['.result', '.message', '.assistant', '.UserMessage', '.answer', '.chat-bubble']);
-
-      // Remove items that look like UI/suggestions or are located inside nav/aside
-      msgs = msgs.filter(m => {
-        if (!m || !m.text) return false;
-        const text = m.text.trim();
-        if (text.length < 3) return false;
-        if (/^(new chat|history|chats|conversations|recents|starred|drafts|settings|help|feedback|show thinking|show thinking)$/i.test(text)) return false;
-        // exclude messages that appear inside UI widgets by checking for parent landmarks
+    detect: () => location.hostname.includes("gemini.google.com") || location.hostname.includes("bard.google.com"),
+    
+    scrollContainer: () => {
+      // Gemini's main chat scroll area (NOT the sidebar)
+      // The actual conversation is in a specific container, not in nav/aside
+      const candidates = [
+        document.querySelector('chat-window'),
+        document.querySelector('main[role="main"]'),
+        document.querySelector('.conversation-container'),
+        document.querySelector('[data-test-id="conversation-container"]'),
+        document.querySelector('main')
+      ].filter(Boolean);
+      
+      // Pick the widest visible container (chat is always wider than sidebar)
+      let best = null;
+      let maxWidth = 0;
+      for (const c of candidates) {
         try {
-          const el = (m.el) ? m.el : null;
-          if (el) {
-            const anc = el.closest('nav, aside, header, [role="navigation"], [aria-label*="sidebar"], [aria-label*="history"]');
-            if (anc) return false;
-            const cls = (el.className||'').toString().toLowerCase();
-            if (/suggestion|card|example|topic|shortcut|quick|tool|related|recommended|search-result/.test(cls)) return false;
+          const rect = c.getBoundingClientRect();
+          if (rect.width > maxWidth && rect.width > 400) {
+            maxWidth = rect.width;
+            best = c;
           }
         } catch (e) {}
-        return true;
-      });
-
-      // Apply candidate filter for final sanitization
-      try {
-        if (typeof window !== 'undefined' && typeof window.filterCandidateNodes === 'function') {
-          // map msgs back to DOM nodes, filter, then keep only those matching
-          const nodes = msgs.map(m => document.createElement('div'));
-          // can't easily remap without original el - fallback to standard out
+      }
+      
+      return best || document.querySelector('main') || document.scrollingElement;
+    },
+    
+    getMessages: () => {
+      // Strategy: Gemini uses user-query and model-response custom elements
+      // Extract directly from these tags - they are the authoritative containers
+      const mainChat = SiteAdapters.find(a => a.id === 'gemini').scrollContainer();
+      if (!mainChat) return [];
+      
+      // Gemini's structure: each message is wrapped in user-query or model-response tags
+      const userQueries = Array.from(mainChat.querySelectorAll('user-query'));
+      const modelResponses = Array.from(mainChat.querySelectorAll('model-response'));
+      
+      console.log('[Gemini Debug] Found:', { userQueries: userQueries.length, modelResponses: modelResponses.length });
+      
+      let messageContainers = [];
+      
+      // If we found the native Gemini tags, use them directly
+      if (userQueries.length > 0 || modelResponses.length > 0) {
+        // Interleave user and model messages in DOM order
+        const allMessages = [...userQueries, ...modelResponses].sort((a, b) => {
+          return a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1;
+        });
+        messageContainers = allMessages;
+        console.log('[Gemini Debug] Using native tags, total containers:', messageContainers.length);
+      } else {
+        // Fallback for older Gemini/Bard versions: look for message-set children
+        const messageSetChildren = Array.from(mainChat.querySelectorAll('message-set > *'));
+        if (messageSetChildren.length > 0) {
+          messageContainers = messageSetChildren;
+        } else {
+          // Last resort: find conversation turns or message wrappers
+          messageContainers = Array.from(mainChat.querySelectorAll('.conversation-turn, [data-message-id], [class*="message-wrapper"]'));
         }
-      } catch (e) {}
+      }
+      
+      // Filter containers conservatively. Accept native Gemini tags immediately.
+      messageContainers = messageContainers.filter(container => {
+        try {
+          const tag = (container.tagName || '').toLowerCase();
 
-      // Remove duplicates (contiguous and non-contiguous)
+          // If it's a native Gemini element, accept it if it has any text.
+          if (tag === 'user-query' || tag === 'model-response') {
+            const contentNode = container.querySelector('message-content, .markdown.markdown-main-panel, .message-text, [data-test-id="model-response-text"]') || container;
+            const text = (contentNode.innerText || contentNode.textContent || '').trim();
+            const ok = !!text && text.length >= 3;
+            if (!ok) console.log('[Gemini Debug] Dropping native tag (no text):', tag, contentNode && contentNode.innerText?.slice(0,40));
+            return ok;
+          }
+
+          // For non-native containers, be conservative: only exclude if clearly in a sidebar OUTSIDE the main chat area
+          const badAncestor = container.closest('nav, aside, [role="navigation"], [class*="sidebar"], [class*="panel-side"], [class*="conversation-list"], [class*="suggestion"]');
+          if (badAncestor && !mainChat.contains(badAncestor)) {
+            console.log('[Gemini Debug] Excluding container: ancestor outside mainChat', badAncestor.tagName);
+            return false;
+          }
+
+          const contentNode = container.querySelector('message-content, .markdown.markdown-main-panel, .message-text, [data-test-id="model-response-text"]') || container;
+          const text = (contentNode.innerText || contentNode.textContent || '').trim();
+          if (!text || text.length < 10) {
+            console.log('[Gemini Debug] Excluding container (too short):', container.tagName, text?.slice(0,40));
+            return false;
+          }
+
+          // Exclude UI chrome containers by matching exact label text
+          if (/^(show thinking|try:|suggested|related|regenerate|copy|share|new chat|history|more options)$/i.test(text)) {
+            console.log('[Gemini Debug] Excluding container (UI chrome):', text.slice(0,40));
+            return false;
+          }
+
+          return true;
+        } catch (e) {
+          console.log('[Gemini Debug] Filter exception', e && e.message);
+          return false;
+        }
+      });
+      
+      console.log('[Gemini Debug] After filtering:', messageContainers.length, 'containers');
+      messageContainers.forEach((c, i) => {
+        console.log(`  [${i}] ${c.tagName}:`, c.innerText?.slice(0, 50));
+      });
+      
+      // Extract ONE message per container
+      const messages = messageContainers.map((container, idx) => {
+        let role = 'assistant'; // default
+        
+        try {
+          // Check container tag name
+          const tag = (container.tagName || '').toLowerCase();
+          if (tag === 'user-query' || tag.includes('user')) {
+            role = 'user';
+          } else if (tag === 'model-response' || tag.includes('model') || tag.includes('assistant')) {
+            role = 'assistant';
+          }
+          
+          // Check data attributes
+          const dataRole = container.getAttribute('data-role');
+          if (dataRole === 'user') role = 'user';
+          else if (dataRole === 'assistant' || dataRole === 'model') role = 'assistant';
+          
+          // Check classes
+          const className = (container.className || '').toString().toLowerCase();
+          if (className.includes('user') || className.includes('from-user')) {
+            role = 'user';
+          } else if (className.includes('assistant') || className.includes('model') || className.includes('from-model')) {
+            role = 'assistant';
+          }
+        } catch (e) {}
+        
+        // Extract text from the content area, not chrome
+        let text = '';
+        try {
+          const contentNode = container.querySelector('message-content, .markdown.markdown-main-panel, .message-text, [data-test-id="model-response-text"]') || container;
+          text = (contentNode.innerText || contentNode.textContent || '').trim();
+        } catch (e) {
+          text = (container.innerText || '').trim();
+        }
+        
+        console.log(`[Gemini Debug] Message ${idx}:`, { role, tagName: container.tagName, textLength: text.length, preview: text.slice(0, 50) });
+        
+        return {
+          role,
+          text,
+          el: container
+        };
+      });
+      
+      // Deduplicate by text content (in case nested selectors matched)
       const seen = new Set();
       const final = [];
-      for (const m of msgs) {
-        const key = (m.role||'') + '|' + (m.text||'');
-        if (seen.has(key)) continue;
+      for (const m of messages) {
+        if (!m.text || m.text.length < 10) {
+          console.log('[Gemini Debug] Skipping message (too short):', m.text?.length, 'chars');
+          continue;
+        }
+        
+        // Use first 100 chars as dedup key to handle slight variations
+        const key = (m.role||'') + '|' + m.text.slice(0, 100);
+        if (seen.has(key)) {
+          console.log('[Gemini Debug] Skipping duplicate:', m.text.slice(0, 50));
+          continue;
+        }
         seen.add(key);
         final.push(m);
       }
+      
+      console.log('[Gemini Debug] FINAL RESULT:', final.length, 'messages');
+      final.forEach((m, i) => {
+        console.log(`  [${i}] ${m.role}:`, m.text.slice(0, 80));
+      });
+      
+      adapterDebug('adapter:gemini', { containers: messageContainers.length, filtered: final.length, sample: final.slice(0, 3).map(m => ({ role: m.role, text: m.text.slice(0, 60) })) });
       return final;
     },
+    
     getInput: () => {
-      let el = document.querySelector('textarea, input[type=text], [contenteditable="true"]');
-      if (el) return el;
-      el = document.querySelector('[role="textbox"], [aria-label*="message"], [placeholder*="Message"]');
-      if (el) return el;
-      // try near common composer buttons
-      const send = document.querySelector('button[aria-label*="send"], button[title*="send"]');
-      if (send) {
-        const near = send.closest('form') || document.body;
-        const inp = near.querySelector('textarea, input, [contenteditable="true"]');
-        if (inp) return inp;
-      }
-      return null;
+      // Gemini uses a rich-textarea or contenteditable
+      return document.querySelector('rich-textarea textarea') || 
+             document.querySelector('[contenteditable="true"]') ||
+             document.querySelector('textarea') ||
+             document.querySelector('[role="textbox"]');
     }
   },
   {

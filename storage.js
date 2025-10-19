@@ -55,6 +55,22 @@ const hasStorage = typeof chrome !== 'undefined' && chrome.storage && chrome.sto
 
 function saveConversation(obj, cb) {
   // obj: { platform, ts, conversation: [{role,text}, ...] }
+  function fallbackToLocalStorage() {
+    try {
+      let arr = [];
+      try {
+        arr = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+      } catch {}
+      arr.unshift(obj);
+      const trimmed = arr.slice(0, MAX_ITEMS);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(trimmed));
+      console.warn('ChatBridge: Used localStorage fallback for saveConversation');
+    } catch(e) {
+      console.warn('ChatBridge: localStorage fallback failed', e);
+    }
+    if (cb) cb();
+  }
+
   if (storageAPI) {
     // Use cached API if available
     try {
@@ -66,12 +82,20 @@ function saveConversation(obj, cb) {
         payload[STORAGE_KEY] = trimmed;
         storageAPI.set(payload, () => {
           if (chrome?.runtime?.lastError) {
+            if (chrome.runtime.lastError.message && chrome.runtime.lastError.message.includes('Extension context invalidated')) {
+              fallbackToLocalStorage();
+              return;
+            }
             console.warn('ChatBridge storage error:', chrome.runtime.lastError);
           }
           if (cb) cb();
         });
       });
     } catch(e) {
+      if (e && e.message && e.message.includes('Extension context invalidated')) {
+        fallbackToLocalStorage();
+        return;
+      }
       console.warn('ChatBridge direct storage error:', e);
       showStorageErrorToast(e);
       if (cb) cb();
@@ -90,6 +114,10 @@ function saveConversation(obj, cb) {
         payload[STORAGE_KEY] = trimmed;
         storage.set(payload, () => {
           if (chrome?.runtime?.lastError) {
+            if (chrome.runtime.lastError.message && chrome.runtime.lastError.message.includes('Extension context invalidated')) {
+              fallbackToLocalStorage();
+              return;
+            }
             console.warn('ChatBridge storage error:', chrome.runtime.lastError);
           }
           if (cb) cb();
@@ -97,6 +125,10 @@ function saveConversation(obj, cb) {
       });
     })
     .catch(err => {
+      if (err && err.message && err.message.includes('Extension context invalidated')) {
+        fallbackToLocalStorage();
+        return;
+      }
       console.warn('ChatBridge storage init error:', err);
       showStorageErrorToast(err);
       if (cb) cb();

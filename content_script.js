@@ -77,7 +77,7 @@
   }
 
   function inferRoleFromNode(n) {
-    try {
+    try { 
       if (!n) return 'assistant';
       const cls = (n.className || '').toString().toLowerCase();
       if (cls.includes('user') || cls.includes('from-user') || cls.includes('you')) return 'user';
@@ -447,7 +447,12 @@
               // fallback: climb parents searching for an element with multiple message-like children
               let p = inputEl.parentElement; let found = null; let depth = 0;
               while (p && depth < 10 && !found) {
-                try { const cnt = (p.querySelectorAll && p.querySelectorAll('p, .message, .chat-line, .message-text, .markdown, .prose, .result, .chat-bubble').length) || 0; if (cnt >= 2) found = p; } catch (e) {}
+                try { 
+                  const cnt = (p.querySelectorAll && p.querySelectorAll('p, .message, .chat-line, .message-text, .markdown, .prose, .result, .chat-bubble').length) || 0;
+                  // Require container to be reasonably wide (not a narrow sidebar)
+                  const rect = p.getBoundingClientRect();
+                  if (cnt >= 2 && rect.width > 400) found = p;
+                } catch (e) {}
                 p = p.parentElement; depth++;
               }
               container = found || null;
@@ -456,8 +461,33 @@
         }
       } catch (e) { container = null; }
       container = container || (adapter && adapter.scrollContainer && adapter.scrollContainer()) || document.querySelector('main') || document.body;
-    debugLog('chosen container', { adapter: adapter && adapter.id, container: container && (container.tagName + (container.id ? '#'+container.id : '') + ' ' + (container.className||'').toString().split(' ')[0]) });
-    try { window.ChatBridge = window.ChatBridge || {}; window.ChatBridge._lastScan = { chosenContainer: null, adapterId: (adapter && adapter.id) || null, timestamp: Date.now(), nodesConsidered: 0, containerEl: container }; } catch (e) {}
+      
+      // Final validation - if chosen container is too narrow, try main or body
+      try {
+        const rect = container.getBoundingClientRect();
+        if (rect.width < 400) {
+          debugLog('chosen container too narrow (' + rect.width + 'px), falling back to main/body');
+          container = document.querySelector('main') || document.body;
+        }
+      } catch (e) {}
+      
+      debugLog('chosen container', { 
+        adapter: adapter && adapter.id, 
+        container: container && (container.tagName + (container.id ? '#'+container.id : '') + ' ' + (container.className||'').toString().split(' ').slice(0,2).join(' ')),
+        width: container && Math.round(container.getBoundingClientRect().width) + 'px'
+      });
+      
+      try { 
+        window.ChatBridge = window.ChatBridge || {}; 
+        window.ChatBridge._lastScan = { 
+          chosenContainer: container && (container.tagName + (container.id ? '#'+container.id : '') + (container.className ? '.' + (container.className||'').toString().split(' ').filter(c=>c).slice(0,2).join('.') : '')),
+          adapterId: (adapter && adapter.id) || null, 
+          timestamp: Date.now(), 
+          nodesConsidered: 0, 
+          containerEl: container,
+          containerWidth: container && Math.round(container.getBoundingClientRect().width)
+        }; 
+      } catch (e) {}
       await scrollContainerToTop(container);
       await waitForDomStability(container);
       let raw = [];
