@@ -197,7 +197,11 @@
     style.textContent = `
       @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
       :host { all: initial; }
-  .cb-panel { box-sizing: border-box; position:fixed; top:12px; right:12px; width:380px; max-height:86vh; overflow:hidden; border-radius:14px; background: linear-gradient(180deg, rgba(9,13,22,0.97), rgba(8,18,34,0.98)); color:#d4af77 !important; font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; z-index:2147483647; box-shadow: 0 12px 40px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); backdrop-filter: blur(10px); }
+  .cb-panel { box-sizing: border-box; position:fixed; top:12px; right:12px; width:380px; max-height:86vh; overflow-y:auto; overflow-x:hidden; border-radius:14px; background: linear-gradient(180deg, rgba(9,13,22,0.97), rgba(8,18,34,0.98)); color:#d4af77 !important; font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; z-index:2147483647; box-shadow: 0 12px 40px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); backdrop-filter: blur(10px); }
+  .cb-panel::-webkit-scrollbar { width: 10px; }
+  .cb-panel::-webkit-scrollbar-track { background: #0b0f17; border-radius: 10px; }
+  .cb-panel::-webkit-scrollbar-thumb { background: linear-gradient(180deg, rgba(212,175,119,0.8), rgba(212,175,119,0.55)); border-radius: 10px; border: 2px solid #0b0f17; }
+  .cb-panel::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, rgba(212,175,119,1), rgba(212,175,119,0.7)); }
   .cb-header { display:flex; flex-direction:row; align-items:flex-start; justify-content:space-between; padding:14px 18px 8px 18px; gap:6px; border-bottom: 1px solid rgba(255,255,255,0.04); }
       .cb-title { font-weight:900; font-size:20px; letter-spacing:0.5px; color:#ffe7b3; text-shadow:0 2px 12px #1a1a1a; }
       .cb-subtitle { font-size:13px; color:#d4af77; font-weight:500; margin-top:2px; margin-bottom:2px; letter-spacing:0.3px; }
@@ -212,8 +216,9 @@
       .cb-btn-danger:hover { background: linear-gradient(180deg, rgba(80,25,25,0.95), rgba(50,18,18,0.95)); border-color: rgba(255,120,120,0.4); color:rgba(255,200,200,0.9) !important; box-shadow: 0 4px 12px rgba(200,50,50,0.15); }
       .cb-toolbar { display:flex; align-items:center; gap:10px; padding:12px 18px 8px 18px; border-bottom: 1px solid rgba(255,255,255,0.04); }
       .cb-label { font-size:12px; color:#d4af77 !important; }
-      .cb-select { flex:1; appearance:none; background: linear-gradient(180deg, #181c2a 90%, #232a3a 100%); color:#d4af77 !important; border:1px solid rgba(255,255,255,0.18); border-radius:10px; padding:10px 12px; font-size:14px; outline:none; font-weight:500; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cb-select { flex:1; appearance:none; background:#0b0f17; color:#d4af77 !important; border:1px solid rgba(255,255,255,0.18); border-radius:10px; padding:10px 12px; font-size:14px; outline:none; font-weight:500; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       .cb-select:hover { border-color: #d2b478; box-shadow: 0 0 0 3px rgba(210, 180, 120, 0.12); }
+  select.cb-select option { background:#0b0f17; color:#d4af77; }
       .cb-status { padding:0 18px 10px 18px; font-size:12px; color:#d4af77 !important; }
       .cb-history-wrapper { position: relative; margin:12px; }
       .cb-history-header { display:flex; align-items:center; justify-content:space-between; padding:0 0 8px 0; }
@@ -246,10 +251,20 @@
       .cb-view-close:hover { background:rgba(255,255,255,0.04); }
       .cb-view-title { font-weight:700; font-size:14px; color:#ffe7b3; }
       .cb-view-select { margin:8px 0 12px 0; width:100%; }
-      .cb-view-text { width:100%; min-height:140px; max-height:200px; resize:vertical; background:#0f1720; color:#e8d6b0; border:1px solid rgba(255,255,255,0.06); padding:10px; border-radius:8px; font-family:inherit; white-space:pre-wrap; overflow:auto; font-size:12px; line-height:1.4; }
+  .cb-view-text { width:100%; min-height:140px; max-height:200px; resize:vertical; background:#0b0f17; color:#e8d6b0; border:1px solid rgba(255,255,255,0.06); padding:10px; border-radius:8px; font-family:inherit; white-space:pre-wrap; overflow-y:auto; overflow-x:hidden; font-size:12px; line-height:1.4; }
+  .cb-view-text::-webkit-scrollbar { width: 8px; }
+  .cb-view-text::-webkit-scrollbar-track { background: #0b0f17; border-radius: 10px; }
+  .cb-view-text::-webkit-scrollbar-thumb { background: linear-gradient(180deg, rgba(212,175,119,0.8), rgba(212,175,119,0.55)); border-radius: 10px; border: 2px solid #0b0f17; }
+  .cb-view-text::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, rgba(212,175,119,1), rgba(212,175,119,0.7)); }
       .cb-view-controls { margin:12px 0; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
       .cb-view-go { margin-top:10px; }
-      .cb-view-result { margin-top:14px; padding:12px; background: rgba(20,20,30,0.18); border-radius:10px; white-space:pre-wrap; color:#d4af77; font-size:12px; line-height:1.4; max-height:200px; overflow:auto; }
+  .cb-view-result { margin-top:14px; padding:12px; background: rgba(20,20,30,0.18); border-radius:10px; white-space:pre-wrap; color:#d4af77; font-size:12px; line-height:1.4; max-height:200px; overflow-y:auto; overflow-x:hidden; }
+  .cb-progress { display:inline-block; margin-left:10px; font-size:12px; color:#d4af77; opacity:0.9; }
+  .cb-dots { display:inline-block; }
+  .cb-dots .dot { display:inline-block; opacity:0.25; animation: cb-ellipsis 1.1s ease-in-out infinite; }
+  .cb-dots .dot:nth-child(2) { animation-delay: .18s; }
+  .cb-dots .dot:nth-child(3) { animation-delay: .36s; }
+  @keyframes cb-ellipsis { 0% { opacity:0.25; transform: translateY(0); } 30% { opacity:1; transform: translateY(-2px); } 60% { opacity:0.25; transform: translateY(0); } 100% { opacity:0.25; transform: translateY(0); } }
     `;
     shadow.appendChild(style);
 
@@ -328,6 +343,7 @@
   syncView.appendChild(syncSourceText);
   const btnGoSync = document.createElement('button'); btnGoSync.className = 'cb-btn cb-view-go'; btnGoSync.textContent = '🎚️ Sync Tone';
   syncView.appendChild(btnGoSync);
+  const syncProg = document.createElement('span'); syncProg.className = 'cb-progress'; syncProg.style.display = 'none'; syncView.appendChild(syncProg);
   const btnInsertSync = document.createElement('button'); btnInsertSync.className = 'cb-btn cb-view-go'; btnInsertSync.textContent = '📥 Insert to Chat'; btnInsertSync.style.display = 'none';
   syncView.appendChild(btnInsertSync);
   const syncResult = document.createElement('div'); syncResult.className = 'cb-view-result'; syncResult.id = 'cb-sync-result'; syncResult.textContent = '';
@@ -355,6 +371,7 @@
   summView.appendChild(summSourceText);
   const btnGoSumm = document.createElement('button'); btnGoSumm.className = 'cb-btn cb-view-go'; btnGoSumm.textContent = '📝 Summarize';
   summView.appendChild(btnGoSumm);
+  const summProg = document.createElement('span'); summProg.className = 'cb-progress'; summProg.style.display = 'none'; summView.appendChild(summProg);
   const btnInsertSumm = document.createElement('button'); btnInsertSumm.className = 'cb-btn cb-view-go'; btnInsertSumm.textContent = '📥 Insert to Chat'; btnInsertSumm.style.display = 'none';
   summView.appendChild(btnInsertSumm);
   const summResult = document.createElement('div'); summResult.className = 'cb-view-result'; summResult.id = 'cb-summ-result'; summResult.textContent = '';
@@ -367,10 +384,18 @@
   const btnCloseRew = document.createElement('button'); btnCloseRew.className = 'cb-view-close'; btnCloseRew.textContent = '✕';
   rewTop.appendChild(rewTitle); rewTop.appendChild(btnCloseRew);
   rewView.appendChild(rewTop);
+  const rewStyleLabel = document.createElement('label'); rewStyleLabel.className = 'cb-label'; rewStyleLabel.textContent = 'Style:';
+  const rewStyleSelect = document.createElement('select'); rewStyleSelect.className = 'cb-select'; rewStyleSelect.id = 'cb-rew-style';
+  ['normal','concise','direct','detailed','academic'].forEach(v => { const o = document.createElement('option'); o.value = v; o.textContent = v.charAt(0).toUpperCase()+v.slice(1); rewStyleSelect.appendChild(o); });
+  rewStyleSelect.value = 'normal';
+  const rewControls = document.createElement('div'); rewControls.className = 'cb-view-controls';
+  rewControls.appendChild(rewStyleLabel); rewControls.appendChild(rewStyleSelect);
+  rewView.appendChild(rewControls);
   const rewSourceText = document.createElement('div'); rewSourceText.className = 'cb-view-text'; rewSourceText.id = 'cb-rew-source-text'; rewSourceText.setAttribute('contenteditable','false'); rewSourceText.textContent = '';
   rewView.appendChild(rewSourceText);
   const btnGoRew = document.createElement('button'); btnGoRew.className = 'cb-btn cb-view-go'; btnGoRew.textContent = '✍️ Rewrite';
   rewView.appendChild(btnGoRew);
+  const rewProg = document.createElement('span'); rewProg.className = 'cb-progress'; rewProg.style.display = 'none'; rewView.appendChild(rewProg);
   const btnInsertRew = document.createElement('button'); btnInsertRew.className = 'cb-btn cb-view-go'; btnInsertRew.textContent = '📥 Insert to Chat'; btnInsertRew.style.display = 'none';
   rewView.appendChild(btnInsertRew);
   const rewResult = document.createElement('div'); rewResult.className = 'cb-view-result'; rewResult.id = 'cb-rew-result'; rewResult.textContent = '';
@@ -385,13 +410,14 @@
   transView.appendChild(transTop);
   const transLangLabel = document.createElement('div'); transLangLabel.className = 'cb-label'; transLangLabel.textContent = 'Target language';
   const transLangSelect = document.createElement('select'); transLangSelect.className = 'cb-select'; transLangSelect.id = 'cb-trans-lang';
-  ['Japanese','Spanish','French','German','Chinese','Korean','Italian','Portuguese','Russian','Arabic','Hindi','Turkish','Dutch','Swedish','Polish'].forEach(lang => { const o = document.createElement('option'); o.value = lang; o.textContent = lang; transLangSelect.appendChild(o); });
+  ['Japanese','Spanish','French','German','Chinese','Korean','Italian','Portuguese','Russian','Arabic','Hindi','Turkish','Dutch','Swedish','Polish','Tamil'].forEach(lang => { const o = document.createElement('option'); o.value = lang; o.textContent = lang; transLangSelect.appendChild(o); });
   transLangSelect.value = 'Japanese';
   transView.appendChild(transLangLabel); transView.appendChild(transLangSelect);
   const transSourceText = document.createElement('div'); transSourceText.className = 'cb-view-text'; transSourceText.id = 'cb-trans-source-text'; transSourceText.setAttribute('contenteditable','false'); transSourceText.textContent = '';
   transView.appendChild(transSourceText);
   const btnGoTrans = document.createElement('button'); btnGoTrans.className = 'cb-btn cb-view-go'; btnGoTrans.textContent = '🌐 Translate';
   transView.appendChild(btnGoTrans);
+  const transProg = document.createElement('span'); transProg.className = 'cb-progress'; transProg.style.display = 'none'; transView.appendChild(transProg);
   const btnInsertTrans = document.createElement('button'); btnInsertTrans.className = 'cb-btn cb-view-go'; btnInsertTrans.textContent = '📥 Insert to Chat'; btnInsertTrans.style.display = 'none';
   transView.appendChild(btnInsertTrans);
   const transResult = document.createElement('div'); transResult.className = 'cb-view-result'; transResult.id = 'cb-trans-result'; transResult.textContent = '';
@@ -472,9 +498,27 @@
       try { syncView.classList.remove('cb-view-active'); } catch (e) {}
     });
 
+    // Helper: per-view progress updater
+    function updateProgress(el, action, ev){
+      try {
+        if (!el) return;
+        const act = (action==='summarize') ? 'Summarizing' : (action==='rewrite') ? 'Rewriting' : (action==='translate') ? 'Translating' : 'Syncing';
+        let msg = '';
+        if (!ev || !ev.phase) msg = act + '...';
+        else if (ev.phase === 'preparing') msg = 'Analyzing input...';
+        else if (ev.phase === 'chunking') msg = 'Breaking into ' + (ev.total||'?') + ' parts...';
+        else if (ev.phase === 'chunk') msg = (act + ' part ' + (ev.index||'?') + '/' + (ev.total||'?') + '...');
+        else if (ev.phase === 'merging') msg = 'Merging parts...';
+        else if (ev.phase === 'done') msg = 'Finalizing...';
+        else msg = act + '...';
+        el.textContent = msg;
+      } catch(e){}
+    }
+
     btnGoSync.addEventListener('click', async () => {
       try {
-        btnGoSync.disabled = true; btnGoSync.textContent = '⏳ Syncing...'; syncResult.textContent = ''; btnInsertSync.style.display = 'none';
+  btnGoSync.disabled = true; btnGoSync.innerHTML = '⏳ Syncing <span class="cb-dots"><span class="dot">.</span><span class="dot">.</span><span class="dot">.</span></span>'; syncResult.textContent = ''; btnInsertSync.style.display = 'none';
+        syncProg.style.display = 'inline'; updateProgress(syncProg, 'sync', { phase: 'preparing' });
         const chatText = (syncSourceText && syncSourceText.textContent) ? syncSourceText.textContent : '';
         const target = (syncTargetSelect && syncTargetSelect.value) || 'TargetModel';
         if (!chatText || chatText.trim().length < 10) { toast('No conversation to sync'); btnGoSync.disabled = false; btnGoSync.textContent = '🎚️ Sync Tone'; return; }
@@ -485,7 +529,7 @@
         }
         if (!resText) {
           try {
-            resText = await hierarchicalProcess(chatText, 'syncTone', { chunkSize: 14000, maxParallel: 3, length: 'medium', sourceModel: 'unknown', targetModel: target });
+            resText = await hierarchicalProcess(chatText, 'syncTone', { chunkSize: 14000, maxParallel: 3, length: 'medium', sourceModel: 'unknown', targetModel: target, onProgress: (ev)=>updateProgress(syncProg, 'sync', ev) });
           } catch (e) { debugLog('hierarchicalProcess syncTone error', e); throw e; }
         }
 
@@ -493,7 +537,8 @@
         syncSourceText.textContent = resText || '(no result)';
         syncResult.textContent = '✅ Tone sync completed! The text area above now shows the synced version.';
         btnInsertSync.style.display = 'inline-block';
-        preview.textContent = `Synced (${target}):\n\n` + (resText || '');
+        syncProg.style.display = 'none';
+  // No duplicate output in preview; go straight to history below
         toast('Sync Tone completed');
       } catch (err) {
         toast('Sync Tone failed: ' + (err && err.message ? err.message : err));
@@ -593,11 +638,14 @@
     function restoreToChat(text) {
       try {
         let input = null;
-        const candidates = Array.from(document.querySelectorAll('textarea, [contenteditable="true"]'));
+        // broaden candidates and avoid picking extension elements
+        const candidates = Array.from(document.querySelectorAll('textarea, [contenteditable="true"], input[type="text"], div[role="textbox"]'));
         for (const el of candidates) {
           try {
+            // skip extension host and hidden/offscreen elements
+            if (el.closest && el.closest('#cb-host')) continue;
             const cs = window.getComputedStyle(el);
-            if (cs.display !== 'none' && cs.visibility !== 'hidden' && cs.opacity !== '0') { input = el; break; }
+            if (cs.display !== 'none' && cs.visibility !== 'hidden' && cs.opacity !== '0' && el.offsetWidth > 0 && el.offsetHeight > 0) { input = el; break; }
           } catch (e) {}
         }
         if (input && input.isContentEditable) {
@@ -613,6 +661,7 @@
           // poke keydown for some frameworks
           try { input.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, cancelable: true, key: ' ' })); } catch(e) {}
           setTimeout(() => { try { input.dispatchEvent(new Event('input', { bubbles: true })); } catch(e){} }, 60);
+          try { input.dispatchEvent(new Event('change', { bubbles: true })); } catch(e){}
           toast('Restored to chat');
           return true;
         }
@@ -695,6 +744,8 @@
     // Hierarchical summarization: chunk long text, summarize chunks in parallel, then merge
     async function hierarchicalSummarize(text, options) {
       options = options || {};
+      const onProgress = typeof options.onProgress === 'function' ? options.onProgress : null;
+      try { onProgress && onProgress({ phase: 'preparing' }); } catch(e){}
       const chunkSize = options.chunkSize || 12000; // characters per chunk (~12k)
       const maxParallel = options.maxParallel || 3; // number of parallel chunk summaries
       const mergePrompt = options.mergePrompt || 'Merge the following chunk summaries into a single coherent summary preserving salient points and context.';
@@ -702,7 +753,7 @@
       // Small inputs: direct summarize call
       if (text.length <= chunkSize) {
         const res = await callGeminiAsync({ action: 'summarize', text, length: options.length || 'medium', summaryType: options.summaryType || 'paragraph' });
-        if (res && res.ok) return res.result;
+        if (res && res.ok) { try { onProgress && onProgress({ phase: 'done' }); } catch(e){}; return res.result; }
         throw new Error(res && res.error ? res.error : 'summarize-failed');
       }
       // Split text into chunks on paragraph boundaries to avoid cutting sentences
@@ -714,25 +765,97 @@
         else { cur = cur ? (cur + '\n\n' + p) : p; }
       }
       if (cur) chunks.push(cur);
+      try { onProgress && onProgress({ phase: 'chunking', total: chunks.length }); } catch(e){}
 
       // Summarize chunks in parallel batches to limit concurrent calls
       const summaries = [];
+      // small helper to pause
+      const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+      // per-chunk summarizer with retry + fallback
+      async function summarizeChunk(chunkText) {
+        const chunkLen = options.chunkLength || 'short';
+        const summaryType = 'bullet';
+        try {
+          // first attempt
+          const a = await callGeminiAsync({ action: 'summarize', text: chunkText, length: chunkLen, summaryType });
+          if (a && a.ok) return a.result;
+          debugLog('hierarchicalSummarize: chunk primary failed', a);
+        } catch (e) { debugLog('hierarchicalSummarize: chunk primary threw', e); }
+
+        // brief wait then retry once
+        try { await sleep(250); } catch(e){}
+        try {
+          const b = await callGeminiAsync({ action: 'summarize', text: chunkText, length: chunkLen, summaryType });
+          if (b && b.ok) return b.result;
+          debugLog('hierarchicalSummarize: chunk retry failed', b);
+        } catch (e) { debugLog('hierarchicalSummarize: chunk retry threw', e); }
+
+        // fallback: simpler instruction which sometimes succeeds where default fails
+        try {
+          const fbPrompt = 'Provide a short bullet-point summary of the following text, listing the main points.';
+          const f = await callGeminiAsync({ action: 'summarize', text: chunkText, length: chunkLen, summaryType: 'paragraph', prompt: fbPrompt });
+          if (f && f.ok) return f.result;
+          debugLog('hierarchicalSummarize: chunk fallback failed', f);
+        } catch (e) { debugLog('hierarchicalSummarize: chunk fallback threw', e); }
+
+        return '[chunk-summarize-failed]';
+      }
+
       for (let i = 0; i < chunks.length; i += maxParallel) {
-        const batch = chunks.slice(i, i + maxParallel).map(c => callGeminiAsync({ action: 'summarize', text: c, length: options.chunkLength || 'short', summaryType: 'bullet' }).then(r => (r && r.ok) ? r.result : ('[chunk-summarize-failed]')));
+        const batchChunks = chunks.slice(i, i + maxParallel);
+        const batch = batchChunks.map((c, idx) => {
+          const globalIndex = i + idx + 1;
+          try { onProgress && onProgress({ phase: 'chunk', index: globalIndex, total: chunks.length }); } catch(e){}
+          return summarizeChunk(c);
+        });
         const results = await Promise.all(batch);
         summaries.push(...results);
       }
 
       // Merge chunk summaries
       const mergeInput = summaries.map((s, idx) => `Chunk ${idx+1}:\n${s}`).join('\n\n');
-      const mergeRes = await callGeminiAsync({ action: 'summarize', text: mergeInput, length: options.length || 'medium', summaryType: options.summaryType || 'paragraph', prompt: mergePrompt });
-      if (mergeRes && mergeRes.ok) return mergeRes.result;
-      throw new Error('merge-failed');
+      // Primary merge attempt
+      try {
+        try { onProgress && onProgress({ phase: 'merging' }); } catch(e){}
+  let mergeRes = await callGeminiAsync({ action: 'summarize', text: mergeInput, length: options.length || 'medium', summaryType: options.summaryType || 'paragraph', prompt: mergePrompt });
+  if (mergeRes && mergeRes.ok) { try { onProgress && onProgress({ phase: 'done' }); } catch(e){}; return mergeRes.result; }
+        debugLog('hierarchicalSummarize: primary merge failed', mergeRes);
+
+        // Retry once with the same payload (some transient backend issues recover on retry)
+        try {
+          const retryRes = await callGeminiAsync({ action: 'summarize', text: mergeInput, length: options.length || 'medium', summaryType: options.summaryType || 'paragraph', prompt: mergePrompt });
+          if (retryRes && retryRes.ok) { try { onProgress && onProgress({ phase: 'done' }); } catch(e){}; return retryRes.result; }
+          debugLog('hierarchicalSummarize: retry merge failed', retryRes);
+        } catch (retryErr) {
+          debugLog('hierarchicalSummarize: retry merge threw', retryErr);
+        }
+
+        // Fallback: ask the model to summarize the concatenated chunk summaries with a simpler instruction
+        try {
+          const fallbackPrompt = 'Produce a single coherent, concise summary from the following chunk summaries. Preserve the key points and overall context.';
+          const fallbackRes = await callGeminiAsync({ action: 'summarize', text: mergeInput, length: options.length || 'medium', summaryType: options.summaryType || 'paragraph', prompt: fallbackPrompt });
+          if (fallbackRes && fallbackRes.ok) { try { onProgress && onProgress({ phase: 'done' }); } catch(e){}; return fallbackRes.result; }
+          debugLog('hierarchicalSummarize: fallback summarize failed', fallbackRes);
+        } catch (fbErr) {
+          debugLog('hierarchicalSummarize: fallback summarize threw', fbErr);
+        }
+
+      } catch (e) {
+        debugLog('hierarchicalSummarize: merge attempt threw', e);
+      }
+
+      // Last resort: return concatenated chunk summaries so the caller still gets useful information
+  try { onProgress && onProgress({ phase: 'done' }); } catch(e){}
+  debugLog('hierarchicalSummarize: returning concatenated chunk summaries as last resort');
+      return summaries.join('\n\n');
     }
     
     // Generic hierarchical processor for other actions (prompt/rewrite/translate)
     async function hierarchicalProcess(text, action, options) {
       options = options || {};
+      const onProgress = typeof options.onProgress === 'function' ? options.onProgress : null;
+      try { onProgress && onProgress({ phase: 'preparing' }); } catch(e){}
       const chunkSize = options.chunkSize || 12000;
       const maxParallel = options.maxParallel || 3;
       const mergePrompt = options.mergePrompt || `Combine the following pieces into a single coherent output that preserves context, style, and important details.`;
@@ -740,7 +863,7 @@
       if (!text || typeof text !== 'string') return '';
       if (text.length <= chunkSize) {
         const res = await callGeminiAsync(Object.assign({ action, text }, perChunkExtra));
-        if (res && res.ok) return res.result;
+        if (res && res.ok) { try { onProgress && onProgress({ phase: 'done' }); } catch(e){}; return res.result; }
         throw new Error(res && res.error ? res.error : `${action}-failed`);
       }
       const paragraphs = text.split(/\n\s*\n/);
@@ -750,46 +873,41 @@
         if ((cur + '\n\n' + p).length > chunkSize && cur) { chunks.push(cur); cur = p; }
         else { cur = cur ? (cur + '\n\n' + p) : p; }
       }
-      if (cur) chunks.push(cur);
+  if (cur) chunks.push(cur);
+  try { onProgress && onProgress({ phase: 'chunking', total: chunks.length }); } catch(e){}
 
       const outputs = [];
       for (let i = 0; i < chunks.length; i += maxParallel) {
-        const batch = chunks.slice(i, i + maxParallel).map(c => callGeminiAsync(Object.assign({ action, text: c }, perChunkExtra)).then(r => (r && r.ok) ? r.result : ('[chunk-failed]')));
+        const slice = chunks.slice(i, i + maxParallel);
+        const batch = slice.map((c, idx) => {
+          const globalIndex = i + idx + 1;
+          try { onProgress && onProgress({ phase: 'chunk', index: globalIndex, total: chunks.length }); } catch(e){}
+          return callGeminiAsync(Object.assign({ action, text: c }, perChunkExtra)).then(r => (r && r.ok) ? r.result : ('[chunk-failed]'))
+        });
         const results = await Promise.all(batch);
         outputs.push(...results);
       }
 
       // If merge explicitly disabled, just concatenate chunk outputs
-      if (options.merge === false) return outputs.join('\n\n');
+  if (options.merge === false) { try { onProgress && onProgress({ phase: 'done' }); } catch(e){}; return outputs.join('\n\n'); }
 
       // Otherwise, merge outputs via a final prompt call (use 'prompt' action for merge)
       const mergeInput = outputs.map((s, idx) => `Part ${idx+1}:\n${s}`).join('\n\n');
       const mergeText = mergePrompt + '\n\n' + mergeInput;
       // If syncing tone, forward source/target metadata and ask backend to perform tone transfer
       if (action === 'syncTone') {
-        // Construct a cohesive instruction for smooth tone adaptation
+        // Construct a prompt engineering instruction for the target AI model
         const src = options.sourceModel || 'SourceModel';
         const tgt = options.targetModel || 'TargetModel';
-        const tonePrompt = `You are adapting a conversation to match the writing style and personality of ${tgt}. 
-
-Instructions:
-1. Rewrite the entire conversation below in a cohesive, natural flow that sounds like ${tgt}
-2. Maintain all factual information, arguments, and conversation structure
-3. Adapt the tone, phrasing, vocabulary, and personality to match ${tgt}'s typical communication style
-4. Ensure smooth transitions between messages - the output should read as one unified conversation
-5. Keep the same user/assistant turn structure
-
-Original conversation (currently in ${src} style):
-
-${mergeInput}
-
-Rewritten conversation in ${tgt} style:`;
+        const tonePrompt = `You are an expert prompt engineer. Rewrite the following conversation parts so that the complete conversation is optimally structured for ${tgt} to understand and produce the best responses. Optimize prompts for clarity, context, and ${tgt}'s communication style. Preserve all factual content and user intent. The original was optimized for ${src}.\n\n${mergeInput}`;
+        try { onProgress && onProgress({ phase: 'merging' }); } catch(e){}
         const mergeRes = await callGeminiAsync({ action: 'syncTone', text: tonePrompt, length: options.length || 'medium', sourceModel: src, targetModel: tgt });
-        if (mergeRes && mergeRes.ok) return mergeRes.result;
+        if (mergeRes && mergeRes.ok) { try { onProgress && onProgress({ phase: 'done' }); } catch(e){}; return mergeRes.result; }
         throw new Error('syncTone-merge-failed');
       }
+      try { onProgress && onProgress({ phase: 'merging' }); } catch(e){}
       const mergeRes = await callGeminiAsync({ action: 'prompt', text: mergeText, length: options.length || 'medium' });
-      if (mergeRes && mergeRes.ok) return mergeRes.result;
+      if (mergeRes && mergeRes.ok) { try { onProgress && onProgress({ phase: 'done' }); } catch(e){}; return mergeRes.result; }
       throw new Error('merge-failed');
     }
     // Prompt button removed in favor of Sync Tone UI (see btnSyncTone)
@@ -810,20 +928,22 @@ Rewritten conversation in ${tgt} style:`;
 
     btnGoSumm.addEventListener('click', async () => {
       try {
-        btnGoSumm.disabled = true; btnGoSumm.textContent = '⏳ Summarizing...'; summResult.textContent = ''; btnInsertSumm.style.display = 'none';
+  btnGoSumm.disabled = true; btnGoSumm.innerHTML = '⏳ Summarizing <span class="cb-dots"><span class="dot">.</span><span class="dot">.</span><span class="dot">.</span></span>'; summResult.textContent = ''; btnInsertSumm.style.display = 'none';
+        summProg.style.display = 'inline'; updateProgress(summProg, 'summarize', { phase: 'preparing' });
         const chatText = (summSourceText && summSourceText.textContent) ? summSourceText.textContent : '';
         if (!chatText || chatText.trim().length < 10) { toast('No conversation to summarize'); btnGoSumm.disabled = false; btnGoSumm.textContent = '📝 Summarize'; return; }
 
         const length = (summLengthSelect && summLengthSelect.value) || 'medium';
         const summaryType = (summTypeSelect && summTypeSelect.value) || 'paragraph';
-        const opts = { chunkSize: 14000, maxParallel: 3, length, summaryType };
+        const opts = { chunkSize: 14000, maxParallel: 3, length, summaryType, onProgress: (ev)=>updateProgress(summProg, 'summarize', ev) };
         const result = await hierarchicalSummarize(chatText, opts);
 
         // Update text area with result and show Insert button
         summSourceText.textContent = result || '(no result)';
         summResult.textContent = '✅ Summary completed! The text area above now shows the summarized version.';
         btnInsertSumm.style.display = 'inline-block';
-        preview.textContent = 'Summary:\n\n' + (result || '');
+        summProg.style.display = 'none';
+  // No duplicate output in preview; go straight to history below
         toast('Summarize completed');
       } catch (err) {
         toast('Summarize failed: ' + (err && err.message ? err.message : err));
@@ -831,9 +951,10 @@ Rewritten conversation in ${tgt} style:`;
       } finally { btnGoSumm.disabled = false; btnGoSumm.textContent = '📝 Summarize'; }
     });
 
+    // Insert buttons: inject current text area content into the page chat input
     btnInsertSumm.addEventListener('click', () => {
       try {
-        const text = summSourceText.textContent || '';
+        const text = (summSourceText && summSourceText.textContent) || '';
         if (!text || text === '(no result)') { toast('Nothing to insert'); return; }
         restoreToChat(text);
       } catch (e) { toast('Insert failed'); }
@@ -851,21 +972,24 @@ Rewritten conversation in ${tgt} style:`;
 
     btnCloseRew.addEventListener('click', () => {
       try { rewView.classList.remove('cb-view-active'); } catch (e) {}
-    });
+    })
 
     btnGoRew.addEventListener('click', async () => {
       try {
-        btnGoRew.disabled = true; btnGoRew.textContent = '⏳ Rewriting...'; rewResult.textContent = ''; btnInsertRew.style.display = 'none';
+  btnGoRew.disabled = true; btnGoRew.innerHTML = '⏳ Rewriting <span class="cb-dots"><span class="dot">.</span><span class="dot">.</span><span class="dot">.</span></span>'; rewResult.textContent = ''; btnInsertRew.style.display = 'none';
+        rewProg.style.display = 'inline'; updateProgress(rewProg, 'rewrite', { phase: 'preparing' });
         const chatText = (rewSourceText && rewSourceText.textContent) ? rewSourceText.textContent : '';
+        const style = (rewStyleSelect && rewStyleSelect.value) || 'normal';
         if (!chatText || chatText.trim().length < 10) { toast('No conversation to rewrite'); btnGoRew.disabled = false; btnGoRew.textContent = '✍️ Rewrite'; return; }
 
-        const result = await hierarchicalProcess(chatText, 'rewrite', { chunkSize: 14000, maxParallel: 3, length: 'medium' });
+        const result = await hierarchicalProcess(chatText, 'rewrite', { chunkSize: 14000, maxParallel: 3, length: 'medium', extraPayload: { rewriteStyle: style }, onProgress: (ev)=>updateProgress(rewProg, 'rewrite', ev) });
 
         // Update text area with result and show Insert button
         rewSourceText.textContent = result || '(no result)';
         rewResult.textContent = '✅ Rewrite completed! The text area above now shows the rewritten version.';
         btnInsertRew.style.display = 'inline-block';
-        preview.textContent = 'Rewritten:\n\n' + (result || '');
+        rewProg.style.display = 'none';
+  // No duplicate output in preview; go straight to history below
         toast('Rewrite completed');
       } catch (err) {
         toast('Rewrite failed: ' + (err && err.message ? err.message : err));
@@ -875,7 +999,7 @@ Rewritten conversation in ${tgt} style:`;
 
     btnInsertRew.addEventListener('click', () => {
       try {
-        const text = rewSourceText.textContent || '';
+        const text = (rewSourceText && rewSourceText.textContent) || '';
         if (!text || text === '(no result)') { toast('Nothing to insert'); return; }
         restoreToChat(text);
       } catch (e) { toast('Insert failed'); }
@@ -897,18 +1021,20 @@ Rewritten conversation in ${tgt} style:`;
 
     btnGoTrans.addEventListener('click', async () => {
       try {
-        btnGoTrans.disabled = true; btnGoTrans.textContent = '⏳ Translating...'; transResult.textContent = ''; btnInsertTrans.style.display = 'none';
+  btnGoTrans.disabled = true; btnGoTrans.innerHTML = '⏳ Translating <span class="cb-dots"><span class="dot">.</span><span class="dot">.</span><span class="dot">.</span></span>'; transResult.textContent = ''; btnInsertTrans.style.display = 'none';
+        transProg.style.display = 'inline'; updateProgress(transProg, 'translate', { phase: 'preparing' });
         const chatText = (transSourceText && transSourceText.textContent) ? transSourceText.textContent : '';
         const lang = (transLangSelect && transLangSelect.value) || 'Japanese';
         if (!chatText || chatText.trim().length < 10) { toast('No conversation to translate'); btnGoTrans.disabled = false; btnGoTrans.textContent = '🌐 Translate'; return; }
 
-        const result = await hierarchicalProcess(chatText, 'translate', { chunkSize: 14000, maxParallel: 3, length: 'medium', extraPayload: { targetLang: lang } });
+        const result = await hierarchicalProcess(chatText, 'translate', { chunkSize: 14000, maxParallel: 3, length: 'medium', extraPayload: { targetLang: lang }, onProgress: (ev)=>updateProgress(transProg, 'translate', ev) });
 
         // Update text area with result and show Insert button
         transSourceText.textContent = result || '(no result)';
         transResult.textContent = `✅ Translation to ${lang} completed! The text area above now shows the translated version.`;
         btnInsertTrans.style.display = 'inline-block';
-        preview.textContent = `Translated (${lang}):\n\n` + (result || '');
+        transProg.style.display = 'none';
+  // No duplicate output in preview; go straight to history below
         toast('Translate completed');
       } catch (err) {
         toast('Translate failed: ' + (err && err.message ? err.message : err));
@@ -918,7 +1044,7 @@ Rewritten conversation in ${tgt} style:`;
 
     btnInsertTrans.addEventListener('click', () => {
       try {
-        const text = transSourceText.textContent || '';
+        const text = (transSourceText && transSourceText.textContent) || '';
         if (!text || text === '(no result)') { toast('Nothing to insert'); return; }
         restoreToChat(text);
       } catch (e) { toast('Insert failed'); }

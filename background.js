@@ -116,23 +116,61 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
 Make this summary as thorough as needed to capture the full context - prioritize completeness and clarity over brevity.\n\n${payload.text}`;
           } else {
-            if (payload.length) opts += ` Length: ${payload.length}.`;
-            if (payload.summaryType) opts += ` Format: ${payload.summaryType}.`;
-            promptText = `Summarize this text clearly and concisely.${opts}\n\n${payload.text}`;
+            // Enforce formatting based on summaryType
+            if (payload.summaryType === 'bullet') {
+              promptText = `Summarize the following text as a bullet-point list. Use actual bullet points (•) or numbered list format. Each key point should be on its own line. ${payload.length ? `Keep it ${payload.length} in length.` : ''}\n\n${payload.text}`;
+            } else if (payload.summaryType === 'executive') {
+              promptText = `Create an executive summary of the following text: a high-level overview focusing on key decisions, outcomes, and actionable insights. ${payload.length ? `Length: ${payload.length}.` : ''}\n\n${payload.text}`;
+            } else if (payload.summaryType === 'technical') {
+              promptText = `Create a technical summary of the following text: focus on technical details, specifications, code snippets, and implementation notes. ${payload.length ? `Length: ${payload.length}.` : ''}\n\n${payload.text}`;
+            } else if (payload.summaryType === 'detailed') {
+              promptText = `Create a detailed summary of the following text with comprehensive coverage of all topics discussed. ${payload.length ? `Length: ${payload.length}.` : ''}\n\n${payload.text}`;
+            } else {
+              // paragraph format
+              promptText = `Summarize this text as a clear, coherent paragraph. ${payload.length ? `Length: ${payload.length}.` : ''}\n\n${payload.text}`;
+            }
           }
         } else if (payload.action === 'rewrite') {
-          promptText = `Rewrite this text to be clearer and more professional:\n\n${payload.text}`;
+          const style = payload.rewriteStyle || 'normal';
+          if (style === 'concise') {
+            promptText = `Rewrite the following text to be concise and to-the-point. Remove unnecessary words and keep only essential information:\n\n${payload.text}`;
+          } else if (style === 'direct') {
+            promptText = `Rewrite the following text to be direct and straightforward. Use clear, assertive language and active voice:\n\n${payload.text}`;
+          } else if (style === 'detailed') {
+            promptText = `Rewrite the following text to be more detailed and comprehensive. Add clarity, context, and elaboration where helpful:\n\n${payload.text}`;
+          } else if (style === 'academic') {
+            promptText = `Rewrite the following text in an academic tone. Use formal language, precise terminology, and scholarly phrasing:\n\n${payload.text}`;
+          } else {
+            // normal
+            promptText = `Rewrite this text to be clearer and more professional:\n\n${payload.text}`;
+          }
         } else if (payload.action === 'translate') {
-          promptText = `Translate this text to ${payload.targetLang || 'English'}:\n\n${payload.text}`;
+          promptText = `Translate the following text to ${payload.targetLang || 'English'}. Output ONLY the translated text with no explanations, notes, or additional commentary:\n\n${payload.text}`;
         } else if (payload.action === 'syncTone') {
-          // Tone sync: rewrite the text to match the writing style/tone of the target model while preserving meaning
+          // Tone sync: prompt engineering for the target AI model
           const src = payload.sourceModel || 'SourceModel';
           const tgt = payload.targetModel || 'TargetModel';
-          promptText = `You are an expert editor. Rewrite the following conversation so that its overall voice, register, and phrasing match the writing style of ${tgt}. Preserve all factual content, decisions, and conversational flow from the original (which was written in the style of ${src}). Keep message roles, structure, and intent intact, but adapt wording, tone, and lexical choices to sound like ${tgt}. Do not add new facts or change meanings.\n\n${payload.text}`;
+          promptText = `You are an expert prompt engineer. Your task is to rewrite the following conversation so that it is optimally structured for ${tgt} to understand and respond with the highest quality output.
+
+Instructions:
+1. Rewrite the conversation to match ${tgt}'s expected input format and communication style
+2. Optimize the prompts/questions to be clear, specific, and well-structured for ${tgt}
+3. Ensure context is properly framed so ${tgt} has all necessary information
+4. Adapt tone, phrasing, and structure to what works best with ${tgt}
+5. Preserve all factual content and user intent from the original conversation
+6. Keep the same conversation flow and message roles (user/assistant)
+
+The goal is prompt engineering: transform this conversation into the ideal input format that will make ${tgt} produce the best possible responses.
+
+Original conversation (currently optimized for ${src}):
+
+${payload.text}
+
+Rewritten conversation (optimized for ${tgt}):`;
         } else {
           promptText = payload.text || '';
         }
-        const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + GEMINI_API_KEY;
+  const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + GEMINI_API_KEY;
         const body = {
           contents: [{ parts: [{ text: promptText }] }]
         };
