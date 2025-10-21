@@ -459,22 +459,6 @@ npm install
 npm run pw:install
 ```
 
-### Running Tests
-
-```bash
-# Run all tests
-npm run test:acceptance
-
-# Run adapter regression tests only
-npx playwright test tests/adapter-regression.spec.ts
-
-# Run tests with UI (interactive mode)
-npx playwright test --ui
-
-# Run specific test file
-npx playwright test tests/acceptance.spec.ts
-```
-
 ### Project Structure
 
 ```
@@ -518,62 +502,6 @@ ChatBridge/
 - Chrome Storage API wrapper
 - LocalStorage fallback
 - Graceful error handling
-
-### Adding a New Platform Adapter
-
-1. **Create adapter** in `adapters.js`:
-
-```javascript
-{
-  id: "myplatform",
-  label: "My Platform",
-  detect: () => location.hostname.includes("myplatform.com"),
-  scrollContainer: () => document.querySelector('.chat-scroll'),
-  getMessages: () => {
-    const messages = [];
-    document.querySelectorAll('.message').forEach(el => {
-      messages.push({
-        role: el.classList.contains('user') ? 'user' : 'assistant',
-        text: el.innerText.trim()
-      });
-    });
-    return messages;
-  },
-  getInput: () => document.querySelector('textarea#prompt')
-}
-```
-
-2. **Add test** in `tests/adapter-regression.spec.ts`:
-
-```typescript
-test('MyPlatform adapter extracts messages', async ({ page }) => {
-  // Create test HTML mimicking platform structure
-  // Verify adapter extracts correct messages
-});
-```
-
-3. **Test manually**:
-   - Load extension
-   - Navigate to platform
-   - Click "Scan Chat"
-   - Check browser console for debug logs
-
-### Debugging
-
-All components include detailed console logging:
-
-```javascript
-// Enable debug mode
-localStorage.setItem('cb_debug', 'true');
-
-// View logs
-// [Gemini Debug] ...
-// [ChatGPT Debug] ...
-// [Claude Debug] ...
-// [ChatBridge] ...
-```
-
----
 
 ## 🎁 Benefits
 
@@ -642,25 +570,6 @@ localStorage.setItem('cb_debug', 'true');
 
 ---
 
-## 📄 License
-
-MIT License - See LICENSE file for details
-
----
-
-## 🤝 Contributing
-
-Contributions welcome! Please:
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Make your changes with clear commit messages
-4. Add tests for new functionality
-5. Run test suite (`npm run test:acceptance`)
-6. Submit a pull request
-
----
-
 ## 👤 Author
 
 **Naeha S**
@@ -668,21 +577,5 @@ Contributions welcome! Please:
 
 ---
 
-## 📞 Support
-
-- **Issues**: [GitHub Issues](https://github.com/Naeha-S/ChatBridge/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/Naeha-S/ChatBridge/discussions)
-- **Privacy**: See [PRIVACY.md](PRIVACY.md)
-
----
-
-## 🙏 Acknowledgments
-
-- Google Gemini API for AI processing
-- Chrome Extensions team for excellent documentation
-- Playwright team for robust testing framework
-- All AI platforms for their amazing products
-
----
 
 **⚡ Built with passion to break down barriers between AI platforms**
