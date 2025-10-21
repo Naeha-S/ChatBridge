@@ -238,6 +238,18 @@
       textarea::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, rgba(212,175,119,0.8), rgba(212,175,119,0.6)); }
       textarea:focus { outline: 2px solid #d2b478; }
       select:focus { outline: 2px solid #d2b478; }
+      /* Internal view sections - inline in the sidebar */
+      .cb-internal-view { display: none; padding: 14px 18px; border-top: 1px solid rgba(255,255,255,0.06); background: rgba(6,10,18,0.3); }
+      .cb-internal-view.cb-view-active { display: block; }
+      .cb-view-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+      .cb-view-close { background:transparent; border:1px solid rgba(255,255,255,0.06); color:#d4af77; padding:4px 8px; border-radius:6px; cursor:pointer; font-size:12px; }
+      .cb-view-close:hover { background:rgba(255,255,255,0.04); }
+      .cb-view-title { font-weight:700; font-size:14px; color:#ffe7b3; }
+      .cb-view-select { margin:8px 0 12px 0; width:100%; }
+      .cb-view-text { width:100%; min-height:140px; max-height:200px; resize:vertical; background:#0f1720; color:#e8d6b0; border:1px solid rgba(255,255,255,0.06); padding:10px; border-radius:8px; font-family:inherit; white-space:pre-wrap; overflow:auto; font-size:12px; line-height:1.4; }
+      .cb-view-controls { margin:12px 0; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+      .cb-view-go { margin-top:10px; }
+      .cb-view-result { margin-top:14px; padding:12px; background: rgba(20,20,30,0.18); border-radius:10px; white-space:pre-wrap; color:#d4af77; font-size:12px; line-height:1.4; max-height:200px; overflow:auto; }
     `;
     shadow.appendChild(style);
 
@@ -266,7 +278,12 @@
   const btnClipboard = document.createElement('button'); btnClipboard.className = 'cb-btn'; btnClipboard.textContent = '📋 Clipboard'; btnClipboard.title = 'Copy scanned chat to clipboard';
 
   // Gemini API buttons (keep on the right)
-  const btnPrompt = document.createElement('button'); btnPrompt.className = 'cb-btn'; btnPrompt.textContent = '🔮 Prompt'; btnPrompt.title = 'Generate and format structured chat content';
+  // Sync Tone: replace old Prompt button with a model-to-model tone sync UI
+  const syncWrapper = document.createElement('div'); syncWrapper.style.display = 'flex'; syncWrapper.style.alignItems = 'center'; syncWrapper.style.gap = '6px';
+
+  // Replace compact main-page model selects with a single Sync Tone launcher button to reduce UI clutter
+  const btnSyncTone = document.createElement('button'); btnSyncTone.className = 'cb-btn'; btnSyncTone.textContent = '🎚️ Sync Tone'; btnSyncTone.title = 'Rewrite the scanned conversation to match another model\'s tone';
+  syncWrapper.appendChild(btnSyncTone);
   const btnSummarize = document.createElement('button'); btnSummarize.className = 'cb-btn'; btnSummarize.textContent = '📝 Summarize'; btnSummarize.title = 'Distill long chats into short summaries';
   const btnRewrite = document.createElement('button'); btnRewrite.className = 'cb-btn'; btnRewrite.textContent = '✍️ Rewrite'; btnRewrite.title = 'Improve tone and readability of scraped messages';
   const btnTranslate = document.createElement('button'); btnTranslate.className = 'cb-btn'; btnTranslate.textContent = '🌐 Translate'; btnTranslate.title = 'Translate chats between languages';
@@ -274,7 +291,7 @@
   actionsLeft.appendChild(btnScan);
   actionsLeft.appendChild(btnRestore);
   actionsLeft.appendChild(btnClipboard);
-  actionsRight.appendChild(btnPrompt);
+  actionsRight.appendChild(syncWrapper);
   actionsRight.appendChild(btnSummarize);
   actionsRight.appendChild(btnRewrite);
   actionsRight.appendChild(btnTranslate);
@@ -291,6 +308,100 @@
 
   // Toolbar preview (moved above the Gemini textarea)
   const preview = document.createElement('div'); preview.className = 'cb-preview'; preview.textContent = 'Preview: (none)';
+
+  // --- Internal views (Sync Tone, Summarize, Rewrite, Translate) - inline sections ---
+  
+  // Sync Tone view
+  const syncView = document.createElement('div'); syncView.className = 'cb-internal-view'; syncView.id = 'cb-sync-view'; syncView.setAttribute('data-cb-ignore','true');
+  const syncTop = document.createElement('div'); syncTop.className = 'cb-view-top';
+  const syncTitle = document.createElement('div'); syncTitle.className = 'cb-view-title'; syncTitle.textContent = '🎚️ Sync Tone';
+  const btnCloseSync = document.createElement('button'); btnCloseSync.className = 'cb-view-close'; btnCloseSync.textContent = '✕';
+  syncTop.appendChild(syncTitle); syncTop.appendChild(btnCloseSync);
+  syncView.appendChild(syncTop);
+  const syncTargetLabel = document.createElement('div'); syncTargetLabel.className = 'cb-label'; syncTargetLabel.textContent = 'Target model / tone';
+  const syncTargetSelect = document.createElement('select'); syncTargetSelect.className = 'cb-select cb-view-select'; syncTargetSelect.id = 'cb-sync-target-select';
+  const approved = ['Claude','ChatGPT','Gemini','OpenAI','Llama','Bing','Anthropic','Cohere','HuggingFace','Custom'];
+  approved.forEach(m => { const o = document.createElement('option'); o.value = m; o.textContent = m; syncTargetSelect.appendChild(o); });
+  try { if (syncTargetSelect && syncTargetSelect.options && syncTargetSelect.options.length) syncTargetSelect.selectedIndex = 0; } catch (e) {}
+  syncView.appendChild(syncTargetLabel); syncView.appendChild(syncTargetSelect);
+  const syncSourceText = document.createElement('div'); syncSourceText.className = 'cb-view-text'; syncSourceText.id = 'cb-sync-source-text'; syncSourceText.setAttribute('contenteditable','false'); syncSourceText.textContent = '';
+  syncView.appendChild(syncSourceText);
+  const btnGoSync = document.createElement('button'); btnGoSync.className = 'cb-btn cb-view-go'; btnGoSync.textContent = '🎚️ Sync Tone';
+  syncView.appendChild(btnGoSync);
+  const btnInsertSync = document.createElement('button'); btnInsertSync.className = 'cb-btn cb-view-go'; btnInsertSync.textContent = '📥 Insert to Chat'; btnInsertSync.style.display = 'none';
+  syncView.appendChild(btnInsertSync);
+  const syncResult = document.createElement('div'); syncResult.className = 'cb-view-result'; syncResult.id = 'cb-sync-result'; syncResult.textContent = '';
+  syncView.appendChild(syncResult);
+
+  // Summarize view
+  const summView = document.createElement('div'); summView.className = 'cb-internal-view'; summView.id = 'cb-summ-view'; summView.setAttribute('data-cb-ignore','true');
+  const summTop = document.createElement('div'); summTop.className = 'cb-view-top';
+  const summTitle = document.createElement('div'); summTitle.className = 'cb-view-title'; summTitle.textContent = '📝 Summarize';
+  const btnCloseSumm = document.createElement('button'); btnCloseSumm.className = 'cb-view-close'; btnCloseSumm.textContent = '✕';
+  summTop.appendChild(summTitle); summTop.appendChild(btnCloseSumm);
+  summView.appendChild(summTop);
+  const summControls = document.createElement('div'); summControls.className = 'cb-view-controls';
+  const summLengthLabel = document.createElement('label'); summLengthLabel.className = 'cb-label'; summLengthLabel.textContent = 'Length:';
+  const summLengthSelect = document.createElement('select'); summLengthSelect.className = 'cb-select'; summLengthSelect.id = 'cb-summ-length';
+  ['concise','short','medium','comprehensive','detailed'].forEach(v => { const o = document.createElement('option'); o.value = v; o.textContent = v.charAt(0).toUpperCase()+v.slice(1); summLengthSelect.appendChild(o); });
+  summLengthSelect.value = 'medium';
+  const summTypeLabel = document.createElement('label'); summTypeLabel.className = 'cb-label'; summTypeLabel.textContent = 'Style:';
+  const summTypeSelect = document.createElement('select'); summTypeSelect.className = 'cb-select'; summTypeSelect.id = 'cb-summ-type';
+  ['paragraph','bullet','detailed','executive','technical'].forEach(v => { const o = document.createElement('option'); o.value = v; o.textContent = v.charAt(0).toUpperCase()+v.slice(1); summTypeSelect.appendChild(o); });
+  summTypeSelect.value = 'paragraph';
+  summControls.appendChild(summLengthLabel); summControls.appendChild(summLengthSelect); summControls.appendChild(summTypeLabel); summControls.appendChild(summTypeSelect);
+  summView.appendChild(summControls);
+  const summSourceText = document.createElement('div'); summSourceText.className = 'cb-view-text'; summSourceText.id = 'cb-summ-source-text'; summSourceText.setAttribute('contenteditable','false'); summSourceText.textContent = '';
+  summView.appendChild(summSourceText);
+  const btnGoSumm = document.createElement('button'); btnGoSumm.className = 'cb-btn cb-view-go'; btnGoSumm.textContent = '📝 Summarize';
+  summView.appendChild(btnGoSumm);
+  const btnInsertSumm = document.createElement('button'); btnInsertSumm.className = 'cb-btn cb-view-go'; btnInsertSumm.textContent = '📥 Insert to Chat'; btnInsertSumm.style.display = 'none';
+  summView.appendChild(btnInsertSumm);
+  const summResult = document.createElement('div'); summResult.className = 'cb-view-result'; summResult.id = 'cb-summ-result'; summResult.textContent = '';
+  summView.appendChild(summResult);
+
+  // Rewrite view
+  const rewView = document.createElement('div'); rewView.className = 'cb-internal-view'; rewView.id = 'cb-rew-view'; rewView.setAttribute('data-cb-ignore','true');
+  const rewTop = document.createElement('div'); rewTop.className = 'cb-view-top';
+  const rewTitle = document.createElement('div'); rewTitle.className = 'cb-view-title'; rewTitle.textContent = '✍️ Rewrite';
+  const btnCloseRew = document.createElement('button'); btnCloseRew.className = 'cb-view-close'; btnCloseRew.textContent = '✕';
+  rewTop.appendChild(rewTitle); rewTop.appendChild(btnCloseRew);
+  rewView.appendChild(rewTop);
+  const rewSourceText = document.createElement('div'); rewSourceText.className = 'cb-view-text'; rewSourceText.id = 'cb-rew-source-text'; rewSourceText.setAttribute('contenteditable','false'); rewSourceText.textContent = '';
+  rewView.appendChild(rewSourceText);
+  const btnGoRew = document.createElement('button'); btnGoRew.className = 'cb-btn cb-view-go'; btnGoRew.textContent = '✍️ Rewrite';
+  rewView.appendChild(btnGoRew);
+  const btnInsertRew = document.createElement('button'); btnInsertRew.className = 'cb-btn cb-view-go'; btnInsertRew.textContent = '📥 Insert to Chat'; btnInsertRew.style.display = 'none';
+  rewView.appendChild(btnInsertRew);
+  const rewResult = document.createElement('div'); rewResult.className = 'cb-view-result'; rewResult.id = 'cb-rew-result'; rewResult.textContent = '';
+  rewView.appendChild(rewResult);
+
+  // Translate view
+  const transView = document.createElement('div'); transView.className = 'cb-internal-view'; transView.id = 'cb-trans-view'; transView.setAttribute('data-cb-ignore','true');
+  const transTop = document.createElement('div'); transTop.className = 'cb-view-top';
+  const transTitle = document.createElement('div'); transTitle.className = 'cb-view-title'; transTitle.textContent = '🌐 Translate';
+  const btnCloseTrans = document.createElement('button'); btnCloseTrans.className = 'cb-view-close'; btnCloseTrans.textContent = '✕';
+  transTop.appendChild(transTitle); transTop.appendChild(btnCloseTrans);
+  transView.appendChild(transTop);
+  const transLangLabel = document.createElement('div'); transLangLabel.className = 'cb-label'; transLangLabel.textContent = 'Target language';
+  const transLangSelect = document.createElement('select'); transLangSelect.className = 'cb-select'; transLangSelect.id = 'cb-trans-lang';
+  ['Japanese','Spanish','French','German','Chinese','Korean','Italian','Portuguese','Russian','Arabic','Hindi','Turkish','Dutch','Swedish','Polish'].forEach(lang => { const o = document.createElement('option'); o.value = lang; o.textContent = lang; transLangSelect.appendChild(o); });
+  transLangSelect.value = 'Japanese';
+  transView.appendChild(transLangLabel); transView.appendChild(transLangSelect);
+  const transSourceText = document.createElement('div'); transSourceText.className = 'cb-view-text'; transSourceText.id = 'cb-trans-source-text'; transSourceText.setAttribute('contenteditable','false'); transSourceText.textContent = '';
+  transView.appendChild(transSourceText);
+  const btnGoTrans = document.createElement('button'); btnGoTrans.className = 'cb-btn cb-view-go'; btnGoTrans.textContent = '🌐 Translate';
+  transView.appendChild(btnGoTrans);
+  const btnInsertTrans = document.createElement('button'); btnInsertTrans.className = 'cb-btn cb-view-go'; btnInsertTrans.textContent = '📥 Insert to Chat'; btnInsertTrans.style.display = 'none';
+  transView.appendChild(btnInsertTrans);
+  const transResult = document.createElement('div'); transResult.className = 'cb-view-result'; transResult.id = 'cb-trans-result'; transResult.textContent = '';
+  transView.appendChild(transResult);
+
+  // Append all internal views to the panel (after actions, before status)
+  panel.appendChild(syncView);
+  panel.appendChild(summView);
+  panel.appendChild(rewView);
+  panel.appendChild(transView);
 
   // Gemini Nano input/output area
   const geminiWrap = document.createElement('div'); geminiWrap.style.padding = '8px 18px'; geminiWrap.style.display = 'flex'; geminiWrap.style.flexDirection = 'column'; geminiWrap.style.gap = '8px';
@@ -323,24 +434,100 @@
     avatar.addEventListener('click', () => { host.style.display = 'block'; avatar.style.display = 'none'; });
     btnClose.addEventListener('click', () => { host.style.display = 'none'; avatar.style.display = 'flex'; });
 
+    // Helper to close all internal views
+    function closeAllViews() {
+      try {
+        syncView.classList.remove('cb-view-active');
+        summView.classList.remove('cb-view-active');
+        rewView.classList.remove('cb-view-active');
+        transView.classList.remove('cb-view-active');
+      } catch (e) {}
+    }
+
+    // Helper to load conversation text from lastScannedText or saved conversations
+    async function getConversationText() {
+      if (lastScannedText && lastScannedText.trim()) return lastScannedText.trim();
+      try {
+        const convs = (typeof window.getConversations === 'function') ? await new Promise(res=>window.getConversations(res)) : JSON.parse(localStorage.getItem('chatbridge:conversations') || '[]');
+        if (Array.isArray(convs) && convs.length) {
+          const sel = convs[0];
+          if (sel && sel.conversation && sel.conversation.length) return sel.conversation.map(m => `${m.role}: ${m.text}`).join('\n\n');
+        }
+      } catch (e) { debugLog('load convs', e); }
+      return '';
+    }
+
+    // Open Sync Tone view
+    btnSyncTone.addEventListener('click', async () => {
+      try {
+        closeAllViews(); // Close other views first
+        const inputText = await getConversationText();
+        syncSourceText.textContent = inputText || '(no conversation found)';
+        syncResult.textContent = '';
+        syncView.classList.add('cb-view-active');
+      } catch (e) { toast('Failed to open Sync Tone'); debugLog('open sync view', e); }
+    });
+
+    btnCloseSync.addEventListener('click', () => {
+      try { syncView.classList.remove('cb-view-active'); } catch (e) {}
+    });
+
+    btnGoSync.addEventListener('click', async () => {
+      try {
+        btnGoSync.disabled = true; btnGoSync.textContent = '⏳ Syncing...'; syncResult.textContent = ''; btnInsertSync.style.display = 'none';
+        const chatText = (syncSourceText && syncSourceText.textContent) ? syncSourceText.textContent : '';
+        const target = (syncTargetSelect && syncTargetSelect.value) || 'TargetModel';
+        if (!chatText || chatText.trim().length < 10) { toast('No conversation to sync'); btnGoSync.disabled = false; btnGoSync.textContent = '🎚️ Sync Tone'; return; }
+
+        let resText = '';
+        if (typeof window.syncTone === 'function') {
+          try { resText = await window.syncTone(chatText, target); } catch (e) { debugLog('window.syncTone error', e); }
+        }
+        if (!resText) {
+          try {
+            resText = await hierarchicalProcess(chatText, 'syncTone', { chunkSize: 14000, maxParallel: 3, length: 'medium', sourceModel: 'unknown', targetModel: target });
+          } catch (e) { debugLog('hierarchicalProcess syncTone error', e); throw e; }
+        }
+
+        // Update text area with result and show Insert button
+        syncSourceText.textContent = resText || '(no result)';
+        syncResult.textContent = '✅ Tone sync completed! The text area above now shows the synced version.';
+        btnInsertSync.style.display = 'inline-block';
+        preview.textContent = `Synced (${target}):\n\n` + (resText || '');
+        toast('Sync Tone completed');
+      } catch (err) {
+        toast('Sync Tone failed: ' + (err && err.message ? err.message : err));
+      } finally { btnGoSync.disabled = false; btnGoSync.textContent = '🎚️ Sync Tone'; }
+    });
+
+    btnInsertSync.addEventListener('click', () => {
+      try {
+        const text = syncSourceText.textContent || '';
+        if (!text || text === '(no result)') { toast('Nothing to insert'); return; }
+        restoreToChat(text);
+      } catch (e) { toast('Insert failed'); }
+    });
+
+    // Scan button handler: scan, normalize, save, and optionally auto-summarize
     btnScan.addEventListener('click', async () => {
       btnScan.disabled = true; status.textContent = 'Status: scanning...';
       try {
-        const msgs = await scanChat();
-        if (!msgs || !msgs.length) { status.textContent = 'Status: no messages'; toast('No messages found in current chat'); }
+  const msgs = await scanChat();
+  // persist lastScannedText for clipboard and Sync view
+  try { if (Array.isArray(msgs) && msgs.length) { lastScannedText = msgs.map(m => `${m.role}: ${m.text}`).join('\n\n'); } } catch (e) {}
+  if (!msgs || !msgs.length) { status.textContent = 'Status: no messages'; toast('No messages found in current chat'); }
         else {
           const final = normalizeMessages(msgs);
           const conv = { platform: location.hostname, url: location.href, ts: Date.now(), conversation: final };
-          // prepare human readable scanned text for textarea and clipboard
-          lastScannedText = final.map(m => (m.role === 'user' ? 'User: ' : 'Assistant: ') + m.text).join('\n\n');
-          try { preview.textContent = lastScannedText || preview.textContent; } catch(e){}
+          // ensure lastScannedText updated when saving
+          try { lastScannedText = final.map(m => `${m.role}: ${m.text}`).join('\n\n'); } catch (e) {}
           if (typeof window.saveConversation === 'function') {
             window.saveConversation(conv, () => { toast('Saved ' + final.length + ' messages'); refreshHistory(); });
           } else {
             const key = 'chatbridge:conversations'; const cur = JSON.parse(localStorage.getItem(key) || '[]'); cur.push(conv); localStorage.setItem(key, JSON.stringify(cur)); toast('Saved (local) ' + final.length + ' messages'); refreshHistory();
           }
           status.textContent = `Status: saved ${final.length}`;
-          
+
           // Auto-summarize if 20+ messages or 50,000+ characters
           const totalChars = final.reduce((sum, m) => sum + (m.text || '').length, 0);
           if (final.length >= 20 || totalChars >= 50000) {
@@ -578,158 +765,163 @@
       // Otherwise, merge outputs via a final prompt call (use 'prompt' action for merge)
       const mergeInput = outputs.map((s, idx) => `Part ${idx+1}:\n${s}`).join('\n\n');
       const mergeText = mergePrompt + '\n\n' + mergeInput;
+      // If syncing tone, forward source/target metadata and ask backend to perform tone transfer
+      if (action === 'syncTone') {
+        // Construct a cohesive instruction for smooth tone adaptation
+        const src = options.sourceModel || 'SourceModel';
+        const tgt = options.targetModel || 'TargetModel';
+        const tonePrompt = `You are adapting a conversation to match the writing style and personality of ${tgt}. 
+
+Instructions:
+1. Rewrite the entire conversation below in a cohesive, natural flow that sounds like ${tgt}
+2. Maintain all factual information, arguments, and conversation structure
+3. Adapt the tone, phrasing, vocabulary, and personality to match ${tgt}'s typical communication style
+4. Ensure smooth transitions between messages - the output should read as one unified conversation
+5. Keep the same user/assistant turn structure
+
+Original conversation (currently in ${src} style):
+
+${mergeInput}
+
+Rewritten conversation in ${tgt} style:`;
+        const mergeRes = await callGeminiAsync({ action: 'syncTone', text: tonePrompt, length: options.length || 'medium', sourceModel: src, targetModel: tgt });
+        if (mergeRes && mergeRes.ok) return mergeRes.result;
+        throw new Error('syncTone-merge-failed');
+      }
       const mergeRes = await callGeminiAsync({ action: 'prompt', text: mergeText, length: options.length || 'medium' });
       if (mergeRes && mergeRes.ok) return mergeRes.result;
       throw new Error('merge-failed');
     }
-    btnPrompt.addEventListener('click', async () => {
-      btnPrompt.disabled = true; status.textContent = 'Status: prompting...';
-      try {
-        const getter = (typeof window.getConversations === 'function') ? window.getConversations : (cb => cb(JSON.parse(localStorage.getItem('chatbridge:conversations') || '[]')));
-        getter(async list => {
-          const arr = Array.isArray(list) ? list : [];
-          if (!arr.length) { toast('No saved conversations'); btnPrompt.disabled = false; status.textContent = 'Status: idle'; return; }
-          let sel = null;
-          try {
-            if (chatSelect && chatSelect.value) {
-              const i = arr.findIndex(v => String(v.ts) === chatSelect.value);
-              sel = i >= 0 ? arr[i] : arr[0];
-            } else { sel = arr[0]; }
-          } catch (_) { sel = arr[0]; }
-          if (!sel || !sel.conversation || !sel.conversation.length) { toast('No messages in selected conversation'); btnPrompt.disabled = false; status.textContent = 'Status: idle'; return; }
-          const inputText = (lastScannedText && lastScannedText.trim()) ? lastScannedText.trim() : sel.conversation.map(m => `${m.role}: ${m.text}`).join('\n');
-          try {
-            const result = await hierarchicalProcess(inputText, 'prompt', { chunkSize: 14000, maxParallel: 3, length: 'medium' });
-            btnPrompt.disabled = false;
-            preview.textContent = 'Prompt Result:\n\n' + result;
-            status.textContent = 'Status: done';
-            toast('Prompt completed');
-            restoreToChat(result);
-          } catch (err) {
-            btnPrompt.disabled = false;
-            status.textContent = 'Status: error';
-            toast('Prompt failed: ' + (err && err.message ? err.message : err));
-            debugLog('hierarchicalProcess prompt error', err);
-          }
-        });
-      } catch (e) {
-        toast('Prompt failed');
-        status.textContent = 'Status: error';
-        btnPrompt.disabled = false;
-      }
-    });
+    // Prompt button removed in favor of Sync Tone UI (see btnSyncTone)
 
     btnSummarize.addEventListener('click', async () => {
-      btnSummarize.disabled = true; status.textContent = 'Status: summarizing...';
+      closeAllViews();
       try {
-        const getter = (typeof window.getConversations === 'function') ? window.getConversations : (cb => cb(JSON.parse(localStorage.getItem('chatbridge:conversations') || '[]')));
-        getter(async list => {
-          const arr = Array.isArray(list) ? list : [];
-          if (!arr.length) { toast('No saved conversations'); btnSummarize.disabled = false; status.textContent = 'Status: idle'; return; }
-          let sel = null;
-          try {
-            if (chatSelect && chatSelect.value) {
-              const i = arr.findIndex(v => String(v.ts) === chatSelect.value);
-              sel = i >= 0 ? arr[i] : arr[0];
-            } else { sel = arr[0]; }
-          } catch (_) { sel = arr[0]; }
-          if (!sel || !sel.conversation || !sel.conversation.length) { toast('No messages in selected conversation'); btnSummarize.disabled = false; status.textContent = 'Status: idle'; return; }
-          const inputText = (lastScannedText && lastScannedText.trim()) ? lastScannedText.trim() : sel.conversation.map(m => `${m.role}: ${m.text}`).join('\n');
-          try {
-            const opts = { chunkSize: 14000, maxParallel: 3, length: 'medium', summaryType: 'paragraph' };
-            const result = await hierarchicalSummarize(inputText, opts);
-            btnSummarize.disabled = false;
-            preview.textContent = 'Summary:\n\n' + result;
-            status.textContent = 'Status: done';
-            toast('Summarize completed');
-            restoreToChat(result);
-          } catch (err) {
-            btnSummarize.disabled = false;
-            status.textContent = 'Status: error';
-            toast('Summarize failed: ' + (err && err.message ? err.message : err));
-            debugLog('hierarchicalSummarize error', err);
-          }
-        });
-      } catch (e) {
-        toast('Summarize failed');
-        status.textContent = 'Status: error';
-        btnSummarize.disabled = false;
-      }
+        const inputText = await getConversationText();
+        summSourceText.textContent = inputText || '(no conversation found)';
+        summResult.textContent = '';
+        summView.classList.add('cb-view-active');
+      } catch (e) { toast('Failed to open Summarize'); debugLog('open summ view', e); }
+    });
+
+    btnCloseSumm.addEventListener('click', () => {
+      try { summView.classList.remove('cb-view-active'); } catch (e) {}
+    });
+
+    btnGoSumm.addEventListener('click', async () => {
+      try {
+        btnGoSumm.disabled = true; btnGoSumm.textContent = '⏳ Summarizing...'; summResult.textContent = ''; btnInsertSumm.style.display = 'none';
+        const chatText = (summSourceText && summSourceText.textContent) ? summSourceText.textContent : '';
+        if (!chatText || chatText.trim().length < 10) { toast('No conversation to summarize'); btnGoSumm.disabled = false; btnGoSumm.textContent = '📝 Summarize'; return; }
+
+        const length = (summLengthSelect && summLengthSelect.value) || 'medium';
+        const summaryType = (summTypeSelect && summTypeSelect.value) || 'paragraph';
+        const opts = { chunkSize: 14000, maxParallel: 3, length, summaryType };
+        const result = await hierarchicalSummarize(chatText, opts);
+
+        // Update text area with result and show Insert button
+        summSourceText.textContent = result || '(no result)';
+        summResult.textContent = '✅ Summary completed! The text area above now shows the summarized version.';
+        btnInsertSumm.style.display = 'inline-block';
+        preview.textContent = 'Summary:\n\n' + (result || '');
+        toast('Summarize completed');
+      } catch (err) {
+        toast('Summarize failed: ' + (err && err.message ? err.message : err));
+        debugLog('hierarchicalSummarize error', err);
+      } finally { btnGoSumm.disabled = false; btnGoSumm.textContent = '📝 Summarize'; }
+    });
+
+    btnInsertSumm.addEventListener('click', () => {
+      try {
+        const text = summSourceText.textContent || '';
+        if (!text || text === '(no result)') { toast('Nothing to insert'); return; }
+        restoreToChat(text);
+      } catch (e) { toast('Insert failed'); }
     });
 
     btnRewrite.addEventListener('click', async () => {
-      btnRewrite.disabled = true; status.textContent = 'Status: rewriting...';
+      closeAllViews();
       try {
-        const getter = (typeof window.getConversations === 'function') ? window.getConversations : (cb => cb(JSON.parse(localStorage.getItem('chatbridge:conversations') || '[]')));
-        getter(async list => {
-          const arr = Array.isArray(list) ? list : [];
-          if (!arr.length) { toast('No saved conversations'); btnRewrite.disabled = false; status.textContent = 'Status: idle'; return; }
-          let sel = null;
-          try {
-            if (chatSelect && chatSelect.value) {
-              const i = arr.findIndex(v => String(v.ts) === chatSelect.value);
-              sel = i >= 0 ? arr[i] : arr[0];
-            } else { sel = arr[0]; }
-          } catch (_) { sel = arr[0]; }
-          if (!sel || !sel.conversation || !sel.conversation.length) { toast('No messages in selected conversation'); btnRewrite.disabled = false; status.textContent = 'Status: idle'; return; }
-          const inputText = (lastScannedText && lastScannedText.trim()) ? lastScannedText.trim() : sel.conversation.map(m => `${m.role}: ${m.text}`).join('\n');
-          try {
-            const result = await hierarchicalProcess(inputText, 'rewrite', { chunkSize: 14000, maxParallel: 3, length: 'medium' });
-            btnRewrite.disabled = false;
-            preview.textContent = 'Rewritten:\n\n' + result;
-            status.textContent = 'Status: done';
-            toast('Rewrite completed');
-            restoreToChat(result);
-          } catch (err) {
-            btnRewrite.disabled = false;
-            status.textContent = 'Status: error';
-            toast('Rewrite failed: ' + (err && err.message ? err.message : err));
-            debugLog('hierarchicalProcess rewrite error', err);
-          }
-        });
-      } catch (e) {
-        toast('Rewrite failed');
-        status.textContent = 'Status: error';
-        btnRewrite.disabled = false;
-      }
+        const inputText = await getConversationText();
+        rewSourceText.textContent = inputText || '(no conversation found)';
+        rewResult.textContent = '';
+        rewView.classList.add('cb-view-active');
+      } catch (e) { toast('Failed to open Rewrite'); debugLog('open rew view', e); }
+    });
+
+    btnCloseRew.addEventListener('click', () => {
+      try { rewView.classList.remove('cb-view-active'); } catch (e) {}
+    });
+
+    btnGoRew.addEventListener('click', async () => {
+      try {
+        btnGoRew.disabled = true; btnGoRew.textContent = '⏳ Rewriting...'; rewResult.textContent = ''; btnInsertRew.style.display = 'none';
+        const chatText = (rewSourceText && rewSourceText.textContent) ? rewSourceText.textContent : '';
+        if (!chatText || chatText.trim().length < 10) { toast('No conversation to rewrite'); btnGoRew.disabled = false; btnGoRew.textContent = '✍️ Rewrite'; return; }
+
+        const result = await hierarchicalProcess(chatText, 'rewrite', { chunkSize: 14000, maxParallel: 3, length: 'medium' });
+
+        // Update text area with result and show Insert button
+        rewSourceText.textContent = result || '(no result)';
+        rewResult.textContent = '✅ Rewrite completed! The text area above now shows the rewritten version.';
+        btnInsertRew.style.display = 'inline-block';
+        preview.textContent = 'Rewritten:\n\n' + (result || '');
+        toast('Rewrite completed');
+      } catch (err) {
+        toast('Rewrite failed: ' + (err && err.message ? err.message : err));
+        debugLog('hierarchicalProcess rewrite error', err);
+      } finally { btnGoRew.disabled = false; btnGoRew.textContent = '✍️ Rewrite'; }
+    });
+
+    btnInsertRew.addEventListener('click', () => {
+      try {
+        const text = rewSourceText.textContent || '';
+        if (!text || text === '(no result)') { toast('Nothing to insert'); return; }
+        restoreToChat(text);
+      } catch (e) { toast('Insert failed'); }
     });
 
     btnTranslate.addEventListener('click', async () => {
-      btnTranslate.disabled = true; status.textContent = 'Status: translating...';
+      closeAllViews();
       try {
-        const lang = prompt('Translate to which language? (e.g. Japanese, French, Spanish)', 'Japanese') || 'Japanese';
-        const getter = (typeof window.getConversations === 'function') ? window.getConversations : (cb => cb(JSON.parse(localStorage.getItem('chatbridge:conversations') || '[]')));
-        getter(async list => {
-          const arr = Array.isArray(list) ? list : [];
-          if (!arr.length) { toast('No saved conversations'); btnTranslate.disabled = false; status.textContent = 'Status: idle'; return; }
-          let sel = null;
-          try {
-            if (chatSelect && chatSelect.value) {
-              const i = arr.findIndex(v => String(v.ts) === chatSelect.value);
-              sel = i >= 0 ? arr[i] : arr[0];
-            } else { sel = arr[0]; }
-          } catch (_) { sel = arr[0]; }
-          if (!sel || !sel.conversation || !sel.conversation.length) { toast('No messages in selected conversation'); btnTranslate.disabled = false; status.textContent = 'Status: idle'; return; }
-          const inputText = (lastScannedText && lastScannedText.trim()) ? lastScannedText.trim() : sel.conversation.map(m => `${m.role}: ${m.text}`).join('\n');
-          try {
-            const result = await hierarchicalProcess(inputText, 'translate', { chunkSize: 14000, maxParallel: 3, length: 'medium', extraPayload: { targetLang: lang } });
-            btnTranslate.disabled = false;
-            preview.textContent = `Translated (${lang}):\n\n` + result;
-            status.textContent = 'Status: done';
-            toast('Translate completed');
-            restoreToChat(result);
-          } catch (err) {
-            btnTranslate.disabled = false;
-            status.textContent = 'Status: error';
-            toast('Translate failed: ' + (err && err.message ? err.message : err));
-            debugLog('hierarchicalProcess translate error', err);
-          }
-        });
-      } catch (e) {
-        toast('Translate failed');
-        status.textContent = 'Status: error';
-        btnTranslate.disabled = false;
-      }
+        const inputText = await getConversationText();
+        transSourceText.textContent = inputText || '(no conversation found)';
+        transResult.textContent = '';
+        transView.classList.add('cb-view-active');
+      } catch (e) { toast('Failed to open Translate'); debugLog('open trans view', e); }
+    });
+
+    btnCloseTrans.addEventListener('click', () => {
+      try { transView.classList.remove('cb-view-active'); } catch (e) {}
+    });
+
+    btnGoTrans.addEventListener('click', async () => {
+      try {
+        btnGoTrans.disabled = true; btnGoTrans.textContent = '⏳ Translating...'; transResult.textContent = ''; btnInsertTrans.style.display = 'none';
+        const chatText = (transSourceText && transSourceText.textContent) ? transSourceText.textContent : '';
+        const lang = (transLangSelect && transLangSelect.value) || 'Japanese';
+        if (!chatText || chatText.trim().length < 10) { toast('No conversation to translate'); btnGoTrans.disabled = false; btnGoTrans.textContent = '🌐 Translate'; return; }
+
+        const result = await hierarchicalProcess(chatText, 'translate', { chunkSize: 14000, maxParallel: 3, length: 'medium', extraPayload: { targetLang: lang } });
+
+        // Update text area with result and show Insert button
+        transSourceText.textContent = result || '(no result)';
+        transResult.textContent = `✅ Translation to ${lang} completed! The text area above now shows the translated version.`;
+        btnInsertTrans.style.display = 'inline-block';
+        preview.textContent = `Translated (${lang}):\n\n` + (result || '');
+        toast('Translate completed');
+      } catch (err) {
+        toast('Translate failed: ' + (err && err.message ? err.message : err));
+        debugLog('hierarchicalProcess translate error', err);
+      } finally { btnGoTrans.disabled = false; btnGoTrans.textContent = '🌐 Translate'; }
+    });
+
+    btnInsertTrans.addEventListener('click', () => {
+      try {
+        const text = transSourceText.textContent || '';
+        if (!text || text === '(no result)') { toast('Nothing to insert'); return; }
+        restoreToChat(text);
+      } catch (e) { toast('Insert failed'); }
     });
 
     function refreshHistory() {

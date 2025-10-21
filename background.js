@@ -124,6 +124,11 @@ Make this summary as thorough as needed to capture the full context - prioritize
           promptText = `Rewrite this text to be clearer and more professional:\n\n${payload.text}`;
         } else if (payload.action === 'translate') {
           promptText = `Translate this text to ${payload.targetLang || 'English'}:\n\n${payload.text}`;
+        } else if (payload.action === 'syncTone') {
+          // Tone sync: rewrite the text to match the writing style/tone of the target model while preserving meaning
+          const src = payload.sourceModel || 'SourceModel';
+          const tgt = payload.targetModel || 'TargetModel';
+          promptText = `You are an expert editor. Rewrite the following conversation so that its overall voice, register, and phrasing match the writing style of ${tgt}. Preserve all factual content, decisions, and conversational flow from the original (which was written in the style of ${src}). Keep message roles, structure, and intent intact, but adapt wording, tone, and lexical choices to sound like ${tgt}. Do not add new facts or change meanings.\n\n${payload.text}`;
         } else {
           promptText = payload.text || '';
         }
