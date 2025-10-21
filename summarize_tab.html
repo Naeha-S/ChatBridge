@@ -1,0 +1,39 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Summarize - ChatBridge</title>
+  <style>
+    body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial; margin:0; padding:12px; width:340px; background:#071229; color:#dff1ff; }
+    h3 { margin:0 0 8px 0; }
+    .option-group { margin: 16px 0; }
+    label { display:block; margin-bottom:6px; font-weight:500; }
+    select, button { width:100%; padding:10px; margin-top:8px; border-radius:8px; border:none; background:#0b74ff; color:white; cursor:pointer; }
+    .preview { background:#181c2a; color:#dff1ff; border-radius:8px; padding:12px; margin-top:16px; min-height:60px; }
+    .restore-btn { background:#d4af77; color:#071229; font-weight:700; margin-top:12px; }
+  </style>
+</head>
+<body>
+  <h3>Summarize Conversation</h3>
+  <div class="option-group">
+    <label for="summary-length">Summary Length</label>
+    <select id="summary-length">
+      <option value="very short">Very Short</option>
+      <option value="medium">Medium</option>
+      <option value="long">Long</option>
+    </select>
+  </div>
+  <div class="option-group">
+    <label for="summary-type">Summary Type</label>
+    <select id="summary-type">
+      <option value="paragraph">Paragraph</option>
+      <option value="bullets">Bullets</option>
+      <option value="key points">Key Points</option>
+    </select>
+  </div>
+  <button id="summarize-btn">Summarize</button>
+  <div class="preview" id="summary-preview">Preview will appear here...</div>
+  <button class="restore-btn" id="restore-btn">Restore to Chat</button>
+  <script src="summarize_tab.js"></script>
+</body>
+</html>

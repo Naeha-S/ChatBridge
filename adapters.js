@@ -473,10 +473,21 @@ const SiteAdapters = [
       entries.forEach((entry, i) => {
         // Collect text nodes inside the wrapper
         const nodes = entry.nodes || Array.from(entry.el.querySelectorAll('p, .whitespace-pre-wrap, .whitespace-normal, .break-words'));
-        let text = nodes.length ? nodes.map(n => (n.innerText || '').trim()).filter(Boolean).join('\n') : (entry.el.innerText || '').trim();
-        text = sanitize(text, entry.role);
+        const rawText = nodes.length ? nodes.map(n => (n.innerText || '').trim()).filter(Boolean).join('\n') : (entry.el.innerText || '').trim();
+        try {
+          // Log pre-sanitize snapshot (trim newlines for compact logs)
+          console.log(`[Claude Debug] Entry ${i} pre-sanitize: role=${entry.role} nodes=${nodes.length} rawLen=${rawText.length} preview="${rawText.slice(0,160).replace(/\n/g,'␤')}" el=${entry.el && entry.el.tagName} class="${(entry.el && entry.el.className) ? String(entry.el.className).slice(0,120) : ''}"`);
+        } catch (e) {}
+        const text = sanitize(rawText, entry.role);
         if (!text || text.length <= 2) {
-          console.log(`[Claude Debug] Skipping empty/filtered message ${i} role=${entry.role}`);
+          try {
+            console.log(`[Claude Debug] Skipping empty/filtered message ${i} role=${entry.role} sanitizedLen=${(text||'').length} sanitizedPreview="${(text||'').slice(0,160).replace(/\n/g,'␤')}"`);
+            // Optionally log node previews for deeper inspection (trim to avoid huge output)
+            if (nodes && nodes.length) {
+              const previews = nodes.slice(0,4).map(n => (n && (n.innerText||'')).toString().replace(/\n/g,'␤').slice(0,200));
+              console.log(`[Claude Debug] Skipping details: nodePreviews=${JSON.stringify(previews)}`);
+            }
+          } catch (e) {}
           return;
         }
         console.log(`[Claude Debug] Message ${i}: role=${entry.role} text="${text.slice(0,60)}"`);

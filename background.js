@@ -5,6 +5,27 @@ chrome.runtime.onInstalled.addListener(() => {
 
 // simple message handler for future hooks
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  // Handler to get latest conversation text
+  if (msg && msg.type === 'get_latest_conversation') {
+    chrome.storage.local.get(['chatbridge:conversations'], data => {
+      const arr = Array.isArray(data['chatbridge:conversations']) ? data['chatbridge:conversations'] : [];
+      if (!arr.length) return sendResponse({ text: '' });
+      const sel = arr[0];
+      const text = sel && sel.conversation ? sel.conversation.map(m => `${m.role}: ${m.text}`).join('\n') : '';
+      sendResponse({ text });
+    });
+    return true;
+  }
+
+  // Handler to restore summary to chat input
+  if (msg && msg.type === 'restore_summary') {
+    chrome.tabs.sendMessage(sender.tab.id, {
+      type: 'restore_to_chat',
+      payload: { summary: msg.payload.summary }
+    });
+    sendResponse({ ok: true });
+    return true;
+  }
   if (msg && msg.type === 'ping') return sendResponse({ ok:true });
 
   // --- simple token-bucket rate limiter ---
@@ -66,6 +87,69 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       }
     })();
     // indicate we'll respond asynchronously
+    return true;
+  }
+
+  // Gemini cloud API handler
+  if (msg && msg.type === 'call_gemini') {
+    // Use hardcoded Gemini API key (never expose in repo/UI)
+    const GEMINI_API_KEY = 'AIzaSyDH7q1lOI8grDht1H-WHNtsyptIiSrgogQ';
+    if (!limiter()) return sendResponse({ ok:false, error: 'rate_limited' });
+    (async () => {
+      try {
+        const payload = msg.payload || {};
+        let promptText = '';
+        if (payload.action === 'prompt') {
+          promptText = `Analyze this conversation and provide helpful insights or suggestions:\n\n${payload.text}`;
+        } else if (payload.action === 'summarize') {
+          // Use summary length/type if provided
+          let opts = '';
+          if (payload.length === 'comprehensive') {
+            promptText = `Create a DETAILED, COMPREHENSIVE summary of this conversation that preserves ALL important context, topics, decisions, and nuances. This summary will be used by AI tools to continue the conversation seamlessly, so DO NOT omit any significant information. Include:
+- All key topics and subtopics discussed in detail
+- Important decisions, conclusions, or outcomes reached
+- Any unresolved questions or pending items
+- Technical details, code snippets, or specific terminology mentioned
+- The flow and progression of the conversation with transitions
+- Any user preferences, requirements, or constraints stated
+- Context about what was attempted and what worked/failed
+
+Make this summary as thorough as needed to capture the full context - prioritize completeness and clarity over brevity.\n\n${payload.text}`;
+          } else {
+            if (payload.length) opts += ` Length: ${payload.length}.`;
+            if (payload.summaryType) opts += ` Format: ${payload.summaryType}.`;
+            promptText = `Summarize this text clearly and concisely.${opts}\n\n${payload.text}`;
+          }
+        } else if (payload.action === 'rewrite') {
+          promptText = `Rewrite this text to be clearer and more professional:\n\n${payload.text}`;
+        } else if (payload.action === 'translate') {
+          promptText = `Translate this text to ${payload.targetLang || 'English'}:\n\n${payload.text}`;
+        } else {
+          promptText = payload.text || '';
+        }
+        const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + GEMINI_API_KEY;
+        const body = {
+          contents: [{ parts: [{ text: promptText }] }]
+        };
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        const json = await res.json();
+        if (!res.ok) {
+          console.error('[Gemini API Error]', res.status, json);
+          return sendResponse({ ok:false, error: 'gemini_http_error', status: res.status, body: json });
+        }
+        if (!json.candidates || !json.candidates[0] || !json.candidates[0].content || !json.candidates[0].content.parts || !json.candidates[0].content.parts[0]) {
+          return sendResponse({ ok:false, error: 'gemini_parse_error', body: json });
+        }
+        const result = json.candidates[0].content.parts[0].text || '';
+        return sendResponse({ ok:true, result });
+      } catch (e) {
+        return sendResponse({ ok:false, error: 'gemini_fetch_error', message: (e && e.message) || String(e) });
+      }
+    })();
     return true;
   }
 });

@@ -5,6 +5,9 @@
   "description": "Manually scan your visible AI chat session and paste it into another AI chat. Local-only by default.",
   "permissions": ["storage", "activeTab", "scripting", "clipboardWrite", "prompt"],
   "host_permissions": ["*://*/*"],
+  "trial_tokens": [
+    "A0+TzJqk1JecJ3NCv256jrsJPr5BJVRZXEeXI/XQrwkRP7NH8QFo+JaL+ptsnb6FeHJcyI+TetN2reqjZv1ZYAQAAACPeyJvcmlnaW4iOiJjaHJvbWUtZXh0ZW5zaW9uOi8vb21qZGNla2dqamFnbm5hYWdjZmxvZGZqbWltcGJwanAiLCJmZWF0dXJlIjoiQUlQcm9tcHRBUElNdWx0aW1vZGFsSW5wdXQiLCJleHBpcnkiOjE3NzQzMTA0MDAsImlzVGhpcmRQYXJ0eSI6dHJ1ZX0="
+  ],
   "action": {
     "default_popup": "popup.html",
     "default_icon": {

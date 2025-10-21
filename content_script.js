@@ -99,55 +99,27 @@
     } catch (e) { return 'assistant'; }
   }
 
+  // Enhance debug logging in filterCandidateNodes to log reasons for skipping nodes
   function filterCandidateNodes(nodes) {
-    if (!nodes || !nodes.length) return [];
-    const blacklist = ['new chat','regenerate','clear','copy','download','openai','history','settings'];
-    return nodes.filter(n => {
-      try {
-        if (!n || n.nodeType !== 1) return false;
-        if (isInExtension(n)) return false;
-        // skip hidden or UI elements
-        if (n.closest && n.closest('[aria-hidden="true"], nav, aside, header, [role="navigation"], [role="toolbar"]')) return false;
-        const anc = n.closest && n.closest('*');
-        if (anc && anc.getAttribute && /suggestion|card|example|shortcut|quick|related|recommended|search-result/.test((anc.className||'') + ' ' + (anc.getAttribute('aria-label')||''))) return false;
-        // exclude known response container / assistant chrome classes (Bard/Gemini style)
-        const clsAll = ((n.className||'') + ' ' + (anc && anc.className || '')).toString().toLowerCase();
-        if (/response-container|model-response|model-thoughts|response-content|avatar-gutter|bard-avatar|response-footer|message-actions|response-container-header/.test(clsAll)) return false;
-        // avoid nodes that are primarily interactive UI (menus, buttons, inputs)
-        try {
-          const interactiveCount = (n.querySelectorAll && n.querySelectorAll('button,a,input,textarea,[role="menu"]').length) || 0;
-          if (interactiveCount > 1) return false;
-        } catch (e) {}
-        // conservative: exclude nodes with many ARIA/role attributes (likely UI widgets)
-        try {
-          let ariaCount = 0;
-          for (let i=0;i<(n.attributes||[]).length;i++) {
-            const a = n.attributes[i]; if (!a) continue; const an = (a.name||'').toLowerCase(); if (an === 'role' || an.startsWith('aria-')) ariaCount++;
-          }
-          if (ariaCount >= 2) return false;
-          if (anc && anc.attributes) {
-            let a2 = 0; for (let i=0;i<anc.attributes.length;i++){ const a = anc.attributes[i]; if(!a) continue; const an=(a.name||'').toLowerCase(); if (an==='role' || an.startsWith('aria-')) a2++; }
-            if (a2 >= 4) return false;
-          }
-        } catch(e){}
-        // exclude very short nodes that sit adjacent to avatar-like elements (likely labels)
-        try {
-          const txt = (n.innerText || '').replace(/\s+/g,' ').trim();
-          if (txt.length < 40) {
-            const prev = n.previousElementSibling; const next = n.nextElementSibling;
-            const nearAvatar = (prev && /(avatar|avatar-gutter|bard-avatar|avatar_primary|avatar-container)/i.test(prev.className || '')) || (next && /(avatar|avatar-gutter|bard-avatar|avatar_primary|avatar-container)/i.test(next.className || '')) || (!!n.closest && !!n.closest('[class*="avatar"]'));
-            if (nearAvatar) return false;
-          }
-        } catch(e){}
-        const text = (n.innerText || '').replace(/\s+/g, ' ').trim();
-        if (!text || text.length < 2) return false;
-        const lt = text.toLowerCase();
-        if (blacklist.includes(lt)) return false;
-        // filter out lines that look like UI labels or suggestions
-        if (/^(assistant[:\s\-]|show thinking|try:|suggested|you might|related)/i.test(text)) return false;
-        const r = n.getBoundingClientRect(); if (!r || (r.width === 0 && r.height === 0)) return false;
+    return nodes.filter(node => {
+        if (!node || !node.textContent || node.textContent.trim() === '') {
+            console.debug('[Claude Debug] Skipping node: Empty or whitespace-only content', node);
+            return false;
+        }
+        if (node.textContent.length < 5) { // Example threshold for minimum length
+            console.debug('[Claude Debug] Skipping node: Content too short', node.textContent);
+            return false;
+        }
+        if (node.nodeType !== Node.ELEMENT_NODE && node.nodeType !== Node.TEXT_NODE) {
+            console.debug('[Claude Debug] Skipping node: Unsupported node type', node.nodeType);
+            return false;
+        }
+        if (node.hasAttribute && node.hasAttribute('aria-hidden') && node.getAttribute('aria-hidden') === 'true') {
+            console.debug('[Claude Debug] Skipping node: aria-hidden=true', node);
+            return false;
+        }
+        // Add more conditions as needed
         return true;
-      } catch (e) { return false; }
     });
   }
 
@@ -210,7 +182,12 @@
   function injectUI() {
     if (document.getElementById('cb-host')) return null;
   const avatar = document.createElement('div'); avatar.id = 'cb-avatar'; avatar.setAttribute('data-cb-ignore', 'true'); avatar.textContent = '⚡';
-  avatar.style.cssText = 'position:fixed;bottom:18px;right:18px;width:46px;height:46px;border-radius:12px;z-index:2147483646;display:flex;align-items:center;justify-content:center;cursor:pointer;background:linear-gradient(180deg,#0b1220,#071022);color:#d4af77;box-shadow:0 6px 20px rgba(2,6,23,0.6);font-size:20px';
+  // store last scanned text so Clipboard and textarea can access it
+  let lastScannedText = '';
+  // Slightly larger avatar, pulled in from the corner and with a gold border
+  avatar.style.cssText = 'position:fixed;bottom:22px;right:26px;width:48px;height:48px;border-radius:12px;z-index:2147483646;display:flex;align-items:center;justify-content:center;cursor:pointer;background:linear-gradient(180deg,#0b1220,#071022);color:#d4af77;box-shadow:0 6px 20px rgba(2,6,23,0.6);font-size:20px;border:3px solid rgba(212,175,119,0.95);transition: transform .12s ease, box-shadow .12s ease;';
+  avatar.addEventListener('mouseenter', () => { avatar.style.transform = 'translateY(-2px)'; avatar.style.boxShadow = '0 10px 26px rgba(212,175,119,0.15)'; });
+  avatar.addEventListener('mouseleave', () => { avatar.style.transform = ''; avatar.style.boxShadow = '0 6px 20px rgba(2,6,23,0.6)'; });
     const host = document.createElement('div'); host.id = 'cb-host'; host.setAttribute('data-cb-ignore', 'true'); host.style.display = 'none';
     document.body.appendChild(avatar); document.body.appendChild(host);
     const shadow = host.attachShadow({ mode: 'open' });
@@ -220,25 +197,45 @@
     style.textContent = `
       @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
       :host { all: initial; }
-      .cb-panel { box-sizing: border-box; position:fixed; top:12px; right:12px; width:380px; max-height:86vh; overflow:hidden; border-radius:14px; background: linear-gradient(180deg, rgba(9,13,22,0.97), rgba(8,18,34,0.98)); color:#d4af77 !important; font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; z-index:2147483647; box-shadow: 0 12px 40px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); backdrop-filter: blur(10px); }
-      .cb-header { display:flex; flex-direction:column; align-items:flex-start; justify-content:flex-start; padding:18px 18px 8px 18px; gap:6px; border-bottom: 1px solid rgba(255,255,255,0.04); }
+  .cb-panel { box-sizing: border-box; position:fixed; top:12px; right:12px; width:380px; max-height:86vh; overflow:hidden; border-radius:14px; background: linear-gradient(180deg, rgba(9,13,22,0.97), rgba(8,18,34,0.98)); color:#d4af77 !important; font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; z-index:2147483647; box-shadow: 0 12px 40px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); backdrop-filter: blur(10px); }
+  .cb-header { display:flex; flex-direction:row; align-items:flex-start; justify-content:space-between; padding:14px 18px 8px 18px; gap:6px; border-bottom: 1px solid rgba(255,255,255,0.04); }
       .cb-title { font-weight:900; font-size:20px; letter-spacing:0.5px; color:#ffe7b3; text-shadow:0 2px 12px #1a1a1a; }
       .cb-subtitle { font-size:13px; color:#d4af77; font-weight:500; margin-top:2px; margin-bottom:2px; letter-spacing:0.3px; }
-      .cb-actions { padding:16px 18px 8px 18px; display:flex; gap:10px; }
+  .cb-actions { padding:12px 16px 8px 16px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; justify-content:space-between; }
+  .cb-actions-left, .cb-actions-right { display:flex; gap:8px; align-items:center; }
+  .cb-actions .cb-btn { min-width:0; padding:8px 12px; }
       .cb-btn { background: linear-gradient(180deg, rgba(40,40,60,0.98), rgba(20,20,30,0.98)); border:1px solid rgba(255,255,255,0.12); color:#d4af77 !important; padding:10px 12px; border-radius:10px; cursor:pointer; font-size:14px; transition: all .15s ease; font-weight:600; }
       .cb-btn:hover { transform:translateY(-1px); box-shadow: 0 8px 18px rgba(210,180,120,0.18); border-color: rgba(255,255,255,0.22); background: linear-gradient(180deg, #2a2a3a, #18181f); }
-      .cb-btn-primary { background: linear-gradient(180deg, #f3e4b9, #d2b478); color:#0b0f19; border: 1px solid rgba(0,0,0,0.18); }
+      .cb-btn-primary { background: linear-gradient(180deg, #f3e4b9, #d2b478); color:#000 !important; font-weight:900; border: 1px solid rgba(0,0,0,0.18); }
       .cb-btn-primary:hover { box-shadow: 0 10px 24px rgba(210,180,120,0.35); }
+      .cb-btn-danger { background: linear-gradient(180deg, rgba(60,20,20,0.95), rgba(40,15,15,0.95)); border:1px solid rgba(255,100,100,0.25); color:rgba(255,180,180,0.75) !important; font-size:13px; padding:6px 10px; }
+      .cb-btn-danger:hover { background: linear-gradient(180deg, rgba(80,25,25,0.95), rgba(50,18,18,0.95)); border-color: rgba(255,120,120,0.4); color:rgba(255,200,200,0.9) !important; box-shadow: 0 4px 12px rgba(200,50,50,0.15); }
       .cb-toolbar { display:flex; align-items:center; gap:10px; padding:12px 18px 8px 18px; border-bottom: 1px solid rgba(255,255,255,0.04); }
       .cb-label { font-size:12px; color:#d4af77 !important; }
-      .cb-select { flex:1; appearance:none; background: linear-gradient(180deg, #181c2a 90%, #232a3a 100%); color:#d4af77 !important; border:1px solid rgba(255,255,255,0.18); border-radius:10px; padding:10px 12px; font-size:14px; outline:none; font-weight:500; }
+      .cb-select { flex:1; appearance:none; background: linear-gradient(180deg, #181c2a 90%, #232a3a 100%); color:#d4af77 !important; border:1px solid rgba(255,255,255,0.18); border-radius:10px; padding:10px 12px; font-size:14px; outline:none; font-weight:500; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       .cb-select:hover { border-color: #d2b478; box-shadow: 0 0 0 3px rgba(210, 180, 120, 0.12); }
       .cb-status { padding:0 18px 10px 18px; font-size:12px; color:#d4af77 !important; }
-      .cb-history { padding:12px 18px; max-height:260px; overflow:auto; font-size:13px; background: rgba(20,20,30,0.18); margin:12px; border-radius:10px; white-space:pre-wrap; color:#d4af77 !important; }
-      .cb-preview { padding:12px 18px; font-size:13px; color:#d4af77 !important; border-top:1px solid rgba(255,255,255,0.04) }
+      .cb-history-wrapper { position: relative; margin:12px; }
+      .cb-history-header { display:flex; align-items:center; justify-content:space-between; padding:0 0 8px 0; }
+      .cb-history-title { font-size:12px; color:#d4af77 !important; font-weight:600; letter-spacing:0.3px; }
+      .cb-history { padding:12px 18px; max-height:260px; overflow-x:hidden; overflow-y:auto; font-size:13px; background: rgba(20,20,30,0.18); border-radius:10px; white-space:pre-wrap; color:#d4af77 !important; line-height: 1.5; }
+      .cb-history::-webkit-scrollbar { width: 8px; }
+      .cb-history::-webkit-scrollbar-track { background: rgba(20,20,30,0.4); border-radius: 10px; }
+      .cb-history::-webkit-scrollbar-thumb { background: linear-gradient(180deg, rgba(212,175,119,0.6), rgba(212,175,119,0.4)); border-radius: 10px; border: 2px solid rgba(20,20,30,0.4); }
+      .cb-history::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, rgba(212,175,119,0.8), rgba(212,175,119,0.6)); }
+      .cb-preview { padding:12px 18px; font-size:13px; color:#d4af77 !important; border-top:1px solid rgba(255,255,255,0.04); max-height:200px; overflow-x:hidden; overflow-y:auto; line-height: 1.5; }
+      .cb-preview::-webkit-scrollbar { width: 8px; }
+      .cb-preview::-webkit-scrollbar-track { background: rgba(20,20,30,0.4); border-radius: 10px; }
+      .cb-preview::-webkit-scrollbar-thumb { background: linear-gradient(180deg, rgba(212,175,119,0.6), rgba(212,175,119,0.4)); border-radius: 10px; border: 2px solid rgba(20,20,30,0.4); }
+      .cb-preview::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, rgba(212,175,119,0.8), rgba(212,175,119,0.6)); }
       .cb-footer { display:flex; justify-content:flex-end; gap:10px; padding:12px 18px }
-      .cb-close { background:transparent; border:none; color:#d4af77 !important; cursor:pointer; font-size:15px }
-      textarea { background: #181c2a; color: #d4af77 !important; border: 1px solid rgba(255,255,255,0.18); border-radius: 10px; font-size:14px; padding:10px; font-family:inherit; }
+  .cb-close { background:transparent; border:none; color:#d4af77 !important; cursor:pointer; font-size:15px; padding:6px; position:absolute; top:8px; right:10px; }
+  .cb-header { padding-right: 42px; }
+      textarea { background: #181c2a; color: #d4af77 !important; border: 1px solid rgba(255,255,255,0.18); border-radius: 10px; font-size:14px; padding:10px; font-family:inherit; max-height:200px; overflow-x:hidden; overflow-y:auto; }
+      textarea::-webkit-scrollbar { width: 8px; }
+      textarea::-webkit-scrollbar-track { background: rgba(20,20,30,0.4); border-radius: 10px; }
+      textarea::-webkit-scrollbar-thumb { background: linear-gradient(180deg, rgba(212,175,119,0.6), rgba(212,175,119,0.4)); border-radius: 10px; border: 2px solid rgba(20,20,30,0.4); }
+      textarea::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, rgba(212,175,119,0.8), rgba(212,175,119,0.6)); }
       textarea:focus { outline: 2px solid #d2b478; }
       select:focus { outline: 2px solid #d2b478; }
     `;
@@ -249,35 +246,40 @@
     const header = document.createElement('div'); header.className = 'cb-header';
     const title = document.createElement('div'); title.className = 'cb-title'; title.textContent = '⚡ ChatBridge';
     const subtitle = document.createElement('div'); subtitle.className = 'cb-subtitle'; subtitle.textContent = 'Effortlessly continue conversations across models';
-    const controls = document.createElement('div');
-    const btnClose = document.createElement('button'); btnClose.className = 'cb-close'; btnClose.textContent = '✕';
-    controls.appendChild(btnClose);
-    header.appendChild(title);
-    header.appendChild(subtitle);
-    header.appendChild(controls);
+  const left = document.createElement('div');
+  left.style.display = 'flex'; left.style.flexDirection = 'column'; left.style.gap = '6px'; left.style.alignItems = 'flex-start';
+  left.appendChild(title); left.appendChild(subtitle);
+  const controls = document.createElement('div'); controls.style.display = 'flex'; controls.style.alignItems = 'flex-start';
+  const btnClose = document.createElement('button'); btnClose.className = 'cb-close'; btnClose.textContent = '✕';
+  controls.appendChild(btnClose);
+  header.appendChild(left);
+  header.appendChild(controls);
     panel.appendChild(header);
 
   // Actions: Scan, Restore, Gemini APIs
   const actions = document.createElement('div'); actions.className = 'cb-actions';
-  actions.style.display = 'flex';
-  actions.style.flexWrap = 'wrap';
-  actions.style.gap = '10px';
-  actions.style.rowGap = '12px';
-  actions.style.justifyContent = 'flex-start';
+  const actionsLeft = document.createElement('div'); actionsLeft.className = 'cb-actions-left';
+  const actionsRight = document.createElement('div'); actionsRight.className = 'cb-actions-right';
 
-  const btnScan = document.createElement('button'); btnScan.className = 'cb-btn cb-btn-primary'; btnScan.textContent = '📸 Scan Chat';
-  const btnRestore = document.createElement('button'); btnRestore.className = 'cb-btn'; btnRestore.textContent = '♻️ Restore';
-  actions.appendChild(btnScan); actions.appendChild(btnRestore);
+  const btnScan = document.createElement('button'); btnScan.className = 'cb-btn cb-btn-primary'; btnScan.textContent = '📸 Scan Chat'; btnScan.title = 'Scan the visible chat on the page';
+  const btnRestore = document.createElement('button'); btnRestore.className = 'cb-btn'; btnRestore.textContent = '♻️ Restore'; btnRestore.title = 'Restore saved conversation into current chat';
+  const btnClipboard = document.createElement('button'); btnClipboard.className = 'cb-btn'; btnClipboard.textContent = '📋 Clipboard'; btnClipboard.title = 'Copy scanned chat to clipboard';
 
-  // Gemini API buttons
-  const btnPrompt = document.createElement('button'); btnPrompt.className = 'cb-btn'; btnPrompt.textContent = '🔮 Prompt';
-  const btnSummarize = document.createElement('button'); btnSummarize.className = 'cb-btn'; btnSummarize.textContent = '📝 Summarize';
-  const btnRewrite = document.createElement('button'); btnRewrite.className = 'cb-btn'; btnRewrite.textContent = '✍️ Rewrite';
-  const btnTranslate = document.createElement('button'); btnTranslate.className = 'cb-btn'; btnTranslate.textContent = '🌐 Translate';
-  actions.appendChild(btnPrompt);
-  actions.appendChild(btnSummarize);
-  actions.appendChild(btnRewrite);
-  actions.appendChild(btnTranslate);
+  // Gemini API buttons (keep on the right)
+  const btnPrompt = document.createElement('button'); btnPrompt.className = 'cb-btn'; btnPrompt.textContent = '🔮 Prompt'; btnPrompt.title = 'Generate and format structured chat content';
+  const btnSummarize = document.createElement('button'); btnSummarize.className = 'cb-btn'; btnSummarize.textContent = '📝 Summarize'; btnSummarize.title = 'Distill long chats into short summaries';
+  const btnRewrite = document.createElement('button'); btnRewrite.className = 'cb-btn'; btnRewrite.textContent = '✍️ Rewrite'; btnRewrite.title = 'Improve tone and readability of scraped messages';
+  const btnTranslate = document.createElement('button'); btnTranslate.className = 'cb-btn'; btnTranslate.textContent = '🌐 Translate'; btnTranslate.title = 'Translate chats between languages';
+
+  actionsLeft.appendChild(btnScan);
+  actionsLeft.appendChild(btnRestore);
+  actionsLeft.appendChild(btnClipboard);
+  actionsRight.appendChild(btnPrompt);
+  actionsRight.appendChild(btnSummarize);
+  actionsRight.appendChild(btnRewrite);
+  actionsRight.appendChild(btnTranslate);
+  actions.appendChild(actionsLeft);
+  actions.appendChild(actionsRight);
   panel.appendChild(actions);
 
     // Toolbar with Chat dropdown
@@ -287,23 +289,31 @@
     toolbar.appendChild(lab); toolbar.appendChild(chatSelect);
     panel.appendChild(toolbar);
 
+  // Toolbar preview (moved above the Gemini textarea)
+  const preview = document.createElement('div'); preview.className = 'cb-preview'; preview.textContent = 'Preview: (none)';
+
   // Gemini Nano input/output area
   const geminiWrap = document.createElement('div'); geminiWrap.style.padding = '8px 18px'; geminiWrap.style.display = 'flex'; geminiWrap.style.flexDirection = 'column'; geminiWrap.style.gap = '8px';
-  const geminiTextarea = document.createElement('textarea');
-  geminiTextarea.placeholder = 'Enter text for Gemini Nano...';
-  geminiTextarea.style.padding = '10px';
-  geminiTextarea.style.borderRadius = '10px';
-  geminiTextarea.style.height = '64px';
-  geminiTextarea.style.resize = 'vertical';
-  geminiTextarea.style.background = '#181c2a';
-  geminiTextarea.style.color = '#fff';
-  geminiWrap.appendChild(geminiTextarea);
+  // Insert preview above (textarea removed - preview is the read-only display)
+  geminiWrap.appendChild(preview);
+  // Note: removed editable textarea per UI simplification request.
   panel.appendChild(geminiWrap);
 
-    const status = document.createElement('div'); status.className = 'cb-status'; status.textContent = 'Status: idle'; panel.appendChild(status);
-    const historyEl = document.createElement('div'); historyEl.className = 'cb-history'; historyEl.textContent = 'No sessions yet.'; panel.appendChild(historyEl);
-    const preview = document.createElement('div'); preview.className = 'cb-preview'; preview.textContent = 'Preview: (none)'; panel.appendChild(preview);
-    const footer = document.createElement('div'); footer.className = 'cb-footer'; panel.appendChild(footer);
+  const status = document.createElement('div'); status.className = 'cb-status'; status.textContent = 'Status: idle'; panel.appendChild(status);
+
+  // History section with clear button
+  const historyWrapper = document.createElement('div'); historyWrapper.className = 'cb-history-wrapper';
+  const historyHeader = document.createElement('div'); historyHeader.className = 'cb-history-header';
+  const historyTitle = document.createElement('div'); historyTitle.className = 'cb-history-title'; historyTitle.textContent = '📜 History';
+  const btnClearHistory = document.createElement('button'); btnClearHistory.className = 'cb-btn cb-btn-danger'; btnClearHistory.textContent = '×'; btnClearHistory.title = 'Clear all saved conversation history';
+  historyHeader.appendChild(historyTitle);
+  historyHeader.appendChild(btnClearHistory);
+  historyWrapper.appendChild(historyHeader);
+  const historyEl = document.createElement('div'); historyEl.className = 'cb-history'; historyEl.textContent = 'No sessions yet.';
+  historyWrapper.appendChild(historyEl);
+  panel.appendChild(historyWrapper);
+
+  const footer = document.createElement('div'); footer.className = 'cb-footer'; panel.appendChild(footer);
 
     function renderLastScan() { /* end-user UI hides debug */ }
 
@@ -321,16 +331,108 @@
         else {
           const final = normalizeMessages(msgs);
           const conv = { platform: location.hostname, url: location.href, ts: Date.now(), conversation: final };
+          // prepare human readable scanned text for textarea and clipboard
+          lastScannedText = final.map(m => (m.role === 'user' ? 'User: ' : 'Assistant: ') + m.text).join('\n\n');
+          try { preview.textContent = lastScannedText || preview.textContent; } catch(e){}
           if (typeof window.saveConversation === 'function') {
             window.saveConversation(conv, () => { toast('Saved ' + final.length + ' messages'); refreshHistory(); });
           } else {
             const key = 'chatbridge:conversations'; const cur = JSON.parse(localStorage.getItem(key) || '[]'); cur.push(conv); localStorage.setItem(key, JSON.stringify(cur)); toast('Saved (local) ' + final.length + ' messages'); refreshHistory();
           }
           status.textContent = `Status: saved ${final.length}`;
+          
+          // Auto-summarize if 20+ messages or 50,000+ characters
+          const totalChars = final.reduce((sum, m) => sum + (m.text || '').length, 0);
+          if (final.length >= 20 || totalChars >= 50000) {
+            status.textContent = `Status: auto-summarizing ${final.length} messages (${totalChars} chars)...`;
+            const inputText = final.map(m => `${m.role}: ${m.text}`).join('\n');
+            hierarchicalSummarize(inputText, { chunkSize: 14000, maxParallel: 3, length: 'comprehensive', summaryType: 'detailed' })
+              .then(result => {
+                preview.textContent = `Auto-Summary (${final.length} msgs, comprehensive context preserved):\n\n` + result;
+                status.textContent = 'Status: done (auto-summarized)';
+                toast('Auto-summarized with full context!');
+                restoreToChat(result);
+              }).catch(err => {
+                status.textContent = `Status: saved ${final.length} (summarize failed)`;
+                debugLog('hierarchicalSummarize error', err);
+              });
+          }
         }
       } catch (e) { status.textContent = 'Status: error'; toast('Scan failed: ' + (e && e.message)); }
       btnScan.disabled = false;
     });
+
+    // Clipboard button - copy last scanned text (textarea removed)
+    btnClipboard.addEventListener('click', async () => {
+      try {
+        const txt = lastScannedText || '';
+        if (!txt) { toast('Nothing to copy'); return; }
+        await navigator.clipboard.writeText(txt);
+        toast('Copied scanned chat to clipboard');
+      } catch (e) {
+        try { navigator.clipboard.writeText(lastScannedText || ''); toast('Copied to clipboard (fallback)'); } catch(err){ toast('Copy failed'); }
+      }
+    });
+
+    // Clear History button - remove all saved conversations
+    btnClearHistory.addEventListener('click', async () => {
+      try {
+        if (!confirm('Clear all saved conversation history? This cannot be undone.')) return;
+        
+        // Use the storage API if available
+        if (typeof window.clearConversations === 'function') {
+          window.clearConversations(() => {
+            toast('History cleared');
+            refreshHistory();
+            // Clear the preview/last-scanned text
+            try { preview.textContent = 'Preview: (none)'; } catch (e) {}
+            lastScannedText = '';
+          });
+        } else {
+          // Fallback to direct localStorage clear
+          localStorage.removeItem('chatbridge:conversations');
+          toast('History cleared');
+          refreshHistory();
+          // Clear the preview/last-scanned text
+          try { preview.textContent = 'Preview: (none)'; } catch (e) {}
+          lastScannedText = '';
+        }
+      } catch (e) {
+        toast('Clear failed: ' + (e && e.message));
+      }
+    });
+
+    // Helper: restore arbitrary text into the visible chat input on the page
+    function restoreToChat(text) {
+      try {
+        let input = null;
+        const candidates = Array.from(document.querySelectorAll('textarea, [contenteditable="true"]'));
+        for (const el of candidates) {
+          try {
+            const cs = window.getComputedStyle(el);
+            if (cs.display !== 'none' && cs.visibility !== 'hidden' && cs.opacity !== '0') { input = el; break; }
+          } catch (e) {}
+        }
+        if (input && input.isContentEditable) {
+          input.textContent = text;
+          input.dispatchEvent(new Event('input', { bubbles: true }));
+          input.focus(); input.blur();
+          toast('Restored to chat');
+          return true;
+        } else if (input) {
+          input.value = text;
+          input.dispatchEvent(new Event('input', { bubbles: true }));
+          input.focus(); input.blur();
+          // poke keydown for some frameworks
+          try { input.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, cancelable: true, key: ' ' })); } catch(e) {}
+          setTimeout(() => { try { input.dispatchEvent(new Event('input', { bubbles: true })); } catch(e){} }, 60);
+          toast('Restored to chat');
+          return true;
+        }
+      } catch (e) {}
+      try { navigator.clipboard.writeText(text).then(()=>toast('Copied to clipboard')) } catch(e) { toast('Copied to clipboard'); }
+      return false;
+    }
 
     btnRestore.addEventListener('click', async () => {
       try {
@@ -393,66 +495,241 @@
     });
 
 
-    // Gemini Nano API handlers
-    async function loadAiUtils() {
-      if (!window.summarizeText || !window.rewriteText || !window.translateText || !window.waitForGeminiReady) {
+    // Gemini Cloud API handlers
+    // small promise wrapper around chrome.runtime.sendMessage
+    function callGeminiAsync(payload) {
+      return new Promise((resolve) => {
         try {
-          // Use relative path for extension context
-          const mod = await import('./aiUtils.js');
-          window.summarizeText = mod.summarizeText;
-          window.rewriteText = mod.rewriteText;
-          window.translateText = mod.translateText;
-          window.waitForGeminiReady = mod.waitForGeminiReady;
-        } catch (e) { toast('Failed to load Gemini utils'); return false; }
-      }
-      return true;
+          chrome.runtime.sendMessage({ type: 'call_gemini', payload }, res => { resolve(res || { ok: false, error: 'no-response' }); });
+        } catch (e) { resolve({ ok: false, error: e && e.message }); }
+      });
     }
 
+    // Hierarchical summarization: chunk long text, summarize chunks in parallel, then merge
+    async function hierarchicalSummarize(text, options) {
+      options = options || {};
+      const chunkSize = options.chunkSize || 12000; // characters per chunk (~12k)
+      const maxParallel = options.maxParallel || 3; // number of parallel chunk summaries
+      const mergePrompt = options.mergePrompt || 'Merge the following chunk summaries into a single coherent summary preserving salient points and context.';
+      if (!text || typeof text !== 'string') return '';
+      // Small inputs: direct summarize call
+      if (text.length <= chunkSize) {
+        const res = await callGeminiAsync({ action: 'summarize', text, length: options.length || 'medium', summaryType: options.summaryType || 'paragraph' });
+        if (res && res.ok) return res.result;
+        throw new Error(res && res.error ? res.error : 'summarize-failed');
+      }
+      // Split text into chunks on paragraph boundaries to avoid cutting sentences
+      const paragraphs = text.split(/\n\s*\n/);
+      const chunks = [];
+      let cur = '';
+      for (const p of paragraphs) {
+        if ((cur + '\n\n' + p).length > chunkSize && cur) { chunks.push(cur); cur = p; }
+        else { cur = cur ? (cur + '\n\n' + p) : p; }
+      }
+      if (cur) chunks.push(cur);
+
+      // Summarize chunks in parallel batches to limit concurrent calls
+      const summaries = [];
+      for (let i = 0; i < chunks.length; i += maxParallel) {
+        const batch = chunks.slice(i, i + maxParallel).map(c => callGeminiAsync({ action: 'summarize', text: c, length: options.chunkLength || 'short', summaryType: 'bullet' }).then(r => (r && r.ok) ? r.result : ('[chunk-summarize-failed]')));
+        const results = await Promise.all(batch);
+        summaries.push(...results);
+      }
+
+      // Merge chunk summaries
+      const mergeInput = summaries.map((s, idx) => `Chunk ${idx+1}:\n${s}`).join('\n\n');
+      const mergeRes = await callGeminiAsync({ action: 'summarize', text: mergeInput, length: options.length || 'medium', summaryType: options.summaryType || 'paragraph', prompt: mergePrompt });
+      if (mergeRes && mergeRes.ok) return mergeRes.result;
+      throw new Error('merge-failed');
+    }
+    
+    // Generic hierarchical processor for other actions (prompt/rewrite/translate)
+    async function hierarchicalProcess(text, action, options) {
+      options = options || {};
+      const chunkSize = options.chunkSize || 12000;
+      const maxParallel = options.maxParallel || 3;
+      const mergePrompt = options.mergePrompt || `Combine the following pieces into a single coherent output that preserves context, style, and important details.`;
+      const perChunkExtra = options.extraPayload || {};
+      if (!text || typeof text !== 'string') return '';
+      if (text.length <= chunkSize) {
+        const res = await callGeminiAsync(Object.assign({ action, text }, perChunkExtra));
+        if (res && res.ok) return res.result;
+        throw new Error(res && res.error ? res.error : `${action}-failed`);
+      }
+      const paragraphs = text.split(/\n\s*\n/);
+      const chunks = [];
+      let cur = '';
+      for (const p of paragraphs) {
+        if ((cur + '\n\n' + p).length > chunkSize && cur) { chunks.push(cur); cur = p; }
+        else { cur = cur ? (cur + '\n\n' + p) : p; }
+      }
+      if (cur) chunks.push(cur);
+
+      const outputs = [];
+      for (let i = 0; i < chunks.length; i += maxParallel) {
+        const batch = chunks.slice(i, i + maxParallel).map(c => callGeminiAsync(Object.assign({ action, text: c }, perChunkExtra)).then(r => (r && r.ok) ? r.result : ('[chunk-failed]')));
+        const results = await Promise.all(batch);
+        outputs.push(...results);
+      }
+
+      // If merge explicitly disabled, just concatenate chunk outputs
+      if (options.merge === false) return outputs.join('\n\n');
+
+      // Otherwise, merge outputs via a final prompt call (use 'prompt' action for merge)
+      const mergeInput = outputs.map((s, idx) => `Part ${idx+1}:\n${s}`).join('\n\n');
+      const mergeText = mergePrompt + '\n\n' + mergeInput;
+      const mergeRes = await callGeminiAsync({ action: 'prompt', text: mergeText, length: options.length || 'medium' });
+      if (mergeRes && mergeRes.ok) return mergeRes.result;
+      throw new Error('merge-failed');
+    }
     btnPrompt.addEventListener('click', async () => {
-      if (!(await loadAiUtils())) return;
       btnPrompt.disabled = true; status.textContent = 'Status: prompting...';
       try {
-        await window.waitForGeminiReady();
-        const session = await window.ai.createPromptSession();
-        const result = await session.prompt(geminiTextarea.value);
-        geminiTextarea.value = result;
-        status.textContent = 'Status: done';
-      } catch (e) { toast('Prompt failed'); status.textContent = 'Status: error'; }
-      btnPrompt.disabled = false;
+        const getter = (typeof window.getConversations === 'function') ? window.getConversations : (cb => cb(JSON.parse(localStorage.getItem('chatbridge:conversations') || '[]')));
+        getter(async list => {
+          const arr = Array.isArray(list) ? list : [];
+          if (!arr.length) { toast('No saved conversations'); btnPrompt.disabled = false; status.textContent = 'Status: idle'; return; }
+          let sel = null;
+          try {
+            if (chatSelect && chatSelect.value) {
+              const i = arr.findIndex(v => String(v.ts) === chatSelect.value);
+              sel = i >= 0 ? arr[i] : arr[0];
+            } else { sel = arr[0]; }
+          } catch (_) { sel = arr[0]; }
+          if (!sel || !sel.conversation || !sel.conversation.length) { toast('No messages in selected conversation'); btnPrompt.disabled = false; status.textContent = 'Status: idle'; return; }
+          const inputText = (lastScannedText && lastScannedText.trim()) ? lastScannedText.trim() : sel.conversation.map(m => `${m.role}: ${m.text}`).join('\n');
+          try {
+            const result = await hierarchicalProcess(inputText, 'prompt', { chunkSize: 14000, maxParallel: 3, length: 'medium' });
+            btnPrompt.disabled = false;
+            preview.textContent = 'Prompt Result:\n\n' + result;
+            status.textContent = 'Status: done';
+            toast('Prompt completed');
+            restoreToChat(result);
+          } catch (err) {
+            btnPrompt.disabled = false;
+            status.textContent = 'Status: error';
+            toast('Prompt failed: ' + (err && err.message ? err.message : err));
+            debugLog('hierarchicalProcess prompt error', err);
+          }
+        });
+      } catch (e) {
+        toast('Prompt failed');
+        status.textContent = 'Status: error';
+        btnPrompt.disabled = false;
+      }
     });
 
     btnSummarize.addEventListener('click', async () => {
-      if (!(await loadAiUtils())) return;
       btnSummarize.disabled = true; status.textContent = 'Status: summarizing...';
       try {
-        const result = await window.summarizeText(geminiTextarea.value);
-        geminiTextarea.value = result;
-        status.textContent = 'Status: done';
-      } catch (e) { toast('Summarize failed'); status.textContent = 'Status: error'; }
-      btnSummarize.disabled = false;
+        const getter = (typeof window.getConversations === 'function') ? window.getConversations : (cb => cb(JSON.parse(localStorage.getItem('chatbridge:conversations') || '[]')));
+        getter(async list => {
+          const arr = Array.isArray(list) ? list : [];
+          if (!arr.length) { toast('No saved conversations'); btnSummarize.disabled = false; status.textContent = 'Status: idle'; return; }
+          let sel = null;
+          try {
+            if (chatSelect && chatSelect.value) {
+              const i = arr.findIndex(v => String(v.ts) === chatSelect.value);
+              sel = i >= 0 ? arr[i] : arr[0];
+            } else { sel = arr[0]; }
+          } catch (_) { sel = arr[0]; }
+          if (!sel || !sel.conversation || !sel.conversation.length) { toast('No messages in selected conversation'); btnSummarize.disabled = false; status.textContent = 'Status: idle'; return; }
+          const inputText = (lastScannedText && lastScannedText.trim()) ? lastScannedText.trim() : sel.conversation.map(m => `${m.role}: ${m.text}`).join('\n');
+          try {
+            const opts = { chunkSize: 14000, maxParallel: 3, length: 'medium', summaryType: 'paragraph' };
+            const result = await hierarchicalSummarize(inputText, opts);
+            btnSummarize.disabled = false;
+            preview.textContent = 'Summary:\n\n' + result;
+            status.textContent = 'Status: done';
+            toast('Summarize completed');
+            restoreToChat(result);
+          } catch (err) {
+            btnSummarize.disabled = false;
+            status.textContent = 'Status: error';
+            toast('Summarize failed: ' + (err && err.message ? err.message : err));
+            debugLog('hierarchicalSummarize error', err);
+          }
+        });
+      } catch (e) {
+        toast('Summarize failed');
+        status.textContent = 'Status: error';
+        btnSummarize.disabled = false;
+      }
     });
 
     btnRewrite.addEventListener('click', async () => {
-      if (!(await loadAiUtils())) return;
       btnRewrite.disabled = true; status.textContent = 'Status: rewriting...';
       try {
-        const result = await window.rewriteText(geminiTextarea.value);
-        geminiTextarea.value = result;
-        status.textContent = 'Status: done';
-      } catch (e) { toast('Rewrite failed'); status.textContent = 'Status: error'; }
-      btnRewrite.disabled = false;
+        const getter = (typeof window.getConversations === 'function') ? window.getConversations : (cb => cb(JSON.parse(localStorage.getItem('chatbridge:conversations') || '[]')));
+        getter(async list => {
+          const arr = Array.isArray(list) ? list : [];
+          if (!arr.length) { toast('No saved conversations'); btnRewrite.disabled = false; status.textContent = 'Status: idle'; return; }
+          let sel = null;
+          try {
+            if (chatSelect && chatSelect.value) {
+              const i = arr.findIndex(v => String(v.ts) === chatSelect.value);
+              sel = i >= 0 ? arr[i] : arr[0];
+            } else { sel = arr[0]; }
+          } catch (_) { sel = arr[0]; }
+          if (!sel || !sel.conversation || !sel.conversation.length) { toast('No messages in selected conversation'); btnRewrite.disabled = false; status.textContent = 'Status: idle'; return; }
+          const inputText = (lastScannedText && lastScannedText.trim()) ? lastScannedText.trim() : sel.conversation.map(m => `${m.role}: ${m.text}`).join('\n');
+          try {
+            const result = await hierarchicalProcess(inputText, 'rewrite', { chunkSize: 14000, maxParallel: 3, length: 'medium' });
+            btnRewrite.disabled = false;
+            preview.textContent = 'Rewritten:\n\n' + result;
+            status.textContent = 'Status: done';
+            toast('Rewrite completed');
+            restoreToChat(result);
+          } catch (err) {
+            btnRewrite.disabled = false;
+            status.textContent = 'Status: error';
+            toast('Rewrite failed: ' + (err && err.message ? err.message : err));
+            debugLog('hierarchicalProcess rewrite error', err);
+          }
+        });
+      } catch (e) {
+        toast('Rewrite failed');
+        status.textContent = 'Status: error';
+        btnRewrite.disabled = false;
+      }
     });
 
     btnTranslate.addEventListener('click', async () => {
-      if (!(await loadAiUtils())) return;
       btnTranslate.disabled = true; status.textContent = 'Status: translating...';
       try {
         const lang = prompt('Translate to which language? (e.g. Japanese, French, Spanish)', 'Japanese') || 'Japanese';
-        const result = await window.translateText(geminiTextarea.value, lang);
-        geminiTextarea.value = result;
-        status.textContent = 'Status: done';
-      } catch (e) { toast('Translate failed'); status.textContent = 'Status: error'; }
-      btnTranslate.disabled = false;
+        const getter = (typeof window.getConversations === 'function') ? window.getConversations : (cb => cb(JSON.parse(localStorage.getItem('chatbridge:conversations') || '[]')));
+        getter(async list => {
+          const arr = Array.isArray(list) ? list : [];
+          if (!arr.length) { toast('No saved conversations'); btnTranslate.disabled = false; status.textContent = 'Status: idle'; return; }
+          let sel = null;
+          try {
+            if (chatSelect && chatSelect.value) {
+              const i = arr.findIndex(v => String(v.ts) === chatSelect.value);
+              sel = i >= 0 ? arr[i] : arr[0];
+            } else { sel = arr[0]; }
+          } catch (_) { sel = arr[0]; }
+          if (!sel || !sel.conversation || !sel.conversation.length) { toast('No messages in selected conversation'); btnTranslate.disabled = false; status.textContent = 'Status: idle'; return; }
+          const inputText = (lastScannedText && lastScannedText.trim()) ? lastScannedText.trim() : sel.conversation.map(m => `${m.role}: ${m.text}`).join('\n');
+          try {
+            const result = await hierarchicalProcess(inputText, 'translate', { chunkSize: 14000, maxParallel: 3, length: 'medium', extraPayload: { targetLang: lang } });
+            btnTranslate.disabled = false;
+            preview.textContent = `Translated (${lang}):\n\n` + result;
+            status.textContent = 'Status: done';
+            toast('Translate completed');
+            restoreToChat(result);
+          } catch (err) {
+            btnTranslate.disabled = false;
+            status.textContent = 'Status: error';
+            toast('Translate failed: ' + (err && err.message ? err.message : err));
+            debugLog('hierarchicalProcess translate error', err);
+          }
+        });
+      } catch (e) {
+        toast('Translate failed');
+        status.textContent = 'Status: error';
+        btnTranslate.disabled = false;
+      }
     });
 
     function refreshHistory() {
@@ -460,8 +737,8 @@
       getter(list => {
         const arr = Array.isArray(list) ? list : [];
         if (!arr.length) {
-          historyEl.textContent = 'History: (none)';
-          preview.textContent = 'Preview: (none)';
+            historyEl.textContent = 'History: (none)';
+            preview.textContent = 'Preview: (none)';
           // reset dropdown to a single disabled option
           try {
             const prev = chatSelect.value;
@@ -472,7 +749,13 @@
           return;
         }
         // History text
-        historyEl.textContent = arr.slice(0,6).map(s => `${s.platform} — ${(s.conversation||[]).length} msgs — ${new Date(s.ts).toLocaleString()}`).join('\n\n');
+        historyEl.textContent = arr.slice(0,6).map(s => {
+          let host = s.platform || 'chat';
+          try { host = new URL(s.url||location.href).hostname; } catch (_) {}
+          const date = new Date(s.ts);
+          const timeStr = date.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+          return `${host} • ${(s.conversation||[]).length} msgs • ${timeStr}`;
+        }).join('\n\n');
         // Default preview from first conversation
         preview.textContent = 'Preview: ' + (arr[0] && arr[0].conversation && arr[0].conversation[0] ? arr[0].conversation[0].text.slice(0,200) : '(none)');
 
@@ -486,7 +769,11 @@
             const count = (s.conversation||[]).length;
             let host = s.platform || 'chat';
             try { host = new URL(s.url||location.href).hostname; } catch (_) {}
-            o.textContent = `${host} — ${count} msgs — ${new Date(s.ts).toLocaleString()}`;
+            // Truncate hostname if too long
+            if (host.length > 15) host = host.substring(0, 12) + '...';
+            const date = new Date(s.ts);
+            const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            o.textContent = `${host} • ${count} msgs • ${timeStr}`;
             chatSelect.appendChild(o);
           });
           // restore previous selection if still present, else select the latest (first in list)
