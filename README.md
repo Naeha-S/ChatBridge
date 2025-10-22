@@ -1,14 +1,11 @@
-# ⚡ ChatBridge# ⚡ ChatBridge
-
+# ⚡ ChatBridge ⚡
 
 
 > **Seamlessly continue AI conversations across multiple platforms with intelligent transformation and enhancement tools**
 
-> **Seamlessly continue AI conversations across multiple platforms with intelligent transformation and enhancement tools**A Chrome extension that seamlessly bridges conversations across multiple AI chat platforms (Gemini, ChatGPT, Claude, and more).
+**Seamlessly continue AI conversations across multiple platforms with intelligent transformation and enhancement tools**A Chrome extension that seamlessly bridges conversations across multiple AI chat platforms (Gemini, ChatGPT, Claude, and more).
 
 ChatBridge is a powerful Chrome extension that bridges conversations between different AI chat platforms (ChatGPT, Claude, Gemini, Perplexity, and more), while providing built-in AI-powered tools to summarize, rewrite, translate, and optimize your chats.
-
-
 
 ---
 
@@ -20,18 +17,16 @@ ChatBridge is a Chrome extension that bridges conversations between AI chat plat
 
 Break down the silos between AI platforms and empower users to:
 
-- **Switch platforms freely** without losing conversation context---- **Smart Message Extraction**: Precisely captures user and assistant messages from chat platforms
-
+- **Switch platforms freely** without losing conversation context
+- **Smart Message Extraction**: Precisely captures user and assistant messages from chat platforms
 - **Transform conversations** to match the communication style of different AI models
-
-- **Enhance productivity** with intelligent summarization, translation, and rewriting- **Cross-Platform Support**: Works with Gemini, ChatGPT, Claude, Perplexity, Poe, and more
-
+- **Enhance productivity** with intelligent summarization, translation, and rewriting
+- **Cross-Platform Support**: Works with Gemini, ChatGPT, Claude, Perplexity, Poe, and more
 - **Maintain privacy** with local-first processing and secure API key storage
 
 ## 🎯 Project Aim- **Context Preservation**: Maintains conversation history when switching between platforms
 
 ---
-
 - **UI Chrome Filtering**: Intelligently excludes buttons, suggestions, and system messages
 
 ## 🔍 Problem Statement
@@ -47,17 +42,13 @@ As AI assistants proliferate, users face several key problems:
 - **Transform conversations** to match the communication style of different AI models## Development
 
 1. **Context Loss**: Starting fresh conversations on a new platform means losing valuable context and history
-
-2. **Platform Lock-in**: Conversations become trapped in a single platform's ecosystem- **Enhance productivity** with intelligent summarization, translation, and rewriting
-
-3. **Manual Copying**: Time-consuming manual copy-paste between platforms with formatting issues
-
-4. **Model-Specific Language**: Each AI has different "communication styles" that work better with specific prompting approaches- **Maintain privacy** with local-first processing and secure API key storage### Running Tests
-
-5. **Information Overload**: Long conversations become difficult to reference and share
-
-6. **Language Barriers**: Multilingual users need to translate conversations across platforms
-
+2. **Platform Lock-in**: Conversations become trapped in a single platform's ecosystem
+3. **Enhance productivity** with intelligent summarization, translation, and rewriting
+4. **Manual Copying**: Time-consuming manual copy-paste between platforms with formatting issues
+5. **Model-Specific Language**: Each AI has different "communication styles" that work better with specific prompting approaches
+6.  **Maintain privacy** with local-first processing and secure API key storage### Running Tests
+7. **Information Overload**: Long conversations become difficult to reference and share
+8. **Language Barriers**: Multilingual users need to translate conversations across platforms
 
 
 ### The Solution---Comprehensive regression tests ensure message scraping remains accurate:
@@ -67,56 +58,21 @@ As AI assistants proliferate, users face several key problems:
 ChatBridge provides a unified interface to:
 
 - **Intelligently scan** conversations from any supported AI platform
-
 - **Preserve context** when moving between platforms## 🔍 Problem Statement:
-
 - **Transform content** with AI-powered tools (summarize, rewrite, translate)
-
-- **Optimize prompts** for specific AI models with tone synchronizationAs AI assistants proliferate, users face several key problems:# Run only adapter regression tests
-
-- **Restore conversations** seamlessly into any platform's chat interface
-
-npx playwright test tests/adapter-regression.spec.ts
+- **Optimize prompts** for specific AI models with tone synchronizationAs AI assistants proliferate, users face several key problems
+- **Restore conversations** seamlessly into any platform's chat interfaces
 
 ---
-
-1. **Context Loss**: Starting fresh conversations on a new platform means losing valuable context and history
-
 ## ✨ Key Features
-
-2. **Platform Lock-in**: Conversations become trapped in a single platform's ecosystem# Run tests with UI
-
-### 🌐 Universal Platform Support
-
-3. **Manual Copying**: Time-consuming manual copy-paste between platforms with formatting issuesnpx playwright test --ui
-
-Works seamlessly across major AI platforms:
-
-- **ChatGPT** (chat.openai.com, chatgpt.com)4. **Model-Specific Language**: Each AI has different "communication styles" that work better with specific prompting approaches```
-
-- **Claude** (claude.ai)
-
-- **Google Gemini** (gemini.google.com)5. **Information Overload**: Long conversations become difficult to reference and share
-
-- **Perplexity AI** (perplexity.ai)
-
-- **Poe** (poe.com)6. **Language Barriers**: Multilingual users need to translate conversations across platforms### Test Coverage
-
-- **Microsoft Copilot** (copilot.microsoft.com)   
-
-- **Grok (X.AI)** (x.ai)
-
-- **DeepSeek** (deepseek.ai)### Architecture
-
-- **Mistral** (chat.mistral.ai)
-
-- **Meta AI** (meta.ai)---
-
-
+- 1. **Context Loss**: Starting fresh conversations on a new platform means losing valuable context and history
+- 2. **Platform Lock-in**: Conversations become trapped in a single platform's ecosystem# Run tests with UI
+- 3. **Manual Copying**: Time-consuming manual copy-paste between platforms with formatting issuesnpx playwright test --ui
+- 4. **Model-Specific Language**: Each AI has different "communication styles" that work better with specific prompting approaches```
+- 5. **Information Overload**: Long conversations become difficult to reference and share
+- 6. **Language Barriers**: Multilingual users need to translate conversations across platforms### Test Coverage
 
 ### 🧠 Smart Message Extraction```
-
-
 
 - Adapter-based architecture with platform-specific extraction logic## ✨ Key FeaturesChatBridge/
 
@@ -491,100 +447,7 @@ ChatBridge uses Google Gemini API for AI features. A default key is included for
 (Future: Add build/packaging steps here)
 
 ```
-
-ChatBridge/### Architecture Patterns
-
-├── manifest.json              # Extension manifest (V3)
-
-├── content_script.js          # Main UI and logic (1200+ lines)- **Adapter Pattern** - Pluggable platform-specific extractors## Privacy
-
-├── background.js              # Service worker for API calls
-
-├── adapters.js                # Platform-specific message extractors- **Observer Pattern** - Event-driven communication between components
-
-├── storage.js                 # Storage abstraction layer
-
-├── popup.html/js              # Extension popup interface- **Strategy Pattern** - Configurable processing strategies (summarize styles, rewrite modes)See [PRIVACY.md](PRIVACY.md) for details on data handling and API key storage.
-
-├── options.html/js            # Settings/options page
-
-├── styles.css                 # Global styles- **Singleton Pattern** - Shared state management and storage abstraction
-
-└── icons/                     # Extension icons
-
 ```## 🚀 Installation & Setup
-
-
-
-### Key Files Explained1. Fork the repository
-
-
-
-**`adapters.js`** - Platform detection and message extraction1. **Clone the repository**2. Create a feature branch
-
-- Each adapter implements: `detect()`, `getMessages()`, `getInput()`, `scrollContainer()`
-
-- Handles platform-specific DOM structures and quirks   ```bash3. Make your changes
-
-
-
-**`content_script.js`** - Core extension logic   git clone https://github.com/Naeha-S/ChatBridge.git4. Add tests for new functionality
-
-- Shadow DOM UI rendering
-
-- Conversation scanning orchestration   cd ChatBridge5. Run the test suite: `npm run test:acceptance`
-
-- AI processing functions (hierarchical chunking, parallel processing)
-
-- Event handlers for all UI buttons   ```6. Submit a pull request
-
-- Message restoration logic
-
-
-
-**`background.js`** - Background service worker
-
-- Gemini API integration2. **Load extension in Chrome**## Troubleshooting
-
-- Rate limiting (token bucket algorithm)
-
-- Retry/backoff logic for API calls   - Open Chrome and navigate to `chrome://extensions/`
-
-- Secure API key handling
-
-   - Enable **Developer mode** (toggle in top-right corner)### Extension shows "Extension context invalidated"
-
-**`storage.js`** - Storage abstraction
-
-- Chrome Storage API wrapper   - Click **"Load unpacked"**
-
-- LocalStorage fallback
-
-- Graceful error handling   - Select the `ChatBridge` directoryThis happens when the extension is reloaded. The storage fallback system will automatically use `localStorage` until the next page refresh.
-
-
-
----   - The ChatBridge icon (⚡) should appear in your toolbar
-
-
-
-## 🎁 Benefits### Messages not being captured correctly
-
-
-
-### For Users3. **Pin the extension** (optional but recommended)
-
-- ✅ **Freedom**: Switch AI platforms without losing context
-
-- ✅ **Productivity**: Summarize, translate, enhance conversations in seconds   - Click the puzzle icon in Chrome toolbar1. Open browser DevTools (F12)
-
-- ✅ **Privacy**: Your data stays local and secure
-
-- ✅ **Efficiency**: Parallel processing makes bulk operations fast   - Find "ChatBridge" and click the pin icon2. Navigate to the Console tab
-
-- ✅ **Flexibility**: 20+ languages, multiple formats, customizable styles
-
-   - The ⚡ icon will now be visible for quick access3. Click "Scan Chat" button
 
 ### For Developers
 
@@ -646,16 +509,6 @@ ChatBridge/### Architecture Patterns
 
 3. Click **"Settings"** (or right-click extension → Options)- [ ] Support for multi-turn conversation editing
 
-### API rate limiting
-
-- Default: 1 request/sec with burst of 54. Paste your API key and save
-
-- Wait a few seconds between operations
-
-- Use your own Gemini API key for higher limits---
-
-
-
 ### Extension context invalidated---
 
 - Happens when extension is reloaded during use
@@ -697,104 +550,6 @@ ChatBridge/### Architecture Patterns
    - Wait for transformation (shows progress)
 
 ---   - Click **"Insert to Chat"** to paste optimized version
-
-
-
-## 📄 License   **📝 Summarize** - Condense long chats:
-
-   - Choose length (short/medium/long/comprehensive)
-
-MIT License - See LICENSE file for details   - Select style (paragraph/bullet/executive/technical)
-
-   - Click **"📝 Summarize"**
-
----   - See progress indicator as chunks are processed
-
-   - Click **"Insert to Chat"** when complete
-
-## 🤝 Contributing
-
-   **✍️ Rewrite** - Improve clarity and tone:
-
-Contributions welcome! Please:   - Select style (normal/concise/direct/detailed/academic)
-
-   - Click **"✍️ Rewrite"**
-
-1. Fork the repository   - Review rewritten version
-
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)   - Click **"Insert to Chat"**
-
-3. Make your changes with clear commit messages
-
-4. Submit a pull request   **🌐 Translate** - Convert to another language:
-
-   - Select target language (20+ options)
-
----   - Click **"🌐 Translate"**
-
-   - Get clean translation (no extra explanations)
-
-## 👤 Author   - Click **"Insert to Chat"**
-
-
-
-**Naeha S**3. **Restore to Another Platform**
-
-- GitHub: [@Naeha-S](https://github.com/Naeha-S)   - Navigate to a different AI platform
-
-   - Open the ChatBridge sidebar (⚡ button)
-
----   - Select a saved conversation from dropdown
-
-   - Click **"♻️ Restore"**
-
-## 📞 Support   - Conversation is automatically pasted into the chat input
-
-   - Press Enter to start chatting!
-
-- **Issues**: [GitHub Issues](https://github.com/Naeha-S/ChatBridge/issues)
-
-- **Discussions**: [GitHub Discussions](https://github.com/Naeha-S/ChatBridge/discussions)### Pro Tips
-
-- **Privacy**: See [PRIVACY.md](PRIVACY.md)
-
-- **Progress Indicators**: Watch the animated dots (. . .) for real-time processing status
-
----- **Chunking**: Long conversations are automatically split and processed in parallel
-
-- **History**: Recent scans are saved automatically in the dropdown
-
-## 🙏 Acknowledgments- **Clipboard**: Use **"📋 Clipboard"** to copy raw conversation text
-
-- **Multiple Saves**: Switch between multiple saved conversations via dropdown
-
-- Google Gemini API for AI processing
-
-- Chrome Extensions team for excellent documentation---
-
-- All AI platforms for their amazing products
-
-## 🔧 Development
-
----
-
-### Prerequisites
-
-**⚡ Built with passion to break down barriers between AI platforms**
-
-- Node.js 18+ and npm
-- Chrome browser
-- Basic understanding of Chrome Extensions
-
-### Setup Development Environment
-
-```bash
-# Install dependencies
-npm install
-
-# Install Playwright browsers
-npm run pw:install
-```
 
 ### Project Structure
 
