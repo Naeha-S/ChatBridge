@@ -1,14 +1,13 @@
-# ⚡ ChatBridge# ChatBridge
-
+# ⚡ ChatBridge
 
 
 > **Seamlessly continue AI conversations across multiple platforms with intelligent transformation and enhancement tools**A Chrome extension that seamlessly bridges conversations across multiple AI chat platforms (Gemini, ChatGPT, Claude, and more).
 
 
 
-ChatBridge is a powerful Chrome extension that bridges conversations between different AI chat platforms (ChatGPT, Claude, Gemini, Perplexity, and more), while providing built-in AI-powered tools to summarize, rewrite, translate, and optimize your chats.## Features
+ChatBridge is a Chrome extension that bridges conversations between AI chat platforms like ChatGPT, Claude, Gemini, Perplexity, and more. It captures your chats, transforms them intelligently (summarize, rewrite, translate, sync tone), and restores them across platforms — all locally and securely.
 
-
+**Features:**
 
 ---- **Smart Message Extraction**: Precisely captures user and assistant messages from chat platforms
 
@@ -34,13 +33,7 @@ Break down the silos between AI platforms and empower users to:- **Restore Conve
 
 
 
-## 🔍 Problem Statement```powershell
-
-# Run all tests
-
-### The Challengenpm run test:acceptance
-
-
+## 🔍 Problem Statement:
 
 As AI assistants proliferate, users face several key problems:# Run only adapter regression tests
 
@@ -57,24 +50,7 @@ npx playwright test tests/adapter-regression.spec.ts
 5. **Information Overload**: Long conversations become difficult to reference and share
 
 6. **Language Barriers**: Multilingual users need to translate conversations across platforms### Test Coverage
-
-
-
-### The SolutionThe test suite validates:
-
-
-
-ChatBridge provides a unified interface to:- **Gemini Adapter**: Extracts exactly 2 messages (user + assistant) from native `<user-query>` and `<model-response>` tags
-
-- **Intelligently scan** conversations from any supported AI platform- **ChatGPT Adapter**: Captures messages using `[data-message-author-role]` selectors
-
-- **Preserve context** when moving between platforms- **Claude Adapter**: Deep scans `<p>`, `.whitespace-pre-wrap`, `.break-words` nodes and merges assistant fragments
-
-- **Transform content** with AI-powered tools (summarize, rewrite, translate)- **UI Chrome Filtering**: Excludes sidebar conversations, regenerate buttons, system messages, and footer text
-
-- **Optimize prompts** for specific AI models with tone synchronization- **Cross-Platform Consistency**: Ensures all adapters return the same message structure
-
-- **Restore conversations** seamlessly into any platform's chat interface
+   
 
 ### Architecture
 
@@ -224,27 +200,6 @@ Break language barriers with 20+ supported languages:// Claude
 
 - Local storage with Chrome sync support{
 
-- Export conversations to clipboard  id: "myplatform",
-
-  label: "My Platform",
-
-### 🔒 Privacy & Security  detect: () => location.hostname.includes("myplatform.com"),
-
-  scrollContainer: () => document.querySelector('.chat-container'),
-
-- **Local-first**: Conversations stored locally in your browser  getMessages: () => {
-
-- **Secure API keys**: Stored in Chrome's encrypted storage    // Extract messages from the page
-
-- **No third-party tracking**: Your data never leaves your control    const nodes = Array.from(document.querySelectorAll('.message'));
-
-- **Open source**: Full transparency of data handling    return nodes.map(n => ({
-
-      role: n.classList.contains('user') ? 'user' : 'assistant',
-
----      text: n.innerText.trim()
-
-    }));
 
 ## 🏗️ Tech Stack  },
 
@@ -300,17 +255,7 @@ Break language barriers with 20+ supported languages:// Claude
 
 - **Singleton Pattern** - Shared state management and storage abstraction
 
-## License
-
----
-
-(Add license information here)
-
 ## 🚀 Installation & Setup
-
-## Contributing
-
-### Quick Start (Chrome)
 
 1. Fork the repository
 
@@ -552,22 +497,6 @@ ChatBridge/
 - Happens when extension is reloaded during use
 - Storage automatically falls back to localStorage
 - Reload the page to restore full functionality
-
----
-
-## 🗺️ Roadmap
-
-### Planned Features
-- [ ] Export conversations to Markdown/JSON
-- [ ] Conversation branching and merge tools
-- [ ] Custom prompt templates
-- [ ] Keyboard shortcuts for quick access
-- [ ] Batch processing multiple conversations
-- [ ] Conversation search and filtering
-- [ ] Support for more AI platforms (Cohere, Anthropic Console, etc.)
-- [ ] Conversation analytics and insights
-- [ ] Team/shared conversation spaces
-
 ---
 
 ## 👤 Author
