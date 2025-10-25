@@ -12,6 +12,37 @@
     window.__CHATBRIDGE.MAX_MESSAGES = window.__CHATBRIDGE.MAX_MESSAGES || 200;
   }
 
+  // APPROVED SITES - Only show avatar/sidebar on these domains
+  const APPROVED_SITES = [
+    'chat.openai.com',
+    'chatgpt.com',
+    'gemini.google.com',
+    'claude.ai',
+    'chat.mistral.ai',
+    'deepseek.ai',
+    'www.perplexity.ai',
+    'perplexity.ai',
+    'poe.com',
+    'x.ai',
+    'copilot.microsoft.com',
+    'www.bing.com',
+    'meta.ai'
+  ];
+
+  // Check if current site is approved
+  function isApprovedSite() {
+    const hostname = window.location.hostname;
+    return APPROVED_SITES.some(site => hostname === site || hostname.endsWith('.' + site));
+  }
+
+  // Exit early if not on approved site
+  if (!isApprovedSite()) {
+    console.log('[ChatBridge] Not on approved site, skipping injection. Current:', window.location.hostname);
+    return;
+  }
+
+  console.log('[ChatBridge] Injecting on approved site:', window.location.hostname);
+
   // avoid const redeclaration causing SyntaxError in some injection scenarios
   var CB_MAX_MESSAGES = (typeof window !== 'undefined' && window.__CHATBRIDGE && window.__CHATBRIDGE.MAX_MESSAGES) ? window.__CHATBRIDGE.MAX_MESSAGES : 200;
   const DOM_STABLE_MS = 600;
@@ -560,7 +591,26 @@
   const msgs = await scanChat();
   // persist lastScannedText for clipboard and Sync view
   try { if (Array.isArray(msgs) && msgs.length) { lastScannedText = msgs.map(m => `${m.role}: ${m.text}`).join('\n\n'); } } catch (e) {}
-  if (!msgs || !msgs.length) { status.textContent = 'Status: no messages'; toast('No messages found in current chat'); }
+  if (!msgs || !msgs.length) { 
+          // Check if there were errors during scan
+          let errorMsg = 'No messages found in current chat';
+          try {
+            if (window.ChatBridge && window.ChatBridge._lastScan && window.ChatBridge._lastScan.errors && window.ChatBridge._lastScan.errors.length) {
+              errorMsg += '\n\nErrors: ' + window.ChatBridge._lastScan.errors.join(', ');
+              console.error('[ChatBridge] Scan errors:', window.ChatBridge._lastScan.errors);
+            }
+            if (window.ChatBridge && window.ChatBridge._lastScan) {
+              console.log('[ChatBridge] Scan debug info:', {
+                adapter: window.ChatBridge._lastScan.adapterId,
+                container: window.ChatBridge._lastScan.chosenContainer,
+                nodesConsidered: window.ChatBridge._lastScan.nodesConsidered,
+                errors: window.ChatBridge._lastScan.errors
+              });
+            }
+          } catch (e) {}
+          status.textContent = 'Status: no messages'; 
+          toast(errorMsg);
+        }
         else {
           const final = normalizeMessages(msgs);
           const conv = { platform: location.hostname, url: location.href, ts: Date.now(), conversation: final };
@@ -1152,16 +1202,22 @@
 
   async function scanChat() {
     try {
+      debugLog('=== SCAN START ===');
       const pick = (typeof window.pickAdapter === 'function') ? window.pickAdapter : null;
       const adapter = pick ? pick() : null;
+      debugLog('adapter detected:', adapter ? adapter.id : 'none');
+      
       // prefer container near the input/composer when available to avoid picking sidebars
       let container = null;
       try {
         const inputEl = (adapter && typeof adapter.getInput === 'function') ? adapter.getInput() : (document.querySelector('textarea, [contenteditable="true"], input[type=text]'));
+        debugLog('input element found:', !!inputEl, inputEl ? inputEl.tagName : 'none');
+        
         if (inputEl) {
           try {
             if (typeof window.findChatContainerNearby === 'function') {
               container = window.findChatContainerNearby(inputEl) || null;
+              debugLog('container from findChatContainerNearby:', !!container);
             } else {
               // fallback: climb parents searching for an element with multiple message-like children
               let p = inputEl.parentElement; let found = null; let depth = 0;
@@ -1171,24 +1227,48 @@
                   // Require container to be reasonably wide (not a narrow sidebar)
                   const rect = p.getBoundingClientRect();
                   if (cnt >= 2 && rect.width > 400) found = p;
-                } catch (e) {}
+                } catch (e) { debugLog('container climb error at depth', depth, e); }
                 p = p.parentElement; depth++;
               }
               container = found || null;
+              debugLog('container from parent climb:', !!container, 'depth:', depth);
             }
-          } catch (e) { container = null; }
+          } catch (e) { 
+            debugLog('container detection error:', e);
+            container = null; 
+          }
         }
-      } catch (e) { container = null; }
-      container = container || (adapter && adapter.scrollContainer && adapter.scrollContainer()) || document.querySelector('main') || document.body;
+      } catch (e) { 
+        debugLog('input/container detection error:', e);
+        container = null; 
+      }
+      
+      // Fallback chain with error handling
+      if (!container) {
+        try {
+          container = (adapter && adapter.scrollContainer && adapter.scrollContainer()) || null;
+          debugLog('container from adapter.scrollContainer:', !!container);
+        } catch (e) {
+          debugLog('adapter.scrollContainer error:', e);
+        }
+      }
+      
+      if (!container) {
+        container = document.querySelector('main') || document.body;
+        debugLog('container fallback to main/body:', container.tagName);
+      }
       
       // Final validation - if chosen container is too narrow, try main or body
       try {
         const rect = container.getBoundingClientRect();
+        debugLog('container width:', rect.width + 'px');
         if (rect.width < 400) {
           debugLog('chosen container too narrow (' + rect.width + 'px), falling back to main/body');
           container = document.querySelector('main') || document.body;
         }
-      } catch (e) {}
+      } catch (e) {
+        debugLog('container width check error:', e);
+      }
       
       debugLog('chosen container', { 
         adapter: adapter && adapter.id, 
@@ -1204,30 +1284,143 @@
           timestamp: Date.now(), 
           nodesConsidered: 0, 
           containerEl: container,
-          containerWidth: container && Math.round(container.getBoundingClientRect().width)
+          containerWidth: container && Math.round(container.getBoundingClientRect().width),
+          errors: []
         }; 
-      } catch (e) {}
-      await scrollContainerToTop(container);
-      await waitForDomStability(container);
-      let raw = [];
-      try { if (adapter && typeof adapter.getMessages === 'function') raw = adapter.getMessages() || []; } catch (e) { debugLog('adapter.getMessages error', e); }
-      if ((!raw || !raw.length) && typeof window.AdapterGeneric !== 'undefined' && typeof window.AdapterGeneric.getMessages === 'function') {
-        try { raw = window.AdapterGeneric.getMessages() || []; } catch (e) { debugLog('AdapterGeneric failed', e); }
+      } catch (e) {
+        debugLog('_lastScan init error:', e);
       }
+      
+      // Scroll and wait for stability with error handling
+      try {
+        await scrollContainerToTop(container);
+        debugLog('scroll complete');
+      } catch (e) {
+        debugLog('scroll error:', e);
+        // Continue anyway - scroll failure shouldn't block scan
+        try {
+          if (window.ChatBridge && window.ChatBridge._lastScan) {
+            window.ChatBridge._lastScan.errors.push('scroll_failed: ' + (e.message || String(e)));
+          }
+        } catch (_) {}
+      }
+      
+      try {
+        await waitForDomStability(container);
+        debugLog('DOM stable');
+      } catch (e) {
+        debugLog('DOM stability wait error:', e);
+        // Continue anyway - stability timeout shouldn't block scan
+        try {
+          if (window.ChatBridge && window.ChatBridge._lastScan) {
+            window.ChatBridge._lastScan.errors.push('stability_timeout: ' + (e.message || String(e)));
+          }
+        } catch (_) {}
+      }
+      
+      let raw = [];
+      
+      // Try adapter.getMessages with error handling
+      try { 
+        if (adapter && typeof adapter.getMessages === 'function') {
+          raw = adapter.getMessages() || [];
+          debugLog('adapter.getMessages returned:', raw.length, 'messages');
+        }
+      } catch (e) { 
+        debugLog('adapter.getMessages error:', e);
+        try {
+          if (window.ChatBridge && window.ChatBridge._lastScan) {
+            window.ChatBridge._lastScan.errors.push('adapter_failed: ' + (e.message || String(e)));
+          }
+        } catch (_) {}
+      }
+      
+      // Try AdapterGeneric fallback
+      if ((!raw || !raw.length) && typeof window.AdapterGeneric !== 'undefined' && typeof window.AdapterGeneric.getMessages === 'function') {
+        try { 
+          raw = window.AdapterGeneric.getMessages() || [];
+          debugLog('AdapterGeneric.getMessages returned:', raw.length, 'messages');
+        } catch (e) { 
+          debugLog('AdapterGeneric failed:', e);
+          try {
+            if (window.ChatBridge && window.ChatBridge._lastScan) {
+              window.ChatBridge._lastScan.errors.push('generic_adapter_failed: ' + (e.message || String(e)));
+            }
+          } catch (_) {}
+        }
+      }
+      
+      // Last resort: manual node extraction
       if (!raw || !raw.length) {
-        const sel = '.message, .chat-line, .message-text, .markdown, .prose, p, li, div'; let nodes = [];
-        try { nodes = Array.from((container || document).querySelectorAll(sel)); } catch (e) { nodes = Array.from(document.querySelectorAll('p,div,li')); }
-        nodes = nodes.filter(n => n && n.innerText && n.closest && !n.closest('[data-cb-ignore], #cb-host'));
-        nodes = filterCandidateNodes(nodes);
+        debugLog('falling back to manual node extraction');
+        const sel = '.message, .chat-line, .message-text, .markdown, .prose, p, li, div'; 
+        let nodes = [];
+        try { 
+          nodes = Array.from((container || document).querySelectorAll(sel));
+          debugLog('querySelectorAll found:', nodes.length, 'nodes');
+        } catch (e) { 
+          debugLog('querySelectorAll error, trying fallback selectors:', e);
+          try {
+            nodes = Array.from(document.querySelectorAll('p,div,li'));
+            debugLog('fallback querySelectorAll found:', nodes.length, 'nodes');
+          } catch (e2) {
+            debugLog('fallback querySelectorAll error:', e2);
+            nodes = [];
+          }
+        }
+        
+        try {
+          nodes = nodes.filter(n => n && n.innerText && n.closest && !n.closest('[data-cb-ignore], #cb-host'));
+          debugLog('after filtering ignored:', nodes.length, 'nodes');
+          nodes = filterCandidateNodes(nodes);
+          debugLog('after filterCandidateNodes:', nodes.length, 'nodes');
+        } catch (e) {
+          debugLog('node filtering error:', e);
+          // Keep unfiltered nodes if filtering fails
+        }
   try { if (window.ChatBridge && window.ChatBridge._lastScan) window.ChatBridge._lastScan.nodesConsidered = nodes.length; } catch (e) {}
   // optionally highlight nodes for debug
-  try { if (CB_HIGHLIGHT_ENABLED || DEBUG) highlightNodesByElements(nodes); } catch (e) {}
-  raw = nodes.map(n => ({ text: (n.innerText||'').trim(), role: inferRoleFromNode(n), el: n }));
+  try { if (CB_HIGHLIGHT_ENABLED || DEBUG) highlightNodesByElements(nodes); } catch (e) { debugLog('highlight error:', e); }
+  
+  try {
+    raw = nodes.map(n => ({ text: (n.innerText||'').trim(), role: inferRoleFromNode(n), el: n }));
+    debugLog('mapped to', raw.length, 'raw messages');
+  } catch (e) {
+    debugLog('node mapping error:', e);
+    raw = [];
+  }
       }
+    
+    debugLog('raw messages before normalization:', raw.length);
     try { if (window.ChatBridge && window.ChatBridge._lastScan) { window.ChatBridge._lastScan.messageCount = (raw && raw.length) || 0; } } catch (e) {}
     try { if (window.ChatBridge && typeof window.ChatBridge._renderLastScan === 'function') window.ChatBridge._renderLastScan(); } catch (e) {}
-    return normalizeMessages(raw || []);
-    } catch (e) { debugLog('scan error', e); return []; }
+    
+    const normalized = normalizeMessages(raw || []);
+    debugLog('=== SCAN COMPLETE ===', normalized.length, 'messages');
+    
+    // Log any errors that occurred
+    try {
+      if (window.ChatBridge && window.ChatBridge._lastScan && window.ChatBridge._lastScan.errors && window.ChatBridge._lastScan.errors.length) {
+        debugLog('Scan completed with errors:', window.ChatBridge._lastScan.errors);
+      }
+    } catch (e) {}
+    
+    return normalized;
+    } catch (e) { 
+      debugLog('=== SCAN FAILED ===', e);
+      console.error('[ChatBridge] Fatal scan error:', e);
+      
+      // Store error for debugging
+      try {
+        if (window.ChatBridge && window.ChatBridge._lastScan) {
+          window.ChatBridge._lastScan.fatalError = e.message || String(e);
+          window.ChatBridge._lastScan.errors = window.ChatBridge._lastScan.errors || [];
+          window.ChatBridge._lastScan.errors.push('fatal: ' + (e.message || String(e)));
+        }
+      } catch (_) {}
+      
+      return []; 
+    }
   }
 
   async function saveConversation(conv) {
@@ -1239,9 +1432,105 @@
   window.ChatBridge.scanChat = scanChat;
   window.ChatBridge.saveConversation = saveConversation;
   window.ChatBridge.highlightScan = function(enable) { try { CB_HIGHLIGHT_ENABLED = !!enable; if (!CB_HIGHLIGHT_ENABLED) clearHighlights(); else ensureHighlightStyles(); return CB_HIGHLIGHT_ENABLED; } catch (e) { return false; } };
+  window.ChatBridge.enableDebug = function() { 
+    try { 
+      window.__CHATBRIDGE_DEBUG = true; 
+      console.log('[ChatBridge] Debug mode enabled. Reload the page for full effect.'); 
+      return true; 
+    } catch (e) { return false; } 
+  };
+  window.ChatBridge.disableDebug = function() { 
+    try { 
+      window.__CHATBRIDGE_DEBUG = false; 
+      console.log('[ChatBridge] Debug mode disabled. Reload the page for full effect.'); 
+      return true; 
+    } catch (e) { return false; } 
+  };
+  window.ChatBridge.getLastScan = function() { 
+    try { 
+      return window.ChatBridge._lastScan || null; 
+    } catch (e) { return null; } 
+  };
 
   // bootstrap UI and auto-scan
-  try { injectUI(); setTimeout(async ()=>{ const msgs = await scanChat(); if (msgs && msgs.length) { await saveConversation({ platform: location.hostname, url: location.href, ts: Date.now(), conversation: msgs }); debugLog('auto-saved', msgs.length); } }, 450); } catch (e) { debugLog('boot error', e); }
+  try { 
+    const ui = injectUI(); 
+    
+    // Keyboard command handlers
+    if (ui && ui.avatar && ui.panel) {
+      chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+        if (!msg || !msg.type) return;
+        
+        try {
+          if (msg.type === 'keyboard_command') {
+            const command = msg.command;
+            
+            if (command === 'quick-scan') {
+              // Ctrl+Shift+S: Open sidebar and trigger scan
+              if (ui.panel.style.display === 'none') {
+                ui.avatar.click(); // Open sidebar
+              }
+              setTimeout(() => {
+                const shadow = ui.panel.getRootNode();
+                const btnScan = shadow.querySelector('#btnScan');
+                if (btnScan) btnScan.click();
+              }, 100);
+              sendResponse({ ok: true });
+            } 
+            else if (command === 'toggle-sidebar') {
+              // Ctrl+Shift+H: Toggle sidebar visibility
+              ui.avatar.click();
+              sendResponse({ ok: true });
+            } 
+            else if (command === 'close-view') {
+              // Escape: Close internal views or sidebar
+              const shadow = ui.panel.getRootNode();
+              const openView = shadow.querySelector('.cb-internal-view.cb-view-active');
+              if (openView) {
+                // Close internal view
+                const closeBtn = openView.querySelector('.cb-view-close');
+                if (closeBtn) closeBtn.click();
+              } else if (ui.panel.style.display !== 'none') {
+                // Close sidebar
+                ui.avatar.click();
+              }
+              sendResponse({ ok: true });
+            } 
+            else if (command === 'insert-to-chat') {
+              // Ctrl+Enter: Insert conversation to chat input
+              const shadow = ui.panel.getRootNode();
+              const insertBtns = Array.from(shadow.querySelectorAll('[id^="btnInsert"]'));
+              const visibleBtn = insertBtns.find(btn => {
+                const view = btn.closest('.cb-internal-view');
+                return view && view.classList.contains('cb-view-active');
+              });
+              
+              if (visibleBtn) {
+                visibleBtn.click();
+                sendResponse({ ok: true });
+              } else {
+                // No insert button visible - show toast
+                try {
+                  const t = document.createElement('div');
+                  t.setAttribute('data-cb-ignore','true');
+                  t.textContent = 'No insert action available';
+                  t.style.cssText = 'position:fixed;bottom:18px;left:18px;background:rgba(6,20,32,0.9);color:#dff1ff;padding:8px 10px;border-radius:8px;z-index:2147483647;';
+                  document.body.appendChild(t);
+                  setTimeout(()=>t.remove(),2400);
+                } catch (e) {}
+                sendResponse({ ok: false, error: 'no_insert_button' });
+              }
+            }
+          }
+        } catch (e) {
+          debugLog('keyboard command error', e);
+          sendResponse({ ok: false, error: String(e) });
+        }
+      });
+    }
+    
+    setTimeout(async ()=>{ const msgs = await scanChat(); if (msgs && msgs.length) { await saveConversation({ platform: location.hostname, url: location.href, ts: Date.now(), conversation: msgs }); debugLog('auto-saved', msgs.length); } }, 450); 
+  } catch (e) { debugLog('boot error', e); }
 
 })();
 

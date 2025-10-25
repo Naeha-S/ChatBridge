@@ -3,6 +3,23 @@ chrome.runtime.onInstalled.addListener(() => {
   console.log("ChatBridge installed/updated");
 });
 
+// Keyboard command listener - forwards commands to active tab
+chrome.commands.onCommand.addListener((command) => {
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    if (tabs && tabs[0] && tabs[0].id) {
+      chrome.tabs.sendMessage(tabs[0].id, {
+        type: 'keyboard_command',
+        command: command
+      }, (response) => {
+        // Ignore errors if content script not loaded on the page
+        if (chrome.runtime.lastError) {
+          console.log('Keyboard command not handled:', chrome.runtime.lastError.message);
+        }
+      });
+    }
+  });
+});
+
 // simple message handler for future hooks
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   // Handler to get latest conversation text

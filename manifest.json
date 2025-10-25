@@ -20,9 +20,9 @@
   "content_scripts": [
     {
   "matches": [
-  "*://chat.openai.com/*",
-  "*://chatgpt.com/*",
-  "*://*.chatgpt.com/*",
+    "*://chat.openai.com/*",
+    "*://chatgpt.com/*",
+    "*://*.chatgpt.com/*",
     "*://gemini.google.com/*",
     "*://claude.ai/*",
     "*://chat.mistral.ai/*",
@@ -32,8 +32,7 @@
     "*://*.x.ai/*",
     "*://copilot.microsoft.com/*",
     "*://www.bing.com/*",
-    "*://meta.ai/*",
-    "*://*/*"
+    "*://meta.ai/*"
   ],
       "js": ["adapters.js", "storage.js", "content_script.js"],
       "css": ["styles.css"],
@@ -44,5 +43,28 @@
   "options_page": "options.html",
   "icons": {
     "128": "icons/icon128.png"
+  },
+  "commands": {
+    "quick-scan": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+S",
+        "mac": "Command+Shift+S"
+      },
+      "description": "Quick scan current conversation"
+    },
+    "toggle-sidebar": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+H",
+        "mac": "Command+Shift+H"
+      },
+      "description": "Toggle ChatBridge sidebar"
+    },
+    "insert-to-chat": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+I",
+        "mac": "Command+Shift+I"
+      },
+      "description": "Insert processed text to chat"
+    }
   }
 }
