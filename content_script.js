@@ -1941,35 +1941,19 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           const conv = { platform: location.hostname, url: location.href, ts: Date.now(), model: currentModel, conversation: final };
           // ensure lastScannedText updated when saving
           try { lastScannedText = final.map(m => `${m.role}: ${m.text}`).join('\n\n'); } catch (e) {}
-          if (typeof window.saveConversation === 'function') {
-            window.saveConversation(conv, () => { toast('Saved ' + final.length + ' messages'); refreshHistory(); announce('Scan complete, conversation saved'); });
-          } else if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
-            try {
-              chrome.runtime.sendMessage({ type: 'save_conversation', payload: conv }, (resp) => {
-                try {
-                  if (resp && resp.ok) {
-                    toast('Saved ' + final.length + ' messages');
-                    refreshHistory();
-                    announce('Scan complete, conversation saved');
-                  } else {
-                    // fallback to localStorage if background save failed or unsupported
-                    const key = 'chatbridge:conversations';
-                    try { const cur = JSON.parse(localStorage.getItem(key) || '[]'); cur.push(conv); localStorage.setItem(key, JSON.stringify(cur)); toast('Saved (local) ' + final.length + ' messages'); refreshHistory(); announce('Scan complete, conversation saved locally'); }
-                    catch (e) { toast('Save failed'); }
-                  }
-                } catch (e) {
-                  try { const key = 'chatbridge:conversations'; const cur = JSON.parse(localStorage.getItem(key) || '[]'); cur.push(conv); localStorage.setItem(key, JSON.stringify(cur)); toast('Saved (local) ' + final.length + ' messages'); refreshHistory(); announce('Scan complete, conversation saved locally'); } catch (ee) { toast('Save failed'); }
-                }
-              });
-            } catch (e) {
-              // If messaging throws, fallback to localStorage
-              try { const key = 'chatbridge:conversations'; const cur = JSON.parse(localStorage.getItem(key) || '[]'); cur.push(conv); localStorage.setItem(key, JSON.stringify(cur)); toast('Saved (local) ' + final.length + ' messages'); refreshHistory(); announce('Scan complete, conversation saved locally'); } catch (ee) { toast('Save failed'); }
-            }
-          } else {
-            // final fallback to localStorage
-            try { const key = 'chatbridge:conversations'; const cur = JSON.parse(localStorage.getItem(key) || '[]'); cur.push(conv); localStorage.setItem(key, JSON.stringify(cur)); toast('Saved (local) ' + final.length + ' messages'); refreshHistory(); announce('Scan complete, conversation saved locally'); } catch (e) { toast('Save failed'); }
+          
+          // Use the async saveConversation function directly
+          try {
+            await saveConversation(conv);
+            toast('Saved ' + final.length + ' messages');
+            status.textContent = `Status: saved ${final.length}`;
+            refreshHistory();
+            announce('Scan complete, conversation saved');
+          } catch (saveError) {
+            debugLog('Save failed', saveError);
+            toast('Save failed: ' + (saveError.message || 'unknown error'));
+            status.textContent = `Status: save failed`;
           }
-          status.textContent = `Status: saved ${final.length}`;
 
           // Cross-Context Memory: Extract knowledge from conversation (async, non-blocking)
           try {
@@ -2044,8 +2028,13 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           if (typeof window.clearConversations === 'function') {
             await new Promise(res => window.clearConversations(() => res()));
           } else {
-            // Fallback to direct localStorage clear
+            // Fallback: clear BOTH storage locations
             try { localStorage.removeItem('chatbridge:conversations'); } catch (_) {}
+            try { 
+              if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+                chrome.storage.local.remove(['chatbridge:conversations']);
+              }
+            } catch (_) {}
           }
         }
         toast('History cleared');
@@ -3401,8 +3390,24 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           try {
             if (typeof window.getConversations === 'function') {
               try { window.getConversations(list => res(Array.isArray(list) ? list : [])); } catch (e) { res([]); }
+            } else if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+              // Try chrome.storage.local first (extension-wide)
+              chrome.storage.local.get(['chatbridge:conversations'], (data) => {
+                const arr = Array.isArray(data['chatbridge:conversations']) ? data['chatbridge:conversations'] : [];
+                if (arr.length > 0) {
+                  res(arr);
+                } else {
+                  // Final fallback to localStorage
+                  try {
+                    const local = JSON.parse(localStorage.getItem('chatbridge:conversations') || '[]');
+                    res(Array.isArray(local) ? local : []);
+                  } catch (e) { res([]); }
+                }
+              });
             } else {
-              const arr = JSON.parse(localStorage.getItem('chatbridge:conversations') || '[]'); res(Array.isArray(arr) ? arr : []);
+              // Final fallback if chrome APIs not available
+              const arr = JSON.parse(localStorage.getItem('chatbridge:conversations') || '[]'); 
+              res(Array.isArray(arr) ? arr : []);
             }
           } catch (e) { res([]); }
         }
@@ -3626,7 +3631,6 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         btnSmartSearch.click();
       }
     });
-
     btnSmartSearch.addEventListener('click', async () => {
       try {
         const q = (smartInput && smartInput.value) ? smartInput.value.trim() : '';
@@ -4407,14 +4411,30 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
 
   async function saveConversation(conv) {
     try {
-      // persist locally (simple localStorage fallback)
+      // persist to BOTH localStorage (page-local) AND chrome.storage.local (extension-wide)
       const key = 'chatbridge:conversations';
+      
+      // Save to localStorage first (immediate, synchronous)
       try {
         const cur = JSON.parse(localStorage.getItem(key) || '[]');
         cur.push(conv);
         localStorage.setItem(key, JSON.stringify(cur));
+        debugLog('saved to localStorage', conv.ts);
       } catch (e) {
         debugLog('save error (localStorage)', e);
+      }
+
+      // Save to chrome.storage.local (extension-wide, survives navigation)
+      try {
+        if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+          const data = await new Promise(r => chrome.storage.local.get([key], d => r(d[key])));
+          const cur = Array.isArray(data) ? data : [];
+          cur.push(conv);
+          await new Promise(r => chrome.storage.local.set({ [key]: cur }, () => r()));
+          debugLog('saved to chrome.storage.local', conv.ts);
+        }
+      } catch (e) {
+        debugLog('save error (chrome.storage.local)', e);
       }
 
       // Asynchronously extract topics/tags and index the conversation via background vector store
@@ -4442,11 +4462,21 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
             if (topics && topics.length) conv.topics = topics;
           } catch (e) { debugLog('topic extraction failed', e); }
 
-          // update stored conversation with topics
+          // update stored conversation with topics in BOTH storage locations
           try {
+            // Update localStorage
             const cur2 = JSON.parse(localStorage.getItem(key) || '[]');
             const idx = cur2.findIndex(c => String(c.ts) === String(conv.ts));
             if (idx >= 0) { cur2[idx] = conv; localStorage.setItem(key, JSON.stringify(cur2)); }
+            
+            // Update chrome.storage.local
+            if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+              chrome.storage.local.get([key], (data) => {
+                const cur3 = Array.isArray(data[key]) ? data[key] : [];
+                const idx2 = cur3.findIndex(c => String(c.ts) === String(conv.ts));
+                if (idx2 >= 0) { cur3[idx2] = conv; chrome.storage.local.set({ [key]: cur3 }); }
+              });
+            }
           } catch (e) { debugLog('save update topics failed', e); }
 
           // send to background to index (background will request embeddings)
@@ -4485,6 +4515,72 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
     try { 
       return window.ChatBridge._lastScan || null; 
     } catch (e) { return null; } 
+  };
+  
+  // Debug helper to check storage
+  window.ChatBridge.checkStorage = function() {
+    console.log('🔍 Checking storage locations...');
+    
+    // Check localStorage
+    try {
+      const local = JSON.parse(localStorage.getItem('chatbridge:conversations') || '[]');
+      console.log('localStorage:', local.length, 'conversations');
+      if (local.length > 0) {
+        console.table(local.slice(0, 3).map(c => ({
+          platform: c.platform || 'unknown',
+          messages: c.conversation?.length || 0,
+          timestamp: new Date(c.ts).toLocaleString()
+        })));
+      }
+    } catch (e) {
+      console.error('localStorage error:', e);
+    }
+    
+    // Check chrome.storage.local
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+      chrome.storage.local.get(['chatbridge:conversations'], (data) => {
+        const chromeData = data['chatbridge:conversations'] || [];
+        console.log('chrome.storage.local:', chromeData.length, 'conversations');
+        if (chromeData.length > 0) {
+          console.table(chromeData.slice(0, 3).map(c => ({
+            platform: c.platform || 'unknown',
+            messages: c.conversation?.length || 0,
+            timestamp: new Date(c.ts).toLocaleString()
+          })));
+        }
+        
+        // Check for mismatch
+        try {
+          const local = JSON.parse(localStorage.getItem('chatbridge:conversations') || '[]');
+          if (local.length !== chromeData.length) {
+            console.warn('⚠️ Storage mismatch detected!');
+            console.log('localStorage has', local.length, 'but chrome.storage.local has', chromeData.length);
+          } else {
+            console.log('✅ Storage locations in sync');
+          }
+        } catch (e) {}
+      });
+    } else {
+      console.log('chrome.storage.local: Not available');
+    }
+    
+    // Check background handler
+    if (typeof chrome !== 'undefined' && chrome.runtime) {
+      chrome.runtime.sendMessage({ type: 'get_conversations' }, (r) => {
+        if (chrome.runtime.lastError) {
+          console.error('Background handler error:', chrome.runtime.lastError.message);
+        } else {
+          console.log('Background handler:', r?.conversations?.length || 0, 'conversations');
+          if (r?.conversations?.length > 0) {
+            console.table(r.conversations.slice(0, 3).map(c => ({
+              platform: c.platform || 'unknown',
+              messages: c.conversation?.length || 0,
+              timestamp: new Date(c.ts).toLocaleString()
+            })));
+          }
+        }
+      });
+    }
   };
   
   // Advanced intelligence helpers
