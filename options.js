@@ -48,9 +48,7 @@ document.getElementById('btn-refresh-adapter').addEventListener('click', () => {
   });
 });
 
-loadSaved();
-
-// API key storage
+loadSaved();// API key storage
 const apiKeyInput = document.getElementById('apiKey');
 const btnSaveKey = document.getElementById('btn-save-key');
 

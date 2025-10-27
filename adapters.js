@@ -75,6 +75,23 @@ const AdapterGeneric = {
   label: "Generic",
   detect: () => true, // fallback applies everywhere
   scrollContainer: () => document.scrollingElement || document.documentElement,
+  getFileInput: () => {
+    try {
+      // Prefer file input near the text input/composer
+      const input = document.querySelector("textarea, input[type='text'], [contenteditable='true'], [role='textbox']");
+      if (input) {
+        let p = input.closest('form') || input.parentElement;
+        for (let i = 0; i < 6 && p; i++) {
+          const inps = p.querySelectorAll && p.querySelectorAll('input[type="file"]');
+          if (inps && inps.length) return inps[0];
+          p = p.parentElement;
+        }
+      }
+      // Fallback: any file input on page
+      const any = document.querySelector('input[type="file"]');
+      return any || null;
+    } catch (e) { return null; }
+  },
   getMessages: () => {
     // Improved container-first extraction to avoid scraping unrelated page text
     const containerSelectors = [

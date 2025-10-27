@@ -53,6 +53,61 @@
 
   function debugLog(...args) { if (!DEBUG) return; try { console.debug('[ChatBridge]', ...args); } catch (e) {} }
 
+  // Ensure the floating avatar exists on the page. This is useful when the host
+  // element is present (from a prior injection) but the avatar was removed by
+  // page scripts or extensions. Calling this will recreate the avatar button.
+  function ensureAvatarExists() {
+    try {
+      if (document.getElementById('cb-avatar')) return;
+      const a = document.createElement('div');
+      a.id = 'cb-avatar'; a.setAttribute('data-cb-ignore', 'true');
+      // polished SVG lettermark for avatar (CB)
+      a.innerHTML = `
+        <svg width="34" height="34" viewBox="0 0 34 34" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <defs>
+            <filter id="s" x="-50%" y="-50%" width="200%" height="200%"><feDropShadow dx="0" dy="4" stdDeviation="6" flood-opacity="0.12" flood-color="#000"/></filter>
+          </defs>
+          <g filter="url(#s)">
+            <circle cx="17" cy="17" r="16" fill="#e6cf9f" stroke="#0b0f17" stroke-width="1" />
+            <text x="50%" y="52%" text-anchor="middle" fill="#0b0f17" font-family="Poppins, Arial, sans-serif" font-weight="700" font-size="12">CB</text>
+          </g>
+        </svg>`;
+      a.style.cssText = 'position:fixed;bottom:22px;right:26px;width:48px;height:48px;border-radius:12px;z-index:2147483647;display:flex;align-items:center;justify-content:center;cursor:pointer;background:transparent;box-shadow:0 6px 20px rgba(0,0,0,0.18);transition: transform .12s ease, box-shadow .12s ease;';
+      a.addEventListener('mouseenter', () => { try { a.style.transform = 'translateY(-2px)'; a.style.boxShadow = '0 10px 26px rgba(230,207,159,0.18)'; } catch(e){} });
+      a.addEventListener('mouseleave', () => { try { a.style.transform = ''; a.style.boxShadow = '0 6px 20px rgba(0,0,0,0.18)'; } catch(e){} });
+      // Click should reveal the host sidebar if present
+      a.addEventListener('click', () => {
+        try {
+          const h = document.getElementById('cb-host');
+          if (h) { h.style.display = 'block'; a.style.display = 'none'; }
+        } catch (e) {}
+      });
+      document.body.appendChild(a);
+    } catch (e) { debugLog('ensureAvatarExists failed', e); }
+  }
+
+  // Loading helpers for buttons
+  function addLoadingToButton(btn, label) {
+    try {
+      if (!btn) return;
+      if (!btn.getAttribute('data-orig-text')) btn.setAttribute('data-orig-text', btn.innerHTML || btn.textContent || '');
+      btn.disabled = true;
+      btn.classList.add('cb-loading');
+      // spinner + label
+      btn.innerHTML = `<span class="cb-spinner" aria-hidden="true"></span> ${label}`;
+    } catch (e) { debugLog('addLoadingToButton failed', e); }
+  }
+  function removeLoadingFromButton(btn, restoreLabel) {
+    try {
+      if (!btn) return;
+      btn.disabled = false;
+      btn.classList.remove('cb-loading');
+      const orig = btn.getAttribute('data-orig-text');
+      if (restoreLabel) btn.textContent = restoreLabel;
+      else if (orig !== null) btn.innerHTML = orig;
+    } catch (e) { debugLog('removeLoadingFromButton failed', e); }
+  }
+
   // Highlighting helpers for debug visualization
   var CB_HIGHLIGHT_ENABLED = false;
   var CB_HIGHLIGHT_ROOT = null;
@@ -187,6 +242,50 @@
     });
   }
 
+  // Extract attachments (images, videos, docs) from a message element
+  function extractAttachmentsFromElement(root) {
+    const atts = [];
+    if (!root || !root.querySelectorAll) return atts;
+    try {
+      // Images
+      const imgs = Array.from(root.querySelectorAll('img[src]'));
+      for (const img of imgs) {
+        try {
+          const src = img.getAttribute('src') || '';
+          if (!src) continue;
+          // skip tiny UI icons
+          const r = img.getBoundingClientRect();
+          if (r && (r.width < 24 || r.height < 24)) continue;
+          atts.push({ kind: 'image', url: src, alt: img.getAttribute('alt') || '', name: (src.split('?')[0].split('#')[0].split('/').pop() || 'image') });
+        } catch (e) {}
+      }
+      // Videos
+      const vids = Array.from(root.querySelectorAll('video[src], video source[src]'));
+      for (const v of vids) {
+        try {
+          const src = v.getAttribute('src') || '';
+          if (!src) continue;
+          atts.push({ kind: 'video', url: src, name: (src.split('?')[0].split('#')[0].split('/').pop() || 'video') });
+        } catch (e) {}
+      }
+      // Docs/links
+      const exts = /(\.pdf|\.docx?|\.pptx?|\.xlsx?|\.zip|\.rar|\.7z|\.csv|\.md|\.txt)$/i;
+      const links = Array.from(root.querySelectorAll('a[href]'));
+      for (const a of links) {
+        try {
+          const href = a.getAttribute('href') || '';
+          if (!href) continue;
+          if (exts.test(href)) {
+            atts.push({ kind: 'file', url: href, name: (href.split('?')[0].split('#')[0].split('/').pop() || 'file') });
+          }
+        } catch (e) {}
+      }
+    } catch (e) {}
+    // dedupe by url
+    const seen = new Set();
+    return atts.filter(a => { if (seen.has(a.url)) return false; seen.add(a.url); return true; });
+  }
+
   function normalizeMessages(raw, maxMessages) {
     maxMessages = (typeof maxMessages === 'number' && maxMessages > 0) ? maxMessages : CB_MAX_MESSAGES;
     if (!Array.isArray(raw)) return [];
@@ -195,7 +294,17 @@
       if (!m || !m.text) continue;
       const text = (m.text || '').replace(/\s+/g, ' ').trim(); if (!text) continue;
       const role = (m.role === 'user') ? 'user' : 'assistant'; const prev = out[out.length - 1];
-      if (!prev || prev.text !== text || prev.role !== role) out.push({ role, text });
+      const attachments = Array.isArray(m.attachments) ? m.attachments.slice(0) : [];
+      if (!prev || prev.text !== text || prev.role !== role) out.push({ role, text, attachments });
+      else {
+        // merge attachments when deduping contiguous duplicates
+        try {
+          const existing = prev.attachments || [];
+          const combined = (existing.concat(attachments) || []).filter(a => a && a.url);
+          const seen = new Set();
+          prev.attachments = combined.filter(a => { const k = a.url + '|' + (a.kind||''); if (seen.has(k)) return false; seen.add(k); return true; });
+        } catch (e) {}
+      }
     }
     const filtered = out.filter(x => x.text.length > 4 && !/^(new chat|regenerate|clear|copy|download|history)$/i.test(x.text));
     return filtered.slice(0, maxMessages);
@@ -211,38 +320,47 @@
   }
 
   function injectUI() {
-    if (document.getElementById('cb-host')) return null;
-  const avatar = document.createElement('div'); avatar.id = 'cb-avatar'; avatar.setAttribute('data-cb-ignore', 'true'); avatar.textContent = '⚡';
+    // If host already exists, ensure avatar is present (in case it was removed)
+    if (document.getElementById('cb-host')) {
+      try { ensureAvatarExists(); } catch (e) {}
+      return null;
+    }
+  const avatar = document.createElement('div'); avatar.id = 'cb-avatar'; avatar.setAttribute('data-cb-ignore', 'true');
+  avatar.innerHTML = `<svg width="34" height="34" viewBox="0 0 34 34" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><circle cx="17" cy="17" r="16" fill="#e6cf9f" stroke="#0b0f17" stroke-width="1" /><text x="50%" y="52%" text-anchor="middle" fill="#0b0f17" font-family="Poppins, Arial, sans-serif" font-weight="700" font-size="12">CB</text></svg>`;
   // store last scanned text so Clipboard and textarea can access it
   let lastScannedText = '';
-  // Slightly larger avatar, pulled in from the corner and with a gold border
-  avatar.style.cssText = 'position:fixed;bottom:22px;right:26px;width:48px;height:48px;border-radius:12px;z-index:2147483646;display:flex;align-items:center;justify-content:center;cursor:pointer;background:linear-gradient(180deg,#0b1220,#071022);color:#d4af77;box-shadow:0 6px 20px rgba(2,6,23,0.6);font-size:20px;border:3px solid rgba(212,175,119,0.95);transition: transform .12s ease, box-shadow .12s ease;';
-  avatar.addEventListener('mouseenter', () => { avatar.style.transform = 'translateY(-2px)'; avatar.style.boxShadow = '0 10px 26px rgba(212,175,119,0.15)'; });
-  avatar.addEventListener('mouseleave', () => { avatar.style.transform = ''; avatar.style.boxShadow = '0 6px 20px rgba(2,6,23,0.6)'; });
+  // Slightly larger avatar, pulled in from the corner with refined styling
+  avatar.style.cssText = 'position:fixed;bottom:22px;right:26px;width:48px;height:48px;border-radius:12px;z-index:2147483647;display:flex;align-items:center;justify-content:center;cursor:pointer;background:transparent;box-shadow:0 6px 20px rgba(0,0,0,0.18);transition: transform .12s ease, box-shadow .12s ease;';
+  avatar.addEventListener('mouseenter', () => { try { avatar.style.transform = 'translateY(-2px)'; avatar.style.boxShadow = '0 10px 26px rgba(230,207,159,0.18)'; } catch(e){} });
+  avatar.addEventListener('mouseleave', () => { try { avatar.style.transform = ''; avatar.style.boxShadow = '0 6px 20px rgba(0,0,0,0.18)'; } catch(e){} });
     const host = document.createElement('div'); host.id = 'cb-host'; host.setAttribute('data-cb-ignore', 'true'); host.style.display = 'none';
     document.body.appendChild(avatar); document.body.appendChild(host);
     const shadow = host.attachShadow({ mode: 'open' });
 
-    // High-end professional dark theme styling inside shadow DOM
+    // High-end professional dark theme styling inside shadow DOM (Poppins font)
     const style = document.createElement('style');
     style.textContent = `
-      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+      @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
       :host { all: initial; }
-  .cb-panel { box-sizing: border-box; position:fixed; top:12px; right:12px; width:380px; max-height:86vh; overflow-y:auto; overflow-x:hidden; border-radius:14px; background: linear-gradient(180deg, rgba(9,13,22,0.97), rgba(8,18,34,0.98)); color:#d4af77 !important; font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; z-index:2147483647; box-shadow: 0 12px 40px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); backdrop-filter: blur(10px); }
+  :host { --cb-accent: #d4af77; --cb-champagne: #e6cf9f; --cb-champagne-rgb: 230,207,159; }
+      :host * { font-family: 'Poppins', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial !important; }
+  .cb-panel { box-sizing: border-box; position:fixed; top:12px; right:12px; width:380px; max-height:86vh; overflow-y:auto; overflow-x:hidden; border-radius:14px; background: linear-gradient(180deg, rgba(9,13,22,0.97), rgba(8,18,34,0.98)); color:var(--cb-accent) !important; font-family: 'Poppins', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; z-index:2147483647; box-shadow: 0 12px 40px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); backdrop-filter: blur(10px); }
   .cb-panel::-webkit-scrollbar { width: 10px; }
   .cb-panel::-webkit-scrollbar-track { background: #0b0f17; border-radius: 10px; }
   .cb-panel::-webkit-scrollbar-thumb { background: linear-gradient(180deg, rgba(212,175,119,0.8), rgba(212,175,119,0.55)); border-radius: 10px; border: 2px solid #0b0f17; }
   .cb-panel::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, rgba(212,175,119,1), rgba(212,175,119,0.7)); }
   .cb-header { display:flex; flex-direction:row; align-items:flex-start; justify-content:space-between; padding:14px 18px 8px 18px; gap:6px; border-bottom: 1px solid rgba(255,255,255,0.04); }
-      .cb-title { font-weight:900; font-size:20px; letter-spacing:0.5px; color:#ffe7b3; text-shadow:0 2px 12px #1a1a1a; }
-      .cb-subtitle { font-size:13px; color:#d4af77; font-weight:500; margin-top:2px; margin-bottom:2px; letter-spacing:0.3px; }
-  .cb-actions { padding:12px 16px 8px 16px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; justify-content:space-between; }
+  .cb-title { font-weight:900; font-size:22px; letter-spacing:0.5px; color: var(--cb-champagne); text-shadow:0 2px 12px rgba(0,0,0,0.4); }
+  .cb-subtitle { font-size:13px; color: var(--cb-accent); font-weight:500; margin-top:2px; margin-bottom:2px; letter-spacing:0.3px; }
+    .cb-actions { padding:12px 16px 8px 16px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; justify-content:space-between; }
   .cb-actions-left, .cb-actions-right { display:flex; gap:8px; align-items:center; }
-  .cb-actions .cb-btn { min-width:0; padding:8px 12px; }
-      .cb-btn { background: linear-gradient(180deg, rgba(40,40,60,0.98), rgba(20,20,30,0.98)); border:1px solid rgba(255,255,255,0.12); color:#d4af77 !important; padding:10px 12px; border-radius:10px; cursor:pointer; font-size:14px; transition: all .15s ease; font-weight:600; }
-      .cb-btn:hover { transform:translateY(-1px); box-shadow: 0 8px 18px rgba(210,180,120,0.18); border-color: rgba(255,255,255,0.22); background: linear-gradient(180deg, #2a2a3a, #18181f); }
-      .cb-btn-primary { background: linear-gradient(180deg, #f3e4b9, #d2b478); color:#000 !important; font-weight:900; border: 1px solid rgba(0,0,0,0.18); }
-      .cb-btn-primary:hover { box-shadow: 0 10px 24px rgba(210,180,120,0.35); }
+  .cb-actions .cb-btn { min-width:0; padding:10px 14px; }
+    .cb-btn { background: linear-gradient(180deg, rgba(40,40,60,0.98), rgba(20,20,30,0.98)); border:1px solid rgba(255,255,255,0.12); color:#d4af77 !important; padding:10px 14px; border-radius:10px; cursor:pointer; font-size:14px; transition: all .15s ease; font-weight:600; }
+  .cb-btn:hover { transform:translateY(-1px); box-shadow: 0 8px 18px rgba(var(--cb-champagne-rgb),0.14); border-color: rgba(255,255,255,0.22); background: linear-gradient(180deg, #2a2a3a, #18181f); }
+  .cb-btn-primary { background: linear-gradient(180deg, #f3e4b9, #d2b478); color:#000 !important; font-weight:700; border: 1px solid rgba(0,0,0,0.18); }
+  .cb-btn-primary:hover { box-shadow: 0 10px 24px rgba(var(--cb-champagne-rgb),0.20); }
+  .cb-scan-row { padding: 10px 16px; }
+  .cb-scan-wide { width: 100%; margin: 0; padding:12px 14px; font-size:15px; border-radius:12px; display:block; }
       .cb-btn-danger { background: linear-gradient(180deg, rgba(60,20,20,0.95), rgba(40,15,15,0.95)); border:1px solid rgba(255,100,100,0.25); color:rgba(255,180,180,0.75) !important; font-size:13px; padding:6px 10px; }
       .cb-btn-danger:hover { background: linear-gradient(180deg, rgba(80,25,25,0.95), rgba(50,18,18,0.95)); border-color: rgba(255,120,120,0.4); color:rgba(255,200,200,0.9) !important; box-shadow: 0 4px 12px rgba(200,50,50,0.15); }
       .cb-toolbar { display:flex; align-items:center; gap:10px; padding:12px 18px 8px 18px; border-bottom: 1px solid rgba(255,255,255,0.04); }
@@ -257,8 +375,8 @@
       .cb-history { padding:12px 18px; max-height:260px; overflow-x:hidden; overflow-y:auto; font-size:13px; background: rgba(20,20,30,0.18); border-radius:10px; white-space:pre-wrap; color:#d4af77 !important; line-height: 1.5; }
       .cb-history::-webkit-scrollbar { width: 8px; }
       .cb-history::-webkit-scrollbar-track { background: rgba(20,20,30,0.4); border-radius: 10px; }
-      .cb-history::-webkit-scrollbar-thumb { background: linear-gradient(180deg, rgba(212,175,119,0.6), rgba(212,175,119,0.4)); border-radius: 10px; border: 2px solid rgba(20,20,30,0.4); }
-      .cb-history::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, rgba(212,175,119,0.8), rgba(212,175,119,0.6)); }
+  .cb-history::-webkit-scrollbar-thumb { background: linear-gradient(180deg, rgba(230,207,159,0.6), rgba(230,207,159,0.4)); border-radius: 10px; border: 2px solid rgba(20,20,30,0.4); }
+  .cb-history::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, rgba(230,207,159,0.8), rgba(230,207,159,0.6)); }
       .cb-preview { padding:12px 18px; font-size:13px; color:#d4af77 !important; border-top:1px solid rgba(255,255,255,0.04); max-height:200px; overflow-x:hidden; overflow-y:auto; line-height: 1.5; }
       .cb-preview::-webkit-scrollbar { width: 8px; }
       .cb-preview::-webkit-scrollbar-track { background: rgba(20,20,30,0.4); border-radius: 10px; }
@@ -295,15 +413,18 @@
   .cb-dots .dot { display:inline-block; opacity:0.25; animation: cb-ellipsis 1.1s ease-in-out infinite; }
   .cb-dots .dot:nth-child(2) { animation-delay: .18s; }
   .cb-dots .dot:nth-child(3) { animation-delay: .36s; }
+  /* small inline spinner used with loading buttons */
+  .cb-spinner { display:inline-block; width:14px; height:14px; border-radius:50%; vertical-align:middle; margin-right:8px; background: conic-gradient(rgba(var(--cb-champagne-rgb),0.95), rgba(255,255,255,0.9)); box-shadow: 0 0 0 1px rgba(0,0,0,0.08) inset; animation: cb-spin 0.9s linear infinite; }
+  @keyframes cb-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
   @keyframes cb-ellipsis { 0% { opacity:0.25; transform: translateY(0); } 30% { opacity:1; transform: translateY(-2px); } 60% { opacity:0.25; transform: translateY(0); } 100% { opacity:0.25; transform: translateY(0); } }
     `;
     shadow.appendChild(style);
 
-    const panel = document.createElement('div'); panel.className = 'cb-panel';
+  const panel = document.createElement('div'); panel.className = 'cb-panel';
     // Header: Title and subtitle
     const header = document.createElement('div'); header.className = 'cb-header';
-    const title = document.createElement('div'); title.className = 'cb-title'; title.textContent = '⚡ ChatBridge';
-    const subtitle = document.createElement('div'); subtitle.className = 'cb-subtitle'; subtitle.textContent = 'Effortlessly continue conversations across models';
+  const title = document.createElement('div'); title.className = 'cb-title'; title.textContent = 'ChatBridge';
+  const subtitle = document.createElement('div'); subtitle.className = 'cb-subtitle'; subtitle.textContent = 'Effortlessly continue conversations across models';
   const left = document.createElement('div');
   left.style.display = 'flex'; left.style.flexDirection = 'column'; left.style.gap = '6px'; left.style.alignItems = 'flex-start';
   left.appendChild(title); left.appendChild(subtitle);
@@ -319,25 +440,34 @@
   const actionsLeft = document.createElement('div'); actionsLeft.className = 'cb-actions-left';
   const actionsRight = document.createElement('div'); actionsRight.className = 'cb-actions-right';
 
-  const btnScan = document.createElement('button'); btnScan.className = 'cb-btn cb-btn-primary'; btnScan.textContent = '📸 Scan Chat'; btnScan.title = 'Scan the visible chat on the page';
-  const btnRestore = document.createElement('button'); btnRestore.className = 'cb-btn'; btnRestore.textContent = '♻️ Restore'; btnRestore.title = 'Restore saved conversation into current chat';
-  const btnClipboard = document.createElement('button'); btnClipboard.className = 'cb-btn'; btnClipboard.textContent = '📋 Clipboard'; btnClipboard.title = 'Copy scanned chat to clipboard';
+  const btnScan = document.createElement('button'); btnScan.className = 'cb-btn cb-btn-primary cb-scan-wide'; btnScan.textContent = 'Scan Chat'; btnScan.title = 'Scan the visible chat on the page'; btnScan.id = 'btnScan';
+  const btnRestore = document.createElement('button'); btnRestore.className = 'cb-btn'; btnRestore.textContent = 'Restore'; btnRestore.title = 'Restore saved conversation into current chat';
+  const btnClipboard = document.createElement('button'); btnClipboard.className = 'cb-btn'; btnClipboard.textContent = 'Clipboard'; btnClipboard.title = 'Copy scanned chat to clipboard';
+  const btnSmartQuery = document.createElement('button'); btnSmartQuery.className = 'cb-btn'; btnSmartQuery.textContent = 'Smart Query'; btnSmartQuery.title = 'Search and ask your saved chats'; btnSmartQuery.id = 'btnSmartQuery';
 
   // Gemini API buttons (keep on the right)
   // Sync Tone: replace old Prompt button with a model-to-model tone sync UI
   const syncWrapper = document.createElement('div'); syncWrapper.style.display = 'flex'; syncWrapper.style.alignItems = 'center'; syncWrapper.style.gap = '6px';
 
   // Replace compact main-page model selects with a single Sync Tone launcher button to reduce UI clutter
-  const btnSyncTone = document.createElement('button'); btnSyncTone.className = 'cb-btn'; btnSyncTone.textContent = '🎚️ Sync Tone'; btnSyncTone.title = 'Rewrite the scanned conversation to match another model\'s tone';
+  const btnSyncTone = document.createElement('button'); btnSyncTone.className = 'cb-btn'; btnSyncTone.textContent = 'Sync Tone'; btnSyncTone.title = 'Rewrite the scanned conversation to match another model\'s tone';
   syncWrapper.appendChild(btnSyncTone);
-  const btnSummarize = document.createElement('button'); btnSummarize.className = 'cb-btn'; btnSummarize.textContent = '📝 Summarize'; btnSummarize.title = 'Distill long chats into short summaries';
-  const btnRewrite = document.createElement('button'); btnRewrite.className = 'cb-btn'; btnRewrite.textContent = '✍️ Rewrite'; btnRewrite.title = 'Improve tone and readability of scraped messages';
-  const btnTranslate = document.createElement('button'); btnTranslate.className = 'cb-btn'; btnTranslate.textContent = '🌐 Translate'; btnTranslate.title = 'Translate chats between languages';
+  const btnSummarize = document.createElement('button'); btnSummarize.className = 'cb-btn'; btnSummarize.textContent = 'Summarize'; btnSummarize.title = 'Distill long chats into short summaries';
+  const btnRewrite = document.createElement('button'); btnRewrite.className = 'cb-btn'; btnRewrite.textContent = 'Rewrite'; btnRewrite.title = 'Improve tone and readability of scraped messages';
+  const btnTranslate = document.createElement('button'); btnTranslate.className = 'cb-btn'; btnTranslate.textContent = 'Translate'; btnTranslate.title = 'Translate chats between languages';
 
-  actionsLeft.appendChild(btnScan);
+  // Place Scan button prominently in its own row below the header
+  try {
+    const scanRow = document.createElement('div'); scanRow.className = 'cb-scan-row';
+    scanRow.appendChild(btnScan);
+    panel.appendChild(scanRow);
+  } catch (e) { try { actionsLeft.appendChild(btnScan); } catch (e2) {} }
   actionsLeft.appendChild(btnRestore);
-  actionsLeft.appendChild(btnClipboard);
-  actionsRight.appendChild(syncWrapper);
+  // user requested Clipboard and Sync Tone swap: put Sync Tone on the left actions
+  actionsLeft.appendChild(syncWrapper);
+  actionsLeft.appendChild(btnSmartQuery);
+  // move Clipboard to the right-side group
+  actionsRight.appendChild(btnClipboard);
   actionsRight.appendChild(btnSummarize);
   actionsRight.appendChild(btnRewrite);
   actionsRight.appendChild(btnTranslate);
@@ -347,7 +477,7 @@
 
     // Toolbar with Chat dropdown
     const toolbar = document.createElement('div'); toolbar.className = 'cb-toolbar';
-    const lab = document.createElement('div'); lab.className = 'cb-label'; lab.textContent = '💬 Select Chat';
+  const lab = document.createElement('div'); lab.className = 'cb-label'; lab.textContent = 'Select Chat';
     const chatSelect = document.createElement('select'); chatSelect.className = 'cb-select'; chatSelect.id = 'cb-chat-select';
     toolbar.appendChild(lab); toolbar.appendChild(chatSelect);
     panel.appendChild(toolbar);
@@ -360,7 +490,7 @@
   // Sync Tone view
   const syncView = document.createElement('div'); syncView.className = 'cb-internal-view'; syncView.id = 'cb-sync-view'; syncView.setAttribute('data-cb-ignore','true');
   const syncTop = document.createElement('div'); syncTop.className = 'cb-view-top';
-  const syncTitle = document.createElement('div'); syncTitle.className = 'cb-view-title'; syncTitle.textContent = '🎚️ Sync Tone';
+  const syncTitle = document.createElement('div'); syncTitle.className = 'cb-view-title'; syncTitle.textContent = 'Sync Tone';
   const btnCloseSync = document.createElement('button'); btnCloseSync.className = 'cb-view-close'; btnCloseSync.textContent = '✕';
   syncTop.appendChild(syncTitle); syncTop.appendChild(btnCloseSync);
   syncView.appendChild(syncTop);
@@ -372,10 +502,10 @@
   syncView.appendChild(syncTargetLabel); syncView.appendChild(syncTargetSelect);
   const syncSourceText = document.createElement('div'); syncSourceText.className = 'cb-view-text'; syncSourceText.id = 'cb-sync-source-text'; syncSourceText.setAttribute('contenteditable','false'); syncSourceText.textContent = '';
   syncView.appendChild(syncSourceText);
-  const btnGoSync = document.createElement('button'); btnGoSync.className = 'cb-btn cb-view-go'; btnGoSync.textContent = '🎚️ Sync Tone';
+  const btnGoSync = document.createElement('button'); btnGoSync.className = 'cb-btn cb-view-go'; btnGoSync.textContent = 'Sync Tone';
   syncView.appendChild(btnGoSync);
   const syncProg = document.createElement('span'); syncProg.className = 'cb-progress'; syncProg.style.display = 'none'; syncView.appendChild(syncProg);
-  const btnInsertSync = document.createElement('button'); btnInsertSync.className = 'cb-btn cb-view-go'; btnInsertSync.textContent = '📥 Insert to Chat'; btnInsertSync.style.display = 'none';
+  const btnInsertSync = document.createElement('button'); btnInsertSync.className = 'cb-btn cb-view-go'; btnInsertSync.textContent = 'Insert to Chat'; btnInsertSync.style.display = 'none';
   syncView.appendChild(btnInsertSync);
   const syncResult = document.createElement('div'); syncResult.className = 'cb-view-result'; syncResult.id = 'cb-sync-result'; syncResult.textContent = '';
   syncView.appendChild(syncResult);
@@ -383,7 +513,7 @@
   // Summarize view
   const summView = document.createElement('div'); summView.className = 'cb-internal-view'; summView.id = 'cb-summ-view'; summView.setAttribute('data-cb-ignore','true');
   const summTop = document.createElement('div'); summTop.className = 'cb-view-top';
-  const summTitle = document.createElement('div'); summTitle.className = 'cb-view-title'; summTitle.textContent = '📝 Summarize';
+  const summTitle = document.createElement('div'); summTitle.className = 'cb-view-title'; summTitle.textContent = 'Summarize';
   const btnCloseSumm = document.createElement('button'); btnCloseSumm.className = 'cb-view-close'; btnCloseSumm.textContent = '✕';
   summTop.appendChild(summTitle); summTop.appendChild(btnCloseSumm);
   summView.appendChild(summTop);
@@ -400,10 +530,10 @@
   summView.appendChild(summControls);
   const summSourceText = document.createElement('div'); summSourceText.className = 'cb-view-text'; summSourceText.id = 'cb-summ-source-text'; summSourceText.setAttribute('contenteditable','false'); summSourceText.textContent = '';
   summView.appendChild(summSourceText);
-  const btnGoSumm = document.createElement('button'); btnGoSumm.className = 'cb-btn cb-view-go'; btnGoSumm.textContent = '📝 Summarize';
+  const btnGoSumm = document.createElement('button'); btnGoSumm.className = 'cb-btn cb-view-go'; btnGoSumm.textContent = 'Summarize';
   summView.appendChild(btnGoSumm);
   const summProg = document.createElement('span'); summProg.className = 'cb-progress'; summProg.style.display = 'none'; summView.appendChild(summProg);
-  const btnInsertSumm = document.createElement('button'); btnInsertSumm.className = 'cb-btn cb-view-go'; btnInsertSumm.textContent = '📥 Insert to Chat'; btnInsertSumm.style.display = 'none';
+  const btnInsertSumm = document.createElement('button'); btnInsertSumm.className = 'cb-btn cb-view-go'; btnInsertSumm.textContent = 'Insert to Chat'; btnInsertSumm.style.display = 'none';
   summView.appendChild(btnInsertSumm);
   const summResult = document.createElement('div'); summResult.className = 'cb-view-result'; summResult.id = 'cb-summ-result'; summResult.textContent = '';
   summView.appendChild(summResult);
@@ -411,7 +541,7 @@
   // Rewrite view
   const rewView = document.createElement('div'); rewView.className = 'cb-internal-view'; rewView.id = 'cb-rew-view'; rewView.setAttribute('data-cb-ignore','true');
   const rewTop = document.createElement('div'); rewTop.className = 'cb-view-top';
-  const rewTitle = document.createElement('div'); rewTitle.className = 'cb-view-title'; rewTitle.textContent = '✍️ Rewrite';
+  const rewTitle = document.createElement('div'); rewTitle.className = 'cb-view-title'; rewTitle.textContent = 'Rewrite';
   const btnCloseRew = document.createElement('button'); btnCloseRew.className = 'cb-view-close'; btnCloseRew.textContent = '✕';
   rewTop.appendChild(rewTitle); rewTop.appendChild(btnCloseRew);
   rewView.appendChild(rewTop);
@@ -424,10 +554,10 @@
   rewView.appendChild(rewControls);
   const rewSourceText = document.createElement('div'); rewSourceText.className = 'cb-view-text'; rewSourceText.id = 'cb-rew-source-text'; rewSourceText.setAttribute('contenteditable','false'); rewSourceText.textContent = '';
   rewView.appendChild(rewSourceText);
-  const btnGoRew = document.createElement('button'); btnGoRew.className = 'cb-btn cb-view-go'; btnGoRew.textContent = '✍️ Rewrite';
+  const btnGoRew = document.createElement('button'); btnGoRew.className = 'cb-btn cb-view-go'; btnGoRew.textContent = 'Rewrite';
   rewView.appendChild(btnGoRew);
   const rewProg = document.createElement('span'); rewProg.className = 'cb-progress'; rewProg.style.display = 'none'; rewView.appendChild(rewProg);
-  const btnInsertRew = document.createElement('button'); btnInsertRew.className = 'cb-btn cb-view-go'; btnInsertRew.textContent = '📥 Insert to Chat'; btnInsertRew.style.display = 'none';
+  const btnInsertRew = document.createElement('button'); btnInsertRew.className = 'cb-btn cb-view-go'; btnInsertRew.textContent = 'Insert to Chat'; btnInsertRew.style.display = 'none';
   rewView.appendChild(btnInsertRew);
   const rewResult = document.createElement('div'); rewResult.className = 'cb-view-result'; rewResult.id = 'cb-rew-result'; rewResult.textContent = '';
   rewView.appendChild(rewResult);
@@ -435,7 +565,7 @@
   // Translate view
   const transView = document.createElement('div'); transView.className = 'cb-internal-view'; transView.id = 'cb-trans-view'; transView.setAttribute('data-cb-ignore','true');
   const transTop = document.createElement('div'); transTop.className = 'cb-view-top';
-  const transTitle = document.createElement('div'); transTitle.className = 'cb-view-title'; transTitle.textContent = '🌐 Translate';
+  const transTitle = document.createElement('div'); transTitle.className = 'cb-view-title'; transTitle.textContent = 'Translate';
   const btnCloseTrans = document.createElement('button'); btnCloseTrans.className = 'cb-view-close'; btnCloseTrans.textContent = '✕';
   transTop.appendChild(transTitle); transTop.appendChild(btnCloseTrans);
   transView.appendChild(transTop);
@@ -446,10 +576,10 @@
   transView.appendChild(transLangLabel); transView.appendChild(transLangSelect);
   const transSourceText = document.createElement('div'); transSourceText.className = 'cb-view-text'; transSourceText.id = 'cb-trans-source-text'; transSourceText.setAttribute('contenteditable','false'); transSourceText.textContent = '';
   transView.appendChild(transSourceText);
-  const btnGoTrans = document.createElement('button'); btnGoTrans.className = 'cb-btn cb-view-go'; btnGoTrans.textContent = '🌐 Translate';
+  const btnGoTrans = document.createElement('button'); btnGoTrans.className = 'cb-btn cb-view-go'; btnGoTrans.textContent = 'Translate';
   transView.appendChild(btnGoTrans);
   const transProg = document.createElement('span'); transProg.className = 'cb-progress'; transProg.style.display = 'none'; transView.appendChild(transProg);
-  const btnInsertTrans = document.createElement('button'); btnInsertTrans.className = 'cb-btn cb-view-go'; btnInsertTrans.textContent = '📥 Insert to Chat'; btnInsertTrans.style.display = 'none';
+  const btnInsertTrans = document.createElement('button'); btnInsertTrans.className = 'cb-btn cb-view-go'; btnInsertTrans.textContent = 'Insert to Chat'; btnInsertTrans.style.display = 'none';
   transView.appendChild(btnInsertTrans);
   const transResult = document.createElement('div'); transResult.className = 'cb-view-result'; transResult.id = 'cb-trans-result'; transResult.textContent = '';
   transView.appendChild(transResult);
@@ -459,6 +589,52 @@
   panel.appendChild(summView);
   panel.appendChild(rewView);
   panel.appendChild(transView);
+
+  // Smart Query view
+  const smartView = document.createElement('div'); smartView.className = 'cb-internal-view'; smartView.id = 'cb-smart-view'; smartView.setAttribute('data-cb-ignore','true');
+  const smartTop = document.createElement('div'); smartTop.className = 'cb-view-top';
+  const smartTitle = document.createElement('div'); smartTitle.className = 'cb-view-title'; smartTitle.textContent = 'Smart Archive + Query';
+  const btnCloseSmart = document.createElement('button'); btnCloseSmart.className = 'cb-view-close'; btnCloseSmart.textContent = '✕';
+  smartTop.appendChild(smartTitle); smartTop.appendChild(btnCloseSmart);
+  smartView.appendChild(smartTop);
+
+  const smartIntro = document.createElement('div'); smartIntro.className = 'cb-label'; smartIntro.textContent = 'Search your saved chats and ask a question about them.';
+  smartView.appendChild(smartIntro);
+  // Filters row: host, tag, date-range
+  const smartFilterRow = document.createElement('div'); smartFilterRow.className = 'cb-view-controls';
+  const hostSelect = document.createElement('select'); hostSelect.className = 'cb-select'; hostSelect.id = 'cb-smart-host';
+  const tagSelect = document.createElement('select'); tagSelect.className = 'cb-select'; tagSelect.id = 'cb-smart-tag';
+  const dateSelect = document.createElement('select'); dateSelect.className = 'cb-select'; dateSelect.id = 'cb-smart-date';
+  // Default options
+  const ho = document.createElement('option'); ho.value = ''; ho.textContent = 'All hosts'; hostSelect.appendChild(ho);
+  const to = document.createElement('option'); to.value = ''; to.textContent = 'All tags'; tagSelect.appendChild(to);
+  ['All time','Last 7 days','Last 30 days'].forEach(v => { const o = document.createElement('option'); o.value = v; o.textContent = v; dateSelect.appendChild(o); });
+  dateSelect.value = 'All time';
+  smartFilterRow.appendChild(hostSelect); smartFilterRow.appendChild(tagSelect); smartFilterRow.appendChild(dateSelect);
+  smartView.appendChild(smartFilterRow);
+
+  const smartQueryRow = document.createElement('div'); smartQueryRow.className = 'cb-view-controls';
+  const smartInput = document.createElement('input'); smartInput.type = 'text'; smartInput.className = 'cb-select'; smartInput.id = 'cb-smart-query'; smartInput.placeholder = 'e.g. What did Gemini say about API rate limits?';
+  const btnSmartSearch = document.createElement('button'); btnSmartSearch.className = 'cb-btn'; btnSmartSearch.id = 'btnSmartSearch'; btnSmartSearch.textContent = 'Search';
+  smartQueryRow.appendChild(smartInput); smartQueryRow.appendChild(btnSmartSearch);
+  smartView.appendChild(smartQueryRow);
+
+  const smartResults = document.createElement('div'); smartResults.id = 'cb-smart-results'; smartResults.className = 'cb-view-text'; smartResults.textContent = '(No results yet)';
+  smartView.appendChild(smartResults);
+
+  const smartAskRow = document.createElement('div'); smartAskRow.className = 'cb-view-controls';
+  const btnSmartAsk = document.createElement('button'); btnSmartAsk.className = 'cb-btn cb-view-go'; btnSmartAsk.id = 'btnSmartAsk'; btnSmartAsk.textContent = 'Ask AI';
+  smartAskRow.appendChild(btnSmartAsk);
+  const btnIndexAll = document.createElement('button'); btnIndexAll.className = 'cb-btn'; btnIndexAll.id = 'btnIndexAll'; btnIndexAll.textContent = 'Index all saved chats'; btnIndexAll.title = 'Create embeddings and index all saved chats (requires API key)';
+  smartAskRow.appendChild(btnIndexAll);
+  const btnNormalizeTags = document.createElement('button'); btnNormalizeTags.className = 'cb-btn'; btnNormalizeTags.id = 'btnNormalizeTags'; btnNormalizeTags.textContent = 'Normalize tags & index'; btnNormalizeTags.title = 'Normalize tags for all saved chats and re-index them';
+  smartAskRow.appendChild(btnNormalizeTags);
+  smartView.appendChild(smartAskRow);
+
+  const smartAnswer = document.createElement('div'); smartAnswer.id = 'cb-smart-answer'; smartAnswer.className = 'cb-view-result'; smartAnswer.textContent = '';
+  smartView.appendChild(smartAnswer);
+
+  panel.appendChild(smartView);
 
   // Gemini Nano input/output area
   const geminiWrap = document.createElement('div'); geminiWrap.style.padding = '8px 18px'; geminiWrap.style.display = 'flex'; geminiWrap.style.flexDirection = 'column'; geminiWrap.style.gap = '8px';
@@ -498,6 +674,7 @@
         summView.classList.remove('cb-view-active');
         rewView.classList.remove('cb-view-active');
         transView.classList.remove('cb-view-active');
+        try { if (typeof smartView !== 'undefined' && smartView) smartView.classList.remove('cb-view-active'); } catch(_) {}
       } catch (e) {}
     }
 
@@ -546,13 +723,41 @@
       } catch(e){}
     }
 
-    btnGoSync.addEventListener('click', async () => {
+    // Normalize an array/string of topic tags to canonical stored form
+    function normalizeTopics(topics) {
       try {
-  btnGoSync.disabled = true; btnGoSync.innerHTML = '⏳ Syncing <span class="cb-dots"><span class="dot">.</span><span class="dot">.</span><span class="dot">.</span></span>'; syncResult.textContent = ''; btnInsertSync.style.display = 'none';
+        let arr = [];
+        if (!topics) return [];
+        if (Array.isArray(topics)) arr = topics.slice();
+        else if (typeof topics === 'string') arr = topics.split(/[,\n]+/);
+        else return [];
+
+        // lowercase, remove quotes/parentheses/dots, strip other punctuation except dash/underscore, collapse spaces
+        const cleaned = arr.map(t => String(t || '')
+          .toLowerCase()
+          .replace(/["'()\.]/g, '')
+          .replace(/[^\w\s-_]/g, '')
+          .replace(/\s+/g, ' ')
+          .trim()
+        ).filter(Boolean);
+
+        // dedupe preserve order and limit to 6
+        const seen = new Set();
+        const uniq = [];
+        for (const t of cleaned) {
+          if (!seen.has(t)) { seen.add(t); uniq.push(t); }
+        }
+        return uniq.slice(0,6);
+      } catch (e) { debugLog('normalizeTopics failed', e); return []; }
+    }
+
+      btnGoSync.addEventListener('click', async () => {
+        try {
+          addLoadingToButton(btnGoSync, 'Syncing'); syncResult.textContent = ''; btnInsertSync.style.display = 'none';
         syncProg.style.display = 'inline'; updateProgress(syncProg, 'sync', { phase: 'preparing' });
         const chatText = (syncSourceText && syncSourceText.textContent) ? syncSourceText.textContent : '';
         const target = (syncTargetSelect && syncTargetSelect.value) || 'TargetModel';
-        if (!chatText || chatText.trim().length < 10) { toast('No conversation to sync'); btnGoSync.disabled = false; btnGoSync.textContent = '🎚️ Sync Tone'; return; }
+  if (!chatText || chatText.trim().length < 10) { toast('No conversation to sync'); btnGoSync.disabled = false; btnGoSync.textContent = 'Sync Tone'; return; }
 
         let resText = '';
         if (typeof window.syncTone === 'function') {
@@ -573,20 +778,47 @@
         toast('Sync Tone completed');
       } catch (err) {
         toast('Sync Tone failed: ' + (err && err.message ? err.message : err));
-      } finally { btnGoSync.disabled = false; btnGoSync.textContent = '🎚️ Sync Tone'; }
+  } finally { removeLoadingFromButton(btnGoSync, 'Sync Tone'); }
     });
 
-    btnInsertSync.addEventListener('click', () => {
+    // Map target model name to a URL we can open
+    function getTargetModelUrl(name) {
+      const n = (name || '').toLowerCase();
+      if (n.includes('claude') || n.includes('anthropic')) return 'https://claude.ai/new';
+      if (n.includes('chatgpt') || n.includes('openai')) return 'https://chatgpt.com/';
+      if (n.includes('gemini') || n.includes('bard')) return 'https://gemini.google.com/app';
+      if (n.includes('bing') || n.includes('copilot')) return 'https://copilot.microsoft.com/';
+      // unsupported targets can be added here
+      return null;
+    }
+
+    // Open target model in a new tab and auto-restore text
+    function continueWithTargetModel(text) {
       try {
-        const text = syncSourceText.textContent || '';
-        if (!text || text === '(no result)') { toast('Nothing to insert'); return; }
-        restoreToChat(text);
-      } catch (e) { toast('Insert failed'); }
+        const target = (syncTargetSelect && syncTargetSelect.value) ? syncTargetSelect.value : 'ChatGPT';
+        const url = getTargetModelUrl(target);
+        if (!url) { toast('Target not supported yet'); return; }
+        if (!text || text === '(no result)') { toast('Nothing to send'); return; }
+        try {
+          chrome.runtime.sendMessage({ type: 'open_and_restore', payload: { url, text } }, (res) => {
+            // optional ack
+          });
+        } catch (e) {
+          // fallback: open window and rely on user to paste
+          try { window.open(url, '_blank'); } catch(_) {}
+          try { navigator.clipboard.writeText(text).then(()=>toast('Copied to clipboard. Paste into the new chat.')); } catch(_){ toast('Copied to clipboard.'); }
+        }
+      } catch (e) { toast('Continue failed'); }
+    }
+
+    btnInsertSync.addEventListener('click', () => {
+      const text = syncSourceText.textContent || '';
+      continueWithTargetModel(text);
     });
 
     // Scan button handler: scan, normalize, save, and optionally auto-summarize
     btnScan.addEventListener('click', async () => {
-      btnScan.disabled = true; status.textContent = 'Status: scanning...';
+      addLoadingToButton(btnScan, 'Scanning'); status.textContent = 'Status: scanning...';
       try {
   const msgs = await scanChat();
   // persist lastScannedText for clipboard and Sync view
@@ -641,7 +873,7 @@
           }
         }
       } catch (e) { status.textContent = 'Status: error'; toast('Scan failed: ' + (e && e.message)); }
-      btnScan.disabled = false;
+      removeLoadingFromButton(btnScan, 'Scan Chat');
     });
 
     // Clipboard button - copy last scanned text (textarea removed)
@@ -684,26 +916,130 @@
       }
     });
 
-    // Helper: restore arbitrary text into the visible chat input on the page
-    function restoreToChat(text) {
+    // Helper: find file input near composer or anywhere visible
+    function findFileInputNearComposer() {
       try {
-        let input = null;
-        // broaden candidates and avoid picking extension elements
+        const adapter = (typeof window.pickAdapter === 'function') ? window.pickAdapter() : null;
+        if (adapter && typeof adapter.getFileInput === 'function') {
+          const ai = adapter.getFileInput(); if (ai) return ai;
+        }
+      } catch (e) {}
+      try {
+        const fileInputs = Array.from(document.querySelectorAll('input[type="file"]'));
+        // prefer visible ones
+        for (const fi of fileInputs) {
+          try {
+            const cs = window.getComputedStyle(fi);
+            if (cs.display !== 'none' && cs.visibility !== 'hidden') return fi;
+          } catch (e) {}
+        }
+        // else return first if any
+        return fileInputs[0] || null;
+      } catch (e) { return null; }
+    }
+
+    // Helper: attach files to chat composer via <input type="file">, fallback to clipboard for images
+    async function attachFilesToChat(attachments) {
+      const result = { uploaded: 0, failed: [] };
+      const atts = Array.isArray(attachments) ? attachments.filter(a => a && a.url) : [];
+      if (!atts.length) return result;
+      let fileInput = findFileInputNearComposer();
+      if (!fileInput) {
+        // Fallback: try clipboard for the first image
+        const img = atts.find(a => a.kind === 'image');
+        if (img) {
+          try {
+            const res = await fetch(img.url, { credentials: 'include' });
+            const blob = await res.blob();
+            const item = new ClipboardItem({ [blob.type || 'image/png']: blob });
+            await navigator.clipboard.write([item]);
+            toast('Image copied to clipboard. Press Ctrl+V in the chat to paste.');
+            return result;
+          } catch (e) {
+            result.failed.push({ url: img.url, error: 'clipboard_failed' });
+            return result;
+          }
+        }
+        return result;
+      }
+      try {
+        const dt = new DataTransfer();
+        const multiple = !!fileInput.multiple;
+        let count = 0;
+        for (const a of atts) {
+          try {
+            const res = await fetch(a.url, { credentials: 'include' });
+            if (!res.ok) { result.failed.push({ url: a.url, error: 'http_'+res.status }); if (!multiple) break; continue; }
+            const blob = await res.blob();
+            const name = a.name || ('attachment.' + ((blob.type && blob.type.split('/')[1]) || 'bin'));
+            const file = new File([blob], name, { type: blob.type || 'application/octet-stream' });
+            dt.items.add(file);
+            count++;
+            if (!multiple) break;
+          } catch (e) {
+            result.failed.push({ url: a.url, error: e && e.message });
+            if (!multiple) break;
+          }
+        }
+        if (count > 0) {
+          fileInput.files = dt.files;
+          try { fileInput.dispatchEvent(new Event('change', { bubbles: true })); } catch(e) {}
+          try { fileInput.dispatchEvent(new Event('input', { bubbles: true })); } catch(e) {}
+          result.uploaded = count;
+          toast('Attached ' + count + ' file' + (count>1?'s':'') + ' to chat');
+        }
+      } catch (e) {
+        // Swallow and report
+        try { console.error('[ChatBridge attachFiles] error', e); } catch(_) {}
+      }
+      return result;
+    }
+
+    // Helper: find a visible chat input candidate
+    function findVisibleInputCandidate() {
+      try {
         const candidates = Array.from(document.querySelectorAll('textarea, [contenteditable="true"], input[type="text"], div[role="textbox"]'));
         for (const el of candidates) {
           try {
-            // skip extension host and hidden/offscreen elements
-            if (el.closest && el.closest('#cb-host')) continue;
+            if (el.closest && el.closest('#cb-host')) continue; // skip extension UI
             const cs = window.getComputedStyle(el);
-            if (cs.display !== 'none' && cs.visibility !== 'hidden' && cs.opacity !== '0' && el.offsetWidth > 0 && el.offsetHeight > 0) { input = el; break; }
-          } catch (e) {}
+            const visible = cs.display !== 'none' && cs.visibility !== 'hidden' && cs.opacity !== '0' && el.offsetWidth > 0 && el.offsetHeight > 0;
+            if (!visible) continue;
+            // Skip obvious search bars/nav inputs by heuristics
+            const attrs = ((el.getAttribute('aria-label')||'') + ' ' + (el.getAttribute('placeholder')||'')).toLowerCase();
+            if (/search|find|filter|nav|menu/.test(attrs)) continue;
+            return el;
+          } catch (_) {}
         }
+      } catch (_) {}
+      return null;
+    }
+
+    async function waitForComposer(timeoutMs = 8000, pollMs = 300) {
+      const start = Date.now();
+      let lastErr = null;
+      while (Date.now() - start < timeoutMs) {
+        try {
+          const el = findVisibleInputCandidate();
+          if (el) return el;
+        } catch (e) { lastErr = e; }
+        await new Promise(r => setTimeout(r, pollMs));
+      }
+      if (lastErr) { try { console.warn('[ChatBridge] waitForComposer error:', lastErr); } catch(_){} }
+      return null;
+    }
+
+    // Helper: restore arbitrary text into the visible chat input on the page, and attach optional files
+    async function restoreToChat(text, attachments) {
+      try {
+        // Wait for composer to exist and be visible
+        let input = findVisibleInputCandidate();
+        if (!input) input = await waitForComposer(10000, 350);
         if (input && input.isContentEditable) {
           input.textContent = text;
           input.dispatchEvent(new Event('input', { bubbles: true }));
           input.focus(); input.blur();
           toast('Restored to chat');
-          return true;
         } else if (input) {
           input.value = text;
           input.dispatchEvent(new Event('input', { bubbles: true }));
@@ -713,11 +1049,26 @@
           setTimeout(() => { try { input.dispatchEvent(new Event('input', { bubbles: true })); } catch(e){} }, 60);
           try { input.dispatchEvent(new Event('change', { bubbles: true })); } catch(e){}
           toast('Restored to chat');
-          return true;
+        } else {
+          // No input found; put text on clipboard
+          try { await navigator.clipboard.writeText(text); toast('Copied to clipboard'); } catch(e) { toast('Copied to clipboard'); }
         }
-      } catch (e) {}
-      try { navigator.clipboard.writeText(text).then(()=>toast('Copied to clipboard')) } catch(e) { toast('Copied to clipboard'); }
-      return false;
+        // Attach files if provided
+        try {
+          const atts = Array.isArray(attachments) ? attachments : [];
+          if (atts.length) {
+            const res = await attachFilesToChat(atts);
+            if (res.failed && res.failed.length) {
+              console.warn('[ChatBridge] Some attachments failed to attach:', res.failed);
+              toast((res.uploaded||0) + ' attached, ' + res.failed.length + ' failed');
+            }
+          }
+        } catch (e) { console.warn('[ChatBridge] attachFiles error', e); }
+        return true;
+      } catch (e) {
+        try { await navigator.clipboard.writeText(text); toast('Copied to clipboard'); } catch(_) { toast('Copied to clipboard'); }
+        return false;
+      }
     }
 
     btnRestore.addEventListener('click', async () => {
@@ -736,6 +1087,13 @@
           } catch (_) { sel = arr[0]; }
           if (!sel || !sel.conversation || !sel.conversation.length) { toast('No messages in selected conversation'); return; }
           const formatted = sel.conversation.map(m => (m.role === 'user' ? 'User: ' : 'Assistant: ') + m.text).join('\n\n') + '\n\n🔄 Please continue the conversation.';
+          // Collect attachments from conversation
+          const allAtts = [];
+          try {
+            for (const m of sel.conversation) {
+              if (Array.isArray(m.attachments) && m.attachments.length) allAtts.push(...m.attachments);
+            }
+          } catch (e) {}
           // Find only visible textarea or contenteditable input
           let input = null;
           const candidates = Array.from(document.querySelectorAll('textarea, [contenteditable="true"]'));
@@ -754,6 +1112,8 @@
               input.focus();
               input.blur();
               console.log('[ChatBridge Restore] Set textContent and dispatched input event.');
+              // Attach files after text
+              try { if (allAtts.length) { attachFilesToChat(allAtts); } } catch(e){}
               toast('Restored conversation');
               setTimeout(() => {
                 console.log('[ChatBridge Restore] Final input value:', input.textContent);
@@ -770,11 +1130,23 @@
                 input.dispatchEvent(new Event('input', { bubbles: true }));
                 console.log('[ChatBridge Restore] Final input value:', input.value);
               }, 100);
+              // Attach files after text
+              try { if (allAtts.length) { attachFilesToChat(allAtts); } } catch(e){}
               toast('Restored conversation');
             } else throw new Error('no input');
           } catch (e) {
             console.log('[ChatBridge Restore] Error during restore:', e);
             navigator.clipboard.writeText(formatted).then(()=>toast('Copied to clipboard (fallback)'));
+            // Attempt to put first image on clipboard as well
+            try {
+              const img = allAtts.find(a => a.kind === 'image');
+              if (img) {
+                fetch(img.url).then(r=>r.blob()).then(b=>{
+                  const item = new ClipboardItem({ [b.type||'image/png']: b });
+                  return navigator.clipboard.write([item]);
+                }).then(()=>toast('Image copied to clipboard too')).catch(()=>{});
+              }
+            } catch (_) {}
           }
         });
       } catch (e) { toast('Restore failed'); }
@@ -978,10 +1350,10 @@
 
     btnGoSumm.addEventListener('click', async () => {
       try {
-  btnGoSumm.disabled = true; btnGoSumm.innerHTML = '⏳ Summarizing <span class="cb-dots"><span class="dot">.</span><span class="dot">.</span><span class="dot">.</span></span>'; summResult.textContent = ''; btnInsertSumm.style.display = 'none';
+  btnGoSumm.disabled = true; addLoadingToButton(btnGoSumm, 'Summarizing'); summResult.textContent = ''; btnInsertSumm.style.display = 'none';
         summProg.style.display = 'inline'; updateProgress(summProg, 'summarize', { phase: 'preparing' });
         const chatText = (summSourceText && summSourceText.textContent) ? summSourceText.textContent : '';
-        if (!chatText || chatText.trim().length < 10) { toast('No conversation to summarize'); btnGoSumm.disabled = false; btnGoSumm.textContent = '📝 Summarize'; return; }
+  if (!chatText || chatText.trim().length < 10) { toast('No conversation to summarize'); btnGoSumm.disabled = false; btnGoSumm.textContent = 'Summarize'; return; }
 
         const length = (summLengthSelect && summLengthSelect.value) || 'medium';
         const summaryType = (summTypeSelect && summTypeSelect.value) || 'paragraph';
@@ -998,7 +1370,7 @@
       } catch (err) {
         toast('Summarize failed: ' + (err && err.message ? err.message : err));
         debugLog('hierarchicalSummarize error', err);
-      } finally { btnGoSumm.disabled = false; btnGoSumm.textContent = '📝 Summarize'; }
+  } finally { removeLoadingFromButton(btnGoSumm, 'Summarize'); }
     });
 
     // Insert buttons: inject current text area content into the page chat input
@@ -1026,11 +1398,11 @@
 
     btnGoRew.addEventListener('click', async () => {
       try {
-  btnGoRew.disabled = true; btnGoRew.innerHTML = '⏳ Rewriting <span class="cb-dots"><span class="dot">.</span><span class="dot">.</span><span class="dot">.</span></span>'; rewResult.textContent = ''; btnInsertRew.style.display = 'none';
+  btnGoRew.disabled = true; addLoadingToButton(btnGoRew, 'Rewriting'); rewResult.textContent = ''; btnInsertRew.style.display = 'none';
         rewProg.style.display = 'inline'; updateProgress(rewProg, 'rewrite', { phase: 'preparing' });
         const chatText = (rewSourceText && rewSourceText.textContent) ? rewSourceText.textContent : '';
         const style = (rewStyleSelect && rewStyleSelect.value) || 'normal';
-        if (!chatText || chatText.trim().length < 10) { toast('No conversation to rewrite'); btnGoRew.disabled = false; btnGoRew.textContent = '✍️ Rewrite'; return; }
+  if (!chatText || chatText.trim().length < 10) { toast('No conversation to rewrite'); btnGoRew.disabled = false; btnGoRew.textContent = 'Rewrite'; return; }
 
         const result = await hierarchicalProcess(chatText, 'rewrite', { chunkSize: 14000, maxParallel: 3, length: 'medium', extraPayload: { rewriteStyle: style }, onProgress: (ev)=>updateProgress(rewProg, 'rewrite', ev) });
 
@@ -1044,7 +1416,7 @@
       } catch (err) {
         toast('Rewrite failed: ' + (err && err.message ? err.message : err));
         debugLog('hierarchicalProcess rewrite error', err);
-      } finally { btnGoRew.disabled = false; btnGoRew.textContent = '✍️ Rewrite'; }
+  } finally { removeLoadingFromButton(btnGoRew, 'Rewrite'); }
     });
 
     btnInsertRew.addEventListener('click', () => {
@@ -1071,11 +1443,11 @@
 
     btnGoTrans.addEventListener('click', async () => {
       try {
-  btnGoTrans.disabled = true; btnGoTrans.innerHTML = '⏳ Translating <span class="cb-dots"><span class="dot">.</span><span class="dot">.</span><span class="dot">.</span></span>'; transResult.textContent = ''; btnInsertTrans.style.display = 'none';
+  btnGoTrans.disabled = true; addLoadingToButton(btnGoTrans, 'Translating'); transResult.textContent = ''; btnInsertTrans.style.display = 'none';
         transProg.style.display = 'inline'; updateProgress(transProg, 'translate', { phase: 'preparing' });
         const chatText = (transSourceText && transSourceText.textContent) ? transSourceText.textContent : '';
         const lang = (transLangSelect && transLangSelect.value) || 'Japanese';
-        if (!chatText || chatText.trim().length < 10) { toast('No conversation to translate'); btnGoTrans.disabled = false; btnGoTrans.textContent = '🌐 Translate'; return; }
+  if (!chatText || chatText.trim().length < 10) { toast('No conversation to translate'); btnGoTrans.disabled = false; btnGoTrans.textContent = 'Translate'; return; }
 
         const result = await hierarchicalProcess(chatText, 'translate', { chunkSize: 14000, maxParallel: 3, length: 'medium', extraPayload: { targetLang: lang }, onProgress: (ev)=>updateProgress(transProg, 'translate', ev) });
 
@@ -1089,7 +1461,7 @@
       } catch (err) {
         toast('Translate failed: ' + (err && err.message ? err.message : err));
         debugLog('hierarchicalProcess translate error', err);
-      } finally { btnGoTrans.disabled = false; btnGoTrans.textContent = '🌐 Translate'; }
+  } finally { removeLoadingFromButton(btnGoTrans, 'Translate'); }
     });
 
     btnInsertTrans.addEventListener('click', () => {
@@ -1098,6 +1470,289 @@
         if (!text || text === '(no result)') { toast('Nothing to insert'); return; }
         restoreToChat(text);
       } catch (e) { toast('Insert failed'); }
+    });
+
+    // Smart Query handlers
+    btnSmartQuery.addEventListener('click', async () => {
+      try {
+        closeAllViews();
+        smartResults.textContent = '(No results yet)';
+        smartAnswer.textContent = '';
+        smartInput.value = '';
+        // populate host and tag filters from saved conversations
+        try {
+          const convs = await loadConversationsAsync();
+          // hosts
+          try { while (hostSelect.firstChild) hostSelect.removeChild(hostSelect.firstChild); const ho = document.createElement('option'); ho.value = ''; ho.textContent = 'All hosts'; hostSelect.appendChild(ho); } catch (e) {}
+          const hosts = Array.from(new Set((convs||[]).map(c => { try { return (c.platform || (c.url && new URL(c.url).hostname) || location.hostname).toString(); } catch(_) { return location.hostname; } }))).slice(0,50);
+          hosts.forEach(h => { const o = document.createElement('option'); o.value = h; o.textContent = h.length > 24 ? (h.slice(0,20) + '…') : h; hostSelect.appendChild(o); });
+          // tags
+          try { while (tagSelect.firstChild) tagSelect.removeChild(tagSelect.firstChild); const to = document.createElement('option'); to.value = ''; to.textContent = 'All tags'; tagSelect.appendChild(to); } catch (e) {}
+          // normalize existing tags when populating filters (handles older saved convs)
+          const rawTags = [].concat(...(convs||[]).map(c => (c.topics||[])));
+          const normTags = [];
+          const seenTag = new Set();
+          rawTags.forEach(tt => {
+            try {
+              const tnorm = String(tt||'').toLowerCase().replace(/["'()\.]/g, '').replace(/\s+/g, ' ').trim();
+              if (tnorm && !seenTag.has(tnorm)) { seenTag.add(tnorm); normTags.push(tnorm); }
+            } catch(_) {}
+          });
+          const tags = normTags.slice(0,100);
+          tags.forEach(t => { const o = document.createElement('option'); o.value = t; const disp = String(t).split(/[_\-\s]+/).map(w=>w.charAt(0).toUpperCase()+w.slice(1)).join(' '); o.textContent = disp; tagSelect.appendChild(o); });
+        } catch (e) { debugLog('populate filters failed', e); }
+
+        smartView.classList.add('cb-view-active');
+      } catch (e) { toast('Failed to open Smart Query'); debugLog('open smart view', e); }
+    });
+
+    btnCloseSmart.addEventListener('click', () => { try { smartView.classList.remove('cb-view-active'); } catch (e) {} });
+
+    // Load conversations as a Promise (supports window.getConversations hook or localStorage)
+    function loadConversationsAsync() {
+      return new Promise(res => {
+        try {
+          if (typeof window.getConversations === 'function') {
+            try { window.getConversations(list => res(Array.isArray(list) ? list : [])); } catch (e) { res([]); }
+          } else {
+            const arr = JSON.parse(localStorage.getItem('chatbridge:conversations') || '[]'); res(Array.isArray(arr) ? arr : []);
+          }
+        } catch (e) { res([]); }
+      });
+    }
+
+    let lastSmartResults = [];
+
+    function renderSmartResults(results) {
+      try {
+        if (!results || !results.length) { smartResults.textContent = '(No matches)'; lastSmartResults = []; return; }
+        lastSmartResults = results;
+        // Build a small HTML list showing host, ts and snippet
+        smartResults.innerHTML = '';
+        results.forEach((r, idx) => {
+          const row = document.createElement('div'); row.className = 'cb-row-result';
+          const hdr = document.createElement('div'); hdr.className = 'cb-row-hdr';
+          const left = document.createElement('div'); left.className = 'cb-row-left';
+          left.textContent = `${r.host} • ${r.count} msgs • ${r.time}`;
+          const right = document.createElement('div'); right.className = 'cb-row-right';
+          const openBtn = document.createElement('button'); openBtn.className = 'cb-btn cb-open-btn'; openBtn.textContent = 'Open';
+          openBtn.addEventListener('click', () => { smartAnswer.textContent = r.snippetFull || '(no text)'; });
+          const copyBtn = document.createElement('button'); copyBtn.className = 'cb-btn cb-copy-btn'; copyBtn.textContent = 'Copy';
+          copyBtn.addEventListener('click', () => { try { navigator.clipboard.writeText(r.snippetFull || ''); toast('Copied'); } catch(_) { toast('Copy failed'); } });
+          right.appendChild(openBtn); right.appendChild(copyBtn);
+          hdr.appendChild(left); hdr.appendChild(right);
+          row.appendChild(hdr);
+          const sn = document.createElement('div'); sn.className = 'cb-snippet'; sn.textContent = r.snippet || '';
+          row.appendChild(sn);
+          // tags display
+          try {
+            if (r.topics && Array.isArray(r.topics) && r.topics.length) {
+              const tagRow = document.createElement('div'); tagRow.className = 'cb-tag-row';
+              r.topics.slice(0,6).forEach(t => { const chip = document.createElement('div'); chip.className = 'cb-tag-chip'; const disp = String(t).split(/[_\-\s]+/).map(w=>w.charAt(0).toUpperCase()+w.slice(1)).join(' '); chip.textContent = disp; tagRow.appendChild(chip); });
+              row.appendChild(tagRow);
+            }
+          } catch (e) {}
+          smartResults.appendChild(row);
+        });
+      } catch (e) { debugLog('renderSmartResults', e); smartResults.textContent = '(render error)'; }
+    }
+
+    btnSmartSearch.addEventListener('click', async () => {
+      try {
+        const q = (smartInput && smartInput.value) ? smartInput.value.trim() : '';
+        if (!q) { toast('Type a search query'); return; }
+        smartResults.textContent = 'Searching...'; smartAnswer.textContent = '';
+        // First try semantic vector query via background
+        async function vectorQueryAsync(qstr, topK) {
+          return new Promise(res => {
+            try {
+              chrome.runtime.sendMessage({ type: 'vector_query', payload: { query: qstr, topK: topK || 6 } }, (r) => {
+                if (chrome.runtime.lastError) return res({ ok:false, error: chrome.runtime.lastError.message });
+                return res(r || { ok:false });
+              });
+            } catch (e) { return res({ ok:false, error: e && e.message }); }
+          });
+        }
+
+        try {
+          const vres = await vectorQueryAsync(q, 8);
+          if (vres && vres.ok && Array.isArray(vres.results) && vres.results.length) {
+            // Map ids back to saved conversations
+            const convs = await loadConversationsAsync();
+            const mapped = vres.results.map(r => {
+              const id = String(r.id || '');
+              const conv = (convs || []).find(c => String(c.ts) === id);
+              const host = (conv && (conv.platform || conv.url)) ? (conv.platform || new URL(conv.url||location.href).hostname) : (r.metadata && (r.metadata.platform || (r.metadata.url && new URL(r.metadata.url).hostname))) || location.hostname;
+              const date = conv ? new Date(conv.ts) : (r.metadata && r.metadata.ts ? new Date(r.metadata.ts) : new Date());
+              const time = date.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+              const full = conv ? ((conv.conversation||[]).map(m => `${m.role}: ${m.text}`).join('\n\n')) : (r.metadata && r.metadata.snippet) || '';
+              const snippet = full.length > 400 ? full.slice(0,400) + '…' : full;
+              const count = conv ? (conv.conversation||[]).length : (r.metadata && r.metadata.count) || 0;
+              const topics = conv && Array.isArray(conv.topics) ? conv.topics : (r.metadata && r.metadata.topics ? r.metadata.topics : []);
+              return { host, time, snippet, snippetFull: full, count, score: r.score, id, topics };
+            }).slice(0,12);
+            // apply filters from UI
+            try {
+              const selHost = (hostSelect && hostSelect.value) ? hostSelect.value : '';
+              const selTag = (tagSelect && tagSelect.value) ? tagSelect.value : '';
+              const selDate = (dateSelect && dateSelect.value) ? dateSelect.value : 'All time';
+              const now = Date.now();
+              const filtered = mapped.filter(it => {
+                if (selHost && it.host && it.host !== selHost) return false;
+                if (selTag && (!it.topics || !it.topics.some(t=>t.toLowerCase() === selTag.toLowerCase()))) return false;
+                if (selDate && selDate !== 'All time') {
+                  const days = selDate === 'Last 7 days' ? 7 : (selDate === 'Last 30 days' ? 30 : 0);
+                  if (days > 0) {
+                    const convTs = (convs || []).find(c=>String(c.ts)===String(it.id));
+                    const ts = convTs && convTs.ts ? Number(convTs.ts) : 0;
+                    if (!ts) return false;
+                    if ((now - ts) > days * 24 * 3600 * 1000) return false;
+                  }
+                }
+                return true;
+              }).slice(0,12);
+              renderSmartResults(filtered);
+            } catch (e) { renderSmartResults(mapped); }
+            return;
+          }
+        } catch (e) { debugLog('vector query failed', e); }
+
+        // Fallback to local substring search
+        const convs = await loadConversationsAsync();
+        const ql = q.toLowerCase();
+        const scored = (Array.isArray(convs) ? convs : []).map(s => {
+          const host = (s.platform || s.url || '').toString();
+          const date = new Date(s.ts || Date.now());
+          const time = date.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+          const full = (s.conversation || []).map(m => `${m.role}: ${m.text}`).join('\n\n');
+          const count = (s.conversation || []).length || 0;
+          const score = (full.toLowerCase().split(ql).length - 1) + ((host||'').toLowerCase().includes(ql) ? 1 : 0);
+          const snippet = full.length > 400 ? full.slice(0,400) + '…' : full;
+          return { s, score, host, time, snippet, snippetFull: full, count };
+        }).filter(x => x.score > 0).sort((a,b) => b.score - a.score).slice(0,12);
+        // map and apply filters
+        const mapped = scored.map(r => ({ id: String(r.s && r.s.ts), host: r.host || new URL(r.s && r.s.url || location.href).hostname, time: r.time, snippet: r.snippet, snippetFull: r.snippetFull, count: r.count, topics: r.s && r.s.topics ? r.s.topics : [] }));
+        try {
+          const selHost = (hostSelect && hostSelect.value) ? hostSelect.value : '';
+          const selTag = (tagSelect && tagSelect.value) ? tagSelect.value : '';
+          const selDate = (dateSelect && dateSelect.value) ? dateSelect.value : 'All time';
+          const now = Date.now();
+          const filtered = mapped.filter(it => {
+            if (selHost && it.host && it.host !== selHost) return false;
+            if (selTag && (!it.topics || !it.topics.some(t=>t.toLowerCase() === selTag.toLowerCase()))) return false;
+            if (selDate && selDate !== 'All time') {
+              const days = selDate === 'Last 7 days' ? 7 : (selDate === 'Last 30 days' ? 30 : 0);
+              if (days > 0) {
+                const convObj = (convs || []).find(c=>String(c.ts)===String(it.id));
+                const ts = convObj && convObj.ts ? Number(convObj.ts) : 0;
+                if (!ts) return false;
+                if ((now - ts) > days * 24 * 3600 * 1000) return false;
+              }
+            }
+            return true;
+          }).slice(0,12);
+          renderSmartResults(filtered);
+        } catch (e) { renderSmartResults(mapped); }
+      } catch (e) { debugLog('smart search error', e); smartResults.textContent = '(search failed)'; }
+    });
+
+    btnSmartAsk.addEventListener('click', async () => {
+      try {
+        const q = (smartInput && smartInput.value) ? smartInput.value.trim() : '';
+        if (!q) { toast('Type a question to ask'); return; }
+        if (!lastSmartResults || !lastSmartResults.length) { toast('No search results to provide context. Run Search first.'); return; }
+  btnSmartAsk.disabled = true; addLoadingToButton(btnSmartAsk, 'Asking…'); smartAnswer.textContent = '';
+        // Combine top matches into context (limit to ~13000 chars)
+        let ctx = '';
+        for (let i=0;i<Math.min(6,lastSmartResults.length);i++) {
+          const t = lastSmartResults[i].snippetFull || '';
+          if (!t) continue;
+          if ((ctx + '\n\n' + t).length > 13000) break;
+          ctx += '\n\n--- Conversation excerpt ' + (i+1) + ' ---\n\n' + t;
+        }
+        const prompt = `You are an assistant that answers questions about a user's past chat logs. Use ONLY the provided conversation excerpts as context to answer the question. If the answer isn't contained in the excerpts, say you don't know.\n\nQuestion: ${q}\n\nContext: ${ctx}`;
+        const res = await callGeminiAsync({ action: 'prompt', text: prompt, length: 'short' });
+        if (res && res.ok) {
+          smartAnswer.textContent = res.result || '(no answer)';
+        } else {
+          smartAnswer.textContent = 'AI query failed: ' + (res && res.error ? res.error : 'unknown');
+        }
+      } catch (e) { debugLog('smart ask error', e); smartAnswer.textContent = '(ask failed)'; }
+  finally { removeLoadingFromButton(btnSmartAsk, 'Ask AI'); }
+    });
+
+    // Index all saved conversations via background bulk index
+    btnIndexAll.addEventListener('click', async () => {
+      try {
+  const prev = btnIndexAll.textContent;
+  addLoadingToButton(btnIndexAll, 'Indexing...');
+        smartAnswer.textContent = '';
+        chrome.runtime.sendMessage({ type: 'vector_index_all' }, (res) => {
+          try {
+            if (chrome.runtime.lastError) { smartAnswer.textContent = 'Index failed: ' + chrome.runtime.lastError.message; }
+            else if (res && res.ok) { smartAnswer.textContent = `Indexed ${res.indexed || 0} conversations.`; }
+            else { smartAnswer.textContent = 'Index failed: ' + (res && res.error ? res.error : 'unknown'); }
+          } catch (e) { smartAnswer.textContent = 'Index response error'; }
+          finally { removeLoadingFromButton(btnIndexAll, prev); }
+        });
+  } catch (e) { toast('Index all failed'); btnIndexAll.disabled = false; btnIndexAll.textContent = 'Index all saved chats'; }
+    });
+
+    // Normalize tags (migration) for all saved conversations and re-index them
+    btnNormalizeTags.addEventListener('click', async () => {
+      try {
+  const prev = btnNormalizeTags.textContent;
+  addLoadingToButton(btnNormalizeTags, 'Normalizing...');
+        smartAnswer.textContent = '';
+
+        // load conversations
+        const getter = (typeof window.getConversations === 'function') ? window.getConversations : (cb => cb(JSON.parse(localStorage.getItem('chatbridge:conversations') || '[]')));
+        const convs = await new Promise(res => getter(res));
+        const arr = Array.isArray(convs) ? convs : [];
+        let updated = 0, extracted = 0;
+
+        for (let i = 0; i < arr.length; i++) {
+          const c = arr[i];
+          try {
+            const oldTopics = Array.isArray(c.topics) ? c.topics.slice() : [];
+            let normalized = [];
+
+            if (Array.isArray(c.topics) && c.topics.length) {
+              normalized = normalizeTopics(c.topics);
+            } else {
+              // try to extract topics for conversations that don't have them
+              try {
+                const full = (c && c.conversation) ? c.conversation.map(m => `${m.role}: ${m.text}`).join('\n\n') : '';
+                const prompt = `Extract up to 6 short topic tags (comma separated) that summarize the main topics in the following conversation. Output ONLY a comma-separated list of short tags (no extra text):\n\n${full}`;
+                const res = await callGeminiAsync({ action: 'prompt', text: prompt, length: 'short' });
+                if (res && res.ok && res.result) {
+                  const parts = (res.result || '').split(/[,\n]+/).map(t => t.trim()).filter(Boolean);
+                  const nt = normalizeTopics(parts);
+                  if (nt && nt.length) { normalized = nt; extracted++; }
+                }
+              } catch (e) { debugLog('topic extraction (migration) failed', e); }
+            }
+
+            // compare and update if changed
+            const oldJson = JSON.stringify(oldTopics || []);
+            const newJson = JSON.stringify(normalized || []);
+            if (newJson !== oldJson) {
+              arr[i].topics = normalized;
+              updated++;
+              try { localStorage.setItem('chatbridge:conversations', JSON.stringify(arr)); } catch (e) { debugLog('save migration update failed', e); }
+
+              // re-send to background for re-indexing
+              try {
+                const full = (c && c.conversation) ? c.conversation.map(m => `${m.role}: ${m.text}`).join('\n\n') : '';
+                chrome.runtime.sendMessage({ type: 'vector_index', payload: { id: String(c.ts), text: full, metadata: { platform: c.platform || location.hostname, url: c.url || location.href, ts: c.ts, topics: arr[i].topics || [] } } }, () => {});
+              } catch (e) { debugLog('vector_index send failed (migration)', e); }
+            }
+          } catch (e) { debugLog('migration loop item failed', e); }
+        }
+
+        smartAnswer.textContent = `Migration complete. Updated ${updated} conversations. Extracted tags for ${extracted} conversations.`;
+      } catch (e) { debugLog('normalize migration failed', e); smartAnswer.textContent = 'Migration failed: ' + (e && e.message ? e.message : String(e)); }
+  finally { removeLoadingFromButton(btnNormalizeTags, 'Normalize tags & index'); }
     });
 
     function refreshHistory() {
@@ -1325,6 +1980,19 @@
         if (adapter && typeof adapter.getMessages === 'function') {
           raw = adapter.getMessages() || [];
           debugLog('adapter.getMessages returned:', raw.length, 'messages');
+          // enrich with attachments when source element present
+          try {
+            if (Array.isArray(raw)) {
+              for (const m of raw) {
+                try {
+                  if (m && m.el && !m.attachments) {
+                    const atts = extractAttachmentsFromElement(m.el);
+                    if (atts && atts.length) m.attachments = atts;
+                  }
+                } catch (e) {}
+              }
+            }
+          } catch (e) { debugLog('attachment enrichment error (adapter):', e); }
         }
       } catch (e) { 
         debugLog('adapter.getMessages error:', e);
@@ -1383,7 +2051,7 @@
   try { if (CB_HIGHLIGHT_ENABLED || DEBUG) highlightNodesByElements(nodes); } catch (e) { debugLog('highlight error:', e); }
   
   try {
-    raw = nodes.map(n => ({ text: (n.innerText||'').trim(), role: inferRoleFromNode(n), el: n }));
+    raw = nodes.map(n => ({ text: (n.innerText||'').trim(), role: inferRoleFromNode(n), el: n, attachments: extractAttachmentsFromElement(n) }));
     debugLog('mapped to', raw.length, 'raw messages');
   } catch (e) {
     debugLog('node mapping error:', e);
@@ -1424,7 +2092,60 @@
   }
 
   async function saveConversation(conv) {
-    try { if (typeof window.saveConversation === 'function') { window.saveConversation(conv, ()=>{}); return true; } const key = 'chatbridge:conversations'; const cur = JSON.parse(localStorage.getItem(key) || '[]'); cur.push(conv); localStorage.setItem(key, JSON.stringify(cur)); return true; } catch (e) { debugLog('save error', e); return false; }
+    try {
+      // persist locally (simple localStorage fallback)
+      const key = 'chatbridge:conversations';
+      try {
+        const cur = JSON.parse(localStorage.getItem(key) || '[]');
+        cur.push(conv);
+        localStorage.setItem(key, JSON.stringify(cur));
+      } catch (e) {
+        debugLog('save error (localStorage)', e);
+      }
+
+      // Asynchronously extract topics/tags and index the conversation via background vector store
+      (async () => {
+        try {
+          const full = (conv && conv.conversation) ? conv.conversation.map(m => `${m.role}: ${m.text}`).join('\n\n') : '';
+          // Topic extraction prompt
+          try {
+            const prompt = `Extract up to 6 short topic tags (comma separated) that summarize the main topics in the following conversation. Output ONLY a comma-separated list of short tags (no extra text):\n\n${full}`;
+            const res = await callGeminiAsync({ action: 'prompt', text: prompt, length: 'short' });
+            let topics = [];
+            if (res && res.ok && res.result) {
+              topics = (res.result || '').split(/[,\n]+/).map(t => t.trim()).filter(Boolean).slice(0,6);
+              // normalize: lowercase, collapse spaces, remove punctuation except dashes/underscores, dedupe
+              topics = topics.map(t => t.toLowerCase().replace(/["'()\.]/g, '').replace(/\s+/g, ' ').trim())
+                             .filter(Boolean);
+              // dedupe while preserving order
+              const seen = new Set();
+              const uniq = [];
+              for (const t of topics) {
+                if (!seen.has(t)) { seen.add(t); uniq.push(t); }
+              }
+              topics = uniq.slice(0,6);
+            }
+            if (topics && topics.length) conv.topics = topics;
+          } catch (e) { debugLog('topic extraction failed', e); }
+
+          // update stored conversation with topics
+          try {
+            const cur2 = JSON.parse(localStorage.getItem(key) || '[]');
+            const idx = cur2.findIndex(c => String(c.ts) === String(conv.ts));
+            if (idx >= 0) { cur2[idx] = conv; localStorage.setItem(key, JSON.stringify(cur2)); }
+          } catch (e) { debugLog('save update topics failed', e); }
+
+          // send to background to index (background will request embeddings)
+          try {
+            chrome.runtime.sendMessage({ type: 'vector_index', payload: { id: String(conv.ts), text: full, metadata: { platform: conv.platform || location.hostname, url: conv.url || location.href, ts: conv.ts, topics: conv.topics || [] } } }, (res) => {
+              try { if (res && res.ok) debugLog('vector index ok', conv.ts); else debugLog('vector index failed', res); } catch(_) {}
+            });
+          } catch (e) { debugLog('vector_index send failed', e); }
+        } catch (e) { debugLog('post-save async tasks failed', e); }
+      })();
+
+      return true;
+    } catch (e) { debugLog('save error', e); return false; }
   }
 
   // expose minimal API on window
@@ -1526,6 +2247,18 @@
           debugLog('keyboard command error', e);
           sendResponse({ ok: false, error: String(e) });
         }
+      });
+      // Listener to restore text/attachments when background opens a new tab
+      chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+        try {
+          if (msg && msg.type === 'restore_to_chat') {
+            const payload = msg.payload || {};
+            const text = payload.text || '';
+            const attachments = payload.attachments || [];
+            restoreToChat(text, attachments).then(() => sendResponse && sendResponse({ ok: true })).catch(() => sendResponse && sendResponse({ ok: false }));
+            return true;
+          }
+        } catch (e) {}
       });
     }
     

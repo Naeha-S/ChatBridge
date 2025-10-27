@@ -3,6 +3,149 @@ chrome.runtime.onInstalled.addListener(() => {
   console.log("ChatBridge installed/updated");
 });
 
+// Simple IndexedDB vector store (fallback to in-memory on failure)
+const V_DB_NAME = 'chatbridge_vectors_v1';
+const V_STORE = 'vectors';
+let idb = null;
+
+function openVectorDB() {
+  return new Promise((resolve, reject) => {
+    try {
+      const req = indexedDB.open(V_DB_NAME, 1);
+      req.onupgradeneeded = (ev) => {
+        const db = ev.target.result;
+        try { db.createObjectStore(V_STORE, { keyPath: 'id' }); } catch (e) {}
+      };
+      req.onsuccess = (ev) => { idb = ev.target.result; resolve(idb); };
+      req.onerror = (ev) => { console.warn('IndexedDB open failed', ev); resolve(null); };
+    } catch (e) { console.warn('openVectorDB err', e); resolve(null); }
+  });
+}
+
+async function idbPut(obj) {
+  try {
+    if (!idb) await openVectorDB();
+    if (!idb) return false;
+    return await new Promise((res) => {
+      const tx = idb.transaction([V_STORE], 'readwrite');
+      const st = tx.objectStore(V_STORE);
+      const req = st.put(obj);
+      req.onsuccess = () => res(true);
+      req.onerror = () => res(false);
+    });
+  } catch (e) { return false; }
+}
+
+async function idbAll() {
+  try {
+    if (!idb) await openVectorDB();
+    if (!idb) return [];
+    return await new Promise((res) => {
+      const tx = idb.transaction([V_STORE], 'readonly');
+      const st = tx.objectStore(V_STORE);
+      const req = st.getAll();
+      req.onsuccess = () => res(req.result || []);
+      req.onerror = () => res([]);
+    });
+  } catch (e) { return []; }
+}
+
+function cosine(a, b) {
+  if (!a || !b || a.length !== b.length) return 0;
+  let dot = 0, na = 0, nb = 0;
+  for (let i=0;i<a.length;i++) { dot += a[i]*b[i]; na += a[i]*a[i]; nb += b[i]*b[i]; }
+  if (na === 0 || nb === 0) return 0; return dot / (Math.sqrt(na) * Math.sqrt(nb));
+}
+
+// Ask OpenAI embeddings endpoint (if API key available) — returns embedding array or null
+async function fetchEmbeddingOpenAI(text) {
+  try {
+    const key = await new Promise(r => chrome.storage.local.get(['chatbridge_api_key'], d => r(d.chatbridge_api_key)));
+    if (!key) return null;
+    const apiKey = key;
+    const endpoint = 'https://api.openai.com/v1/embeddings';
+    const body = { input: text, model: 'text-embedding-3-small' };
+    const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type':'application/json', 'Authorization': 'Bearer ' + apiKey }, body: JSON.stringify(body) });
+    if (!res.ok) return null;
+    const j = await res.json();
+    if (j && j.data && j.data[0] && j.data[0].embedding) return j.data[0].embedding;
+    return null;
+  } catch (e) { console.warn('fetchEmbeddingOpenAI err', e); return null; }
+}
+
+// Message handlers for vector index / query
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  try {
+    if (!msg || !msg.type) return;
+    if (msg.type === 'vector_index') {
+      (async () => {
+        const payload = msg.payload || {};
+        const id = String(payload.id || payload.ts || Date.now());
+        const text = payload.text || '';
+        const metadata = payload.metadata || {};
+        if (!text) return sendResponse({ ok:false, error:'no_text' });
+        // Try to get embedding from payload first
+        let embedding = payload.embedding || null;
+        if (!embedding) {
+          // try OpenAI embeddings
+          embedding = await fetchEmbeddingOpenAI(text);
+        }
+        if (!embedding) return sendResponse({ ok:false, error:'no_embedding' });
+        const obj = { id, vector: embedding, metadata: metadata, ts: Date.now() };
+        const ok = await idbPut(obj);
+        return sendResponse({ ok: !!ok });
+      })();
+      return true;
+    }
+
+    if (msg.type === 'vector_query') {
+      (async () => {
+        const q = (msg.payload && msg.payload.query) ? msg.payload.query : '';
+        const topK = (msg.payload && msg.payload.topK) ? Math.max(1, msg.payload.topK) : 6;
+        if (!q) return sendResponse({ ok:false, error:'no_query' });
+        // get embedding for query
+        const qemb = await fetchEmbeddingOpenAI(q);
+        if (!qemb) return sendResponse({ ok:false, error:'no_embedding' });
+        const all = await idbAll();
+        const scored = all.map(it => ({ id: it.id, score: cosine(qemb, it.vector || []), metadata: it.metadata || {} }));
+        scored.sort((a,b) => b.score - a.score);
+        const top = scored.slice(0, topK);
+        return sendResponse({ ok:true, results: top });
+      })();
+      return true;
+    }
+
+    if (msg.type === 'vector_index_all') {
+      (async () => {
+        try {
+          // load conversations from chrome.storage.local or payload
+          const fromPayload = (msg.payload && Array.isArray(msg.payload.conversations)) ? msg.payload.conversations : null;
+          let convs = fromPayload;
+          if (!convs) {
+            const data = await new Promise(r => chrome.storage.local.get(['chatbridge:conversations'], d => r(d['chatbridge:conversations'])));
+            convs = Array.isArray(data) ? data : [];
+          }
+          let indexed = 0;
+          for (const c of convs) {
+            try {
+              const id = String(c.ts || Date.now());
+              const text = (c.conversation || []).map(m => `${m.role}: ${m.text}`).join('\n\n');
+              if (!text || text.trim().length < 20) continue;
+              const emb = await fetchEmbeddingOpenAI(text);
+              if (!emb) continue;
+              const obj = { id, vector: emb, metadata: { platform: c.platform || '', url: c.url || '', ts: c.ts || 0, topics: c.topics || [] }, ts: Date.now() };
+              await idbPut(obj);
+              indexed++;
+            } catch (e) { /* continue on per-item error */ }
+          }
+          return sendResponse({ ok:true, indexed });
+        } catch (e) { return sendResponse({ ok:false, error: e && e.message }); }
+      })();
+      return true;
+    }
+  } catch (e) { /* ignore other messages here */ }
+});
+
 // Keyboard command listener - forwards commands to active tab
 chrome.commands.onCommand.addListener((command) => {
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
@@ -44,6 +187,47 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return true;
   }
   if (msg && msg.type === 'ping') return sendResponse({ ok:true });
+
+  // Open target URL in a new tab and restore text when ready
+  if (msg && msg.type === 'open_and_restore') {
+    const payload = msg.payload || {};
+    const url = payload.url;
+    const text = payload.text || '';
+    const attachments = payload.attachments || [];
+    if (!url || !text) { sendResponse && sendResponse({ ok:false, error:'missing_params' }); return true; }
+    try {
+      chrome.tabs.create({ url }, (tab) => {
+        if (!tab || !tab.id) { sendResponse && sendResponse({ ok:false, error:'tab_create_failed' }); return; }
+        const tabId = tab.id;
+        let attempts = 0;
+        const maxAttempts = 12; // ~6s total
+        const interval = setInterval(() => {
+          attempts++;
+          if (attempts > maxAttempts) {
+            clearInterval(interval);
+            sendResponse && sendResponse({ ok:false, error:'restore_timeout' });
+            return;
+          }
+          try {
+            chrome.tabs.sendMessage(tabId, { type: 'restore_to_chat', payload: { text, attachments } }, (res) => {
+              if (chrome.runtime.lastError) {
+                // Content script might not be loaded yet; keep retrying
+                return;
+              }
+              // got a response – success
+              clearInterval(interval);
+              sendResponse && sendResponse({ ok:true });
+            });
+          } catch (e) {
+            // ignore and retry
+          }
+        }, 500);
+      });
+    } catch (e) {
+      sendResponse && sendResponse({ ok:false, error: e && e.message });
+    }
+    return true; // async
+  }
 
   // --- simple token-bucket rate limiter ---
   // allow `ratePerSec` tokens per second with a burst of `maxBurst`
@@ -176,11 +360,8 @@ Instructions:
 4. Adapt tone, phrasing, and structure to what works best with ${tgt}
 5. Preserve all factual content and user intent from the original conversation
 6. Keep the same conversation flow and message roles (user/assistant)
-
 The goal is prompt engineering: transform this conversation into the ideal input format that will make ${tgt} produce the best possible responses.
-
 Original conversation (currently optimized for ${src}):
-
 ${payload.text}
 
 Rewritten conversation (optimized for ${tgt}):`;
