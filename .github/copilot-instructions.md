@@ -22,7 +22,7 @@ This repo is a Chrome Extension (Manifest V3) that bridges AI chats across platf
 
 ## Key patterns and conventions
 - Injection guard: content script starts with window.__CHATBRIDGE_INJECTED; also checks APPROVED_SITES. Don’t remove these.
-- Shadow DOM: All UI elements live inside #cb-host shadow root; avoid leaking styles to page; skip elements with [data-cb-ignore].
+- Shadow DOM: All UI elements live inside shadow root; avoid leaking styles to page; skip elements with [data-cb-ignore].
 - Message passing:
   - background ⇄ content_script via chrome.runtime.sendMessage / chrome.tabs.sendMessage.
   - Keyboard shortcuts fire commands in background, forwarded as { type: 'keyboard_command', command } to the active tab.

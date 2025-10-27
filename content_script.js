@@ -326,11 +326,15 @@
       return null;
     }
   const avatar = document.createElement('div'); avatar.id = 'cb-avatar'; avatar.setAttribute('data-cb-ignore', 'true');
-  avatar.innerHTML = `<svg width="34" height="34" viewBox="0 0 34 34" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><circle cx="17" cy="17" r="16" fill="#e6cf9f" stroke="#0b0f17" stroke-width="1" /><text x="50%" y="52%" text-anchor="middle" fill="#0b0f17" font-family="Poppins, Arial, sans-serif" font-weight="700" font-size="12">CB</text></svg>`;
+  const avatarImg = document.createElement('img');
+  avatarImg.src = chrome.runtime.getURL('iconic.jpeg');
+  avatarImg.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:12px;';
+  avatarImg.alt = 'ChatBridge';
+  avatar.appendChild(avatarImg);
   // store last scanned text so Clipboard and textarea can access it
   let lastScannedText = '';
   // Slightly larger avatar, pulled in from the corner with refined styling
-  avatar.style.cssText = 'position:fixed;bottom:22px;right:26px;width:48px;height:48px;border-radius:12px;z-index:2147483647;display:flex;align-items:center;justify-content:center;cursor:pointer;background:transparent;box-shadow:0 6px 20px rgba(0,0,0,0.18);transition: transform .12s ease, box-shadow .12s ease;';
+  avatar.style.cssText = 'position:fixed;bottom:22px;right:26px;width:48px;height:48px;border-radius:12px;z-index:2147483647;display:flex;align-items:center;justify-content:center;cursor:pointer;background:transparent;box-shadow:0 6px 20px rgba(0,0,0,0.18);transition: transform .12s ease, box-shadow .12s ease;overflow:hidden;';
   avatar.addEventListener('mouseenter', () => { try { avatar.style.transform = 'translateY(-2px)'; avatar.style.boxShadow = '0 10px 26px rgba(230,207,159,0.18)'; } catch(e){} });
   avatar.addEventListener('mouseleave', () => { try { avatar.style.transform = ''; avatar.style.boxShadow = '0 6px 20px rgba(0,0,0,0.18)'; } catch(e){} });
     const host = document.createElement('div'); host.id = 'cb-host'; host.setAttribute('data-cb-ignore', 'true'); host.style.display = 'none';
@@ -444,6 +448,7 @@
   const btnRestore = document.createElement('button'); btnRestore.className = 'cb-btn'; btnRestore.textContent = 'Restore'; btnRestore.title = 'Restore saved conversation into current chat';
   const btnClipboard = document.createElement('button'); btnClipboard.className = 'cb-btn'; btnClipboard.textContent = 'Clipboard'; btnClipboard.title = 'Copy scanned chat to clipboard';
   const btnSmartQuery = document.createElement('button'); btnSmartQuery.className = 'cb-btn'; btnSmartQuery.textContent = 'Smart Query'; btnSmartQuery.title = 'Search and ask your saved chats'; btnSmartQuery.id = 'btnSmartQuery';
+  const btnFindConnections = document.createElement('button'); btnFindConnections.className = 'cb-btn'; btnFindConnections.textContent = 'Find Connections'; btnFindConnections.title = 'Find related past conversations based on current context'; btnFindConnections.id = 'btnFindConnections';
 
   // Gemini API buttons (keep on the right)
   // Sync Tone: replace old Prompt button with a model-to-model tone sync UI
@@ -466,6 +471,7 @@
   // user requested Clipboard and Sync Tone swap: put Sync Tone on the left actions
   actionsLeft.appendChild(syncWrapper);
   actionsLeft.appendChild(btnSmartQuery);
+  actionsLeft.appendChild(btnFindConnections);
   // move Clipboard to the right-side group
   actionsRight.appendChild(btnClipboard);
   actionsRight.appendChild(btnSummarize);
@@ -633,6 +639,8 @@
 
   const smartAnswer = document.createElement('div'); smartAnswer.id = 'cb-smart-answer'; smartAnswer.className = 'cb-view-result'; smartAnswer.textContent = '';
   smartView.appendChild(smartAnswer);
+  const smartProvenance = document.createElement('div'); smartProvenance.id = 'cb-smart-provenance'; smartProvenance.style.fontSize = '12px'; smartProvenance.style.marginTop = '8px'; smartProvenance.style.color = 'rgba(200,200,200,0.9)'; smartProvenance.textContent = '';
+  smartView.appendChild(smartProvenance);
 
   panel.appendChild(smartView);
 
@@ -773,6 +781,38 @@
         syncSourceText.textContent = resText || '(no result)';
         syncResult.textContent = '✅ Tone sync completed! The text area above now shows the synced version.';
         btnInsertSync.style.display = 'inline-block';
+        // Generate an optimized prompt for the target model that explains what made the source responses successful
+        try {
+          (async () => {
+            try {
+              const srcModel = 'SourceModel';
+              const tgtModel = target || 'TargetModel';
+              const orig = chatText && chatText.length > 4000 ? chatText.slice(0,4000) + '\n\n...(truncated)' : (chatText || '');
+              const assistantExample = resText && resText.length > 4000 ? resText.slice(0,4000) + '\n\n... (truncated)' : (resText || '');
+              const gen = await generateOptimizedPrompt(srcModel, tgtModel, orig, assistantExample);
+              if (gen) {
+                try {
+                  // render structured analysis and the optimized prompt with a copy button
+                  syncResult.innerHTML = '';
+                  const hdr = document.createElement('div'); hdr.style.fontWeight = '700'; hdr.style.marginBottom = '6px'; hdr.textContent = 'Analysis & Optimized Prompt for ' + tgtModel;
+                  syncResult.appendChild(hdr);
+                  const strengths = document.createElement('div'); strengths.style.marginBottom = '8px'; strengths.style.fontSize = '13px';
+                  strengths.textContent = (Array.isArray(gen.strengths) ? gen.strengths.map((s,i)=> (i+1)+'. '+s).join('\n') : String(gen.strengths || '') );
+                  syncResult.appendChild(strengths);
+                  const promptLabel = document.createElement('div'); promptLabel.style.fontWeight = '600'; promptLabel.style.marginTop = '8px'; promptLabel.textContent = 'Optimized prompt (copy & use):';
+                  syncResult.appendChild(promptLabel);
+                  const pre = document.createElement('pre'); pre.style.whiteSpace = 'pre-wrap'; pre.style.background = 'rgba(0,0,0,0.04)'; pre.style.padding = '8px'; pre.style.borderRadius = '8px'; pre.style.fontSize = '13px'; pre.textContent = gen.optimized_prompt || gen.prompt || gen.optimizedPrompt || '';
+                  syncResult.appendChild(pre);
+                  const copyBtn = document.createElement('button'); copyBtn.className = 'cb-btn'; copyBtn.textContent = 'Copy optimized prompt'; copyBtn.style.marginTop = '8px';
+                  copyBtn.addEventListener('click', async () => {
+                    try { await navigator.clipboard.writeText(pre.textContent || ''); toast('Prompt copied to clipboard'); } catch (e) { toast('Copy failed'); }
+                  });
+                  syncResult.appendChild(copyBtn);
+                } catch (e) { debugLog('render gen prompt failed', e); }
+              }
+            } catch (e) { debugLog('generateOptimizedPrompt error', e); }
+          })();
+        } catch (e) { debugLog('async optimize fire failed', e); }
         syncProg.style.display = 'none';
   // No duplicate output in preview; go straight to history below
         toast('Sync Tone completed');
@@ -790,6 +830,36 @@
       if (n.includes('bing') || n.includes('copilot')) return 'https://copilot.microsoft.com/';
       // unsupported targets can be added here
       return null;
+    }
+
+    // Generate an optimized prompt for the target model by analyzing what made the source/assistant responses effective
+    async function generateOptimizedPrompt(sourceModel, targetModel, originalConversation, assistantExample) {
+      try {
+        // Build an instruction that asks the backend to (1) summarize strengths, (2) produce an optimized prompt for target
+        const instruct = `You are an expert prompt engineer and analyst. Given a short excerpt of an original conversation and an example assistant response (which performed well), do two things:
+1) Briefly list the key strengths and techniques that made the assistant response effective (tone, structure, use of bullets/tables/code, examples, explicit constraints, data formatting, etc.). Provide 3-6 concise bullet points.
+2) Produce a ready-to-use, optimized prompt tailored specifically for the target model: ${targetModel}. The prompt must include explicit formatting cues the model should follow (for example: headings, numbered steps, JSON/YAML output, code fences, output constraints). Keep the prompt itself concise (no more than ~350 tokens) but include an example of the desired output format (one short example).
+
+Respond ONLY with a JSON object with keys: "strengths" (array of short strings) and "optimized_prompt" (string). Do NOT include extra commentary. Here are the inputs:\n\nOriginal conversation excerpt:\n${originalConversation}\n\nAssistant response example:\n${assistantExample}\n`;
+
+        const res = await callGeminiAsync({ action: 'prompt', text: instruct, length: 'short' });
+        if (res && res.ok && res.result) {
+          const txt = String(res.result || '').trim();
+          // try to extract JSON blob from the result
+          try {
+            const jsonStart = txt.indexOf('{');
+            const jsonEnd = txt.lastIndexOf('}');
+            if (jsonStart >= 0 && jsonEnd > jsonStart) {
+              const jtxt = txt.slice(jsonStart, jsonEnd + 1);
+              const parsed = JSON.parse(jtxt);
+              return { strengths: parsed.strengths || parsed.strength || [], optimized_prompt: parsed.optimized_prompt || parsed.optimizedPrompt || parsed.prompt || parsed.optimized_prompt || '' };
+            }
+          } catch (e) { debugLog('parse json failed', e); }
+          // fallback: return raw result as prompt
+          return { strengths: [], optimized_prompt: txt };
+        }
+        return null;
+      } catch (e) { debugLog('generateOptimizedPrompt err', e); return null; }
     }
 
     // Open target model in a new tab and auto-restore text
@@ -815,6 +885,241 @@
       const text = syncSourceText.textContent || '';
       continueWithTargetModel(text);
     });
+
+    // Cross-Context Memory: Extract structured knowledge from a conversation
+    async function extractKnowledge(conversation, conversationId) {
+      try {
+        // Build conversation text for analysis
+        const convText = conversation.map(m => `${m.role}: ${m.text}`).join('\n\n');
+        const snippet = convText.length > 3000 ? convText.slice(0, 3000) + '\n\n...(truncated)' : convText;
+        
+        const prompt = `You are an expert knowledge analyst. Analyze this conversation excerpt and extract structured insights.
+
+Conversation:
+${snippet}
+
+Extract and return ONLY a JSON object (no commentary) with:
+{
+  "entities": ["person/project/product names mentioned, max 8"],
+  "themes": ["core topics discussed, max 6"],
+  "conclusions": ["key decisions or insights reached, max 4"],
+  "contradictions": ["any conflicting viewpoints or unresolved tensions, max 3"],
+  "context": "one-sentence summary of the conversation's purpose"
+}
+
+Be concise. Focus on proper nouns, technical concepts, and actionable insights.`;
+
+        const res = await callGeminiAsync({ action: 'prompt', text: prompt, length: 'short' });
+        
+        if (res && res.ok && res.result) {
+          try {
+            // Extract JSON from response
+            const txt = String(res.result || '').trim();
+            const jsonStart = txt.indexOf('{');
+            const jsonEnd = txt.lastIndexOf('}');
+            if (jsonStart >= 0 && jsonEnd > jsonStart) {
+              const jsonStr = txt.slice(jsonStart, jsonEnd + 1);
+              const parsed = JSON.parse(jsonStr);
+              
+              // Store knowledge in localStorage
+              const knowledge = {
+                id: conversationId,
+                ts: Date.now(),
+                entities: Array.isArray(parsed.entities) ? parsed.entities.slice(0, 8) : [],
+                themes: Array.isArray(parsed.themes) ? parsed.themes.slice(0, 6) : [],
+                conclusions: Array.isArray(parsed.conclusions) ? parsed.conclusions.slice(0, 4) : [],
+                contradictions: Array.isArray(parsed.contradictions) ? parsed.contradictions.slice(0, 3) : [],
+                context: parsed.context || ''
+              };
+              
+              // Save to knowledge graph
+              const graphKey = 'chatbridge:knowledge_graph';
+              const graph = JSON.parse(localStorage.getItem(graphKey) || '[]');
+              graph.push(knowledge);
+              localStorage.setItem(graphKey, JSON.stringify(graph));
+              
+              debugLog('Knowledge extracted', knowledge);
+              return knowledge;
+            }
+          } catch (e) {
+            debugLog('Knowledge extraction parse error', e);
+          }
+        }
+        return null;
+      } catch (e) {
+        debugLog('extractKnowledge error', e);
+        return null;
+      }
+    }
+
+    // Cross-Context Memory: Find related past conversations based on current context
+    async function findRelatedConversations(currentEntities, currentThemes, limit = 3) {
+      try {
+        const graphKey = 'chatbridge:knowledge_graph';
+        const graph = JSON.parse(localStorage.getItem(graphKey) || '[]');
+        
+        if (!graph.length || (!currentEntities.length && !currentThemes.length)) return [];
+        
+        // Score each past conversation by overlap with current context
+        const scored = graph.map(kg => {
+          let score = 0;
+          
+          // Entity overlap (higher weight)
+          for (const e of currentEntities) {
+            if (kg.entities.some(ke => ke.toLowerCase().includes(e.toLowerCase()) || e.toLowerCase().includes(ke.toLowerCase()))) {
+              score += 3;
+            }
+          }
+          
+          // Theme overlap
+          for (const t of currentThemes) {
+            if (kg.themes.some(kt => kt.toLowerCase().includes(t.toLowerCase()) || t.toLowerCase().includes(kt.toLowerCase()))) {
+              score += 2;
+            }
+          }
+          
+          return { ...kg, score };
+        }).filter(kg => kg.score > 0).sort((a, b) => b.score - a.score).slice(0, limit);
+        
+        return scored;
+      } catch (e) {
+        debugLog('findRelatedConversations error', e);
+        return [];
+      }
+    }
+
+    // Cross-Context Memory: Show suggestion notification
+    function showContextSuggestion(relatedConvs) {
+      try {
+        if (!relatedConvs || !relatedConvs.length) return;
+        
+        // Create notification element
+        const notification = document.createElement('div');
+        notification.id = 'cb-context-notification';
+        notification.setAttribute('data-cb-ignore', 'true');
+        notification.style.cssText = `
+          position: fixed;
+          bottom: 80px;
+          right: 26px;
+          width: 320px;
+          background: linear-gradient(135deg, rgba(230,207,159,0.98), rgba(212,175,119,0.98));
+          color: #0b0f17;
+          padding: 14px 16px;
+          border-radius: 12px;
+          box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+          z-index: 2147483646;
+          font-family: 'Poppins', sans-serif;
+          font-size: 13px;
+          line-height: 1.4;
+          animation: cb-slide-in 0.3s ease-out;
+        `;
+        
+        const topRow = document.createElement('div');
+        topRow.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;';
+        
+        const title = document.createElement('div');
+        title.style.cssText = 'font-weight:700;font-size:14px;';
+        title.textContent = '🧠 Related Memory';
+        
+        const closeBtn = document.createElement('button');
+        closeBtn.textContent = '×';
+        closeBtn.style.cssText = 'background:transparent;border:none;color:#0b0f17;font-size:20px;cursor:pointer;padding:0;line-height:1;opacity:0.6;';
+        closeBtn.addEventListener('mouseenter', () => closeBtn.style.opacity = '1');
+        closeBtn.addEventListener('mouseleave', () => closeBtn.style.opacity = '0.6');
+        closeBtn.addEventListener('click', () => notification.remove());
+        
+        topRow.appendChild(title);
+        topRow.appendChild(closeBtn);
+        notification.appendChild(topRow);
+        
+        const conv = relatedConvs[0];
+        const msg = document.createElement('div');
+        msg.style.cssText = 'margin-bottom:10px;opacity:0.9;';
+        msg.textContent = `Earlier you discussed "${conv.context || 'similar topics'}" ${conv.score > 5 ? 'extensively' : ''}.`;
+        notification.appendChild(msg);
+        
+        if (conv.entities && conv.entities.length) {
+          const entities = document.createElement('div');
+          entities.style.cssText = 'font-size:11px;opacity:0.8;margin-bottom:8px;';
+          entities.textContent = '🏷️ ' + conv.entities.slice(0, 3).join(', ');
+          notification.appendChild(entities);
+        }
+        
+        const btnRow = document.createElement('div');
+        btnRow.style.cssText = 'display:flex;gap:8px;margin-top:10px;';
+        
+        const viewBtn = document.createElement('button');
+        viewBtn.textContent = 'View';
+        viewBtn.style.cssText = 'flex:1;background:#0b0f17;color:#e6cf9f;border:none;padding:8px 12px;border-radius:8px;cursor:pointer;font-weight:600;font-size:12px;font-family:inherit;';
+        viewBtn.addEventListener('click', () => {
+          openConversationById(conv.id);
+          notification.remove();
+        });
+        
+        const dismissBtn = document.createElement('button');
+        dismissBtn.textContent = 'Dismiss';
+        dismissBtn.style.cssText = 'flex:1;background:rgba(0,0,0,0.1);color:#0b0f17;border:none;padding:8px 12px;border-radius:8px;cursor:pointer;font-weight:500;font-size:12px;font-family:inherit;';
+        dismissBtn.addEventListener('click', () => notification.remove());
+        
+        btnRow.appendChild(viewBtn);
+        btnRow.appendChild(dismissBtn);
+        notification.appendChild(btnRow);
+        
+        // Add animation style if not exists
+        if (!document.getElementById('cb-context-styles')) {
+          const styleEl = document.createElement('style');
+          styleEl.id = 'cb-context-styles';
+          styleEl.textContent = `
+            @keyframes cb-slide-in {
+              from { transform: translateY(20px); opacity: 0; }
+              to { transform: translateY(0); opacity: 1; }
+            }
+          `;
+          document.head.appendChild(styleEl);
+        }
+        
+        // Remove existing notification if any
+        const existing = document.getElementById('cb-context-notification');
+        if (existing) existing.remove();
+        
+        document.body.appendChild(notification);
+        
+        // Auto-dismiss after 15 seconds
+        setTimeout(() => {
+          try { if (notification.parentNode) notification.remove(); } catch (e) {}
+        }, 15000);
+        
+      } catch (e) {
+        debugLog('showContextSuggestion error', e);
+      }
+    }
+
+    // Cross-Context Memory: Detect context on page and show suggestions
+    async function detectAndSuggestContext() {
+      try {
+        // Quick scan of visible messages to extract current context
+        const msgs = await scanChat();
+        if (!msgs || msgs.length < 2) return; // Need at least some conversation
+        
+        const recentText = msgs.slice(-5).map(m => m.text).join('\n');
+        if (recentText.length < 100) return; // Not enough context
+        
+        // Extract quick entities and themes (lightweight extraction)
+        const words = recentText.toLowerCase().split(/\W+/).filter(w => w.length > 3);
+        const wordFreq = {};
+        words.forEach(w => wordFreq[w] = (wordFreq[w] || 0) + 1);
+        const commonWords = Object.entries(wordFreq).filter(([w, f]) => f >= 2).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([w]) => w);
+        
+        // Find related conversations
+        const related = await findRelatedConversations(commonWords, commonWords, 3);
+        
+        if (related.length) {
+          showContextSuggestion(related);
+        }
+      } catch (e) {
+        debugLog('detectAndSuggestContext error', e);
+      }
+    }
 
     // Scan button handler: scan, normalize, save, and optionally auto-summarize
     btnScan.addEventListener('click', async () => {
@@ -845,7 +1150,8 @@
         }
         else {
           const final = normalizeMessages(msgs);
-          const conv = { platform: location.hostname, url: location.href, ts: Date.now(), conversation: final };
+          const currentModel = detectCurrentModel();
+          const conv = { platform: location.hostname, url: location.href, ts: Date.now(), model: currentModel, conversation: final };
           // ensure lastScannedText updated when saving
           try { lastScannedText = final.map(m => `${m.role}: ${m.text}`).join('\n\n'); } catch (e) {}
           if (typeof window.saveConversation === 'function') {
@@ -854,6 +1160,18 @@
             const key = 'chatbridge:conversations'; const cur = JSON.parse(localStorage.getItem(key) || '[]'); cur.push(conv); localStorage.setItem(key, JSON.stringify(cur)); toast('Saved (local) ' + final.length + ' messages'); refreshHistory();
           }
           status.textContent = `Status: saved ${final.length}`;
+
+          // Cross-Context Memory: Extract knowledge from conversation (async, non-blocking)
+          try {
+            (async () => {
+              const knowledge = await extractKnowledge(final, String(conv.ts));
+              if (knowledge) {
+                debugLog('Knowledge extracted and stored', knowledge);
+              }
+            })();
+          } catch (e) {
+            debugLog('Background knowledge extraction failed', e);
+          }
 
           // Auto-summarize if 20+ messages or 50,000+ characters
           const totalChars = final.reduce((sum, m) => sum + (m.text || '').length, 0);
@@ -913,6 +1231,20 @@
         }
       } catch (e) {
         toast('Clear failed: ' + (e && e.message));
+      }
+    });
+
+    // Find Connections button handler
+    btnFindConnections.addEventListener('click', async () => {
+      try {
+        addLoadingToButton(btnFindConnections, 'Analyzing…');
+        await detectAndSuggestContext();
+        toast('Context analysis complete');
+      } catch (e) {
+        toast('Context detection failed');
+        debugLog('Find Connections error', e);
+      } finally {
+        removeLoadingFromButton(btnFindConnections, 'Find Connections');
       }
     });
 
@@ -1521,6 +1853,104 @@
       });
     }
 
+    // Vector query helper used by Smart Query (returns background vector_query results)
+    function runVectorQuery(qstr, topK) {
+      return new Promise(res => {
+        try {
+          chrome.runtime.sendMessage({ type: 'vector_query', payload: { query: qstr, topK: topK || 8 } }, (r) => {
+            if (chrome.runtime.lastError) return res({ ok:false, error: chrome.runtime.lastError.message });
+            return res(r || { ok:false });
+          });
+        } catch (e) { return res({ ok:false, error: e && e.message }); }
+      });
+    }
+
+    // Detect current model from page structure (safer than hostname inference)
+    function detectCurrentModel() {
+      try {
+        const host = location.hostname.toLowerCase();
+        // Check page title and meta tags first
+        const title = document.title.toLowerCase();
+        const metaOg = document.querySelector('meta[property="og:site_name"]');
+        const metaName = metaOg ? metaOg.getAttribute('content') : '';
+        
+        // Claude detection
+        if (host.includes('claude.ai') || host.includes('anthropic.com') || title.includes('claude') || metaName.toLowerCase().includes('claude')) {
+          return 'Claude';
+        }
+        // Gemini detection
+        if (host.includes('gemini.google.com') || host.includes('bard.google.com') || title.includes('gemini') || title.includes('bard')) {
+          return 'Gemini';
+        }
+        // ChatGPT detection
+        if (host.includes('chat.openai.com') || host.includes('chatgpt.com') || title.includes('chatgpt')) {
+          return 'ChatGPT';
+        }
+        // Poe detection
+        if (host.includes('poe.com')) {
+          // Try to detect specific model from UI
+          try {
+            const modelSelector = document.querySelector('[data-testid="model-selector"]') || document.querySelector('.ModelSelector_modelName');
+            if (modelSelector) return 'Poe:' + modelSelector.textContent.trim();
+          } catch (e) {}
+          return 'Poe';
+        }
+        // Copilot/Bing detection
+        if (host.includes('copilot.microsoft.com') || host.includes('bing.com/chat')) {
+          return 'Copilot/Bing';
+        }
+        // Mistral detection
+        if (host.includes('mistral.ai') || host.includes('chat.mistral')) {
+          return 'Mistral';
+        }
+        // Perplexity detection
+        if (host.includes('perplexity.ai')) {
+          return 'Perplexity';
+        }
+        
+        // Fallback to hostname-based
+        return prettyModelName(host);
+      } catch (e) {
+        debugLog('detectCurrentModel error', e);
+        return prettyModelName(location.hostname);
+      }
+    }
+
+    function prettyModelName(platform) {
+      if (!platform) return 'Unknown';
+      const p = String(platform).toLowerCase();
+      if (p.includes('claude') || p.includes('anthropic')) return 'Claude';
+      if (p.includes('gemini') || p.includes('bard') || p.includes('google')) return 'Gemini';
+      if (p.includes('chat.openai') || p.includes('chatgpt') || p.includes('openai')) return 'ChatGPT';
+      if (p.includes('poe.com') || p.includes('poe:')) return p.includes('poe:') ? 'Poe' : 'Poe';
+      if (p.includes('mistral')) return 'Mistral';
+      if (p.includes('perplexity')) return 'Perplexity';
+      if (p.includes('bing') || p.includes('copilot')) return 'Copilot/Bing';
+      return (platform.length > 20) ? platform.slice(0,20) + '…' : platform;
+    }
+
+    // Helper: open a conversation by ID in Smart Results answer area
+    async function openConversationById(id) {
+      try {
+        const convs = await loadConversationsAsync();
+        const conv = (convs || []).find(c => String(c.ts) === String(id));
+        if (!conv || !conv.conversation || !conv.conversation.length) {
+          toast('Conversation not found');
+          return;
+        }
+        const full = conv.conversation.map(m => `${m.role}: ${m.text}`).join('\n\n');
+        smartAnswer.textContent = full;
+        toast('Opened conversation');
+        // Scroll Smart Results into view
+        try {
+          smartAnswer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        } catch (e) {}
+      } catch (e) {
+        debugLog('openConversationById error', e);
+        toast('Failed to open conversation');
+      }
+    }
+
     let lastSmartResults = [];
 
     function renderSmartResults(results) {
@@ -1673,7 +2103,193 @@
         const prompt = `You are an assistant that answers questions about a user's past chat logs. Use ONLY the provided conversation excerpts as context to answer the question. If the answer isn't contained in the excerpts, say you don't know.\n\nQuestion: ${q}\n\nContext: ${ctx}`;
         const res = await callGeminiAsync({ action: 'prompt', text: prompt, length: 'short' });
         if (res && res.ok) {
-          smartAnswer.textContent = res.result || '(no answer)';
+          const answerText = res.result || '(no answer)';
+          smartAnswer.textContent = answerText;
+          // provenance: find which saved conversations / models contributed similar content to this answer
+          try {
+            smartProvenance.innerHTML = '';
+            const vres = await runVectorQuery(answerText, 12);
+            if (vres && vres.ok && Array.isArray(vres.results) && vres.results.length) {
+              const convs = await loadConversationsAsync();
+              const contribs = [];
+              const contribsWithDetails = [];
+              for (const r of vres.results) {
+                try {
+                  const id = String(r.id || '');
+                  const meta = r.metadata || {};
+                  const conv = (convs || []).find(c => String(c.ts) === id) || null;
+                  // Prefer explicit model field, fallback to platform inference
+                  const explicitModel = conv && conv.model ? conv.model : null;
+                  const platformRaw = conv && conv.platform ? conv.platform : (meta && (meta.platform || meta.url) ? (meta.platform || meta.url) : 'unknown');
+                  const ts = conv && conv.ts ? Number(conv.ts) : (meta && meta.ts ? Number(meta.ts) : 0);
+                  const model = explicitModel || prettyModelName(platformRaw);
+                  const snippet = conv && conv.conversation ? conv.conversation.slice(0,2).map(m=>`${m.role}: ${(m.text||'').slice(0,120)}`).join('\n') : '(no snippet)';
+                  const entry = { model, ts: ts || 0, rawPlatform: platformRaw, id, snippet };
+                  contribs.push(entry);
+                  contribsWithDetails.push(entry);
+                } catch (e) { debugLog('provenance map entry error', e); }
+              }
+              // sort by ts ascending and dedupe by model keeping first occurrence
+              contribs.sort((a,b) => (a.ts||0) - (b.ts||0));
+              const seen = new Set();
+              const uniq = [];
+              for (const c of contribs) {
+                if (!seen.has(c.model)) { seen.add(c.model); uniq.push(c); }
+              }
+              if (uniq.length) {
+                // build human-friendly sentence with clickable model names
+                function fmtDate(ts) { try { if (!ts) return 'an earlier date'; const d = new Date(Number(ts)); return d.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }); } catch(e){return 'an earlier date'; } }
+                
+                // Create sentence container
+                const sentenceEl = document.createElement('span');
+                sentenceEl.style.color = 'rgba(200,200,200,0.9)';
+                sentenceEl.style.fontSize = '12px';
+                
+                if (uniq.length === 1) {
+                  sentenceEl.innerHTML = 'This solution was suggested by ';
+                  const link = document.createElement('a');
+                  link.href = '#';
+                  link.textContent = uniq[0].model;
+                  link.style.color = 'var(--cb-champagne)';
+                  link.style.textDecoration = 'underline';
+                  link.style.cursor = 'pointer';
+                  link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    openConversationById(uniq[0].id);
+                  });
+                  sentenceEl.appendChild(link);
+                  sentenceEl.appendChild(document.createTextNode(` on ${fmtDate(uniq[0].ts)}.`));
+                } else if (uniq.length === 2) {
+                  sentenceEl.innerHTML = 'This solution was suggested by ';
+                  const link1 = document.createElement('a');
+                  link1.href = '#';
+                  link1.textContent = uniq[0].model;
+                  link1.style.color = 'var(--cb-champagne)';
+                  link1.style.textDecoration = 'underline';
+                  link1.style.cursor = 'pointer';
+                  link1.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    openConversationById(uniq[0].id);
+                  });
+                  sentenceEl.appendChild(link1);
+                  sentenceEl.appendChild(document.createTextNode(` on ${fmtDate(uniq[0].ts)} and refined by `));
+                  const link2 = document.createElement('a');
+                  link2.href = '#';
+                  link2.textContent = uniq[1].model;
+                  link2.style.color = 'var(--cb-champagne)';
+                  link2.style.textDecoration = 'underline';
+                  link2.style.cursor = 'pointer';
+                  link2.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    openConversationById(uniq[1].id);
+                  });
+                  sentenceEl.appendChild(link2);
+                  sentenceEl.appendChild(document.createTextNode(` on ${fmtDate(uniq[1].ts)}.`));
+                } else {
+                  const first = uniq[0];
+                  const last = uniq[uniq.length-1];
+                  const middle = uniq.slice(1, uniq.length-1);
+                  sentenceEl.innerHTML = 'This solution was first suggested by ';
+                  const link1 = document.createElement('a');
+                  link1.href = '#';
+                  link1.textContent = first.model;
+                  link1.style.color = 'var(--cb-champagne)';
+                  link1.style.textDecoration = 'underline';
+                  link1.style.cursor = 'pointer';
+                  link1.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    openConversationById(first.id);
+                  });
+                  sentenceEl.appendChild(link1);
+                  sentenceEl.appendChild(document.createTextNode(` on ${fmtDate(first.ts)}, refined by ${middle.map(m=>m.model).join(', ')} on subsequent dates, and verified by `));
+                  const link2 = document.createElement('a');
+                  link2.href = '#';
+                  link2.textContent = last.model;
+                  link2.style.color = 'var(--cb-champagne)';
+                  link2.style.textDecoration = 'underline';
+                  link2.style.cursor = 'pointer';
+                  link2.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    openConversationById(last.id);
+                  });
+                  sentenceEl.appendChild(link2);
+                  sentenceEl.appendChild(document.createTextNode(` on ${fmtDate(last.ts)}.`));
+                }
+                
+                smartProvenance.appendChild(sentenceEl);
+                
+                // Add Details toggle
+                if (contribsWithDetails.length > 1) {
+                  const detailsToggle = document.createElement('a');
+                  detailsToggle.href = '#';
+                  detailsToggle.textContent = ' [Show details]';
+                  detailsToggle.style.color = 'var(--cb-accent)';
+                  detailsToggle.style.fontSize = '11px';
+                  detailsToggle.style.marginLeft = '8px';
+                  detailsToggle.style.cursor = 'pointer';
+                  detailsToggle.style.textDecoration = 'none';
+                  
+                  const detailsContainer = document.createElement('div');
+                  detailsContainer.style.display = 'none';
+                  detailsContainer.style.marginTop = '12px';
+                  detailsContainer.style.padding = '10px';
+                  detailsContainer.style.background = 'rgba(20,20,30,0.18)';
+                  detailsContainer.style.borderRadius = '8px';
+                  detailsContainer.style.fontSize = '11px';
+                  detailsContainer.style.maxHeight = '300px';
+                  detailsContainer.style.overflowY = 'auto';
+                  
+                  let isExpanded = false;
+                  detailsToggle.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    isExpanded = !isExpanded;
+                    detailsContainer.style.display = isExpanded ? 'block' : 'none';
+                    detailsToggle.textContent = isExpanded ? ' [Hide details]' : ' [Show details]';
+                  });
+                  
+                  // Populate details container
+                  contribsWithDetails.forEach((contrib, idx) => {
+                    const detailRow = document.createElement('div');
+                    detailRow.style.marginBottom = '10px';
+                    detailRow.style.paddingBottom = '10px';
+                    detailRow.style.borderBottom = idx < contribsWithDetails.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none';
+                    
+                    const detailHeader = document.createElement('div');
+                    detailHeader.style.fontWeight = '600';
+                    detailHeader.style.marginBottom = '4px';
+                    detailHeader.style.color = 'var(--cb-champagne)';
+                    
+                    const modelLink = document.createElement('a');
+                    modelLink.href = '#';
+                    modelLink.textContent = contrib.model;
+                    modelLink.style.color = 'var(--cb-champagne)';
+                    modelLink.style.textDecoration = 'underline';
+                    modelLink.addEventListener('click', (e) => {
+                      e.preventDefault();
+                      openConversationById(contrib.id);
+                    });
+                    
+                    detailHeader.appendChild(modelLink);
+                    detailHeader.appendChild(document.createTextNode(` • ${fmtDate(contrib.ts)} • ${contrib.rawPlatform}`));
+                    
+                    const detailSnippet = document.createElement('div');
+                    detailSnippet.style.color = 'rgba(200,200,200,0.8)';
+                    detailSnippet.style.fontSize = '11px';
+                    detailSnippet.style.marginTop = '4px';
+                    detailSnippet.style.whiteSpace = 'pre-wrap';
+                    detailSnippet.textContent = contrib.snippet + '…';
+                    
+                    detailRow.appendChild(detailHeader);
+                    detailRow.appendChild(detailSnippet);
+                    detailsContainer.appendChild(detailRow);
+                  });
+                  
+                  smartProvenance.appendChild(detailsToggle);
+                  smartProvenance.appendChild(detailsContainer);
+                }
+              }
+            }
+          } catch (e) { debugLog('provenance generation failed', e); }
         } else {
           smartAnswer.textContent = 'AI query failed: ' + (res && res.error ? res.error : 'unknown');
         }
@@ -2260,6 +2876,23 @@
           }
         } catch (e) {}
       });
+
+      // Cross-Context Memory: Auto-detect context and suggest connections after page loads
+      setTimeout(async () => {
+        try {
+          // Wait for conversation to load, then check for connections
+          await new Promise(r => setTimeout(r, 3000)); // 3s delay for chat to render
+          const graphKey = 'chatbridge:knowledge_graph';
+          const graph = JSON.parse(localStorage.getItem(graphKey) || '[]');
+          
+          // Only auto-suggest if we have a knowledge graph with at least 3 entries
+          if (graph.length >= 3) {
+            await detectAndSuggestContext();
+          }
+        } catch (e) {
+          debugLog('Auto context detection error', e);
+        }
+      }, 1000);
     }
     
     setTimeout(async ()=>{ const msgs = await scanChat(); if (msgs && msgs.length) { await saveConversation({ platform: location.hostname, url: location.href, ts: Date.now(), conversation: msgs }); debugLog('auto-saved', msgs.length); } }, 450); 
