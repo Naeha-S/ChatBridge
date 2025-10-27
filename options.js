@@ -51,6 +51,9 @@ document.getElementById('btn-refresh-adapter').addEventListener('click', () => {
 loadSaved();// API key storage
 const apiKeyInput = document.getElementById('apiKey');
 const btnSaveKey = document.getElementById('btn-save-key');
+const themeDark = document.getElementById('theme-dark');
+const themeLight = document.getElementById('theme-light');
+const btnSaveTheme = document.getElementById('btn-save-theme');
 
 chrome.storage.local.get(['chatbridge_api_key'], res => {
   apiKeyInput.value = res.chatbridge_api_key || '';
@@ -64,4 +67,24 @@ btnSaveKey.addEventListener('click', () => {
     return;
   }
   chrome.storage.local.set({ chatbridge_api_key: v }, () => { alert('Saved API key.'); });
+});
+
+// Load and apply theme preference to Options page
+chrome.storage.local.get(['cb_theme'], res => {
+  const t = res.cb_theme || 'dark';
+  if (t === 'light') {
+    themeLight.checked = true;
+    document.body.classList.add('cb-theme-light');
+  } else {
+    themeDark.checked = true;
+    document.body.classList.remove('cb-theme-light');
+  }
+});
+
+btnSaveTheme.addEventListener('click', () => {
+  const val = themeLight.checked ? 'light' : 'dark';
+  chrome.storage.local.set({ cb_theme: val }, () => {
+    if (val === 'light') document.body.classList.add('cb-theme-light'); else document.body.classList.remove('cb-theme-light');
+    alert('Theme saved.');
+  });
 });

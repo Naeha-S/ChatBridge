@@ -3,11 +3,100 @@ chrome.runtime.onInstalled.addListener(() => {
   console.log("ChatBridge installed/updated");
 });
 
+// Migration endpoint: content script can send stored conversations to background for persistent storage
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (!msg || !msg.type) return;
+  if (msg.type === 'migrate_conversations') {
+    (async () => {
+      try {
+        const convs = Array.isArray(msg.payload && msg.payload.conversations) ? msg.payload.conversations : [];
+        let count = 0;
+        for (const c of convs) {
+          try {
+            const id = String(c.ts || c.id || Date.now());
+            const obj = Object.assign({ id }, c);
+            const ok = await convoPut(obj);
+            if (ok) count++;
+          } catch (e) { /* continue */ }
+        }
+        sendResponse({ ok:true, migrated: count });
+      } catch (e) { sendResponse({ ok:false, error: e && e.message }); }
+    })();
+    return true;
+  }
+
+  if (msg.type === 'report_issue') {
+    // simple logging; background can forward to a server if configured
+    try { console.warn('REPORT_ISSUE', msg.payload || {}); } catch(e){}
+    sendResponse({ ok:true });
+    return true;
+  }
+});
+
+// Precompute embeddings during idle time: scan conversation DB and compute embeddings for missing items
+async function precomputeEmbeddingsIdle(batch = 3) {
+  try {
+    const convs = await convoAll();
+    if (!convs || !convs.length) return;
+    let processed = 0;
+    for (const c of convs) {
+      if (processed >= batch) break;
+      try {
+        const id = String(c.ts || c.id || Date.now());
+        const existing = await idbGet(id);
+        if (existing && existing.vector && existing.vector.length) continue;
+        const text = (c.conversation || []).map(m => `${m.role}: ${m.text}`).join('\n\n');
+        if (!text || text.length < 30) continue;
+        const emb = await fetchEmbeddingOpenAI(text);
+        if (emb && Array.isArray(emb)) {
+          await idbPut({ id, vector: emb, metadata: { platform: c.platform || '', url: c.url || '', ts: c.ts || 0, topics: c.topics || [] }, ts: Date.now() });
+          processed++;
+        }
+        // small delay to avoid burst
+        await new Promise(r => setTimeout(r, 200));
+      } catch (e) { /* ignore per-item */ }
+    }
+    if (processed) console.log('[ChatBridge] precomputed embeddings for', processed, 'conversations');
+  } catch (e) { console.warn('precomputeEmbeddingsIdle err', e); }
+}
+
+// Schedule precompute when browser goes idle
+if (chrome.idle && chrome.idle.onStateChanged) {
+  chrome.idle.onStateChanged.addListener((state) => {
+    try {
+      if (state === 'idle' || state === 'locked') {
+        precomputeEmbeddingsIdle(4);
+      }
+    } catch (e) {}
+  });
+}
+
+// Also create a periodic alarm to attempt precompute (background service workers may be stopped)
+try {
+  if (chrome.alarms) {
+    chrome.alarms.create('chatbridge_precompute', { periodInMinutes: 30 });
+    chrome.alarms.onAlarm.addListener((alarm) => {
+      try { if (alarm && alarm.name === 'chatbridge_precompute') precomputeEmbeddingsIdle(2); } catch (e) {}
+    });
+  }
+} catch (e) {}
+
+// clean cache periodically
+try { setInterval(() => { cacheCleanExpired(); }, 1000 * 60 * 10); } catch(e) {}
 // Simple IndexedDB vector store (fallback to in-memory on failure)
 const V_DB_NAME = 'chatbridge_vectors_v1';
 const V_STORE = 'vectors';
 let idb = null;
 
+// Cache DB for API responses
+const C_DB_NAME = 'chatbridge_cache_v1';
+const C_STORE = 'cache';
+let cacheDb = null;
+
+// Conversations DB for large storage
+const CONV_DB_NAME = 'chatbridge_conversations_v1';
+const CONV_STORE = 'conversations';
+let convDb = null;
 function openVectorDB() {
   return new Promise((resolve, reject) => {
     try {
@@ -19,6 +108,32 @@ function openVectorDB() {
       req.onsuccess = (ev) => { idb = ev.target.result; resolve(idb); };
       req.onerror = (ev) => { console.warn('IndexedDB open failed', ev); resolve(null); };
     } catch (e) { console.warn('openVectorDB err', e); resolve(null); }
+  });
+}
+
+function openCacheDB() {
+  return new Promise((resolve) => {
+    try {
+      const req = indexedDB.open(C_DB_NAME, 1);
+      req.onupgradeneeded = (ev) => {
+        try { ev.target.result.createObjectStore(C_STORE, { keyPath: 'id' }); } catch (e) {}
+      };
+      req.onsuccess = (ev) => { cacheDb = ev.target.result; resolve(cacheDb); };
+      req.onerror = () => { cacheDb = null; resolve(null); };
+    } catch (e) { cacheDb = null; resolve(null); }
+  });
+}
+
+function openConvoDB() {
+  return new Promise((resolve) => {
+    try {
+      const req = indexedDB.open(CONV_DB_NAME, 1);
+      req.onupgradeneeded = (ev) => {
+        try { ev.target.result.createObjectStore(CONV_STORE, { keyPath: 'id' }); } catch (e) {}
+      };
+      req.onsuccess = (ev) => { convDb = ev.target.result; resolve(convDb); };
+      req.onerror = () => { convDb = null; resolve(null); };
+    } catch (e) { convDb = null; resolve(null); }
   });
 }
 
@@ -50,11 +165,124 @@ async function idbAll() {
   } catch (e) { return []; }
 }
 
+async function idbGet(id) {
+  try {
+    if (!idb) await openVectorDB();
+    if (!idb) return null;
+    return await new Promise((res) => {
+      const tx = idb.transaction([V_STORE], 'readonly');
+      const st = tx.objectStore(V_STORE);
+      const req = st.get(id);
+      req.onsuccess = () => res(req.result || null);
+      req.onerror = () => res(null);
+    });
+  } catch (e) { return null; }
+}
+
+// Cache helpers
+async function cachePut(obj) {
+  try {
+    if (!cacheDb) await openCacheDB();
+    if (!cacheDb) return false;
+    return await new Promise((res) => {
+      const tx = cacheDb.transaction([C_STORE], 'readwrite');
+      const st = tx.objectStore(C_STORE);
+      const req = st.put(obj);
+      req.onsuccess = () => res(true);
+      req.onerror = () => res(false);
+    });
+  } catch (e) { return false; }
+}
+
+async function cacheGet(id) {
+  try {
+    if (!cacheDb) await openCacheDB();
+    if (!cacheDb) return null;
+    return await new Promise((res) => {
+      const tx = cacheDb.transaction([C_STORE], 'readonly');
+      const st = tx.objectStore(C_STORE);
+      const req = st.get(id);
+      req.onsuccess = () => res(req.result || null);
+      req.onerror = () => res(null);
+    });
+  } catch (e) { return null; }
+}
+
+// Clean expired cache entries older than their ttl
+async function cacheCleanExpired() {
+  try {
+    if (!cacheDb) await openCacheDB();
+    if (!cacheDb) return;
+    const tx = cacheDb.transaction([C_STORE], 'readwrite');
+    const st = tx.objectStore(C_STORE);
+    const req = st.openCursor();
+    req.onsuccess = (ev) => {
+      const cur = ev.target.result;
+      if (!cur) return;
+      const rec = cur.value;
+      if (rec && rec.ts && rec.ttl && (Date.now() - rec.ts) > rec.ttl) {
+        try { cur.delete(); } catch (e) {}
+      }
+      cur.continue();
+    };
+  } catch (e) { /* ignore */ }
+}
+
+// Conversation DB helpers
+async function convoPut(obj) {
+  try {
+    if (!convDb) await openConvoDB();
+    if (!convDb) return false;
+    return await new Promise((res) => {
+      const tx = convDb.transaction([CONV_STORE], 'readwrite');
+      const st = tx.objectStore(CONV_STORE);
+      const req = st.put(obj);
+      req.onsuccess = () => res(true);
+      req.onerror = () => res(false);
+    });
+  } catch (e) { return false; }
+}
+
+async function convoAll() {
+  try {
+    if (!convDb) await openConvoDB();
+    if (!convDb) return [];
+    return await new Promise((res) => {
+      const tx = convDb.transaction([CONV_STORE], 'readonly');
+      const st = tx.objectStore(CONV_STORE);
+      const req = st.getAll();
+      req.onsuccess = () => res(req.result || []);
+      req.onerror = () => res([]);
+    });
+  } catch (e) { return []; }
+}
+
 function cosine(a, b) {
   if (!a || !b || a.length !== b.length) return 0;
   let dot = 0, na = 0, nb = 0;
   for (let i=0;i<a.length;i++) { dot += a[i]*b[i]; na += a[i]*a[i]; nb += b[i]*b[i]; }
   if (na === 0 || nb === 0) return 0; return dot / (Math.sqrt(na) * Math.sqrt(nb));
+}
+
+// stable JSON stringify that sorts object keys (simple recursive)
+function stableStringify(obj) {
+  if (obj === null || obj === undefined) return JSON.stringify(obj);
+  if (typeof obj !== 'object') return JSON.stringify(obj);
+  if (Array.isArray(obj)) return '[' + obj.map(stableStringify).join(',') + ']';
+  const keys = Object.keys(obj).sort();
+  let out = '{';
+  for (let i = 0; i < keys.length; i++) {
+    const k = keys[i]; out += JSON.stringify(k) + ':' + stableStringify(obj[k]);
+    if (i < keys.length - 1) out += ',';
+  }
+  out += '}';
+  return out;
+}
+
+function hashString(s) {
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) { h = ((h << 5) + h) + s.charCodeAt(i); h = h & 0xffffffff; }
+  return 'h' + (h >>> 0).toString(16);
 }
 
 // Ask OpenAI embeddings endpoint (if API key available) — returns embedding array or null
@@ -118,12 +346,16 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     if (msg.type === 'vector_index_all') {
       (async () => {
         try {
-          // load conversations from chrome.storage.local or payload
+          // load conversations from convo DB, payload, or fallback to chrome.storage.local
           const fromPayload = (msg.payload && Array.isArray(msg.payload.conversations)) ? msg.payload.conversations : null;
-          let convs = fromPayload;
-          if (!convs) {
-            const data = await new Promise(r => chrome.storage.local.get(['chatbridge:conversations'], d => r(d['chatbridge:conversations'])));
-            convs = Array.isArray(data) ? data : [];
+          let convs = [];
+          if (fromPayload) convs = fromPayload;
+          else {
+            try { convs = await convoAll(); } catch (e) { convs = []; }
+            if (!convs || !convs.length) {
+              const data = await new Promise(r => chrome.storage.local.get(['chatbridge:conversations'], d => r(d['chatbridge:conversations'])));
+              convs = Array.isArray(data) ? data : [];
+            }
           }
           let indexed = 0;
           for (const c of convs) {
@@ -177,6 +409,87 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return true;
   }
 
+  // Handler to retrieve conversations from persistent DB (with fallback)
+  if (msg && msg.type === 'get_conversations') {
+    (async () => {
+      try {
+        // optional controls
+        const limit = (msg.payload && typeof msg.payload.limit === 'number') ? msg.payload.limit : null;
+        const offset = (msg.payload && typeof msg.payload.offset === 'number') ? Math.max(0, msg.payload.offset) : 0;
+        let convs = [];
+        try { convs = await convoAll(); } catch (e) { convs = []; }
+        // Fallback to chrome.storage.local mirror if DB empty
+        if (!convs || !convs.length) {
+          const data = await new Promise(r => chrome.storage.local.get(['chatbridge:conversations'], d => r(d['chatbridge:conversations'])));
+          convs = Array.isArray(data) ? data : [];
+        }
+        // Normalize id and sort newest first
+        const norm = (convs || []).map(c => {
+          const id = String(c.id || c.ts || Date.now());
+          const ts = Number(c.ts || c.metadata && c.metadata.ts || Date.now());
+          return Object.assign({ id, ts }, c);
+        }).sort((a,b) => (b.ts||0) - (a.ts||0));
+        const slice = (limit && limit > 0) ? norm.slice(offset, offset + limit) : (offset ? norm.slice(offset) : norm);
+        sendResponse({ ok: true, conversations: slice, total: norm.length });
+      } catch (e) {
+        sendResponse({ ok:false, error: e && e.message });
+      }
+    })();
+    return true;
+  }
+
+  // Handler to clear all conversations from persistent DB and mirror store
+  if (msg && msg.type === 'clear_conversations') {
+    (async () => {
+      try {
+        if (!convDb) await openConvoDB();
+        if (convDb) {
+          await new Promise((res) => {
+            try {
+              const tx = convDb.transaction([CONV_STORE], 'readwrite');
+              const st = tx.objectStore(CONV_STORE);
+              const req = st.clear();
+              req.onsuccess = () => res(true);
+              req.onerror = () => res(false);
+            } catch (_) { res(false); }
+          });
+        }
+        // Clear mirror
+        try { chrome.storage.local.set({ 'chatbridge:conversations': [] }, () => {}); } catch (e) {}
+        sendResponse({ ok: true });
+      } catch (e) { sendResponse({ ok:false, error: e && e.message }); }
+    })();
+    return true;
+  }
+
+  // Handler to save a conversation from content script into conversation DB
+  if (msg && msg.type === 'save_conversation') {
+    (async () => {
+      try {
+        const conv = msg.payload || {};
+        const id = String(conv.ts || conv.id || Date.now());
+        const obj = Object.assign({ id }, conv);
+        const ok = await convoPut(obj);
+        // Mirror into chrome.storage.local array for backwards compatibility
+        try {
+          chrome.storage.local.get(['chatbridge:conversations'], data => {
+            try {
+              const arr = Array.isArray(data['chatbridge:conversations']) ? data['chatbridge:conversations'] : [];
+              // Put newest first
+              arr.unshift(obj);
+              // Keep a reasonable cap (optional) — here we keep full list but could trim
+              chrome.storage.local.set({ 'chatbridge:conversations': arr });
+            } catch (e) { /* ignore mirror errors */ }
+          });
+        } catch (e) { /* ignore */ }
+        sendResponse({ ok: !!ok });
+      } catch (e) {
+        sendResponse({ ok: false, error: e && e.message });
+      }
+    })();
+    return true;
+  }
+
   // Handler to restore summary to chat input
   if (msg && msg.type === 'restore_summary') {
     chrome.tabs.sendMessage(sender.tab.id, {
@@ -187,6 +500,200 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return true;
   }
   if (msg && msg.type === 'ping') return sendResponse({ ok:true });
+
+  // Embedding-based suggestion helper: return short multi-word suggestions
+  if (msg && msg.type === 'embed_suggest') {
+    (async () => {
+      try {
+        const payload = msg.payload || {};
+        const text = (payload.text || '').trim();
+        const topK = Math.max(1, payload.topK || 6);
+        if (!text) return sendResponse({ ok:false, error: 'no_text' });
+
+        // Try to get a query embedding first
+        const qemb = await fetchEmbeddingOpenAI(text);
+
+        // Fallback simple keyword extractor if no embedding available
+        function extractLocalPhrases(src, maxPhrases = 80) {
+          const s = (src || '').toLowerCase().replace(/["'`/\\()\[\]{}<>]/g,' ');
+          const words = s.split(/[^a-z0-9]+/).filter(Boolean);
+          const stop = new Set(['the','and','for','with','that','this','from','your','you','have','are','was','but','not','what','when','where','which','like','they','their','will','can','all','any','one','use','uses']);
+          const grams = new Map();
+          // prefer 2..4 grams
+          for (let n=2;n<=4;n++) {
+            for (let i=0;i+ n <= words.length;i++) {
+              const g = words.slice(i,i+n).filter(w => !stop.has(w)).join(' ');
+              if (!g || g.length < 3) continue;
+              grams.set(g, (grams.get(g)||0)+1);
+              if (grams.size > maxPhrases*3) break;
+            }
+          }
+          // rank by frequency then length
+          const arr = Array.from(grams.entries()).map(([k,v])=>({phrase:k,count:v,words:k.split(' ').length}));
+          arr.sort((a,b)=> (b.count - a.count) || (b.words - a.words));
+          return arr.slice(0, maxPhrases).map(x=>x.phrase);
+        }
+
+        // If no embedding available, fallback to local extraction from latest conversations
+        if (!qemb) {
+          // load conversations
+          const data = await new Promise(r => chrome.storage.local.get(['chatbridge:conversations'], d => r(d['chatbridge:conversations'])));
+          const convs = Array.isArray(data) ? data : [];
+          const joined = (convs.slice(0,10).map(c => (c.conversation||[]).map(m=>m.text).join(' ')).join('\n\n')) || text;
+          const phrases = extractLocalPhrases(joined, topK*6).slice(0, topK*2);
+          return sendResponse({ ok:true, suggestions: phrases.slice(0, topK) });
+        }
+
+        // We have an embedding: find top similar indexed items
+        const allVec = await idbAll();
+        const scored = allVec.map(it => ({ id: it.id, score: cosine(qemb, it.vector || []), metadata: it.metadata || {}, text: '' }));
+        scored.sort((a,b)=>b.score - a.score);
+        const topDocs = scored.slice(0, Math.min(12, scored.length));
+
+        // Load stored conversations to extract candidate phrases
+        const stored = await new Promise(r => chrome.storage.local.get(['chatbridge:conversations'], d => r(d['chatbridge:conversations'])));
+        const convs = Array.isArray(stored) ? stored : [];
+
+        // map id/ts to conversation text for quick lookup
+        const convMap = new Map();
+        for (const c of convs) {
+          const id = String(c.ts || c.id || Date.now());
+          const body = (c.conversation||[]).map(m => m.text || '').join(' ');
+          convMap.set(id, body);
+        }
+
+        // Build phrase candidates from top docs
+        const candidateCounts = new Map();
+        function addCandidatesFromText(t) {
+          if (!t || typeof t !== 'string') return;
+          const s = t.toLowerCase().replace(/["'`/\\()\[\]{}<>]/g,' ');
+          const words = s.split(/[^a-z0-9]+/).filter(Boolean);
+          const stop = new Set(['the','and','for','with','that','this','from','your','you','you','have','are','was','but','not','what','when','where','which','like','they','their','will','can','all','any','one','use','uses','about','there','been']);
+          for (let n=2;n<=4;n++) {
+            for (let i=0;i + n <= words.length;i++) {
+              const arr = words.slice(i,i+n);
+              if (arr.some(w => stop.has(w))) continue;
+              const phrase = arr.join(' ');
+              if (phrase.length < 4) continue;
+              candidateCounts.set(phrase, (candidateCounts.get(phrase)||0) + 1);
+              if (candidateCounts.size > 300) break;
+            }
+            if (candidateCounts.size > 300) break;
+          }
+        }
+
+        for (const d of topDocs) {
+          const id = String(d.id || d.metadata && d.metadata.ts || '');
+          const textBody = convMap.get(id) || d.metadata && d.metadata.title || '';
+          if (textBody) addCandidatesFromText(textBody);
+        }
+
+        // if still empty, add from the original query text
+        if (candidateCounts.size === 0) addCandidatesFromText(text);
+
+        // Convert candidates to array and keep top N by count
+        const candidates = Array.from(candidateCounts.entries()).map(([p,c])=>({ phrase: p, count: c, words: p.split(' ').length }));
+        candidates.sort((a,b)=> (b.count - a.count) || (b.words - a.words));
+        const topCandidates = candidates.slice(0, 120).map(c=>c.phrase);
+
+        // Request embeddings for candidate phrases in batches to compute semantic similarity
+        async function fetchEmbeddingBatch(texts) {
+          try {
+            const key = await new Promise(r => chrome.storage.local.get(['chatbridge_api_key'], d => r(d.chatbridge_api_key)));
+            if (!key) return null;
+            const endpoint = 'https://api.openai.com/v1/embeddings';
+            const body = { input: texts, model: 'text-embedding-3-small' };
+            const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type':'application/json', 'Authorization': 'Bearer ' + key }, body: JSON.stringify(body) });
+            if (!res.ok) return null;
+            const j = await res.json();
+            if (!j || !j.data) return null;
+            return j.data.map(it => it.embedding || null);
+          } catch (e) { return null; }
+        }
+
+        const chunkSize = 32;
+        const phraseEmbs = [];
+
+        // First, check IndexedDB for cached phrase embeddings to avoid repeated API calls
+        const ids = topCandidates.map(p => 'phrase:' + encodeURIComponent(p));
+        const existingPromises = ids.map(id => idbGet(id));
+        const existingResults = await Promise.all(existingPromises);
+        const toFetch = [];
+        for (let i = 0; i < topCandidates.length; i++) {
+          const rec = existingResults[i];
+          if (rec && rec.vector && Array.isArray(rec.vector)) {
+            phraseEmbs.push({ phrase: topCandidates[i], emb: rec.vector });
+          } else {
+            toFetch.push(topCandidates[i]);
+          }
+        }
+
+        // Batch fetch embeddings only for phrases missing in the cache
+        for (let i = 0; i < toFetch.length; i += chunkSize) {
+          const batch = toFetch.slice(i, i + chunkSize);
+          const embs = await fetchEmbeddingBatch(batch);
+          if (!embs) {
+            // if batch failed, stop trying further and continue with cached ones
+            break;
+          }
+          for (let k = 0; k < batch.length; k++) {
+            const ph = batch[k];
+            const emb = embs[k];
+            if (!emb) continue;
+            // cache into IndexedDB for future use
+            const pid = 'phrase:' + encodeURIComponent(ph);
+            try {
+              await idbPut({ id: pid, vector: emb, metadata: { type: 'phrase', text: ph }, ts: Date.now() });
+            } catch (e) { /* ignore cache write errors */ }
+            phraseEmbs.push({ phrase: ph, emb });
+          }
+        }
+
+        // If we have no embeddings at all (no cache + API failed), fallback to local ranking
+        if (!phraseEmbs.length) {
+          const simple = topCandidates.slice(0, topK*3).slice(0, topK);
+          return sendResponse({ ok:true, suggestions: simple });
+        }
+
+        // compute similarity and combined score
+        const maxCount = Math.max(...candidates.map(c=>c.count), 1);
+        const candidateMap = new Map(candidates.map(c=>[c.phrase, c]));
+        const scoredP = phraseEmbs.map(pe => {
+          const sem = cosine(qemb, pe.emb || []);
+          const meta = candidateMap.get(pe.phrase) || { count: 1, words: pe.phrase.split(' ').length };
+          const freqScore = meta.count / maxCount; // 0..1
+          const multiBoost = Math.min(0.2, (meta.words - 1) * 0.06); // prefer multi-word
+          // combine: semantic heavy, then freq, then multiword
+          const score = (0.72 * (sem || 0)) + (0.24 * freqScore) + (0.04 * multiBoost);
+          return { phrase: pe.phrase, score, sem: sem || 0, freq: meta.count, words: meta.words };
+        });
+        scoredP.sort((a,b)=> b.score - a.score);
+        const uniques = [];
+        const seen = new Set();
+        for (const s of scoredP) {
+          const p = s.phrase.replace(/\s+/g,' ').trim();
+          if (!p || seen.has(p)) continue;
+          // prefer multi-word phrases and length reasonable
+          if (p.split(' ').length === 1) continue; // skip unigrams
+          if (p.length < 4) continue;
+          seen.add(p);
+          uniques.push(p);
+          if (uniques.length >= topK) break;
+        }
+
+        // final fallback: if not enough, add top local phrases
+        if (uniques.length < topK) {
+          const more = topCandidates.filter(p => !seen.has(p) && p.split(' ').length > 1).slice(0, topK - uniques.length);
+          uniques.push(...more);
+        }
+
+        return sendResponse({ ok:true, suggestions: uniques.slice(0, topK) });
+      } catch (e) {
+        return sendResponse({ ok:false, error: 'embed_suggest_error', message: (e && e.message) || String(e) });
+      }
+    })();
+    return true;
+  }
 
   // Open target URL in a new tab and restore text when ready
   if (msg && msg.type === 'open_and_restore') {
@@ -251,6 +758,15 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         const timeoutMs = (typeof payload.timeout === 'number') ? payload.timeout : 25000;
         if (!key) return sendResponse({ ok:false, error: 'no_api_key' });
 
+        // Cache lookup (5 minute TTL)
+        try {
+          const cacheKey = hashString(stableStringify({ type: 'call_openai', model: model, messages: payload.messages || [] }));
+          const rec = await cacheGet(cacheKey);
+          if (rec && rec.ts && rec.ttl && (Date.now() - rec.ts) < rec.ttl && rec.response) {
+            return sendResponse(rec.response);
+          }
+        } catch (e) { /* ignore cache errors */ }
+
         // retry/backoff parameters
         const maxAttempts = 3; let attempt = 0; let lastErr = null;
         while (attempt < maxAttempts) {
@@ -274,6 +790,12 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             }
             // extract assistant text safely
             const assistant = (json && json.choices && json.choices[0] && json.choices[0].message && json.choices[0].message.content) || '';
+            // cache successful response (5min TTL)
+            try {
+              const cacheKey = hashString(stableStringify({ type: 'call_openai', model: model, messages: payload.messages || [] }));
+              await cachePut({ id: cacheKey, ts: Date.now(), ttl: 1000 * 60 * 5, response: { ok:true, assistant } });
+              cacheCleanExpired();
+            } catch (e) { /* ignore cache write errors */ }
             return sendResponse({ ok:true, assistant: assistant });
           } catch (e) {
             lastErr = e;
@@ -368,6 +890,14 @@ Rewritten conversation (optimized for ${tgt}):`;
         } else {
           promptText = payload.text || '';
         }
+        // Before making network call, check cache for this prompt
+        try {
+          const cacheKey = hashString(stableStringify({ type:'call_gemini', action: payload.action || 'unknown', prompt: promptText, length: payload.length || '', summaryType: payload.summaryType || '' }));
+          const rec = await cacheGet(cacheKey);
+          if (rec && rec.ts && rec.ttl && (Date.now() - rec.ts) < rec.ttl && rec.response) {
+            return sendResponse(rec.response);
+          }
+        } catch (e) { /* ignore */ }
   const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + GEMINI_API_KEY;
         const body = {
           contents: [{ parts: [{ text: promptText }] }]
@@ -386,6 +916,12 @@ Rewritten conversation (optimized for ${tgt}):`;
           return sendResponse({ ok:false, error: 'gemini_parse_error', body: json });
         }
         const result = json.candidates[0].content.parts[0].text || '';
+        // cache gemini successful result (5min TTL)
+        try {
+          const cacheKey = hashString(stableStringify({ type:'call_gemini', action: payload.action || 'unknown', prompt: promptText, length: payload.length || '', summaryType: payload.summaryType || '' }));
+          await cachePut({ id: cacheKey, ts: Date.now(), ttl: 1000 * 60 * 5, response: { ok:true, result } });
+          cacheCleanExpired();
+        } catch (e) { /* ignore */ }
         return sendResponse({ ok:true, result });
       } catch (e) {
         return sendResponse({ ok:false, error: 'gemini_fetch_error', message: (e && e.message) || String(e) });

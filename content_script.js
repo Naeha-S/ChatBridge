@@ -335,96 +335,121 @@
   let lastScannedText = '';
   // Slightly larger avatar, pulled in from the corner with refined styling
   avatar.style.cssText = 'position:fixed;bottom:22px;right:26px;width:48px;height:48px;border-radius:12px;z-index:2147483647;display:flex;align-items:center;justify-content:center;cursor:pointer;background:transparent;box-shadow:0 6px 20px rgba(0,0,0,0.18);transition: transform .12s ease, box-shadow .12s ease;overflow:hidden;';
-  avatar.addEventListener('mouseenter', () => { try { avatar.style.transform = 'translateY(-2px)'; avatar.style.boxShadow = '0 10px 26px rgba(230,207,159,0.18)'; } catch(e){} });
+  avatar.addEventListener('mouseenter', () => { try { avatar.style.transform = 'translateY(-2px)'; avatar.style.boxShadow = '0 10px 26px rgba(0,180,255,0.26), 0 0 12px rgba(0,180,255,0.35)'; } catch(e){} });
   avatar.addEventListener('mouseleave', () => { try { avatar.style.transform = ''; avatar.style.boxShadow = '0 6px 20px rgba(0,0,0,0.18)'; } catch(e){} });
     const host = document.createElement('div'); host.id = 'cb-host'; host.setAttribute('data-cb-ignore', 'true'); host.style.display = 'none';
     document.body.appendChild(avatar); document.body.appendChild(host);
     const shadow = host.attachShadow({ mode: 'open' });
 
-    // High-end professional dark theme styling inside shadow DOM (Poppins font)
+    // High-end Dark Neon theme inside shadow DOM (Bebas Neue font)
     const style = document.createElement('style');
     style.textContent = `
-      @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+      @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');
       :host { all: initial; }
-  :host { --cb-accent: #d4af77; --cb-champagne: #e6cf9f; --cb-champagne-rgb: 230,207,159; }
-      :host * { font-family: 'Poppins', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial !important; }
-  .cb-panel { box-sizing: border-box; position:fixed; top:12px; right:12px; width:380px; max-height:86vh; overflow-y:auto; overflow-x:hidden; border-radius:14px; background: linear-gradient(180deg, rgba(9,13,22,0.97), rgba(8,18,34,0.98)); color:var(--cb-accent) !important; font-family: 'Poppins', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; z-index:2147483647; box-shadow: 0 12px 40px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); backdrop-filter: blur(10px); }
+  :host {
+    --cb-bg: #0A0F1C;
+    --cb-bg2: #10182B;
+    --cb-accent-primary: #00B4FF;
+    --cb-accent-secondary: #8C1EFF;
+    --cb-accent-tertiary: #1EF2F7;
+    --cb-white: #E6E9F0;
+    --cb-subtext: #A0A7B5;
+    --cb-error: #FF1E56;
+    --cb-progress: #00E5FF;
+  }
+  :host(.cb-theme-light) {
+    --cb-bg: #FFFFFF;
+    --cb-bg2: #F5F7FB;
+    --cb-white: #0F1720;
+    --cb-subtext: #334155;
+  }
+  :host * { font-family: 'Bebas Neue', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial !important; letter-spacing: 0.5px; }
+  .cb-panel { box-sizing: border-box; position:fixed; top:12px; right:12px; width:380px; max-height:86vh; overflow-y:auto; overflow-x:hidden; border-radius:14px; background: linear-gradient(145deg, var(--cb-bg), var(--cb-bg2)); color:var(--cb-white) !important; font-family: 'Poppins', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; z-index:2147483647; box-shadow: 0 12px 40px rgba(0,0,0,0.55), 0 0 30px rgba(140, 30, 255, 0.2); border: 1px solid rgba(255,255,255,0.06); backdrop-filter: blur(10px); }
   .cb-panel::-webkit-scrollbar { width: 10px; }
-  .cb-panel::-webkit-scrollbar-track { background: #0b0f17; border-radius: 10px; }
-  .cb-panel::-webkit-scrollbar-thumb { background: linear-gradient(180deg, rgba(212,175,119,0.8), rgba(212,175,119,0.55)); border-radius: 10px; border: 2px solid #0b0f17; }
-  .cb-panel::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, rgba(212,175,119,1), rgba(212,175,119,0.7)); }
-  .cb-header { display:flex; flex-direction:row; align-items:flex-start; justify-content:space-between; padding:14px 18px 8px 18px; gap:6px; border-bottom: 1px solid rgba(255,255,255,0.04); }
-  .cb-title { font-weight:900; font-size:22px; letter-spacing:0.5px; color: var(--cb-champagne); text-shadow:0 2px 12px rgba(0,0,0,0.4); }
-  .cb-subtitle { font-size:13px; color: var(--cb-accent); font-weight:500; margin-top:2px; margin-bottom:2px; letter-spacing:0.3px; }
-    .cb-actions { padding:12px 16px 8px 16px; display:flex; gap:12px; align-items:flex-start; flex-wrap:wrap; justify-content:flex-start; }
-  .cb-actions-row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; width:100%; justify-content:center; }
-  .cb-actions .cb-btn { min-width:0; padding:10px 14px; font-size:13px; white-space:nowrap; font-weight:600; letter-spacing:0.2px; transition: all 0.2s ease; }
-    .cb-btn { background: linear-gradient(180deg, rgba(35,42,58,0.95), rgba(25,32,45,0.95)); border:1px solid rgba(255,255,255,0.14); color:#d4af77 !important; padding:10px 14px; border-radius:10px; cursor:pointer; font-size:14px; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); font-weight:600; box-shadow: 0 2px 8px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.04); }
-  .cb-btn:hover { transform:translateY(-1px); box-shadow: 0 6px 20px rgba(var(--cb-champagne-rgb),0.16), 0 2px 4px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.08); border-color: rgba(210,180,120,0.35); background: linear-gradient(180deg, rgba(45,52,70,0.98), rgba(35,42,58,0.98)); color:#ffe7b3 !important; }
-  .cb-btn:active { transform:translateY(0px); box-shadow: 0 1px 4px rgba(0,0,0,0.2), inset 0 1px 3px rgba(0,0,0,0.15); }
-  .cb-btn-primary { background: linear-gradient(135deg, #f5e6c1 0%, #d4b478 50%, #c2a066 100%); color:#1a1410 !important; font-weight:700; border: 1px solid rgba(0,0,0,0.12); text-shadow: 0 1px 2px rgba(255,255,255,0.3); box-shadow: 0 4px 12px rgba(230,207,159,0.25), inset 0 1px 0 rgba(255,255,255,0.4); }
-  .cb-btn-primary:hover { box-shadow: 0 8px 24px rgba(var(--cb-champagne-rgb),0.35), 0 4px 8px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.5); background: linear-gradient(135deg, #fffaeb 0%, #e6cf9f 50%, #d4b478 100%); transform: translateY(-2px); }
+  .cb-panel::-webkit-scrollbar-track { background: var(--cb-bg); border-radius: 10px; }
+  .cb-panel::-webkit-scrollbar-thumb { background: linear-gradient(180deg, rgba(0,180,255,0.8), rgba(140,30,255,0.6)); border-radius: 10px; border: 2px solid var(--cb-bg); }
+  .cb-panel::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, rgba(0,180,255,1), rgba(140,30,255,0.8)); }
+  .cb-header { display:flex; flex-direction:row; align-items:flex-start; justify-content:space-between; padding:14px 18px 8px 18px; gap:6px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+  .cb-title { font-weight:800; font-size:22px; letter-spacing:0.5px; color: var(--cb-white); filter: drop-shadow(0 0 10px rgba(30,242,247,0.2)); }
+  .cb-subtitle { font-size:13px; color: var(--cb-subtext); font-weight:500; margin-top:2px; margin-bottom:2px; letter-spacing:0.3px; }
+    .cb-actions { padding:12px 16px 8px 16px; display:flex; flex-direction:column; gap:12px; align-items:stretch; justify-content:flex-start; }
+  .cb-actions-grid { display:grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap:10px; width:100%; }
+  .cb-actions .cb-btn { min-width:0; padding:10px 14px; font-size:12px; white-space:nowrap; font-weight:600; letter-spacing:0.5px; transition: all 0.2s ease; text-transform: uppercase; width:100%; }
+    .cb-btn { background: #10182B; border:1px solid rgba(0,180,255,0.25); color:var(--cb-white) !important; padding:10px 14px; border-radius:10px; cursor:pointer; font-size:13px; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); font-weight:600; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+  .cb-btn:hover { transform:translateY(-1px); box-shadow: 0 0 12px rgba(0, 180, 255, 0.6), 0 2px 12px rgba(0,0,0,0.25); border-color: rgba(0,180,255,0.5); background: #13203A; }
+  .cb-btn:focus { outline: none; box-shadow: 0 0 0 3px rgba(30,242,247,0.25), 0 0 10px rgba(30,242,247,0.3); }
+  .cb-btn:active { transform:translateY(0px); filter: drop-shadow(0 0 10px #1EF2F7); }
+  .cb-btn-primary { background: linear-gradient(135deg, #00B4FF, #8C1EFF); color:var(--cb-white) !important; font-weight:700; border: 1px solid rgba(255,255,255,0.08); text-shadow: 0 1px 2px rgba(0,0,0,0.35); box-shadow: 0 4px 12px rgba(0,180,255,0.35), 0 0 12px rgba(0, 180, 255, 0.35); }
+  .cb-btn-primary:hover { box-shadow: 0 8px 24px rgba(0,180,255,0.45), 0 0 18px rgba(140, 30, 255, 0.35); transform: translateY(-2px); }
   .cb-scan-row { padding: 10px 16px; }
   .cb-scan-wide { width: 100%; margin: 0; padding:12px 14px; font-size:15px; border-radius:12px; display:block; }
-      .cb-btn-danger { background: linear-gradient(180deg, rgba(60,20,20,0.95), rgba(40,15,15,0.95)); border:1px solid rgba(255,100,100,0.25); color:rgba(255,180,180,0.75) !important; font-size:13px; padding:6px 10px; }
-      .cb-btn-danger:hover { background: linear-gradient(180deg, rgba(80,25,25,0.95), rgba(50,18,18,0.95)); border-color: rgba(255,120,120,0.4); color:rgba(255,200,200,0.9) !important; box-shadow: 0 4px 12px rgba(200,50,50,0.15); }
-      .cb-toolbar { display:flex; align-items:center; gap:10px; padding:12px 18px 8px 18px; border-bottom: 1px solid rgba(255,255,255,0.04); }
-      .cb-label { font-size:12px; color:#d4af77 !important; }
-  .cb-select { flex:1; appearance:none; background:#0b0f17; color:#d4af77 !important; border:1px solid rgba(255,255,255,0.18); border-radius:10px; padding:10px 12px; font-size:14px; outline:none; font-weight:500; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-      .cb-select:hover { border-color: #d2b478; box-shadow: 0 0 0 3px rgba(210, 180, 120, 0.12); }
-  select.cb-select option { background:#0b0f17; color:#d4af77; }
-      .cb-status { padding:0 18px 10px 18px; font-size:12px; color:#d4af77 !important; }
+      .cb-btn-danger { background: #1a0d14; border:1px solid rgba(255,30,86,0.35); color:#FF7A9A !important; font-size:13px; padding:6px 10px; }
+      .cb-btn-danger:hover { background: #220f19; border-color: rgba(255,30,86,0.55); color:#FF9CB3 !important; box-shadow: 0 4px 12px rgba(255,30,86,0.2), 0 0 12px rgba(255,30,86,0.25); }
+      .cb-toolbar { display:flex; align-items:center; gap:10px; padding:12px 18px 8px 18px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+      .cb-label { font-size:12px; color:var(--cb-subtext) !important; }
+  .cb-select { flex:1; appearance:none; background:var(--cb-bg); color:var(--cb-white) !important; border:1px solid rgba(0,180,255,0.25); border-radius:10px; padding:10px 12px; font-size:14px; outline:none; font-weight:500; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .cb-select:hover { border-color: rgba(0,180,255,0.5); box-shadow: 0 0 0 3px rgba(0, 180, 255, 0.12); }
+  select.cb-select option { background:var(--cb-bg); color:var(--cb-white); }
+      .cb-status { padding:0 18px 10px 18px; font-size:12px; color:var(--cb-subtext) !important; }
       .cb-history-wrapper { position: relative; margin:12px; }
       .cb-history-header { display:flex; align-items:center; justify-content:space-between; padding:0 0 8px 0; }
-      .cb-history-title { font-size:12px; color:#d4af77 !important; font-weight:600; letter-spacing:0.3px; }
-      .cb-history { padding:12px 18px; max-height:260px; overflow-x:hidden; overflow-y:auto; font-size:13px; background: rgba(20,20,30,0.18); border-radius:10px; white-space:pre-wrap; color:#d4af77 !important; line-height: 1.5; }
+      .cb-history-title { font-size:12px; color:var(--cb-subtext) !important; font-weight:600; letter-spacing:0.3px; }
+      .cb-history { padding:12px 18px; max-height:260px; overflow-x:hidden; overflow-y:auto; font-size:13px; background: rgba(16, 24, 43, 0.55); border-radius:10px; white-space:pre-wrap; color:var(--cb-white) !important; line-height: 1.5; }
       .cb-history::-webkit-scrollbar { width: 8px; }
-      .cb-history::-webkit-scrollbar-track { background: rgba(20,20,30,0.4); border-radius: 10px; }
-  .cb-history::-webkit-scrollbar-thumb { background: linear-gradient(180deg, rgba(230,207,159,0.6), rgba(230,207,159,0.4)); border-radius: 10px; border: 2px solid rgba(20,20,30,0.4); }
-  .cb-history::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, rgba(230,207,159,0.8), rgba(230,207,159,0.6)); }
-      .cb-preview { padding:12px 18px; font-size:13px; color:#d4af77 !important; border-top:1px solid rgba(255,255,255,0.04); max-height:200px; overflow-x:hidden; overflow-y:auto; line-height: 1.5; }
+      .cb-history::-webkit-scrollbar-track { background: rgba(10,15,28,0.6); border-radius: 10px; }
+  .cb-history::-webkit-scrollbar-thumb { background: linear-gradient(180deg, rgba(0,180,255,0.6), rgba(140,30,255,0.5)); border-radius: 10px; border: 2px solid rgba(10,15,28,0.6); }
+  .cb-history::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, rgba(0,180,255,0.8), rgba(140,30,255,0.7)); }
+      .cb-preview { padding:12px 18px; font-size:13px; color:var(--cb-white) !important; border-top:1px solid rgba(255,255,255,0.06); max-height:200px; overflow-x:hidden; overflow-y:auto; line-height: 1.5; background: rgba(16, 24, 43, 0.35); }
       .cb-preview::-webkit-scrollbar { width: 8px; }
-      .cb-preview::-webkit-scrollbar-track { background: rgba(20,20,30,0.4); border-radius: 10px; }
-      .cb-preview::-webkit-scrollbar-thumb { background: linear-gradient(180deg, rgba(212,175,119,0.6), rgba(212,175,119,0.4)); border-radius: 10px; border: 2px solid rgba(20,20,30,0.4); }
-      .cb-preview::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, rgba(212,175,119,0.8), rgba(212,175,119,0.6)); }
+      .cb-preview::-webkit-scrollbar-track { background: rgba(10,15,28,0.6); border-radius: 10px; }
+      .cb-preview::-webkit-scrollbar-thumb { background: linear-gradient(180deg, rgba(0,180,255,0.6), rgba(140,30,255,0.5)); border-radius: 10px; border: 2px solid rgba(10,15,28,0.6); }
+      .cb-preview::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, rgba(0,180,255,0.8), rgba(140,30,255,0.7)); }
       .cb-footer { display:flex; justify-content:flex-end; gap:10px; padding:12px 18px }
-  .cb-close { background:transparent; border:none; color:#d4af77 !important; cursor:pointer; font-size:15px; padding:6px; position:absolute; top:8px; right:10px; }
+  .cb-close { background:transparent; border:none; color:var(--cb-subtext) !important; cursor:pointer; font-size:15px; padding:6px; position:absolute; top:8px; right:10px; }
   .cb-header { padding-right: 42px; }
-      textarea { background: #181c2a; color: #d4af77 !important; border: 1px solid rgba(255,255,255,0.18); border-radius: 10px; font-size:14px; padding:10px; font-family:inherit; max-height:200px; overflow-x:hidden; overflow-y:auto; }
+      textarea { background: var(--cb-bg); color: var(--cb-white) !important; border: 1px solid rgba(0,180,255,0.25); border-radius: 10px; font-size:14px; padding:10px; font-family:inherit; max-height:200px; overflow-x:hidden; overflow-y:auto; }
       textarea::-webkit-scrollbar { width: 8px; }
-      textarea::-webkit-scrollbar-track { background: rgba(20,20,30,0.4); border-radius: 10px; }
-      textarea::-webkit-scrollbar-thumb { background: linear-gradient(180deg, rgba(212,175,119,0.6), rgba(212,175,119,0.4)); border-radius: 10px; border: 2px solid rgba(20,20,30,0.4); }
-      textarea::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, rgba(212,175,119,0.8), rgba(212,175,119,0.6)); }
-      textarea:focus { outline: 2px solid #d2b478; }
-      select:focus { outline: 2px solid #d2b478; }
+      textarea::-webkit-scrollbar-track { background: rgba(10,15,28,0.6); border-radius: 10px; }
+      textarea::-webkit-scrollbar-thumb { background: linear-gradient(180deg, rgba(0,180,255,0.6), rgba(140,30,255,0.5)); border-radius: 10px; border: 2px solid rgba(10,15,28,0.6); }
+      textarea::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, rgba(0,180,255,0.8), rgba(140,30,255,0.7)); }
+      textarea:focus { outline: 2px solid rgba(0,180,255,0.6); }
+      select:focus { outline: 2px solid rgba(0,180,255,0.6); }
       /* Internal view sections - inline in the sidebar */
       .cb-internal-view { display: none; padding: 14px 18px; border-top: 1px solid rgba(255,255,255,0.06); background: rgba(6,10,18,0.3); }
       .cb-internal-view.cb-view-active { display: block; }
       .cb-view-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
-      .cb-view-close { background:transparent; border:1px solid rgba(255,255,255,0.06); color:#d4af77; padding:4px 8px; border-radius:6px; cursor:pointer; font-size:12px; }
-      .cb-view-close:hover { background:rgba(255,255,255,0.04); }
-      .cb-view-title { font-weight:700; font-size:14px; color:#ffe7b3; }
-      .cb-view-intro { font-size:13px; color:rgba(212,175,119,0.85); line-height:1.5; margin:10px 0 14px 0; padding:10px 12px; background:rgba(230,207,159,0.06); border-left:3px solid rgba(230,207,159,0.3); border-radius:6px; }
+      .cb-view-close { background:transparent; border:1px solid rgba(255,255,255,0.1); color:var(--cb-white); padding:4px 8px; border-radius:6px; cursor:pointer; font-size:12px; }
+      .cb-view-close:hover { background:rgba(255,255,255,0.06); box-shadow: 0 0 12px rgba(0, 180, 255, 0.2); }
+      .cb-view-title { font-weight:700; font-size:14px; color:var(--cb-white); }
+      .cb-view-intro { font-size:13px; color:var(--cb-subtext); line-height:1.5; margin:10px 0 14px 0; padding:10px 12px; background:rgba(16,24,43,0.35); border-left:3px solid rgba(0,180,255,0.35); border-radius:6px; }
       .cb-view-select { margin:8px 0 12px 0; width:100%; }
-  .cb-view-text { width:100%; min-height:140px; max-height:200px; resize:vertical; background:#0b0f17; color:#e8d6b0; border:1px solid rgba(255,255,255,0.06); padding:10px; border-radius:8px; font-family:inherit; white-space:pre-wrap; overflow-y:auto; overflow-x:hidden; font-size:12px; line-height:1.4; }
+  .cb-view-text { width:100%; min-height:140px; max-height:200px; resize:vertical; background:var(--cb-bg); color:var(--cb-white); border:1px solid rgba(0,180,255,0.25); padding:10px; border-radius:8px; font-family:inherit; white-space:pre-wrap; overflow-y:auto; overflow-x:hidden; font-size:12px; line-height:1.4; }
   .cb-view-text::-webkit-scrollbar { width: 8px; }
-  .cb-view-text::-webkit-scrollbar-track { background: #0b0f17; border-radius: 10px; }
-  .cb-view-text::-webkit-scrollbar-thumb { background: linear-gradient(180deg, rgba(212,175,119,0.8), rgba(212,175,119,0.55)); border-radius: 10px; border: 2px solid #0b0f17; }
-  .cb-view-text::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, rgba(212,175,119,1), rgba(212,175,119,0.7)); }
+  .cb-view-text::-webkit-scrollbar-track { background: var(--cb-bg); border-radius: 10px; }
+  .cb-view-text::-webkit-scrollbar-thumb { background: linear-gradient(180deg, rgba(0,180,255,0.85), rgba(140,30,255,0.6)); border-radius: 10px; border: 2px solid var(--cb-bg); }
+  .cb-view-text::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, rgba(0,180,255,1), rgba(140,30,255,0.8)); }
       .cb-view-controls { margin:12px 0; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
       .cb-view-go { margin-top:10px; }
-  .cb-view-result { margin-top:14px; padding:12px; background: rgba(20,20,30,0.18); border-radius:10px; white-space:pre-wrap; color:#d4af77; font-size:12px; line-height:1.4; max-height:200px; overflow-y:auto; overflow-x:hidden; }
-  .cb-progress { display:inline-block; margin-left:10px; font-size:12px; color:#d4af77; opacity:0.9; }
+  .cb-view-result { margin-top:14px; padding:12px; background: rgba(16,24,43,0.55); border-radius:10px; white-space:pre-wrap; color:var(--cb-white); font-size:12px; line-height:1.4; max-height:200px; overflow-y:auto; overflow-x:hidden; }
+  .cb-progress { display:inline-block; margin-left:10px; font-size:12px; color:var(--cb-subtext); opacity:0.9; }
   .cb-dots { display:inline-block; }
   .cb-dots .dot { display:inline-block; opacity:0.25; animation: cb-ellipsis 1.1s ease-in-out infinite; }
   .cb-dots .dot:nth-child(2) { animation-delay: .18s; }
   .cb-dots .dot:nth-child(3) { animation-delay: .36s; }
   /* small inline spinner used with loading buttons */
-  .cb-spinner { display:inline-block; width:14px; height:14px; border-radius:50%; vertical-align:middle; margin-right:8px; background: conic-gradient(rgba(var(--cb-champagne-rgb),0.95), rgba(255,255,255,0.9)); box-shadow: 0 0 0 1px rgba(0,0,0,0.08) inset; animation: cb-spin 0.9s linear infinite; }
+  .cb-spinner { display:inline-block; width:14px; height:14px; border-radius:50%; vertical-align:middle; margin-right:8px; background: conic-gradient(var(--cb-progress), rgba(255,255,255,0.9)); box-shadow: 0 0 12px rgba(0, 180, 255, 0.3), 0 0 0 1px rgba(0,0,0,0.08) inset; animation: cb-spin 0.9s linear infinite; }
   @keyframes cb-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
   @keyframes cb-ellipsis { 0% { opacity:0.25; transform: translateY(0); } 30% { opacity:1; transform: translateY(-2px); } 60% { opacity:0.25; transform: translateY(0); } 100% { opacity:0.25; transform: translateY(0); } }
     `;
     shadow.appendChild(style);
+    // Apply saved theme preference
+    try {
+      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+        chrome.storage.local.get(['cb_theme'], (r) => {
+          try { if (r && r.cb_theme === 'light') host.classList.add('cb-theme-light'); } catch (e) {}
+        });
+      }
+    } catch (e) {}
 
   const panel = document.createElement('div'); panel.className = 'cb-panel';
     // Header: Title and subtitle
@@ -436,6 +461,7 @@
   left.appendChild(title); left.appendChild(subtitle);
   const controls = document.createElement('div'); controls.style.display = 'flex'; controls.style.alignItems = 'flex-start';
   const btnClose = document.createElement('button'); btnClose.className = 'cb-close'; btnClose.textContent = '✕';
+  btnClose.setAttribute('aria-label','Close panel');
   controls.appendChild(btnClose);
   header.appendChild(left);
   header.appendChild(controls);
@@ -444,22 +470,25 @@
   // Actions: Scan, Restore, Gemini APIs
   const actions = document.createElement('div'); actions.className = 'cb-actions';
   
-  // Create organized button rows
-  const row1 = document.createElement('div'); row1.className = 'cb-actions-row';
-  const row2 = document.createElement('div'); row2.className = 'cb-actions-row';
+  // Create a neat grid for secondary actions (luxury layout)
+  const actionsGrid = document.createElement('div'); actionsGrid.className = 'cb-actions-grid';
 
-  const btnScan = document.createElement('button'); btnScan.className = 'cb-btn cb-btn-primary cb-scan-wide'; btnScan.textContent = '🔍 Scan Chat'; btnScan.title = 'Capture this conversation - Save it for later, search across it, or continue on another AI'; btnScan.id = 'btnScan';
-  const btnRestore = document.createElement('button'); btnRestore.className = 'cb-btn'; btnRestore.textContent = '↩️ Restore'; btnRestore.title = 'Continue where you left off - Pick any saved chat and paste it into this AI';
-  const btnClipboard = document.createElement('button'); btnClipboard.className = 'cb-btn'; btnClipboard.textContent = '📋 Copy'; btnClipboard.title = 'Quick export - Copy this conversation to share or save externally';
-  const btnSmartQuery = document.createElement('button'); btnSmartQuery.className = 'cb-btn'; btnSmartQuery.textContent = '🔎 Query'; btnSmartQuery.title = 'Ask questions across ALL your saved chats - Natural language search powered by AI';
-  const btnFindConnections = document.createElement('button'); btnFindConnections.className = 'cb-btn'; btnFindConnections.textContent = '🔗 Connect'; btnFindConnections.title = 'Discover related conversations - See how your chats build on each other';
-  const btnKnowledgeGraph = document.createElement('button'); btnKnowledgeGraph.className = 'cb-btn'; btnKnowledgeGraph.textContent = '🕸️ Graph'; btnKnowledgeGraph.title = 'Visualize your conversation network - Interactive map of how your chats connect';
+  const btnScan = document.createElement('button'); btnScan.className = 'cb-btn cb-btn-primary cb-scan-wide'; btnScan.textContent = 'Scan Chat'; btnScan.title = 'Capture this conversation - Save it for later, search across it, or continue on another AI'; btnScan.id = 'btnScan';
+  const btnRestore = document.createElement('button'); btnRestore.className = 'cb-btn'; btnRestore.textContent = 'Restore'; btnRestore.title = 'Continue where you left off - Pick any saved chat and paste it into this AI'; btnRestore.setAttribute('aria-label','Restore conversation');
+  const btnClipboard = document.createElement('button'); btnClipboard.className = 'cb-btn'; btnClipboard.textContent = 'Copy'; btnClipboard.title = 'Quick export - Copy this conversation to share or save externally'; btnClipboard.setAttribute('aria-label','Copy conversation to clipboard');
+  const btnSmartQuery = document.createElement('button'); btnSmartQuery.className = 'cb-btn'; btnSmartQuery.textContent = 'Query'; btnSmartQuery.title = 'Ask questions across ALL your saved chats - Natural language search powered by AI'; btnSmartQuery.setAttribute('aria-label','Open Smart Query');
+  const btnFindConnections = document.createElement('button'); btnFindConnections.className = 'cb-btn'; btnFindConnections.textContent = 'Connect'; btnFindConnections.title = 'Discover related conversations - See how your chats build on each other'; btnFindConnections.setAttribute('aria-label','Find related conversations');
+  const btnKnowledgeGraph = document.createElement('button'); btnKnowledgeGraph.className = 'cb-btn'; btnKnowledgeGraph.textContent = 'Graph'; btnKnowledgeGraph.title = 'Visualize your conversation network - Interactive map of how your chats connect'; btnKnowledgeGraph.setAttribute('aria-label','Open Knowledge Graph');
 
   // Gemini API buttons
-  const btnSyncTone = document.createElement('button'); btnSyncTone.className = 'cb-btn'; btnSyncTone.textContent = '🎯 Sync'; btnSyncTone.title = 'Adapt conversations - Rewrite for a different AI model\'s style and strengths';
-  const btnSummarize = document.createElement('button'); btnSummarize.className = 'cb-btn'; btnSummarize.textContent = '📝 Summarize'; btnSummarize.title = 'Get the key points - Condense long chats into concise summaries';
-  const btnRewrite = document.createElement('button'); btnRewrite.className = 'cb-btn'; btnRewrite.textContent = '✨ Rewrite'; btnRewrite.title = 'Polish your content - Improve clarity, tone, and professionalism';
-  const btnTranslate = document.createElement('button'); btnTranslate.className = 'cb-btn'; btnTranslate.textContent = '🌍 Translate'; btnTranslate.title = 'Break language barriers - Convert chats to 20+ languages instantly';
+  const btnSyncTone = document.createElement('button'); btnSyncTone.className = 'cb-btn'; btnSyncTone.textContent = 'Sync'; btnSyncTone.title = 'Adapt conversations - Rewrite for a different AI model\'s style and strengths';
+  const btnSummarize = document.createElement('button'); btnSummarize.className = 'cb-btn'; btnSummarize.textContent = 'Summarize'; btnSummarize.title = 'Get the key points - Condense long chats into concise summaries';
+  const btnRewrite = document.createElement('button'); btnRewrite.className = 'cb-btn'; btnRewrite.textContent = 'Rewrite'; btnRewrite.title = 'Polish your content - Improve clarity, tone, and professionalism';
+  const btnTranslate = document.createElement('button'); btnTranslate.className = 'cb-btn'; btnTranslate.textContent = 'Translate'; btnTranslate.title = 'Break language barriers - Convert chats to 20+ languages instantly';
+  btnSyncTone.setAttribute('aria-label','Sync tone to target model');
+  btnSummarize.setAttribute('aria-label','Summarize conversation');
+  btnRewrite.setAttribute('aria-label','Rewrite conversation');
+  btnTranslate.setAttribute('aria-label','Translate conversation');
 
   // Place Scan button prominently in its own row below the header
   try {
@@ -468,27 +497,27 @@
     panel.appendChild(scanRow);
   } catch (e) { try { row1.appendChild(btnScan); } catch (e2) {} }
   
-  // Row 1: Core actions (Restore, Smart Query, Connections, Graph)
-  row1.appendChild(btnRestore);
-  row1.appendChild(btnSmartQuery);
-  row1.appendChild(btnFindConnections);
-  row1.appendChild(btnKnowledgeGraph);
-  
-  // Row 2: Transform actions (Clipboard, Sync Tone, Summarize, Rewrite, Translate)
-  row2.appendChild(btnClipboard);
-  row2.appendChild(btnSyncTone);
-  row2.appendChild(btnSummarize);
-  row2.appendChild(btnRewrite);
-  row2.appendChild(btnTranslate);
-  
-  actions.appendChild(row1);
-  actions.appendChild(row2);
+  // Grid: Restore, Query, Connect, Graph, Copy, Sync, Summarize, Rewrite, Translate
+  [
+    btnRestore,
+    btnSmartQuery,
+    btnFindConnections,
+    btnKnowledgeGraph,
+    btnClipboard,
+    btnSyncTone,
+    btnSummarize,
+    btnRewrite,
+    btnTranslate
+  ].forEach(b => actionsGrid.appendChild(b));
+
+  actions.appendChild(actionsGrid);
   panel.appendChild(actions);
 
     // Toolbar with Chat dropdown
     const toolbar = document.createElement('div'); toolbar.className = 'cb-toolbar';
   const lab = document.createElement('div'); lab.className = 'cb-label'; lab.textContent = 'Select Chat';
     const chatSelect = document.createElement('select'); chatSelect.className = 'cb-select'; chatSelect.id = 'cb-chat-select';
+  chatSelect.setAttribute('aria-label', 'Select saved chat');
     toolbar.appendChild(lab); toolbar.appendChild(chatSelect);
     panel.appendChild(toolbar);
 
@@ -502,6 +531,7 @@
   const syncTop = document.createElement('div'); syncTop.className = 'cb-view-top';
   const syncTitle = document.createElement('div'); syncTitle.className = 'cb-view-title'; syncTitle.textContent = 'Sync Tone';
   const btnCloseSync = document.createElement('button'); btnCloseSync.className = 'cb-view-close'; btnCloseSync.textContent = '✕';
+  btnCloseSync.setAttribute('aria-label','Close Sync view');
   syncTop.appendChild(syncTitle); syncTop.appendChild(btnCloseSync);
   syncView.appendChild(syncTop);
   const syncIntro = document.createElement('div'); syncIntro.className = 'cb-view-intro'; syncIntro.textContent = 'Adapt this conversation for a different AI model. Each model has unique strengths - this rewrites your chat to match the target model\'s style and capabilities.';
@@ -527,6 +557,7 @@
   const summTop = document.createElement('div'); summTop.className = 'cb-view-top';
   const summTitle = document.createElement('div'); summTitle.className = 'cb-view-title'; summTitle.textContent = 'Summarize';
   const btnCloseSumm = document.createElement('button'); btnCloseSumm.className = 'cb-view-close'; btnCloseSumm.textContent = '✕';
+  btnCloseSumm.setAttribute('aria-label','Close Summarize view');
   summTop.appendChild(summTitle); summTop.appendChild(btnCloseSumm);
   summView.appendChild(summTop);
   const summIntro = document.createElement('div'); summIntro.className = 'cb-view-intro'; summIntro.textContent = 'Extract the key insights from long conversations. Perfect for quick reviews, sharing highlights, or creating meeting notes.';
@@ -542,6 +573,15 @@
   summTypeSelect.value = 'paragraph';
   summControls.appendChild(summLengthLabel); summControls.appendChild(summLengthSelect); summControls.appendChild(summTypeLabel); summControls.appendChild(summTypeSelect);
   summView.appendChild(summControls);
+  // Restore saved summary preferences
+  try {
+    const savedLen = localStorage.getItem('chatbridge:pref:summLength');
+    const savedType = localStorage.getItem('chatbridge:pref:summType');
+    if (savedLen) summLengthSelect.value = savedLen;
+    if (savedType) summTypeSelect.value = savedType;
+  } catch(e){}
+  summLengthSelect.addEventListener('change', () => { try { localStorage.setItem('chatbridge:pref:summLength', summLengthSelect.value); } catch(e){} });
+  summTypeSelect.addEventListener('change', () => { try { localStorage.setItem('chatbridge:pref:summType', summTypeSelect.value); } catch(e){} });
   const summSourceText = document.createElement('div'); summSourceText.className = 'cb-view-text'; summSourceText.id = 'cb-summ-source-text'; summSourceText.setAttribute('contenteditable','false'); summSourceText.textContent = '';
   summView.appendChild(summSourceText);
   const btnGoSumm = document.createElement('button'); btnGoSumm.className = 'cb-btn cb-view-go'; btnGoSumm.textContent = 'Summarize';
@@ -557,6 +597,7 @@
   const rewTop = document.createElement('div'); rewTop.className = 'cb-view-top';
   const rewTitle = document.createElement('div'); rewTitle.className = 'cb-view-title'; rewTitle.textContent = 'Rewrite';
   const btnCloseRew = document.createElement('button'); btnCloseRew.className = 'cb-view-close'; btnCloseRew.textContent = '✕';
+  btnCloseRew.setAttribute('aria-label','Close Rewrite view');
   rewTop.appendChild(rewTitle); rewTop.appendChild(btnCloseRew);
   rewView.appendChild(rewTop);
   const rewIntro = document.createElement('div'); rewIntro.className = 'cb-view-intro'; rewIntro.textContent = 'Polish and refine your conversation. Improve clarity, adjust tone, or restructure for better readability and impact.';
@@ -568,6 +609,9 @@
   const rewControls = document.createElement('div'); rewControls.className = 'cb-view-controls';
   rewControls.appendChild(rewStyleLabel); rewControls.appendChild(rewStyleSelect);
   rewView.appendChild(rewControls);
+  // Restore saved rewrite style
+  try { const savedRew = localStorage.getItem('chatbridge:pref:rewStyle'); if (savedRew) rewStyleSelect.value = savedRew; } catch(e){}
+  rewStyleSelect.addEventListener('change', () => { try { localStorage.setItem('chatbridge:pref:rewStyle', rewStyleSelect.value); } catch(e){} });
   const rewSourceText = document.createElement('div'); rewSourceText.className = 'cb-view-text'; rewSourceText.id = 'cb-rew-source-text'; rewSourceText.setAttribute('contenteditable','false'); rewSourceText.textContent = '';
   rewView.appendChild(rewSourceText);
   const btnGoRew = document.createElement('button'); btnGoRew.className = 'cb-btn cb-view-go'; btnGoRew.textContent = 'Rewrite';
@@ -583,14 +627,31 @@
   const transTop = document.createElement('div'); transTop.className = 'cb-view-top';
   const transTitle = document.createElement('div'); transTitle.className = 'cb-view-title'; transTitle.textContent = 'Translate';
   const btnCloseTrans = document.createElement('button'); btnCloseTrans.className = 'cb-view-close'; btnCloseTrans.textContent = '✕';
+  btnCloseTrans.setAttribute('aria-label','Close Translate view');
   transTop.appendChild(transTitle); transTop.appendChild(btnCloseTrans);
   transView.appendChild(transTop);
   const transIntro = document.createElement('div'); transIntro.className = 'cb-view-intro'; transIntro.textContent = 'Break language barriers instantly. Convert conversations to 20+ languages while preserving context and technical accuracy.';
   transView.appendChild(transIntro);
   const transLangLabel = document.createElement('div'); transLangLabel.className = 'cb-label'; transLangLabel.textContent = 'Target language';
   const transLangSelect = document.createElement('select'); transLangSelect.className = 'cb-select'; transLangSelect.id = 'cb-trans-lang';
-  ['Japanese','Spanish','French','German','Chinese','Korean','Italian','Portuguese','Russian','Arabic','Hindi','Turkish','Dutch','Swedish','Polish','Tamil'].forEach(lang => { const o = document.createElement('option'); o.value = lang; o.textContent = lang; transLangSelect.appendChild(o); });
-  transLangSelect.value = 'Japanese';
+  // include English and common targets; order: English first
+  ['English','Japanese','Spanish','French','German','Chinese','Korean','Italian','Portuguese','Russian','Arabic','Hindi','Turkish','Dutch','Swedish','Polish','Tamil'].forEach(lang => { const o = document.createElement('option'); o.value = lang; o.textContent = lang; transLangSelect.appendChild(o); });
+  // Auto-detect user's preferred language and restore saved preference
+  try {
+    const saved = localStorage.getItem('chatbridge:pref:transLang');
+    if (saved) {
+      try { transLangSelect.value = saved; } catch(e) {}
+    } else {
+      const nav = (navigator.language || navigator.userLanguage || 'en').toLowerCase();
+      // map primary tag to available option names
+      const langMap = { 'en': 'English', 'en-us': 'English', 'en-gb': 'English', 'ja': 'Japanese', 'es': 'Spanish', 'fr': 'French', 'de': 'German', 'zh': 'Chinese', 'ko': 'Korean', 'it': 'Italian', 'pt': 'Portuguese', 'ru': 'Russian', 'ar': 'Arabic', 'hi': 'Hindi', 'tr': 'Turkish', 'nl': 'Dutch', 'sv': 'Swedish', 'pl': 'Polish', 'ta': 'Tamil' };
+      const key = nav.split('-')[0];
+      const mapped = langMap[nav] || langMap[key] || 'English';
+      try { transLangSelect.value = mapped; } catch(e) { transLangSelect.value = 'English'; }
+    }
+  } catch (e) {}
+  // persist when changed
+  transLangSelect.addEventListener('change', () => { try { localStorage.setItem('chatbridge:pref:transLang', transLangSelect.value); } catch(e){} });
   transView.appendChild(transLangLabel); transView.appendChild(transLangSelect);
   const transSourceText = document.createElement('div'); transSourceText.className = 'cb-view-text'; transSourceText.id = 'cb-trans-source-text'; transSourceText.setAttribute('contenteditable','false'); transSourceText.textContent = '';
   transView.appendChild(transSourceText);
@@ -613,11 +674,15 @@
   const smartTop = document.createElement('div'); smartTop.className = 'cb-view-top';
   const smartTitle = document.createElement('div'); smartTitle.className = 'cb-view-title'; smartTitle.textContent = 'Smart Archive + Query';
   const btnCloseSmart = document.createElement('button'); btnCloseSmart.className = 'cb-view-close'; btnCloseSmart.textContent = '✕';
+  btnCloseSmart.setAttribute('aria-label','Close Smart Query view');
   smartTop.appendChild(smartTitle); smartTop.appendChild(btnCloseSmart);
   smartView.appendChild(smartTop);
 
   const smartIntro = document.createElement('div'); smartIntro.className = 'cb-view-intro'; smartIntro.textContent = 'Ask questions across all your saved conversations using natural language. Find insights, patterns, and connections you might have missed.';
   smartView.appendChild(smartIntro);
+  // Suggestions row: pre-populated chips based on recent scans
+  const smartSuggestRow = document.createElement('div'); smartSuggestRow.className = 'cb-view-controls'; smartSuggestRow.id = 'cb-smart-suggest-row';
+  smartView.appendChild(smartSuggestRow);
   // Filters row: host, tag, date-range
   const smartFilterRow = document.createElement('div'); smartFilterRow.className = 'cb-view-controls';
   const hostSelect = document.createElement('select'); hostSelect.className = 'cb-select'; hostSelect.id = 'cb-smart-host';
@@ -633,7 +698,9 @@
 
   const smartQueryRow = document.createElement('div'); smartQueryRow.className = 'cb-view-controls';
   const smartInput = document.createElement('input'); smartInput.type = 'text'; smartInput.className = 'cb-select'; smartInput.id = 'cb-smart-query'; smartInput.placeholder = 'e.g. What did Gemini say about API rate limits?';
+  smartInput.setAttribute('aria-label', 'Smart query input');
   const btnSmartSearch = document.createElement('button'); btnSmartSearch.className = 'cb-btn'; btnSmartSearch.id = 'btnSmartSearch'; btnSmartSearch.textContent = 'Search';
+  btnSmartSearch.setAttribute('aria-label', 'Search saved chats');
   smartQueryRow.appendChild(smartInput); smartQueryRow.appendChild(btnSmartSearch);
   smartView.appendChild(smartQueryRow);
 
@@ -642,10 +709,13 @@
 
   const smartAskRow = document.createElement('div'); smartAskRow.className = 'cb-view-controls';
   const btnSmartAsk = document.createElement('button'); btnSmartAsk.className = 'cb-btn cb-view-go'; btnSmartAsk.id = 'btnSmartAsk'; btnSmartAsk.textContent = 'Ask AI';
+  btnSmartAsk.setAttribute('aria-label', 'Ask AI about selected results');
   smartAskRow.appendChild(btnSmartAsk);
   const btnIndexAll = document.createElement('button'); btnIndexAll.className = 'cb-btn'; btnIndexAll.id = 'btnIndexAll'; btnIndexAll.textContent = 'Index all saved chats'; btnIndexAll.title = 'Create embeddings and index all saved chats (requires API key)';
+  btnIndexAll.setAttribute('aria-label', 'Index all saved chats');
   smartAskRow.appendChild(btnIndexAll);
   const btnNormalizeTags = document.createElement('button'); btnNormalizeTags.className = 'cb-btn'; btnNormalizeTags.id = 'btnNormalizeTags'; btnNormalizeTags.textContent = 'Normalize tags & index'; btnNormalizeTags.title = 'Normalize tags for all saved chats and re-index them';
+  btnNormalizeTags.setAttribute('aria-label', 'Normalize tags and index');
   smartAskRow.appendChild(btnNormalizeTags);
   smartView.appendChild(smartAskRow);
 
@@ -661,6 +731,7 @@
   const graphTop = document.createElement('div'); graphTop.className = 'cb-view-top';
   const graphTitle = document.createElement('div'); graphTitle.className = 'cb-view-title'; graphTitle.textContent = 'Knowledge Graph';
   const btnCloseGraph = document.createElement('button'); btnCloseGraph.className = 'cb-view-close'; btnCloseGraph.textContent = '✕';
+  btnCloseGraph.setAttribute('aria-label','Close Graph view');
   graphTop.appendChild(graphTitle); graphTop.appendChild(btnCloseGraph);
   graphView.appendChild(graphTop);
 
@@ -675,8 +746,28 @@
   graphView.appendChild(graphControls);
 
   const graphCanvas = document.createElement('canvas'); graphCanvas.id = 'cb-graph-canvas'; graphCanvas.width = 350; graphCanvas.height = 400;
-  graphCanvas.style.cssText = 'width:100%;height:400px;background:#0b0f17;border-radius:10px;margin-top:12px;cursor:grab;';
+  graphCanvas.style.cssText = 'width:100%;height:400px;background:#0b0f17;border-radius:10px;margin-top:12px;cursor:grab;position:relative;';
+  // Accessibility: make canvas focusable and announceable
+  graphCanvas.setAttribute('tabindex', '0');
+  graphCanvas.setAttribute('role', 'application');
+  graphCanvas.setAttribute('aria-label', 'Knowledge graph visualization. Use arrow keys to pan, enter to open a node.');
   graphView.appendChild(graphCanvas);
+
+  const graphLegend = document.createElement('div'); graphLegend.className = 'cb-graph-legend';
+  graphLegend.innerHTML = `
+    <div style="font-size:11px;color:rgba(212,175,119,0.75);margin-top:8px;display:flex;flex-wrap:wrap;gap:12px;justify-content:center;">
+      <div><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#10a37f;margin-right:4px;"></span>ChatGPT</div>
+      <div><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#9b87f5;margin-right:4px;"></span>Claude</div>
+      <div><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#4285f4;margin-right:4px;"></span>Gemini</div>
+      <div><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#00a4ef;margin-right:4px;"></span>Copilot</div>
+      <div><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#6366f1;margin-right:4px;"></span>Perplexity</div>
+    </div>
+  `;
+  graphView.appendChild(graphLegend);
+
+  const graphTooltip = document.createElement('div'); graphTooltip.id = 'cb-graph-tooltip';
+  graphTooltip.style.cssText = 'display:none;position:absolute;background:rgba(20,20,30,0.98);color:#e6cf9f;padding:10px 12px;border-radius:8px;font-size:12px;line-height:1.4;max-width:250px;pointer-events:none;z-index:10;border:1px solid rgba(230,207,159,0.3);box-shadow:0 4px 12px rgba(0,0,0,0.4);';
+  graphView.appendChild(graphTooltip);
 
   const graphStats = document.createElement('div'); graphStats.className = 'cb-view-result'; graphStats.id = 'cb-graph-stats'; graphStats.style.marginTop = '12px'; graphStats.textContent = 'Loading graph...';
   graphView.appendChild(graphStats);
@@ -710,9 +801,193 @@
 
     shadow.appendChild(panel);
 
+    // Accessible live region for screen readers and visually-hidden styling
+    const ariaLive = document.createElement('div');
+    ariaLive.id = 'cb-aria-live';
+    ariaLive.setAttribute('aria-live', 'polite');
+    ariaLive.setAttribute('aria-atomic', 'true');
+    ariaLive.className = 'cb-visually-hidden';
+    ariaLive.style.cssText = 'position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;clip:rect(1px,1px,1px,1px);';
+    shadow.appendChild(ariaLive);
+
+    // Accessible helpers
+    function announce(msg, polite = true) {
+      try {
+        if (!ariaLive) return;
+        // Use a short delay to ensure assistive tech picks up changes
+        ariaLive.textContent = '';
+        setTimeout(() => { try { ariaLive.textContent = String(msg || ''); } catch (e) {} }, 50);
+      } catch (e) { debugLog('announce failed', e); }
+    }
+
+    // Accessible error banner with retry support
+    function showError(message, retryCallback) {
+      try {
+        const id = 'cb-error-banner';
+        let existing = shadow.getElementById ? shadow.getElementById(id) : null;
+        // create inside host shadow if possible, otherwise on document body
+        const container = shadow || document.body;
+        if (existing && existing.parentNode) existing.remove();
+        const banner = document.createElement('div'); banner.id = id; banner.setAttribute('role','alert'); banner.style.cssText = 'position:fixed;top:18px;right:18px;z-index:2147483647;padding:12px 14px;background:#9b2c2c;color:#fff;border-radius:10px;box-shadow:0 6px 20px rgba(0,0,0,0.4);font-weight:600;max-width:360px;';
+        try {
+          const main = document.createElement('div'); main.style.fontWeight = '700'; main.textContent = message || 'An error occurred';
+          const detail = document.createElement('div'); detail.style.fontSize = '12px'; detail.style.fontWeight = '400'; detail.style.marginTop = '8px'; detail.style.opacity = '0.95';
+          detail.innerHTML = `Try these steps: <ol style="margin:6px 0 0 18px;padding:0 0 0 0;color:#fff;opacity:0.95;font-size:12px;">` +
+            `<li>Check your API key in the extension Options.</li>` +
+            `<li>Retry the action using the 'Retry' button.</li>` +
+            `<li>If the problem persists, click 'Report Issue' to capture debug details.</li></ol>`;
+          banner.appendChild(main); banner.appendChild(detail);
+        } catch (e) { banner.textContent = message || 'An error occurred'; }
+        if (typeof retryCallback === 'function') {
+          const retryBtn = document.createElement('button'); retryBtn.className = 'cb-btn'; retryBtn.style.marginLeft = '10px'; retryBtn.textContent = 'Retry'; retryBtn.setAttribute('aria-label','Retry');
+          retryBtn.addEventListener('click', async (e) => { try { retryBtn.disabled = true; await retryCallback(); banner.remove(); } catch (err) { debugLog('retry failed', err); } });
+          banner.appendChild(retryBtn);
+        }
+        // Report issue button: captures debug info and sends to background for logging
+        try {
+          const rep = document.createElement('button'); rep.className = 'cb-btn'; rep.style.marginLeft = '8px'; rep.textContent = 'Report Issue'; rep.setAttribute('aria-label', 'Report this issue');
+          rep.addEventListener('click', async () => {
+            try {
+              rep.disabled = true; rep.textContent = 'Reporting…';
+              const dbg = collectDebugInfo();
+              try { await navigator.clipboard.writeText(JSON.stringify(dbg, null, 2)); toast('Debug info copied to clipboard'); } catch(e) { debugLog('clipboard copy failed', e); }
+              try { chrome.runtime.sendMessage({ type: 'report_issue', payload: dbg }, (r) => { /* ack optional */ }); } catch(e) { debugLog('report send failed', e); }
+              rep.textContent = 'Reported';
+              setTimeout(()=>{ try{ if (rep && rep.parentNode) rep.parentNode.removeChild(rep); }catch(e){} }, 4000);
+            } catch (e) { debugLog('report handler failed', e); }
+          });
+          banner.appendChild(rep);
+        } catch (e) { debugLog('add report btn failed', e); }
+        try { container.appendChild(banner); } catch (e) { document.body.appendChild(banner); }
+        announce(message, false);
+        setTimeout(() => { try { if (banner && banner.parentNode) banner.remove(); } catch (e) {} }, 8000);
+      } catch (e) { debugLog('showError failed', e); }
+    }
+
+      // UX helpers: skeleton loader, optimistic UI, animations, and backoff
+      try {
+        const ux = document.createElement('style'); ux.id = 'cb-ux-style'; ux.textContent = `
+          /* Skeleton loaders */
+          .cb-skeleton { background: linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.06) 37%, rgba(255,255,255,0.03) 63%); background-size: 400% 100%; animation: cb-skel-shimmer 1.6s linear infinite; border-radius:6px; }
+          @keyframes cb-skel-shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+          /* Micro-animations */
+          .cb-fade-in { animation: cb-fade .22s ease-out; }
+          @keyframes cb-fade { from { opacity:0; transform: translateY(6px) scale(0.995); } to { opacity:1; transform: translateY(0) scale(1); } }
+          .cb-slide-up { animation: cb-slide .26s cubic-bezier(0.2,0,0,1); }
+          @keyframes cb-slide { from { opacity:0; transform: translateY(8px); } to { opacity:1; transform: translateY(0); } }
+          .cb-scale-pop { animation: cb-pop .16s ease-out; }
+          @keyframes cb-pop { 0% { transform: scale(0.96); opacity:0.0; } 60% { transform: scale(1.02); opacity:1; } 100% { transform: scale(1); } }
+          .cb-transition { transition: all 220ms cubic-bezier(0.2,0,0,1); }
+        `; shadow.appendChild(ux);
+      } catch(e){ debugLog('append ux styles failed', e); }
+
+      function showSkeleton(el, height) {
+        try { if (!el) return; el.__cb_orig = el.innerHTML; el.classList.add('cb-skeleton'); if (height) el.style.minHeight = (height+'px'); }
+        catch(e){ debugLog('showSkeleton failed', e); }
+      }
+      function hideSkeleton(el) {
+        try { if (!el) return; el.classList.remove('cb-skeleton'); if (el.__cb_orig !== undefined) { el.innerHTML = el.__cb_orig; delete el.__cb_orig; } el.style.minHeight = ''; }
+        catch(e){ debugLog('hideSkeleton failed', e); }
+      }
+
+      function animateEl(el, cls, duration = 400) {
+        try {
+          if (!el) return;
+          el.classList.add(cls);
+          setTimeout(() => { try { el.classList.remove(cls); } catch(e){} }, duration);
+        } catch(e) { debugLog('animateEl failed', e); }
+      }
+
+      // Exponential backoff wrapper for background messages / API calls
+      async function callBackgroundWithBackoff(message, maxRetries = 3, baseMs = 400) {
+        let attempt = 0;
+        while (attempt <= maxRetries) {
+          try {
+            const res = await new Promise((resolve, reject) => {
+              try { chrome.runtime.sendMessage(message, (r) => { if (chrome.runtime.lastError) return reject(new Error(chrome.runtime.lastError.message)); resolve(r); }); }
+              catch(e) { reject(e); }
+            });
+            // consider res.ok === false an error to retry
+            if (res && (res.ok === false)) throw new Error(res.error || 'background_error');
+            return res;
+          } catch (err) {
+            attempt++;
+            if (attempt > maxRetries) throw err;
+            const jitter = Math.random() * 0.5 + 0.75; // 0.75..1.25
+            const wait = Math.round(baseMs * Math.pow(2, attempt - 1) * jitter);
+            await new Promise(r => setTimeout(r, wait));
+          }
+        }
+      }
+
+      // Optimistic UI helper: run immediate UI change, then perform action, roll back or confirm
+      async function optimisticAction({applyOptimistic, confirmUI, rollbackUI, action, onError}){
+        try {
+          if (typeof applyOptimistic === 'function') applyOptimistic();
+          const res = await action();
+          if (typeof confirmUI === 'function') confirmUI(res);
+          return res;
+        } catch (err) {
+          try { if (typeof rollbackUI === 'function') rollbackUI(err); } catch(e){}
+          if (typeof onError === 'function') onError(err);
+          throw err;
+        }
+      }
+
+      function collectDebugInfo() {
+        try {
+          const dbg = {
+            url: location.href,
+            ts: Date.now(),
+            ua: navigator.userAgent,
+            platform: navigator.platform,
+            lastScan: (window.ChatBridge && window.ChatBridge._lastScan) ? window.ChatBridge._lastScan : null,
+            localStorageSnapshot: {}
+          };
+          try { Object.keys(localStorage).filter(k => k && k.toLowerCase && k.toLowerCase().includes('chatbridge')).forEach(k => { dbg.localStorageSnapshot[k] = localStorage.getItem(k); }); } catch(e){}
+          return dbg;
+        } catch(e){ return { error: 'collect failed' }; }
+      }
+
+
+    // High-contrast / focus-visible support
+    try {
+      const hc = document.createElement('style'); hc.id = 'cb-accessibility-style';
+      hc.textContent = `
+        .cb-visually-hidden { position:absolute !important; left:-9999px !important; width:1px !important; height:1px !important; overflow:hidden !important; clip:rect(1px,1px,1px,1px) !important; }
+        .cb-btn:focus, .cb-select:focus, .cb-view-close:focus, #cb-graph-canvas:focus { outline: 3px solid #ffdca3 !important; outline-offset: 2px; }
+        @media (forced-colors: active) {
+          .cb-panel { background: Window !important; color: WindowText !important; border-color: GrayText !important; }
+          .cb-btn { background: ButtonFace !important; color: ButtonText !important; border-color: ButtonText !important; }
+          .cb-btn-primary { background: Highlight !important; color: HighlightText !important; }
+        }
+      `;
+      shadow.appendChild(hc);
+    } catch (e) { debugLog('add hc styles failed', e); }
+
     // interactions
     avatar.addEventListener('click', () => { host.style.display = 'block'; avatar.style.display = 'none'; });
     btnClose.addEventListener('click', () => { host.style.display = 'none'; avatar.style.display = 'flex'; });
+
+    // Migrate conversations from page localStorage into background persistent storage (once)
+    try {
+      const _k = 'chatbridge:conversations';
+      const raw = localStorage.getItem(_k);
+      if (raw) {
+        try {
+          const arr = JSON.parse(raw);
+          if (Array.isArray(arr) && arr.length) {
+            chrome.runtime.sendMessage({ type: 'migrate_conversations', payload: { conversations: arr } }, (res) => {
+              try {
+                if (res && res.ok) {
+                  try { localStorage.removeItem(_k); toast('Migrated conversations to extension storage'); } catch(e){}
+                }
+              } catch (e) { debugLog('migrate callback err', e); }
+            });
+          }
+        } catch (e) { debugLog('migrate parse failed', e); }
+      }
+    } catch (e) { debugLog('migrate convs failed', e); }
 
     // Helper to close all internal views
     function closeAllViews() {
@@ -730,7 +1005,7 @@
     async function getConversationText() {
       if (lastScannedText && lastScannedText.trim()) return lastScannedText.trim();
       try {
-        const convs = (typeof window.getConversations === 'function') ? await new Promise(res=>window.getConversations(res)) : JSON.parse(localStorage.getItem('chatbridge:conversations') || '[]');
+        const convs = await loadConversationsAsync();
         if (Array.isArray(convs) && convs.length) {
           const sel = convs[0];
           if (sel && sel.conversation && sel.conversation.length) return sel.conversation.map(m => `${m.role}: ${m.text}`).join('\n\n');
@@ -802,7 +1077,7 @@
       btnGoSync.addEventListener('click', async () => {
         try {
           addLoadingToButton(btnGoSync, 'Syncing'); syncResult.textContent = ''; btnInsertSync.style.display = 'none';
-        syncProg.style.display = 'inline'; updateProgress(syncProg, 'sync', { phase: 'preparing' });
+          syncProg.style.display = 'inline'; updateProgress(syncProg, 'sync', { phase: 'preparing' }); announce('Syncing conversation tone');
         const chatText = (syncSourceText && syncSourceText.textContent) ? syncSourceText.textContent : '';
         const target = (syncTargetSelect && syncTargetSelect.value) || 'TargetModel';
   if (!chatText || chatText.trim().length < 10) { toast('No conversation to sync'); btnGoSync.disabled = false; btnGoSync.textContent = 'Sync Tone'; return; }
@@ -855,9 +1130,9 @@
         } catch (e) { debugLog('async optimize fire failed', e); }
         syncProg.style.display = 'none';
   // No duplicate output in preview; go straight to history below
-        toast('Sync Tone completed');
+    toast('Sync Tone completed'); announce('Sync Tone completed');
       } catch (err) {
-        toast('Sync Tone failed: ' + (err && err.message ? err.message : err));
+    toast('Sync Tone failed: ' + (err && err.message ? err.message : err)); showError('Sync Tone failed: ' + (err && err.message ? err.message : err), async () => { try { btnGoSync.click(); } catch(_) {} }); announce('Sync Tone failed');
   } finally { removeLoadingFromButton(btnGoSync, 'Sync Tone'); }
     });
 
@@ -926,9 +1201,13 @@ Respond ONLY with a JSON object with keys: "strengths" (array of short strings) 
       continueWithTargetModel(text);
     });
 
-    // Cross-Context Memory: Extract structured knowledge from a conversation
+    // Cross-Context Memory: Extract structured knowledge from a conversation with segmentation
     async function extractKnowledge(conversation, conversationId) {
       try {
+        // Segment the conversation to identify topic shifts
+        const segments = segmentConversation(conversation, 5, 0.5);
+        debugLog('Conversation segmented into', segments.length, 'topics:', segments.map(s => s.topic));
+        
         // Build conversation text for analysis
         const convText = conversation.map(m => `${m.role}: ${m.text}`).join('\n\n');
         const snippet = convText.length > 3000 ? convText.slice(0, 3000) + '\n\n...(truncated)' : convText;
@@ -961,7 +1240,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
               const jsonStr = txt.slice(jsonStart, jsonEnd + 1);
               const parsed = JSON.parse(jsonStr);
               
-              // Store knowledge in localStorage
+              // Store knowledge with segmentation metadata
               const knowledge = {
                 id: conversationId,
                 ts: Date.now(),
@@ -969,7 +1248,9 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
                 themes: Array.isArray(parsed.themes) ? parsed.themes.slice(0, 6) : [],
                 conclusions: Array.isArray(parsed.conclusions) ? parsed.conclusions.slice(0, 4) : [],
                 contradictions: Array.isArray(parsed.contradictions) ? parsed.contradictions.slice(0, 3) : [],
-                context: parsed.context || ''
+                context: parsed.context || '',
+                segments: segments.map(s => ({ topic: s.topic, keywords: s.keywords, confidence: s.confidence })),
+                segmentCount: segments.length
               };
               
               // Check for contradictions before saving
@@ -985,7 +1266,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
               graph.push(knowledge);
               localStorage.setItem(graphKey, JSON.stringify(graph));
               
-              debugLog('Knowledge extracted', knowledge);
+              debugLog('Knowledge extracted with', segments.length, 'segments:', knowledge);
               return knowledge;
             }
           } catch (e) {
@@ -999,7 +1280,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       }
     }
 
-    // Cross-Context Memory: Find related past conversations based on current context
+    // Cross-Context Memory: Find related past conversations with confidence scoring
     async function findRelatedConversations(currentEntities, currentThemes, limit = 3) {
       try {
         const graphKey = 'chatbridge:knowledge_graph';
@@ -1010,25 +1291,74 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         // Score each past conversation by overlap with current context
         const scored = graph.map(kg => {
           let score = 0;
+          let matchedEntities = 0;
+          let matchedThemes = 0;
+          let entityDetails = [];
+          let themeDetails = [];
           
-          // Entity overlap (higher weight)
+          // Entity overlap (higher weight) with exact and partial matching
           for (const e of currentEntities) {
-            if (kg.entities.some(ke => ke.toLowerCase().includes(e.toLowerCase()) || e.toLowerCase().includes(ke.toLowerCase()))) {
-              score += 3;
+            const eLower = e.toLowerCase();
+            for (const ke of (kg.entities || [])) {
+              const keLower = ke.toLowerCase();
+              if (eLower === keLower) {
+                // Exact match - highest score
+                score += 5;
+                matchedEntities++;
+                entityDetails.push({ current: e, past: ke, type: 'exact' });
+              } else if (keLower.includes(eLower) || eLower.includes(keLower)) {
+                // Partial match
+                score += 3;
+                matchedEntities++;
+                entityDetails.push({ current: e, past: ke, type: 'partial' });
+              }
             }
           }
           
-          // Theme overlap
+          // Theme overlap with fuzzy matching
           for (const t of currentThemes) {
-            if (kg.themes.some(kt => kt.toLowerCase().includes(t.toLowerCase()) || t.toLowerCase().includes(kt.toLowerCase()))) {
-              score += 2;
+            const tLower = t.toLowerCase();
+            for (const kt of (kg.themes || [])) {
+              const ktLower = kt.toLowerCase();
+              if (tLower === ktLower) {
+                score += 4;
+                matchedThemes++;
+                themeDetails.push({ current: t, past: kt, type: 'exact' });
+              } else if (ktLower.includes(tLower) || tLower.includes(ktLower)) {
+                score += 2;
+                matchedThemes++;
+                themeDetails.push({ current: t, past: kt, type: 'partial' });
+              }
             }
           }
           
-          return { ...kg, score };
-        }).filter(kg => kg.score > 0).sort((a, b) => b.score - a.score).slice(0, limit);
+          // Recency bonus (decay over 30 days)
+          const age = Date.now() - (kg.ts || 0);
+          const daysSince = age / (1000 * 60 * 60 * 24);
+          const recencyBonus = Math.max(0, (30 - daysSince) / 30) * 2;
+          score += recencyBonus;
+          
+          // Calculate confidence score (0-100)
+          const maxPossibleScore = (currentEntities.length * 5) + (currentThemes.length * 4) + 2;
+          const confidence = Math.min(100, Math.round((score / maxPossibleScore) * 100));
+          
+          return { 
+            ...kg, 
+            score, 
+            confidence,
+            matchedEntities,
+            matchedThemes,
+            entityDetails,
+            themeDetails,
+            recencyScore: recencyBonus,
+            age: daysSince
+          };
+        }).filter(kg => kg.score > 0).sort((a, b) => b.score - a.score).slice(0, limit * 2); // Get more for filtering
         
-        return scored;
+        // Filter by minimum confidence threshold (30%)
+        const filtered = scored.filter(kg => kg.confidence >= 30).slice(0, limit);
+        
+        return filtered;
       } catch (e) {
         debugLog('findRelatedConversations error', e);
         return [];
@@ -1040,7 +1370,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       try {
         if (!relatedConvs || !relatedConvs.length) return;
         
-        // Create notification element
+        // Create notification element with multiple results
         const notification = document.createElement('div');
         notification.id = 'cb-context-notification';
         notification.setAttribute('data-cb-ignore', 'true');
@@ -1048,69 +1378,177 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           position: fixed;
           bottom: 80px;
           right: 26px;
-          width: 320px;
+          width: 340px;
+          max-height: 500px;
+          overflow-y: auto;
           background: linear-gradient(135deg, rgba(230,207,159,0.98), rgba(212,175,119,0.98));
           color: #0b0f17;
-          padding: 14px 16px;
-          border-radius: 12px;
-          box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+          padding: 16px 18px;
+          border-radius: 14px;
+          box-shadow: 0 12px 32px rgba(0,0,0,0.35);
           z-index: 2147483646;
           font-family: 'Poppins', sans-serif;
           font-size: 13px;
-          line-height: 1.4;
-          animation: cb-slide-in 0.3s ease-out;
+          line-height: 1.5;
+          animation: cb-slide-in 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         `;
         
         const topRow = document.createElement('div');
-        topRow.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;';
+        topRow.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;';
         
         const title = document.createElement('div');
-        title.style.cssText = 'font-weight:700;font-size:14px;';
-        title.textContent = '🧠 Related Memory';
+        title.style.cssText = 'font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px;';
+        title.innerHTML = `<span>🔗</span><span>Related Conversations</span>`;
         
-        const closeBtn = document.createElement('button');
-        closeBtn.textContent = '×';
-        closeBtn.style.cssText = 'background:transparent;border:none;color:#0b0f17;font-size:20px;cursor:pointer;padding:0;line-height:1;opacity:0.6;';
-        closeBtn.addEventListener('mouseenter', () => closeBtn.style.opacity = '1');
-        closeBtn.addEventListener('mouseleave', () => closeBtn.style.opacity = '0.6');
-        closeBtn.addEventListener('click', () => notification.remove());
+  const closeBtn = document.createElement('button');
+  closeBtn.textContent = '×';
+  closeBtn.setAttribute('aria-label', 'Close related conversations');
+  closeBtn.style.cssText = 'background:transparent;border:none;color:#0b0f17;font-size:22px;cursor:pointer;padding:0;line-height:1;opacity:0.6;transition:opacity 0.2s;';
+  closeBtn.addEventListener('mouseenter', () => closeBtn.style.opacity = '1');
+  closeBtn.addEventListener('mouseleave', () => closeBtn.style.opacity = '0.6');
+  closeBtn.addEventListener('click', () => notification.remove());
         
         topRow.appendChild(title);
         topRow.appendChild(closeBtn);
         notification.appendChild(topRow);
         
-        const conv = relatedConvs[0];
-        const msg = document.createElement('div');
-        msg.style.cssText = 'margin-bottom:10px;opacity:0.9;';
-        msg.textContent = `Earlier you discussed "${conv.context || 'similar topics'}" ${conv.score > 5 ? 'extensively' : ''}.`;
-        notification.appendChild(msg);
+        const intro = document.createElement('div');
+        intro.style.cssText = 'margin-bottom:14px;font-size:12px;opacity:0.85;';
+        intro.textContent = `Found ${relatedConvs.length} conversation${relatedConvs.length > 1 ? 's' : ''} with similar themes and topics:`;
+        notification.appendChild(intro);
         
-        if (conv.entities && conv.entities.length) {
-          const entities = document.createElement('div');
-          entities.style.cssText = 'font-size:11px;opacity:0.8;margin-bottom:8px;';
-          entities.textContent = '🏷️ ' + conv.entities.slice(0, 3).join(', ');
-          notification.appendChild(entities);
-        }
-        
-        const btnRow = document.createElement('div');
-        btnRow.style.cssText = 'display:flex;gap:8px;margin-top:10px;';
-        
-        const viewBtn = document.createElement('button');
-        viewBtn.textContent = 'View';
-        viewBtn.style.cssText = 'flex:1;background:#0b0f17;color:#e6cf9f;border:none;padding:8px 12px;border-radius:8px;cursor:pointer;font-weight:600;font-size:12px;font-family:inherit;';
-        viewBtn.addEventListener('click', () => {
-          openConversationById(conv.id);
-          notification.remove();
+        // Show up to 3 most relevant conversations
+        relatedConvs.slice(0, 3).forEach((conv, idx) => {
+          const card = document.createElement('div');
+          card.style.cssText = 'background:rgba(11,15,23,0.15);padding:12px;border-radius:10px;margin-bottom:10px;border-left:3px solid rgba(11,15,23,0.4);transition:all 0.2s;cursor:pointer;';
+          card.setAttribute('role','button');
+          card.setAttribute('tabindex','0');
+          card.addEventListener('mouseenter', () => {
+            card.style.background = 'rgba(11,15,23,0.25)';
+            card.style.transform = 'translateX(2px)';
+          });
+          card.addEventListener('mouseleave', () => {
+            card.style.background = 'rgba(11,15,23,0.15)';
+            card.style.transform = 'translateX(0)';
+          });
+          
+          const cardHeader = document.createElement('div');
+          cardHeader.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;';
+          
+          const platform = document.createElement('div');
+          platform.style.cssText = 'font-weight:600;font-size:12px;';
+          const platformName = (conv.platform || 'Unknown').replace(/^https?:\/\//, '').replace(/\/$/, '');
+          platform.textContent = platformName;
+          // update aria-label now that platformName is known
+          try { card.setAttribute('aria-label', 'Open conversation ' + platformName); } catch(e) {}
+          
+          const score = document.createElement('div');
+          score.style.cssText = 'background:rgba(11,15,23,0.3);padding:4px 8px;border-radius:6px;font-size:11px;font-weight:600;display:flex;align-items:center;gap:4px;';
+          
+          // Confidence indicator with color coding
+          const confidence = conv.confidence || 0;
+          const confidenceColor = confidence >= 70 ? '#10a37f' : confidence >= 50 ? '#ffa500' : '#888';
+          const confidenceDot = `<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${confidenceColor};"></span>`;
+          score.innerHTML = `${confidenceDot} ${confidence}% match`;
+          
+          cardHeader.appendChild(platform);
+          cardHeader.appendChild(score);
+          card.appendChild(cardHeader);
+          
+          if (conv.context) {
+            const context = document.createElement('div');
+            context.style.cssText = 'font-size:12px;margin-bottom:8px;opacity:0.9;line-height:1.4;';
+            context.textContent = conv.context.slice(0, 100) + (conv.context.length > 100 ? '...' : '');
+            card.appendChild(context);
+          }
+          
+          if (conv.entities && conv.entities.length > 0) {
+            const entities = document.createElement('div');
+            entities.style.cssText = 'display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px;';
+            conv.entities.slice(0, 4).forEach(entity => {
+              const tag = document.createElement('span');
+              tag.style.cssText = 'background:rgba(11,15,23,0.25);padding:3px 8px;border-radius:6px;font-size:10px;font-weight:500;';
+              tag.textContent = entity;
+              entities.appendChild(tag);
+            });
+            card.appendChild(entities);
+          }
+          
+          if (conv.themes && conv.themes.length > 0) {
+            const themes = document.createElement('div');
+            themes.style.cssText = 'font-size:10px;opacity:0.7;margin-top:6px;';
+            themes.textContent = '💭 ' + conv.themes.slice(0, 3).join(' • ');
+            card.appendChild(themes);
+          }
+          
+          // Show segment information if available
+          if (conv.segments && conv.segments.length > 1) {
+            const segInfo = document.createElement('div');
+            segInfo.style.cssText = 'font-size:10px;opacity:0.7;margin-top:4px;padding:4px 6px;background:rgba(11,15,23,0.15);border-radius:4px;';
+            segInfo.innerHTML = `📊 ${conv.segments.length} topics: ${conv.segments.map(s => s.topic).join(', ')}`;
+            card.appendChild(segInfo);
+          }
+          
+          // Show matched details on hover (tooltip-style)
+          if (conv.entityDetails && conv.entityDetails.length > 0) {
+            const matchDetails = document.createElement('div');
+            matchDetails.style.cssText = 'display:none;font-size:10px;margin-top:6px;padding:6px;background:rgba(11,15,23,0.25);border-radius:4px;border-left:2px solid rgba(0,180,255,0.5);';
+            matchDetails.innerHTML = `<strong>Matches:</strong><br>` + 
+              `Entities: ${conv.matchedEntities} (${conv.entityDetails.slice(0,3).map(e => e.current).join(', ')})<br>` +
+              `Themes: ${conv.matchedThemes} (${conv.themeDetails.slice(0,3).map(t => t.current).join(', ')})`;
+            
+            card.addEventListener('mouseenter', () => { matchDetails.style.display = 'block'; });
+            card.addEventListener('mouseleave', () => { matchDetails.style.display = 'none'; });
+            
+            card.appendChild(matchDetails);
+          }
+          
+          const viewBtn = document.createElement('button');
+          viewBtn.textContent = 'Open Conversation →';
+          viewBtn.style.cssText = 'margin-top:10px;width:100%;background:#0b0f17;color:#e6cf9f;border:none;padding:8px 12px;border-radius:8px;cursor:pointer;font-weight:600;font-size:11px;font-family:inherit;transition:all 0.2s;';
+          viewBtn.addEventListener('mouseenter', () => {
+            viewBtn.style.background = '#15192a';
+            viewBtn.style.transform = 'translateY(-1px)';
+            viewBtn.style.boxShadow = '0 4px 8px rgba(0,0,0,0.2)';
+          });
+          viewBtn.addEventListener('mouseleave', () => {
+            viewBtn.style.background = '#0b0f17';
+            viewBtn.style.transform = 'translateY(0)';
+            viewBtn.style.boxShadow = 'none';
+          });
+          viewBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            openConversationById(conv.id);
+            notification.remove();
+          });
+          viewBtn.setAttribute('aria-label','Open conversation');
+          // keyboard activation for card
+          card.addEventListener('keydown', (ev) => { try { if (ev.key === 'Enter' || ev.key === ' ' || ev.key === 'Spacebar') { ev.preventDefault(); openConversationById(conv.id); notification.remove(); } } catch(e){} });
+          
+          card.appendChild(viewBtn);
+          card.addEventListener('click', () => {
+            openConversationById(conv.id);
+            notification.remove();
+          });
+          
+          notification.appendChild(card);
         });
         
-        const dismissBtn = document.createElement('button');
-        dismissBtn.textContent = 'Dismiss';
-        dismissBtn.style.cssText = 'flex:1;background:rgba(0,0,0,0.1);color:#0b0f17;border:none;padding:8px 12px;border-radius:8px;cursor:pointer;font-weight:500;font-size:12px;font-family:inherit;';
-        dismissBtn.addEventListener('click', () => notification.remove());
+        if (relatedConvs.length > 3) {
+          const moreInfo = document.createElement('div');
+          moreInfo.style.cssText = 'text-align:center;font-size:11px;opacity:0.7;margin-top:8px;';
+          moreInfo.textContent = `+ ${relatedConvs.length - 3} more related conversation${relatedConvs.length - 3 > 1 ? 's' : ''}`;
+          notification.appendChild(moreInfo);
+        }
         
-        btnRow.appendChild(viewBtn);
-        btnRow.appendChild(dismissBtn);
-        notification.appendChild(btnRow);
+  const dismissBtn = document.createElement('button');
+  dismissBtn.textContent = 'Dismiss';
+  dismissBtn.setAttribute('aria-label', 'Dismiss related conversations');
+  dismissBtn.style.cssText = 'width:100%;margin-top:12px;background:rgba(11,15,23,0.2);color:#0b0f17;border:none;padding:8px 12px;border-radius:8px;cursor:pointer;font-weight:500;font-size:12px;font-family:inherit;transition:all 0.2s;';
+  dismissBtn.addEventListener('mouseenter', () => dismissBtn.style.background = 'rgba(11,15,23,0.3)');
+  dismissBtn.addEventListener('mouseleave', () => dismissBtn.style.background = 'rgba(11,15,23,0.2)');
+  dismissBtn.addEventListener('click', () => notification.remove());
+        notification.appendChild(dismissBtn);
         
         // Add animation style if not exists
         if (!document.getElementById('cb-context-styles')) {
@@ -1118,9 +1556,13 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           styleEl.id = 'cb-context-styles';
           styleEl.textContent = `
             @keyframes cb-slide-in {
-              from { transform: translateY(20px); opacity: 0; }
-              to { transform: translateY(0); opacity: 1; }
+              from { transform: translateX(30px) translateY(10px); opacity: 0; }
+              to { transform: translateX(0) translateY(0); opacity: 1; }
             }
+            #cb-context-notification::-webkit-scrollbar { width: 6px; }
+            #cb-context-notification::-webkit-scrollbar-track { background: rgba(11,15,23,0.2); border-radius: 10px; }
+            #cb-context-notification::-webkit-scrollbar-thumb { background: rgba(11,15,23,0.4); border-radius: 10px; }
+            #cb-context-notification::-webkit-scrollbar-thumb:hover { background: rgba(11,15,23,0.6); }
           `;
           document.head.appendChild(styleEl);
         }
@@ -1131,46 +1573,343 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         
         document.body.appendChild(notification);
         
-        // Auto-dismiss after 15 seconds
+        // Auto-dismiss after 20 seconds
         setTimeout(() => {
           try { if (notification.parentNode) notification.remove(); } catch (e) {}
-        }, 15000);
+        }, 20000);
         
       } catch (e) {
         debugLog('showContextSuggestion error', e);
       }
     }
 
-    // Cross-Context Memory: Detect context on page and show suggestions
+    // ============================================
+    // INTELLIGENCE ENHANCEMENTS
+    // ============================================
+    // 
+    // This section implements advanced context detection and conversation analysis:
+    //
+    // 1. Sliding Window Context Detection:
+    //    - Analyzes recent messages (default: last 8) with configurable window size
+    //    - Extracts entities, themes, and keywords from active conversation
+    //    - Calculates confidence scores based on keyword density and variety
+    //    - Minimum confidence threshold (40%) filters low-quality contexts
+    //
+    // 2. Conversation Segmentation:
+    //    - Detects topic changes using overlapping windows (default: 5 messages, 50% overlap)
+    //    - Uses Jaccard distance to measure topic shift between segments
+    //    - Auto-labels topics based on most frequent keywords
+    //    - Provides confidence scores for each segment
+    //
+    // 3. Confidence Scoring for Suggestions:
+    //    - Exact entity/theme matches score higher than partial matches
+    //    - Recency bonus decays over 30 days
+    //    - Normalized confidence percentage (0-100%)
+    //    - Minimum 30% confidence threshold for suggestions
+    //    - Color-coded confidence indicators (green ≥70%, orange ≥50%, gray <50%)
+    //
+    // 4. Enhanced Knowledge Extraction:
+    //    - Segments conversations before extracting knowledge
+    //    - Stores segment metadata with knowledge graph entries
+    //    - Preserves topic structure for better matching
+    //
+    // Debug helpers:
+    //   ChatBridge.analyzeContext() - Full analysis of current conversation
+    //   ChatBridge.showSegments() - Visualize detected topic segments
+    //
+    // ============================================
+
+    // Conversation Segmentation: Detect topic changes using sliding window analysis
+    function segmentConversation(messages, windowSize = 5, overlapRatio = 0.5) {
+      try {
+        if (!messages || messages.length < windowSize) {
+          return [{ start: 0, end: messages.length, topic: 'main', confidence: 100 }];
+        }
+        
+        const segments = [];
+        const step = Math.max(1, Math.floor(windowSize * (1 - overlapRatio)));
+        
+        for (let i = 0; i < messages.length; i += step) {
+          const windowEnd = Math.min(i + windowSize, messages.length);
+          const window = messages.slice(i, windowEnd);
+          
+          // Extract keywords from window
+          const windowText = window.map(m => m.text || '').join(' ');
+          const keywords = extractKeywordsFromText(windowText, 8);
+          
+          // Calculate topic shift score compared to previous segment
+          let shiftScore = 0;
+          if (segments.length > 0) {
+            const prevSegment = segments[segments.length - 1];
+            const overlap = keywords.filter(k => prevSegment.keywords.includes(k)).length;
+            const union = new Set([...keywords, ...prevSegment.keywords]).size;
+            shiftScore = 1 - (overlap / union); // Jaccard distance
+          }
+          
+          // Topic change detected if shift > threshold
+          const isNewTopic = shiftScore > 0.5;
+          
+          if (isNewTopic || segments.length === 0) {
+            segments.push({
+              start: i,
+              end: windowEnd,
+              keywords,
+              topic: inferTopicLabel(keywords),
+              confidence: Math.round((1 - shiftScore) * 100),
+              messageCount: windowEnd - i
+            });
+          } else {
+            // Extend previous segment
+            segments[segments.length - 1].end = windowEnd;
+            segments[segments.length - 1].messageCount = windowEnd - segments[segments.length - 1].start;
+            // Merge keywords
+            segments[segments.length - 1].keywords = [...new Set([...segments[segments.length - 1].keywords, ...keywords])].slice(0, 10);
+          }
+        }
+        
+        return segments;
+      } catch (e) {
+        debugLog('segmentConversation error', e);
+        return [{ start: 0, end: messages.length, topic: 'main', confidence: 100 }];
+      }
+    }
+
+    // Extract keywords from text with frequency analysis
+    function extractKeywordsFromText(text, limit = 8) {
+      try {
+        if (!text) return [];
+        const stopWords = new Set(['the','that','this','with','from','about','they','would','have','there','their','which','what','when','where','your','you','will','could','should','and','for','but','are','not','was','were','has','had','can','all','any','more','our','its','also','use','using','like','just','know','get','make','want','need','think','see','look','take','come','well','even','back','good','very','much','said','than','some','into','them','only','over','such','other','then','now','may','these','after','most']);
+        const words = String(text).toLowerCase().split(/[^\w]+/).filter(w => w.length > 3 && !stopWords.has(w));
+        const freq = {};
+        words.forEach(w => freq[w] = (freq[w] || 0) + 1);
+        const sorted = Object.entries(freq).sort((a, b) => b[1] - a[1]).slice(0, limit);
+        return sorted.map(([w]) => w);
+      } catch (e) {
+        return [];
+      }
+    }
+
+    // Infer a topic label from keywords
+    function inferTopicLabel(keywords) {
+      if (!keywords || !keywords.length) return 'general';
+      // Use most frequent keyword as topic, capitalize first letter
+      const topic = keywords[0];
+      return topic.charAt(0).toUpperCase() + topic.slice(1);
+    }
+
+    // Sliding Window Context Detection: Analyze recent messages with overlap
+    function detectActiveContext(messages, windowSize = 8, minConfidence = 40) {
+      try {
+        if (!messages || messages.length < 3) return null;
+        
+        // Use last N messages as active window
+        const window = messages.slice(-windowSize);
+        const windowText = window.map(m => m.text || '').join('\n');
+        
+        // Extract entities and themes from active window
+        const keywords = extractKeywordsFromText(windowText, 10);
+        const entities = extractEntities(windowText);
+        const themes = keywords.slice(0, 6);
+        
+        // Calculate confidence based on keyword density and variety
+        const uniqueWords = new Set(windowText.toLowerCase().split(/\W+/).filter(w => w.length > 3));
+        const totalWords = windowText.split(/\W+/).filter(Boolean).length;
+        const variety = uniqueWords.size / Math.max(1, totalWords);
+        const density = keywords.length / Math.max(1, window.length);
+        
+        const confidence = Math.round(Math.min(100, (variety * 50) + (density * 50)));
+        
+        if (confidence < minConfidence) return null;
+        
+        return {
+          entities,
+          themes,
+          keywords,
+          confidence,
+          messageCount: window.length,
+          totalWords,
+          variety: Math.round(variety * 100)
+        };
+      } catch (e) {
+        debugLog('detectActiveContext error', e);
+        return null;
+      }
+    }
+
+    // Extract named entities from text (simple pattern-based)
+    function extractEntities(text) {
+      try {
+        if (!text) return [];
+        const entities = [];
+        
+        // Capitalized words (potential proper nouns)
+        const capitalizedWords = text.match(/\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b/g) || [];
+        const filtered = capitalizedWords.filter(w => 
+          !['The','This','That','These','Those','There','Then','When','Where','What','Which','Who','How'].includes(w)
+        );
+        
+        // Common tech/product patterns
+        const techPatterns = text.match(/\b(?:API|SDK|CLI|UI|UX|AI|ML|HTTP|JSON|XML|SQL|NoSQL|REST|GraphQL|OAuth|JWT|CSS|HTML|JavaScript|Python|Java|React|Vue|Angular|Node|Express|Django|Flask)\b/gi) || [];
+        
+        // Combine and dedupe
+        const combined = [...filtered, ...techPatterns];
+        const unique = [...new Set(combined.map(e => e.toLowerCase()))];
+        
+        return unique.slice(0, 8);
+      } catch (e) {
+        return [];
+      }
+    }
+
+    // Cross-Context Memory: Detect context on page and show suggestions with sliding window
     async function detectAndSuggestContext() {
       try {
+        // Check if we have any knowledge graph data first
+        const kg = await loadKnowledgeGraph();
+        if (!kg || kg.length === 0) {
+          toast('No saved conversations yet. Scan some chats first to build your knowledge graph!');
+          return;
+        }
+        
         // Quick scan of visible messages to extract current context
         const msgs = await scanChat();
-        if (!msgs || msgs.length < 2) return; // Need at least some conversation
+        if (!msgs || msgs.length < 2) {
+          toast('Not enough conversation context on this page. Try having a longer chat first.');
+          return;
+        }
         
-        const recentText = msgs.slice(-5).map(m => m.text).join('\n');
-        if (recentText.length < 100) return; // Not enough context
+        // Use sliding window for smarter context detection
+        const activeContext = detectActiveContext(msgs, 8, 40);
         
-        // Extract quick entities and themes (lightweight extraction)
-        const words = recentText.toLowerCase().split(/\W+/).filter(w => w.length > 3);
-        const wordFreq = {};
-        words.forEach(w => wordFreq[w] = (wordFreq[w] || 0) + 1);
-        const commonWords = Object.entries(wordFreq).filter(([w, f]) => f >= 2).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([w]) => w);
+        if (!activeContext) {
+          toast('Could not detect clear context from current conversation.');
+          return;
+        }
         
-        // Find related conversations
-        const related = await findRelatedConversations(commonWords, commonWords, 3);
+        debugLog('Active context detected:', activeContext);
+        
+        // Find related conversations using detected entities and themes
+        const related = await findRelatedConversations(activeContext.entities, activeContext.themes, 5);
         
         if (related.length) {
           showContextSuggestion(related);
+          toast(`Found ${related.length} related conversation${related.length > 1 ? 's' : ''} (${activeContext.confidence}% confidence)`);
+        } else {
+          // Show helpful message when no connections found
+          showNoConnectionsMessage(activeContext.keywords);
         }
       } catch (e) {
         debugLog('detectAndSuggestContext error', e);
       }
     }
 
+    // Show helpful message when no connections found
+    function showNoConnectionsMessage(keywords) {
+      try {
+        const notification = document.createElement('div');
+        notification.id = 'cb-context-notification';
+        notification.setAttribute('data-cb-ignore', 'true');
+        notification.style.cssText = `
+          position: fixed;
+          bottom: 80px;
+          right: 26px;
+          width: 340px;
+          background: linear-gradient(135deg, rgba(230,207,159,0.98), rgba(212,175,119,0.98));
+          color: #0b0f17;
+          padding: 16px 18px;
+          border-radius: 14px;
+          box-shadow: 0 12px 32px rgba(0,0,0,0.35);
+          z-index: 2147483646;
+          font-family: 'Poppins', sans-serif;
+          font-size: 13px;
+          line-height: 1.5;
+          animation: cb-slide-in 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        `;
+        
+        const topRow = document.createElement('div');
+        topRow.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;';
+        
+        const title = document.createElement('div');
+        title.style.cssText = 'font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px;';
+        title.innerHTML = `<span>🔍</span><span>No Connections Found</span>`;
+        
+  const closeBtn = document.createElement('button');
+  closeBtn.textContent = '×';
+  closeBtn.setAttribute('aria-label', 'Close notification');
+  closeBtn.style.cssText = 'background:transparent;border:none;color:#0b0f17;font-size:22px;cursor:pointer;padding:0;line-height:1;opacity:0.6;transition:opacity 0.2s;';
+  closeBtn.addEventListener('mouseenter', () => closeBtn.style.opacity = '1');
+  closeBtn.addEventListener('mouseleave', () => closeBtn.style.opacity = '0.6');
+  closeBtn.addEventListener('click', () => notification.remove());
+        
+        topRow.appendChild(title);
+        topRow.appendChild(closeBtn);
+        notification.appendChild(topRow);
+        
+        const msg = document.createElement('div');
+        msg.style.cssText = 'margin-bottom:12px;opacity:0.9;line-height:1.6;';
+        msg.textContent = "This conversation doesn't share topics with your previous chats yet. Keep chatting and scanning to build connections!";
+        notification.appendChild(msg);
+        
+        if (keywords && keywords.length > 0) {
+          const keywordsSection = document.createElement('div');
+          keywordsSection.style.cssText = 'background:rgba(11,15,23,0.15);padding:10px;border-radius:8px;margin-bottom:12px;';
+          
+          const keywordsTitle = document.createElement('div');
+          keywordsTitle.style.cssText = 'font-size:11px;font-weight:600;margin-bottom:6px;opacity:0.8;';
+          keywordsTitle.textContent = 'Current topics detected:';
+          keywordsSection.appendChild(keywordsTitle);
+          
+          const keywordsList = document.createElement('div');
+          keywordsList.style.cssText = 'display:flex;flex-wrap:wrap;gap:4px;';
+          keywords.slice(0, 5).forEach(kw => {
+            const tag = document.createElement('span');
+            tag.style.cssText = 'background:rgba(11,15,23,0.25);padding:3px 8px;border-radius:6px;font-size:10px;font-weight:500;';
+            tag.textContent = kw;
+            keywordsList.appendChild(tag);
+          });
+          keywordsSection.appendChild(keywordsList);
+          notification.appendChild(keywordsSection);
+        }
+        
+        const tip = document.createElement('div');
+        tip.style.cssText = 'font-size:12px;opacity:0.75;font-style:italic;padding:10px;background:rgba(11,15,23,0.1);border-radius:8px;';
+        tip.innerHTML = '💡 <strong>Tip:</strong> Scan more conversations about related topics to discover connections.';
+        notification.appendChild(tip);
+        
+        const dismissBtn = document.createElement('button');
+        dismissBtn.textContent = 'Got it';
+        dismissBtn.setAttribute('aria-label', 'Acknowledge message');
+        dismissBtn.style.cssText = 'width:100%;margin-top:12px;background:rgba(11,15,23,0.25);color:#0b0f17;border:none;padding:10px 12px;border-radius:8px;cursor:pointer;font-weight:600;font-size:12px;font-family:inherit;transition:all 0.2s;';
+        dismissBtn.addEventListener('mouseenter', () => {
+          dismissBtn.style.background = 'rgba(11,15,23,0.35)';
+          dismissBtn.style.transform = 'translateY(-1px)';
+        });
+        dismissBtn.addEventListener('mouseleave', () => {
+          dismissBtn.style.background = 'rgba(11,15,23,0.25)';
+          dismissBtn.style.transform = 'translateY(0)';
+        });
+        dismissBtn.addEventListener('click', () => notification.remove());
+        notification.appendChild(dismissBtn);
+        
+        // Remove existing notification if any
+        const existing = document.getElementById('cb-context-notification');
+        if (existing) existing.remove();
+        
+        document.body.appendChild(notification);
+        
+        // Auto-dismiss after 12 seconds
+        setTimeout(() => {
+          try { if (notification.parentNode) notification.remove(); } catch (e) {}
+        }, 12000);
+        
+      } catch (e) {
+        debugLog('showNoConnectionsMessage error', e);
+      }
+    }
+
     // Scan button handler: scan, normalize, save, and optionally auto-summarize
     btnScan.addEventListener('click', async () => {
-      addLoadingToButton(btnScan, 'Scanning'); status.textContent = 'Status: scanning...';
+      addLoadingToButton(btnScan, 'Scanning'); status.textContent = 'Status: scanning...'; announce('Scanning conversation now');
       try {
   const msgs = await scanChat();
   // persist lastScannedText for clipboard and Sync view
@@ -1194,6 +1933,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           } catch (e) {}
           status.textContent = 'Status: no messages'; 
           toast(errorMsg);
+          announce('Scan completed: no messages found');
         }
         else {
           const final = normalizeMessages(msgs);
@@ -1202,9 +1942,32 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           // ensure lastScannedText updated when saving
           try { lastScannedText = final.map(m => `${m.role}: ${m.text}`).join('\n\n'); } catch (e) {}
           if (typeof window.saveConversation === 'function') {
-            window.saveConversation(conv, () => { toast('Saved ' + final.length + ' messages'); refreshHistory(); });
+            window.saveConversation(conv, () => { toast('Saved ' + final.length + ' messages'); refreshHistory(); announce('Scan complete, conversation saved'); });
+          } else if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+            try {
+              chrome.runtime.sendMessage({ type: 'save_conversation', payload: conv }, (resp) => {
+                try {
+                  if (resp && resp.ok) {
+                    toast('Saved ' + final.length + ' messages');
+                    refreshHistory();
+                    announce('Scan complete, conversation saved');
+                  } else {
+                    // fallback to localStorage if background save failed or unsupported
+                    const key = 'chatbridge:conversations';
+                    try { const cur = JSON.parse(localStorage.getItem(key) || '[]'); cur.push(conv); localStorage.setItem(key, JSON.stringify(cur)); toast('Saved (local) ' + final.length + ' messages'); refreshHistory(); announce('Scan complete, conversation saved locally'); }
+                    catch (e) { toast('Save failed'); }
+                  }
+                } catch (e) {
+                  try { const key = 'chatbridge:conversations'; const cur = JSON.parse(localStorage.getItem(key) || '[]'); cur.push(conv); localStorage.setItem(key, JSON.stringify(cur)); toast('Saved (local) ' + final.length + ' messages'); refreshHistory(); announce('Scan complete, conversation saved locally'); } catch (ee) { toast('Save failed'); }
+                }
+              });
+            } catch (e) {
+              // If messaging throws, fallback to localStorage
+              try { const key = 'chatbridge:conversations'; const cur = JSON.parse(localStorage.getItem(key) || '[]'); cur.push(conv); localStorage.setItem(key, JSON.stringify(cur)); toast('Saved (local) ' + final.length + ' messages'); refreshHistory(); announce('Scan complete, conversation saved locally'); } catch (ee) { toast('Save failed'); }
+            }
           } else {
-            const key = 'chatbridge:conversations'; const cur = JSON.parse(localStorage.getItem(key) || '[]'); cur.push(conv); localStorage.setItem(key, JSON.stringify(cur)); toast('Saved (local) ' + final.length + ' messages'); refreshHistory();
+            // final fallback to localStorage
+            try { const key = 'chatbridge:conversations'; const cur = JSON.parse(localStorage.getItem(key) || '[]'); cur.push(conv); localStorage.setItem(key, JSON.stringify(cur)); toast('Saved (local) ' + final.length + ' messages'); refreshHistory(); announce('Scan complete, conversation saved locally'); } catch (e) { toast('Save failed'); }
           }
           status.textContent = `Status: saved ${final.length}`;
 
@@ -1225,19 +1988,29 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           if (final.length >= 20 || totalChars >= 50000) {
             status.textContent = `Status: auto-summarizing ${final.length} messages (${totalChars} chars)...`;
             const inputText = final.map(m => `${m.role}: ${m.text}`).join('\n');
-            hierarchicalSummarize(inputText, { chunkSize: 14000, maxParallel: 3, length: 'comprehensive', summaryType: 'detailed' })
-              .then(result => {
-                preview.textContent = `Auto-Summary (${final.length} msgs, comprehensive context preserved):\n\n` + result;
-                status.textContent = 'Status: done (auto-summarized)';
-                toast('Auto-summarized with full context!');
-                restoreToChat(result);
-              }).catch(err => {
-                status.textContent = `Status: saved ${final.length} (summarize failed)`;
-                debugLog('hierarchicalSummarize error', err);
-              });
+            try {
+              showSkeleton(preview, 120);
+              hierarchicalSummarize(inputText, { chunkSize: 14000, maxParallel: 3, length: 'comprehensive', summaryType: 'detailed' })
+                .then(result => {
+                  hideSkeleton(preview);
+                  preview.textContent = `Auto-Summary (${final.length} msgs, comprehensive context preserved):\n\n` + result;
+                  preview.classList.add('cb-slide-up'); setTimeout(()=> preview.classList.remove('cb-slide-up'), 360);
+                  status.textContent = 'Status: done (auto-summarized)';
+                  toast('Auto-summarized with full context!');
+                  restoreToChat(result);
+                }).catch(err => {
+                  hideSkeleton(preview);
+                  status.textContent = `Status: saved ${final.length} (summarize failed)`;
+                  debugLog('hierarchicalSummarize error', err);
+                  showError('Auto-summarize failed: ' + (err && err.message ? err.message : 'unknown'), async () => { try { btnScan.click(); } catch(_) {} });
+                });
+            } catch (e) {
+              hideSkeleton(preview);
+              debugLog('auto-summarize setup failed', e);
+            }
           }
         }
-      } catch (e) { status.textContent = 'Status: error'; toast('Scan failed: ' + (e && e.message)); }
+      } catch (e) { status.textContent = 'Status: error'; toast('Scan failed: ' + (e && e.message)); showError('Scan failed: ' + (e && e.message), async () => { try { btnScan.click(); } catch(_) {} }); announce('Scan failed'); }
       removeLoadingFromButton(btnScan, 'Scan Chat');
     });
 
@@ -1257,25 +2030,29 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
     btnClearHistory.addEventListener('click', async () => {
       try {
         if (!confirm('Clear all saved conversation history? This cannot be undone.')) return;
-        
-        // Use the storage API if available
-        if (typeof window.clearConversations === 'function') {
-          window.clearConversations(() => {
-            toast('History cleared');
-            refreshHistory();
-            // Clear the preview/last-scanned text
-            try { preview.textContent = 'Preview: (none)'; } catch (e) {}
-            lastScannedText = '';
-          });
-        } else {
-          // Fallback to direct localStorage clear
-          localStorage.removeItem('chatbridge:conversations');
-          toast('History cleared');
-          refreshHistory();
-          // Clear the preview/last-scanned text
-          try { preview.textContent = 'Preview: (none)'; } catch (e) {}
-          lastScannedText = '';
+        // Prefer background clear to wipe persistent DB and mirror
+        const cleared = await new Promise((resolve) => {
+          try {
+            chrome.runtime.sendMessage({ type: 'clear_conversations' }, (r) => {
+              if (chrome.runtime.lastError) return resolve(false);
+              resolve(r && r.ok);
+            });
+          } catch (e) { resolve(false); }
+        });
+        if (!cleared) {
+          // Use storage API if available
+          if (typeof window.clearConversations === 'function') {
+            await new Promise(res => window.clearConversations(() => res()));
+          } else {
+            // Fallback to direct localStorage clear
+            try { localStorage.removeItem('chatbridge:conversations'); } catch (_) {}
+          }
         }
+        toast('History cleared');
+        refreshHistory();
+        // Clear the preview/last-scanned text
+        try { preview.textContent = 'Preview: (none)'; } catch (e) {}
+        lastScannedText = '';
       } catch (e) {
         toast('Clear failed: ' + (e && e.message));
       }
@@ -1285,11 +2062,15 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
     btnFindConnections.addEventListener('click', async () => {
       try {
         addLoadingToButton(btnFindConnections, 'Analyzing…');
+        announce('Analyzing conversation for related content');
         await detectAndSuggestContext();
         toast('Context analysis complete');
+        announce('Context analysis complete');
       } catch (e) {
         toast('Context detection failed');
+        showError('Context detection failed', async () => { try { btnFindConnections.click(); } catch(_) {} });
         debugLog('Find Connections error', e);
+        announce('Context detection failed');
       } finally {
         removeLoadingFromButton(btnFindConnections, 'Find Connections');
       }
@@ -1320,10 +2101,15 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
     btnRefreshGraph.addEventListener('click', async () => {
       try {
         addLoadingToButton(btnRefreshGraph, 'Refreshing…');
+        announce('Refreshing knowledge graph');
+        try { showSkeleton(graphStats, 80); } catch(e){}
         await renderKnowledgeGraph();
+        try { hideSkeleton(graphStats); } catch(e){}
         toast('Graph refreshed');
+        announce('Knowledge graph refreshed');
       } catch (e) {
         toast('Refresh failed');
+        showError('Graph refresh failed', async () => { try { btnRefreshGraph.click(); } catch(_) {} });
         debugLog('Graph refresh error', e);
       } finally {
         removeLoadingFromButton(btnRefreshGraph, 'Refresh');
@@ -1365,9 +2151,10 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
     // Knowledge Graph: Import from JSON file
     btnImportGraph.addEventListener('click', () => {
       try {
-        const input = document.createElement('input');
+  const input = document.createElement('input');
         input.type = 'file';
         input.accept = 'application/json,.json';
+  input.setAttribute('aria-label', 'Import knowledge graph file');
         input.addEventListener('change', async (e) => {
           try {
             const file = e.target.files[0];
@@ -1418,25 +2205,28 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         const convs = await loadConversationsAsync();
         
         if (!kg.length) {
-          graphStats.textContent = 'No knowledge graph data yet. Scan some chats to build your graph!';
+          graphStats.innerHTML = '<div style="text-align:center;padding:20px;"><div style="font-size:48px;opacity:0.3;">📊</div><div style="margin-top:12px;opacity:0.7;">No knowledge graph data yet</div><div style="font-size:12px;margin-top:8px;opacity:0.5;">Scan some chats to build your graph!</div></div>';
           return;
         }
         
         // Build graph data structure
         const nodes = kg.map(k => {
           const conv = convs.find(c => c.id === k.id);
+          const msgCount = conv?.messages?.length || conv?.conversation?.length || 0;
           return {
             id: k.id,
-            x: Math.random() * 300 + 25, // Random initial position
+            x: Math.random() * 300 + 25,
             y: Math.random() * 350 + 25,
             vx: 0,
             vy: 0,
-            size: Math.min(Math.max((conv?.messages?.length || 5) / 3, 5), 15),
+            size: Math.min(Math.max(msgCount / 3, 6), 16),
             entities: k.entities || [],
             themes: k.themes || [],
             context: k.context || '',
             platform: conv?.platform || 'unknown',
-            model: conv?.model || 'unknown'
+            model: conv?.model || 'unknown',
+            timestamp: conv?.ts || k.timestamp || Date.now(),
+            messageCount: msgCount
           };
         });
         
@@ -1455,14 +2245,24 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
                 source: i,
                 target: j,
                 strength: strength,
-                width: Math.min(strength / 2, 3)
+                width: Math.min(strength / 2, 4),
+                sharedEntities: n1.entities.filter(e => n2.entities.includes(e)),
+                sharedThemes: n1.themes.filter(t => n2.themes.includes(t))
               });
             }
           }
         }
         
-        // Update stats
-        graphStats.textContent = `${nodes.length} conversations • ${edges.length} connections`;
+        // Update stats with rich information
+        const totalStrength = edges.reduce((sum, e) => sum + e.strength, 0);
+        const avgConnections = edges.length > 0 ? (totalStrength / edges.length).toFixed(1) : 0;
+        graphStats.innerHTML = `
+          <div style="display:flex;justify-content:space-around;text-align:center;font-size:12px;">
+            <div><div style="font-size:20px;font-weight:700;color:#e6cf9f;">${nodes.length}</div><div style="opacity:0.7;">Conversations</div></div>
+            <div><div style="font-size:20px;font-weight:700;color:#e6cf9f;">${edges.length}</div><div style="opacity:0.7;">Connections</div></div>
+            <div><div style="font-size:20px;font-weight:700;color:#e6cf9f;">${avgConnections}</div><div style="opacity:0.7;">Avg Strength</div></div>
+          </div>
+        `;
         
         // Canvas setup
         const canvas = graphCanvas;
@@ -1472,6 +2272,11 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         
         // Platform colors
         const platformColors = {
+          'chatgpt.com': '#10a37f',
+          'claude.ai': '#9b87f5',
+          'gemini.google.com': '#4285f4',
+          'copilot.microsoft.com': '#00a4ef',
+          'perplexity.ai': '#6366f1',
           'chatgpt': '#10a37f',
           'claude': '#9b87f5',
           'gemini': '#4285f4',
@@ -1480,9 +2285,17 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           'unknown': '#6b7280'
         };
         
-        // Force simulation (simplified)
+        // Interaction state
+        let hoveredNode = null;
+        let selectedNode = null;
+        let isDragging = false;
+        let dragNode = null;
+        let panOffset = { x: 0, y: 0 };
+        let zoom = 1;
+        
+        // Force simulation
         let animationFrames = 0;
-        const maxFrames = 100; // Run simulation for 100 frames
+        const maxFrames = 120;
         
         function applyForces() {
           // Repulsion between nodes
@@ -1493,7 +2306,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
               const dx = n2.x - n1.x;
               const dy = n2.y - n1.y;
               const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-              const force = 500 / (dist * dist); // Repulsion
+              const force = 800 / (dist * dist);
               
               n1.vx -= (dx / dist) * force;
               n1.vy -= (dy / dist) * force;
@@ -1509,7 +2322,8 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
             const dx = n2.x - n1.x;
             const dy = n2.y - n1.y;
             const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-            const force = (dist - 80) * 0.01 * e.strength; // Spring force
+            const targetDist = 100 - (e.strength * 5);
+            const force = (dist - targetDist) * 0.015 * e.strength;
             
             n1.vx += (dx / dist) * force;
             n1.vy += (dy / dist) * force;
@@ -1523,20 +2337,22 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           nodes.forEach(n => {
             const dx = centerX - n.x;
             const dy = centerY - n.y;
-            n.vx += dx * 0.001;
-            n.vy += dy * 0.001;
+            n.vx += dx * 0.002;
+            n.vy += dy * 0.002;
           });
           
           // Apply velocities with damping
           nodes.forEach(n => {
-            n.vx *= 0.8; // Damping
-            n.vy *= 0.8;
-            n.x += n.vx;
-            n.y += n.vy;
-            
-            // Boundary constraints
-            n.x = Math.max(n.size, Math.min(width - n.size, n.x));
-            n.y = Math.max(n.size, Math.min(height - n.size, n.y));
+            if (n !== dragNode) {
+              n.vx *= 0.85;
+              n.vy *= 0.85;
+              n.x += n.vx;
+              n.y += n.vy;
+              
+              // Boundary constraints
+              n.x = Math.max(n.size + 5, Math.min(width - n.size - 5, n.x));
+              n.y = Math.max(n.size + 5, Math.min(height - n.size - 5, n.y));
+            }
           });
         }
         
@@ -1549,8 +2365,11 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           edges.forEach(e => {
             const n1 = nodes[e.source];
             const n2 = nodes[e.target];
-            ctx.strokeStyle = `rgba(255, 255, 255, ${Math.min(e.strength / 10, 0.4)})`;
-            ctx.lineWidth = e.width;
+            const isConnectedToHover = hoveredNode && (n1 === hoveredNode || n2 === hoveredNode);
+            const alpha = isConnectedToHover ? Math.min(e.strength / 8, 0.7) : Math.min(e.strength / 12, 0.3);
+            
+            ctx.strokeStyle = `rgba(230, 207, 159, ${alpha})`;
+            ctx.lineWidth = isConnectedToHover ? e.width * 1.5 : e.width;
             ctx.beginPath();
             ctx.moveTo(n1.x, n1.y);
             ctx.lineTo(n2.x, n2.y);
@@ -1559,36 +2378,163 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           
           // Draw nodes
           nodes.forEach(n => {
-            const color = platformColors[n.platform.toLowerCase()] || platformColors.unknown;
+            const isHovered = n === hoveredNode;
+            const isSelected = n === selectedNode;
+            const platformKey = n.platform.toLowerCase().replace(/^https?:\/\//, '').replace(/\/$/, '');
+            const color = platformColors[platformKey] || platformColors.unknown;
+            
+            // Glow effect for hovered/selected nodes
+            if (isHovered || isSelected) {
+              ctx.fillStyle = color;
+              ctx.globalAlpha = 0.3;
+              ctx.beginPath();
+              ctx.arc(n.x, n.y, n.size + 6, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.globalAlpha = 1;
+            }
+            
+            // Node circle
             ctx.fillStyle = color;
             ctx.beginPath();
             ctx.arc(n.x, n.y, n.size, 0, Math.PI * 2);
             ctx.fill();
             
             // Node border
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
-            ctx.lineWidth = 1;
+            ctx.strokeStyle = isHovered || isSelected ? '#ffe7b3' : 'rgba(255, 255, 255, 0.4)';
+            ctx.lineWidth = isHovered || isSelected ? 2.5 : 1.5;
             ctx.stroke();
+            
+            // Message count indicator (small text inside large nodes)
+            if (n.size > 10 && n.messageCount > 0) {
+              ctx.fillStyle = '#ffffff';
+              ctx.font = 'bold 9px Poppins';
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'middle';
+              ctx.fillText(n.messageCount, n.x, n.y);
+            }
           });
           
           // Continue simulation
-          if (animationFrames < maxFrames) {
+          if (animationFrames < maxFrames && !isDragging) {
             applyForces();
             animationFrames++;
+            requestAnimationFrame(render);
+          } else if (isDragging || hoveredNode) {
             requestAnimationFrame(render);
           }
         }
         
-        // Start rendering
-        render();
-        
-        // Add click handler for node interaction
-        canvas.addEventListener('click', (e) => {
-          const rect = canvas.getBoundingClientRect();
-          const x = e.clientX - rect.left;
-          const y = e.clientY - rect.top;
+        // Tooltip helper
+        function showTooltip(node, x, y) {
+          if (!node) {
+            graphTooltip.style.display = 'none';
+            return;
+          }
           
-          // Find clicked node
+          const date = new Date(node.timestamp).toLocaleDateString();
+          const platformName = node.platform.replace(/^https?:\/\//, '').replace(/\/$/, '');
+          const modelName = node.model || 'Unknown';
+          
+          let html = `<div style="font-weight:700;margin-bottom:6px;color:#ffe7b3;">${platformName}</div>`;
+          html += `<div style="font-size:11px;opacity:0.8;margin-bottom:4px;">Model: ${modelName}</div>`;
+          html += `<div style="font-size:11px;opacity:0.8;margin-bottom:4px;">Messages: ${node.messageCount}</div>`;
+          html += `<div style="font-size:11px;opacity:0.8;margin-bottom:6px;">Date: ${date}</div>`;
+          
+          if (node.context) {
+            html += `<div style="font-size:11px;margin-top:6px;padding-top:6px;border-top:1px solid rgba(230,207,159,0.2);">${node.context.slice(0, 80)}${node.context.length > 80 ? '...' : ''}</div>`;
+          }
+          
+          if (node.entities && node.entities.length > 0) {
+            html += `<div style="font-size:10px;margin-top:6px;opacity:0.7;">🏷️ ${node.entities.slice(0, 3).join(', ')}</div>`;
+          }
+          
+          html += `<div style="font-size:10px;margin-top:8px;opacity:0.6;font-style:italic;">Click to open conversation</div>`;
+          
+          graphTooltip.innerHTML = html;
+          graphTooltip.style.display = 'block';
+          graphTooltip.style.left = (x + 15) + 'px';
+          graphTooltip.style.top = (y - 10) + 'px';
+        }
+        
+        // Mouse interaction handlers
+        canvas.addEventListener('mousemove', (e) => {
+          const rect = canvas.getBoundingClientRect();
+          const x = ((e.clientX - rect.left) * canvas.width) / rect.width;
+          const y = ((e.clientY - rect.top) * canvas.height) / rect.height;
+          
+          if (isDragging && dragNode) {
+            dragNode.x = x;
+            dragNode.y = y;
+            dragNode.vx = 0;
+            dragNode.vy = 0;
+            render();
+            return;
+          }
+          
+          // Find hovered node
+          const oldHovered = hoveredNode;
+          hoveredNode = nodes.find(n => {
+            const dx = n.x - x;
+            const dy = n.y - y;
+            return Math.sqrt(dx * dx + dy * dy) <= n.size;
+          });
+          
+          if (hoveredNode !== oldHovered) {
+            canvas.style.cursor = hoveredNode ? 'pointer' : 'grab';
+            if (hoveredNode) {
+              showTooltip(hoveredNode, e.clientX - rect.left, e.clientY - rect.top);
+            } else {
+              showTooltip(null);
+            }
+            render();
+          } else if (hoveredNode) {
+            showTooltip(hoveredNode, e.clientX - rect.left, e.clientY - rect.top);
+          }
+        });
+        
+        canvas.addEventListener('mousedown', (e) => {
+          const rect = canvas.getBoundingClientRect();
+          const x = ((e.clientX - rect.left) * canvas.width) / rect.width;
+          const y = ((e.clientY - rect.top) * canvas.height) / rect.height;
+          
+          dragNode = nodes.find(n => {
+            const dx = n.x - x;
+            const dy = n.y - y;
+            return Math.sqrt(dx * dx + dy * dy) <= n.size;
+          });
+          
+          if (dragNode) {
+            isDragging = true;
+            canvas.style.cursor = 'grabbing';
+          }
+        });
+        
+        canvas.addEventListener('mouseup', (e) => {
+          if (isDragging && dragNode) {
+            isDragging = false;
+            dragNode = null;
+            canvas.style.cursor = hoveredNode ? 'pointer' : 'grab';
+          }
+        });
+        
+        canvas.addEventListener('mouseleave', () => {
+          hoveredNode = null;
+          showTooltip(null);
+          if (isDragging) {
+            isDragging = false;
+            dragNode = null;
+          }
+          canvas.style.cursor = 'grab';
+          render();
+        });
+        
+        canvas.addEventListener('click', (e) => {
+          if (isDragging) return;
+          
+          const rect = canvas.getBoundingClientRect();
+          const x = ((e.clientX - rect.left) * canvas.width) / rect.width;
+          const y = ((e.clientY - rect.top) * canvas.height) / rect.height;
+          
           const clicked = nodes.find(n => {
             const dx = n.x - x;
             const dy = n.y - y;
@@ -1596,15 +2542,41 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           });
           
           if (clicked) {
-            // Show conversation
             openConversationById(clicked.id);
             graphView.classList.remove('cb-view-active');
           }
         });
+
+        // Keyboard support for canvas: pan with arrows, enter to open hovered node
+        canvas.addEventListener('keydown', (e) => {
+          try {
+            if (!e) return;
+            if (e.key && e.key.startsWith('Arrow')) {
+              const delta = 12;
+              if (e.key === 'ArrowLeft') nodes.forEach(n => n.x += delta);
+              if (e.key === 'ArrowRight') nodes.forEach(n => n.x -= delta);
+              if (e.key === 'ArrowUp') nodes.forEach(n => n.y += delta);
+              if (e.key === 'ArrowDown') nodes.forEach(n => n.y -= delta);
+              render();
+              announce('Panned graph');
+              e.preventDefault();
+              return;
+            }
+            if (e.key === 'Enter' || e.key === ' ') {
+              // activate hovered node or nearest node to center
+              const node = hoveredNode || nodes[0];
+              if (node) { openConversationById(node.id); graphView.classList.remove('cb-view-active'); announce('Opened conversation'); }
+              e.preventDefault();
+            }
+          } catch (err) { debugLog('canvas keydown', err); }
+        });
+        
+        // Start rendering
+        render();
         
       } catch (e) {
         debugLog('renderKnowledgeGraph error', e);
-        graphStats.textContent = 'Error rendering graph';
+        graphStats.innerHTML = '<div style="color:#ff6b6b;text-align:center;">❌ Error rendering graph. Try refreshing.</div>';
       }
     }
 
@@ -2395,22 +3367,45 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           tags.forEach(t => { const o = document.createElement('option'); o.value = t; const disp = String(t).split(/[_\-\s]+/).map(w=>w.charAt(0).toUpperCase()+w.slice(1)).join(' '); o.textContent = disp; tagSelect.appendChild(o); });
         } catch (e) { debugLog('populate filters failed', e); }
 
+        // populate smart suggestions (chips) and placeholder
+        try { await populateSmartSuggestions(); } catch(e) { debugLog('populateSmartSuggestions failed', e); }
+
         smartView.classList.add('cb-view-active');
       } catch (e) { toast('Failed to open Smart Query'); debugLog('open smart view', e); }
     });
 
     btnCloseSmart.addEventListener('click', () => { try { smartView.classList.remove('cb-view-active'); } catch (e) {} });
 
-    // Load conversations as a Promise (supports window.getConversations hook or localStorage)
+    // Load conversations as a Promise: prefer background persistent store, fallback to window.getConversations or localStorage
     function loadConversationsAsync() {
       return new Promise(res => {
+        // Try background handler first
         try {
-          if (typeof window.getConversations === 'function') {
-            try { window.getConversations(list => res(Array.isArray(list) ? list : [])); } catch (e) { res([]); }
-          } else {
-            const arr = JSON.parse(localStorage.getItem('chatbridge:conversations') || '[]'); res(Array.isArray(arr) ? arr : []);
-          }
-        } catch (e) { res([]); }
+          chrome.runtime.sendMessage({ type: 'get_conversations', payload: {} }, (r) => {
+            if (chrome.runtime.lastError) {
+              // Fallback chain below
+              fallbackLoad();
+              return;
+            }
+            if (r && r.ok && Array.isArray(r.conversations)) {
+              res(r.conversations);
+            } else {
+              fallbackLoad();
+            }
+          });
+        } catch (e) {
+          fallbackLoad();
+        }
+
+        function fallbackLoad() {
+          try {
+            if (typeof window.getConversations === 'function') {
+              try { window.getConversations(list => res(Array.isArray(list) ? list : [])); } catch (e) { res([]); }
+            } else {
+              const arr = JSON.parse(localStorage.getItem('chatbridge:conversations') || '[]'); res(Array.isArray(arr) ? arr : []);
+            }
+          } catch (e) { res([]); }
+        }
       });
     }
 
@@ -2424,6 +3419,82 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           });
         } catch (e) { return res({ ok:false, error: e && e.message }); }
       });
+    }
+
+    // Build simple keyword suggestions from text or recent conversations
+    function buildKeywordsFromText(text, limit = 5) {
+      try {
+        if (!text) return [];
+        const stop = new Set(['the','that','this','with','from','about','they','would','have','there','their','which','what','when','where','your','you','will','could','should','and','for','but','are','not','was','were','has','had','can','all','any','more','our','its','also','use','using']);
+        const words = String(text).toLowerCase().split(/[^\w]+/).filter(w => w.length > 3 && !stop.has(w));
+        const freq = {};
+        words.forEach(w => freq[w] = (freq[w]||0) + 1);
+        const keys = Object.entries(freq).sort((a,b) => b[1]-a[1]).slice(0, limit).map(k=>k[0]);
+        return keys.map(k => k.charAt(0).toUpperCase()+k.slice(1));
+      } catch (e) { return []; }
+    }
+
+    // Try to get higher-quality suggestions using embeddings via background
+    function requestEmbeddingSuggestions(text, topK = 6) {
+      return new Promise(res => {
+        try {
+          if (!text || !chrome || !chrome.runtime || !chrome.runtime.sendMessage) return res({ ok: false, error: 'no-runtime' });
+          chrome.runtime.sendMessage({ type: 'embed_suggest', payload: { text: text, topK: topK } }, (r) => {
+            if (chrome.runtime.lastError) return res({ ok:false, error: chrome.runtime.lastError.message });
+            return res(r || { ok:false });
+          });
+        } catch (e) { return res({ ok:false, error: e && e.message }); }
+      });
+    }
+
+    async function populateSmartSuggestions() {
+      try {
+        // clear existing
+        try { while (smartSuggestRow.firstChild) smartSuggestRow.removeChild(smartSuggestRow.firstChild); } catch(e){}
+        let suggestions = [];
+        // Try embedding-based suggestions via background first (higher quality)
+        try {
+          if (lastScannedText && lastScannedText.length) {
+            const resp = await requestEmbeddingSuggestions(lastScannedText, 6);
+            if (resp && resp.ok && Array.isArray(resp.suggestions) && resp.suggestions.length) {
+              suggestions = resp.suggestions.slice(0,6);
+            }
+          }
+        } catch(e) { debugLog('embed suggest failed', e); }
+
+        // If embedding suggestions not available, fallback to local keyword extraction
+        if (!suggestions || suggestions.length === 0) {
+          // prefer last scanned text
+          try { if (lastScannedText && lastScannedText.length) suggestions = buildKeywordsFromText(lastScannedText, 6); } catch(e){}
+          if (!suggestions || suggestions.length === 0) {
+            // fallback: aggregate recent conversations
+            try {
+              const convs = await loadConversationsAsync();
+              const sample = (convs || []).slice(-8).map(c => (c.conversation||[]).map(m=>m.text).join(' ')).join('\n');
+              suggestions = buildKeywordsFromText(sample, 6);
+            } catch(e) { suggestions = []; }
+          }
+        }
+        // ensure unique and limit to 6
+        suggestions = Array.from(new Set(suggestions)).slice(0,6);
+        if (!suggestions || suggestions.length === 0) {
+          // default helpful prompts
+          suggestions = ['Show recent errors','How to export chats','Summarize last session'];
+        }
+        // create chips
+        suggestions.forEach(s => {
+          const chip = document.createElement('button');
+          chip.className = 'cb-btn'; chip.style.padding = '6px 10px'; chip.style.fontSize = '12px'; chip.style.borderRadius = '999px'; chip.style.background = 'rgba(11,15,23,0.12)'; chip.textContent = s;
+          chip.setAttribute('role','button');
+          chip.setAttribute('tabindex','0');
+          chip.setAttribute('aria-label', 'Suggestion: ' + s);
+          chip.addEventListener('click', () => { try { smartInput.value = s; smartInput.focus(); announce('Suggestion chosen: ' + s); } catch(e){} });
+          chip.addEventListener('keydown', (ev) => { try { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); smartInput.value = s; smartInput.focus(); announce('Suggestion chosen: ' + s); } } catch(e){} });
+          smartSuggestRow.appendChild(chip);
+        });
+        // set placeholder to first suggestion
+        try { if (suggestions && suggestions.length) smartInput.placeholder = suggestions[0] + ' (click a suggestion)'; } catch(e){}
+      } catch (e) { debugLog('populateSmartSuggestions error', e); }
     }
 
     // Detect current model from page structure (safer than hostname inference)
@@ -2548,11 +3619,19 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       } catch (e) { debugLog('renderSmartResults', e); smartResults.textContent = '(render error)'; }
     }
 
+    // Add Enter key handler for smart search input
+    smartInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        btnSmartSearch.click();
+      }
+    });
+
     btnSmartSearch.addEventListener('click', async () => {
       try {
         const q = (smartInput && smartInput.value) ? smartInput.value.trim() : '';
         if (!q) { toast('Type a search query'); return; }
-        smartResults.textContent = 'Searching...'; smartAnswer.textContent = '';
+  smartResults.textContent = 'Searching...'; smartAnswer.textContent = ''; announce('Searching saved chats');
         // First try semantic vector query via background
         async function vectorQueryAsync(qstr, topK) {
           return new Promise(res => {
@@ -2565,6 +3644,8 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           });
         }
 
+        let vectorFailed = false;
+        let vectorError = '';
         try {
           const vres = await vectorQueryAsync(q, 8);
           if (vres && vres.ok && Array.isArray(vres.results) && vres.results.length) {
@@ -2603,13 +3684,33 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
                 return true;
               }).slice(0,12);
               renderSmartResults(filtered);
-            } catch (e) { renderSmartResults(mapped); }
+              announce('Search complete');
+            } catch (e) { renderSmartResults(mapped); announce('Search complete'); }
             return;
+          } else if (vres && !vres.ok) {
+            vectorFailed = true;
+            vectorError = vres.error || 'unknown error';
           }
-        } catch (e) { debugLog('vector query failed', e); }
+        } catch (e) { 
+          debugLog('vector query failed', e); 
+          vectorFailed = true;
+          vectorError = e.message || 'exception';
+        }
 
         // Fallback to local substring search
+        if (vectorFailed && vectorError === 'no_embedding') {
+          toast('⚠️ AI search unavailable. Add OpenAI API key in Options for semantic search. Using basic search...');
+        } else if (vectorFailed) {
+          toast('⚠️ AI search failed. Using basic keyword search...');
+        }
+        
         const convs = await loadConversationsAsync();
+        if (!convs || convs.length === 0) {
+          smartResults.textContent = '(No saved conversations yet. Scan and save some chats first!)';
+          announce('No saved conversations found');
+          return;
+        }
+        
         const ql = q.toLowerCase();
         const scored = (Array.isArray(convs) ? convs : []).map(s => {
           const host = (s.platform || s.url || '').toString();
@@ -2642,9 +3743,16 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
             }
             return true;
           }).slice(0,12);
-          renderSmartResults(filtered);
+          
+          if (filtered.length === 0 && mapped.length > 0) {
+            toast('No results match your filters. Showing all results.');
+            renderSmartResults(mapped);
+          } else {
+            renderSmartResults(filtered);
+          }
+          announce(`Found ${filtered.length || mapped.length} results`);
         } catch (e) { renderSmartResults(mapped); }
-      } catch (e) { debugLog('smart search error', e); smartResults.textContent = '(search failed)'; }
+      } catch (e) { debugLog('smart search error', e); smartResults.textContent = '(Search failed: ' + (e.message || 'unknown error') + ')'; toast('Search failed'); }
     });
 
     btnSmartAsk.addEventListener('click', async () => {
@@ -2652,7 +3760,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         const q = (smartInput && smartInput.value) ? smartInput.value.trim() : '';
         if (!q) { toast('Type a question to ask'); return; }
         if (!lastSmartResults || !lastSmartResults.length) { toast('No search results to provide context. Run Search first.'); return; }
-  btnSmartAsk.disabled = true; addLoadingToButton(btnSmartAsk, 'Asking…'); smartAnswer.textContent = '';
+  btnSmartAsk.disabled = true; addLoadingToButton(btnSmartAsk, 'Asking…'); smartAnswer.textContent = ''; announce('Asking AI for an answer');
         // Combine top matches into context (limit to ~13000 chars)
         let ctx = '';
         for (let i=0;i<Math.min(6,lastSmartResults.length);i++) {
@@ -2666,6 +3774,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         if (res && res.ok) {
           const answerText = res.result || '(no answer)';
           smartAnswer.textContent = answerText;
+          announce('Answer ready');
           // provenance: find which saved conversations / models contributed similar content to this answer
           try {
             smartProvenance.innerHTML = '';
@@ -2860,19 +3969,29 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
 
     // Index all saved conversations via background bulk index
     btnIndexAll.addEventListener('click', async () => {
+      const prev = btnIndexAll.textContent;
+      addLoadingToButton(btnIndexAll, 'Indexing...');
+      smartAnswer.textContent = '';
+      announce('Indexing all saved chats');
       try {
-  const prev = btnIndexAll.textContent;
-  addLoadingToButton(btnIndexAll, 'Indexing...');
-        smartAnswer.textContent = '';
-        chrome.runtime.sendMessage({ type: 'vector_index_all' }, (res) => {
-          try {
-            if (chrome.runtime.lastError) { smartAnswer.textContent = 'Index failed: ' + chrome.runtime.lastError.message; }
-            else if (res && res.ok) { smartAnswer.textContent = `Indexed ${res.indexed || 0} conversations.`; }
-            else { smartAnswer.textContent = 'Index failed: ' + (res && res.error ? res.error : 'unknown'); }
-          } catch (e) { smartAnswer.textContent = 'Index response error'; }
-          finally { removeLoadingFromButton(btnIndexAll, prev); }
+        await optimisticAction({
+          applyOptimistic: () => { smartAnswer.textContent = 'Indexing started…'; smartAnswer.classList.add('cb-fade-in'); },
+          confirmUI: (res) => { try { smartAnswer.textContent = `Indexed ${res.indexed || 0} conversations.`; smartAnswer.classList.add('cb-scale-pop'); announce('Indexing complete'); } catch(e){} },
+          rollbackUI: (err) => { try { smartAnswer.textContent = 'Index failed: ' + (err && err.message ? err.message : 'unknown'); } catch(e){} },
+          action: async () => {
+            // call background with exponential backoff
+            const res = await callBackgroundWithBackoff({ type: 'vector_index_all' }, 3, 500);
+            return res;
+          },
+          onError: (err) => {
+            showError('Index all failed: ' + (err && err.message ? err.message : 'unknown'), async () => { try { btnIndexAll.click(); } catch(e){} });
+          }
         });
-  } catch (e) { toast('Index all failed'); btnIndexAll.disabled = false; btnIndexAll.textContent = 'Index all saved chats'; }
+      } catch (e) {
+        debugLog('Index all exception', e);
+      } finally {
+        removeLoadingFromButton(btnIndexAll, prev);
+      }
     });
 
     // Normalize tags (migration) for all saved conversations and re-index them
@@ -2883,8 +4002,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         smartAnswer.textContent = '';
 
         // load conversations
-        const getter = (typeof window.getConversations === 'function') ? window.getConversations : (cb => cb(JSON.parse(localStorage.getItem('chatbridge:conversations') || '[]')));
-        const convs = await new Promise(res => getter(res));
+        const convs = await loadConversationsAsync();
         const arr = Array.isArray(convs) ? convs : [];
         let updated = 0, extracted = 0;
 
@@ -2933,8 +4051,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
     });
 
     function refreshHistory() {
-      const getter = (typeof window.getConversations === 'function') ? window.getConversations : (cb => cb(JSON.parse(localStorage.getItem('chatbridge:conversations') || '[]')));
-      getter(list => {
+      loadConversationsAsync().then(list => {
         const arr = Array.isArray(list) ? list : [];
         if (!arr.length) {
             historyEl.textContent = 'History: (none)';
@@ -2984,17 +4101,15 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
 
     // Update preview when selecting a chat (use shadow DOM element reference)
     try {
-      chatSelect.addEventListener('change', () => {
+      chatSelect.addEventListener('change', async () => {
         try {
-          const getter = (typeof window.getConversations === 'function') ? window.getConversations : (cb => cb(JSON.parse(localStorage.getItem('chatbridge:conversations') || '[]')));
-          getter(list => {
-            const arr = Array.isArray(list) ? list : [];
-            const idx = arr.findIndex(v => String(v.ts) === chatSelect.value);
-            const sel = idx >= 0 ? arr[idx] : arr[0];
-            if (!sel) { preview.textContent = 'Preview: (none)'; return; }
-            const text = sel.conversation && sel.conversation[0] ? sel.conversation[0].text.slice(0,200) : '(none)';
-            preview.textContent = 'Preview: ' + text;
-          });
+          const list = await loadConversationsAsync();
+          const arr = Array.isArray(list) ? list : [];
+          const idx = arr.findIndex(v => String(v.ts) === chatSelect.value);
+          const sel = idx >= 0 ? arr[idx] : arr[0];
+          if (!sel) { preview.textContent = 'Preview: (none)'; return; }
+          const text = sel.conversation && sel.conversation[0] ? sel.conversation[0].text.slice(0,200) : '(none)';
+          preview.textContent = 'Preview: ' + text;
         } catch (e) {}
       });
     } catch (e) {}
@@ -3025,7 +4140,29 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       } catch (e) {}
     });
 
-    function toast(msg) { try { const t = document.createElement('div'); t.setAttribute('data-cb-ignore','true'); t.textContent = msg; t.style.position='fixed'; t.style.bottom='18px'; t.style.left='18px'; t.style.background='rgba(6,20,32,0.9)'; t.style.color='#dff1ff'; t.style.padding='8px 10px'; t.style.borderRadius='8px'; t.style.zIndex='2147483647'; document.body.appendChild(t); setTimeout(()=>t.remove(),2400); } catch (e) { try { alert(msg); } catch(_) {} } }
+    function toast(msg) { 
+      try { 
+        const t = document.createElement('div');
+        t.setAttribute('data-cb-ignore','true');
+        t.textContent = msg;
+        t.style.position='fixed';
+        t.style.bottom='18px';
+        t.style.left='18px';
+        t.style.background='rgba(10,15,28,0.9)';
+        t.style.color='#E6E9F0';
+        t.style.padding='8px 12px';
+        t.style.borderRadius='10px';
+        t.style.zIndex='2147483647';
+        t.style.border='1px solid rgba(0,180,255,0.25)';
+        t.style.boxShadow='0 0 12px rgba(0,180,255,0.25)';
+        t.style.letterSpacing='0.5px';
+        t.style.fontFamily="'Bebas Neue', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial";
+        t.setAttribute('role','status');
+        t.setAttribute('aria-live','polite');
+        document.body.appendChild(t); announce(msg);
+        setTimeout(()=>{ try { t.remove(); } catch(e){} },2400);
+      } catch (e) { try { alert(msg); } catch(_) {} } 
+    }
 
     refreshHistory();
     try { window.ChatBridge = window.ChatBridge || {}; window.ChatBridge._renderLastScan = renderLastScan; } catch (e) {}
@@ -3348,6 +4485,53 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
     try { 
       return window.ChatBridge._lastScan || null; 
     } catch (e) { return null; } 
+  };
+  
+  // Advanced intelligence helpers
+  window.ChatBridge.analyzeContext = async function() {
+    try {
+      const msgs = await scanChat();
+      if (!msgs || !msgs.length) {
+        console.log('No messages found');
+        return null;
+      }
+      const segments = segmentConversation(msgs, 5, 0.5);
+      const context = detectActiveContext(msgs, 8, 40);
+      console.log('📊 Conversation Analysis:');
+      console.log('Messages:', msgs.length);
+      console.log('Segments:', segments.length);
+      console.table(segments.map(s => ({ topic: s.topic, messages: s.messageCount, confidence: s.confidence + '%', keywords: s.keywords.slice(0,3).join(', ') })));
+      console.log('Active Context:', context);
+      return { messages: msgs, segments, context };
+    } catch (e) {
+      console.error('Analysis failed:', e);
+      return null;
+    }
+  };
+  
+  window.ChatBridge.showSegments = async function() {
+    try {
+      const msgs = await scanChat();
+      if (!msgs || !msgs.length) {
+        toast('No messages to segment');
+        return;
+      }
+      const segments = segmentConversation(msgs, 5, 0.5);
+      console.log('📊 Conversation Segments:');
+      console.table(segments.map((s, i) => ({
+        segment: i + 1,
+        topic: s.topic,
+        messages: `${s.start}-${s.end}`,
+        count: s.messageCount,
+        confidence: s.confidence + '%',
+        keywords: s.keywords.slice(0, 5).join(', ')
+      })));
+      toast(`Detected ${segments.length} topic segment${segments.length > 1 ? 's' : ''}`);
+      return segments;
+    } catch (e) {
+      console.error('Segmentation failed:', e);
+      return null;
+    }
   };
 
   // bootstrap UI and auto-scan
