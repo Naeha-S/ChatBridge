@@ -285,20 +285,42 @@ function hashString(s) {
   return 'h' + (h >>> 0).toString(16);
 }
 
-// Ask OpenAI embeddings endpoint (if API key available) — returns embedding array or null
-async function fetchEmbeddingOpenAI(text) {
+// Fetch embedding using Gemini API (text-embedding-004 model)
+async function fetchEmbeddingGemini(text) {
   try {
-    const key = await new Promise(r => chrome.storage.local.get(['chatbridge_api_key'], d => r(d.chatbridge_api_key)));
+    const key = await new Promise(r => chrome.storage.local.get(['chatbridge_gemini_key'], d => r(d.chatbridge_gemini_key)));
     if (!key) return null;
     const apiKey = key;
-    const endpoint = 'https://api.openai.com/v1/embeddings';
-    const body = { input: text, model: 'text-embedding-3-small' };
-    const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type':'application/json', 'Authorization': 'Bearer ' + apiKey }, body: JSON.stringify(body) });
-    if (!res.ok) return null;
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=${apiKey}`;
+    const body = {
+      model: "models/text-embedding-004",
+      content: {
+        parts: [{
+          text: text.slice(0, 10000) // Gemini embedding limit
+        }]
+      }
+    };
+    const res = await fetch(endpoint, { 
+      method: 'POST', 
+      headers: { 'Content-Type':'application/json' }, 
+      body: JSON.stringify(body) 
+    });
+    if (!res.ok) {
+      console.warn('Gemini embedding failed:', res.status);
+      return null;
+    }
     const j = await res.json();
-    if (j && j.data && j.data[0] && j.data[0].embedding) return j.data[0].embedding;
+    if (j && j.embedding && j.embedding.values) return j.embedding.values;
     return null;
-  } catch (e) { console.warn('fetchEmbeddingOpenAI err', e); return null; }
+  } catch (e) { 
+    console.warn('fetchEmbeddingGemini err', e); 
+    return null; 
+  }
+}
+
+// Legacy function - now uses Gemini
+async function fetchEmbeddingOpenAI(text) {
+  return fetchEmbeddingGemini(text);
 }
 
 // Message handlers for vector index / query

@@ -3516,17 +3516,92 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       });
     }
 
-    // Build simple keyword suggestions from text or recent conversations
+    // Build topic suggestions from text (prioritize nouns, technical terms, capitalized words)
     function buildKeywordsFromText(text, limit = 5) {
       try {
         if (!text) return [];
-        const stop = new Set(['the','that','this','with','from','about','they','would','have','there','their','which','what','when','where','your','you','will','could','should','and','for','but','are','not','was','were','has','had','can','all','any','more','our','its','also','use','using']);
-        const words = String(text).toLowerCase().split(/[^\w]+/).filter(w => w.length > 3 && !stop.has(w));
-        const freq = {};
-        words.forEach(w => freq[w] = (freq[w]||0) + 1);
-        const keys = Object.entries(freq).sort((a,b) => b[1]-a[1]).slice(0, limit).map(k=>k[0]);
-        return keys.map(k => k.charAt(0).toUpperCase()+k.slice(1));
-      } catch (e) { return []; }
+        
+        // Expanded stop words to filter out common verbs, auxiliaries, and non-topic words
+        const stop = new Set([
+          'the','that','this','with','from','about','they','would','have','there','their','which','what','when','where','your','you','will','could','should','and','for','but','are','not','was','were','has','had','can','all','any','more','our','its','also','use','using','like','just','know','get','make','want','need','think','see','look','take','come','well','even','back','good','very','much','said','than','some','into','them','only','over','such','other','then','now','may','these','after','most','been','find','here','give','many','does','done','being','because','going','really','actually','probably','definitely','maybe','perhaps','seems','something','anything','everything','nothing','someone','anyone','everyone','nobody','want','need','create','makes','trying','asked','looking','getting','working','having'
+        ]);
+        
+        // Extract meaningful phrases (2-3 word combinations) and single words
+        const phrases = [];
+        const words = String(text).split(/[^\w\s]+/);
+        
+        // Look for 2-3 word technical phrases
+        for (let i = 0; i < words.length - 1; i++) {
+          const w1 = words[i].toLowerCase();
+          const w2 = words[i + 1].toLowerCase();
+          
+          // Skip if either word is a stop word or too short
+          if (w1.length <= 2 || w2.length <= 2 || stop.has(w1) || stop.has(w2)) continue;
+          
+          // Create phrase
+          const phrase = words[i] + ' ' + words[i + 1];
+          const phraseLower = phrase.toLowerCase();
+          
+          // Only keep if it looks like a topic (at least one word capitalized or technical pattern)
+          if (/[A-Z]/.test(phrase) || /\d/.test(phrase)) {
+            phrases.push(phrase);
+          }
+        }
+        
+        // Extract single words with scoring
+        const scores = {};
+        
+        words.forEach((orig, idx) => {
+          const lower = orig.toLowerCase();
+          if (lower.length <= 3 || stop.has(lower)) return;
+          
+          let score = 0;
+          
+          // Bonus for capitalized words (proper nouns, technical terms)
+          if (/^[A-Z]/.test(orig) && idx > 0) score += 5;
+          
+          // Bonus for technical patterns (camelCase, acronyms, compound words)
+          if (/[A-Z]{2,}/.test(orig)) score += 8; // Acronyms like API, JSON, SQL
+          if (/[a-z][A-Z]/.test(orig)) score += 6; // camelCase like useState, MongoDB
+          if (orig.includes('_') || orig.includes('-')) score += 4; // snake_case or kebab-case
+          
+          // Bonus for technical/domain words
+          if (/^(function|method|class|interface|component|service|controller|model|schema|database|server|client|endpoint|route|middleware|handler|provider|repository|factory|builder|adapter|decorator|strategy)$/i.test(lower)) score += 7;
+          
+          // Bonus for common technical suffixes
+          if (/(?:tion|ness|ment|ence|ance|ity|er|or|ist|ism)$/.test(lower)) score += 2;
+          
+          // Base frequency score
+          scores[lower] = (scores[lower] || 0) + 1 + score;
+        });
+        
+        // Sort by score and take top results
+        const topWords = Object.entries(scores)
+          .sort((a,b) => b[1] - a[1])
+          .slice(0, limit * 2)
+          .map(k => k[0]);
+        
+        // Combine phrases and words, prioritizing phrases
+        const combined = [...new Set([...phrases.slice(0, 3), ...topWords])];
+        
+        // Capitalize and filter
+        const topics = combined
+          .map(k => k.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '))
+          .filter(t => {
+            const lower = t.toLowerCase();
+            // Filter out common verb phrases and non-topics
+            if (/^(want to|i want|to create|trying to|going to|need to|have to|using|making|doing|getting|taking|looking|thinking|working|creating|building)$/i.test(lower)) return false;
+            // Filter out single letters or numbers
+            if (/^[a-z]$/i.test(lower) || /^\d+$/.test(lower)) return false;
+            return true;
+          })
+          .slice(0, limit);
+        
+        return topics;
+      } catch (e) { 
+        console.error('buildKeywordsFromText error:', e);
+        return []; 
+      }
     }
 
     // Try to get higher-quality suggestions using embeddings via background
@@ -3547,34 +3622,82 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         // clear existing
         try { while (smartSuggestRow.firstChild) smartSuggestRow.removeChild(smartSuggestRow.firstChild); } catch(e){}
         let suggestions = [];
-        // Try embedding-based suggestions via background first (higher quality)
+        
+        // Priority 1: Use saved topics from recent conversations (most relevant)
         try {
-          if (lastScannedText && lastScannedText.length) {
+          const convs = await loadConversationsAsync();
+          if (convs && convs.length) {
+            // Collect all topics from recent conversations
+            const allTopics = [];
+            convs.slice(0, 12).forEach(c => {
+              if (c.topics && Array.isArray(c.topics)) {
+                allTopics.push(...c.topics);
+              }
+            });
+            
+            // Count frequency and pick top topics
+            if (allTopics.length > 0) {
+              const freq = {};
+              allTopics.forEach(t => {
+                const normalized = t.trim().toLowerCase();
+                freq[normalized] = (freq[normalized] || 0) + 1;
+              });
+              suggestions = Object.entries(freq)
+                .sort((a,b) => b[1] - a[1])
+                .slice(0, 6)
+                .map(([topic]) => topic.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '));
+            }
+          }
+        } catch(e) { debugLog('load saved topics failed', e); }
+        
+        // Priority 2: Try embedding-based suggestions via background (if no saved topics)
+        if ((!suggestions || suggestions.length === 0) && lastScannedText && lastScannedText.length) {
+          try {
             const resp = await requestEmbeddingSuggestions(lastScannedText, 6);
             if (resp && resp.ok && Array.isArray(resp.suggestions) && resp.suggestions.length) {
               suggestions = resp.suggestions.slice(0,6);
             }
-          }
-        } catch(e) { debugLog('embed suggest failed', e); }
-
-        // If embedding suggestions not available, fallback to local keyword extraction
-        if (!suggestions || suggestions.length === 0) {
-          // prefer last scanned text
-          try { if (lastScannedText && lastScannedText.length) suggestions = buildKeywordsFromText(lastScannedText, 6); } catch(e){}
-          if (!suggestions || suggestions.length === 0) {
-            // fallback: aggregate recent conversations
-            try {
-              const convs = await loadConversationsAsync();
-              const sample = (convs || []).slice(-8).map(c => (c.conversation||[]).map(m=>m.text).join(' ')).join('\n');
-              suggestions = buildKeywordsFromText(sample, 6);
-            } catch(e) { suggestions = []; }
-          }
+          } catch(e) { debugLog('embed suggest failed', e); }
         }
-        // ensure unique and limit to 6
-        suggestions = Array.from(new Set(suggestions)).slice(0,6);
+
+        // Priority 3: Extract topics from last scanned text (fallback)
         if (!suggestions || suggestions.length === 0) {
-          // default helpful prompts
-          suggestions = ['Show recent errors','How to export chats','Summarize last session'];
+          try { 
+            if (lastScannedText && lastScannedText.length) {
+              suggestions = buildKeywordsFromText(lastScannedText, 6);
+            }
+          } catch(e){}
+        }
+        
+        // Priority 4: Aggregate topics from recent conversation text (last resort)
+        if (!suggestions || suggestions.length === 0) {
+          try {
+            const convs = await loadConversationsAsync();
+            const sample = (convs || []).slice(-8).map(c => (c.conversation||[]).map(m=>m.text).join(' ')).join('\n');
+            suggestions = buildKeywordsFromText(sample, 6);
+          } catch(e) { suggestions = []; }
+        }
+        
+        // Ensure unique (case-insensitive, trimmed) and filter bad patterns
+        const seen = new Set();
+        suggestions = suggestions
+          .map(s => s.trim())
+          .filter(s => {
+            const normalized = s.toLowerCase();
+            // Skip if already seen
+            if (seen.has(normalized)) return false;
+            // Skip if too short or matches bad patterns
+            if (s.length < 3) return false;
+            if (/^(want|i want|to|the|and|for|with|from|about)$/i.test(normalized)) return false;
+            if (/^(want to|i want|to create|trying to|going to|need to|have to)$/i.test(normalized)) return false;
+            seen.add(normalized);
+            return true;
+          })
+          .slice(0, 6);
+        
+        if (!suggestions || suggestions.length === 0) {
+          // default helpful prompts (topic-like)
+          suggestions = ['API integration','Error handling','Best practices','Code optimization','Database design','Architecture'];
         }
         // create chips
         suggestions.forEach(s => {
