@@ -86,15 +86,15 @@
     } catch (e) { debugLog('ensureAvatarExists failed', e); }
   }
 
-  // Loading helpers for buttons
+  // Loading helpers for buttons - using animated dots instead of spinner
   function addLoadingToButton(btn, label) {
     try {
       if (!btn) return;
       if (!btn.getAttribute('data-orig-text')) btn.setAttribute('data-orig-text', btn.innerHTML || btn.textContent || '');
       btn.disabled = true;
       btn.classList.add('cb-loading');
-      // spinner + label
-      btn.innerHTML = `<span class="cb-spinner" aria-hidden="true"></span> ${label}`;
+      // animated dots + label
+      btn.innerHTML = `${label}<span class="cb-dots" aria-hidden="true"><span class="dot">.</span><span class="dot">.</span><span class="dot">.</span></span>`;
     } catch (e) { debugLog('addLoadingToButton failed', e); }
   }
   function removeLoadingFromButton(btn, restoreLabel) {
@@ -739,11 +739,10 @@
   graphView.appendChild(graphIntro);
 
   const graphControls = document.createElement('div'); graphControls.className = 'cb-view-controls';
-  const btnExportGraph = document.createElement('button'); btnExportGraph.className = 'cb-btn'; btnExportGraph.textContent = 'Export'; btnExportGraph.title = 'Download knowledge graph as JSON';
-  const btnImportGraph = document.createElement('button'); btnImportGraph.className = 'cb-btn'; btnImportGraph.textContent = 'Import'; btnImportGraph.title = 'Restore knowledge graph from backup';
+  const btnExportPNG = document.createElement('button'); btnExportPNG.className = 'cb-btn'; btnExportPNG.textContent = 'Export PNG'; btnExportPNG.title = 'Export knowledge graph as PNG (optionally generated via Gemini)';
+  const btnExportHTML = document.createElement('button'); btnExportHTML.className = 'cb-btn'; btnExportHTML.textContent = 'Export HTML'; btnExportHTML.title = 'Export knowledge graph as standalone HTML snapshot';
   const btnRefreshGraph = document.createElement('button'); btnRefreshGraph.className = 'cb-btn'; btnRefreshGraph.textContent = 'Refresh'; btnRefreshGraph.title = 'Rebuild graph visualization';
-  graphControls.appendChild(btnExportGraph); graphControls.appendChild(btnImportGraph); graphControls.appendChild(btnRefreshGraph);
-  graphView.appendChild(graphControls);
+  graphControls.appendChild(btnExportPNG); graphControls.appendChild(btnExportHTML); graphControls.appendChild(btnRefreshGraph);
 
   const graphCanvas = document.createElement('canvas'); graphCanvas.id = 'cb-graph-canvas'; graphCanvas.width = 350; graphCanvas.height = 400;
   graphCanvas.style.cssText = 'width:100%;height:400px;background:#0b0f17;border-radius:10px;margin-top:12px;cursor:grab;position:relative;';
@@ -764,6 +763,9 @@
     </div>
   `;
   graphView.appendChild(graphLegend);
+
+  // Place export / refresh controls after the image and legend as requested
+  graphView.appendChild(graphControls);
 
   const graphTooltip = document.createElement('div'); graphTooltip.id = 'cb-graph-tooltip';
   graphTooltip.style.cssText = 'display:none;position:absolute;background:rgba(20,20,30,0.98);color:#e6cf9f;padding:10px 12px;border-radius:8px;font-size:12px;line-height:1.4;max-width:250px;pointer-events:none;z-index:10;border:1px solid rgba(230,207,159,0.3);box-shadow:0 4px 12px rgba(0,0,0,0.4);';
@@ -2074,7 +2076,8 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       try {
         closeAllViews();
         graphView.classList.add('cb-view-active');
-        await renderKnowledgeGraph();
+        const simulationPromise = renderKnowledgeGraph();
+        // Let simulation run in background (no need to block UI opening)
       } catch (e) {
         toast('Failed to open knowledge graph');
         debugLog('Knowledge Graph open error', e);
@@ -2092,7 +2095,9 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         addLoadingToButton(btnRefreshGraph, 'Refreshing…');
         announce('Refreshing knowledge graph');
         try { showSkeleton(graphStats, 80); } catch(e){}
-        await renderKnowledgeGraph();
+        const simulationPromise = renderKnowledgeGraph();
+        // Wait for simulation to complete before showing "done" toast
+        await Promise.race([simulationPromise, new Promise(r => setTimeout(r, 5000))]);
         try { hideSkeleton(graphStats); } catch(e){}
         toast('Graph refreshed');
         announce('Knowledge graph refreshed');
@@ -2105,85 +2110,151 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       }
     });
 
-    // Knowledge Graph: Export to JSON file
-    btnExportGraph.addEventListener('click', async () => {
+    // Knowledge Graph: Export PNG via Gemini (if available) or fallback to canvas snapshot
+    btnExportPNG.addEventListener('click', async () => {
       try {
+        // Ensure graph data exists and graph is rendered
         const kg = await loadKnowledgeGraph();
+        if (!kg || !kg.length) {
+          toast('No knowledge graph data found — exporting canvas snapshot instead');
+          // still try to render canvas (may show "no data")
+          const simulationPromise = renderKnowledgeGraph();
+          // Wait for simulation to complete (or timeout after 5s)
+          await Promise.race([simulationPromise, new Promise(r => setTimeout(r, 5000))]);
+          try {
+            const canvas = graphCanvas;
+            const scale = 2;
+            const tmp = document.createElement('canvas');
+            tmp.width = canvas.width * scale;
+            tmp.height = canvas.height * scale;
+            const tctx = tmp.getContext('2d');
+            tctx.fillStyle = '#0b0f17';
+            tctx.fillRect(0, 0, tmp.width, tmp.height);
+            tctx.drawImage(canvas, 0, 0, tmp.width, tmp.height);
+            const dataUrl = tmp.toDataURL('image/png');
+            const a = document.createElement('a'); a.href = dataUrl; a.download = `chatbridge-graph-${Date.now()}.png`; a.click();
+            toast('Graph exported as PNG (canvas snapshot)');
+            return;
+          } catch (e) { debugLog('fallback canvas export failed', e); toast('Export failed'); return; }
+        }
+
+        const simulationPromise = renderKnowledgeGraph();
+        // Wait for force-directed layout to settle (or timeout after 5s)
+        await Promise.race([simulationPromise, new Promise(r => setTimeout(r, 5000))]);
+        toast('Preparing graph for export...');
+
+        // Build a short textual prompt describing the graph for Gemini image generation
         const convs = await loadConversationsAsync();
-        const exportData = {
-          version: '1.0',
-          exportDate: new Date().toISOString(),
-          knowledgeGraph: kg,
-          conversations: convs,
-          metadata: {
-            totalConversations: convs.length,
-            totalKnowledge: kg.length,
-            platforms: [...new Set(convs.map(c => c.platform).filter(Boolean))]
-          }
+        const nodeCount = kg.length;
+        const topEntities = Array.from(new Set([].concat(...(kg.map(k => k.entities || []))))).slice(0,8);
+        const topThemes = Array.from(new Set([].concat(...(kg.map(k => k.themes || []))))).slice(0,8);
+        const prompt = `Create a visually appealing, high-resolution top-down network map of ${nodeCount} conversation nodes. Highlight shared entities and themes. Use warm palette, legible labels for nodes, and emphasize clusters. Entities: ${topEntities.join(', ')}. Themes: ${topThemes.join(', ')}.`;
+
+        // Ask background to generate image via Gemini (if available)
+        let geminiImage = null;
+        try {
+          const resp = await new Promise(res => {
+            try {
+              chrome.runtime.sendMessage({ type: 'generate_image', payload: { model: 'nano-banana', prompt } }, (r) => {
+                if (chrome.runtime.lastError) return res({ ok: false, error: chrome.runtime.lastError.message });
+                return res(r || { ok: false });
+              });
+            } catch (e) { return res({ ok: false, error: e && e.message }); }
+          });
+          debugLog('gemini image response', resp);
+          if (resp && resp.ok && resp.imageBase64) geminiImage = resp.imageBase64;
+        } catch (e) { debugLog('gemini image request failed', e); }
+
+        // Helper: check if an image (dataURL) is mostly black
+        const isMostlyBlack = async (dataUrl) => {
+          return new Promise((res) => {
+            try {
+              const img = new Image();
+              img.onload = () => {
+                try {
+                  const c = document.createElement('canvas');
+                  c.width = Math.min(img.width, 300);
+                  c.height = Math.min(img.height, 300);
+                  const cx = c.getContext('2d');
+                  cx.drawImage(img, 0, 0, c.width, c.height);
+                  const d = cx.getImageData(0, 0, c.width, c.height).data;
+                  let black = 0, total = 0;
+                  for (let i = 0; i < d.length; i += 4 * 10) { // sample every 10th pixel
+                    const r = d[i], g = d[i+1], b = d[i+2];
+                    total++;
+                    if (r < 12 && g < 12 && b < 12) black++;
+                  }
+                  res((black / Math.max(1,total)) > 0.95);
+                } catch (e) { res(false); }
+              };
+              img.onerror = () => res(false);
+              img.src = dataUrl;
+            } catch (e) { res(false); }
+          });
         };
-        
-        const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `chatbridge-export-${Date.now()}.json`;
-        a.click();
-        URL.revokeObjectURL(url);
-        
-        toast('Knowledge graph exported');
+
+        // If we have an image from Gemini, validate it (avoid pure-black images)
+        if (geminiImage) {
+          try {
+            const dataUrl = 'data:image/png;base64,' + geminiImage;
+            const black = await isMostlyBlack(dataUrl);
+            if (!black) {
+              const a = document.createElement('a'); a.href = dataUrl; a.download = `chatbridge-graph-${Date.now()}.png`; a.click();
+              toast('Graph exported as PNG (generated by Gemini)');
+              return;
+            } else {
+              debugLog('Gemini image appears mostly black, falling back to canvas snapshot');
+            }
+          } catch (e) { debugLog('gemini image validation failed', e); }
+        }
+
+        // Fallback: capture canvas snapshot
+        try {
+          const canvas = graphCanvas;
+          const scale = 2;
+          const tmp = document.createElement('canvas');
+          tmp.width = canvas.width * scale;
+          tmp.height = canvas.height * scale;
+          const tctx = tmp.getContext('2d');
+          tctx.fillStyle = '#0b0f17';
+          tctx.fillRect(0, 0, tmp.width, tmp.height);
+          tctx.drawImage(canvas, 0, 0, tmp.width, tmp.height);
+          const dataUrl = tmp.toDataURL('image/png');
+          const a = document.createElement('a'); a.href = dataUrl; a.download = `chatbridge-graph-${Date.now()}.png`; a.click();
+          toast('Graph exported as PNG (canvas snapshot)');
+        } catch (e) {
+          toast('Export PNG failed');
+          debugLog('Export PNG failed', e);
+        }
       } catch (e) {
-        toast('Export failed');
-        debugLog('Export error', e);
+        toast('Export PNG failed');
+        debugLog('Export PNG error', e);
       }
     });
 
-    // Knowledge Graph: Import from JSON file
-    btnImportGraph.addEventListener('click', () => {
+    // Knowledge Graph: Export HTML snapshot (standalone page embedding canvas image)
+    btnExportHTML.addEventListener('click', async () => {
       try {
-  const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = 'application/json,.json';
-  input.setAttribute('aria-label', 'Import knowledge graph file');
-        input.addEventListener('change', async (e) => {
-          try {
-            const file = e.target.files[0];
-            if (!file) return;
-            
-            const text = await file.text();
-            const importData = JSON.parse(text);
-            
-            // Validate structure
-            if (!importData.knowledgeGraph || !importData.conversations) {
-              toast('Invalid export file format');
-              return;
-            }
-            
-            // Merge strategy: keep existing, add new
-            const existingKg = await loadKnowledgeGraph();
-            const existingConvs = await loadConversationsAsync();
-            
-            const existingKgIds = new Set(existingKg.map(k => k.id));
-            const existingConvIds = new Set(existingConvs.map(c => c.id));
-            
-            const newKg = importData.knowledgeGraph.filter(k => !existingKgIds.has(k.id));
-            const newConvs = importData.conversations.filter(c => !existingConvIds.has(c.id));
-            
-            // Save merged data
-            await Storage.set('chatbridge:knowledge_graph', JSON.stringify([...existingKg, ...newKg]));
-            await Storage.set('chatbridge:conversations', JSON.stringify([...existingConvs, ...newConvs]));
-            
-            toast(`Imported ${newKg.length} knowledge items, ${newConvs.length} conversations`);
-            await renderKnowledgeGraph(); // Refresh view
-            
-          } catch (e) {
-            toast('Import failed: ' + (e.message || 'Invalid file'));
-            debugLog('Import error', e);
-          }
-        });
-        input.click();
+        const simulationPromise = renderKnowledgeGraph();
+        // Wait for force-directed layout to complete (or timeout after 5s)
+        await Promise.race([simulationPromise, new Promise(r => setTimeout(r, 5000))]);
+        const canvas = graphCanvas;
+        let dataUrl = '';
+        try { dataUrl = canvas.toDataURL('image/png'); } catch (e) { dataUrl = ''; }
+
+        const html = `<!doctype html>\n<html><head><meta charset="utf-8"><title>ChatBridge Knowledge Graph</title><style>body{margin:0;background:#0A0F1C;color:#E6E9F0;font-family:Arial,sans-serif} .wrap{padding:18px}</style></head><body><div class="wrap"><h2>ChatBridge Knowledge Graph (snapshot)</h2><p>Generated: ${new Date().toLocaleString()}</p>${dataUrl ? `<img src="${dataUrl}" alt="Knowledge graph snapshot" style="max-width:100%;height:auto;border-radius:8px;box-shadow:0 10px 30px rgba(0,0,0,0.5)" />` : '<p>(Preview unavailable)</p>'}</div></body></html>`;
+
+        const blob = new Blob([html], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `chatbridge-graph-snapshot-${Date.now()}.html`;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 2000);
+        toast('Graph snapshot exported (HTML)');
       } catch (e) {
-        toast('Import failed');
-        debugLog('Import handler error', e);
+        toast('Export HTML failed');
+        debugLog('Export HTML error', e);
       }
     });
 
@@ -2282,9 +2353,15 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         let panOffset = { x: 0, y: 0 };
         let zoom = 1;
         
-        // Force simulation
+        // Force simulation with completion tracking
         let animationFrames = 0;
         const maxFrames = 120;
+        let simulationComplete = false;
+        
+        // Expose promise that resolves when simulation finishes
+        const simulationPromise = new Promise(resolve => {
+          window.__cbGraphSimulationResolve = resolve;
+        });
         
         function applyForces() {
           // Repulsion between nodes
@@ -2410,6 +2487,15 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
             requestAnimationFrame(render);
           } else if (isDragging || hoveredNode) {
             requestAnimationFrame(render);
+          } else {
+            // Simulation complete - signal completion
+            if (!simulationComplete) {
+              simulationComplete = true;
+              if (typeof window.__cbGraphSimulationResolve === 'function') {
+                window.__cbGraphSimulationResolve();
+                window.__cbGraphSimulationResolve = null;
+              }
+            }
           }
         }
         
@@ -2563,9 +2649,13 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         // Start rendering
         render();
         
+        // Return promise that resolves when simulation completes
+        return simulationPromise;
+        
       } catch (e) {
         debugLog('renderKnowledgeGraph error', e);
         graphStats.innerHTML = '<div style="color:#ff6b6b;text-align:center;">❌ Error rendering graph. Try refreshing.</div>';
+        return Promise.resolve(); // Return resolved promise on error
       }
     }
 
@@ -4432,6 +4522,15 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           cur.push(conv);
           await new Promise(r => chrome.storage.local.set({ [key]: cur }, () => r()));
           debugLog('saved to chrome.storage.local', conv.ts);
+
+          // Also notify background to persist this conversation (fire and forget - don't block)
+          try {
+            if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+              chrome.runtime.sendMessage({ type: 'save_conversation', payload: conv }, (res) => {
+                debugLog('background save_conversation result', res);
+              });
+            }
+          } catch (e) { debugLog('background save_conversation failed', e); }
         }
       } catch (e) {
         debugLog('save error (chrome.storage.local)', e);

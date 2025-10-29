@@ -929,4 +929,37 @@ Rewritten conversation (optimized for ${tgt}):`;
     })();
     return true;
   }
+
+  // Image generation via Gemini (optional - if API supports model)
+  if (msg && msg.type === 'generate_image') {
+    // Use hardcoded Gemini API key (same as call_gemini)
+    const GEMINI_API_KEY = 'AIzaSyDH7q1lOI8grDht1H-WHNtsyptIiSrgogQ';
+    if (!limiter()) return sendResponse({ ok:false, error: 'rate_limited' });
+    (async () => {
+      try {
+        const payload = msg.payload || {};
+        const model = payload.model || 'nano-banana';
+        const prompt = payload.prompt || '';
+        // Best-effort endpoint for image generation - may vary by API version
+        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateImage?key=${GEMINI_API_KEY}`;
+        const body = { prompt: prompt, size: payload.size || '1024x1024' };
+        const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify(body) });
+        const json = await res.json();
+        if (!res.ok) {
+          return sendResponse({ ok:false, error: 'image_http_error', status: res.status, body: json });
+        }
+        // Expect base64-encoded image in response (best-effort parsing)
+        let b64 = null;
+        try {
+          if (json && json.data && Array.isArray(json.data) && json.data[0] && json.data[0].b64_json) b64 = json.data[0].b64_json;
+          else if (json && json.output && Array.isArray(json.output) && json.output[0] && json.output[0].image) b64 = json.output[0].image;
+        } catch (e) { b64 = null; }
+        if (!b64) return sendResponse({ ok:false, error: 'no_image_in_response', body: json });
+        return sendResponse({ ok:true, imageBase64: b64 });
+      } catch (e) {
+        return sendResponse({ ok:false, error: 'image_fetch_error', message: (e && e.message) || String(e) });
+      }
+    })();
+    return true;
+  }
 });

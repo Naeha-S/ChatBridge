@@ -68,6 +68,17 @@ chatbridge:conversations
 chatbridge:knowledge_graph
 localStorage.json
 
+# Exported data files
+chatbridge-export-*.json
+knowledge-graph-export-*.json
+
+# User-generated backups
+*_backup_*.json
+backup_conversations_*.json
+
+# Debug logs
+debug_*.log
+
 # Package manager locks (optional - keep yarn.lock or package-lock.json if preferred)
 # package-lock.json
 # yarn.lock
