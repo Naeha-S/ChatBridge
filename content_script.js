@@ -731,6 +731,12 @@
   const smartProvenance = document.createElement('div'); smartProvenance.id = 'cb-smart-provenance'; smartProvenance.style.fontSize = '12px'; smartProvenance.style.marginTop = '8px'; smartProvenance.style.color = 'rgba(200,200,200,0.9)'; smartProvenance.textContent = '';
   smartView.appendChild(smartProvenance);
 
+  // Connections panel (for Find Connections results)
+  const connectionsTitle = document.createElement('div'); connectionsTitle.className = 'cb-view-title'; connectionsTitle.style.fontSize = '13px'; connectionsTitle.style.marginTop = '12px'; connectionsTitle.textContent = 'Connections';
+  smartView.appendChild(connectionsTitle);
+  const connectionsResult = document.createElement('div'); connectionsResult.id = 'cb-connections-result'; connectionsResult.className = 'cb-view-result'; connectionsResult.textContent = '(No connections yet)';
+  smartView.appendChild(connectionsResult);
+
   panel.appendChild(smartView);
 
   // Knowledge Graph Explorer view
@@ -1771,11 +1777,56 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
     }
 
     // Cross-Context Memory: Detect context on page and show suggestions with sliding window
+    function renderConnectionsPanel(relatedConvs, activeContext) {
+      try {
+        if (!connectionsResult) return;
+        // Build list of cards similar to the floating notification, but inline
+        connectionsResult.innerHTML = '';
+        if (!relatedConvs || relatedConvs.length === 0) {
+          const empty = document.createElement('div');
+          empty.style.cssText = 'opacity:0.8;';
+          empty.textContent = 'No connections found yet.' + (activeContext && activeContext.keywords && activeContext.keywords.length ? ' Topics detected: ' + activeContext.keywords.slice(0,5).join(', ') : '');
+          connectionsResult.appendChild(empty);
+          return;
+        }
+        relatedConvs.slice(0, 6).forEach(conv => {
+          const card = document.createElement('div');
+          card.style.cssText = 'background:rgba(11,15,23,0.15);padding:10px;border-radius:10px;margin-bottom:10px;border-left:3px solid rgba(11,15,23,0.4);';
+          const header = document.createElement('div'); header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;';
+          const platform = document.createElement('div'); platform.style.cssText = 'font-weight:600;font-size:12px;';
+          const platformName = (conv.platform || 'Unknown').replace(/^https?:\/\//, '').replace(/\/$/, '');
+          platform.textContent = platformName;
+          const score = document.createElement('div'); score.style.cssText = 'background:rgba(11,15,23,0.3);padding:2px 6px;border-radius:6px;font-size:11px;font-weight:600;display:flex;align-items:center;gap:4px;';
+          const confidence = conv.confidence || 0;
+          const color = confidence >= 70 ? '#10a37f' : confidence >= 50 ? '#ffa500' : '#888';
+          score.innerHTML = `<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${color}"></span> ${confidence}%`;
+          header.appendChild(platform); header.appendChild(score);
+          card.appendChild(header);
+          if (conv.context) {
+            const ctx = document.createElement('div'); ctx.style.cssText = 'font-size:12px;margin-bottom:6px;opacity:0.9;';
+            ctx.textContent = conv.context.slice(0, 140) + (conv.context.length > 140 ? '…' : '');
+            card.appendChild(ctx);
+          }
+          if (conv.entities && conv.entities.length) {
+            const chips = document.createElement('div'); chips.style.cssText = 'display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px;';
+            conv.entities.slice(0,5).forEach(e => { const tag = document.createElement('span'); tag.style.cssText = 'background:rgba(11,15,23,0.25);padding:3px 8px;border-radius:6px;font-size:10px;font-weight:500;'; tag.textContent = e; chips.appendChild(tag); });
+            card.appendChild(chips);
+          }
+          const open = document.createElement('button'); open.className = 'cb-btn'; open.textContent = 'Open conversation'; open.style.marginTop = '6px';
+          open.addEventListener('click', () => { try { openConversationById(conv.id); } catch(_) {} });
+          card.appendChild(open);
+          connectionsResult.appendChild(card);
+        });
+      } catch (e) { debugLog('renderConnectionsPanel error', e); }
+    }
+
     async function detectAndSuggestContext() {
       try {
         // Check if we have any knowledge graph data first
         const kg = await loadKnowledgeGraph();
         if (!kg || kg.length === 0) {
+          // Reflect inline in Connections panel as well as toast
+          try { if (connectionsResult) { connectionsResult.textContent = 'No saved conversations yet. Scan some chats first to build your knowledge graph!'; } } catch(_) {}
           toast('No saved conversations yet. Scan some chats first to build your knowledge graph!');
           return;
         }
@@ -1783,6 +1834,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         // Quick scan of visible messages to extract current context
         const msgs = await scanChat();
         if (!msgs || msgs.length < 2) {
+          try { if (connectionsResult) { connectionsResult.textContent = 'Not enough conversation context on this page. Try having a longer chat first.'; } } catch(_) {}
           toast('Not enough conversation context on this page. Try having a longer chat first.');
           return;
         }
@@ -1791,24 +1843,30 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         const activeContext = detectActiveContext(msgs, 8, 40);
         
         if (!activeContext) {
+          try { if (connectionsResult) { connectionsResult.textContent = 'Could not detect clear context from current conversation.'; } } catch(_) {}
           toast('Could not detect clear context from current conversation.');
           return;
         }
         
         debugLog('Active context detected:', activeContext);
         
+        // Update inline panel status
+        try { if (connectionsResult) connectionsResult.textContent = 'Analyzing connections…'; } catch(_) {}
+        
         // Find related conversations using detected entities and themes
         const related = await findRelatedConversations(activeContext.entities, activeContext.themes, 5);
         
         if (related.length) {
-          showContextSuggestion(related);
+          try { renderConnectionsPanel(related, activeContext); } catch(_) {}
+          // Keep toast, but prefer inline panel over floating notification
           toast(`Found ${related.length} related conversation${related.length > 1 ? 's' : ''} (${activeContext.confidence}% confidence)`);
         } else {
-          // Show helpful message when no connections found
-          showNoConnectionsMessage(activeContext.keywords);
+          // Show helpful message inline when no connections found
+          try { renderConnectionsPanel([], activeContext); } catch(_) {}
         }
       } catch (e) {
         debugLog('detectAndSuggestContext error', e);
+        try { if (connectionsResult) { connectionsResult.textContent = 'Analysis failed. Please try again.'; } } catch(_) {}
       }
     }
 
@@ -2090,7 +2148,12 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       try {
         addLoadingToButton(btnFindConnections, 'Analyzing…');
         announce('Analyzing conversation for related content');
+        // Open Smart view and show the Connections panel inline
+        try { closeAllViews(); } catch(_) {}
+        try { smartView.classList.add('cb-view-active'); } catch(_) {}
+        try { if (connectionsResult) { connectionsResult.textContent = 'Analyzing connections…'; } } catch(_) {}
         await detectAndSuggestContext();
+        try { if (connectionsResult) connectionsResult.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch(_) {}
         toast('Context analysis complete');
         announce('Context analysis complete');
       } catch (e) {
@@ -2179,19 +2242,25 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         await Promise.race([simulationPromise, new Promise(r => setTimeout(r, 5000))]);
         toast('Preparing graph for export...');
 
-        // Build a short textual prompt describing the graph for Gemini image generation
+        // Build a descriptive prompt for Imagen 3 to generate the graph visualization
         const convs = await loadConversationsAsync();
         const nodeCount = kg.length;
         const topEntities = Array.from(new Set([].concat(...(kg.map(k => k.entities || []))))).slice(0,8);
         const topThemes = Array.from(new Set([].concat(...(kg.map(k => k.themes || []))))).slice(0,8);
-        const prompt = `Create a visually appealing, high-resolution top-down network map of ${nodeCount} conversation nodes. Highlight shared entities and themes. Use warm palette, legible labels for nodes, and emphasize clusters. Entities: ${topEntities.join(', ')}. Themes: ${topThemes.join(', ')}.`;
+        const platforms = Array.from(new Set(kg.map(k => {
+          const c = convs.find(cv => cv.id === k.id);
+          return c?.platform || 'unknown';
+        }).filter(Boolean))).slice(0,5);
+        
+        const prompt = `Create a beautiful, high-quality network graph visualization showing ${nodeCount} interconnected conversation nodes. Style: modern tech aesthetic with a dark navy background (#0b0f17). Draw circles for nodes in these colors: ChatGPT (green #10a37f), Claude (purple #9b87f5), Gemini (blue #4285f4), Copilot (cyan #00a4ef), Perplexity (indigo #6366f1). Connect related nodes with glowing golden lines (#e6cf9f). Label key nodes with these topics: ${topThemes.slice(0,5).join(', ')}. Show a knowledge graph that emphasizes clusters and connections between AI conversations. Platforms: ${platforms.join(', ')}. Entities discussed: ${topEntities.join(', ')}. Professional, clean, and data-driven visualization.`;
 
-        // Ask background to generate image via Gemini (if available)
+        // Ask background to generate image via Imagen 3
         let geminiImage = null;
         try {
+          debugLog('Requesting Imagen 3 generation with prompt:', prompt.slice(0, 150) + '...');
           const resp = await new Promise(res => {
             try {
-              chrome.runtime.sendMessage({ type: 'generate_image', payload: { model: 'nano-banana', prompt } }, (r) => {
+              chrome.runtime.sendMessage({ type: 'generate_image', payload: { model: 'imagen-3.0-generate-001', prompt } }, (r) => {
                 if (chrome.runtime.lastError) return res({ ok: false, error: chrome.runtime.lastError.message });
                 return res(r || { ok: false });
               });
@@ -2300,9 +2369,21 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         const kg = await loadKnowledgeGraph();
         const convs = await loadConversationsAsync();
         
+        debugLog('[renderKnowledgeGraph] Starting render - kg entries:', kg.length, 'convs:', convs.length);
+        
         if (!kg.length) {
           graphStats.innerHTML = '<div style="text-align:center;padding:20px;"><div style="font-size:48px;opacity:0.3;">📊</div><div style="margin-top:12px;opacity:0.7;">No knowledge graph data yet</div><div style="font-size:12px;margin-top:8px;opacity:0.5;">Scan some chats to build your graph!</div></div>';
-          return;
+          // Clear canvas to show empty state
+          try {
+            const ctx = graphCanvas.getContext('2d');
+            ctx.fillStyle = '#0b0f17';
+            ctx.fillRect(0, 0, graphCanvas.width, graphCanvas.height);
+            ctx.fillStyle = 'rgba(230,207,159,0.3)';
+            ctx.font = '14px Poppins';
+            ctx.textAlign = 'center';
+            ctx.fillText('No graph data - scan some conversations first', graphCanvas.width / 2, graphCanvas.height / 2);
+          } catch (e) { debugLog('Canvas empty state render failed', e); }
+          return Promise.resolve();
         }
         
         // Build graph data structure
@@ -2462,6 +2543,11 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           // Clear canvas
           ctx.fillStyle = '#0b0f17';
           ctx.fillRect(0, 0, width, height);
+          
+          // DEBUG on first frame
+          if (animationFrames === 0) {
+            debugLog('First render frame - canvas:', canvas.width, 'x', canvas.height, 'nodes:', nodes.length, 'edges:', edges.length);
+          }
           
           // Draw edges
           edges.forEach(e => {
@@ -2682,7 +2768,16 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           } catch (err) { debugLog('canvas keydown', err); }
         });
         
-        // Start rendering
+        // DEBUG: Force immediate render to show something
+        try {
+          ctx.fillStyle = '#0b0f17';
+          ctx.fillRect(0, 0, width, height);
+          debugLog('Initial canvas clear done, starting render loop with', nodes.length, 'nodes');
+        } catch (e) {
+          debugLog('Canvas initial clear failed', e);
+        }
+        
+        // Start rendering loop
         render();
         
         // Return promise that resolves when simulation completes
@@ -3320,6 +3415,8 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         summSourceText.textContent = inputText || '(no conversation found)';
         summResult.textContent = '';
         summView.classList.add('cb-view-active');
+        // Auto-pick a sensible default summary type (user can still change)
+        try { if (inputText && summTypeSelect) { summTypeSelect.value = pickAdaptiveSummaryType(inputText); } } catch(_){ }
       } catch (e) { toast('Failed to open Summarize'); debugLog('open summ view', e); }
     });
 
@@ -3490,9 +3587,35 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
 
     btnCloseSmart.addEventListener('click', () => { try { smartView.classList.remove('cb-view-active'); } catch (e) {} });
 
-    // Load conversations as a Promise: prefer background persistent store, fallback to window.getConversations or localStorage
+    // Simple in-memory cache and batched storage writes for responsiveness
+    const __cbConvCache = { data: [], ts: 0 };
+    const __cbSetQueue = new Map(); // key -> { value, timer }
+    function setStorageBatched(key, value, delayMs = 150) {
+      try {
+        const prev = __cbSetQueue.get(key);
+        if (prev && prev.timer) clearTimeout(prev.timer);
+        const timer = setTimeout(() => {
+          try {
+            if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+              chrome.storage.local.set({ [key]: value }, () => {});
+            } else {
+              localStorage.setItem(key, JSON.stringify(value));
+            }
+          } catch (e) { debugLog('batched set failed', e); }
+        }, delayMs);
+        __cbSetQueue.set(key, { value, timer });
+      } catch (e) { debugLog('schedule set failed', e); }
+    }
+
+    // Load conversations as a Promise with cache: prefer background persistent store, fallback to window.getConversations or localStorage
     function loadConversationsAsync() {
       return new Promise(res => {
+        // Return cached list if fresh (< 1000ms)
+        try {
+          if (Array.isArray(__cbConvCache.data) && __cbConvCache.ts && (Date.now() - __cbConvCache.ts) < 1000) {
+            return res(__cbConvCache.data);
+          }
+        } catch (_) {}
         // Try background handler first
         try {
           chrome.runtime.sendMessage({ type: 'get_conversations', payload: {} }, (r) => {
@@ -3522,10 +3645,12 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
                       }
                     }
                     const merged = Array.from(m.values()).sort((a,b) => (b.ts||0) - (a.ts||0));
+                    try { __cbConvCache.data = merged; __cbConvCache.ts = Date.now(); } catch(_){}
                     res(merged);
                   } catch (e) { res(r.conversations); }
                 });
               } else {
+                try { __cbConvCache.data = r.conversations; __cbConvCache.ts = Date.now(); } catch(_){}
                 res(r.conversations);
               }
             } else {
@@ -3547,12 +3672,14 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
                 if (arr.length > 0) {
                   // Sort newest first
                   const sorted = arr.slice().sort((a,b) => (b.ts||0) - (a.ts||0));
+                  try { __cbConvCache.data = sorted; __cbConvCache.ts = Date.now(); } catch(_){}
                   res(sorted);
                 } else {
                   // Final fallback to localStorage
                   try {
                     const local = JSON.parse(localStorage.getItem('chatbridge:conversations') || '[]');
                     const sorted = (Array.isArray(local) ? local : []).slice().sort((a,b) => (b.ts||0) - (a.ts||0));
+                    try { __cbConvCache.data = sorted; __cbConvCache.ts = Date.now(); } catch(_){}
                     res(sorted);
                   } catch (e) { res([]); }
                 }
@@ -3561,6 +3688,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
               // Final fallback if chrome APIs not available
               const arr = JSON.parse(localStorage.getItem('chatbridge:conversations') || '[]'); 
               const sorted = (Array.isArray(arr) ? arr : []).slice().sort((a,b) => (b.ts||0) - (a.ts||0));
+              try { __cbConvCache.data = sorted; __cbConvCache.ts = Date.now(); } catch(_){}
               res(sorted);
             }
           } catch (e) { res([]); }
@@ -3682,6 +3810,24 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
     }
 
     async function populateSmartSuggestions() {
+      function enforceKeywordStyle(str) {
+        try {
+          let s = String(str || '').toLowerCase();
+          // strip punctuation except spaces, dash, underscore
+          s = s.replace(/["'`.,:;!?()\[\]{}]/g, ' ').replace(/\s+/g, ' ').trim();
+          // remove prompt-like prefixes
+          s = s.replace(/^(how to|how can i|how can we|can you|please|write|generate|create|build|explain|tell me|what is|show me|give me|help me)\s+/i, '').trim();
+          // limit to 3 words max
+          const parts = s.split(/\s+/).filter(Boolean).slice(0, 3);
+          if (!parts.length) return null;
+          const out = parts.join(' ');
+          // reject if still looks like a question/prompt
+          if (/\?$/.test(out) || /^(how|can|please|what|why|when|where)\b/i.test(out)) return null;
+          if (out.length < 3) return null;
+          // Title Case for display
+          return out.split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+        } catch (_) { return null; }
+      }
       try {
         // clear existing
         try { while (smartSuggestRow.firstChild) smartSuggestRow.removeChild(smartSuggestRow.firstChild); } catch(e){}
@@ -3709,7 +3855,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
               suggestions = Object.entries(freq)
                 .sort((a,b) => b[1] - a[1])
                 .slice(0, 6)
-                .map(([topic]) => topic.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '));
+                .map(([topic, count]) => ({ text: topic.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '), confidence: Math.min(90, 50 + (count * 10)) }));
             }
           }
         } catch(e) { debugLog('load saved topics failed', e); }
@@ -3719,7 +3865,16 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           try {
             const resp = await requestEmbeddingSuggestions(lastScannedText, 6);
             if (resp && resp.ok && Array.isArray(resp.suggestions) && resp.suggestions.length) {
-              suggestions = resp.suggestions.slice(0,6);
+              // Normalize: accept either strings or { phrase, confidence }
+              suggestions = resp.suggestions.slice(0,6).map(s => {
+                if (typeof s === 'string') return { text: s, confidence: undefined };
+                if (s && typeof s === 'object') {
+                  const text = s.text || s.phrase || '';
+                  const confidence = typeof s.confidence === 'number' ? s.confidence : undefined;
+                  return { text, confidence };
+                }
+                return null;
+              }).filter(Boolean);
             }
           } catch(e) { debugLog('embed suggest failed', e); }
         }
@@ -3728,7 +3883,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         if (!suggestions || suggestions.length === 0) {
           try { 
             if (lastScannedText && lastScannedText.length) {
-              suggestions = buildKeywordsFromText(lastScannedText, 6);
+              suggestions = buildKeywordsFromText(lastScannedText, 6).map(t => ({ text: t, confidence: 55 }));
             }
           } catch(e){}
         }
@@ -3738,22 +3893,32 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           try {
             const convs = await loadConversationsAsync();
             const sample = (convs || []).slice(-8).map(c => (c.conversation||[]).map(m=>m.text).join(' ')).join('\n');
-            suggestions = buildKeywordsFromText(sample, 6);
+            suggestions = buildKeywordsFromText(sample, 6).map(t => ({ text: t, confidence: 50 }));
           } catch(e) { suggestions = []; }
         }
         
-        // Ensure unique (case-insensitive, trimmed) and filter bad patterns
+        // Normalize to objects { text, confidence } if still strings
+        if (suggestions && typeof suggestions[0] === 'string') {
+          suggestions = suggestions.map(s => ({ text: String(s), confidence: undefined }));
+        }
+
+        // Enforce keyword-only style: strip prompt phrasing, limit to 3 words, reject questions
+        suggestions = (suggestions || [])
+          .map(obj => ({ text: String((obj && obj.text) || '').trim(), confidence: obj && obj.confidence }))
+          .map(obj => {
+            const kw = enforceKeywordStyle(obj.text);
+            return kw ? { text: kw, confidence: obj.confidence } : null;
+          })
+          .filter(Boolean);
+
+        // Ensure unique (case-insensitive, trimmed), apply patterns, and enforce minimum confidence when available
         const seen = new Set();
-        suggestions = suggestions
-          .map(s => s.trim())
-          .filter(s => {
-            const normalized = s.toLowerCase();
-            // Skip if already seen
+        suggestions = (suggestions || [])
+          .filter(obj => {
+            const normalized = obj.text.toLowerCase();
+            if (!obj.text || obj.text.length < 3) return false;
             if (seen.has(normalized)) return false;
-            // Skip if too short or matches bad patterns
-            if (s.length < 3) return false;
-            if (/^(want|i want|to|the|and|for|with|from|about)$/i.test(normalized)) return false;
-            if (/^(want to|i want|to create|trying to|going to|need to|have to)$/i.test(normalized)) return false;
+            if (typeof obj.confidence === 'number' && obj.confidence < 30) return false;
             seen.add(normalized);
             return true;
           })
@@ -3761,22 +3926,59 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         
         if (!suggestions || suggestions.length === 0) {
           // default helpful prompts (topic-like)
-          suggestions = ['API integration','Error handling','Best practices','Code optimization','Database design','Architecture'];
+          suggestions = [
+            { text: 'API integration' },
+            { text: 'Error handling' },
+            { text: 'Best practices' },
+            { text: 'Code optimization' },
+            { text: 'Database design' },
+            { text: 'Architecture' }
+          ];
         }
         // create chips
         suggestions.forEach(s => {
           const chip = document.createElement('button');
-          chip.className = 'cb-btn'; chip.style.padding = '6px 10px'; chip.style.fontSize = '12px'; chip.style.borderRadius = '999px'; chip.style.background = 'rgba(11,15,23,0.12)'; chip.textContent = s;
+          chip.className = 'cb-btn'; chip.style.padding = '6px 10px'; chip.style.fontSize = '12px'; chip.style.borderRadius = '999px'; chip.style.background = 'rgba(11,15,23,0.12)';
+          const txt = s.text || String(s);
+          // Confidence dot + percent if available
+          let label = txt;
+          if (typeof s.confidence === 'number') {
+            const c = s.confidence;
+            const color = c >= 70 ? '#10a37f' : c >= 50 ? '#ffa500' : '#888';
+            const dot = `<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${color};margin-right:6px"></span>`;
+            label = `${dot}<span>${txt}</span><span style="margin-left:6px;color:#888;font-size:11px">${c}%</span>`;
+            chip.innerHTML = label;
+          } else {
+            chip.textContent = label;
+          }
           chip.setAttribute('role','button');
           chip.setAttribute('tabindex','0');
-          chip.setAttribute('aria-label', 'Suggestion: ' + s);
-          chip.addEventListener('click', () => { try { smartInput.value = s; smartInput.focus(); announce('Suggestion chosen: ' + s); } catch(e){} });
-          chip.addEventListener('keydown', (ev) => { try { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); smartInput.value = s; smartInput.focus(); announce('Suggestion chosen: ' + s); } } catch(e){} });
+          chip.setAttribute('aria-label', 'Suggestion: ' + txt + (typeof s.confidence === 'number' ? `, confidence ${s.confidence} percent` : ''));
+          chip.addEventListener('click', () => { try { smartInput.value = txt; smartInput.focus(); announce('Suggestion chosen: ' + txt); } catch(e){} });
+          chip.addEventListener('keydown', (ev) => { try { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); smartInput.value = txt; smartInput.focus(); announce('Suggestion chosen: ' + txt); } } catch(e){} });
           smartSuggestRow.appendChild(chip);
         });
         // set placeholder to first suggestion
-        try { if (suggestions && suggestions.length) smartInput.placeholder = suggestions[0] + ' (click a suggestion)'; } catch(e){}
+        try { if (suggestions && suggestions.length) smartInput.placeholder = (suggestions[0].text || String(suggestions[0])) + ' (click a suggestion)'; } catch(e){}
       } catch (e) { debugLog('populateSmartSuggestions error', e); }
+    }
+
+    // Heuristic: choose a sensible default summary style based on the conversation text
+    function pickAdaptiveSummaryType(text) {
+      try {
+        const t = String(text || '');
+        const len = t.length;
+        const lines = t.split(/\r?\n/);
+        const bulletLines = lines.filter(l => /^\s*[-*•]/.test(l)).length;
+        const hasCode = /```|\bfunction\b|\bclass\b|\bconst\b|\blet\b|\bvar\b|<\/?[a-z][^>]*>/i.test(t);
+        const techTerms = /(api|endpoint|error|stack trace|database|schema|deploy|ci\/?cd|docker|kubernetes|oauth|jwt|typescript|javascript|react|node|python)/i.test(t);
+        const aiHandoff = /(prompt|model|llm|gemini|claude|chatgpt|copilot|perplexity)/i.test(t);
+        if (len > 5000 || aiHandoff) return 'transfer';
+        if (hasCode || techTerms) return 'technical';
+        if (bulletLines >= 8) return 'bullet';
+        // default for general cases
+        return 'paragraph';
+      } catch (_) { return 'paragraph'; }
     }
 
     // Detect current model from page structure (safer than hostname inference)
@@ -4346,14 +4548,71 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           } catch (e) {}
           return;
         }
-        // History text
-        historyEl.textContent = arr.slice(0,6).map(s => {
-          let host = s.platform || 'chat';
-          try { host = new URL(s.url||location.href).hostname; } catch (_) {}
-          const date = new Date(s.ts);
-          const timeStr = date.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-          return `${host} • ${(s.conversation||[]).length} msgs • ${timeStr}`;
-        }).join('\n\n');
+        // History: virtual list when large; compact text when small
+        try {
+          const LARGE_THRESHOLD = 30;
+          if (arr.length > LARGE_THRESHOLD) {
+            const ITEM_H = 44;
+            historyEl.innerHTML = '';
+            historyEl.style.maxHeight = '280px';
+            historyEl.style.overflowY = 'auto';
+            const full = document.createElement('div');
+            full.style.position = 'relative';
+            full.style.height = (arr.length * ITEM_H) + 'px';
+            full.style.width = '100%';
+            full.id = 'cb-history-virt';
+            historyEl.appendChild(full);
+            const render = () => {
+              const scrollTop = historyEl.scrollTop || 0;
+              const viewportH = historyEl.clientHeight || 280;
+              const start = Math.max(0, Math.floor(scrollTop / ITEM_H) - 2);
+              const end = Math.min(arr.length, start + Math.ceil(viewportH / ITEM_H) + 6);
+              while (full.firstChild) full.removeChild(full.firstChild);
+              for (let i = start; i < end; i++) {
+                const s = arr[i];
+                let host = s.platform || 'chat';
+                try { host = new URL(s.url||location.href).hostname; } catch (_) {}
+                if (host.length > 18) host = host.slice(0, 16) + '…';
+                const date = new Date(s.ts);
+                const timeStr = date.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                const count = (s.conversation||[]).length;
+                const row = document.createElement('div');
+                row.style.cssText = `position:absolute;left:0;right:0;top:${i*ITEM_H}px;height:${ITEM_H-4}px;display:flex;align-items:center;gap:8px;padding:6px 10px;border-bottom:1px solid rgba(230,207,159,0.08);cursor:pointer;`;
+                row.setAttribute('role','button');
+                row.setAttribute('aria-label', `Open ${host} with ${count} messages from ${timeStr}`);
+                const dot = document.createElement('span');
+                dot.style.cssText = 'display:inline-block;width:6px;height:6px;border-radius:50%;background:rgba(230,207,159,0.6)';
+                row.appendChild(dot);
+                const txt = document.createElement('div');
+                txt.style.cssText = 'flex:1 1 auto;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:0.92';
+                txt.textContent = `${host} • ${count} msgs • ${timeStr}`;
+                row.appendChild(txt);
+                const openBtn = document.createElement('button');
+                openBtn.className = 'cb-btn';
+                openBtn.style.cssText = 'padding:4px 8px;font-size:11px;border-radius:8px;';
+                openBtn.textContent = 'Open';
+                row.appendChild(openBtn);
+                const open = () => { try { chatSelect.value = String(s.ts); chatSelect.dispatchEvent(new Event('change')); announce('Selected conversation ' + timeStr); } catch(e){} };
+                row.addEventListener('click', open);
+                openBtn.addEventListener('click', (ev)=>{ ev.stopPropagation(); open(); });
+                full.appendChild(row);
+              }
+            };
+            try { historyEl.__virtRender = render; historyEl.__virtItems = arr; } catch(_){}
+            historyEl.removeEventListener('scroll', historyEl.__virtScroll || (()=>{}));
+            historyEl.__virtScroll = () => render();
+            historyEl.addEventListener('scroll', historyEl.__virtScroll);
+            render();
+          } else {
+            historyEl.textContent = arr.slice(0,6).map(s => {
+              let host = s.platform || 'chat';
+              try { host = new URL(s.url||location.href).hostname; } catch (_) {}
+              const date = new Date(s.ts);
+              const timeStr = date.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+              return `${host} • ${(s.conversation||[]).length} msgs • ${timeStr}`;
+            }).join('\n\n');
+          }
+        } catch (e) { /* noop */ }
         // Default preview from first conversation
         preview.textContent = 'Preview: ' + (arr[0] && arr[0].conversation && arr[0].conversation[0] ? arr[0].conversation[0].text.slice(0,200) : '(none)');
 
@@ -4447,7 +4706,11 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
     }
 
     refreshHistory();
-    try { window.ChatBridge = window.ChatBridge || {}; window.ChatBridge._renderLastScan = renderLastScan; } catch (e) {}
+    try { 
+      window.ChatBridge = window.ChatBridge || {}; 
+      window.ChatBridge._renderLastScan = renderLastScan; 
+      window.ChatBridge.refreshHistory = refreshHistory; 
+    } catch (e) {}
     return { host, avatar, panel };
   }
 
@@ -4804,6 +5067,60 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
     try { 
       return window.ChatBridge._lastScan || null; 
     } catch (e) { return null; } 
+  };
+  
+  // End-to-end validation: save → dropdown refresh → restore
+  // Usage: ChatBridge.testE2E({ text?: string })
+  // Returns a Promise<{ savedOk, topOk, restoreOk, details }>
+  window.ChatBridge.testE2E = async function(opts) {
+    const details = [];
+    try {
+      const before = await loadConversationsAsync();
+      const preCount = Array.isArray(before) ? before.length : 0;
+      details.push(`Pre-count: ${preCount}`);
+
+      const now = Date.now();
+      const conv = {
+        ts: now,
+        id: String(now),
+        platform: (function(){ try { return new URL(location.href).hostname; } catch(_) { return location.hostname || 'unknown'; } })(),
+        url: location.href,
+        conversation: [
+          { role: 'user', text: (opts && opts.text) || 'E2E sanity check: user message ' + now },
+          { role: 'assistant', text: 'E2E sanity check: assistant reply ' + now }
+        ]
+      };
+      const savedOk = await saveConversation(conv);
+      details.push(`Saved to background+mirrors: ${savedOk}`);
+
+      // Give the mirror a brief moment just in case
+      await new Promise(r => setTimeout(r, 120));
+
+      // Refresh dropdown UI if available
+      try { if (typeof window.ChatBridge.refreshHistory === 'function') window.ChatBridge.refreshHistory(); } catch(_){}
+      await new Promise(r => setTimeout(r, 60));
+
+      const after = await loadConversationsAsync();
+      const top = Array.isArray(after) && after[0] ? after[0] : null;
+      const topOk = !!(top && String(top.ts) === String(conv.ts));
+      details.push(`Top item is new conversation: ${topOk}`);
+
+      // Attempt restore into visible composer (if present)
+      let restoreOk = false;
+      try {
+        const testText = `[ChatBridge E2E ${now}]`;
+        const res = await restoreToChat(testText);
+        restoreOk = !!res;
+        details.push(`restoreToChat returned: ${res}`);
+      } catch (e) {
+        details.push(`restoreToChat error: ${e && e.message}`);
+      }
+
+      return { savedOk, topOk, restoreOk, details };
+    } catch (e) {
+      details.push('testE2E failed: ' + (e && e.message ? e.message : String(e)));
+      return { savedOk: false, topOk: false, restoreOk: false, details };
+    }
   };
   
   // Debug helper to check storage
