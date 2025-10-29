@@ -862,7 +862,43 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 Make this summary as thorough as needed to capture the full context - prioritize completeness and clarity over brevity.\n\n${payload.text}`;
           } else {
             // Enforce formatting based on summaryType
-            if (payload.summaryType === 'bullet') {
+            if (payload.summaryType === 'transfer') {
+              // Optimized AI-to-AI handoff schema
+              // The model should reconstruct identity, goals, relationships, causal links, status, and next actions.
+              const lenHint = payload.length ? `Aim for a ${payload.length} length.` : '';
+              promptText = `Generate a summary optimized for AI-to-AI context transfer. ${lenHint}
+
+Follow this exact structure with section headers (do not add extra commentary outside sections):
+
+1) Context Overview:
+- Who the user is and their role, background, and working style. If not explicit, infer from the conversation. One to two sentences.
+
+2) Ongoing Goals:
+- Bullet list of the user's current long-term aims and recurring themes (e.g., building tools, content series, learning tracks). Keep each goal on one line.
+
+3) Recent Topics (Chronological):
+- 5–10 concise bullets describing what was discussed, in order. Include technical keywords and short details. Keep them brief.
+
+4) Causal Links and Relationships:
+- Explain how topics connect (e.g., “X led to Y because Z”). Mention dependencies, constraints, or design decisions.
+
+5) Current Status:
+- What is completed vs ongoing vs blocked. Use labels [done], [ongoing], [blocked].
+
+6) Next Steps / Suggested Continuation:
+- 3–6 concrete, actionable next steps for the next AI to continue. Be specific and reference the items above.
+
+7) AI Handoff TL;DR:
+- One paragraph the next AI can read to pick up immediately. Include the current task, constraints, and preferred tone/format.
+
+Constraints:
+- Preserve important technical details, terminology, and user intent.
+- Prefer crisp, skimmable bullets. Keep narrative tone pragmatic, not verbose.
+- If user identity/goals are unclear, sensibly infer from context and mark with (inferred).
+
+Source conversation:
+${payload.text}`;
+            } else if (payload.summaryType === 'bullet') {
               promptText = `Summarize the following text as a bullet-point list. Use actual bullet points (•) or numbered list format. Each key point should be on its own line. ${payload.length ? `Keep it ${payload.length} in length.` : ''}\n\n${payload.text}`;
             } else if (payload.summaryType === 'executive') {
               promptText = `Create an executive summary of the following text: a high-level overview focusing on key decisions, outcomes, and actionable insights. ${payload.length ? `Length: ${payload.length}.` : ''}\n\n${payload.text}`;

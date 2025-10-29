@@ -569,7 +569,14 @@
   summLengthSelect.value = 'medium';
   const summTypeLabel = document.createElement('label'); summTypeLabel.className = 'cb-label'; summTypeLabel.textContent = 'Style:';
   const summTypeSelect = document.createElement('select'); summTypeSelect.className = 'cb-select'; summTypeSelect.id = 'cb-summ-type';
-  ['paragraph','bullet','detailed','executive','technical'].forEach(v => { const o = document.createElement('option'); o.value = v; o.textContent = v.charAt(0).toUpperCase()+v.slice(1); summTypeSelect.appendChild(o); });
+  // Include a specialized AI-to-AI transfer style optimized for cross-model handoff
+  const summTypes = ['paragraph','bullet','detailed','executive','technical','transfer'];
+  summTypes.forEach(v => { 
+    const o = document.createElement('option'); 
+    o.value = v; 
+    o.textContent = (v === 'transfer') ? 'AI-to-AI Transfer' : (v.charAt(0).toUpperCase()+v.slice(1)); 
+    summTypeSelect.appendChild(o); 
+  });
   summTypeSelect.value = 'paragraph';
   summControls.appendChild(summLengthLabel); summControls.appendChild(summLengthSelect); summControls.appendChild(summTypeLabel); summControls.appendChild(summTypeSelect);
   summView.appendChild(summControls);
@@ -1976,7 +1983,8 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
             const inputText = final.map(m => `${m.role}: ${m.text}`).join('\n');
             try {
               showSkeleton(preview, 120);
-              hierarchicalSummarize(inputText, { chunkSize: 14000, maxParallel: 3, length: 'comprehensive', summaryType: 'detailed' })
+              // For long chats, generate an AI-to-AI transfer summary to preserve intent, relationships, and next steps
+              hierarchicalSummarize(inputText, { chunkSize: 14000, maxParallel: 3, length: 'comprehensive', summaryType: 'transfer' })
                 .then(result => {
                   hideSkeleton(preview);
                   preview.textContent = `Auto-Summary (${final.length} msgs, comprehensive context preserved):\n\n` + result;
@@ -2000,15 +2008,43 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       removeLoadingFromButton(btnScan, 'Scan Chat');
     });
 
-    // Clipboard button - copy last scanned text (textarea removed)
+    // Clipboard button - copy most recent output (preview, summary, rewrite, translate, sync)
     btnClipboard.addEventListener('click', async () => {
       try {
-        const txt = lastScannedText || '';
+        let txt = '';
+        
+        // Priority 1: Check if any internal view is active and has output
+        if (summView.classList.contains('cb-view-active') && summSourceText && summSourceText.textContent && summSourceText.textContent !== '(no conversation found)' && summSourceText.textContent !== '(no result)') {
+          txt = summSourceText.textContent;
+        } else if (rewView.classList.contains('cb-view-active') && rewSourceText && rewSourceText.textContent && rewSourceText.textContent !== '(no conversation found)' && rewSourceText.textContent !== '(no result)') {
+          txt = rewSourceText.textContent;
+        } else if (transView.classList.contains('cb-view-active') && transSourceText && transSourceText.textContent && transSourceText.textContent !== '(no conversation found)' && transSourceText.textContent !== '(no result)') {
+          txt = transSourceText.textContent;
+        } else if (syncView.classList.contains('cb-view-active') && syncSourceText && syncSourceText.textContent && syncSourceText.textContent !== '(no conversation found)' && syncSourceText.textContent !== '(no result)') {
+          txt = syncSourceText.textContent;
+        }
+        
+        // Priority 2: Check preview area for recent auto-summary or restored content
+        if (!txt && preview && preview.textContent && preview.textContent !== 'Preview: (none)' && !preview.textContent.startsWith('Preview:')) {
+          txt = preview.textContent;
+        }
+        
+        // Priority 3: Fallback to last scanned text
+        if (!txt) {
+          txt = lastScannedText || '';
+        }
+        
         if (!txt) { toast('Nothing to copy'); return; }
         await navigator.clipboard.writeText(txt);
-        toast('Copied scanned chat to clipboard');
+        toast('Copied to clipboard');
       } catch (e) {
-        try { navigator.clipboard.writeText(lastScannedText || ''); toast('Copied to clipboard (fallback)'); } catch(err){ toast('Copy failed'); }
+        try { 
+          // Last resort: try lastScannedText
+          await navigator.clipboard.writeText(lastScannedText || ''); 
+          toast('Copied to clipboard (fallback)'); 
+        } catch(err){ 
+          toast('Copy failed'); 
+        }
       }
     });
 
