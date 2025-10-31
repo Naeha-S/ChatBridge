@@ -82,13 +82,19 @@ docs/_build/
 site/
 .docusaurus/
 
-# Development/debug documentation (temporary)
+# Development/debug documentation (moved to /documentation folder)
 *_PROGRESS.md
 *_ANALYSIS.md
 *_FIX.md
 *_SUMMARY.md
 IMPLEMENTATION_*.md
 DEBUGGING_*.md
+*_ENHANCEMENTS.md
+*_TROUBLESHOOTING.md
+
+# Backup and temporary files
+README_OLD.md
+*.md.bak
 
 # Local storage & user data
 chatbridge:conversations

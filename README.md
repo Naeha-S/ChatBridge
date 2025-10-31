@@ -1,484 +1,704 @@
-# ⚡ ChatBridge# ⚡ ChatBridge ⚡
+# ⚡ ChatBridge# ⚡ ChatBridge
 
 
 
-> **Seamlessly bridge AI conversations across multiple platforms with intelligent transformation and your personal knowledge graph**
+> **Seamlessly bridge AI conversations across multiple platforms with intelligent transformation and cross-context memory**> **Seamlessly bridge AI conversations across multiple platforms with intelligent transformation and cross-context memory**
 
-> **Seamlessly continue AI conversations across multiple platforms with intelligent transformation and enhancement tools**
 
-A Chrome extension that captures, transforms, and continues conversations across ChatGPT, Claude, Gemini, Copilot, Perplexity, and more — with built-in AI-powered tools and a visual knowledge graph that connects your insights.
 
-**Seamlessly continue AI conversations across multiple platforms with intelligent transformation and enhancement tools**A Chrome extension that seamlessly bridges conversations across multiple AI chat platforms (Gemini, ChatGPT, Claude, and more).
+A Chrome extension that captures, transforms, and continues conversations across ChatGPT, Claude, Gemini, Copilot, Perplexity, and more — with built-in AI-powered tools and a visual knowledge graph.A Chrome extension that captures, transforms, and continues conversations across ChatGPT, Claude, Gemini, Copilot, Perplexity, and more — with built-in AI-powered tools and a visual knowledge graph that connects your insights.
 
----
 
-ChatBridge is a powerful Chrome extension that bridges conversations between different AI chat platforms (ChatGPT, Claude, Gemini, Perplexity, and more), while providing built-in AI-powered tools to summarize, rewrite, translate, and optimize your chats.
 
-## 🎯 Project Aim
+------
 
----
 
-Break down the silos between AI platforms and empower users to:
 
-ChatBridge is a Chrome extension that bridges conversations between AI chat platforms like ChatGPT, Claude, Gemini, Perplexity, and more. It captures your chats, transforms them intelligently (summarize, rewrite, translate, sync tone), and restores them across platforms — all locally and securely.
+## 🔍 The Problem## 🔍 The Problem
 
-- **Switch platforms freely** without losing conversation context
 
-- **Transform conversations** to match the communication style of different AI models## 🎯 Project Aim
 
-- **Build a second brain** with automatic knowledge extraction and cross-context memory
+As AI assistants proliferate, users face critical challenges:As AI assistants proliferate, users face critical challenges:
 
-- **Visualize connections** with an interactive force-directed knowledge graph**Features:**
 
-- **Enhance productivity** with intelligent summarization, translation, and rewriting
 
-- **Maintain privacy** with local-first processing and secure API key storageBreak down the silos between AI platforms and empower users to:
+- **Context Loss** - Starting fresh on a new platform means losing valuable conversation history1. **Context Loss** - Starting fresh on a new platform means losing valuable conversation history
 
+- **Platform Lock-in** - Conversations become trapped in a single platform's ecosystem2. **Platform Lock-in** - Conversations become trapped in a single platform's ecosystem
 
+- **Manual Copying** - Time-consuming copy-paste between platforms with formatting issues3. **Manual Copying** - Time-consuming copy-paste between platforms with formatting issues
 
----- **Switch platforms freely** without losing conversation context
+- **Model-Specific Language** - Each AI has different communication styles requiring different approaches4. **Model-Specific Language** - Each AI has different communication styles and optimal prompting approaches
 
-- **Smart Message Extraction**: Precisely captures user and assistant messages from chat platforms
+- **Information Overload** - Long conversations become difficult to reference and share5. **Information Overload** - Long conversations become difficult to reference and share
 
-## 🔍 Problem Statement- **Transform conversations** to match the communication style of different AI models
+- **Lost Insights** - Valuable knowledge from past conversations is forgotten or buried6. **Lost Insights** - Valuable knowledge from past conversations is forgotten or buried
 
-- **Enhance productivity** with intelligent summarization, translation, and rewriting
+- **Language Barriers** - Multilingual users struggle to translate conversations across platforms7. **Language Barriers** - Multilingual users struggle to translate conversations across platforms
 
-### The Challenge- **Cross-Platform Support**: Works with Gemini, ChatGPT, Claude, Perplexity, Poe, and more
 
-- **Maintain privacy** with local-first processing and secure API key storage
 
-As AI assistants proliferate, users face several key problems:
+---## 💡 The Solution
 
-## 🎯 Project Aim- **Context Preservation**: Maintains conversation history when switching between platforms
 
-1. **Context Loss**: Starting fresh conversations on a new platform means losing valuable context
 
-2. **Platform Lock-in**: Conversations become trapped in a single platform's ecosystem---
+## 💡 The SolutionChatBridge provides a unified interface to:
 
-3. **Manual Copying**: Time-consuming copy-paste between platforms with formatting issues- **UI Chrome Filtering**: Intelligently excludes buttons, suggestions, and system messages
 
-4. **Model-Specific Language**: Each AI has different "styles" that work better with specific prompts
 
-5. **Information Overload**: Long conversations become difficult to reference and share## 🔍 Problem Statement
+ChatBridge provides a unified interface to:- **Intelligently scan** conversations from any supported AI platform
 
-6. **Lost Insights**: Valuable knowledge from past conversations is forgotten or buried
+- **Preserve context** when moving between platforms
 
-Break down the silos between AI platforms and empower users to:- **Restore Conversations**: Paste and continue conversations in chat inputs
+- **Intelligently scan** conversations from any supported AI platform- **Transform content** with AI-powered tools (summarize, rewrite, translate, sync tone)
 
-### The Solution
+- **Preserve context** when moving between platforms- **Extract knowledge** automatically from every conversation
 
-### The Challenge
+- **Transform content** with AI-powered tools (summarize, rewrite, translate, sync tone)- **Visualize connections** with an interactive knowledge graph
 
-ChatBridge provides a unified interface to:
+- **Extract knowledge** automatically from every conversation- **Detect contradictions** when new insights conflict with past conclusions
 
-- **Switch platforms freely** without losing conversation context
+- **Visualize connections** with an interactive knowledge graph- **Restore conversations** seamlessly into any platform's chat interface
 
-- **Intelligently scan** conversations from any supported AI platform
+- **Detect contradictions** when new insights conflict with past conclusions
 
-- **Preserve context** when moving between platformsAs AI assistants proliferate, users face several key problems:
+- **Restore conversations** seamlessly into any platform's chat interface---
 
-- **Transform content** with AI-powered tools (summarize, rewrite, translate, sync tone)
 
-- **Extract knowledge** automatically from every conversation- **Transform conversations** to match the communication style of different AI models## Development
 
-- **Visualize connections** with an interactive knowledge graph
+---## ✨ Key Features
 
-- **Detect contradictions** when new insights conflict with past conclusions1. **Context Loss**: Starting fresh conversations on a new platform means losing valuable context and history
 
-- **Discover patterns** through multi-hop connection analysis2. **Platform Lock-in**: Conversations become trapped in a single platform's ecosystem
 
-- **Restore conversations** seamlessly into any platform's chat interface3. **Enhance productivity** with intelligent summarization, translation, and rewriting
+## ✨ Core Features### 🌐 Universal Platform Support
 
-4. **Manual Copying**: Time-consuming manual copy-paste between platforms with formatting issues
+Works seamlessly across major AI platforms:
 
----5. **Model-Specific Language**: Each AI has different "communication styles" that work better with specific prompting approaches
+### 🌐 Universal Platform Support- **ChatGPT** (chat.openai.com) • **Claude** (claude.ai) • **Google Gemini** (gemini.google.com)
 
-6.  **Maintain privacy** with local-first processing and secure API key storage### Running Tests
+Works seamlessly across 10+ major AI platforms:- **Perplexity AI** (perplexity.ai) • **Microsoft Copilot** (copilot.microsoft.com) • **Poe** (poe.com)
 
-## ✨ Key Features7. **Information Overload**: Long conversations become difficult to reference and share
+- **ChatGPT** (chat.openai.com, chatgpt.com)- **Grok (X.AI)** (x.ai) • **DeepSeek** (deepseek.ai) • **Mistral** (chat.mistral.ai) • **Meta AI** (meta.ai)
 
-8. **Language Barriers**: Multilingual users need to translate conversations across platforms
+- **Claude** (claude.ai)
 
-### 🧠 Smart Message Extraction
+- **Google Gemini** (gemini.google.com)### 🧠 Smart Message Extraction
 
-- Adapter-based architecture with platform-specific extraction logic
+- **Perplexity AI** (perplexity.ai)- **Adapter-based architecture** with platform-specific extraction logic
 
-- Intelligent filtering to exclude UI elements, buttons, and system messages### The Solution---Comprehensive regression tests ensure message scraping remains accurate:
+- **Microsoft Copilot** (copilot.microsoft.com)- **Intelligent filtering** to exclude UI elements, buttons, and system messages
 
-- Deduplication of repeated messages
+- **Poe** (poe.com)- **Deduplication** of repeated messages
 
-- Role detection (user vs. assistant messages)
+- **Grok (X.AI)** (x.ai)- **Role detection** (user vs. assistant messages)
 
-- Container width filtering to exclude sidebar conversations
+- **DeepSeek** (deepseek.ai)- **Container filtering** to exclude sidebar conversations
 
-ChatBridge provides a unified interface to:
+- **Mistral** (chat.mistral.ai)
 
-### 🌐 Universal Platform Support
+- **Meta AI** (meta.ai)### 🎚️ Sync Tone (Prompt Engineering)
 
-Works seamlessly across major AI platforms:- **Intelligently scan** conversations from any supported AI platform
+Transform conversations for optimal performance on different AI models:
 
-- **ChatGPT** (chat.openai.com, chatgpt.com)- **Preserve context** when moving between platforms## 🔍 Problem Statement:
+### 🧠 Smart Message Extraction- Rewrites prompts to match target model's communication style
 
-- **Claude** (claude.ai)- **Transform content** with AI-powered tools (summarize, rewrite, translate)
+- **Adapter-based architecture** with platform-specific extraction logic- Optimizes context framing for specific AI platforms
 
-- **Google Gemini** (gemini.google.com)- **Optimize prompts** for specific AI models with tone synchronizationAs AI assistants proliferate, users face several key problems
+- **Intelligent filtering** excludes UI elements, buttons, and system messages- Preserves factual content while adapting tone and structure
 
-- **Perplexity AI** (perplexity.ai)- **Restore conversations** seamlessly into any platform's chat interfaces
+- **Automatic deduplication** removes repeated messages- Supports: Claude, ChatGPT, Gemini, OpenAI, Llama, and more
 
-- **Microsoft Copilot** (copilot.microsoft.com)
+- **Role detection** distinguishes user vs. assistant messages
 
-- **Poe** (poe.com)---
-
-- **Grok (X.AI)** (x.ai)## ✨ Key Features
-
-- **DeepSeek** (deepseek.ai)- 1. **Context Loss**: Starting fresh conversations on a new platform means losing valuable context and history
-
-- **Mistral** (chat.mistral.ai)- 2. **Platform Lock-in**: Conversations become trapped in a single platform's ecosystem# Run tests with UI
-
-- **Meta AI** (meta.ai)- 3. **Manual Copying**: Time-consuming manual copy-paste between platforms with formatting issuesnpx playwright test --ui
-
-- 4. **Model-Specific Language**: Each AI has different "communication styles" that work better with specific prompting approaches```
-
-### 🎚️ Sync Tone (Prompt Engineering)- 5. **Information Overload**: Long conversations become difficult to reference and share
-
-Transform conversations for optimal performance on different AI models:- 6. **Language Barriers**: Multilingual users need to translate conversations across platforms### Test Coverage
-
-- Rewrites prompts to match target model's communication style
-
-- Optimizes context framing for specific AI platforms### 🧠 Smart Message Extraction```
-
-- Preserves factual content while adapting tone and structure
-
-- Supports: Claude, ChatGPT, Gemini, OpenAI, Llama, and more- Adapter-based architecture with platform-specific extraction logic## ✨ Key FeaturesChatBridge/
-
-
-
-### 📝 AI-Powered Summarization- Intelligent filtering to exclude UI elements, buttons, and system messages
+- **Container filtering** excludes sidebar conversations### 📝 AI-Powered Summarization
 
 Intelligent hierarchical summarization for long conversations:
 
-- **Length options**: Concise, Short, Medium, Comprehensive, Detailed- Deduplication of repeated messages├── adapters.js          # Site-specific adapters for each platform
+### 🎚️ Sync Tone (Prompt Engineering)- **Length options**: Short, Medium, Long, Comprehensive, Detailed
 
-- **Format styles**:
+Optimize conversations for different AI models:- **Format styles**: Paragraph, Bullet Points, Executive Summary, Technical Summary
 
-  - Paragraph (coherent narrative)- Role detection (user vs. assistant messages)
+- Rewrites prompts to match target model's communication style- **Smart chunking**: Breaks large conversations into manageable pieces
 
-  - Bullet Points (key takeaways)
+- Optimizes context framing for specific platforms- **Parallel processing**: Summarizes chunks concurrently for speed
 
-  - Executive Summary (high-level decisions)- Container width filtering to exclude sidebar conversations### 🌐 Universal Platform Support├── content_script.js    # Main content script for UI and message scanning
+- Preserves factual content while adapting tone- **Intelligent merging**: Combines chunk summaries into coherent output
 
-  - Technical Summary (specs & implementation)
-
-  - Detailed Summary (comprehensive coverage)
-
-- **Smart chunking**: Breaks large conversations into manageable pieces
-
-- **Parallel processing**: Summarizes chunks concurrently for speed### 🎚️ Sync Tone (Prompt Engineering)├── background.js        # Service worker for API calls
-
-- **Intelligent merging**: Combines chunk summaries into coherent output
-
-
+- Supports: Claude, ChatGPT, Gemini, OpenAI, Llama, and more
 
 ### ✍️ Intelligent Rewriting
 
-Enhance conversation quality with style-specific rewriting:Transform conversations for optimal performance on different AI models:Works seamlessly across major AI platforms:├── storage.js           # Storage abstraction with fallbacks
+### 📝 AI-Powered SummarizationEnhance conversation quality with style-specific rewriting:
 
-- **Normal**: Clearer, more professional phrasing
+Intelligent hierarchical summarization:- **Normal** - Clearer, more professional phrasing
 
-- **Concise**: Removes fluff, keeps essentials- Rewrites prompts to match target model's communication style
+- **Length options**: Short, Medium, Long, Comprehensive, Detailed- **Concise** - Removes fluff, keeps essentials
 
-- **Direct**: Assertive, active voice, straightforward
+- **Format styles**: Paragraph, Bullet Points, Executive Summary, Technical Summary- **Direct** - Assertive, active voice, straightforward
 
-- **Detailed**: Adds context, clarity, and elaboration- Optimizes context framing for specific AI platforms- **ChatGPT** (chat.openai.com, chatgpt.com)├── popup.html/js        # Extension popup UI
+- **Smart chunking** breaks large conversations into manageable pieces- **Detailed** - Adds context, clarity, and elaboration
 
-- **Academic**: Formal tone with scholarly language
+- **Parallel processing** summarizes chunks concurrently- **Academic** - Formal tone with scholarly language
 
-- Preserves factual content while adapting tone and structure
+- **Intelligent merging** combines summaries coherently
 
 ### 🌍 Multi-Language Translation
 
-Break language barriers with 20+ supported languages:- Supports: Claude, ChatGPT, Gemini, OpenAI, Llama, and more- **Claude** (claude.ai)├── options.html/js      # Settings page
+### ✍️ Intelligent RewritingBreak language barriers with 20+ supported languages:
 
-- English, Spanish, French, German, Italian, Portuguese
+Enhance conversation quality with 5 style modes:- European: English, Spanish, French, German, Italian, Portuguese, Polish, Turkish, Dutch, Swedish, Norwegian, Danish
 
-- Chinese, Japanese, Korean
+- **Normal** - Clearer, more professional phrasing- Asian: Chinese (Simplified & Traditional), Japanese, Korean, Vietnamese, Thai, Indonesian, Hindi, Tamil
 
-- Arabic, Russian, Hindi, Tamil, Vietnamese, Thai
+- **Concise** - Removes fluff, keeps essentials- Middle Eastern: Arabic
 
-- Polish, Turkish, Indonesian, Dutch, Swedish, Norwegian, Danish### 📝 AI-Powered Summarization- **Google Gemini** (gemini.google.com)└── tests/
+- **Direct** - Assertive, active voice, straightforward- Slavic: Russian
 
-- Output-only translation (no explanations or extra text)
+- **Detailed** - Adds context, clarity, and elaboration- Output-only translation (no explanations or extra text)
 
-
+- **Academic** - Formal tone with scholarly language
 
 ### 🧠 Cross-Context Memory Engine
 
-Build your personal AI "second brain":Intelligent hierarchical summarization for long conversations:- **Perplexity AI** (perplexity.ai)    ├── acceptance.spec.ts           # End-to-end acceptance tests
+### 🌍 Multi-Language TranslationBuild your personal AI "second brain":
 
-- **Automatic knowledge extraction**: AI analyzes every conversation for entities, themes, conclusions
+Break language barriers with 20+ languages:- **Automatic knowledge extraction** - AI analyzes every conversation for entities, themes, conclusions
 
-- **Context detection**: Proactively suggests related past conversations- **Length options**: Short, Medium, Long, Comprehensive
+- **European**: English, Spanish, French, German, Italian, Portuguese, Polish, Turkish, Dutch, Swedish, Norwegian, Danish- **Context detection** - Proactively suggests related past conversations
 
-- **Smart scoring**: Entity match +3, theme match +2, ranks relevance
+- **Asian**: Chinese (Simplified/Traditional), Japanese, Korean, Vietnamese, Thai, Indonesian, Hindi, Tamil- **Smart scoring** - Entity match +3, theme match +2, ranks relevance
 
-- **Proactive suggestions**: Champagne-gradient notifications with auto-dismiss- **Format styles**: - **Poe** (poe.com)    └── adapter-regression.spec.ts   # Adapter scraping regression tests
+- **Middle Eastern**: Arabic- **Proactive suggestions** - Champagne-gradient notifications with auto-dismiss
 
-- **Manual trigger**: "Connections" button for on-demand analysis
+- **Slavic**: Russian- **Manual trigger** - "Connections" button for on-demand analysis
 
-  - Paragraph (coherent narrative)
+- Clean output-only translation (no explanations)
 
 ### 📊 Visual Knowledge Graph
 
-Interactive force-directed graph visualization:  - Bullet Points (key takeaways)- **Microsoft Copilot** (copilot.microsoft.com)```
+### 🧠 Cross-Context Memory EngineInteractive force-directed graph visualization:
 
-- **Node encoding**: Size = message count, color = platform
+Build your personal AI "second brain":- **Node encoding** - Size = message count, color = platform
 
-- **Edge encoding**: Thickness = connection strength, opacity = relevance  - Executive Summary (high-level decisions)
+- **Automatic knowledge extraction** analyzes conversations for entities, themes, conclusions- **Edge encoding** - Thickness = connection strength, opacity = relevance
 
-- **Physics simulation**: 100-frame force-directed layout with spring model
+- **Context detection** proactively suggests related past conversations- **Physics simulation** - 100-frame force-directed layout with spring model
 
-- **Platform colors**: ChatGPT (green), Claude (purple), Gemini (blue), Copilot (cyan), Perplexity (indigo)  - Technical Summary (specs & implementation)- **Grok (X.AI)** (x.ai)
+- **Smart scoring** ranks relevance (Entity +3, Theme +2)- **Platform colors** - ChatGPT (green), Claude (purple), Gemini (blue), Copilot (cyan), Perplexity (indigo)
+
+- **Proactive suggestions** with champagne-gradient notifications- **Interactive** - Click any node to open that conversation
+
+- **Manual trigger** via "Connections" button- **Real-time stats** - Shows total conversations and connections
+
+
+
+### 📊 Visual Knowledge Graph### ⚠️ Contradiction Tracking
+
+Interactive force-directed graph visualization:Automatic detection of conflicting conclusions:
+
+- **Node encoding**: Size = message count, Color = platform- **Semantic analysis** - Detects 9 contradictory word pairs (better/worse, use/avoid, etc.)
+
+- **Edge encoding**: Thickness = connection strength- **Entity overlap** - Only alerts when contradictions involve same topics
+
+- **Physics simulation**: 100-frame spring model layout- **Red alert notification** - Fixed top-right with Review/Dismiss actions
+
+- **Platform colors**: ChatGPT (green), Claude (purple), Gemini (blue), Copilot (cyan), Perplexity (indigo)- **Confidence scoring** - 0.7 confidence for all detected contradictions
 
 - **Interactive**: Click any node to open that conversation
 
-- **Real-time stats**: Shows total conversations and connections  - Detailed Summary (comprehensive coverage)
-
-
-
-### ⚠️ Contradiction Tracking- **Smart chunking**: Breaks large conversations into manageable pieces- **DeepSeek** (deepseek.ai)### Key Components
-
-Automatic detection of conflicting conclusions:
-
-- **Semantic analysis**: Detects 9 contradictory word pairs (better/worse, use/avoid, etc.)- **Parallel processing**: Summarizes chunks concurrently for speed
-
-- **Entity overlap**: Only alerts when contradictions involve same topics
-
-- **Red alert notification**: Fixed top-right with Review/Dismiss actions- **Intelligent merging**: Combines chunk summaries into coherent output- **Mistral** (chat.mistral.ai)
-
-- **Confidence scoring**: 0.7 confidence for all detected contradictions
-
-- **Console logging**: Full details available for review- **Retry/fallback logic**: Ensures reliability even with API hiccups
-
-
-
-### 🔍 Multi-Hop Discovery- **Meta AI** (meta.ai)#### Adapters (`adapters.js`)
+- **Real-time stats**: Shows total conversations and connections### 🔍 Multi-Hop Discovery
 
 Find indirect connections through graph traversal:
 
-- **Depth-first search**: Explores up to 2 hops by default### ✍️ Intelligent Rewriting
+### ⚠️ Contradiction Tracking- **Depth-first search** - Explores up to 2 hops by default
 
-- **Path scoring**: Entity +3, theme +2 per hop
+Automatic detection of conflicting conclusions:- **Path scoring** - Entity +3, theme +2 per hop
 
-- **Top 5 results**: Returns strongest connection paths
+- **Semantic analysis** detects 9 contradictory word pairs- **Top 5 results** - Returns strongest connection paths
 
-- **A→B→C patterns**: Discovers knowledge bridges between different domains
+- **Entity overlap** ensures contradictions involve same topics- **A→B→C patterns** - Discovers knowledge bridges between different domains
 
-Enhance conversation quality with style-specific rewriting:
+- **Red alert notification** with Review/Dismiss actions
+
+- **Console logging** for detailed review### 🔧 Smart Query
+
+AI-powered conversation search:
+
+### 🔍 Multi-Hop Discovery- **Natural language search** - Ask questions about your chat history
+
+Find indirect connections through graph traversal:- **Metadata filters** - Filter by platform, model, date range
+
+- **Depth-first search** explores up to 2 hops- **Embeddings** - Uses Gemini API for semantic search
+
+- **Path scoring** (Entity +3, Theme +2 per hop)- **Provenance tracking** - Shows model, message count, conversation age
+
+- **Top 5 results** with strongest connection paths- **Clickable metadata** - Click platform/model to filter list
+
+- **A→B→C patterns** discover knowledge bridges
 
 ### 💾 Export & Import
 
-Portable JSON backup system:- **Normal**: Clearer, more professional phrasing### 🧠 Smart Message ExtractionEach adapter provides:
+### 🔧 Smart QueryPortable JSON backup system:
 
-- **Complete backup**: Knowledge graph + conversations + metadata
+AI-powered conversation search:- **Complete backup** - Knowledge graph + conversations + metadata
 
-- **Merge strategy**: Imports only new items (deduplicates by ID)- **Concise**: Removes fluff, keeps essentials
+- **Natural language search** across all chat history- **Merge strategy** - Imports only new items (deduplicates by ID)
 
-- **Validation**: Checks required fields before importing
+- **Metadata filters** by platform, model, date range- **Validation** - Checks required fields before importing
 
-- **Auto-refresh**: Rebuilds graph visualization after import- **Direct**: Assertive, active voice, straightforward- `detect()`: Returns true if the adapter matches the current site
+- **Semantic search** using Gemini embeddings- **Auto-refresh** - Rebuilds graph visualization after import
 
-- **Toast feedback**: Shows import results (X knowledge items, Y conversations)
+- **Provenance tracking** shows source details- **Toast feedback** - Shows import results (X knowledge items, Y conversations)
 
-- **Detailed**: Adds context, clarity, and elaboration
+- **Clickable metadata** for quick filtering
 
-### 🔧 Smart Query
+### 🔒 Privacy & Security
 
-AI-powered conversation search:- **Academic**: Formal tone with scholarly language- Adapter-based architecture with platform-specific extraction logic- `getMessages()`: Extracts `{ role: 'user' | 'assistant', text: string }[]` from the page
+### 💾 Export & Import- **Local-first** - Conversations stored locally in your browser
 
-- **Natural language search**: Ask questions about your chat history
+Portable JSON backup system:- **Secure API keys** - Stored in Chrome's encrypted storage
 
-- **Metadata filters**: Filter by platform, model, date range
+- **Complete backup**: Knowledge graph + conversations + metadata- **No third-party tracking** - Your data never leaves your control
 
-- **Embeddings**: Uses Gemini API for semantic search
+- **Smart merge**: Imports only new items (deduplicates by ID)- **Open source** - Full transparency of data handling
 
-- **Provenance tracking**: Shows model, message count, conversation age### 🌍 Multi-Language Translation- Intelligent filtering to exclude UI elements, buttons, and system messages- `getInput()`: Returns the chat input element for restore functionality
+- **Validation**: Checks required fields
 
-- **Clickable metadata**: Click platform/model to filter list
+- **Auto-refresh**: Rebuilds graph after import---
 
+- **Toast feedback**: Shows import results
 
 
-### 💾 Conversation Management
 
-- Save and organize multiple conversation historiesBreak language barriers with 20+ supported languages:- Deduplication of repeated messages- `scrollContainer()`: Returns the scrollable chat container (optional)
+### 🔒 Privacy & Security
 
-- Quick preview of saved conversations
+- **Local-first**: All data stored locally in your browser---
 
-- Dropdown selector for easy access- English, Spanish, French, German, Italian, Portuguese
+- **Secure API keys**: Encrypted storage via Chrome API
 
-- Local storage with Chrome sync support
+- **No tracking**: Your data never leaves your control## 🚀 Installation & Setup
 
-- Export conversations to clipboard- Chinese (Simplified & Traditional), Japanese, Korean- Role detection (user vs. assistant messages)
-
-
-
-### 🔒 Privacy & Security- Arabic, Russian, Hindi, Tamil, Vietnamese, Thai
-
-- **Local-first**: Conversations stored locally in your browser
-
-- **Secure API keys**: Stored in Chrome's encrypted storage- Polish, Turkish, Indonesian, Dutch, Swedish, Norwegian, Danish- Container width filtering to exclude sidebar conversations#### Message Extraction Strategy
-
-- **No third-party tracking**: Your data never leaves your control
-
-- **Open source**: Full transparency of data handling- Output-only translation (no explanations or extra text)
-
-
-
----
-
-
-
-## 🏗️ Tech Stack### 💾 Conversation Management
-
-
-
-### Frontend### 🎚️ Sync Tone (Prompt Engineering)**Gemini**:
-
-- **Vanilla JavaScript** - No framework dependencies, pure performance
-
-- **Shadow DOM** - Isolated UI preventing conflicts with host pages- Save and organize multiple conversation histories
-
-- **CSS3** - Custom dark theme with champagne/gold accents
-
-- **Web Extensions API** - Chrome Extension Manifest V3- Quick preview of saved conversations- Prefers native `<user-query>` and `<model-response>` tags
-
-
-
-### Backend/Processing- Dropdown selector for easy access
-
-- **Google Gemini API** - AI processing for summarization, translation, rewriting
-
-- **Hierarchical Processing** - Smart chunking and parallel processing for large texts- Local storage with Chrome sync supportTransform conversations for optimal performance on different AI models:- Filters by main chat container width to exclude sidebars
-
-- **Retry/Fallback Logic** - Robust error handling with exponential backoff
-
-- **Force-Directed Graph** - Canvas-based physics simulation for visualization- Export conversations to clipboard
-
-
-
-### Storage- Rewrites prompts to match target model's communication style- Deduplicates by first 100 characters of text
-
-- **Chrome Storage API** - Secure, synced storage across devices
-
-- **LocalStorage Fallback** - Graceful degradation when extension context unavailable### 🔒 Privacy & Security
-
-- **Knowledge Graph Store** - Separate localStorage key for extracted insights
-
-- Optimizes context framing for specific AI platforms- Excludes UI chrome: "show thinking", "try:", "suggested", "regenerate", etc.
-
-### Architecture Patterns
-
-- **Adapter Pattern** - Pluggable platform-specific extractors- **Local-first**: Conversations stored locally in your browser
-
-- **Observer Pattern** - Event-driven communication between components
-
-- **Strategy Pattern** - Configurable processing strategies- **Secure API keys**: Stored in Chrome's encrypted storage- Preserves factual content while adapting tone and structure
-
-- **Singleton Pattern** - Shared state management
-
-- **No third-party tracking**: Your data never leaves your control
-
----
-
-- **Open source**: Full transparency of data handling- Supports: Claude, ChatGPT, Gemini, OpenAI, Llama, and more**ChatGPT**:
-
-## 🚀 Installation & Setup
-
-
+- **Open source**: Full transparency of data handling
 
 ### Quick Start (Chrome)
 
----- Uses `[data-message-author-role="user|assistant"]` selectors
+---
 
 1. **Clone the repository**
 
-   ```bash
+## 🚀 Installation & Setup   ```bash
 
    git clone https://github.com/Naeha-S/ChatBridge.git
 
-   cd ChatBridge## 🏗️ Tech Stack### 📝 AI-Powered Summarization- Extracts text from `.markdown.prose` children
+### Quick Start (Chrome)   cd ChatBridge
 
    ```
 
+1. **Clone the repository**
 
+   ```bash2. **Load extension in Chrome**
 
-2. **Load extension in Chrome**
+   git clone https://github.com/Naeha-S/ChatBridge.git   - Open Chrome and navigate to `chrome://extensions/`
 
-   - Open Chrome and navigate to `chrome://extensions/`### Frontend- Filters out system messages and short texts
+   cd ChatBridge   - Enable **Developer mode** (toggle in top-right corner)
 
-   - Enable **Developer mode** (toggle in top-right corner)
-
-   - Click **"Load unpacked"**- **Vanilla JavaScript** - No framework dependencies, pure performance
+   ```   - Click **"Load unpacked"**
 
    - Select the `ChatBridge` directory
 
-   - The ChatBridge icon (⚡) should appear in your toolbar- **Shadow DOM** - Isolated UI preventing conflicts with host pagesIntelligent hierarchical summarization for long conversations:
+2. **Load extension in Chrome**   - The ChatBridge icon (⚡) should appear in your toolbar
+
+   - Open `chrome://extensions/`
+
+   - Enable **Developer mode** (top-right toggle)3. **Pin the extension** (optional but recommended)
+
+   - Click **"Load unpacked"**   - Click the puzzle icon in Chrome toolbar
+
+   - Select the `ChatBridge` directory   - Find "ChatBridge" and click the pin icon
+
+   - The ⚡ icon appears in your toolbar   - The ⚡ icon will now be visible for quick access
 
 
 
-3. **Pin the extension** (optional but recommended)- **CSS3** - Custom dark theme with gold accents
+3. **Pin the extension** (recommended)4. **Start using**
 
-   - Click the puzzle icon in Chrome toolbar
+   - Click the puzzle icon in Chrome toolbar   - Navigate to any supported AI chat platform
 
-   - Find "ChatBridge" and click the pin icon- **Web Extensions API** - Chrome Extension Manifest V3- **Length options**: Short, Medium, Long, Comprehensive**Claude**:
+   - Find "ChatBridge" and click the pin icon   - Click the ⚡ floating button (bottom-right corner)
 
-   - The ⚡ icon will now be visible for quick access
+   - Click **"Scan Chat"** to capture the conversation
 
+4. **Start using**   - Use the AI tools (Sync Tone, Summarize, Rewrite, Translate)
 
+   - Navigate to any supported AI platform   - Explore the **Knowledge Graph** to visualize connections
 
-4. **Start using**
+   - Click the ⚡ floating button (bottom-right)
 
-   - Navigate to any supported AI chat platform### Backend/Processing- **Format styles**: - Deep scans all `<p>`, `.whitespace-pre-wrap`, `.break-words` nodes
-
-   - Click the ⚡ floating button (bottom-right corner)
-
-   - Click **"Scan Chat"** to capture the conversation- **Google Gemini API** - AI processing for summarization, translation, rewriting
-
-   - Use the AI tools (Sync Tone, Summarize, Rewrite, Translate)
-
-   - Explore the **Knowledge Graph** to visualize connections- **Hierarchical Processing** - Smart chunking and parallel processing for large texts  - Paragraph (coherent narrative)- First candidate is user, remaining are assistant
+   - Click **"Scan Chat"** to begin### API Key Setup (Optional)
 
 
 
-### API Key Setup (Optional)- **Retry/Fallback Logic** - Robust error handling with exponential backoff
+### API Key Setup (Optional)ChatBridge uses Google Gemini API for AI features. A default key is included for testing, but you can add your own:
 
 
 
-ChatBridge uses Google Gemini API for AI features. A default key is included for testing, but you can add your own:  - Bullet Points (key takeaways)- Merges consecutive assistant fragments into single message
-
-
-
-1. Get a free Gemini API key at [Google AI Studio](https://makersuite.google.com/app/apikey)### Storage
+ChatBridge includes a default Gemini API key for testing. For personal use:1. Get a free Gemini API key at [Google AI Studio](https://makersuite.google.com/app/apikey)
 
 2. Click the ChatBridge extension icon
 
-3. Click **"Settings"** (or right-click extension → Options)- **Chrome Storage API** - Secure, synced storage across devices  - Executive Summary (high-level decisions)- Cleans user message text (removes "N\n", "User:", extra whitespace)
+1. Get a free API key at [Google AI Studio](https://makersuite.google.com/app/apikey)3. Click **"Settings"** (or right-click extension → Options)
 
-4. Paste your API key and save
+2. Click the ChatBridge extension icon4. Paste your API key and save
 
-- **LocalStorage Fallback** - Graceful degradation when extension context unavailable
+3. Click **"Settings"** (or right-click → Options)
 
----
+4. Paste your API key and save---
 
-  - Technical Summary (specs & implementation)- Filters: "Please continue the conversation", "Claude can make mistakes", etc.
 
-## 📖 How to Use
+
+---## � How to Use
+
+
+
+## 📖 How to Use### Basic Workflow
+
+
+
+### Basic Workflow1. **Scan a Conversation**
+
+   - Open any AI chat (ChatGPT, Claude, Gemini, etc.)
+
+1. **Scan a Conversation**   - Click the ⚡ button (bottom-right)
+
+   - Click the ⚡ button on any AI chat platform   - Click **"Scan Chat"**
+
+   - Click **"Scan Chat"**   - The sidebar shows your captured conversation
+
+   - View captured conversation in sidebar
+
+2. **Transform with AI Tools**
+
+2. **Transform with AI Tools**   - **Sync Tone** - Optimize for another AI model
+
+   - **Sync Tone**: Optimize for another AI model   - **Summarize** - Condense long chats
+
+   - **Summarize**: Condense long chats   - **Rewrite** - Improve clarity and tone
+
+   - **Rewrite**: Improve clarity and tone   - **Translate** - Convert to another language
+
+   - **Translate**: Convert to 20+ languages
+
+3. **Explore Connections**
+
+3. **Explore Connections**   - **Connections** - Discover related conversations
+
+   - **Connections**: Discover related conversations   - **Graph** - Visualize your network
+
+   - **Graph**: Visualize your conversation network   - **Smart Query** - Search across all conversations
+
+   - **Smart Query**: Search across all conversations
+
+4. **Restore to Another Platform**
+
+4. **Restore to Another Platform**   - Navigate to a different AI platform
+
+   - Navigate to a different AI platform   - Open the ChatBridge sidebar (⚡ button)
+
+   - Select saved conversation from dropdown   - Select a saved conversation from dropdown
+
+   - Click **"Restore"**   - Click **"Restore"**
+
+   - Conversation auto-pastes into chat input   - Conversation is automatically pasted into the chat input
+
+
+
+------
+
+
+
+## 🏗️ Tech Stack## 🏗️ Tech Stack
+
+
+
+### Frontend
+
+- **Vanilla JavaScript** - No framework dependencies, pure performance
+
+- **Shadow DOM** - Isolated UI preventing conflicts### Frontend### 🎚️ Sync Tone (Prompt Engineering)**Gemini**:
+
+- **CSS3** - Modern design with Inter font, dark/light themes
+
+- **Vanilla JavaScript** - No framework dependencies, pure performance
+
+### Backend/Processing
+
+- **Google Gemini API** - AI processing (summarize, translate, rewrite)- **Shadow DOM** - Isolated UI preventing conflicts with host pages- Save and organize multiple conversation histories
+
+- **Hierarchical Processing** - Smart chunking and parallel processing
+
+- **Retry/Fallback Logic** - Robust error handling with exponential backoff- **CSS3** - Custom dark theme with champagne/gold accents
+
+- **Force-Directed Graph** - Canvas-based physics simulation
+
+- **Web Extensions API** - Chrome Extension Manifest V3- Quick preview of saved conversations- Prefers native `<user-query>` and `<model-response>` tags
+
+### Storage
+
+- **Chrome Storage API** - Secure, synced storage across devices
+
+- **LocalStorage Fallback** - Graceful degradation
+
+### Backend/Processing- Dropdown selector for easy access
 
 ### Architecture Patterns
 
+- **Adapter Pattern** - Pluggable platform-specific extractors- **Google Gemini API** - AI processing for summarization, translation, rewriting
+
+- **Observer Pattern** - Event-driven communication
+
+- **Strategy Pattern** - Configurable processing strategies- **Hierarchical Processing** - Smart chunking and parallel processing for large texts- Local storage with Chrome sync supportTransform conversations for optimal performance on different AI models:- Filters by main chat container width to exclude sidebars
+
+- **Singleton Pattern** - Shared state management
+
+- **Retry/Fallback Logic** - Robust error handling with exponential backoff
+
+---
+
+- **Force-Directed Graph** - Canvas-based physics simulation for visualization- Export conversations to clipboard
+
+## 🔧 Project Structure
+
+
+
+```
+
+ChatBridge/### Storage- Rewrites prompts to match target model's communication style- Deduplicates by first 100 characters of text
+
+├── manifest.json              # Extension manifest (V3)
+
+├── content_script.js          # Main UI and logic (5900+ lines)- **Chrome Storage API** - Secure, synced storage across devices
+
+├── background.js              # Service worker for API calls
+
+├── adapters.js                # Platform-specific message extractors- **LocalStorage Fallback** - Graceful degradation when extension context unavailable### 🔒 Privacy & Security
+
+├── storage.js                 # Storage abstraction layer
+
+├── popup.html/js              # Extension popup interface- **Knowledge Graph Store** - Separate localStorage key for extracted insights
+
+├── options.html/js            # Settings/options page
+
+├── sidebar.html/js            # Sidebar UI- Optimizes context framing for specific AI platforms- Excludes UI chrome: "show thinking", "try:", "suggested", "regenerate", etc.
+
+├── styles.css                 # Global styles
+
+├── icons/                     # Extension toolbar icons### Architecture Patterns
+
+├── tests/
+
+│   ├── acceptance.spec.ts     # E2E tests- **Adapter Pattern** - Pluggable platform-specific extractors- **Local-first**: Conversations stored locally in your browser
+
+│   └── adapter-regression.spec.ts  # Adapter validation
+
+├── documentation/             # Comprehensive documentation- **Observer Pattern** - Event-driven communication between components
+
+└── .github/
+
+    └── copilot-instructions.md  # Repository context for Copilot- **Strategy Pattern** - Configurable processing strategies- **Secure API keys**: Stored in Chrome's encrypted storage- Preserves factual content while adapting tone and structure
+
+```
+
+- **Singleton Pattern** - Shared state management
+
+### Key Files
+
+- **No third-party tracking**: Your data never leaves your control
+
+- **`adapters.js`** - Platform detection and message extraction
+
+- **`content_script.js`** - Core extension logic, UI rendering, AI processing---
+
+- **`background.js`** - Gemini API integration, rate limiting, keyboard shortcuts
+
+- **`storage.js`** - Chrome Storage wrapper with fallbacks- **Open source**: Full transparency of data handling- Supports: Claude, ChatGPT, Gemini, OpenAI, Llama, and more**ChatGPT**:
+
+
+
+---## 🚀 Installation & Setup
+
+
+
+## 🛠️ Troubleshooting
+
+
+
+### Extension not visible### Quick Start (Chrome)
+
+- Ensure Developer mode is enabled in `chrome://extensions/`
+
+- Check extension is loaded and toggle is ON---- Uses `[data-message-author-role="user|assistant"]` selectors
+
+- Reload extension or restart Chrome
+
+1. **Clone the repository**
+
+### Scan Chat returns empty
+
+- Check browser console (F12) for debug logs   ```bash
+
+- Wait for page to fully load, then retry
+
+- Verify you're on a supported platform   git clone https://github.com/Naeha-S/ChatBridge.git
+
+
+
+### Restore not working   cd ChatBridge## 🏗️ Tech Stack### 📝 AI-Powered Summarization- Extracts text from `.markdown.prose` children
+
+- Some platforms use React/Vue inputs requiring special events
+
+- Try clicking in input field before clicking Restore   ```
+
+- Check console for errors
+
+
+
+### API rate limiting
+
+- Default: 1 request/sec with burst of 52. **Load extension in Chrome**
+
+- Wait a few seconds between operations
+
+- Use your own Gemini API key for higher limits   - Open Chrome and navigate to `chrome://extensions/`### Frontend- Filters out system messages and short texts
+
+
+
+---   - Enable **Developer mode** (toggle in top-right corner)
+
+
+
+## 🗺️ Roadmap   - Click **"Load unpacked"**- **Vanilla JavaScript** - No framework dependencies, pure performance
+
+
+
+### Planned Features   - Select the `ChatBridge` directory
+
+- [ ] Timeline view with temporal edges
+
+- [ ] Filter graph by platform/model   - The ChatBridge icon (⚡) should appear in your toolbar- **Shadow DOM** - Isolated UI preventing conflicts with host pagesIntelligent hierarchical summarization for long conversations:
+
+- [ ] Search nodes by entity/theme
+
+- [ ] Zoom/pan controls for canvas
+
+- [ ] Custom prompt templates
+
+- [ ] Batch processing multiple conversations3. **Pin the extension** (optional but recommended)- **CSS3** - Custom dark theme with gold accents
+
+- [ ] Conversation analytics and insights
+
+   - Click the puzzle icon in Chrome toolbar
+
+---
+
+   - Find "ChatBridge" and click the pin icon- **Web Extensions API** - Chrome Extension Manifest V3- **Length options**: Short, Medium, Long, Comprehensive**Claude**:
+
+## 📚 Documentation
+
+   - The ⚡ icon will now be visible for quick access
+
+Comprehensive documentation available in the `/documentation` folder:
+
+
+
+- **QUICK_START.md** - Quick reference guide
+
+- **KEYBOARD_SHORTCUTS.md** - Keyboard shortcut documentation4. **Start using**
+
+- **CROSS_CONTEXT_MEMORY.md** - Memory engine deep dive
+
+- **KNOWLEDGE_GRAPH.md** - Graph features comprehensive guide   - Navigate to any supported AI chat platform### Backend/Processing- **Format styles**: - Deep scans all `<p>`, `.whitespace-pre-wrap`, `.break-words` nodes
+
+- **DEBUGGING.md** - Debugging tools and techniques
+
+   - Click the ⚡ floating button (bottom-right corner)
+
+---
+
+   - Click **"Scan Chat"** to capture the conversation- **Google Gemini API** - AI processing for summarization, translation, rewriting
+
+## 🎁 Benefits
+
+   - Use the AI tools (Sync Tone, Summarize, Rewrite, Translate)
+
+### For Users
+
+✅ **Freedom** - Switch AI platforms without losing context     - Explore the **Knowledge Graph** to visualize connections- **Hierarchical Processing** - Smart chunking and parallel processing for large texts  - Paragraph (coherent narrative)- First candidate is user, remaining are assistant
+
+✅ **Productivity** - Summarize, translate, enhance conversations in seconds  
+
+✅ **Privacy** - Your data stays local and secure  
+
+✅ **Intelligence** - Build a second brain that connects insights  
+
+✅ **Flexibility** - 20+ languages, multiple formats, customizable styles### API Key Setup (Optional)- **Retry/Fallback Logic** - Robust error handling with exponential backoff
+
+
+
+### For Developers
+
+✅ **Open Source** - Clean, well-documented code  
+
+✅ **Extensible** - Easy adapter pattern for new platforms  ChatBridge uses Google Gemini API for AI features. A default key is included for testing, but you can add your own:  - Bullet Points (key takeaways)- Merges consecutive assistant fragments into single message
+
+✅ **Tested** - Comprehensive test suite  
+
+✅ **Modern** - Manifest V3, Shadow DOM, async/await patterns
+
+
+
+### For Organizations1. Get a free Gemini API key at [Google AI Studio](https://makersuite.google.com/app/apikey)### Storage
+
+✅ **Cost Effective** - Maximize value from multiple AI subscriptions  
+
+✅ **Vendor Independence** - Avoid lock-in to single platform  2. Click the ChatBridge extension icon
+
+✅ **Knowledge Management** - Preserve and organize AI conversations  
+
+✅ **Multilingual Support** - Global team collaboration3. Click **"Settings"** (or right-click extension → Options)- **Chrome Storage API** - Secure, synced storage across devices  - Executive Summary (high-level decisions)- Cleans user message text (removes "N\n", "User:", extra whitespace)
+
+
+
+---4. Paste your API key and save
+
+
+
+## 👤 Author- **LocalStorage Fallback** - Graceful degradation when extension context unavailable
+
+
+
+**Naeha S**  ---
+
+GitHub: [@Naeha-S](https://github.com/Naeha-S)
+
+  - Technical Summary (specs & implementation)- Filters: "Please continue the conversation", "Claude can make mistakes", etc.
+
+---
+
+## 📖 How to Use
+
+## 📄 License
+
+### Architecture Patterns
+
+MIT License - See LICENSE file for details
+
 ### Basic Workflow
 
+---
+
 - **Adapter Pattern** - Pluggable platform-specific extractors  - Detailed Summary (comprehensive coverage)
+
+**⚡ Built with passion to break down barriers between AI platforms and unlock the power of connected knowledge**
 
 1. **Scan a Conversation**
 
