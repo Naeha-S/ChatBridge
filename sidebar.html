@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ChatBridge - Conversation History</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    :root {
+      --cb-bg: #0A0F1C;
+      --cb-bg2: #10182B;
+      --cb-bg3: #1a2332;
+      --cb-white: #E6E9F0;
+      --cb-subtext: #A0A7B5;
+      --cb-accent-primary: #00B4FF;
+      --cb-accent-secondary: #8C1EFF;
+      --cb-border: rgba(0, 180, 255, 0.15);
+      --cb-shadow: rgba(0, 0, 0, 0.3);
+      --cb-card-bg: rgba(16, 24, 43, 0.55);
+    }
+    
+    body.cb-theme-light {
+      --cb-bg: #F8FAFC;
+      --cb-bg2: #FFFFFF;
+      --cb-bg3: #F1F5F9;
+      --cb-white: #0F172A;
+      --cb-subtext: #475569;
+      --cb-border: rgba(15, 23, 42, 0.12);
+      --cb-shadow: rgba(0, 0, 0, 0.08);
+      --cb-accent-primary: #0EA5E9;
+      --cb-accent-secondary: #8B5CF6;
+      --cb-card-bg: #FFFFFF;
+    }
+    
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      margin: 0;
+      padding: 24px;
+      background: linear-gradient(145deg, var(--cb-bg), var(--cb-bg2));
+      color: var(--cb-white);
+      min-height: 100vh;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    
+    .header {
+      margin-bottom: 32px;
+      padding-bottom: 24px;
+      border-bottom: 2px solid var(--cb-border);
+    }
+    
+    h1 {
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      background: linear-gradient(135deg, var(--cb-accent-primary), var(--cb-accent-secondary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 8px;
+    }
+    
+    .subtitle {
+      font-size: 14px;
+      color: var(--cb-subtext);
+      font-weight: 500;
+    }
+    
+    .conversation-list {
+      display: grid;
+      gap: 16px;
+    }
+    
+    .conversation-card {
+      background: var(--cb-card-bg);
+      border: 1px solid var(--cb-border);
+      border-radius: 12px;
+      padding: 20px;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      cursor: pointer;
+    }
+    
+    .conversation-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px var(--cb-shadow);
+      border-color: var(--cb-accent-primary);
+    }
+    
+    .empty-state {
+      text-align: center;
+      padding: 80px 20px;
+      color: var(--cb-subtext);
+    }
+    
+    .empty-state-icon {
+      font-size: 64px;
+      margin-bottom: 16px;
+      opacity: 0.3;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>⚡ ChatBridge History</h1>
+      <p class="subtitle">Your saved conversations across AI platforms</p>
+    </div>
+    
+    <div class="conversation-list" id="conversations">
+      <div class="empty-state">
+        <div class="empty-state-icon">💬</div>
+        <p>No saved conversations yet</p>
+      </div>
+    </div>
+  </div>
+
+  <script src="sidebar.js"></script>
+  <script>
+    // Apply saved theme
+    try {
+      chrome.storage.local.get(['cb_theme'], r => {
+        try { if (r && r.cb_theme === 'light') document.body.classList.add('cb-theme-light'); } catch(e){}
+      });
+    } catch (e) {}
+  </script>
+</body>
+</html>

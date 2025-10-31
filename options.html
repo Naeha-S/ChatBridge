@@ -1,67 +1,313 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>ChatBridge — Options</title>
-  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" rel="stylesheet">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ChatBridge — Settings & Options</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
-    :root { --cb-bg: #0A0F1C; --cb-bg2: #10182B; --cb-white: #E6E9F0; --cb-subtext: #A0A7B5; --cb-accent-primary: #00B4FF; --cb-accent-secondary: #8C1EFF; }
-    body { font-family: 'Bebas Neue', system-ui, -apple-system, "Segoe UI", Roboto; letter-spacing:0.5px; margin:16px; background: linear-gradient(145deg, var(--cb-bg), var(--cb-bg2)); color: var(--cb-white); }
-    body.cb-theme-light { --cb-bg: #FFFFFF; --cb-bg2: #F5F7FB; --cb-white: #0F1720; --cb-subtext: #334155; }
-    h2 { margin-top:0; letter-spacing:0.6px; filter: drop-shadow(0 0 10px rgba(30,242,247,0.2)); }
-    textarea { width:100%; height:160px; font-family:monospace; margin-top:8px; background:#0b0f17; color:var(--cb-white); border:1px solid rgba(0,180,255,0.25); border-radius:10px; padding:10px; }
-    button { padding:10px 12px; border-radius:10px; border:1px solid rgba(0,180,255,0.25); background:#10182B; color:var(--cb-white); cursor:pointer; text-transform:uppercase; letter-spacing:0.5px; }
-    button:hover { background:#13203A; border-color: rgba(0,180,255,0.5); box-shadow: 0 0 12px rgba(0,180,255,0.25); }
-    .row { display:flex; gap:8px; align-items:center; margin-bottom:8px; }
-    .small { font-size:13px; color:var(--cb-subtext); }
-    #viewer { white-space:pre-wrap; background:rgba(16,24,43,0.55); padding:12px; border-radius:10px; border:1px solid rgba(0,180,255,0.18); max-height:400px; overflow:auto; }
-    input#apiKey { background:#0b0f17; color:var(--cb-white); }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    :root {
+      --cb-bg: #0A0F1C;
+      --cb-bg2: #10182B;
+      --cb-bg3: #1a2332;
+      --cb-white: #E6E9F0;
+      --cb-subtext: #A0A7B5;
+      --cb-accent-primary: #00B4FF;
+      --cb-accent-secondary: #8C1EFF;
+      --cb-border: rgba(0, 180, 255, 0.15);
+      --cb-shadow: rgba(0, 0, 0, 0.3);
+      --cb-card-bg: rgba(16, 24, 43, 0.55);
+    }
+    
+    body.cb-theme-light {
+      --cb-bg: #F8FAFC;
+      --cb-bg2: #FFFFFF;
+      --cb-bg3: #F1F5F9;
+      --cb-white: #0F172A;
+      --cb-subtext: #475569;
+      --cb-border: rgba(15, 23, 42, 0.12);
+      --cb-shadow: rgba(0, 0, 0, 0.08);
+      --cb-accent-primary: #0EA5E9;
+      --cb-accent-secondary: #8B5CF6;
+      --cb-card-bg: #FFFFFF;
+    }
+    
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      margin: 0;
+      padding: 40px;
+      background: linear-gradient(145deg, var(--cb-bg), var(--cb-bg2));
+      color: var(--cb-white);
+      min-height: 100vh;
+    }
+    
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      animation: fadeIn 0.4s ease-out;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .header {
+      text-align: center;
+      margin-bottom: 48px;
+      padding-bottom: 32px;
+      border-bottom: 2px solid var(--cb-border);
+    }
+    
+    .logo {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    
+    .logo-icon {
+      width: 48px;
+      height: 48px;
+      background: linear-gradient(135deg, var(--cb-accent-primary), var(--cb-accent-secondary));
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      box-shadow: 0 8px 24px rgba(0, 180, 255, 0.3);
+    }
+    
+    h1 {
+      font-size: 36px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      background: linear-gradient(135deg, var(--cb-accent-primary), var(--cb-accent-secondary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 8px;
+    }
+    
+    .subtitle {
+      font-size: 16px;
+      color: var(--cb-subtext);
+      font-weight: 500;
+    }
+    
+    .section {
+      background: var(--cb-card-bg);
+      border: 1px solid var(--cb-border);
+      border-radius: 16px;
+      padding: 32px;
+      margin-bottom: 24px;
+      box-shadow: 0 4px 12px var(--cb-shadow);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .section:hover {
+      box-shadow: 0 8px 24px var(--cb-shadow);
+      transform: translateY(-2px);
+    }
+    
+    h2 {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: var(--cb-white);
+      letter-spacing: -0.01em;
+    }
+    
+    h3 {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      color: var(--cb-white);
+    }
+    
+    .description {
+      font-size: 14px;
+      color: var(--cb-subtext);
+      line-height: 1.6;
+      margin-bottom: 20px;
+    }
+    
+    button {
+      padding: 12px 24px;
+      border-radius: 10px;
+      border: 1px solid var(--cb-border);
+      background: var(--cb-bg3);
+      color: var(--cb-white);
+      cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+    }
+    
+    button::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+      transition: left 0.5s ease;
+    }
+    
+    button:hover::before {
+      left: 100%;
+    }
+    
+    button:hover {
+      transform: translateY(-2px);
+      border-color: var(--cb-accent-primary);
+      box-shadow: 0 4px 12px rgba(0, 180, 255, 0.2);
+    }
+    
+    button:active {
+      transform: translateY(0);
+    }
+    
+    textarea, input[type="password"], input[type="text"] {
+      width: 100%;
+      font-family: 'Inter', monospace;
+      margin-top: 12px;
+      background: var(--cb-bg);
+      color: var(--cb-white);
+      border: 1px solid var(--cb-border);
+      border-radius: 10px;
+      padding: 12px;
+      font-size: 14px;
+      transition: all 0.2s ease;
+    }
+    
+    textarea {
+      height: 160px;
+      resize: vertical;
+    }
+    
+    textarea:focus, input:focus {
+      outline: none;
+      border-color: var(--cb-accent-primary);
+      box-shadow: 0 0 0 3px rgba(0, 180, 255, 0.1);
+    }
+    
+    .row {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      margin-top: 16px;
+    }
+    
+    #viewer {
+      white-space: pre-wrap;
+      background: var(--cb-bg);
+      padding: 16px;
+      border-radius: 10px;
+      border: 1px solid var(--cb-border);
+      max-height: 400px;
+      overflow: auto;
+      font-family: 'Inter', monospace;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    
+    label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      padding: 8px 12px;
+      border-radius: 8px;
+      transition: background 0.2s ease;
+    }
+    
+    label:hover {
+      background: var(--cb-bg3);
+    }
+    
+    input[type="radio"] {
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+    }
+    
+    hr {
+      border: none;
+      height: 1px;
+      background: var(--cb-border);
+      margin: 32px 0;
+    }
+    
+    #adapterInfo {
+      background: var(--cb-bg);
+      padding: 16px;
+      border-radius: 10px;
+      border: 1px solid var(--cb-border);
+      font-size: 13px;
+      overflow: auto;
+      max-height: 300px;
+    }
   </style>
 </head>
 <body>
-  <h2>ChatBridge — Options</h2>
-  <div>
-    <div class="small">Saved sessions (local):</div>
-    <div id="viewer">Loading...</div>
-    <div style="margin-top:8px;">
-      <button id="btn-clear">Clear All Saved Sessions</button>
+  <div class="container">
+    <div class="header">
+      <div class="logo">
+        <div class="logo-icon">⚡</div>
+        <h1>ChatBridge</h1>
+      </div>
+      <p class="subtitle">Manage your settings and saved conversations</p>
     </div>
-  </div>
+    <div class="section">
+      <h2>💾 Saved Conversations</h2>
+      <p class="description">View and manage your saved chat sessions stored locally</p>
+      <div id="viewer">Loading...</div>
+      <div style="margin-top:16px;">
+        <button id="btn-clear">🗑️ Clear All Saved Sessions</button>
+      </div>
+    </div>
 
-  <hr/>
+    <div class="section">
+      <h2>🔑 Gemini API Key</h2>
+      <p class="description">Store your Gemini API key locally for AI-powered features. This key is stored securely in your browser and never sent to external servers.</p>
+      <div class="row">
+        <input id="apiKey" type="password" placeholder="Enter your Gemini API key (AIza...)" style="flex:1;" />
+        <button id="btn-save-key">💾 Save Key</button>
+      </div>
+      <p class="description" style="margin-top:12px;margin-bottom:0;">Leave empty to remove the saved key. Get your API key from the Google AI Studio.</p>
+    </div>
 
-  <div style="margin-top:12px;">
-    <h3>Adapter debug (advanced)</h3>
-    <div class="small">This shows the adapter picked for the active page when you open this options page from that page. You can edit adapters in code later — this is an advanced view.</div>
-    <pre id="adapterInfo" style="background:#fff; padding:8px; border-radius:6px; border:1px solid #ddd;"></pre>
-    <div style="margin-top:8px;">
-      <button id="btn-refresh-adapter">Refresh Adapter Info</button>
+    <div class="section">
+      <h2>🎨 Theme Preferences</h2>
+      <p class="description">Choose your preferred color theme for all ChatBridge interfaces</p>
+      <div class="row">
+        <label><input type="radio" name="cb-theme" id="theme-dark" value="dark" checked /> 🌙 Dark Neon</label>
+        <label><input type="radio" name="cb-theme" id="theme-light" value="light" /> ☀️ Light Mode</label>
+        <button id="btn-save-theme" style="margin-left:auto;">✓ Save Theme</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>🔧 Adapter Debug (Advanced)</h2>
+      <p class="description">Technical information about the adapter selected for the current page. Useful for debugging and development.</p>
+      <pre id="adapterInfo">No adapter information available</pre>
+      <div style="margin-top:16px;">
+        <button id="btn-refresh-adapter">🔄 Refresh Adapter Info</button>
+      </div>
     </div>
   </div>
   
-  <hr/>
-
-  <div style="margin-top:12px;">
-    <h3>Gemini API Key</h3>
-    <div class="small">Store your Gemini API key locally for the extension to use Gemini Nano and related APIs. This value is stored in extension storage (chrome.storage.local) and never sent externally.</div>
-    <div class="row" style="margin-top:8px;">
-      <input id="apiKey" type="password" placeholder="AIza..." style="flex:1;padding:8px;border-radius:8px;border:1px solid #d0e6ff;" />
-      <button id="btn-save-key">Save</button>
-    </div>
-    <div style="margin-top:8px;" class="small">Your Gemini API key is used only for local model calls. Leave empty to remove.</div>
-  </div>
-
-  <hr/>
-
-  <div style="margin-top:12px;">
-    <h3>Theme</h3>
-    <div class="small">Choose your preferred theme for ChatBridge surfaces.</div>
-    <div class="row" style="margin-top:8px;">
-      <label><input type="radio" name="cb-theme" id="theme-dark" value="dark" checked /> Dark Neon</label>
-      <label style="margin-left:16px;"><input type="radio" name="cb-theme" id="theme-light" value="light" /> Light</label>
-      <button id="btn-save-theme" style="margin-left:auto;">Save Theme</button>
-    </div>
-  </div>
   <script src="options.js"></script>
 </body>
 </html>
