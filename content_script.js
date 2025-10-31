@@ -112,7 +112,7 @@
           </defs>
           <g filter="url(#s)">
             <circle cx="17" cy="17" r="16" fill="#e6cf9f" stroke="#0b0f17" stroke-width="1" />
-            <text x="50%" y="52%" text-anchor="middle" fill="#0b0f17" font-family="Poppins, Arial, sans-serif" font-weight="700" font-size="12">CB</text>
+            <text x="50%" y="52%" text-anchor="middle" fill="#0b0f17" font-family="Inter, Arial, sans-serif" font-weight="700" font-size="12">CB</text>
           </g>
         </svg>`;
       a.style.cssText = 'position:fixed;bottom:22px;right:26px;width:48px;height:48px;border-radius:12px;z-index:2147483647;display:flex;align-items:center;justify-content:center;cursor:pointer;background:transparent;box-shadow:0 6px 20px rgba(0,0,0,0.18);transition: transform .12s ease, box-shadow .12s ease;';
@@ -387,11 +387,12 @@
     // High-end Dark Neon theme inside shadow DOM (Bebas Neue font)
     const style = document.createElement('style');
     style.textContent = `
-      @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
       :host { all: initial; }
   :host {
     --cb-bg: #0A0F1C;
     --cb-bg2: #10182B;
+    --cb-bg3: #1a2332;
     --cb-accent-primary: #00B4FF;
     --cb-accent-secondary: #8C1EFF;
     --cb-accent-tertiary: #1EF2F7;
@@ -399,82 +400,96 @@
     --cb-subtext: #A0A7B5;
     --cb-error: #FF1E56;
     --cb-progress: #00E5FF;
+    --cb-border: rgba(0, 180, 255, 0.15);
+    --cb-shadow: rgba(0, 0, 0, 0.3);
   }
   :host(.cb-theme-light) {
-    --cb-bg: #FFFFFF;
-    --cb-bg2: #F5F7FB;
-    --cb-white: #0F1720;
-    --cb-subtext: #334155;
+    --cb-bg: #F8FAFC;
+    --cb-bg2: #FFFFFF;
+    --cb-bg3: #F1F5F9;
+    --cb-white: #0F172A;
+    --cb-subtext: #475569;
+    --cb-accent-primary: #0EA5E9;
+    --cb-accent-secondary: #8B5CF6;
+    --cb-border: rgba(15, 23, 42, 0.12);
+    --cb-shadow: rgba(0, 0, 0, 0.08);
   }
-  :host * { font-family: 'Bebas Neue', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial !important; letter-spacing: 0.5px; }
-  .cb-panel { box-sizing: border-box; position:fixed; top:12px; right:12px; width:380px; max-height:86vh; overflow-y:auto; overflow-x:hidden; border-radius:14px; background: linear-gradient(145deg, var(--cb-bg), var(--cb-bg2)); color:var(--cb-white) !important; font-family: 'Poppins', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; z-index:2147483647; box-shadow: 0 12px 40px rgba(0,0,0,0.55), 0 0 30px rgba(140, 30, 255, 0.2); border: 1px solid rgba(255,255,255,0.06); backdrop-filter: blur(10px); }
+  :host * { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important; letter-spacing: -0.01em; }
+  .cb-panel { box-sizing: border-box; position:fixed; top:12px; right:12px; width:380px; max-height:86vh; overflow-y:auto; overflow-x:hidden; border-radius:16px; background: var(--cb-bg2); color:var(--cb-white) !important; z-index:2147483647; box-shadow: 0 20px 60px var(--cb-shadow), 0 0 40px rgba(140, 30, 255, 0.15); border: 1px solid var(--cb-border); backdrop-filter: blur(12px); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); word-wrap: break-word; }
+  .cb-panel * { max-width: 100%; word-wrap: break-word; overflow-wrap: break-word; }
   .cb-panel::-webkit-scrollbar { width: 10px; }
   .cb-panel::-webkit-scrollbar-track { background: var(--cb-bg); border-radius: 10px; }
-  .cb-panel::-webkit-scrollbar-thumb { background: linear-gradient(180deg, rgba(0,180,255,0.8), rgba(140,30,255,0.6)); border-radius: 10px; border: 2px solid var(--cb-bg); }
-  .cb-panel::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, rgba(0,180,255,1), rgba(140,30,255,0.8)); }
-  .cb-header { display:flex; flex-direction:row; align-items:flex-start; justify-content:space-between; padding:14px 18px 8px 18px; gap:6px; border-bottom: 1px solid rgba(255,255,255,0.06); }
-  .cb-title { font-weight:800; font-size:22px; letter-spacing:0.5px; color: var(--cb-white); filter: drop-shadow(0 0 10px rgba(30,242,247,0.2)); }
-  .cb-subtitle { font-size:13px; color: var(--cb-subtext); font-weight:500; margin-top:2px; margin-bottom:2px; letter-spacing:0.3px; }
-    .cb-actions { padding:12px 16px 8px 16px; display:flex; flex-direction:column; gap:12px; align-items:stretch; justify-content:flex-start; }
+  .cb-panel::-webkit-scrollbar-thumb { background: linear-gradient(180deg, var(--cb-accent-primary), var(--cb-accent-secondary)); border-radius: 10px; border: 2px solid var(--cb-bg); }
+  .cb-panel::-webkit-scrollbar-thumb:hover { opacity: 0.8; }
+  .cb-header { display:flex; flex-direction:row; align-items:flex-start; justify-content:space-between; padding:18px 20px 12px 20px; gap:8px; border-bottom: 1px solid var(--cb-border); }
+  .cb-title { font-weight:800; font-size:20px; letter-spacing:-0.02em; color: var(--cb-white); background: linear-gradient(135deg, var(--cb-accent-primary), var(--cb-accent-secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .cb-subtitle { font-size:13px; color: var(--cb-subtext); font-weight:500; margin-top:4px; margin-bottom:2px; letter-spacing:-0.01em; }
+    .cb-actions { padding:16px 18px 12px 18px; display:flex; flex-direction:column; gap:12px; align-items:stretch; justify-content:flex-start; }
   .cb-actions-grid { display:grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap:10px; width:100%; }
-  .cb-actions .cb-btn { min-width:0; padding:10px 14px; font-size:12px; white-space:nowrap; font-weight:600; letter-spacing:0.5px; transition: all 0.2s ease; text-transform: uppercase; width:100%; }
-    .cb-btn { background: #10182B; border:1px solid rgba(0,180,255,0.25); color:var(--cb-white) !important; padding:10px 14px; border-radius:10px; cursor:pointer; font-size:13px; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); font-weight:600; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
-  .cb-btn:hover { transform:translateY(-1px); box-shadow: 0 0 12px rgba(0, 180, 255, 0.6), 0 2px 12px rgba(0,0,0,0.25); border-color: rgba(0,180,255,0.5); background: #13203A; }
-  .cb-btn:focus { outline: none; box-shadow: 0 0 0 3px rgba(30,242,247,0.25), 0 0 10px rgba(30,242,247,0.3); }
-  .cb-btn:active { transform:translateY(0px); filter: drop-shadow(0 0 10px #1EF2F7); }
-  .cb-btn-primary { background: linear-gradient(135deg, #00B4FF, #8C1EFF); color:var(--cb-white) !important; font-weight:700; border: 1px solid rgba(255,255,255,0.08); text-shadow: 0 1px 2px rgba(0,0,0,0.35); box-shadow: 0 4px 12px rgba(0,180,255,0.35), 0 0 12px rgba(0, 180, 255, 0.35); }
-  .cb-btn-primary:hover { box-shadow: 0 8px 24px rgba(0,180,255,0.45), 0 0 18px rgba(140, 30, 255, 0.35); transform: translateY(-2px); }
-  .cb-scan-row { padding: 10px 16px; }
-  .cb-scan-wide { width: 100%; margin: 0; padding:12px 14px; font-size:15px; border-radius:12px; display:block; }
-      .cb-btn-danger { background: #1a0d14; border:1px solid rgba(255,30,86,0.35); color:#FF7A9A !important; font-size:13px; padding:6px 10px; }
-      .cb-btn-danger:hover { background: #220f19; border-color: rgba(255,30,86,0.55); color:#FF9CB3 !important; box-shadow: 0 4px 12px rgba(255,30,86,0.2), 0 0 12px rgba(255,30,86,0.25); }
-      .cb-toolbar { display:flex; align-items:center; gap:10px; padding:12px 18px 8px 18px; border-bottom: 1px solid rgba(255,255,255,0.06); }
-      .cb-label { font-size:12px; color:var(--cb-subtext) !important; }
-  .cb-select { flex:1; appearance:none; background:var(--cb-bg); color:var(--cb-white) !important; border:1px solid rgba(0,180,255,0.25); border-radius:10px; padding:10px 12px; font-size:14px; outline:none; font-weight:500; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-      .cb-select:hover { border-color: rgba(0,180,255,0.5); box-shadow: 0 0 0 3px rgba(0, 180, 255, 0.12); }
+  .cb-actions .cb-btn { min-width:0; padding:12px 14px; font-size:12px; white-space:nowrap; font-weight:600; letter-spacing:-0.01em; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); text-transform: uppercase; width:100%; position: relative; overflow: hidden; }
+    .cb-btn { background: var(--cb-bg3); border:1px solid var(--cb-border); color:var(--cb-white) !important; padding:12px 16px; border-radius:10px; cursor:pointer; font-size:13px; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); font-weight:600; box-shadow: 0 2px 8px var(--cb-shadow); }
+  .cb-btn::before { content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent); transition: left 0.5s ease; }
+  .cb-btn:hover::before { left: 100%; }
+  .cb-btn:hover { transform:translateY(-2px); box-shadow: 0 4px 16px var(--cb-shadow), 0 0 24px rgba(0, 180, 255, 0.15); border-color: var(--cb-accent-primary); }
+  .cb-btn:focus { outline: none; box-shadow: 0 0 0 3px rgba(0, 180, 255, 0.25); }
+  .cb-btn:active { transform:translateY(0px); }
+  .cb-btn-primary { background: linear-gradient(135deg, var(--cb-accent-primary), var(--cb-accent-secondary)); color:#FFFFFF !important; font-weight:700; border: none; box-shadow: 0 4px 12px rgba(0,180,255,0.3); }
+  .cb-btn-primary:hover { box-shadow: 0 8px 24px rgba(0,180,255,0.4), 0 0 30px rgba(140, 30, 255, 0.3); transform: translateY(-2px); }
+  .cb-scan-row { padding: 12px 18px; }
+  .cb-scan-wide { width: 100%; margin: 0; padding:14px 16px; font-size:15px; font-weight:600; border-radius:12px; display:block; }
+      .cb-btn-danger { background: rgba(255,30,86,0.1); border:1px solid rgba(255,30,86,0.3); color:#FF7A9A !important; font-size:13px; padding:8px 12px; }
+      .cb-btn-danger:hover { background: rgba(255,30,86,0.15); border-color: rgba(255,30,86,0.5); color:#FF9CB3 !important; box-shadow: 0 4px 12px rgba(255,30,86,0.2); transform: translateY(-2px); }
+      .cb-toolbar { display:flex; align-items:center; gap:12px; padding:16px 20px 12px 20px; border-bottom: 1px solid var(--cb-border); }
+      .cb-label { font-size:12px; color:var(--cb-subtext) !important; font-weight:600; }
+  .cb-select { flex:1; appearance:none; background:var(--cb-bg); color:var(--cb-white) !important; border:1px solid var(--cb-border); border-radius:10px; padding:10px 12px; font-size:14px; outline:none; font-weight:500; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; transition: all 0.2s ease; }
+      .cb-select:hover { border-color: var(--cb-accent-primary); box-shadow: 0 0 0 3px rgba(0, 180, 255, 0.1); }
+      .cb-select:focus { border-color: var(--cb-accent-primary); box-shadow: 0 0 0 3px rgba(0, 180, 255, 0.15); }
   select.cb-select option { background:var(--cb-bg); color:var(--cb-white); }
-      .cb-status { padding:0 18px 10px 18px; font-size:12px; color:var(--cb-subtext) !important; }
-      .cb-history-wrapper { position: relative; margin:12px; }
-      .cb-history-header { display:flex; align-items:center; justify-content:space-between; padding:0 0 8px 0; }
-      .cb-history-title { font-size:12px; color:var(--cb-subtext) !important; font-weight:600; letter-spacing:0.3px; }
-      .cb-history { padding:12px 18px; max-height:260px; overflow-x:hidden; overflow-y:auto; font-size:13px; background: rgba(16, 24, 43, 0.55); border-radius:10px; white-space:pre-wrap; color:var(--cb-white) !important; line-height: 1.5; }
+      .cb-status { padding:0 20px 12px 20px; font-size:12px; color:var(--cb-subtext) !important; }
+      .cb-history-wrapper { position: relative; margin:16px 18px; }
+      .cb-history-header { display:flex; align-items:center; justify-content:space-between; padding:0 0 10px 0; }
+      .cb-history-title { font-size:12px; color:var(--cb-subtext) !important; font-weight:700; letter-spacing:-0.01em; text-transform: uppercase; }
+      .cb-history { padding:14px 18px; max-height:260px; overflow-x:hidden; overflow-y:auto; font-size:13px; background: var(--cb-bg); border-radius:10px; border:1px solid var(--cb-border); white-space:pre-wrap; color:var(--cb-white) !important; line-height: 1.6; }
       .cb-history::-webkit-scrollbar { width: 8px; }
       .cb-history::-webkit-scrollbar-track { background: rgba(10,15,28,0.6); border-radius: 10px; }
   .cb-history::-webkit-scrollbar-thumb { background: linear-gradient(180deg, rgba(0,180,255,0.6), rgba(140,30,255,0.5)); border-radius: 10px; border: 2px solid rgba(10,15,28,0.6); }
   .cb-history::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, rgba(0,180,255,0.8), rgba(140,30,255,0.7)); }
-      .cb-preview { padding:12px 18px; font-size:13px; color:var(--cb-white) !important; border-top:1px solid rgba(255,255,255,0.06); max-height:200px; overflow-x:hidden; overflow-y:auto; line-height: 1.5; background: rgba(16, 24, 43, 0.35); }
+      .cb-preview { padding:14px 18px; font-size:13px; color:var(--cb-white) !important; border-top:1px solid var(--cb-border); max-height:200px; overflow-x:hidden; overflow-y:auto; line-height: 1.6; background: var(--cb-bg); }
       .cb-preview::-webkit-scrollbar { width: 8px; }
-      .cb-preview::-webkit-scrollbar-track { background: rgba(10,15,28,0.6); border-radius: 10px; }
-      .cb-preview::-webkit-scrollbar-thumb { background: linear-gradient(180deg, rgba(0,180,255,0.6), rgba(140,30,255,0.5)); border-radius: 10px; border: 2px solid rgba(10,15,28,0.6); }
-      .cb-preview::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, rgba(0,180,255,0.8), rgba(140,30,255,0.7)); }
-      .cb-footer { display:flex; justify-content:flex-end; gap:10px; padding:12px 18px }
-  .cb-close { background:transparent; border:none; color:var(--cb-subtext) !important; cursor:pointer; font-size:15px; padding:6px; position:absolute; top:8px; right:10px; }
-  .cb-header { padding-right: 42px; }
-      textarea { background: var(--cb-bg); color: var(--cb-white) !important; border: 1px solid rgba(0,180,255,0.25); border-radius: 10px; font-size:14px; padding:10px; font-family:inherit; max-height:200px; overflow-x:hidden; overflow-y:auto; }
+      .cb-preview::-webkit-scrollbar-track { background: var(--cb-bg3); border-radius: 10px; }
+      .cb-preview::-webkit-scrollbar-thumb { background: linear-gradient(180deg, var(--cb-accent-primary), var(--cb-accent-secondary)); border-radius: 10px; border: 2px solid var(--cb-bg3); }
+      .cb-preview::-webkit-scrollbar-thumb:hover { opacity: 0.8; }
+      .cb-footer { display:flex; justify-content:flex-end; gap:12px; padding:14px 20px }
+  .cb-close { background:transparent; border:none; color:var(--cb-subtext) !important; cursor:pointer; font-size:16px; padding:8px; position:absolute; top:12px; right:12px; transition: all 0.2s ease; border-radius: 8px; }
+  .cb-close:hover { background: rgba(255,255,255,0.05); color: var(--cb-white) !important; }
+  .cb-header { padding-right: 50px; }
+      textarea { background: var(--cb-bg); color: var(--cb-white) !important; border: 1px solid var(--cb-border); border-radius: 10px; font-size:14px; padding:12px; font-family:inherit; max-height:200px; overflow-x:hidden; overflow-y:auto; transition: all 0.2s ease; }
       textarea::-webkit-scrollbar { width: 8px; }
-      textarea::-webkit-scrollbar-track { background: rgba(10,15,28,0.6); border-radius: 10px; }
-      textarea::-webkit-scrollbar-thumb { background: linear-gradient(180deg, rgba(0,180,255,0.6), rgba(140,30,255,0.5)); border-radius: 10px; border: 2px solid rgba(10,15,28,0.6); }
-      textarea::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, rgba(0,180,255,0.8), rgba(140,30,255,0.7)); }
-      textarea:focus { outline: 2px solid rgba(0,180,255,0.6); }
-      select:focus { outline: 2px solid rgba(0,180,255,0.6); }
+      textarea::-webkit-scrollbar-track { background: var(--cb-bg3); border-radius: 10px; }
+      textarea::-webkit-scrollbar-thumb { background: linear-gradient(180deg, var(--cb-accent-primary), var(--cb-accent-secondary)); border-radius: 10px; border: 2px solid var(--cb-bg3); }
+      textarea::-webkit-scrollbar-thumb:hover { opacity: 0.8; }
+      textarea:focus { outline: none; border-color: var(--cb-accent-primary); box-shadow: 0 0 0 3px rgba(0, 180, 255, 0.15); }
+      select:focus { outline: none; border-color: var(--cb-accent-primary); box-shadow: 0 0 0 3px rgba(0, 180, 255, 0.15); }
       /* Internal view sections - inline in the sidebar */
-      .cb-internal-view { display: none; padding: 14px 18px; border-top: 1px solid rgba(255,255,255,0.06); background: rgba(6,10,18,0.3); }
+      .cb-internal-view { display: none; padding: 18px 20px; border-top: 1px solid var(--cb-border); background: var(--cb-bg); animation: slideIn 0.3s ease-out; }
       .cb-internal-view.cb-view-active { display: block; }
-      .cb-view-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
-      .cb-view-close { background:transparent; border:1px solid rgba(255,255,255,0.1); color:var(--cb-white); padding:4px 8px; border-radius:6px; cursor:pointer; font-size:12px; }
-      .cb-view-close:hover { background:rgba(255,255,255,0.06); box-shadow: 0 0 12px rgba(0, 180, 255, 0.2); }
-      .cb-view-title { font-weight:700; font-size:14px; color:var(--cb-white); }
-      .cb-view-intro { font-size:13px; color:var(--cb-subtext); line-height:1.5; margin:10px 0 14px 0; padding:10px 12px; background:rgba(16,24,43,0.35); border-left:3px solid rgba(0,180,255,0.35); border-radius:6px; }
-      .cb-view-select { margin:8px 0 12px 0; width:100%; }
-  .cb-view-text { width:100%; min-height:140px; max-height:200px; resize:vertical; background:var(--cb-bg); color:var(--cb-white); border:1px solid rgba(0,180,255,0.25); padding:10px; border-radius:8px; font-family:inherit; white-space:pre-wrap; overflow-y:auto; overflow-x:hidden; font-size:12px; line-height:1.4; }
+      @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+      .cb-view-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
+      .cb-view-close { background:transparent; border:1px solid var(--cb-border); color:var(--cb-white); padding:6px 12px; border-radius:8px; cursor:pointer; font-size:12px; font-weight:600; transition: all 0.2s ease; }
+      .cb-view-close:hover { background:var(--cb-bg3); border-color: var(--cb-accent-primary); box-shadow: 0 2px 8px rgba(0, 180, 255, 0.2); transform: translateY(-1px); }
+      .cb-view-title { font-weight:700; font-size:16px; color:var(--cb-white); letter-spacing:-0.01em; }
+      .cb-view-intro { font-size:13px; color:var(--cb-subtext); line-height:1.6; margin:12px 0 16px 0; padding:12px 14px; background:var(--cb-bg3); border-left:3px solid var(--cb-accent-primary); border-radius:8px; }
+      .cb-view-select { margin:10px 0 14px 0; width:100%; }
+  .cb-view-text { width:100%; min-height:140px; max-height:200px; resize:vertical; background:var(--cb-bg); color:var(--cb-white); border:1px solid var(--cb-border); padding:12px; border-radius:10px; font-family:inherit; white-space:pre-wrap; overflow-y:auto; overflow-x:hidden; font-size:13px; line-height:1.6; transition: all 0.2s ease; }
+  .cb-view-text:focus { border-color: var(--cb-accent-primary); box-shadow: 0 0 0 3px rgba(0, 180, 255, 0.15); outline: none; }
   .cb-view-text::-webkit-scrollbar { width: 8px; }
-  .cb-view-text::-webkit-scrollbar-track { background: var(--cb-bg); border-radius: 10px; }
-  .cb-view-text::-webkit-scrollbar-thumb { background: linear-gradient(180deg, rgba(0,180,255,0.85), rgba(140,30,255,0.6)); border-radius: 10px; border: 2px solid var(--cb-bg); }
-  .cb-view-text::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, rgba(0,180,255,1), rgba(140,30,255,0.8)); }
-      .cb-view-controls { margin:12px 0; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
-      .cb-view-go { margin-top:10px; }
-  .cb-view-result { margin-top:14px; padding:12px; background: rgba(16,24,43,0.55); border-radius:10px; white-space:pre-wrap; color:var(--cb-white); font-size:12px; line-height:1.4; max-height:200px; overflow-y:auto; overflow-x:hidden; }
-  .cb-progress { display:inline-block; margin-left:10px; font-size:12px; color:var(--cb-subtext); opacity:0.9; }
+  .cb-view-text::-webkit-scrollbar-track { background: var(--cb-bg3); border-radius: 10px; }
+  .cb-view-text::-webkit-scrollbar-thumb { background: linear-gradient(180deg, var(--cb-accent-primary), var(--cb-accent-secondary)); border-radius: 10px; border: 2px solid var(--cb-bg3); }
+  .cb-view-text::-webkit-scrollbar-thumb:hover { opacity: 0.8; }
+      .cb-view-controls { margin:14px 0; display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+      .cb-view-go { margin-top:12px; }
+  .cb-view-result { margin-top:16px; padding:14px; background: var(--cb-bg); border:1px solid var(--cb-border); border-radius:10px; white-space:pre-wrap; color:var(--cb-white); font-size:13px; line-height:1.6; max-height:200px; overflow-y:auto; overflow-x:hidden; }
+  .cb-progress { display:inline-block; margin-left:10px; font-size:12px; color:var(--cb-subtext); opacity:0.9; font-weight:500; }
   .cb-dots { display:inline-block; }
   .cb-dots .dot { display:inline-block; opacity:0.25; animation: cb-ellipsis 1.1s ease-in-out infinite; }
   .cb-dots .dot:nth-child(2) { animation-delay: .18s; }
@@ -497,7 +512,7 @@
   const panel = document.createElement('div'); panel.className = 'cb-panel';
     // Header: Title and subtitle
     const header = document.createElement('div'); header.className = 'cb-header';
-  const title = document.createElement('div'); title.className = 'cb-title'; title.textContent = 'ChatBridge';
+  const title = document.createElement('div'); title.className = 'cb-title'; title.textContent = 'ChatBridge'; title.style.fontSize = '22px';
   const subtitle = document.createElement('div'); subtitle.className = 'cb-subtitle'; subtitle.textContent = 'Effortlessly continue conversations across models';
   const left = document.createElement('div');
   left.style.display = 'flex'; left.style.flexDirection = 'column'; left.style.gap = '6px'; left.style.alignItems = 'flex-start';
@@ -520,8 +535,8 @@
   const btnRestore = document.createElement('button'); btnRestore.className = 'cb-btn'; btnRestore.textContent = 'Restore'; btnRestore.title = 'Continue where you left off - Pick any saved chat and paste it into this AI'; btnRestore.setAttribute('aria-label','Restore conversation');
   const btnClipboard = document.createElement('button'); btnClipboard.className = 'cb-btn'; btnClipboard.textContent = 'Copy'; btnClipboard.title = 'Quick export - Copy this conversation to share or save externally'; btnClipboard.setAttribute('aria-label','Copy conversation to clipboard');
   const btnSmartQuery = document.createElement('button'); btnSmartQuery.className = 'cb-btn'; btnSmartQuery.textContent = 'Query'; btnSmartQuery.title = 'Ask questions across ALL your saved chats - Natural language search powered by AI'; btnSmartQuery.setAttribute('aria-label','Open Smart Query');
-  const btnFindConnections = document.createElement('button'); btnFindConnections.className = 'cb-btn'; btnFindConnections.textContent = 'Connect'; btnFindConnections.title = 'Discover related conversations - See how your chats build on each other'; btnFindConnections.setAttribute('aria-label','Find related conversations');
   const btnKnowledgeGraph = document.createElement('button'); btnKnowledgeGraph.className = 'cb-btn'; btnKnowledgeGraph.textContent = 'Graph'; btnKnowledgeGraph.title = 'Visualize your conversation network - Interactive map of how your chats connect'; btnKnowledgeGraph.setAttribute('aria-label','Open Knowledge Graph');
+  const btnInsights = document.createElement('button'); btnInsights.className = 'cb-btn'; btnInsights.textContent = 'Insights'; btnInsights.title = 'Smart workspace tools - Compare, merge, extract, and organize your conversations'; btnInsights.setAttribute('aria-label','Open Smart Workspace');
 
   // Gemini API buttons
   const btnSyncTone = document.createElement('button'); btnSyncTone.className = 'cb-btn'; btnSyncTone.textContent = 'Sync'; btnSyncTone.title = 'Adapt conversations - Rewrite for a different AI model\'s style and strengths';
@@ -540,12 +555,12 @@
     panel.appendChild(scanRow);
   } catch (e) { try { row1.appendChild(btnScan); } catch (e2) {} }
   
-  // Grid: Restore, Query, Connect, Graph, Copy, Sync, Summarize, Rewrite, Translate
+  // Grid: Restore, Query, Graph, Insights, Copy, Sync, Summarize, Rewrite, Translate
   [
     btnRestore,
     btnSmartQuery,
-    btnFindConnections,
     btnKnowledgeGraph,
+    btnInsights,
     btnClipboard,
     btnSyncTone,
     btnSummarize,
@@ -774,6 +789,12 @@
   const smartProvenance = document.createElement('div'); smartProvenance.id = 'cb-smart-provenance'; smartProvenance.style.fontSize = '12px'; smartProvenance.style.marginTop = '8px'; smartProvenance.style.color = 'rgba(200,200,200,0.9)'; smartProvenance.textContent = '';
   smartView.appendChild(smartProvenance);
 
+  // Connections panel (for Find Connections results)
+  const connectionsTitle = document.createElement('div'); connectionsTitle.className = 'cb-view-title'; connectionsTitle.style.fontSize = '13px'; connectionsTitle.style.marginTop = '12px'; connectionsTitle.textContent = 'Connections';
+  smartView.appendChild(connectionsTitle);
+  const connectionsResult = document.createElement('div'); connectionsResult.id = 'cb-connections-result'; connectionsResult.className = 'cb-view-result'; connectionsResult.textContent = '(No connections yet)';
+  smartView.appendChild(connectionsResult);
+
   panel.appendChild(smartView);
 
   // Knowledge Graph Explorer view
@@ -825,6 +846,25 @@
   graphView.appendChild(graphStats);
 
   panel.appendChild(graphView);
+
+  // ============================================
+  // INSIGHTS / SMART WORKSPACE VIEW
+  // ============================================
+  const insightsView = document.createElement('div'); insightsView.className = 'cb-internal-view'; insightsView.id = 'cb-insights-view'; insightsView.setAttribute('data-cb-ignore','true');
+  const insightsTop = document.createElement('div'); insightsTop.className = 'cb-view-top';
+  const insightsTitle = document.createElement('div'); insightsTitle.className = 'cb-view-title'; insightsTitle.textContent = '🎯 Smart Workspace';
+  const btnCloseInsights = document.createElement('button'); btnCloseInsights.className = 'cb-view-close'; btnCloseInsights.textContent = '✕';
+  btnCloseInsights.setAttribute('aria-label','Close Smart Workspace view');
+  insightsTop.appendChild(insightsTitle); insightsTop.appendChild(btnCloseInsights);
+  insightsView.appendChild(insightsTop);
+
+  const insightsIntro = document.createElement('div'); insightsIntro.className = 'cb-view-intro'; insightsIntro.textContent = 'Practical tools to help you work smarter: compare models, merge threads, extract content, and stay organized.';
+  insightsView.appendChild(insightsIntro);
+
+  const insightsContent = document.createElement('div'); insightsContent.id = 'cb-insights-content'; insightsContent.style.cssText = 'padding:12px 0;overflow-y:auto;max-height:calc(100vh - 250px);';
+  insightsView.appendChild(insightsContent);
+
+  panel.appendChild(insightsView);
 
   // Gemini Nano input/output area
   const geminiWrap = document.createElement('div'); geminiWrap.style.padding = '8px 18px'; geminiWrap.style.display = 'flex'; geminiWrap.style.flexDirection = 'column'; geminiWrap.style.gap = '8px';
@@ -1050,6 +1090,7 @@
         transView.classList.remove('cb-view-active');
         try { if (typeof smartView !== 'undefined' && smartView) smartView.classList.remove('cb-view-active'); } catch(_) {}
         try { if (typeof graphView !== 'undefined' && graphView) graphView.classList.remove('cb-view-active'); } catch(_) {}
+        try { if (typeof insightsView !== 'undefined' && insightsView) insightsView.classList.remove('cb-view-active'); } catch(_) {}
       } catch (e) {}
     }
 
@@ -1064,6 +1105,558 @@
         }
       } catch (e) { debugLog('load convs', e); }
       return '';
+    }
+
+    // ============================================
+    // SMART WORKSPACE FUNCTIONS
+    // ============================================
+
+    // Render Smart Workspace UI
+    async function renderSmartWorkspace() {
+      try {
+        if (!insightsContent) {
+          debugLog('insightsContent not found!');
+          toast('Error: UI element missing');
+          return;
+        }
+        insightsContent.innerHTML = '';
+        debugLog('Rendering Smart Workspace...');
+
+        // Quick Actions Grid
+        const actionsGrid = document.createElement('div');
+        actionsGrid.style.cssText = 'display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px;padding:0 12px;';
+
+        // 1. Quick Compare (compare responses from different models)
+        const compareBtn = createFeatureCard('Compare Models', 'Compare how different AIs answered the same question', '🔄', async () => {
+          try {
+            const convs = await loadConversationsAsync();
+            if (!convs || convs.length < 2) { toast('Need at least 2 conversations'); return; }
+            
+            // Find conversations with similar content
+            const comparableGroups = findComparableConversations(convs);
+            if (!comparableGroups.length) {
+              toast('No similar conversations found to compare');
+              return;
+            }
+            
+            // Show comparison UI
+            showComparisonView(comparableGroups[0]);
+          } catch (e) { 
+            toast('Compare failed');
+            debugLog('Compare error', e);
+          }
+        });
+
+        // 2. Smart Merge (merge related conversations)
+        const mergeBtn = createFeatureCard('Merge Threads', 'Combine related conversations into one coherent thread', '🔗', async () => {
+          try {
+            const convs = await loadConversationsAsync();
+            if (!convs || convs.length < 2) { toast('Need at least 2 conversations'); return; }
+            
+            // Show merge UI
+            showMergeView(convs);
+          } catch (e) { 
+            toast('Merge failed');
+            debugLog('Merge error', e);
+          }
+        });
+
+        // 3. Quick Extract (extract code, lists, or key info)
+        const extractBtn = createFeatureCard('Extract Content', 'Pull out code blocks, lists, or important info', '📋', () => {
+          try {
+            showExtractView();
+          } catch (e) {
+            toast('Extract failed');
+            debugLog('Extract error', e);
+          }
+        });
+
+        // 4. Auto-Organize (tag and organize conversations)
+        const organizeBtn = createFeatureCard('Auto-Organize', 'Automatically tag and organize your chats', '🗂️', async () => {
+          addLoadingToButton(organizeBtn, 'Organizing...');
+          try {
+            const convs = await loadConversationsAsync();
+            let organized = 0;
+            
+            for (const conv of convs.slice(0, 20)) { // Limit to recent 20
+              if (!conv.topics || !conv.topics.length) {
+                // Extract topics
+                const full = conv.conversation.map(m => `${m.role}: ${m.text}`).join('\n\n');
+                const prompt = `Extract 3-5 short topic tags for this conversation. Output only comma-separated tags:\n\n${full.slice(0, 2000)}`;
+                const res = await callGeminiAsync({ action: 'prompt', text: prompt, length: 'short' });
+                
+                if (res && res.ok) {
+                  const topics = res.result.split(',').map(t => t.trim()).slice(0, 5);
+                  conv.topics = topics;
+                  organized++;
+                }
+              }
+            }
+            
+            // Save updated conversations
+            if (organized > 0) {
+              localStorage.setItem('chatbridge:conversations', JSON.stringify(convs));
+              toast(`Organized ${organized} conversations`);
+            } else {
+              toast('All conversations already organized');
+            }
+          } catch (e) {
+            toast('Organize failed');
+            debugLog('Organize error', e);
+          } finally {
+            removeLoadingFromButton(organizeBtn, 'Auto-Organize');
+          }
+        });
+
+        actionsGrid.appendChild(compareBtn);
+        actionsGrid.appendChild(mergeBtn);
+        actionsGrid.appendChild(extractBtn);
+        actionsGrid.appendChild(organizeBtn);
+        insightsContent.appendChild(actionsGrid);
+
+        // Output Preview Area
+        const outputSection = document.createElement('div');
+        outputSection.style.cssText = 'padding:0 12px;margin-bottom:16px;';
+        
+        const outputLabel = document.createElement('div');
+        outputLabel.style.cssText = 'font-weight:600;font-size:12px;margin-bottom:8px;color:var(--cb-subtext);';
+        outputLabel.textContent = '📄 Output Preview';
+        outputSection.appendChild(outputLabel);
+        
+        const outputArea = document.createElement('div');
+        outputArea.id = 'cb-insights-output';
+        outputArea.className = 'cb-view-text';
+        outputArea.style.cssText = 'min-height:120px;max-height:300px;overflow-y:auto;background:rgba(16,24,43,0.4);border:1px solid rgba(0,180,255,0.2);border-radius:8px;padding:12px;font-size:12px;line-height:1.5;white-space:pre-wrap;';
+        outputArea.textContent = '(Results will appear here)';
+        outputSection.appendChild(outputArea);
+        
+        const outputControls = document.createElement('div');
+        outputControls.style.cssText = 'display:flex;gap:8px;margin-top:8px;';
+        
+        const btnSendToChat = document.createElement('button');
+        btnSendToChat.className = 'cb-btn cb-btn-primary';
+        btnSendToChat.textContent = '➤ Send to Chat';
+        btnSendToChat.style.cssText = 'flex:1;';
+        btnSendToChat.addEventListener('click', async () => {
+          const outputText = outputArea.textContent;
+          if (!outputText || outputText === '(Results will appear here)') {
+            toast('No output to send');
+            return;
+          }
+          
+          try {
+            // Find the chat input using the adapter
+            const adapter = Object.values(window.SiteAdapters || {}).find(a => a.detect && a.detect());
+            if (adapter && adapter.getInput) {
+              const input = adapter.getInput();
+              if (input) {
+                input.value = outputText;
+                input.textContent = outputText;
+                // Trigger input events to ensure the site recognizes the change
+                ['input', 'change', 'keydown'].forEach(evType => {
+                  const ev = new Event(evType, { bubbles: true });
+                  input.dispatchEvent(ev);
+                });
+                toast('Sent to chat input');
+              } else {
+                // Fallback: copy to clipboard
+                await navigator.clipboard.writeText(outputText);
+                toast('Copied to clipboard (paste into chat)');
+              }
+            } else {
+              // Fallback: copy to clipboard
+              await navigator.clipboard.writeText(outputText);
+              toast('Copied to clipboard (paste into chat)');
+            }
+          } catch (e) {
+            debugLog('Send to chat error', e);
+            toast('Failed to send to chat');
+          }
+        });
+        
+        const btnCopyOutput = document.createElement('button');
+        btnCopyOutput.className = 'cb-btn';
+        btnCopyOutput.textContent = '📋 Copy';
+        btnCopyOutput.addEventListener('click', async () => {
+          const outputText = outputArea.textContent;
+          if (!outputText || outputText === '(Results will appear here)') {
+            toast('No output to copy');
+            return;
+          }
+          
+          try {
+            await navigator.clipboard.writeText(outputText);
+            toast('Copied to clipboard');
+          } catch (e) {
+            toast('Copy failed');
+          }
+        });
+        
+        const btnClearOutput = document.createElement('button');
+        btnClearOutput.className = 'cb-btn';
+        btnClearOutput.textContent = '✕ Clear';
+        btnClearOutput.addEventListener('click', () => {
+          outputArea.textContent = '(Results will appear here)';
+          toast('Output cleared');
+        });
+        
+        outputControls.appendChild(btnSendToChat);
+        outputControls.appendChild(btnCopyOutput);
+        outputControls.appendChild(btnClearOutput);
+        outputSection.appendChild(outputControls);
+        
+        insightsContent.appendChild(outputSection);
+
+        // Smart Suggestions Section
+        const suggestTitle = document.createElement('div');
+        suggestTitle.style.cssText = 'font-weight:600;font-size:12px;margin:16px 12px 8px 12px;color:var(--cb-subtext);';
+        suggestTitle.textContent = '💡 Suggested Actions';
+        insightsContent.appendChild(suggestTitle);
+
+        // Generate contextual suggestions
+        const suggestions = await generateSmartSuggestions();
+        const suggestionsList = document.createElement('div');
+        suggestionsList.style.cssText = 'display:flex;flex-direction:column;gap:8px;padding:0 12px;';
+        
+        suggestions.forEach(sugg => {
+          const suggCard = document.createElement('div');
+          suggCard.style.cssText = 'padding:10px 12px;background:rgba(0,180,255,0.08);border-left:3px solid var(--cb-accent-primary);border-radius:8px;cursor:pointer;transition:all 0.2s;';
+          suggCard.innerHTML = `<div style="font-weight:600;font-size:12px;margin-bottom:4px;">${sugg.title}</div><div style="font-size:11px;opacity:0.8;">${sugg.description}</div>`;
+          suggCard.addEventListener('mouseenter', () => suggCard.style.background = 'rgba(0,180,255,0.15)');
+          suggCard.addEventListener('mouseleave', () => suggCard.style.background = 'rgba(0,180,255,0.08)');
+          suggCard.addEventListener('click', () => sugg.action());
+          suggestionsList.appendChild(suggCard);
+        });
+        
+        insightsContent.appendChild(suggestionsList);
+        
+        debugLog('Smart Workspace rendered successfully');
+
+      } catch (e) {
+        debugLog('renderSmartWorkspace error', e);
+        if (insightsContent) {
+          insightsContent.innerHTML = `<div style="padding:12px;color:rgba(255,100,100,0.9);">Failed to load workspace: ${e.message || 'Unknown error'}</div>`;
+        }
+      }
+    }
+
+    // Helper: Create feature card
+    function createFeatureCard(title, description, icon, onClick) {
+      const card = document.createElement('button');
+      card.className = 'cb-btn';
+      card.style.cssText = 'padding:14px 12px;text-align:left;height:auto;display:flex;flex-direction:column;gap:6px;background:rgba(16,24,43,0.4);border:1px solid rgba(0,180,255,0.2);transition:all 0.2s;';
+      card.innerHTML = `
+        <div style="font-size:20px;line-height:1;">${icon}</div>
+        <div style="font-weight:600;font-size:13px;">${title}</div>
+        <div style="font-size:11px;opacity:0.7;line-height:1.3;">${description}</div>
+      `;
+      card.addEventListener('mouseenter', () => {
+        card.style.background = 'rgba(0,180,255,0.15)';
+        card.style.transform = 'translateY(-2px)';
+      });
+      card.addEventListener('mouseleave', () => {
+        card.style.background = 'rgba(16,24,43,0.4)';
+        card.style.transform = 'translateY(0)';
+      });
+      card.addEventListener('click', onClick);
+      return card;
+    }
+
+    // Helper: Find comparable conversations (similar questions/topics)
+    function findComparableConversations(convs) {
+      const groups = [];
+      const processed = new Set();
+      
+      for (let i = 0; i < convs.length; i++) {
+        if (processed.has(i)) continue;
+        
+        const conv1 = convs[i];
+        const similar = [conv1];
+        processed.add(i);
+        
+        for (let j = i + 1; j < convs.length; j++) {
+          if (processed.has(j)) continue;
+          
+          const conv2 = convs[j];
+          
+          // Check for topic overlap
+          const topics1 = conv1.topics || [];
+          const topics2 = conv2.topics || [];
+          const overlap = topics1.filter(t => topics2.includes(t)).length;
+          
+          if (overlap >= 2) {
+            similar.push(conv2);
+            processed.add(j);
+          }
+        }
+        
+        if (similar.length >= 2) {
+          groups.push(similar);
+        }
+      }
+      
+      return groups;
+    }
+
+    // Helper: Show comparison view
+    function showComparisonView(conversations) {
+      if (!insightsContent) return;
+      insightsContent.innerHTML = '';
+      
+      const header = document.createElement('div');
+      header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding:0 12px;';
+      header.innerHTML = `<div style="font-weight:700;font-size:14px;">Model Comparison</div><button class="cb-btn cb-view-close">← Back</button>`;
+      header.querySelector('.cb-view-close').addEventListener('click', () => renderSmartWorkspace());
+      insightsContent.appendChild(header);
+      
+      conversations.forEach(conv => {
+        const card = document.createElement('div');
+        card.style.cssText = 'padding:12px;background:rgba(16,24,43,0.4);border-radius:8px;margin:0 12px 12px 12px;';
+        
+        const model = conv.model || conv.platform || 'Unknown';
+        const preview = conv.conversation[0]?.text.slice(0, 200) || '';
+        
+        card.innerHTML = `
+          <div style="font-weight:600;margin-bottom:8px;color:var(--cb-accent-primary);">${model}</div>
+          <div style="font-size:12px;opacity:0.9;">${preview}...</div>
+          <button class="cb-btn" style="margin-top:8px;padding:6px 10px;font-size:11px;">View Full</button>
+        `;
+        
+        card.querySelector('.cb-btn').addEventListener('click', () => {
+          const output = conv.conversation.map(m => `${m.role}: ${m.text}`).join('\n\n');
+          showOutputWithSendButton(output, `${model} - Full Conversation`);
+          toast('Loaded conversation');
+        });
+        
+        insightsContent.appendChild(card);
+      });
+    }
+
+    // Helper: Show merge view
+    function showMergeView(convs) {
+      if (!insightsContent) return;
+      insightsContent.innerHTML = '';
+      
+      const header = document.createElement('div');
+      header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding:0 12px;';
+      header.innerHTML = `<div style="font-weight:700;font-size:14px;">Merge Threads</div><button class="cb-btn cb-view-close">← Back</button>`;
+      header.querySelector('.cb-view-close').addEventListener('click', () => renderSmartWorkspace());
+      insightsContent.appendChild(header);
+      
+      const intro = document.createElement('div');
+      intro.style.cssText = 'font-size:12px;margin-bottom:12px;opacity:0.8;padding:0 12px;';
+      intro.textContent = 'Select conversations to merge into a single coherent thread:';
+      insightsContent.appendChild(intro);
+      
+      const selected = new Set();
+      
+      convs.slice(0, 10).forEach(conv => {
+        const checkbox = document.createElement('label');
+        checkbox.style.cssText = 'display:flex;align-items:center;gap:10px;padding:10px;background:rgba(16,24,43,0.3);border-radius:8px;margin:0 12px 8px 12px;cursor:pointer;';
+        
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+        input.value = conv.ts;
+        input.addEventListener('change', () => {
+          if (input.checked) selected.add(conv.ts);
+          else selected.delete(conv.ts);
+        });
+        
+        // Get chat name/topic (first user message or topics)
+        const chatName = conv.name || (conv.conversation && conv.conversation.find(m => m.role === 'user')?.text.slice(0, 60)) || 'Untitled Chat';
+        const site = conv.platform || conv.host || (conv.url ? new URL(conv.url).hostname : 'Unknown');
+        const count = conv.conversation?.length || 0;
+        
+        checkbox.innerHTML = `<div style="flex:1;"><div style="font-weight:600;font-size:12px;margin-bottom:4px;">${chatName}${chatName.length > 57 ? '...' : ''}</div><div style="font-size:11px;opacity:0.7;">📍 ${site} • 💬 ${count} messages</div></div>`;
+        checkbox.prepend(input);
+        
+        insightsContent.appendChild(checkbox);
+      });
+      
+      const mergeBtn = document.createElement('button');
+      mergeBtn.className = 'cb-btn cb-btn-primary';
+      mergeBtn.textContent = 'Merge Selected';
+      mergeBtn.style.cssText = 'margin:12px;';
+      mergeBtn.addEventListener('click', async () => {
+        if (selected.size < 2) { toast('Select at least 2 conversations'); return; }
+        
+        addLoadingToButton(mergeBtn, 'Merging...');
+        try {
+          const toMerge = convs.filter(c => selected.has(c.ts));
+          const combined = toMerge.flatMap(c => c.conversation);
+          const output = combined.map(m => `${m.role}: ${m.text}`).join('\n\n');
+          
+          // Show output with Send to Chat button
+          showOutputWithSendButton(output, 'Merged Conversation');
+          toast('Merged conversations ready!');
+        } catch (e) {
+          toast('Merge failed');
+          debugLog('Merge execution error', e);
+        } finally {
+          removeLoadingFromButton(mergeBtn, 'Merge Selected');
+        }
+      });
+      
+      insightsContent.appendChild(mergeBtn);
+    }
+
+    // Helper: Show extract view
+    function showExtractView() {
+      if (!insightsContent) return;
+      insightsContent.innerHTML = '';
+      
+      const header = document.createElement('div');
+      header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding:0 12px;';
+      header.innerHTML = `<div style="font-weight:700;font-size:14px;">Extract Content</div><button class="cb-btn cb-view-close">← Back</button>`;
+      header.querySelector('.cb-view-close').addEventListener('click', () => renderSmartWorkspace());
+      insightsContent.appendChild(header);
+      
+      const types = [
+        { name: 'Code Blocks', icon: '💻', pattern: /```[\s\S]*?```/g },
+        { name: 'Lists', icon: '📝', pattern: /^[\s]*[-*•]\s+.+$/gm },
+        { name: 'URLs', icon: '🔗', pattern: /https?:\/\/[^\s]+/g },
+        { name: 'Numbers/Data', icon: '🔢', pattern: /\d+\.?\d*/g }
+      ];
+      
+      types.forEach(type => {
+        const btn = document.createElement('button');
+        btn.className = 'cb-btn';
+        btn.style.cssText = 'width:calc(100% - 24px);text-align:left;padding:12px;margin:0 12px 8px 12px;display:flex;align-items:center;gap:10px;';
+        btn.innerHTML = `<span style="font-size:20px;">${type.icon}</span><span style="font-weight:600;">${type.name}</span>`;
+        btn.addEventListener('click', async () => {
+          const text = lastScannedText || '';
+          if (!text || text.length < 10) {
+            toast('Scan a conversation first');
+            return;
+          }
+          const matches = text.match(type.pattern) || [];
+          
+          if (!matches.length) {
+            toast(`No ${type.name.toLowerCase()} found`);
+            return;
+          }
+          
+          const output = matches.join('\n\n');
+          showOutputWithSendButton(output, `${type.icon} ${type.name} (${matches.length} found)`);
+          toast(`Extracted ${matches.length} ${type.name.toLowerCase()}`);
+        });
+        insightsContent.appendChild(btn);
+      });
+    }
+
+    // Helper: Show output with Send to Chat button
+    function showOutputWithSendButton(output, title) {
+      if (!insightsContent) return;
+      insightsContent.innerHTML = '';
+      
+      const header = document.createElement('div');
+      header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding:0 12px;';
+      header.innerHTML = `<div style="font-weight:700;font-size:14px;">${title}</div><button class="cb-btn cb-view-close">← Back</button>`;
+      header.querySelector('.cb-view-close').addEventListener('click', () => renderSmartWorkspace());
+      insightsContent.appendChild(header);
+      
+      // Output preview area
+      const outputArea = document.createElement('div');
+      outputArea.id = 'cb-insights-output';
+      outputArea.style.cssText = 'background:rgba(6,20,32,0.6);border:1px solid rgba(0,180,255,0.3);border-radius:8px;padding:12px;margin:0 12px 12px 12px;max-height:300px;overflow-y:auto;font-size:12px;line-height:1.6;white-space:pre-wrap;color:rgba(255,255,255,0.9);';
+      outputArea.textContent = output;
+      insightsContent.appendChild(outputArea);
+      
+      // Send to Chat button
+      const sendBtn = document.createElement('button');
+      sendBtn.className = 'cb-btn cb-btn-primary';
+      sendBtn.textContent = '📤 Send to Chat';
+      sendBtn.style.cssText = 'margin:0 12px;width:calc(100% - 24px);';
+      sendBtn.addEventListener('click', async () => {
+        try {
+          await restoreToChat(output, []);
+          toast('Sent to chat input!');
+        } catch (e) {
+          toast('Failed to send to chat');
+          debugLog('Send to chat error', e);
+        }
+      });
+      insightsContent.appendChild(sendBtn);
+      
+      // Scroll to show output
+      setTimeout(() => {
+        outputArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 100);
+    }
+
+    // Helper: Generate smart suggestions based on conversation history
+    async function generateSmartSuggestions() {
+      const suggestions = [];
+      
+      try {
+        const convs = await loadConversationsAsync();
+        
+        // Suggestion 1: If many untagged conversations
+        const untagged = convs.filter(c => !c.topics || !c.topics.length).length;
+        if (untagged > 5) {
+          suggestions.push({
+            title: `📌 ${untagged} untagged conversations`,
+            description: 'Organize them for easier searching',
+            action: () => {
+              try {
+                if (btnNormalizeTags) btnNormalizeTags.click();
+                else toast('Feature not available');
+              } catch (e) {
+                toast('Error opening organizer');
+              }
+            }
+          });
+        }
+        
+        // Suggestion 2: If conversations not indexed
+        if (convs.length > 3) {
+          suggestions.push({
+            title: '🔍 Enable semantic search',
+            description: 'Index your conversations for AI-powered search',
+            action: () => {
+              try {
+                if (btnIndexAll) btnIndexAll.click();
+                else toast('Feature not available');
+              } catch (e) {
+                toast('Error opening indexer');
+              }
+            }
+          });
+        }
+        
+        // Suggestion 3: If similar recent conversations
+        const recent = convs.slice(0, 5);
+        const hasSimilar = recent.length >= 2 && recent[0].topics?.some(t => recent[1].topics?.includes(t));
+        if (hasSimilar) {
+          suggestions.push({
+            title: '🔄 Similar conversations detected',
+            description: 'Compare responses from different models',
+            action: async () => {
+              try {
+                const groups = findComparableConversations(recent);
+                if (groups.length) showComparisonView(groups[0]);
+                else toast('No comparable conversations found');
+              } catch (e) {
+                toast('Comparison failed');
+              }
+            }
+          });
+        }
+        
+      } catch (e) {
+        debugLog('generateSmartSuggestions error', e);
+      }
+      
+      // If no suggestions, add a default one
+      if (suggestions.length === 0) {
+        suggestions.push({
+          title: '🎯 Get started',
+          description: 'Scan a conversation to unlock more features',
+          action: () => toast('Click "Scan Chat" to save your first conversation')
+        });
+      }
+      
+      return suggestions.slice(0, 3); // Max 3 suggestions
     }
 
     // Open Sync Tone view
@@ -1456,7 +2049,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           border-radius: 14px;
           box-shadow: 0 12px 32px rgba(0,0,0,0.35);
           z-index: 2147483646;
-          font-family: 'Poppins', sans-serif;
+          font-family: 'Inter', sans-serif;
           font-size: 13px;
           line-height: 1.5;
           animation: cb-slide-in 0.4s cubic-bezier(0.4, 0, 0.2, 1);
@@ -1831,11 +2424,56 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
     }
 
     // Cross-Context Memory: Detect context on page and show suggestions with sliding window
+    function renderConnectionsPanel(relatedConvs, activeContext) {
+      try {
+        if (!connectionsResult) return;
+        // Build list of cards similar to the floating notification, but inline
+        connectionsResult.innerHTML = '';
+        if (!relatedConvs || relatedConvs.length === 0) {
+          const empty = document.createElement('div');
+          empty.style.cssText = 'opacity:0.8;';
+          empty.textContent = 'No connections found yet.' + (activeContext && activeContext.keywords && activeContext.keywords.length ? ' Topics detected: ' + activeContext.keywords.slice(0,5).join(', ') : '');
+          connectionsResult.appendChild(empty);
+          return;
+        }
+        relatedConvs.slice(0, 6).forEach(conv => {
+          const card = document.createElement('div');
+          card.style.cssText = 'background:rgba(11,15,23,0.15);padding:10px;border-radius:10px;margin-bottom:10px;border-left:3px solid rgba(11,15,23,0.4);';
+          const header = document.createElement('div'); header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;';
+          const platform = document.createElement('div'); platform.style.cssText = 'font-weight:600;font-size:12px;';
+          const platformName = (conv.platform || 'Unknown').replace(/^https?:\/\//, '').replace(/\/$/, '');
+          platform.textContent = platformName;
+          const score = document.createElement('div'); score.style.cssText = 'background:rgba(11,15,23,0.3);padding:2px 6px;border-radius:6px;font-size:11px;font-weight:600;display:flex;align-items:center;gap:4px;';
+          const confidence = conv.confidence || 0;
+          const color = confidence >= 70 ? '#10a37f' : confidence >= 50 ? '#ffa500' : '#888';
+          score.innerHTML = `<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${color}"></span> ${confidence}%`;
+          header.appendChild(platform); header.appendChild(score);
+          card.appendChild(header);
+          if (conv.context) {
+            const ctx = document.createElement('div'); ctx.style.cssText = 'font-size:12px;margin-bottom:6px;opacity:0.9;';
+            ctx.textContent = conv.context.slice(0, 140) + (conv.context.length > 140 ? '…' : '');
+            card.appendChild(ctx);
+          }
+          if (conv.entities && conv.entities.length) {
+            const chips = document.createElement('div'); chips.style.cssText = 'display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px;';
+            conv.entities.slice(0,5).forEach(e => { const tag = document.createElement('span'); tag.style.cssText = 'background:rgba(11,15,23,0.25);padding:3px 8px;border-radius:6px;font-size:10px;font-weight:500;'; tag.textContent = e; chips.appendChild(tag); });
+            card.appendChild(chips);
+          }
+          const open = document.createElement('button'); open.className = 'cb-btn'; open.textContent = 'Open conversation'; open.style.marginTop = '6px';
+          open.addEventListener('click', () => { try { openConversationById(conv.id); } catch(_) {} });
+          card.appendChild(open);
+          connectionsResult.appendChild(card);
+        });
+      } catch (e) { debugLog('renderConnectionsPanel error', e); }
+    }
+
     async function detectAndSuggestContext() {
       try {
         // Check if we have any knowledge graph data first
         const kg = await loadKnowledgeGraph();
         if (!kg || kg.length === 0) {
+          // Reflect inline in Connections panel as well as toast
+          try { if (connectionsResult) { connectionsResult.textContent = 'No saved conversations yet. Scan some chats first to build your knowledge graph!'; } } catch(_) {}
           toast('No saved conversations yet. Scan some chats first to build your knowledge graph!');
           return;
         }
@@ -1843,6 +2481,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         // Quick scan of visible messages to extract current context
         const msgs = await scanChat();
         if (!msgs || msgs.length < 2) {
+          try { if (connectionsResult) { connectionsResult.textContent = 'Not enough conversation context on this page. Try having a longer chat first.'; } } catch(_) {}
           toast('Not enough conversation context on this page. Try having a longer chat first.');
           return;
         }
@@ -1851,24 +2490,30 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         const activeContext = detectActiveContext(msgs, 8, 40);
         
         if (!activeContext) {
+          try { if (connectionsResult) { connectionsResult.textContent = 'Could not detect clear context from current conversation.'; } } catch(_) {}
           toast('Could not detect clear context from current conversation.');
           return;
         }
         
         debugLog('Active context detected:', activeContext);
         
+        // Update inline panel status
+        try { if (connectionsResult) connectionsResult.textContent = 'Analyzing connections…'; } catch(_) {}
+        
         // Find related conversations using detected entities and themes
         const related = await findRelatedConversations(activeContext.entities, activeContext.themes, 5);
         
         if (related.length) {
-          showContextSuggestion(related);
+          try { renderConnectionsPanel(related, activeContext); } catch(_) {}
+          // Keep toast, but prefer inline panel over floating notification
           toast(`Found ${related.length} related conversation${related.length > 1 ? 's' : ''} (${activeContext.confidence}% confidence)`);
         } else {
-          // Show helpful message when no connections found
-          showNoConnectionsMessage(activeContext.keywords);
+          // Show helpful message inline when no connections found
+          try { renderConnectionsPanel([], activeContext); } catch(_) {}
         }
       } catch (e) {
         debugLog('detectAndSuggestContext error', e);
+        try { if (connectionsResult) { connectionsResult.textContent = 'Analysis failed. Please try again.'; } } catch(_) {}
       }
     }
 
@@ -1889,7 +2534,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           border-radius: 14px;
           box-shadow: 0 12px 32px rgba(0,0,0,0.35);
           z-index: 2147483646;
-          font-family: 'Poppins', sans-serif;
+          font-family: 'Inter', sans-serif;
           font-size: 13px;
           line-height: 1.5;
           animation: cb-slide-in 0.4s cubic-bezier(0.4, 0, 0.2, 1);
@@ -2145,24 +2790,6 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       }
     });
 
-    // Find Connections button handler
-    btnFindConnections.addEventListener('click', async () => {
-      try {
-        addLoadingToButton(btnFindConnections, 'Analyzing…');
-        announce('Analyzing conversation for related content');
-        await detectAndSuggestContext();
-        toast('Context analysis complete');
-        announce('Context analysis complete');
-      } catch (e) {
-        toast('Context detection failed');
-        showError('Context detection failed', async () => { try { btnFindConnections.click(); } catch(_) {} });
-        debugLog('Find Connections error', e);
-        announce('Context detection failed');
-      } finally {
-        removeLoadingFromButton(btnFindConnections, 'Find Connections');
-      }
-    });
-
     // ============================================
     // KNOWLEDGE GRAPH VISUALIZATION & ADVANCED FEATURES
     // ============================================
@@ -2183,6 +2810,27 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
     // Knowledge Graph: Close view
     btnCloseGraph.addEventListener('click', () => {
       graphView.classList.remove('cb-view-active');
+    });
+
+    // ============================================
+    // SMART WORKSPACE / INSIGHTS HANDLERS
+    // ============================================
+
+    // Insights: Open Smart Workspace view
+    btnInsights.addEventListener('click', async () => {
+      try {
+        closeAllViews();
+        insightsView.classList.add('cb-view-active');
+        await renderSmartWorkspace();
+      } catch (e) {
+        toast('Failed to open Smart Workspace');
+        debugLog('Insights open error', e);
+      }
+    });
+
+    // Insights: Close view
+    btnCloseInsights.addEventListener('click', () => {
+      insightsView.classList.remove('cb-view-active');
     });
 
     // Knowledge Graph: Refresh visualization
@@ -2239,19 +2887,25 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         await Promise.race([simulationPromise, new Promise(r => setTimeout(r, 5000))]);
         toast('Preparing graph for export...');
 
-        // Build a short textual prompt describing the graph for Gemini image generation
+        // Build a descriptive prompt for Imagen 3 to generate the graph visualization
         const convs = await loadConversationsAsync();
         const nodeCount = kg.length;
         const topEntities = Array.from(new Set([].concat(...(kg.map(k => k.entities || []))))).slice(0,8);
         const topThemes = Array.from(new Set([].concat(...(kg.map(k => k.themes || []))))).slice(0,8);
-        const prompt = `Create a visually appealing, high-resolution top-down network map of ${nodeCount} conversation nodes. Highlight shared entities and themes. Use warm palette, legible labels for nodes, and emphasize clusters. Entities: ${topEntities.join(', ')}. Themes: ${topThemes.join(', ')}.`;
+        const platforms = Array.from(new Set(kg.map(k => {
+          const c = convs.find(cv => cv.id === k.id);
+          return c?.platform || 'unknown';
+        }).filter(Boolean))).slice(0,5);
+        
+        const prompt = `Create a beautiful, high-quality network graph visualization showing ${nodeCount} interconnected conversation nodes. Style: modern tech aesthetic with a dark navy background (#0b0f17). Draw circles for nodes in these colors: ChatGPT (green #10a37f), Claude (purple #9b87f5), Gemini (blue #4285f4), Copilot (cyan #00a4ef), Perplexity (indigo #6366f1). Connect related nodes with glowing golden lines (#e6cf9f). Label key nodes with these topics: ${topThemes.slice(0,5).join(', ')}. Show a knowledge graph that emphasizes clusters and connections between AI conversations. Platforms: ${platforms.join(', ')}. Entities discussed: ${topEntities.join(', ')}. Professional, clean, and data-driven visualization.`;
 
-        // Ask background to generate image via Gemini (if available)
+        // Ask background to generate image via Imagen 3
         let geminiImage = null;
         try {
+          debugLog('Requesting Imagen 3 generation with prompt:', prompt.slice(0, 150) + '...');
           const resp = await new Promise(res => {
             try {
-              chrome.runtime.sendMessage({ type: 'generate_image', payload: { model: 'nano-banana', prompt } }, (r) => {
+              chrome.runtime.sendMessage({ type: 'generate_image', payload: { model: 'imagen-3.0-generate-001', prompt } }, (r) => {
                 if (chrome.runtime.lastError) return res({ ok: false, error: chrome.runtime.lastError.message });
                 return res(r || { ok: false });
               });
@@ -2360,9 +3014,21 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         const kg = await loadKnowledgeGraph();
         const convs = await loadConversationsAsync();
         
+        debugLog('[renderKnowledgeGraph] Starting render - kg entries:', kg.length, 'convs:', convs.length);
+        
         if (!kg.length) {
           graphStats.innerHTML = '<div style="text-align:center;padding:20px;"><div style="font-size:48px;opacity:0.3;">📊</div><div style="margin-top:12px;opacity:0.7;">No knowledge graph data yet</div><div style="font-size:12px;margin-top:8px;opacity:0.5;">Scan some chats to build your graph!</div></div>';
-          return;
+          // Clear canvas to show empty state
+          try {
+            const ctx = graphCanvas.getContext('2d');
+            ctx.fillStyle = '#0b0f17';
+            ctx.fillRect(0, 0, graphCanvas.width, graphCanvas.height);
+            ctx.fillStyle = 'rgba(230,207,159,0.3)';
+            ctx.font = '14px Poppins';
+            ctx.textAlign = 'center';
+            ctx.fillText('No graph data - scan some conversations first', graphCanvas.width / 2, graphCanvas.height / 2);
+          } catch (e) { debugLog('Canvas empty state render failed', e); }
+          return Promise.resolve();
         }
         
         // Build graph data structure
@@ -2522,6 +3188,11 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           // Clear canvas
           ctx.fillStyle = '#0b0f17';
           ctx.fillRect(0, 0, width, height);
+          
+          // DEBUG on first frame
+          if (animationFrames === 0) {
+            debugLog('First render frame - canvas:', canvas.width, 'x', canvas.height, 'nodes:', nodes.length, 'edges:', edges.length);
+          }
           
           // Draw edges
           edges.forEach(e => {
@@ -2742,7 +3413,16 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           } catch (err) { debugLog('canvas keydown', err); }
         });
         
-        // Start rendering
+        // DEBUG: Force immediate render to show something
+        try {
+          ctx.fillStyle = '#0b0f17';
+          ctx.fillRect(0, 0, width, height);
+          debugLog('Initial canvas clear done, starting render loop with', nodes.length, 'nodes');
+        } catch (e) {
+          debugLog('Canvas initial clear failed', e);
+        }
+        
+        // Start rendering loop
         render();
         
         // Return promise that resolves when simulation completes
@@ -3294,7 +3974,13 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           } else { sel = arr[0]; }
         } catch (_) { sel = arr[0]; }
         if (!sel || !sel.conversation || !sel.conversation.length) { toast('No messages in selected conversation'); return; }
-          const formatted = sel.conversation.map(m => (m.role === 'user' ? 'User: ' : 'Assistant: ') + m.text).join('\n\n') + '\n\n🔄 Please continue the conversation.';
+          // If a summary exists, restore that instead of the full chat
+          let formatted = '';
+          if (sel.summary && typeof sel.summary === 'string' && sel.summary.trim().length > 0) {
+            formatted = sel.summary.trim();
+          } else {
+            formatted = sel.conversation.map(m => (m.role === 'user' ? 'User: ' : 'Assistant: ') + m.text).join('\n\n') + '\n\n🔄 Please continue the conversation.';
+          }
           // Collect attachments from conversation
           const allAtts = [];
           try {
@@ -3548,6 +4234,8 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         summSourceText.textContent = inputText || '(no conversation found)';
         summResult.textContent = '';
         summView.classList.add('cb-view-active');
+        // Auto-pick a sensible default summary type (user can still change)
+        try { if (inputText && summTypeSelect) { summTypeSelect.value = pickAdaptiveSummaryType(inputText); } } catch(_){ }
       } catch (e) { toast('Failed to open Summarize'); debugLog('open summ view', e); }
     });
 
@@ -3718,9 +4406,35 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
 
     btnCloseSmart.addEventListener('click', () => { try { smartView.classList.remove('cb-view-active'); } catch (e) {} });
 
-    // Load conversations as a Promise: prefer background persistent store, fallback to window.getConversations or localStorage
+    // Simple in-memory cache and batched storage writes for responsiveness
+    const __cbConvCache = { data: [], ts: 0 };
+    const __cbSetQueue = new Map(); // key -> { value, timer }
+    function setStorageBatched(key, value, delayMs = 150) {
+      try {
+        const prev = __cbSetQueue.get(key);
+        if (prev && prev.timer) clearTimeout(prev.timer);
+        const timer = setTimeout(() => {
+          try {
+            if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+              chrome.storage.local.set({ [key]: value }, () => {});
+            } else {
+              localStorage.setItem(key, JSON.stringify(value));
+            }
+          } catch (e) { debugLog('batched set failed', e); }
+        }, delayMs);
+        __cbSetQueue.set(key, { value, timer });
+      } catch (e) { debugLog('schedule set failed', e); }
+    }
+
+    // Load conversations as a Promise with cache: prefer background persistent store, fallback to window.getConversations or localStorage
     function loadConversationsAsync() {
       return new Promise(res => {
+        // Return cached list if fresh (< 1000ms)
+        try {
+          if (Array.isArray(__cbConvCache.data) && __cbConvCache.ts && (Date.now() - __cbConvCache.ts) < 1000) {
+            return res(__cbConvCache.data);
+          }
+        } catch (_) {}
         // Try background handler first
         try {
           chrome.runtime.sendMessage({ type: 'get_conversations', payload: {} }, (r) => {
@@ -3750,10 +4464,12 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
                       }
                     }
                     const merged = Array.from(m.values()).sort((a,b) => (b.ts||0) - (a.ts||0));
+                    try { __cbConvCache.data = merged; __cbConvCache.ts = Date.now(); } catch(_){}
                     res(merged);
                   } catch (e) { res(r.conversations); }
                 });
               } else {
+                try { __cbConvCache.data = r.conversations; __cbConvCache.ts = Date.now(); } catch(_){}
                 res(r.conversations);
               }
             } else {
@@ -3775,12 +4491,14 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
                 if (arr.length > 0) {
                   // Sort newest first
                   const sorted = arr.slice().sort((a,b) => (b.ts||0) - (a.ts||0));
+                  try { __cbConvCache.data = sorted; __cbConvCache.ts = Date.now(); } catch(_){}
                   res(sorted);
                 } else {
                   // Final fallback to localStorage
                   try {
                     const local = JSON.parse(localStorage.getItem('chatbridge:conversations') || '[]');
                     const sorted = (Array.isArray(local) ? local : []).slice().sort((a,b) => (b.ts||0) - (a.ts||0));
+                    try { __cbConvCache.data = sorted; __cbConvCache.ts = Date.now(); } catch(_){}
                     res(sorted);
                   } catch (e) { res([]); }
                 }
@@ -3789,6 +4507,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
               // Final fallback if chrome APIs not available
               const arr = JSON.parse(localStorage.getItem('chatbridge:conversations') || '[]'); 
               const sorted = (Array.isArray(arr) ? arr : []).slice().sort((a,b) => (b.ts||0) - (a.ts||0));
+              try { __cbConvCache.data = sorted; __cbConvCache.ts = Date.now(); } catch(_){}
               res(sorted);
             }
           } catch (e) { res([]); }
@@ -3910,6 +4629,24 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
     }
 
     async function populateSmartSuggestions() {
+      function enforceKeywordStyle(str) {
+        try {
+          let s = String(str || '').toLowerCase();
+          // strip punctuation except spaces, dash, underscore
+          s = s.replace(/["'`.,:;!?()\[\]{}]/g, ' ').replace(/\s+/g, ' ').trim();
+          // remove prompt-like prefixes
+          s = s.replace(/^(how to|how can i|how can we|can you|please|write|generate|create|build|explain|tell me|what is|show me|give me|help me)\s+/i, '').trim();
+          // limit to 3 words max
+          const parts = s.split(/\s+/).filter(Boolean).slice(0, 3);
+          if (!parts.length) return null;
+          const out = parts.join(' ');
+          // reject if still looks like a question/prompt
+          if (/\?$/.test(out) || /^(how|can|please|what|why|when|where)\b/i.test(out)) return null;
+          if (out.length < 3) return null;
+          // Title Case for display
+          return out.split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+        } catch (_) { return null; }
+      }
       try {
         // clear existing
         try { while (smartSuggestRow.firstChild) smartSuggestRow.removeChild(smartSuggestRow.firstChild); } catch(e){}
@@ -3937,7 +4674,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
               suggestions = Object.entries(freq)
                 .sort((a,b) => b[1] - a[1])
                 .slice(0, 6)
-                .map(([topic]) => topic.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '));
+                .map(([topic, count]) => ({ text: topic.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '), confidence: Math.min(90, 50 + (count * 10)) }));
             }
           }
         } catch(e) { debugLog('load saved topics failed', e); }
@@ -3947,7 +4684,16 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           try {
             const resp = await requestEmbeddingSuggestions(lastScannedText, 6);
             if (resp && resp.ok && Array.isArray(resp.suggestions) && resp.suggestions.length) {
-              suggestions = resp.suggestions.slice(0,6);
+              // Normalize: accept either strings or { phrase, confidence }
+              suggestions = resp.suggestions.slice(0,6).map(s => {
+                if (typeof s === 'string') return { text: s, confidence: undefined };
+                if (s && typeof s === 'object') {
+                  const text = s.text || s.phrase || '';
+                  const confidence = typeof s.confidence === 'number' ? s.confidence : undefined;
+                  return { text, confidence };
+                }
+                return null;
+              }).filter(Boolean);
             }
           } catch(e) { debugLog('embed suggest failed', e); }
         }
@@ -3956,7 +4702,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         if (!suggestions || suggestions.length === 0) {
           try { 
             if (lastScannedText && lastScannedText.length) {
-              suggestions = buildKeywordsFromText(lastScannedText, 6);
+              suggestions = buildKeywordsFromText(lastScannedText, 6).map(t => ({ text: t, confidence: 55 }));
             }
           } catch(e){}
         }
@@ -3966,22 +4712,32 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           try {
             const convs = await loadConversationsAsync();
             const sample = (convs || []).slice(-8).map(c => (c.conversation||[]).map(m=>m.text).join(' ')).join('\n');
-            suggestions = buildKeywordsFromText(sample, 6);
+            suggestions = buildKeywordsFromText(sample, 6).map(t => ({ text: t, confidence: 50 }));
           } catch(e) { suggestions = []; }
         }
         
-        // Ensure unique (case-insensitive, trimmed) and filter bad patterns
+        // Normalize to objects { text, confidence } if still strings
+        if (suggestions && typeof suggestions[0] === 'string') {
+          suggestions = suggestions.map(s => ({ text: String(s), confidence: undefined }));
+        }
+
+        // Enforce keyword-only style: strip prompt phrasing, limit to 3 words, reject questions
+        suggestions = (suggestions || [])
+          .map(obj => ({ text: String((obj && obj.text) || '').trim(), confidence: obj && obj.confidence }))
+          .map(obj => {
+            const kw = enforceKeywordStyle(obj.text);
+            return kw ? { text: kw, confidence: obj.confidence } : null;
+          })
+          .filter(Boolean);
+
+        // Ensure unique (case-insensitive, trimmed), apply patterns, and enforce minimum confidence when available
         const seen = new Set();
-        suggestions = suggestions
-          .map(s => s.trim())
-          .filter(s => {
-            const normalized = s.toLowerCase();
-            // Skip if already seen
+        suggestions = (suggestions || [])
+          .filter(obj => {
+            const normalized = obj.text.toLowerCase();
+            if (!obj.text || obj.text.length < 3) return false;
             if (seen.has(normalized)) return false;
-            // Skip if too short or matches bad patterns
-            if (s.length < 3) return false;
-            if (/^(want|i want|to|the|and|for|with|from|about)$/i.test(normalized)) return false;
-            if (/^(want to|i want|to create|trying to|going to|need to|have to)$/i.test(normalized)) return false;
+            if (typeof obj.confidence === 'number' && obj.confidence < 30) return false;
             seen.add(normalized);
             return true;
           })
@@ -3989,22 +4745,59 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         
         if (!suggestions || suggestions.length === 0) {
           // default helpful prompts (topic-like)
-          suggestions = ['API integration','Error handling','Best practices','Code optimization','Database design','Architecture'];
+          suggestions = [
+            { text: 'API integration' },
+            { text: 'Error handling' },
+            { text: 'Best practices' },
+            { text: 'Code optimization' },
+            { text: 'Database design' },
+            { text: 'Architecture' }
+          ];
         }
         // create chips
         suggestions.forEach(s => {
           const chip = document.createElement('button');
-          chip.className = 'cb-btn'; chip.style.padding = '6px 10px'; chip.style.fontSize = '12px'; chip.style.borderRadius = '999px'; chip.style.background = 'rgba(11,15,23,0.12)'; chip.textContent = s;
+          chip.className = 'cb-btn'; chip.style.padding = '6px 10px'; chip.style.fontSize = '12px'; chip.style.borderRadius = '999px'; chip.style.background = 'rgba(11,15,23,0.12)';
+          const txt = s.text || String(s);
+          // Confidence dot + percent if available
+          let label = txt;
+          if (typeof s.confidence === 'number') {
+            const c = s.confidence;
+            const color = c >= 70 ? '#10a37f' : c >= 50 ? '#ffa500' : '#888';
+            const dot = `<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${color};margin-right:6px"></span>`;
+            label = `${dot}<span>${txt}</span><span style="margin-left:6px;color:#888;font-size:11px">${c}%</span>`;
+            chip.innerHTML = label;
+          } else {
+            chip.textContent = label;
+          }
           chip.setAttribute('role','button');
           chip.setAttribute('tabindex','0');
-          chip.setAttribute('aria-label', 'Suggestion: ' + s);
-          chip.addEventListener('click', () => { try { smartInput.value = s; smartInput.focus(); announce('Suggestion chosen: ' + s); } catch(e){} });
-          chip.addEventListener('keydown', (ev) => { try { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); smartInput.value = s; smartInput.focus(); announce('Suggestion chosen: ' + s); } } catch(e){} });
+          chip.setAttribute('aria-label', 'Suggestion: ' + txt + (typeof s.confidence === 'number' ? `, confidence ${s.confidence} percent` : ''));
+          chip.addEventListener('click', () => { try { smartInput.value = txt; smartInput.focus(); announce('Suggestion chosen: ' + txt); } catch(e){} });
+          chip.addEventListener('keydown', (ev) => { try { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); smartInput.value = txt; smartInput.focus(); announce('Suggestion chosen: ' + txt); } } catch(e){} });
           smartSuggestRow.appendChild(chip);
         });
         // set placeholder to first suggestion
-        try { if (suggestions && suggestions.length) smartInput.placeholder = suggestions[0] + ' (click a suggestion)'; } catch(e){}
+        try { if (suggestions && suggestions.length) smartInput.placeholder = (suggestions[0].text || String(suggestions[0])) + ' (click a suggestion)'; } catch(e){}
       } catch (e) { debugLog('populateSmartSuggestions error', e); }
+    }
+
+    // Heuristic: choose a sensible default summary style based on the conversation text
+    function pickAdaptiveSummaryType(text) {
+      try {
+        const t = String(text || '');
+        const len = t.length;
+        const lines = t.split(/\r?\n/);
+        const bulletLines = lines.filter(l => /^\s*[-*•]/.test(l)).length;
+        const hasCode = /```|\bfunction\b|\bclass\b|\bconst\b|\blet\b|\bvar\b|<\/?[a-z][^>]*>/i.test(t);
+        const techTerms = /(api|endpoint|error|stack trace|database|schema|deploy|ci\/?cd|docker|kubernetes|oauth|jwt|typescript|javascript|react|node|python)/i.test(t);
+        const aiHandoff = /(prompt|model|llm|gemini|claude|chatgpt|copilot|perplexity)/i.test(t);
+        if (len > 5000 || aiHandoff) return 'transfer';
+        if (hasCode || techTerms) return 'technical';
+        if (bulletLines >= 8) return 'bullet';
+        // default for general cases
+        return 'paragraph';
+      } catch (_) { return 'paragraph'; }
     }
 
     // Detect current model from page structure (safer than hostname inference)
@@ -4574,14 +5367,71 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           } catch (e) {}
           return;
         }
-        // History text
-        historyEl.textContent = arr.slice(0,6).map(s => {
-          let host = s.platform || 'chat';
-          try { host = new URL(s.url||location.href).hostname; } catch (_) {}
-          const date = new Date(s.ts);
-          const timeStr = date.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-          return `${host} • ${(s.conversation||[]).length} msgs • ${timeStr}`;
-        }).join('\n\n');
+        // History: virtual list when large; compact text when small
+        try {
+          const LARGE_THRESHOLD = 30;
+          if (arr.length > LARGE_THRESHOLD) {
+            const ITEM_H = 44;
+            historyEl.innerHTML = '';
+            historyEl.style.maxHeight = '280px';
+            historyEl.style.overflowY = 'auto';
+            const full = document.createElement('div');
+            full.style.position = 'relative';
+            full.style.height = (arr.length * ITEM_H) + 'px';
+            full.style.width = '100%';
+            full.id = 'cb-history-virt';
+            historyEl.appendChild(full);
+            const render = () => {
+              const scrollTop = historyEl.scrollTop || 0;
+              const viewportH = historyEl.clientHeight || 280;
+              const start = Math.max(0, Math.floor(scrollTop / ITEM_H) - 2);
+              const end = Math.min(arr.length, start + Math.ceil(viewportH / ITEM_H) + 6);
+              while (full.firstChild) full.removeChild(full.firstChild);
+              for (let i = start; i < end; i++) {
+                const s = arr[i];
+                let host = s.platform || 'chat';
+                try { host = new URL(s.url||location.href).hostname; } catch (_) {}
+                if (host.length > 18) host = host.slice(0, 16) + '…';
+                const date = new Date(s.ts);
+                const timeStr = date.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                const count = (s.conversation||[]).length;
+                const row = document.createElement('div');
+                row.style.cssText = `position:absolute;left:0;right:0;top:${i*ITEM_H}px;height:${ITEM_H-4}px;display:flex;align-items:center;gap:8px;padding:6px 10px;border-bottom:1px solid rgba(230,207,159,0.08);cursor:pointer;`;
+                row.setAttribute('role','button');
+                row.setAttribute('aria-label', `Open ${host} with ${count} messages from ${timeStr}`);
+                const dot = document.createElement('span');
+                dot.style.cssText = 'display:inline-block;width:6px;height:6px;border-radius:50%;background:rgba(230,207,159,0.6)';
+                row.appendChild(dot);
+                const txt = document.createElement('div');
+                txt.style.cssText = 'flex:1 1 auto;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:0.92';
+                txt.textContent = `${host} • ${count} msgs • ${timeStr}`;
+                row.appendChild(txt);
+                const openBtn = document.createElement('button');
+                openBtn.className = 'cb-btn';
+                openBtn.style.cssText = 'padding:4px 8px;font-size:11px;border-radius:8px;';
+                openBtn.textContent = 'Open';
+                row.appendChild(openBtn);
+                const open = () => { try { chatSelect.value = String(s.ts); chatSelect.dispatchEvent(new Event('change')); announce('Selected conversation ' + timeStr); } catch(e){} };
+                row.addEventListener('click', open);
+                openBtn.addEventListener('click', (ev)=>{ ev.stopPropagation(); open(); });
+                full.appendChild(row);
+              }
+            };
+            try { historyEl.__virtRender = render; historyEl.__virtItems = arr; } catch(_){}
+            historyEl.removeEventListener('scroll', historyEl.__virtScroll || (()=>{}));
+            historyEl.__virtScroll = () => render();
+            historyEl.addEventListener('scroll', historyEl.__virtScroll);
+            render();
+          } else {
+            historyEl.textContent = arr.slice(0,6).map(s => {
+              let host = s.platform || 'chat';
+              try { host = new URL(s.url||location.href).hostname; } catch (_) {}
+              const date = new Date(s.ts);
+              const timeStr = date.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+              return `${host} • ${(s.conversation||[]).length} msgs • ${timeStr}`;
+            }).join('\n\n');
+          }
+        } catch (e) { /* noop */ }
         // Default preview from first conversation
         preview.textContent = 'Preview: ' + (arr[0] && arr[0].conversation && arr[0].conversation[0] ? arr[0].conversation[0].text.slice(0,200) : '(none)');
 
@@ -4675,7 +5525,11 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
     }
 
     refreshHistory();
-    try { window.ChatBridge = window.ChatBridge || {}; window.ChatBridge._renderLastScan = renderLastScan; } catch (e) {}
+    try { 
+      window.ChatBridge = window.ChatBridge || {}; 
+      window.ChatBridge._renderLastScan = renderLastScan; 
+      window.ChatBridge.refreshHistory = refreshHistory; 
+    } catch (e) {}
     return { host, avatar, panel };
   }
 
@@ -4889,7 +5743,34 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
     
     const normalized = normalizeMessages(raw || []);
     debugLog('=== SCAN COMPLETE ===', normalized.length, 'messages');
-    
+
+    // Auto-summarize if more than 10 messages
+    let summary = '';
+    if (normalized.length > 10) {
+      try {
+        // Compose summary prompt in your required format
+        const summaryPrompt = `Summarize the following chat in this format:\n\n[Summary]\n- Main points\n- Key actions\n- Decisions\n- Next steps\n\nChat:\n${normalized.map(m => (m.role === 'user' ? 'User: ' : 'Assistant: ') + m.text).join('\n')}`;
+        // Call Gemini or your LLM for summary
+        const res = await callGeminiAsync({ action: 'prompt', text: summaryPrompt, length: 'medium' });
+        if (res && res.ok && res.result) {
+          summary = res.result.trim();
+        }
+      } catch (e) { debugLog('auto-summarize failed', e); }
+    }
+
+    // Save conversation with summary if present
+    try {
+      const convObj = {
+        ts: Date.now(),
+        id: String(Date.now()),
+        platform: (function(){ try { return new URL(location.href).hostname; } catch(_) { return location.hostname || 'unknown'; } })(),
+        url: location.href,
+        conversation: normalized,
+      };
+      if (summary) convObj.summary = summary;
+      await saveConversation(convObj);
+    } catch (e) { debugLog('auto-save failed', e); }
+
     // Log any errors that occurred
     try {
       if (window.ChatBridge && window.ChatBridge._lastScan && window.ChatBridge._lastScan.errors && window.ChatBridge._lastScan.errors.length) {
@@ -5032,6 +5913,60 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
     try { 
       return window.ChatBridge._lastScan || null; 
     } catch (e) { return null; } 
+  };
+  
+  // End-to-end validation: save → dropdown refresh → restore
+  // Usage: ChatBridge.testE2E({ text?: string })
+  // Returns a Promise<{ savedOk, topOk, restoreOk, details }>
+  window.ChatBridge.testE2E = async function(opts) {
+    const details = [];
+    try {
+      const before = await loadConversationsAsync();
+      const preCount = Array.isArray(before) ? before.length : 0;
+      details.push(`Pre-count: ${preCount}`);
+
+      const now = Date.now();
+      const conv = {
+        ts: now,
+        id: String(now),
+        platform: (function(){ try { return new URL(location.href).hostname; } catch(_) { return location.hostname || 'unknown'; } })(),
+        url: location.href,
+        conversation: [
+          { role: 'user', text: (opts && opts.text) || 'E2E sanity check: user message ' + now },
+          { role: 'assistant', text: 'E2E sanity check: assistant reply ' + now }
+        ]
+      };
+      const savedOk = await saveConversation(conv);
+      details.push(`Saved to background+mirrors: ${savedOk}`);
+
+      // Give the mirror a brief moment just in case
+      await new Promise(r => setTimeout(r, 120));
+
+      // Refresh dropdown UI if available
+      try { if (typeof window.ChatBridge.refreshHistory === 'function') window.ChatBridge.refreshHistory(); } catch(_){}
+      await new Promise(r => setTimeout(r, 60));
+
+      const after = await loadConversationsAsync();
+      const top = Array.isArray(after) && after[0] ? after[0] : null;
+      const topOk = !!(top && String(top.ts) === String(conv.ts));
+      details.push(`Top item is new conversation: ${topOk}`);
+
+      // Attempt restore into visible composer (if present)
+      let restoreOk = false;
+      try {
+        const testText = `[ChatBridge E2E ${now}]`;
+        const res = await restoreToChat(testText);
+        restoreOk = !!res;
+        details.push(`restoreToChat returned: ${res}`);
+      } catch (e) {
+        details.push(`restoreToChat error: ${e && e.message}`);
+      }
+
+      return { savedOk, topOk, restoreOk, details };
+    } catch (e) {
+      details.push('testE2E failed: ' + (e && e.message ? e.message : String(e)));
+      return { savedOk: false, topOk: false, restoreOk: false, details };
+    }
   };
   
   // Debug helper to check storage

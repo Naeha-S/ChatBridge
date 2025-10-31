@@ -563,7 +563,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           const convs = Array.isArray(data) ? data : [];
           const joined = (convs.slice(0,10).map(c => (c.conversation||[]).map(m=>m.text).join(' ')).join('\n\n')) || text;
           const phrases = extractLocalPhrases(joined, topK*6).slice(0, topK*2);
-          return sendResponse({ ok:true, suggestions: phrases.slice(0, topK) });
+          // Provide basic confidence (frequency-based) when embeddings are unavailable
+          const mapped = phrases.slice(0, topK).map((p, idx) => ({ phrase: p, confidence: Math.max(30, 80 - idx*10) }));
+          return sendResponse({ ok:true, suggestions: mapped });
         }
 
         // We have an embedding: find top similar indexed items
@@ -673,7 +675,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
         // If we have no embeddings at all (no cache + API failed), fallback to local ranking
         if (!phraseEmbs.length) {
-          const simple = topCandidates.slice(0, topK*3).slice(0, topK);
+          const simple = topCandidates.slice(0, topK*3).slice(0, topK).map((p, idx) => ({ phrase: p, confidence: Math.max(30, 70 - idx*8) }));
           return sendResponse({ ok:true, suggestions: simple });
         }
 
@@ -699,17 +701,26 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           if (p.split(' ').length === 1) continue; // skip unigrams
           if (p.length < 4) continue;
           seen.add(p);
-          uniques.push(p);
+          const confidence = Math.min(100, Math.round(s.score * 100));
+          uniques.push({ phrase: p, confidence });
           if (uniques.length >= topK) break;
         }
 
         // final fallback: if not enough, add top local phrases
         if (uniques.length < topK) {
-          const more = topCandidates.filter(p => !seen.has(p) && p.split(' ').length > 1).slice(0, topK - uniques.length);
+          const more = topCandidates
+            .filter(p => !seen.has(p) && p.split(' ').length > 1)
+            .slice(0, topK - uniques.length)
+            .map((p, idx) => ({ phrase: p, confidence: Math.max(30, 60 - idx*10) }));
           uniques.push(...more);
         }
 
-        return sendResponse({ ok:true, suggestions: uniques.slice(0, topK) });
+        // Enforce minimum confidence threshold of 30%
+        const final = uniques
+          .filter(u => (typeof u.confidence === 'number' ? u.confidence >= 30 : true))
+          .slice(0, topK);
+
+        return sendResponse({ ok:true, suggestions: final });
       } catch (e) {
         return sendResponse({ ok:false, error: 'embed_suggest_error', message: (e && e.message) || String(e) });
       }
@@ -1034,25 +1045,64 @@ Rewritten conversation (optimized for ${tgt}):`;
     (async () => {
       try {
         const payload = msg.payload || {};
-        const model = payload.model || 'nano-banana';
+        const model = payload.model || 'imagen-3.0-generate-001';
         const prompt = payload.prompt || '';
-        // Best-effort endpoint for image generation - may vary by API version
-        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateImage?key=${GEMINI_API_KEY}`;
-        const body = { prompt: prompt, size: payload.size || '1024x1024' };
-        const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify(body) });
+        
+        // Imagen 3 API endpoint for Google Generative AI
+        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+        
+        const body = {
+          contents: [{
+            parts: [{
+              text: prompt
+            }]
+          }],
+          generationConfig: {
+            temperature: 0.4,
+            topK: 32,
+            topP: 1,
+            maxOutputTokens: 2048
+          }
+        };
+        
+        const res = await fetch(`${endpoint}?key=${GEMINI_API_KEY}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        
         const json = await res.json();
+        console.log('[ChatBridge BG] Imagen response:', json);
+        
         if (!res.ok) {
           return sendResponse({ ok:false, error: 'image_http_error', status: res.status, body: json });
         }
-        // Expect base64-encoded image in response (best-effort parsing)
+        
+        // Parse image from response - Imagen returns base64 in inlineData
         let b64 = null;
         try {
-          if (json && json.data && Array.isArray(json.data) && json.data[0] && json.data[0].b64_json) b64 = json.data[0].b64_json;
-          else if (json && json.output && Array.isArray(json.output) && json.output[0] && json.output[0].image) b64 = json.output[0].image;
-        } catch (e) { b64 = null; }
-        if (!b64) return sendResponse({ ok:false, error: 'no_image_in_response', body: json });
+          if (json && json.candidates && json.candidates[0] && json.candidates[0].content && json.candidates[0].content.parts) {
+            const parts = json.candidates[0].content.parts;
+            for (const part of parts) {
+              if (part.inlineData && part.inlineData.data) {
+                b64 = part.inlineData.data;
+                break;
+              }
+            }
+          }
+        } catch (e) {
+          console.error('[ChatBridge BG] Parse image failed:', e);
+          b64 = null;
+        }
+        
+        if (!b64) {
+          // Fallback: return empty/error so content script uses canvas
+          return sendResponse({ ok:false, error: 'no_image_in_response', body: json });
+        }
+        
         return sendResponse({ ok:true, imageBase64: b64 });
       } catch (e) {
+        console.error('[ChatBridge BG] Image generation error:', e);
         return sendResponse({ ok:false, error: 'image_fetch_error', message: (e && e.message) || String(e) });
       }
     })();
