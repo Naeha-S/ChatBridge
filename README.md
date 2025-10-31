@@ -37,8 +37,8 @@ As AI assistants proliferate, users face challenges like:
 
 ### 🌐 Universal Platform Support
 
-Works across major AI platforms:
-**ChatGPT**, **Claude**, **Gemini**, **Copilot**, **Perplexity**, **Poe**, **Grok (X.AI)**, **DeepSeek**, **Mistral**, **Meta AI**, and more.
+Works across 10 major AI platforms:
+**ChatGPT**, **Claude**, **Gemini**, **Copilot**, **Perplexity**, **Poe**, **Grok (X.AI)**, **DeepSeek**, **Mistral**, **Meta AI**.
 
 ### 🧠 Smart Message Extraction
 
