@@ -52,6 +52,49 @@
   const DEBUG = !!(typeof window !== 'undefined' && window.__CHATBRIDGE_DEBUG === true);
 
   function debugLog(...args) { if (!DEBUG) return; try { console.debug('[ChatBridge]', ...args); } catch (e) {} }
+  // Always log restore-related messages for debugging
+  function restoreLog(...args) { try { console.log('[ChatBridge Restore]', ...args); } catch (e) {} }
+
+  // Register restore message listener EARLY, before injectUI, so it's ready when the tab opens
+  // Store restoreToChat reference - will be defined later but we can queue messages
+  let pendingRestoreMessages = [];
+  let restoreToChatFunction = null;
+  
+  console.log('[ChatBridge] Registering restore_to_chat listener early');
+  chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+    try {
+      if (msg && msg.type === 'restore_to_chat') {
+        console.log('[ChatBridge] Received restore_to_chat message, text length:', msg.payload ? msg.payload.text ? msg.payload.text.length : 0 : 0);
+        restoreLog('Restore message received early, queueing if needed');
+        
+        const payload = msg.payload || {};
+        const text = payload.text || '';
+        const attachments = payload.attachments || [];
+        
+        // If restoreToChat is not ready yet, queue the message
+        if (!restoreToChatFunction) {
+          restoreLog('restoreToChat function not ready yet, queueing message');
+          pendingRestoreMessages.push({ text, attachments, sendResponse });
+          return true; // Keep channel open
+        }
+        
+        // Use async function to properly handle response
+        (async () => {
+          try {
+            const result = await restoreToChatFunction(text, attachments);
+            if (sendResponse) sendResponse({ ok: result });
+          } catch (e) {
+            console.error('[ChatBridge] Restore error:', e);
+            if (sendResponse) sendResponse({ ok: false, error: e && e.message });
+          }
+        })();
+        return true; // Keep channel open for async response
+      }
+    } catch (e) {
+      console.error('[ChatBridge] Message listener error:', e);
+      if (sendResponse) sendResponse({ ok: false, error: e && e.message });
+    }
+  });
 
   // Ensure the floating avatar exists on the page. This is useful when the host
   // element is present (from a prior injection) but the avatar was removed by
@@ -1206,8 +1249,25 @@ Respond ONLY with a JSON object with keys: "strengths" (array of short strings) 
     }
 
     btnInsertSync.addEventListener('click', () => {
-      const text = syncSourceText.textContent || '';
-      continueWithTargetModel(text);
+      try {
+        // Get text from syncSourceText - try multiple methods to ensure we get the content
+        let text = '';
+        if (syncSourceText) {
+          text = syncSourceText.textContent || syncSourceText.innerText || syncSourceText.value || '';
+          // Clean up any extra whitespace but preserve newlines
+          text = text.trim();
+        }
+        debugLog('[ChatBridge Sync] Insert button clicked, text length:', text ? text.length : 0);
+        if (!text || text === '(no result)') {
+          toast('No synced text to insert. Please sync the conversation first.');
+          return;
+        }
+        debugLog('[ChatBridge Sync] Text preview:', text.slice(0, 100) + '...');
+        continueWithTargetModel(text);
+      } catch (e) {
+        debugLog('[ChatBridge Sync] Error in insert button:', e);
+        toast('Failed to insert text: ' + (e && e.message ? e.message : 'Unknown error'));
+      }
     });
 
     // Cross-Context Memory: Extract structured knowledge from a conversation with segmentation
@@ -3012,31 +3072,175 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
     // Helper: restore arbitrary text into the visible chat input on the page, and attach optional files
     async function restoreToChat(text, attachments) {
       try {
-        // Wait for composer to exist and be visible
-        let input = findVisibleInputCandidate();
-        if (!input) input = await waitForComposer(10000, 350);
-        if (input && input.isContentEditable) {
-          input.textContent = text;
-          input.dispatchEvent(new Event('input', { bubbles: true }));
-          input.focus(); input.blur();
+        restoreLog('Starting restoreToChat with text length:', text ? text.length : 0);
+        if (!text || !text.trim()) {
+          restoreLog('No text provided');
+          toast('No text to insert');
+          return false;
+        }
+
+        // Try to use adapter's getInput() method first (more reliable for site-specific inputs)
+        let input = null;
+        try {
+          const pick = (typeof window.pickAdapter === 'function') ? window.pickAdapter : null;
+          const adapter = pick ? pick() : null;
+          restoreLog('Adapter detected:', adapter ? adapter.id : 'none');
+          if (adapter && typeof adapter.getInput === 'function') {
+            restoreLog('Trying adapter.getInput() from adapter:', adapter.id);
+            input = adapter.getInput();
+            if (input) {
+              restoreLog('Found input via adapter:', input.tagName, input.type || 'contenteditable', input.id || input.className || 'no id/class');
+            } else {
+              restoreLog('Adapter.getInput() returned null');
+            }
+          }
+        } catch (e) {
+          restoreLog('Adapter.getInput() error:', e);
+        }
+
+        // Fallback to generic findVisibleInputCandidate if adapter didn't find anything
+        if (!input) {
+          restoreLog('Trying findVisibleInputCandidate()');
+          input = findVisibleInputCandidate();
+          if (input) {
+            restoreLog('Found input via findVisibleInputCandidate():', input.tagName);
+          } else {
+            restoreLog('findVisibleInputCandidate() returned null');
+          }
+        }
+
+        // If still no input, wait for composer to appear
+        if (!input) {
+          restoreLog('Waiting for composer (15s timeout)...');
+          input = await waitForComposer(15000, 400); // Increased timeout and poll interval
+          if (input) {
+            restoreLog('Found input after waiting:', input.tagName);
+          }
+        }
+
+        if (!input) {
+          restoreLog('ERROR: No input found after waiting');
+          try { await navigator.clipboard.writeText(text); toast('Copied to clipboard (input not found)'); } catch(e) { toast('Copied to clipboard'); }
+          return false;
+        }
+
+        restoreLog('Found input:', input.tagName, input.isContentEditable ? 'contenteditable' : 'textarea/input', 'id:', input.id || 'none', 'class:', (input.className || '').toString().slice(0, 50));
+
+        // Insert text based on input type
+        if (input.isContentEditable) {
+          restoreLog('Setting textContent for contenteditable input');
+          
+          // For contenteditable, use Range/Selection API for better compatibility with React/Vue frameworks
+          try {
+            // Focus first to ensure we can set selection
+            input.focus();
+            
+            // Clear any existing content and set up range
+            const range = document.createRange();
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            
+            // Select all content in the contenteditable
+            if (input.childNodes.length > 0) {
+              range.selectNodeContents(input);
+              range.deleteContents();
+            } else {
+              // If empty, set range at start of element
+              range.setStart(input, 0);
+              range.setEnd(input, 0);
+            }
+            
+            // Insert text as text node for better framework compatibility
+            const textNode = document.createTextNode(text);
+            range.insertNode(textNode);
+            
+            // Move cursor to end
+            range.setStartAfter(textNode);
+            range.collapse(true);
+            selection.removeAllRanges();
+            selection.addRange(range);
+            
+            restoreLog('Inserted text via Range API');
+          } catch (e) {
+            restoreLog('Range API failed, falling back to textContent:', e);
+            // Fallback: direct textContent manipulation
+            input.textContent = text;
+          }
+          
+          // Trigger multiple events to ensure frameworks pick it up
+          input.dispatchEvent(new Event('beforeinput', { bubbles: true, cancelable: true }));
+          input.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
+          input.dispatchEvent(new Event('textInput', { bubbles: true, cancelable: true }));
+          
+          // Additional focus events
+          input.dispatchEvent(new Event('focus', { bubbles: true }));
+          input.dispatchEvent(new Event('focusin', { bubbles: true }));
+          
+          setTimeout(() => {
+            // Re-verify and dispatch more events
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+            
+            // Verify text was set
+            const actualText = input.textContent || input.innerText || '';
+            restoreLog('Contenteditable text after insert (first 100 chars):', actualText.slice(0, 100));
+            restoreLog('Text length:', actualText.length, 'Expected:', text.length);
+            
+            if (!actualText.trim() && text.trim()) {
+              restoreLog('WARNING: Text may not have been inserted properly, trying innerText');
+              // Try innerText as fallback
+              input.innerText = text;
+              input.textContent = text;
+              input.dispatchEvent(new Event('input', { bubbles: true }));
+              input.dispatchEvent(new Event('change', { bubbles: true }));
+              
+              // For React/Vue: try setting the value property if it exists
+              if ('value' in input && typeof input.value !== 'undefined') {
+                input.value = text;
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+              }
+            }
+          }, 150);
           toast('Restored to chat');
         } else if (input) {
+          restoreLog('Setting value for textarea/input');
+          // Clear any existing value first
+          input.value = '';
+          // Set the text
           input.value = text;
-          input.dispatchEvent(new Event('input', { bubbles: true }));
-          input.focus(); input.blur();
-          // poke keydown for some frameworks
-          try { input.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, cancelable: true, key: ' ' })); } catch(e) {}
-          setTimeout(() => { try { input.dispatchEvent(new Event('input', { bubbles: true })); } catch(e){} }, 60);
-          try { input.dispatchEvent(new Event('change', { bubbles: true })); } catch(e){}
+          
+          // Trigger multiple events to ensure frameworks pick it up
+          input.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
+          input.dispatchEvent(new Event('beforeinput', { bubbles: true, cancelable: true }));
+          
+          // Focus and trigger additional events
+          input.focus();
+          input.dispatchEvent(new Event('focus', { bubbles: true }));
+          
+          // Additional events for different frameworks
+          try { input.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, cancelable: true, key: ' ', code: 'Space' })); } catch(e) {}
+          setTimeout(() => {
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+            // Verify text was set
+            const actualValue = input.value || '';
+            restoreLog('Input value after insert (first 100 chars):', actualValue.slice(0, 100));
+            restoreLog('Input value length:', actualValue.length, 'Expected:', text.length);
+            if (!actualValue.trim() && text.trim()) {
+              restoreLog('WARNING: Text may not have been inserted properly');
+              input.value = text;
+              input.dispatchEvent(new Event('input', { bubbles: true }));
+              input.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+          }, 150);
           toast('Restored to chat');
-        } else {
-          // No input found; put text on clipboard
-          try { await navigator.clipboard.writeText(text); toast('Copied to clipboard'); } catch(e) { toast('Copied to clipboard'); }
         }
+
         // Attach files if provided
         try {
           const atts = Array.isArray(attachments) ? attachments : [];
           if (atts.length) {
+            restoreLog('Attaching files:', atts.length);
             const res = await attachFilesToChat(atts);
             if (res.failed && res.failed.length) {
               console.warn('[ChatBridge] Some attachments failed to attach:', res.failed);
@@ -3044,11 +3248,35 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
             }
           }
         } catch (e) { console.warn('[ChatBridge] attachFiles error', e); }
+        
         return true;
       } catch (e) {
-        try { await navigator.clipboard.writeText(text); toast('Copied to clipboard'); } catch(_) { toast('Copied to clipboard'); }
+        restoreLog('ERROR in restoreToChat:', e);
+        try { await navigator.clipboard.writeText(text); toast('Copied to clipboard (error occurred)'); } catch(_) { toast('Copied to clipboard'); }
         return false;
       }
+    }
+
+    // Store reference to restoreToChat function so early listener can use it
+    restoreToChatFunction = restoreToChat;
+    restoreLog('restoreToChat function is now ready, processing queued messages:', pendingRestoreMessages.length);
+    
+    // Process any queued messages asynchronously
+    if (pendingRestoreMessages.length > 0) {
+      setTimeout(async () => {
+        restoreLog('Processing', pendingRestoreMessages.length, 'queued restore messages');
+        while (pendingRestoreMessages.length > 0) {
+          const queued = pendingRestoreMessages.shift();
+          try {
+            restoreLog('Processing queued restore message, text length:', queued.text ? queued.text.length : 0);
+            const result = await restoreToChat(queued.text, queued.attachments);
+            if (queued.sendResponse) queued.sendResponse({ ok: result });
+          } catch (e) {
+            console.error('[ChatBridge] Error processing queued restore message:', e);
+            if (queued.sendResponse) queued.sendResponse({ ok: false, error: e && e.message });
+          }
+        }
+      }, 100); // Small delay to ensure DOM is ready
     }
 
     btnRestore.addEventListener('click', async () => {
@@ -4994,18 +5222,8 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           sendResponse({ ok: false, error: String(e) });
         }
       });
-      // Listener to restore text/attachments when background opens a new tab
-      chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-        try {
-          if (msg && msg.type === 'restore_to_chat') {
-            const payload = msg.payload || {};
-            const text = payload.text || '';
-            const attachments = payload.attachments || [];
-            restoreToChat(text, attachments).then(() => sendResponse && sendResponse({ ok: true })).catch(() => sendResponse && sendResponse({ ok: false }));
-            return true;
-          }
-        } catch (e) {}
-      });
+      // Note: restore_to_chat listener is registered earlier at the top level
+      // to ensure it's ready when the tab opens
 
       // Cross-Context Memory: Auto-detect context and suggest connections after page loads
       setTimeout(async () => {

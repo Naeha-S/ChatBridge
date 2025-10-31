@@ -729,28 +729,39 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         if (!tab || !tab.id) { sendResponse && sendResponse({ ok:false, error:'tab_create_failed' }); return; }
         const tabId = tab.id;
         let attempts = 0;
-        const maxAttempts = 12; // ~6s total
-        const interval = setInterval(() => {
-          attempts++;
-          if (attempts > maxAttempts) {
-            clearInterval(interval);
-            sendResponse && sendResponse({ ok:false, error:'restore_timeout' });
-            return;
-          }
-          try {
-            chrome.tabs.sendMessage(tabId, { type: 'restore_to_chat', payload: { text, attachments } }, (res) => {
-              if (chrome.runtime.lastError) {
-                // Content script might not be loaded yet; keep retrying
-                return;
-              }
-              // got a response – success
+        const maxAttempts = 30; // ~15s total (increased from 6s)
+        // Wait a bit longer before first attempt to let page start loading
+        setTimeout(() => {
+          const interval = setInterval(() => {
+            attempts++;
+            if (attempts > maxAttempts) {
               clearInterval(interval);
-              sendResponse && sendResponse({ ok:true });
-            });
-          } catch (e) {
-            // ignore and retry
-          }
-        }, 500);
+              sendResponse && sendResponse({ ok:false, error:'restore_timeout' });
+              return;
+            }
+            try {
+              // Check if tab is still valid before sending message
+              chrome.tabs.get(tabId, (tabInfo) => {
+                if (chrome.runtime.lastError || !tabInfo) {
+                  clearInterval(interval);
+                  sendResponse && sendResponse({ ok:false, error:'tab_not_found' });
+                  return;
+                }
+                chrome.tabs.sendMessage(tabId, { type: 'restore_to_chat', payload: { text, attachments } }, (res) => {
+                  if (chrome.runtime.lastError) {
+                    // Content script might not be loaded yet; keep retrying
+                    return;
+                  }
+                  // got a response – success
+                  clearInterval(interval);
+                  sendResponse && sendResponse({ ok:true });
+                });
+              });
+            } catch (e) {
+              // ignore and retry
+            }
+          }, 500);
+        }, 1000); // Wait 1 second before starting to send messages
       });
     } catch (e) {
       sendResponse && sendResponse({ ok:false, error: e && e.message });
@@ -965,15 +976,42 @@ Rewritten conversation (optimized for ${tgt}):`;
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(body)
         });
-        const json = await res.json();
+        
+        // Parse JSON response - handle both success and error responses
+        let json;
+        try {
+          const text = await res.text();
+          json = text ? JSON.parse(text) : {};
+        } catch (e) {
+          console.error('[Gemini API] Failed to parse response as JSON:', e);
+          return sendResponse({ ok:false, error: 'gemini_parse_error', message: 'Invalid JSON response', status: res.status });
+        }
+        
+        // Check if HTTP request was successful
         if (!res.ok) {
           console.error('[Gemini API Error]', res.status, json);
           return sendResponse({ ok:false, error: 'gemini_http_error', status: res.status, body: json });
         }
-        if (!json.candidates || !json.candidates[0] || !json.candidates[0].content || !json.candidates[0].content.parts || !json.candidates[0].content.parts[0]) {
-          return sendResponse({ ok:false, error: 'gemini_parse_error', body: json });
+        
+        // Validate response structure
+        if (!json.candidates || !Array.isArray(json.candidates) || json.candidates.length === 0) {
+          console.error('[Gemini API] No candidates in response:', json);
+          return sendResponse({ ok:false, error: 'gemini_parse_error', message: 'No candidates in response', body: json });
         }
-        const result = json.candidates[0].content.parts[0].text || '';
+        
+        const candidate = json.candidates[0];
+        if (!candidate || !candidate.content || !candidate.content.parts || !Array.isArray(candidate.content.parts) || candidate.content.parts.length === 0) {
+          console.error('[Gemini API] Invalid candidate structure:', candidate);
+          return sendResponse({ ok:false, error: 'gemini_parse_error', message: 'Invalid candidate structure', body: json });
+        }
+        
+        // Check for finish reason (might be blocked, stopped, etc.)
+        if (candidate.finishReason && candidate.finishReason !== 'STOP') {
+          console.warn('[Gemini API] Unexpected finish reason:', candidate.finishReason);
+          // Still try to extract text if available
+        }
+        
+        const result = candidate.content.parts[0].text || '';
         // cache gemini successful result (5min TTL)
         try {
           const cacheKey = hashString(stableStringify({ type:'call_gemini', action: payload.action || 'unknown', prompt: promptText, length: payload.length || '', summaryType: payload.summaryType || '' }));

@@ -515,22 +515,61 @@ const SiteAdapters = [
       return messages;
     },
     getInput: () => {
-      // Try obvious inputs
-      let el = document.querySelector('textarea, input[type=text], input[type=search]');
-      if (el) return el;
-      // contenteditable composers
-      el = document.querySelector('[contenteditable="true"], [role="textbox"]');
-      if (el) return el;
-      // aria labelled inputs
-      el = document.querySelector('[aria-label*="message"], [aria-label*="Message"], [aria-label*="Ask"], [placeholder*="message"]');
-      if (el) return el;
-      // last resort: any input near a send button
-      const send = document.querySelector('button[aria-label*="send"], button:contains("Send")');
-      if (send) {
-        const near = send.closest('form') || document.body;
-        const inp = near.querySelector('textarea, input, [contenteditable="true"]');
-        if (inp) return inp;
+      // Claude-specific selectors (try these first)
+      let el = document.querySelector('[data-testid="composer-input"], [data-testid="composer"], [data-testid="prompt-input"]');
+      if (el) {
+        console.log('[Claude Debug] Found input via data-testid:', el.tagName);
+        return el;
       }
+      
+      // Look for contenteditable with specific Claude patterns
+      const contentEditables = Array.from(document.querySelectorAll('[contenteditable="true"], [role="textbox"]'));
+      for (const ce of contentEditables) {
+        // Check if it's visible and likely the main composer
+        const style = window.getComputedStyle(ce);
+        if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') continue;
+        
+        // Check for Claude-specific attributes/patterns
+        const placeholder = ce.getAttribute('placeholder') || '';
+        const ariaLabel = ce.getAttribute('aria-label') || '';
+        const className = (ce.className || '').toString().toLowerCase();
+        const parent = ce.closest('[class*="composer"], [class*="input"], [class*="prompt"], form');
+        
+        // Common Claude patterns
+        if (placeholder.includes('help') || placeholder.includes('message') || placeholder.includes('ask') ||
+            ariaLabel.includes('message') || ariaLabel.includes('prompt') || ariaLabel.includes('ask') ||
+            className.includes('composer') || className.includes('prompt') || parent) {
+          console.log('[Claude Debug] Found input via contenteditable pattern:', ce.tagName, placeholder || ariaLabel);
+          return ce;
+        }
+      }
+      
+      // Try obvious inputs
+      el = document.querySelector('textarea, input[type=text], input[type=search]');
+      if (el) {
+        console.log('[Claude Debug] Found input via textarea/input:', el.tagName);
+        return el;
+      }
+      
+      // aria labelled inputs
+      el = document.querySelector('[aria-label*="message"], [aria-label*="Message"], [aria-label*="Ask"], [aria-label*="prompt"], [placeholder*="message"], [placeholder*="help"]');
+      if (el) {
+        console.log('[Claude Debug] Found input via aria-label/placeholder:', el.tagName);
+        return el;
+      }
+      
+      // last resort: any input near a send button
+      const send = document.querySelector('button[aria-label*="send"], button[aria-label*="Send"], button[type="submit"], button:has-text("Send")');
+      if (send) {
+        const near = send.closest('form') || send.closest('div') || document.body;
+        const inp = near.querySelector('textarea, input, [contenteditable="true"]');
+        if (inp) {
+          console.log('[Claude Debug] Found input near send button:', inp.tagName);
+          return inp;
+        }
+      }
+      
+      console.log('[Claude Debug] No input found');
       return null;
     }
   },
