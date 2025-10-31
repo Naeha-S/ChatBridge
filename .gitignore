@@ -4,22 +4,32 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+lerna-debug.log*
 
 # Build output
 *.log
 dist/
 build/
 .parcel-cache/
+out/
 
 # IDEs
 .vscode/
+!.vscode/extensions.json
+!.vscode/settings.json
 .idea/
 *.sublime-project
 *.sublime-workspace
 .vs/
+*.code-workspace
 
 # OS files
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
 desktop.ini
 *.swp
@@ -30,27 +40,34 @@ desktop.ini
 /test-results/
 /playwright-report/
 /playwright/.cache/
+/coverage/
+/.nyc_output/
+junit.xml
+test-output/
 
 # Chrome extension artifacts
 *.crx
 *.pem
 *.zip
+web-ext-artifacts/
 
 # Environment & Secrets
 .env
 .env.*
+!.env.example
 .env.local
 .env.production
+.env.development
 secrets.json
 api-keys.json
+config/secrets/
+*.key
+*.secret
 
 # TypeScript
 *.tsbuildinfo
 tsconfig.tsbuildinfo
-
-# Coverage
-coverage/
-.nyc_output/
+*.d.ts.map
 
 # Backup files
 *.bak
@@ -58,27 +75,80 @@ coverage/
 *.backup
 *_backup.*
 *.old
+*~
 
 # Documentation (temporary/generated)
 docs/_build/
 site/
+.docusaurus/
+
+# Development/debug documentation (temporary)
+*_PROGRESS.md
+*_ANALYSIS.md
+*_FIX.md
+*_SUMMARY.md
+IMPLEMENTATION_*.md
+DEBUGGING_*.md
 
 # Local storage & user data
 chatbridge:conversations
 chatbridge:knowledge_graph
 localStorage.json
+indexedDB/
+chrome-storage/
 
 # Exported data files
 chatbridge-export-*.json
 knowledge-graph-export-*.json
+conversations-export-*.json
+*.export.json
 
 # User-generated backups
 *_backup_*.json
 backup_conversations_*.json
+backup_*.json
 
 # Debug logs
 debug_*.log
+*.debug.log
+error_*.log
 
-# Package manager locks (optional - keep yarn.lock or package-lock.json if preferred)
+# Temporary files
+.temp/
+.cache/
+.tmp/
+
+# Lock files (uncomment if you want to ignore)
 # package-lock.json
 # yarn.lock
+# pnpm-lock.yaml
+
+# macOS
+.AppleDouble
+.LSOverride
+
+# Windows
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# Linux
+.directory
+.Trash-*
+
+# Ignore AI model files if downloaded locally
+*.onnx
+*.bin
+*.safetensors
+models/
+weights/
+
+# Ignore generated screenshots/exports
+screenshots/
+exports/
+output/
