@@ -477,8 +477,8 @@
   const btnRestore = document.createElement('button'); btnRestore.className = 'cb-btn'; btnRestore.textContent = 'Restore'; btnRestore.title = 'Continue where you left off - Pick any saved chat and paste it into this AI'; btnRestore.setAttribute('aria-label','Restore conversation');
   const btnClipboard = document.createElement('button'); btnClipboard.className = 'cb-btn'; btnClipboard.textContent = 'Copy'; btnClipboard.title = 'Quick export - Copy this conversation to share or save externally'; btnClipboard.setAttribute('aria-label','Copy conversation to clipboard');
   const btnSmartQuery = document.createElement('button'); btnSmartQuery.className = 'cb-btn'; btnSmartQuery.textContent = 'Query'; btnSmartQuery.title = 'Ask questions across ALL your saved chats - Natural language search powered by AI'; btnSmartQuery.setAttribute('aria-label','Open Smart Query');
-  const btnFindConnections = document.createElement('button'); btnFindConnections.className = 'cb-btn'; btnFindConnections.textContent = 'Connect'; btnFindConnections.title = 'Discover related conversations - See how your chats build on each other'; btnFindConnections.setAttribute('aria-label','Find related conversations');
   const btnKnowledgeGraph = document.createElement('button'); btnKnowledgeGraph.className = 'cb-btn'; btnKnowledgeGraph.textContent = 'Graph'; btnKnowledgeGraph.title = 'Visualize your conversation network - Interactive map of how your chats connect'; btnKnowledgeGraph.setAttribute('aria-label','Open Knowledge Graph');
+  const btnInsights = document.createElement('button'); btnInsights.className = 'cb-btn'; btnInsights.textContent = 'Insights'; btnInsights.title = 'Smart workspace tools - Compare, merge, extract, and organize your conversations'; btnInsights.setAttribute('aria-label','Open Smart Workspace');
 
   // Gemini API buttons
   const btnSyncTone = document.createElement('button'); btnSyncTone.className = 'cb-btn'; btnSyncTone.textContent = 'Sync'; btnSyncTone.title = 'Adapt conversations - Rewrite for a different AI model\'s style and strengths';
@@ -497,12 +497,12 @@
     panel.appendChild(scanRow);
   } catch (e) { try { row1.appendChild(btnScan); } catch (e2) {} }
   
-  // Grid: Restore, Query, Connect, Graph, Copy, Sync, Summarize, Rewrite, Translate
+  // Grid: Restore, Query, Graph, Insights, Copy, Sync, Summarize, Rewrite, Translate
   [
     btnRestore,
     btnSmartQuery,
-    btnFindConnections,
     btnKnowledgeGraph,
+    btnInsights,
     btnClipboard,
     btnSyncTone,
     btnSummarize,
@@ -789,6 +789,25 @@
 
   panel.appendChild(graphView);
 
+  // ============================================
+  // INSIGHTS / SMART WORKSPACE VIEW
+  // ============================================
+  const insightsView = document.createElement('div'); insightsView.className = 'cb-internal-view'; insightsView.id = 'cb-insights-view'; insightsView.setAttribute('data-cb-ignore','true');
+  const insightsTop = document.createElement('div'); insightsTop.className = 'cb-view-top';
+  const insightsTitle = document.createElement('div'); insightsTitle.className = 'cb-view-title'; insightsTitle.textContent = '🎯 Smart Workspace';
+  const btnCloseInsights = document.createElement('button'); btnCloseInsights.className = 'cb-view-close'; btnCloseInsights.textContent = '✕';
+  btnCloseInsights.setAttribute('aria-label','Close Smart Workspace view');
+  insightsTop.appendChild(insightsTitle); insightsTop.appendChild(btnCloseInsights);
+  insightsView.appendChild(insightsTop);
+
+  const insightsIntro = document.createElement('div'); insightsIntro.className = 'cb-view-intro'; insightsIntro.textContent = 'Practical tools to help you work smarter: compare models, merge threads, extract content, and stay organized.';
+  insightsView.appendChild(insightsIntro);
+
+  const insightsContent = document.createElement('div'); insightsContent.id = 'cb-insights-content'; insightsContent.style.cssText = 'padding:12px 0;overflow-y:auto;max-height:calc(100vh - 250px);';
+  insightsView.appendChild(insightsContent);
+
+  panel.appendChild(insightsView);
+
   // Gemini Nano input/output area
   const geminiWrap = document.createElement('div'); geminiWrap.style.padding = '8px 18px'; geminiWrap.style.display = 'flex'; geminiWrap.style.flexDirection = 'column'; geminiWrap.style.gap = '8px';
   // Insert preview above (textarea removed - preview is the read-only display)
@@ -1013,6 +1032,7 @@
         transView.classList.remove('cb-view-active');
         try { if (typeof smartView !== 'undefined' && smartView) smartView.classList.remove('cb-view-active'); } catch(_) {}
         try { if (typeof graphView !== 'undefined' && graphView) graphView.classList.remove('cb-view-active'); } catch(_) {}
+        try { if (typeof insightsView !== 'undefined' && insightsView) insightsView.classList.remove('cb-view-active'); } catch(_) {}
       } catch (e) {}
     }
 
@@ -1027,6 +1047,558 @@
         }
       } catch (e) { debugLog('load convs', e); }
       return '';
+    }
+
+    // ============================================
+    // SMART WORKSPACE FUNCTIONS
+    // ============================================
+
+    // Render Smart Workspace UI
+    async function renderSmartWorkspace() {
+      try {
+        if (!insightsContent) {
+          debugLog('insightsContent not found!');
+          toast('Error: UI element missing');
+          return;
+        }
+        insightsContent.innerHTML = '';
+        debugLog('Rendering Smart Workspace...');
+
+        // Quick Actions Grid
+        const actionsGrid = document.createElement('div');
+        actionsGrid.style.cssText = 'display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px;padding:0 12px;';
+
+        // 1. Quick Compare (compare responses from different models)
+        const compareBtn = createFeatureCard('Compare Models', 'Compare how different AIs answered the same question', '🔄', async () => {
+          try {
+            const convs = await loadConversationsAsync();
+            if (!convs || convs.length < 2) { toast('Need at least 2 conversations'); return; }
+            
+            // Find conversations with similar content
+            const comparableGroups = findComparableConversations(convs);
+            if (!comparableGroups.length) {
+              toast('No similar conversations found to compare');
+              return;
+            }
+            
+            // Show comparison UI
+            showComparisonView(comparableGroups[0]);
+          } catch (e) { 
+            toast('Compare failed');
+            debugLog('Compare error', e);
+          }
+        });
+
+        // 2. Smart Merge (merge related conversations)
+        const mergeBtn = createFeatureCard('Merge Threads', 'Combine related conversations into one coherent thread', '🔗', async () => {
+          try {
+            const convs = await loadConversationsAsync();
+            if (!convs || convs.length < 2) { toast('Need at least 2 conversations'); return; }
+            
+            // Show merge UI
+            showMergeView(convs);
+          } catch (e) { 
+            toast('Merge failed');
+            debugLog('Merge error', e);
+          }
+        });
+
+        // 3. Quick Extract (extract code, lists, or key info)
+        const extractBtn = createFeatureCard('Extract Content', 'Pull out code blocks, lists, or important info', '📋', () => {
+          try {
+            showExtractView();
+          } catch (e) {
+            toast('Extract failed');
+            debugLog('Extract error', e);
+          }
+        });
+
+        // 4. Auto-Organize (tag and organize conversations)
+        const organizeBtn = createFeatureCard('Auto-Organize', 'Automatically tag and organize your chats', '🗂️', async () => {
+          addLoadingToButton(organizeBtn, 'Organizing...');
+          try {
+            const convs = await loadConversationsAsync();
+            let organized = 0;
+            
+            for (const conv of convs.slice(0, 20)) { // Limit to recent 20
+              if (!conv.topics || !conv.topics.length) {
+                // Extract topics
+                const full = conv.conversation.map(m => `${m.role}: ${m.text}`).join('\n\n');
+                const prompt = `Extract 3-5 short topic tags for this conversation. Output only comma-separated tags:\n\n${full.slice(0, 2000)}`;
+                const res = await callGeminiAsync({ action: 'prompt', text: prompt, length: 'short' });
+                
+                if (res && res.ok) {
+                  const topics = res.result.split(',').map(t => t.trim()).slice(0, 5);
+                  conv.topics = topics;
+                  organized++;
+                }
+              }
+            }
+            
+            // Save updated conversations
+            if (organized > 0) {
+              localStorage.setItem('chatbridge:conversations', JSON.stringify(convs));
+              toast(`Organized ${organized} conversations`);
+            } else {
+              toast('All conversations already organized');
+            }
+          } catch (e) {
+            toast('Organize failed');
+            debugLog('Organize error', e);
+          } finally {
+            removeLoadingFromButton(organizeBtn, 'Auto-Organize');
+          }
+        });
+
+        actionsGrid.appendChild(compareBtn);
+        actionsGrid.appendChild(mergeBtn);
+        actionsGrid.appendChild(extractBtn);
+        actionsGrid.appendChild(organizeBtn);
+        insightsContent.appendChild(actionsGrid);
+
+        // Output Preview Area
+        const outputSection = document.createElement('div');
+        outputSection.style.cssText = 'padding:0 12px;margin-bottom:16px;';
+        
+        const outputLabel = document.createElement('div');
+        outputLabel.style.cssText = 'font-weight:600;font-size:12px;margin-bottom:8px;color:var(--cb-subtext);';
+        outputLabel.textContent = '📄 Output Preview';
+        outputSection.appendChild(outputLabel);
+        
+        const outputArea = document.createElement('div');
+        outputArea.id = 'cb-insights-output';
+        outputArea.className = 'cb-view-text';
+        outputArea.style.cssText = 'min-height:120px;max-height:300px;overflow-y:auto;background:rgba(16,24,43,0.4);border:1px solid rgba(0,180,255,0.2);border-radius:8px;padding:12px;font-size:12px;line-height:1.5;white-space:pre-wrap;';
+        outputArea.textContent = '(Results will appear here)';
+        outputSection.appendChild(outputArea);
+        
+        const outputControls = document.createElement('div');
+        outputControls.style.cssText = 'display:flex;gap:8px;margin-top:8px;';
+        
+        const btnSendToChat = document.createElement('button');
+        btnSendToChat.className = 'cb-btn cb-btn-primary';
+        btnSendToChat.textContent = '➤ Send to Chat';
+        btnSendToChat.style.cssText = 'flex:1;';
+        btnSendToChat.addEventListener('click', async () => {
+          const outputText = outputArea.textContent;
+          if (!outputText || outputText === '(Results will appear here)') {
+            toast('No output to send');
+            return;
+          }
+          
+          try {
+            // Find the chat input using the adapter
+            const adapter = Object.values(window.SiteAdapters || {}).find(a => a.detect && a.detect());
+            if (adapter && adapter.getInput) {
+              const input = adapter.getInput();
+              if (input) {
+                input.value = outputText;
+                input.textContent = outputText;
+                // Trigger input events to ensure the site recognizes the change
+                ['input', 'change', 'keydown'].forEach(evType => {
+                  const ev = new Event(evType, { bubbles: true });
+                  input.dispatchEvent(ev);
+                });
+                toast('Sent to chat input');
+              } else {
+                // Fallback: copy to clipboard
+                await navigator.clipboard.writeText(outputText);
+                toast('Copied to clipboard (paste into chat)');
+              }
+            } else {
+              // Fallback: copy to clipboard
+              await navigator.clipboard.writeText(outputText);
+              toast('Copied to clipboard (paste into chat)');
+            }
+          } catch (e) {
+            debugLog('Send to chat error', e);
+            toast('Failed to send to chat');
+          }
+        });
+        
+        const btnCopyOutput = document.createElement('button');
+        btnCopyOutput.className = 'cb-btn';
+        btnCopyOutput.textContent = '📋 Copy';
+        btnCopyOutput.addEventListener('click', async () => {
+          const outputText = outputArea.textContent;
+          if (!outputText || outputText === '(Results will appear here)') {
+            toast('No output to copy');
+            return;
+          }
+          
+          try {
+            await navigator.clipboard.writeText(outputText);
+            toast('Copied to clipboard');
+          } catch (e) {
+            toast('Copy failed');
+          }
+        });
+        
+        const btnClearOutput = document.createElement('button');
+        btnClearOutput.className = 'cb-btn';
+        btnClearOutput.textContent = '✕ Clear';
+        btnClearOutput.addEventListener('click', () => {
+          outputArea.textContent = '(Results will appear here)';
+          toast('Output cleared');
+        });
+        
+        outputControls.appendChild(btnSendToChat);
+        outputControls.appendChild(btnCopyOutput);
+        outputControls.appendChild(btnClearOutput);
+        outputSection.appendChild(outputControls);
+        
+        insightsContent.appendChild(outputSection);
+
+        // Smart Suggestions Section
+        const suggestTitle = document.createElement('div');
+        suggestTitle.style.cssText = 'font-weight:600;font-size:12px;margin:16px 12px 8px 12px;color:var(--cb-subtext);';
+        suggestTitle.textContent = '💡 Suggested Actions';
+        insightsContent.appendChild(suggestTitle);
+
+        // Generate contextual suggestions
+        const suggestions = await generateSmartSuggestions();
+        const suggestionsList = document.createElement('div');
+        suggestionsList.style.cssText = 'display:flex;flex-direction:column;gap:8px;padding:0 12px;';
+        
+        suggestions.forEach(sugg => {
+          const suggCard = document.createElement('div');
+          suggCard.style.cssText = 'padding:10px 12px;background:rgba(0,180,255,0.08);border-left:3px solid var(--cb-accent-primary);border-radius:8px;cursor:pointer;transition:all 0.2s;';
+          suggCard.innerHTML = `<div style="font-weight:600;font-size:12px;margin-bottom:4px;">${sugg.title}</div><div style="font-size:11px;opacity:0.8;">${sugg.description}</div>`;
+          suggCard.addEventListener('mouseenter', () => suggCard.style.background = 'rgba(0,180,255,0.15)');
+          suggCard.addEventListener('mouseleave', () => suggCard.style.background = 'rgba(0,180,255,0.08)');
+          suggCard.addEventListener('click', () => sugg.action());
+          suggestionsList.appendChild(suggCard);
+        });
+        
+        insightsContent.appendChild(suggestionsList);
+        
+        debugLog('Smart Workspace rendered successfully');
+
+      } catch (e) {
+        debugLog('renderSmartWorkspace error', e);
+        if (insightsContent) {
+          insightsContent.innerHTML = `<div style="padding:12px;color:rgba(255,100,100,0.9);">Failed to load workspace: ${e.message || 'Unknown error'}</div>`;
+        }
+      }
+    }
+
+    // Helper: Create feature card
+    function createFeatureCard(title, description, icon, onClick) {
+      const card = document.createElement('button');
+      card.className = 'cb-btn';
+      card.style.cssText = 'padding:14px 12px;text-align:left;height:auto;display:flex;flex-direction:column;gap:6px;background:rgba(16,24,43,0.4);border:1px solid rgba(0,180,255,0.2);transition:all 0.2s;';
+      card.innerHTML = `
+        <div style="font-size:20px;line-height:1;">${icon}</div>
+        <div style="font-weight:600;font-size:13px;">${title}</div>
+        <div style="font-size:11px;opacity:0.7;line-height:1.3;">${description}</div>
+      `;
+      card.addEventListener('mouseenter', () => {
+        card.style.background = 'rgba(0,180,255,0.15)';
+        card.style.transform = 'translateY(-2px)';
+      });
+      card.addEventListener('mouseleave', () => {
+        card.style.background = 'rgba(16,24,43,0.4)';
+        card.style.transform = 'translateY(0)';
+      });
+      card.addEventListener('click', onClick);
+      return card;
+    }
+
+    // Helper: Find comparable conversations (similar questions/topics)
+    function findComparableConversations(convs) {
+      const groups = [];
+      const processed = new Set();
+      
+      for (let i = 0; i < convs.length; i++) {
+        if (processed.has(i)) continue;
+        
+        const conv1 = convs[i];
+        const similar = [conv1];
+        processed.add(i);
+        
+        for (let j = i + 1; j < convs.length; j++) {
+          if (processed.has(j)) continue;
+          
+          const conv2 = convs[j];
+          
+          // Check for topic overlap
+          const topics1 = conv1.topics || [];
+          const topics2 = conv2.topics || [];
+          const overlap = topics1.filter(t => topics2.includes(t)).length;
+          
+          if (overlap >= 2) {
+            similar.push(conv2);
+            processed.add(j);
+          }
+        }
+        
+        if (similar.length >= 2) {
+          groups.push(similar);
+        }
+      }
+      
+      return groups;
+    }
+
+    // Helper: Show comparison view
+    function showComparisonView(conversations) {
+      if (!insightsContent) return;
+      insightsContent.innerHTML = '';
+      
+      const header = document.createElement('div');
+      header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding:0 12px;';
+      header.innerHTML = `<div style="font-weight:700;font-size:14px;">Model Comparison</div><button class="cb-btn cb-view-close">← Back</button>`;
+      header.querySelector('.cb-view-close').addEventListener('click', () => renderSmartWorkspace());
+      insightsContent.appendChild(header);
+      
+      conversations.forEach(conv => {
+        const card = document.createElement('div');
+        card.style.cssText = 'padding:12px;background:rgba(16,24,43,0.4);border-radius:8px;margin:0 12px 12px 12px;';
+        
+        const model = conv.model || conv.platform || 'Unknown';
+        const preview = conv.conversation[0]?.text.slice(0, 200) || '';
+        
+        card.innerHTML = `
+          <div style="font-weight:600;margin-bottom:8px;color:var(--cb-accent-primary);">${model}</div>
+          <div style="font-size:12px;opacity:0.9;">${preview}...</div>
+          <button class="cb-btn" style="margin-top:8px;padding:6px 10px;font-size:11px;">View Full</button>
+        `;
+        
+        card.querySelector('.cb-btn').addEventListener('click', () => {
+          const output = conv.conversation.map(m => `${m.role}: ${m.text}`).join('\n\n');
+          showOutputWithSendButton(output, `${model} - Full Conversation`);
+          toast('Loaded conversation');
+        });
+        
+        insightsContent.appendChild(card);
+      });
+    }
+
+    // Helper: Show merge view
+    function showMergeView(convs) {
+      if (!insightsContent) return;
+      insightsContent.innerHTML = '';
+      
+      const header = document.createElement('div');
+      header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding:0 12px;';
+      header.innerHTML = `<div style="font-weight:700;font-size:14px;">Merge Threads</div><button class="cb-btn cb-view-close">← Back</button>`;
+      header.querySelector('.cb-view-close').addEventListener('click', () => renderSmartWorkspace());
+      insightsContent.appendChild(header);
+      
+      const intro = document.createElement('div');
+      intro.style.cssText = 'font-size:12px;margin-bottom:12px;opacity:0.8;padding:0 12px;';
+      intro.textContent = 'Select conversations to merge into a single coherent thread:';
+      insightsContent.appendChild(intro);
+      
+      const selected = new Set();
+      
+      convs.slice(0, 10).forEach(conv => {
+        const checkbox = document.createElement('label');
+        checkbox.style.cssText = 'display:flex;align-items:center;gap:10px;padding:10px;background:rgba(16,24,43,0.3);border-radius:8px;margin:0 12px 8px 12px;cursor:pointer;';
+        
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+        input.value = conv.ts;
+        input.addEventListener('change', () => {
+          if (input.checked) selected.add(conv.ts);
+          else selected.delete(conv.ts);
+        });
+        
+        // Get chat name/topic (first user message or topics)
+        const chatName = conv.name || (conv.conversation && conv.conversation.find(m => m.role === 'user')?.text.slice(0, 60)) || 'Untitled Chat';
+        const site = conv.platform || conv.host || (conv.url ? new URL(conv.url).hostname : 'Unknown');
+        const count = conv.conversation?.length || 0;
+        
+        checkbox.innerHTML = `<div style="flex:1;"><div style="font-weight:600;font-size:12px;margin-bottom:4px;">${chatName}${chatName.length > 57 ? '...' : ''}</div><div style="font-size:11px;opacity:0.7;">📍 ${site} • 💬 ${count} messages</div></div>`;
+        checkbox.prepend(input);
+        
+        insightsContent.appendChild(checkbox);
+      });
+      
+      const mergeBtn = document.createElement('button');
+      mergeBtn.className = 'cb-btn cb-btn-primary';
+      mergeBtn.textContent = 'Merge Selected';
+      mergeBtn.style.cssText = 'margin:12px;';
+      mergeBtn.addEventListener('click', async () => {
+        if (selected.size < 2) { toast('Select at least 2 conversations'); return; }
+        
+        addLoadingToButton(mergeBtn, 'Merging...');
+        try {
+          const toMerge = convs.filter(c => selected.has(c.ts));
+          const combined = toMerge.flatMap(c => c.conversation);
+          const output = combined.map(m => `${m.role}: ${m.text}`).join('\n\n');
+          
+          // Show output with Send to Chat button
+          showOutputWithSendButton(output, 'Merged Conversation');
+          toast('Merged conversations ready!');
+        } catch (e) {
+          toast('Merge failed');
+          debugLog('Merge execution error', e);
+        } finally {
+          removeLoadingFromButton(mergeBtn, 'Merge Selected');
+        }
+      });
+      
+      insightsContent.appendChild(mergeBtn);
+    }
+
+    // Helper: Show extract view
+    function showExtractView() {
+      if (!insightsContent) return;
+      insightsContent.innerHTML = '';
+      
+      const header = document.createElement('div');
+      header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding:0 12px;';
+      header.innerHTML = `<div style="font-weight:700;font-size:14px;">Extract Content</div><button class="cb-btn cb-view-close">← Back</button>`;
+      header.querySelector('.cb-view-close').addEventListener('click', () => renderSmartWorkspace());
+      insightsContent.appendChild(header);
+      
+      const types = [
+        { name: 'Code Blocks', icon: '💻', pattern: /```[\s\S]*?```/g },
+        { name: 'Lists', icon: '📝', pattern: /^[\s]*[-*•]\s+.+$/gm },
+        { name: 'URLs', icon: '🔗', pattern: /https?:\/\/[^\s]+/g },
+        { name: 'Numbers/Data', icon: '🔢', pattern: /\d+\.?\d*/g }
+      ];
+      
+      types.forEach(type => {
+        const btn = document.createElement('button');
+        btn.className = 'cb-btn';
+        btn.style.cssText = 'width:calc(100% - 24px);text-align:left;padding:12px;margin:0 12px 8px 12px;display:flex;align-items:center;gap:10px;';
+        btn.innerHTML = `<span style="font-size:20px;">${type.icon}</span><span style="font-weight:600;">${type.name}</span>`;
+        btn.addEventListener('click', async () => {
+          const text = lastScannedText || '';
+          if (!text || text.length < 10) {
+            toast('Scan a conversation first');
+            return;
+          }
+          const matches = text.match(type.pattern) || [];
+          
+          if (!matches.length) {
+            toast(`No ${type.name.toLowerCase()} found`);
+            return;
+          }
+          
+          const output = matches.join('\n\n');
+          showOutputWithSendButton(output, `${type.icon} ${type.name} (${matches.length} found)`);
+          toast(`Extracted ${matches.length} ${type.name.toLowerCase()}`);
+        });
+        insightsContent.appendChild(btn);
+      });
+    }
+
+    // Helper: Show output with Send to Chat button
+    function showOutputWithSendButton(output, title) {
+      if (!insightsContent) return;
+      insightsContent.innerHTML = '';
+      
+      const header = document.createElement('div');
+      header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding:0 12px;';
+      header.innerHTML = `<div style="font-weight:700;font-size:14px;">${title}</div><button class="cb-btn cb-view-close">← Back</button>`;
+      header.querySelector('.cb-view-close').addEventListener('click', () => renderSmartWorkspace());
+      insightsContent.appendChild(header);
+      
+      // Output preview area
+      const outputArea = document.createElement('div');
+      outputArea.id = 'cb-insights-output';
+      outputArea.style.cssText = 'background:rgba(6,20,32,0.6);border:1px solid rgba(0,180,255,0.3);border-radius:8px;padding:12px;margin:0 12px 12px 12px;max-height:300px;overflow-y:auto;font-size:12px;line-height:1.6;white-space:pre-wrap;color:rgba(255,255,255,0.9);';
+      outputArea.textContent = output;
+      insightsContent.appendChild(outputArea);
+      
+      // Send to Chat button
+      const sendBtn = document.createElement('button');
+      sendBtn.className = 'cb-btn cb-btn-primary';
+      sendBtn.textContent = '📤 Send to Chat';
+      sendBtn.style.cssText = 'margin:0 12px;width:calc(100% - 24px);';
+      sendBtn.addEventListener('click', async () => {
+        try {
+          await restoreToChat(output, []);
+          toast('Sent to chat input!');
+        } catch (e) {
+          toast('Failed to send to chat');
+          debugLog('Send to chat error', e);
+        }
+      });
+      insightsContent.appendChild(sendBtn);
+      
+      // Scroll to show output
+      setTimeout(() => {
+        outputArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 100);
+    }
+
+    // Helper: Generate smart suggestions based on conversation history
+    async function generateSmartSuggestions() {
+      const suggestions = [];
+      
+      try {
+        const convs = await loadConversationsAsync();
+        
+        // Suggestion 1: If many untagged conversations
+        const untagged = convs.filter(c => !c.topics || !c.topics.length).length;
+        if (untagged > 5) {
+          suggestions.push({
+            title: `📌 ${untagged} untagged conversations`,
+            description: 'Organize them for easier searching',
+            action: () => {
+              try {
+                if (btnNormalizeTags) btnNormalizeTags.click();
+                else toast('Feature not available');
+              } catch (e) {
+                toast('Error opening organizer');
+              }
+            }
+          });
+        }
+        
+        // Suggestion 2: If conversations not indexed
+        if (convs.length > 3) {
+          suggestions.push({
+            title: '🔍 Enable semantic search',
+            description: 'Index your conversations for AI-powered search',
+            action: () => {
+              try {
+                if (btnIndexAll) btnIndexAll.click();
+                else toast('Feature not available');
+              } catch (e) {
+                toast('Error opening indexer');
+              }
+            }
+          });
+        }
+        
+        // Suggestion 3: If similar recent conversations
+        const recent = convs.slice(0, 5);
+        const hasSimilar = recent.length >= 2 && recent[0].topics?.some(t => recent[1].topics?.includes(t));
+        if (hasSimilar) {
+          suggestions.push({
+            title: '🔄 Similar conversations detected',
+            description: 'Compare responses from different models',
+            action: async () => {
+              try {
+                const groups = findComparableConversations(recent);
+                if (groups.length) showComparisonView(groups[0]);
+                else toast('No comparable conversations found');
+              } catch (e) {
+                toast('Comparison failed');
+              }
+            }
+          });
+        }
+        
+      } catch (e) {
+        debugLog('generateSmartSuggestions error', e);
+      }
+      
+      // If no suggestions, add a default one
+      if (suggestions.length === 0) {
+        suggestions.push({
+          title: '🎯 Get started',
+          description: 'Scan a conversation to unlock more features',
+          action: () => toast('Click "Scan Chat" to save your first conversation')
+        });
+      }
+      
+      return suggestions.slice(0, 3); // Max 3 suggestions
     }
 
     // Open Sync Tone view
@@ -2143,29 +2715,6 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       }
     });
 
-    // Find Connections button handler
-    btnFindConnections.addEventListener('click', async () => {
-      try {
-        addLoadingToButton(btnFindConnections, 'Analyzing…');
-        announce('Analyzing conversation for related content');
-        // Open Smart view and show the Connections panel inline
-        try { closeAllViews(); } catch(_) {}
-        try { smartView.classList.add('cb-view-active'); } catch(_) {}
-        try { if (connectionsResult) { connectionsResult.textContent = 'Analyzing connections…'; } } catch(_) {}
-        await detectAndSuggestContext();
-        try { if (connectionsResult) connectionsResult.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch(_) {}
-        toast('Context analysis complete');
-        announce('Context analysis complete');
-      } catch (e) {
-        toast('Context detection failed');
-        showError('Context detection failed', async () => { try { btnFindConnections.click(); } catch(_) {} });
-        debugLog('Find Connections error', e);
-        announce('Context detection failed');
-      } finally {
-        removeLoadingFromButton(btnFindConnections, 'Find Connections');
-      }
-    });
-
     // ============================================
     // KNOWLEDGE GRAPH VISUALIZATION & ADVANCED FEATURES
     // ============================================
@@ -2186,6 +2735,27 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
     // Knowledge Graph: Close view
     btnCloseGraph.addEventListener('click', () => {
       graphView.classList.remove('cb-view-active');
+    });
+
+    // ============================================
+    // SMART WORKSPACE / INSIGHTS HANDLERS
+    // ============================================
+
+    // Insights: Open Smart Workspace view
+    btnInsights.addEventListener('click', async () => {
+      try {
+        closeAllViews();
+        insightsView.classList.add('cb-view-active');
+        await renderSmartWorkspace();
+      } catch (e) {
+        toast('Failed to open Smart Workspace');
+        debugLog('Insights open error', e);
+      }
+    });
+
+    // Insights: Close view
+    btnCloseInsights.addEventListener('click', () => {
+      insightsView.classList.remove('cb-view-active');
     });
 
     // Knowledge Graph: Refresh visualization
@@ -3161,7 +3731,13 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           } else { sel = arr[0]; }
         } catch (_) { sel = arr[0]; }
         if (!sel || !sel.conversation || !sel.conversation.length) { toast('No messages in selected conversation'); return; }
-          const formatted = sel.conversation.map(m => (m.role === 'user' ? 'User: ' : 'Assistant: ') + m.text).join('\n\n') + '\n\n🔄 Please continue the conversation.';
+          // If a summary exists, restore that instead of the full chat
+          let formatted = '';
+          if (sel.summary && typeof sel.summary === 'string' && sel.summary.trim().length > 0) {
+            formatted = sel.summary.trim();
+          } else {
+            formatted = sel.conversation.map(m => (m.role === 'user' ? 'User: ' : 'Assistant: ') + m.text).join('\n\n') + '\n\n🔄 Please continue the conversation.';
+          }
           // Collect attachments from conversation
           const allAtts = [];
           try {
@@ -4924,7 +5500,34 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
     
     const normalized = normalizeMessages(raw || []);
     debugLog('=== SCAN COMPLETE ===', normalized.length, 'messages');
-    
+
+    // Auto-summarize if more than 10 messages
+    let summary = '';
+    if (normalized.length > 10) {
+      try {
+        // Compose summary prompt in your required format
+        const summaryPrompt = `Summarize the following chat in this format:\n\n[Summary]\n- Main points\n- Key actions\n- Decisions\n- Next steps\n\nChat:\n${normalized.map(m => (m.role === 'user' ? 'User: ' : 'Assistant: ') + m.text).join('\n')}`;
+        // Call Gemini or your LLM for summary
+        const res = await callGeminiAsync({ action: 'prompt', text: summaryPrompt, length: 'medium' });
+        if (res && res.ok && res.result) {
+          summary = res.result.trim();
+        }
+      } catch (e) { debugLog('auto-summarize failed', e); }
+    }
+
+    // Save conversation with summary if present
+    try {
+      const convObj = {
+        ts: Date.now(),
+        id: String(Date.now()),
+        platform: (function(){ try { return new URL(location.href).hostname; } catch(_) { return location.hostname || 'unknown'; } })(),
+        url: location.href,
+        conversation: normalized,
+      };
+      if (summary) convObj.summary = summary;
+      await saveConversation(convObj);
+    } catch (e) { debugLog('auto-save failed', e); }
+
     // Log any errors that occurred
     try {
       if (window.ChatBridge && window.ChatBridge._lastScan && window.ChatBridge._lastScan.errors && window.ChatBridge._lastScan.errors.length) {
