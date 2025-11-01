@@ -486,6 +486,16 @@
   .cb-view-text::-webkit-scrollbar-track { background: var(--cb-bg3); border-radius: 10px; }
   .cb-view-text::-webkit-scrollbar-thumb { background: linear-gradient(180deg, var(--cb-accent-primary), var(--cb-accent-secondary)); border-radius: 10px; border: 2px solid var(--cb-bg3); }
   .cb-view-text::-webkit-scrollbar-thumb:hover { opacity: 0.8; }
+  /* Smart Query search result rows */
+  .cb-row-result { margin-bottom: 12px; padding: 12px; background: var(--cb-bg2); border: 1px solid var(--cb-border); border-radius: 8px; transition: all 0.2s ease; }
+  .cb-row-result:hover { border-color: var(--cb-accent-primary); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0, 180, 255, 0.15); }
+  .cb-row-hdr { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; gap: 8px; }
+  .cb-row-left { font-size: 12px; color: var(--cb-subtext); font-weight: 500; }
+  .cb-row-right { display: flex; gap: 6px; }
+  .cb-open-btn, .cb-copy-btn { padding: 4px 10px; font-size: 11px; border-radius: 6px; }
+  .cb-snippet { font-size: 13px; line-height: 1.5; color: var(--cb-white); margin-bottom: 8px; white-space: pre-wrap; word-break: break-word; }
+  .cb-tag-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  .cb-tag-chip { display: inline-block; padding: 3px 8px; background: var(--cb-accent-primary); color: var(--cb-bg); font-size: 10px; font-weight: 600; border-radius: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
       .cb-view-controls { margin:14px 0; display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
       .cb-view-go { margin-top:12px; }
   .cb-view-result { margin-top:16px; padding:14px; background: var(--cb-bg); border:1px solid var(--cb-border); border-radius:10px; white-space:pre-wrap; color:var(--cb-white); font-size:13px; line-height:1.6; max-height:200px; overflow-y:auto; overflow-x:hidden; }
@@ -4359,12 +4369,21 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
   } finally { removeLoadingFromButton(btnGoTrans, 'Translate'); }
     });
 
-    btnInsertTrans.addEventListener('click', () => {
+    btnInsertTrans.addEventListener('click', async () => {
       try {
         const text = (transSourceText && transSourceText.textContent) || '';
         if (!text || text === '(no result)') { toast('Nothing to insert'); return; }
-        restoreToChat(text);
-      } catch (e) { toast('Insert failed'); }
+        console.log('[ChatBridge] Translate Insert clicked, text length:', text.length);
+        const success = await restoreToChat(text);
+        if (success) {
+          toast('Translation inserted successfully');
+        } else {
+          console.log('[ChatBridge] restoreToChat returned false');
+        }
+      } catch (e) { 
+        console.error('[ChatBridge] Translate Insert error:', e);
+        toast('Insert failed: ' + (e.message || e)); 
+      }
     });
 
     // Smart Query handlers

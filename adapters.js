@@ -327,7 +327,30 @@ const SiteAdapters = [
       adapterDebug('adapter:chatgpt', { wrappers: wrappers.length, filtered: out.length, sample: out.slice(0, 5).map(m => m.text.slice(0, 80)) });
       return out;
     },
-    getInput: () => document.querySelector("textarea")
+    getInput: () => {
+      // ChatGPT uses a contenteditable div as the main input, with a hidden textarea fallback
+      // Try to find the visible contenteditable first
+      const contentEditable = document.querySelector('#prompt-textarea');
+      if (contentEditable && contentEditable.isContentEditable) {
+        return contentEditable;
+      }
+      
+      // Fallback: look for any contenteditable in the composer area
+      const composerArea = document.querySelector('form') || document.querySelector('[class*="composer"]') || document.body;
+      const editables = Array.from(composerArea.querySelectorAll('[contenteditable="true"]'));
+      const visible = editables.filter(el => {
+        const rect = el.getBoundingClientRect();
+        const style = window.getComputedStyle(el);
+        return rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden';
+      });
+      
+      if (visible.length > 0) {
+        return visible[0];
+      }
+      
+      // Last resort: return the textarea (but this won't trigger the UI properly)
+      return document.querySelector("textarea");
+    }
   },
   {
     id: "claude",
