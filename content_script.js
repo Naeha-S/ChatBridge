@@ -5020,7 +5020,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
 
         // Fallback to local substring search
         if (vectorFailed && vectorError === 'no_embedding') {
-          toast('⚠️ AI search unavailable. Add OpenAI API key in Options for semantic search. Using basic search...');
+          toast('⚠️ AI search unavailable. Add Gemini API key in Options for semantic search. Using basic search...');
         } else if (vectorFailed) {
           toast('⚠️ AI search failed. Using basic keyword search...');
         }

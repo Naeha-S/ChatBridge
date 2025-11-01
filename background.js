@@ -291,7 +291,8 @@ async function fetchEmbeddingGemini(text) {
     const key = await new Promise(r => chrome.storage.local.get(['chatbridge_gemini_key'], d => r(d.chatbridge_gemini_key)));
     if (!key) return null;
     const apiKey = key;
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=${apiKey}`;
+    // Use stable v1 endpoint
+    const endpoint = `https://generativelanguage.googleapis.com/v1/models/text-embedding-004:embedContent?key=${apiKey}`;
     const body = {
       model: "models/text-embedding-004",
       content: {
@@ -623,16 +624,48 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         // Request embeddings for candidate phrases in batches to compute semantic similarity
         async function fetchEmbeddingBatch(texts) {
           try {
-            const key = await new Promise(r => chrome.storage.local.get(['chatbridge_api_key'], d => r(d.chatbridge_api_key)));
+            const key = await new Promise(r => chrome.storage.local.get(['chatbridge_gemini_key'], d => r(d.chatbridge_gemini_key)));
             if (!key) return null;
-            const endpoint = 'https://api.openai.com/v1/embeddings';
-            const body = { input: texts, model: 'text-embedding-3-small' };
-            const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type':'application/json', 'Authorization': 'Bearer ' + key }, body: JSON.stringify(body) });
-            if (!res.ok) return null;
+            // Prefer batch endpoint in v1
+            const endpoint = `https://generativelanguage.googleapis.com/v1/models/text-embedding-004:batchEmbedContents?key=${key}`;
+            const body = {
+              requests: texts.map(t => ({
+                model: 'models/text-embedding-004',
+                content: { parts: [{ text: String(t || '').slice(0, 10000) }] }
+              }))
+            };
+            const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify(body) });
+            if (!res.ok) {
+              // Fallback to per-text calls if batch not supported
+              const arr = [];
+              for (const t of texts) {
+                const v = await fetchEmbeddingGemini(t);
+                arr.push(v || null);
+              }
+              return arr;
+            }
             const j = await res.json();
-            if (!j || !j.data) return null;
-            return j.data.map(it => it.embedding || null);
-          } catch (e) { return null; }
+            if (j && Array.isArray(j.embeddings)) {
+              return j.embeddings.map(e => (e && e.values) ? e.values : null);
+            }
+            // Some responses may nest under 'responses' depending on API version
+            if (j && Array.isArray(j.responses)) {
+              return j.responses.map(r => (r && r.embedding && r.embedding.values) ? r.embedding.values : null);
+            }
+            return null;
+          } catch (e) {
+            // As a last resort, per-text sequential fetch
+            try {
+              const arr = [];
+              for (const t of texts) {
+                const v = await fetchEmbeddingGemini(t);
+                arr.push(v || null);
+              }
+              return arr;
+            } catch (_) {
+              return null;
+            }
+          }
         }
 
         const chunkSize = 32;
