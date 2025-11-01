@@ -1524,8 +1524,9 @@
       const types = [
         { name: 'Code Blocks', icon: '💻', pattern: /```[\s\S]*?```/g },
         { name: 'Lists', icon: '📝', pattern: /^[\s]*[-*•]\s+.+$/gm },
+        { name: 'Ordered Lists', icon: '🔢', pattern: /^[\s]*\d+\.\s+.+$/gm },
         { name: 'URLs', icon: '🔗', pattern: /https?:\/\/[^\s]+/g },
-        { name: 'Numbers/Data', icon: '🔢', pattern: /\d+\.?\d*/g }
+        { name: 'Numbers/Data', icon: '🔣', pattern: /\b\d+(?:[.,]\d+)?\b/g }
       ];
       
       types.forEach(type => {
@@ -1539,7 +1540,17 @@
             toast('Scan a conversation first');
             return;
           }
-          const matches = text.match(type.pattern) || [];
+          let matches = text.match(type.pattern) || [];
+          // Basic dedupe for URL/list-like extractions
+          try {
+            if (type.name === 'URLs' || type.name === 'Lists' || type.name === 'Ordered Lists') {
+              const seen = new Set();
+              matches = matches.filter(m => {
+                const k = String(m).trim();
+                if (!k || seen.has(k)) return false; seen.add(k); return true;
+              });
+            }
+          } catch(_){}
           
           if (!matches.length) {
             toast(`No ${type.name.toLowerCase()} found`);
@@ -1552,6 +1563,42 @@
         });
         insightsContent.appendChild(btn);
       });
+
+      // Images & Media extraction from last scan (attachments)
+      const mediaBtn = document.createElement('button');
+      mediaBtn.className = 'cb-btn';
+      mediaBtn.style.cssText = 'width:calc(100% - 24px);text-align:left;padding:12px;margin:0 12px 8px 12px;display:flex;align-items:center;gap:10px;';
+      mediaBtn.innerHTML = `<span style="font-size:20px;">🖼️</span><span style="font-weight:600;">Images & Media</span>`;
+      mediaBtn.addEventListener('click', async () => {
+        try {
+          const ls = (window.ChatBridge && typeof window.ChatBridge.getLastScan === 'function') ? window.ChatBridge.getLastScan() : null;
+          const msgs = (ls && Array.isArray(ls.messages)) ? ls.messages : [];
+          if (!msgs.length) { toast('Scan a conversation first'); return; }
+          const all = [];
+          msgs.forEach(m => { if (Array.isArray(m.attachments)) all.push(...m.attachments); });
+          // Dedupe by URL
+          const seen = new Set();
+          const uniq = all.filter(a => { if (!a || !a.url) return false; if (seen.has(a.url)) return false; seen.add(a.url); return true; });
+          if (!uniq.length) { toast('No images or media found'); return; }
+          const grouped = uniq.reduce((acc, a) => { const k = a.kind || 'file'; (acc[k] = acc[k] || []).push(a); return acc; }, {});
+          const lines = [];
+          Object.keys(grouped).forEach(k => {
+            lines.push(`# ${k.toUpperCase()} (${grouped[k].length})`);
+            grouped[k].forEach((a, i) => {
+              const name = a.name || a.alt || a.url.split('?')[0].split('#')[0].split('/').pop() || 'file';
+              lines.push(`- ${name}: ${a.url}`);
+            });
+            lines.push('');
+          });
+          const textOut = lines.join('\n');
+          showOutputWithSendButton(textOut, `🖼️ Images & Media (${uniq.length} found)`);
+          toast(`Extracted ${uniq.length} media items`);
+        } catch (e) {
+          debugLog('Media extract error', e);
+          toast('Extract failed');
+        }
+      });
+      insightsContent.appendChild(mediaBtn);
     }
 
     // Helper: Show output with Send to Chat button
@@ -5763,6 +5810,16 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
     const normalized = normalizeMessages(raw || []);
     debugLog('=== SCAN COMPLETE ===', normalized.length, 'messages');
 
+    // Persist last scanned messages and attachments into debug object for downstream tools (e.g., media extract)
+    try {
+      if (window.ChatBridge && window.ChatBridge._lastScan) {
+        window.ChatBridge._lastScan.messages = normalized;
+        const atts = [];
+        try { normalized.forEach(m => { if (Array.isArray(m.attachments)) atts.push(...m.attachments); }); } catch(_){}
+        window.ChatBridge._lastScan.attachments = atts;
+      }
+    } catch(_) {}
+
     // Auto-summarize if more than 10 messages
     let summary = '';
     if (normalized.length > 10) {
@@ -5858,25 +5915,35 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       (async () => {
         try {
           const full = (conv && conv.conversation) ? conv.conversation.map(m => `${m.role}: ${m.text}`).join('\n\n') : '';
-          // Topic extraction prompt
+          // Topic extraction: combine Gemini output with local keyword heuristics
           try {
             const prompt = `Extract up to 6 short topic tags (comma separated) that summarize the main topics in the following conversation. Output ONLY a comma-separated list of short tags (no extra text):\n\n${full}`;
             const res = await callGeminiAsync({ action: 'prompt', text: prompt, length: 'short' });
-            let topics = [];
+            let geminiTopics = [];
             if (res && res.ok && res.result) {
-              topics = (res.result || '').split(/[,\n]+/).map(t => t.trim()).filter(Boolean).slice(0,6);
-              // normalize: lowercase, collapse spaces, remove punctuation except dashes/underscores, dedupe
-              topics = topics.map(t => t.toLowerCase().replace(/["'()\.]/g, '').replace(/\s+/g, ' ').trim())
-                             .filter(Boolean);
-              // dedupe while preserving order
-              const seen = new Set();
-              const uniq = [];
-              for (const t of topics) {
-                if (!seen.has(t)) { seen.add(t); uniq.push(t); }
-              }
-              topics = uniq.slice(0,6);
+              geminiTopics = (res.result || '').split(/[,\n]+/).map(t => t.trim()).filter(Boolean).slice(0,6);
             }
-            if (topics && topics.length) conv.topics = topics;
+
+            // Local heuristic topics (multi-word phrases + technical terms)
+            let localTopics = [];
+            try { localTopics = buildKeywordsFromText(full, 6) || []; } catch(_) { localTopics = []; }
+
+            // Normalize both sets and merge
+            function normTopic(t){
+              return String(t||'').toLowerCase()
+                .replace(/["'()\.]/g, '')
+                .replace(/\s+/g, ' ')
+                .trim();
+            }
+            const merged = [];
+            const seen = new Set();
+            [...geminiTopics, ...localTopics].forEach(raw => {
+              const n = normTopic(raw);
+              if (!n || seen.has(n)) return; seen.add(n); merged.push(n);
+            });
+
+            // Cap to 6 and assign
+            if (merged.length) conv.topics = merged.slice(0,6);
           } catch (e) { debugLog('topic extraction failed', e); }
 
           // update stored conversation with topics in BOTH storage locations
