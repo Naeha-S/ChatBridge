@@ -97,6 +97,28 @@
     };
   })();
 
+  // --- Small, safe utilities (non-invasive; exported for future reuse) ------
+  /** Sleep helper */
+  function cbSleep(ms) { return new Promise(r => setTimeout(r, Number(ms)||0)); }
+  /** Wait until predicate returns truthy or timeout (returns null on timeout) */
+  async function cbWaitFor(predicate, opts) {
+    const timeout = (opts && opts.timeoutMs) || 8000;
+    const interval = (opts && opts.intervalMs) || 100;
+    const started = Date.now();
+    while ((Date.now() - started) < timeout) {
+      try {
+        const v = (typeof predicate === 'function') ? await predicate() : null;
+        if (v) return v;
+      } catch (_) { /* ignore predicate errors */ }
+      await cbSleep(interval);
+    }
+    return null;
+  }
+  /** Safe querySelector with root param */
+  function cbQS(root, sel) { try { return (root || document).querySelector(sel); } catch(_) { return null; } }
+  /** Safe querySelectorAll -> array */
+  function cbQSA(root, sel) { try { return Array.from((root || document).querySelectorAll(sel)); } catch(_) { return []; } }
+
   // Register restore message listener EARLY, before injectUI, so it's ready when the tab opens
   // Store restoreToChat reference - will be defined later but we can queue messages
   let pendingRestoreMessages = [];
@@ -222,8 +244,8 @@
   function clearHighlights() {
     try {
       if (CB_HIGHLIGHT_ROOT) { CB_HIGHLIGHT_ROOT.remove(); CB_HIGHLIGHT_ROOT = null; }
-      document.querySelectorAll('.cb-scan-highlight').forEach(n => { try { n.classList.remove('cb-scan-highlight'); } catch(e){} });
-      document.querySelectorAll('.cb-scan-label').forEach(n => { try { n.remove(); } catch(e){} });
+  cbQSA(document, '.cb-scan-highlight').forEach(n => { try { n.classList.remove('cb-scan-highlight'); } catch(e){} });
+  cbQSA(document, '.cb-scan-label').forEach(n => { try { n.remove(); } catch(e){} });
     } catch (e) {}
   }
 
@@ -312,14 +334,14 @@
       if (isWindow) {
         for (let i = 0; i < maxSteps; i++) {
           const cur = window.scrollY || document.documentElement.scrollTop || 0; if (cur <= 0) break;
-          window.scrollTo({ top: 0, behavior: 'auto' }); await new Promise(r => setTimeout(r, stepPause));
+          window.scrollTo({ top: 0, behavior: 'auto' }); await cbSleep(stepPause);
         }
         window.scrollTo({ top: 0, behavior: 'auto' }); return;
       }
       for (let i = 0; i < maxSteps; i++) {
         const cur = container.scrollTop; if (cur <= 0) break;
         container.scrollTop = Math.max(0, cur - Math.ceil(container.clientHeight * 0.85));
-        await new Promise(r => setTimeout(r, stepPause));
+  await cbSleep(stepPause);
       }
       container.scrollTop = 0;
     } catch (e) { console.warn('scroll error', e); }
@@ -344,7 +366,7 @@
     if (!root || !root.querySelectorAll) return atts;
     try {
       // Images
-      const imgs = Array.from(root.querySelectorAll('img[src]'));
+  const imgs = cbQSA(root, 'img[src]');
       for (const img of imgs) {
         try {
           const src = img.getAttribute('src') || '';
@@ -356,7 +378,7 @@
         } catch (e) {}
       }
       // Videos
-      const vids = Array.from(root.querySelectorAll('video[src], video source[src]'));
+  const vids = cbQSA(root, 'video[src], video source[src]');
       for (const v of vids) {
         try {
           const src = v.getAttribute('src') || '';
@@ -366,7 +388,7 @@
       }
       // Docs/links
       const exts = /(\.pdf|\.docx?|\.pptx?|\.xlsx?|\.zip|\.rar|\.7z|\.csv|\.md|\.txt)$/i;
-      const links = Array.from(root.querySelectorAll('a[href]'));
+  const links = cbQSA(root, 'a[href]');
       for (const a of links) {
         try {
           const href = a.getAttribute('href') || '';
@@ -413,6 +435,13 @@
     window.ChatBridgeHelpers.isInExtension = isInExtension;
     window.ChatBridgeHelpers.debugLog = debugLog;
     window.ChatBridgeHelpers.normalizeChatMessages = normalizeMessages;
+    // expose utils under a namespaced object to avoid collisions
+    window.ChatBridgeHelpers.utils = Object.assign({}, (window.ChatBridgeHelpers.utils||{}), {
+      sleep: cbSleep,
+      waitFor: cbWaitFor,
+      qs: cbQS,
+      qsa: cbQSA
+    });
   }
 
   function injectUI() {

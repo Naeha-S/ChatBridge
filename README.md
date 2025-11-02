@@ -224,12 +224,16 @@ Default = 1 request/sec; add personal Gemini key for more.
 
 ## 📚 Documentation
 
-Detailed guides available in `/documentation`:
+**Getting Started:**
+- [Quick Start Guide](documentation/QUICK_START.md) - Installation and basic usage
+- [Features Overview](documentation/FEATURES.md) - Complete feature list and use cases
+- [Troubleshooting](documentation/TROUBLESHOOTING.md) - Common issues and solutions
 
-* **QUICK_START.md** – Setup and usage
-* **CROSS_CONTEXT_MEMORY.md** – Memory engine
-* **KNOWLEDGE_GRAPH.md** – Graph visualization
-* **DEBUGGING.md** – Developer logs and troubleshooting
+**Technical:**
+- [Architecture](documentation/ARCHITECTURE.md) - System design and data flow
+- [API Reference](documentation/API_REFERENCE.md) - Complete API documentation
+- [Developer Guide](documentation/DEVELOPER_GUIDE.md) - Extension development guide
+- [Security & Privacy](documentation/SECURITY.md) - Security model and best practices
 
 ---
 
