@@ -55,6 +55,48 @@
   // Always log restore-related messages for debugging
   function restoreLog(...args) { try { console.log('[ChatBridge Restore]', ...args); } catch (e) {} }
 
+  // --- Lightweight Config & Logger (non-invasive) ---------------------------
+  const CBConfig = (function(){
+    const DEFAULTS = { debug: DEBUG === true };
+    let cache = { value: DEFAULTS, ts: 0 };
+    function getAll(force){
+      if (!force && (Date.now()-cache.ts) < 60_000) return Promise.resolve(cache.value);
+      return new Promise((resolve)=>{
+        try { chrome.storage && chrome.storage.local.get(['chatbridge_config'], (d)=>{
+          const v = d && d.chatbridge_config ? d.chatbridge_config : {};
+          cache = { value: Object.assign({}, DEFAULTS, v), ts: Date.now() };
+          resolve(cache.value);
+        }); } catch(_) { resolve(cache.value); }
+      });
+    }
+    function get(key){ return getAll(false).then(c=>c[key]); }
+    try {
+      chrome.storage && chrome.storage.onChanged && chrome.storage.onChanged.addListener((changes, area)=>{
+        if (area==='local' && changes && changes.chatbridge_config) {
+          const v = changes.chatbridge_config.newValue || {}; cache = { value: Object.assign({}, DEFAULTS, v), ts: Date.now() };
+        }
+      });
+    } catch(_){}
+    return { getAll, get };
+  })();
+
+  const CBLogger = (function(){
+    let debug = DEBUG === true;
+    CBConfig.get('debug').then(v=>{ if (typeof v==='boolean') debug = v; }).catch(()=>{});
+    try { chrome.storage && chrome.storage.onChanged && chrome.storage.onChanged.addListener((changes, area)=>{
+      if (area==='local' && changes && changes.chatbridge_config) {
+        const v = changes.chatbridge_config.newValue || {}; debug = !!v.debug;
+      }
+    }); } catch(_){}
+    function log(method, args){ try { console[method].apply(console, ['[ChatBridge]', ...args]); } catch(_){} }
+    return {
+      debug: (...a)=>{ if (debug) log('debug', a); },
+      info: (...a)=>log('log', a),
+      warn: (...a)=>log('warn', a),
+      error: (...a)=>log('error', a)
+    };
+  })();
+
   // Register restore message listener EARLY, before injectUI, so it's ready when the tab opens
   // Store restoreToChat reference - will be defined later but we can queue messages
   let pendingRestoreMessages = [];
@@ -89,6 +131,17 @@
           }
         })();
         return true; // Keep channel open for async response
+      }
+      if (msg && msg.type === 'cs_self_test') {
+        try {
+          // Minimal sanity checks only; no DOM mutations
+          const siteOk = isApprovedSite();
+          CBLogger.debug('cs_self_test approved?', siteOk);
+          sendResponse({ ok: true, approved: siteOk });
+        } catch (e) {
+          sendResponse({ ok:false, error: e && e.message });
+        }
+        return true;
       }
     } catch (e) {
       console.error('[ChatBridge] Message listener error:', e);

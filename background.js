@@ -285,12 +285,130 @@ function hashString(s) {
   return 'h' + (h >>> 0).toString(16);
 }
 
+// --- Key & Config Utilities -------------------------------------------------
+// Lightweight cached accessor for the Gemini API key stored in chrome.storage.local
+// This avoids repeated storage lookups across frequent background calls.
+let __cbGeminiKeyCache = { value: null, ts: 0 };
+// WARNING: Hardcoding your API key exposes it if you share this code. Proceed intentionally.
+// If you insist on hardcoding, set your key below. It will be used as a fallback when no key is set in Options.
+const DEV_HARDCODED_GEMINI_KEY = 'AIzaSyDH7q1lOI8grDht1H-WHNtsyptIiSrgogQ';
+/**
+ * Get the Gemini API key from chrome.storage.local with a short-lived cache.
+ * Never reads from .env (extensions cannot access it); Options page must set the key.
+ * @param {{force?: boolean}} [opts]
+ * @returns {Promise<string|null>} key or null if not configured
+ */
+async function getGeminiApiKey(opts) {
+  const force = !!(opts && opts.force);
+  const now = Date.now();
+  if (!force && __cbGeminiKeyCache.value && (now - __cbGeminiKeyCache.ts) < 60_000) {
+    return __cbGeminiKeyCache.value;
+  }
+  try {
+    let key = await new Promise(r => chrome.storage.local.get(['chatbridge_gemini_key'], d => r(d && d.chatbridge_gemini_key)));
+    // Fallback to hardcoded key if nothing found in storage
+    if (!key && DEV_HARDCODED_GEMINI_KEY) key = DEV_HARDCODED_GEMINI_KEY;
+    __cbGeminiKeyCache = { value: key || null, ts: now };
+    return __cbGeminiKeyCache.value;
+  } catch (_) {
+    // On storage error, still attempt to use hardcoded key if present
+    if (DEV_HARDCODED_GEMINI_KEY) {
+      __cbGeminiKeyCache = { value: DEV_HARDCODED_GEMINI_KEY, ts: now };
+      return DEV_HARDCODED_GEMINI_KEY;
+    }
+    return null;
+  }
+}
+
+// Keep cache fresh when the key changes in Options
+try {
+  if (chrome.storage && chrome.storage.onChanged) {
+    chrome.storage.onChanged.addListener((changes, area) => {
+      try {
+        if (area === 'local' && changes && changes.chatbridge_gemini_key) {
+          __cbGeminiKeyCache = { value: changes.chatbridge_gemini_key.newValue || null, ts: Date.now() };
+        }
+      } catch (_) {}
+    });
+  }
+} catch (_) {}
+
+// --- Config, Logger, Errors, Rate Limiter (lightweight, non-invasive) ------
+/** @typedef {{ ratePerSec: number, maxBurst: number }} TokenBucketConfig */
+
+const Config = (function(){
+  const DEFAULTS = { ratePerSec: 1, maxBurst: 5, debug: false };
+  let cache = { value: DEFAULTS, ts: 0 };
+  async function _load() {
+    try {
+      const raw = await new Promise(r => chrome.storage.local.get(['chatbridge_config'], d => r(d && d.chatbridge_config)));
+      const merged = Object.assign({}, DEFAULTS, raw || {});
+      cache = { value: merged, ts: Date.now() };
+    } catch (_) { cache = { value: DEFAULTS, ts: Date.now() }; }
+    return cache.value;
+  }
+  return {
+    /** @returns {Promise<typeof DEFAULTS>} */
+    async getAll(force=false){ if (!force && (Date.now()-cache.ts)<60_000) return cache.value; return _load(); },
+    /** @returns {Promise<any>} */
+    async get(key){ const c = await this.getAll(); return c[key]; },
+    /** @param {Partial<typeof DEFAULTS>} partial */
+    async set(partial){ try { const cur = await this.getAll(true); const next = Object.assign({}, cur, partial||{}); await new Promise(r=>chrome.storage.local.set({ chatbridge_config: next }, r)); cache={value:next,ts:Date.now()}; } catch(_){} }
+  };
+})();
+
+const Logger = (function(){
+  let debugEnabled = false;
+  (async ()=>{ try { debugEnabled = !!(await Config.get('debug')); } catch(_){} })();
+  try {
+    if (chrome.storage && chrome.storage.onChanged) {
+      chrome.storage.onChanged.addListener((changes, area)=>{
+        try { if (area==='local' && changes && changes.chatbridge_config) {
+          const v = changes.chatbridge_config.newValue||{}; debugEnabled = !!v.debug;
+        } } catch(_){}
+      });
+    }
+  } catch(_){}
+  function log(method, args){ try { console[method].apply(console, ['[ChatBridge]', ...args]); } catch(_){} }
+  return {
+    debug: (...a)=>{ if (debugEnabled) log('debug', a); },
+    info: (...a)=>log('log', a),
+    warn: (...a)=>log('warn', a),
+    error: (...a)=>log('error', a)
+  };
+})();
+
+function makeError(code, message, extra){ return Object.assign({ ok:false, error: String(code||'error'), message: String(message||'') }, extra||{}); }
+
+function createTokenBucket(cfg){
+  const rate = Math.max(0.1, Number(cfg && cfg.ratePerSec || 1));
+  const burst = Math.max(1, Number(cfg && cfg.maxBurst || 5));
+  let tokens = burst; let last = Date.now();
+  return {
+    try(){ const now=Date.now(); const delta=(now-last)/1000; last=now; tokens = Math.min(burst, tokens + delta*rate); if (tokens>=1){ tokens-=1; return true;} return false; },
+    peek(){ return tokens; }
+  };
+}
+
+let RateLimiter = createTokenBucket({ ratePerSec: 1, maxBurst: 5 });
+(async ()=>{
+  try { const ratePerSec = await Config.get('ratePerSec'); const maxBurst = await Config.get('maxBurst'); RateLimiter = createTokenBucket({ ratePerSec, maxBurst }); } catch(_){}
+})();
+try {
+  if (chrome.storage && chrome.storage.onChanged) {
+    chrome.storage.onChanged.addListener((changes, area)=>{
+      try { if (area==='local' && changes && changes.chatbridge_config) {
+        const v = changes.chatbridge_config.newValue || {}; RateLimiter = createTokenBucket({ ratePerSec: Number(v.ratePerSec)||1, maxBurst: Number(v.maxBurst)||5 });
+      } } catch(_){}
+    });
+  }
+} catch(_){}
+
 // Fetch embedding using Gemini API (text-embedding-004 model)
 async function fetchEmbeddingGemini(text) {
   try {
-    const key = await new Promise(r => chrome.storage.local.get(['chatbridge_gemini_key'], d => r(d.chatbridge_gemini_key)));
-    if (!key) return null;
-    const apiKey = key;
+    const apiKey = await getGeminiApiKey();
+    if (!apiKey) return null;
     // Use stable v1 endpoint
     const endpoint = `https://generativelanguage.googleapis.com/v1/models/text-embedding-004:embedContent?key=${apiKey}`;
     const body = {
@@ -524,6 +642,33 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
   if (msg && msg.type === 'ping') return sendResponse({ ok:true });
 
+  // Built-in self-test (non-invasive unit checks) for quick validation via message
+  if (msg && msg.type === 'self_test') {
+    (async () => {
+      const details = [];
+      try {
+        // hashString deterministic
+        const h1 = hashString('abc'); const h2 = hashString('abc'); const h3 = hashString('abcd');
+        details.push({ test: 'hashString deterministic', pass: h1===h2 && h1!==h3 });
+        // cosine basics
+        const c1 = cosine([1,0],[1,0]); const c2 = cosine([1,0],[0,1]);
+        details.push({ test: 'cosine basics', pass: Math.abs(c1-1)<1e-9 && Math.abs(c2-0)<1e-9 });
+        // rate limiter
+        const rl = createTokenBucket({ ratePerSec: 100, maxBurst: 2 });
+        const p = [rl.try(), rl.try(), rl.try()].map(Boolean); // 3rd likely false immediately
+        details.push({ test: 'rate limiter burst', pass: p[0]===true && p[1]===true && p[2]===false });
+        // config read
+        const cfg = await Config.getAll();
+        details.push({ test: 'config defaults', pass: typeof cfg.ratePerSec==='number' && typeof cfg.maxBurst==='number' });
+        const allPass = details.every(d => d.pass);
+        return sendResponse({ ok: allPass, details });
+      } catch (e) {
+        return sendResponse({ ok:false, error: 'self_test_failed', message: (e&&e.message)||String(e), details });
+      }
+    })();
+    return true;
+  }
+
   // Embedding-based suggestion helper: return short multi-word suggestions
   if (msg && msg.type === 'embed_suggest') {
     (async () => {
@@ -624,7 +769,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         // Request embeddings for candidate phrases in batches to compute semantic similarity
         async function fetchEmbeddingBatch(texts) {
           try {
-            const key = await new Promise(r => chrome.storage.local.get(['chatbridge_gemini_key'], d => r(d.chatbridge_gemini_key)));
+            const key = await getGeminiApiKey();
             if (!key) return null;
             // Prefer batch endpoint in v1
             const endpoint = `https://generativelanguage.googleapis.com/v1/models/text-embedding-004:batchEmbedContents?key=${key}`;
@@ -813,19 +958,12 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return true; // async
   }
 
-  // --- simple token-bucket rate limiter ---
-  // allow `ratePerSec` tokens per second with a burst of `maxBurst`
-  const limiter = (function(){
-    const ratePerSec = 1; const maxBurst = 5; let tokens = maxBurst; let last = Date.now();
-    return function tryRemoveToken() {
-      const now = Date.now(); const delta = (now - last) / 1000; last = now; tokens = Math.min(maxBurst, tokens + delta * ratePerSec);
-      if (tokens >= 1) { tokens -= 1; return true; } return false;
-    };
-  })();
+  // rate limiter (token bucket)
+  const limiterTry = () => RateLimiter.try();
 
   // Background handler for calling OpenAI (safe place to keep API keys)
   if (msg && msg.type === 'call_openai') {
-    if (!limiter()) return sendResponse({ ok:false, error: 'rate_limited' });
+    if (!limiterTry()) return sendResponse({ ok:false, error: 'rate_limited' });
 
     (async () => {
       try {
@@ -892,11 +1030,13 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
   // Gemini cloud API handler
   if (msg && msg.type === 'call_gemini') {
-    // Use hardcoded Gemini API key (never expose in repo/UI)
-    const GEMINI_API_KEY = 'AIzaSyDH7q1lOI8grDht1H-WHNtsyptIiSrgogQ';
-    if (!limiter()) return sendResponse({ ok:false, error: 'rate_limited' });
+    if (!limiterTry()) return sendResponse({ ok:false, error: 'rate_limited' });
     (async () => {
       try {
+        const GEMINI_API_KEY = await getGeminiApiKey();
+        if (!GEMINI_API_KEY) {
+          return sendResponse({ ok:false, error: 'no_api_key', message: 'Gemini API key not configured. Open ChatBridge Options to set it.' });
+        }
         const payload = msg.payload || {};
         let promptText = '';
         if (payload.action === 'prompt') {
@@ -1072,11 +1212,13 @@ Rewritten conversation (optimized for ${tgt}):`;
 
   // Image generation via Gemini (optional - if API supports model)
   if (msg && msg.type === 'generate_image') {
-    // Use hardcoded Gemini API key (same as call_gemini)
-    const GEMINI_API_KEY = 'AIzaSyDH7q1lOI8grDht1H-WHNtsyptIiSrgogQ';
-    if (!limiter()) return sendResponse({ ok:false, error: 'rate_limited' });
+    if (!limiterTry()) return sendResponse({ ok:false, error: 'rate_limited' });
     (async () => {
       try {
+        const GEMINI_API_KEY = await getGeminiApiKey();
+        if (!GEMINI_API_KEY) {
+          return sendResponse({ ok:false, error: 'no_api_key', message: 'Gemini API key not configured. Open ChatBridge Options to set it.' });
+        }
         const payload = msg.payload || {};
         const model = payload.model || 'imagen-3.0-generate-001';
         const prompt = payload.prompt || '';
