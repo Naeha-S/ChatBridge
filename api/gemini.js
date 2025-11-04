@@ -64,13 +64,14 @@ export default async function handler(req, res) {
     // Get response text
     const responseText = await geminiResponse.text();
 
-    // Try to parse as JSON, return raw text if not JSON
+    // Always return JSON to clients for predictable parsing
+    let out;
     try {
-      const json = JSON.parse(responseText);
-      return res.status(geminiResponse.status).json(json);
+      out = JSON.parse(responseText);
     } catch {
-      return res.status(geminiResponse.status).send(responseText);
+      out = { raw: responseText };
     }
+    return res.status(geminiResponse.status).json(out);
 
   } catch (err) {
     console.error('Proxy error:', err);
