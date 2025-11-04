@@ -288,8 +288,8 @@ function hashString(s) {
 // --- Key & Config Utilities -------------------------------------------------
 // Vercel Proxy Configuration
 // Set these after deploying to Vercel (see VERCEL_DEPLOYMENT.md)
-const VERCEL_PROXY_URL = ''; // e.g., 'https://your-project.vercel.app/api/gemini'
-const VERCEL_EXT_SECRET = ''; // The EXT_SECRET you set in Vercel environment variables
+const VERCEL_PROXY_URL = 'https://chatbridge-eta.vercel.app/api/gemini'; // e.g., 'https://your-project.vercel.app/api/gemini'
+const VERCEL_EXT_SECRET = 'cb_s3cr3t_2024_xyz789'; // The EXT_SECRET/EXT_KEY you set in Vercel environment variables
 
 // Lightweight cached accessor for the Gemini API key stored in chrome.storage.local
 // This avoids repeated storage lookups across frequent background calls.
@@ -308,11 +308,11 @@ async function callGeminiViaProxy(endpoint, body, method = 'POST') {
   // If Vercel proxy is configured, use it (secure)
   if (VERCEL_PROXY_URL && VERCEL_EXT_SECRET) {
     try {
-      const response = await fetch(VERCEL_PROXY_URL, {
+      let response = await fetch(VERCEL_PROXY_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-ext-secret': VERCEL_EXT_SECRET
+          'x-ext-key': VERCEL_EXT_SECRET
         },
         body: JSON.stringify({
           endpoint: endpoint,
@@ -320,6 +320,20 @@ async function callGeminiViaProxy(endpoint, body, method = 'POST') {
           method: method
         })
       });
+      // Fallback: if project root was set to `api/` in Vercel, route is "/gemini" not "/api/gemini"
+      if (response && response.status === 404 && /\/api\//.test(VERCEL_PROXY_URL)) {
+        try {
+          const altUrl = VERCEL_PROXY_URL.replace('/api/', '/');
+          response = await fetch(altUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-ext-key': VERCEL_EXT_SECRET
+            },
+            body: JSON.stringify({ endpoint, body, method })
+          });
+        } catch (_) { /* ignore, will fall back to direct */ }
+      }
       return response;
     } catch (err) {
       Logger.error('Vercel proxy error, falling back to direct call:', err);
@@ -1074,9 +1088,12 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     if (!limiterTry()) return sendResponse({ ok:false, error: 'rate_limited' });
     (async () => {
       try {
-        const GEMINI_API_KEY = await getGeminiApiKey();
-        if (!GEMINI_API_KEY) {
-          return sendResponse({ ok:false, error: 'no_api_key', message: 'Gemini API key not configured. Open ChatBridge Options to set it.' });
+        // If proxy isn't configured, require a local API key; otherwise skip this check
+        if (!(VERCEL_PROXY_URL && VERCEL_EXT_SECRET)) {
+          const GEMINI_API_KEY = await getGeminiApiKey();
+          if (!GEMINI_API_KEY) {
+            return sendResponse({ ok:false, error: 'no_api_key', message: 'Gemini API key not configured and proxy not set. Configure the Vercel proxy (background.js) or add a local key in Options.' });
+          }
         }
         const payload = msg.payload || {};
         let promptText = '';
@@ -1195,7 +1212,7 @@ Rewritten conversation (optimized for ${tgt}):`;
         
         const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
         const body = {
-          contents: [{ parts: [{ text: promptText }] }]
+          contents: [{ role: 'user', parts: [{ text: promptText }] }]
         };
         
         const res = await callGeminiViaProxy(endpoint, body, 'POST');
@@ -1263,6 +1280,7 @@ Rewritten conversation (optimized for ${tgt}):`;
         
         const body = {
           contents: [{
+            role: 'user',
             parts: [{
               text: prompt
             }]

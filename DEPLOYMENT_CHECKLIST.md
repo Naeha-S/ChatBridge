@@ -27,7 +27,7 @@ Go to your Vercel dashboard → Project Settings → Environment Variables:
    - Value: `AIzaSyDH7q1lOI8grDht1H-WHNtsyptIiSrgogQ`
    - Environment: Production, Preview, Development
 
-2. **EXT_SECRET**
+2. **EXT_SECRET** (or **EXT_KEY**)
    - Value: Generate a random string (e.g., `cb-secret-2024-xyz789`)
    - Command: `[guid]::NewGuid().ToString()` (PowerShell)
    - Environment: Production, Preview, Development
@@ -46,8 +46,11 @@ Open `background.js` and update these constants (lines ~290-295):
 
 ```javascript
 // Vercel Proxy Configuration (fill after deployment)
+// If your Vercel project Root Directory is './':
 const VERCEL_PROXY_URL = 'https://your-project-name.vercel.app/api/gemini';
-const VERCEL_EXT_SECRET = 'your-secret-here'; // Same as EXT_SECRET in Vercel
+// If you set Root Directory to 'api/':
+// const VERCEL_PROXY_URL = 'https://your-project-name.vercel.app/gemini';
+const VERCEL_EXT_SECRET = 'your-secret-here'; // Same as EXT_SECRET or EXT_KEY in Vercel
 ```
 
 ### Step 5: Test the Extension

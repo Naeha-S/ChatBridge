@@ -54,8 +54,9 @@ This guide walks you through deploying the Vercel serverless proxy to secure you
 
 4. **Configure Project:**
    - Framework Preset: **Other**
-   - Root Directory: **./  (leave default)**
+   - Root Directory: **./ (leave default)**
    - Click **"Environment Variables"** section
+   - Note: If you set Root Directory to `api/`, your endpoint path will be `/gemini` (not `/api/gemini`).
 
 5. **Add Environment Variables:**
    
@@ -67,7 +68,7 @@ This guide walks you through deploying the Vercel serverless proxy to secure you
    - Environment: Production ✓
 
    **Variable 2:**
-   - Name: `EXT_SECRET`
+   - Name: `EXT_SECRET` (or `EXT_KEY`)
    - Value: Generate a random string (example: `cb_s3cr3t_2024_xyz789`)
    - Environment: Production ✓
    - **⚠️ SAVE THIS VALUE** - you'll need it in Step C
@@ -85,7 +86,9 @@ This guide walks you through deploying the Vercel serverless proxy to secure you
 7. **Verify deployment:**
    - Go to your project dashboard
    - Click "Visit" to see the URL
-   - Your API endpoint will be: `https://YOUR-URL.vercel.app/api/gemini`
+   - Your API endpoint will be:
+     - `https://YOUR-URL.vercel.app/api/gemini` (Root Directory = `./`)
+     - `https://YOUR-URL.vercel.app/gemini` (Root Directory = `api/`)
 
 #### Method 2: Vercel CLI (Alternative)
 
@@ -154,7 +157,7 @@ This guide walks you through deploying the Vercel serverless proxy to secure you
 
    **Expected:** You should see a JSON response from Gemini
 
-   **If you get 401:** Check your `x-ext-secret` matches what you set in Vercel
+   **If you get 401:** Check your `x-ext-secret` (or `x-ext-key`) matches what you set in Vercel (ENV: `EXT_SECRET` or `EXT_KEY`)
 
    **If you get 500:** Check Vercel logs (Dashboard → Functions → Logs)
 
