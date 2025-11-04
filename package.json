@@ -4,6 +4,6 @@
   "description": "Vercel serverless proxy for ChatBridge Gemini API calls",
   "private": true,
   "engines": {
-    "node": "18.x"
+    "node": "22.x"
   }
 }
