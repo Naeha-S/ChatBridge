@@ -7,13 +7,32 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Simple auth: check extension secret header
-  const extSecret = req.headers['x-ext-secret'];
-  if (!extSecret || extSecret !== process.env.EXT_SECRET) {
+  // Simple auth: check extension secret header (support x-ext-secret or x-ext-key)
+  const extSecretHeader = req.headers['x-ext-secret'] || req.headers['x-ext-key'];
+  const serverSecret = process.env.EXT_SECRET || process.env.EXT_KEY;
+  if (!extSecretHeader || !serverSecret || extSecretHeader !== serverSecret) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
-  const body = req.body || {};
+  // Robust body parsing: handle string, object, or raw stream
+  let body = req.body;
+  try {
+    if (!body) {
+      // Collect raw body from stream if not parsed
+      const chunks = [];
+      for await (const chunk of req) chunks.push(chunk);
+      const buffer = Buffer.concat(chunks);
+      const text = buffer.toString('utf8');
+      body = text ? JSON.parse(text) : {};
+    } else if (typeof body === 'string') {
+      body = body ? JSON.parse(body) : {};
+    } else if (typeof body !== 'object') {
+      // Fallback: attempt JSON parse
+      body = JSON.parse(String(body));
+    }
+  } catch (e) {
+    return res.status(400).json({ error: 'invalid_request_body', message: e.message });
+  }
   const endpoint = body.endpoint; // Which Gemini endpoint to call
   const requestBody = body.body;  // The actual request body for Gemini
   const method = body.method || 'POST';
@@ -36,7 +55,8 @@ export default async function handler(req, res) {
     const geminiResponse = await fetch(url, {
       method: method,
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
       },
       body: requestBody ? JSON.stringify(requestBody) : undefined
     });
