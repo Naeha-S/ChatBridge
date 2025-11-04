@@ -1,0 +1,24 @@
+# Ignore extension files (not needed for serverless deployment)
+*.md
+documentation/
+icons/
+tests/
+.git/
+.gitignore
+
+# Only deploy the api/ folder for serverless functions
+# Extension files stay local
+content_script.js
+background.js
+adapters.js
+storage.js
+sidebar.html
+sidebar.js
+popup.html
+popup.js
+options.html
+options.js
+styles.css
+manifest.json
+*.jpeg
+*.png

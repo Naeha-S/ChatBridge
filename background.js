@@ -286,15 +286,63 @@ function hashString(s) {
 }
 
 // --- Key & Config Utilities -------------------------------------------------
+// Vercel Proxy Configuration
+// Set these after deploying to Vercel (see VERCEL_DEPLOYMENT.md)
+const VERCEL_PROXY_URL = ''; // e.g., 'https://your-project.vercel.app/api/gemini'
+const VERCEL_EXT_SECRET = ''; // The EXT_SECRET you set in Vercel environment variables
+
 // Lightweight cached accessor for the Gemini API key stored in chrome.storage.local
 // This avoids repeated storage lookups across frequent background calls.
 let __cbGeminiKeyCache = { value: null, ts: 0 };
-// WARNING: Hardcoding your API key exposes it if you share this code. Proceed intentionally.
-// If you insist on hardcoding, set your key below. It will be used as a fallback when no key is set in Options.
-const DEV_HARDCODED_GEMINI_KEY = 'AIzaSyDH7q1lOI8grDht1H-WHNtsyptIiSrgogQ';
+// DEPRECATED: Direct API key (kept for backward compatibility during transition)
+// After Vercel deployment, this will not be used
+const DEV_HARDCODED_GEMINI_KEY = '';
+/**
+ * Call Gemini API via Vercel proxy (secure) or direct (fallback for local dev)
+ * @param {string} endpoint - Gemini API endpoint URL (without key parameter)
+ * @param {object} body - Request body to send to Gemini
+ * @param {string} method - HTTP method (default: POST)
+ * @returns {Promise<Response>} Fetch response
+ */
+async function callGeminiViaProxy(endpoint, body, method = 'POST') {
+  // If Vercel proxy is configured, use it (secure)
+  if (VERCEL_PROXY_URL && VERCEL_EXT_SECRET) {
+    try {
+      const response = await fetch(VERCEL_PROXY_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-ext-secret': VERCEL_EXT_SECRET
+        },
+        body: JSON.stringify({
+          endpoint: endpoint,
+          body: body,
+          method: method
+        })
+      });
+      return response;
+    } catch (err) {
+      Logger.error('Vercel proxy error, falling back to direct call:', err);
+      // Fall through to direct call
+    }
+  }
+
+  // Fallback: Direct call with API key (for local development or if proxy not configured)
+  const apiKey = await getGeminiApiKey();
+  if (!apiKey) {
+    throw new Error('No API key configured and Vercel proxy not set up');
+  }
+  const urlWithKey = `${endpoint}?key=${apiKey}`;
+  return fetch(urlWithKey, {
+    method: method,
+    headers: { 'Content-Type': 'application/json' },
+    body: body ? JSON.stringify(body) : undefined
+  });
+}
+
 /**
  * Get the Gemini API key from chrome.storage.local with a short-lived cache.
- * Never reads from .env (extensions cannot access it); Options page must set the key.
+ * DEPRECATED: Use callGeminiViaProxy instead for security
  * @param {{force?: boolean}} [opts]
  * @returns {Promise<string|null>} key or null if not configured
  */
@@ -407,10 +455,7 @@ try {
 // Fetch embedding using Gemini API (text-embedding-004 model)
 async function fetchEmbeddingGemini(text) {
   try {
-    const apiKey = await getGeminiApiKey();
-    if (!apiKey) return null;
-    // Use stable v1 endpoint
-    const endpoint = `https://generativelanguage.googleapis.com/v1/models/text-embedding-004:embedContent?key=${apiKey}`;
+    const endpoint = 'https://generativelanguage.googleapis.com/v1/models/text-embedding-004:embedContent';
     const body = {
       model: "models/text-embedding-004",
       content: {
@@ -419,11 +464,9 @@ async function fetchEmbeddingGemini(text) {
         }]
       }
     };
-    const res = await fetch(endpoint, { 
-      method: 'POST', 
-      headers: { 'Content-Type':'application/json' }, 
-      body: JSON.stringify(body) 
-    });
+    
+    const res = await callGeminiViaProxy(endpoint, body, 'POST');
+    
     if (!res.ok) {
       console.warn('Gemini embedding failed:', res.status);
       return null;
@@ -769,17 +812,15 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         // Request embeddings for candidate phrases in batches to compute semantic similarity
         async function fetchEmbeddingBatch(texts) {
           try {
-            const key = await getGeminiApiKey();
-            if (!key) return null;
             // Prefer batch endpoint in v1
-            const endpoint = `https://generativelanguage.googleapis.com/v1/models/text-embedding-004:batchEmbedContents?key=${key}`;
+            const endpoint = 'https://generativelanguage.googleapis.com/v1/models/text-embedding-004:batchEmbedContents';
             const body = {
               requests: texts.map(t => ({
                 model: 'models/text-embedding-004',
                 content: { parts: [{ text: String(t || '').slice(0, 10000) }] }
               }))
             };
-            const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify(body) });
+            const res = await callGeminiViaProxy(endpoint, body, 'POST');
             if (!res.ok) {
               // Fallback to per-text calls if batch not supported
               const arr = [];
@@ -1151,15 +1192,13 @@ Rewritten conversation (optimized for ${tgt}):`;
             return sendResponse(rec.response);
           }
         } catch (e) { /* ignore */ }
-  const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + GEMINI_API_KEY;
+        
+        const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
         const body = {
           contents: [{ parts: [{ text: promptText }] }]
         };
-        const res = await fetch(endpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body)
-        });
+        
+        const res = await callGeminiViaProxy(endpoint, body, 'POST');
         
         // Parse JSON response - handle both success and error responses
         let json;
@@ -1215,10 +1254,6 @@ Rewritten conversation (optimized for ${tgt}):`;
     if (!limiterTry()) return sendResponse({ ok:false, error: 'rate_limited' });
     (async () => {
       try {
-        const GEMINI_API_KEY = await getGeminiApiKey();
-        if (!GEMINI_API_KEY) {
-          return sendResponse({ ok:false, error: 'no_api_key', message: 'Gemini API key not configured. Open ChatBridge Options to set it.' });
-        }
         const payload = msg.payload || {};
         const model = payload.model || 'imagen-3.0-generate-001';
         const prompt = payload.prompt || '';
@@ -1240,11 +1275,7 @@ Rewritten conversation (optimized for ${tgt}):`;
           }
         };
         
-        const res = await fetch(`${endpoint}?key=${GEMINI_API_KEY}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body)
-        });
+        const res = await callGeminiViaProxy(endpoint, body, 'POST');
         
         const json = await res.json();
         console.log('[ChatBridge BG] Imagen response:', json);

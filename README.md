@@ -222,7 +222,24 @@ Default = 1 request/sec; add personal Gemini key for more.
 
 ---
 
-## 📚 Documentation
+## � Deployment
+
+**Secure Vercel Proxy Setup** (Recommended):
+- [Deployment Checklist](DEPLOYMENT_CHECKLIST.md) - Quick 5-minute deployment guide
+- [Complete Deployment Guide](VERCEL_DEPLOYMENT.md) - Step-by-step instructions with screenshots
+- [Deployment Summary](DEPLOYMENT_COMPLETE.md) - Overview of all changes and security improvements
+
+**Quick Deploy:**
+```powershell
+# Run the automated deployment script
+.\deploy.ps1
+```
+
+This sets up a secure Vercel serverless proxy to hide your Gemini API key from the extension source code.
+
+---
+
+## �📚 Documentation
 
 **Getting Started:**
 - [Quick Start Guide](documentation/QUICK_START.md) - Installation and basic usage

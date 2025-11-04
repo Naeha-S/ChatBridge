@@ -1,0 +1,9 @@
+{
+  "name": "chatbridge-vercel-proxy",
+  "version": "1.0.0",
+  "description": "Vercel serverless proxy for ChatBridge Gemini API calls",
+  "private": true,
+  "engines": {
+    "node": "18.x"
+  }
+}
