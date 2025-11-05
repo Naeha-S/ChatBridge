@@ -289,7 +289,7 @@ function hashString(s) {
 // Vercel Proxy Configuration
 // Set these after deploying to Vercel (see VERCEL_DEPLOYMENT.md)
 const VERCEL_PROXY_URL = 'https://chatbridge-eta.vercel.app/api/gemini'; // e.g., 'https://your-project.vercel.app/api/gemini'
-const VERCEL_EXT_SECRET = 'cb_s3cr3t_2024_xyz789'; // The EXT_SECRET/EXT_KEY you set in Vercel environment variables
+const VERCEL_EXT_SECRET = 'ns_s3cr3t_2025_xyz2416'; // The EXT_KEY you set in Vercel environment variables
 
 // Lightweight cached accessor for the Gemini API key stored in chrome.storage.local
 // This avoids repeated storage lookups across frequent background calls.
@@ -1233,8 +1233,17 @@ Rewritten conversation (optimized for ${tgt}):`;
           return sendResponse({ ok:false, error: 'gemini_http_error', status: res.status, body: json });
         }
         
-        // Validate response structure
+        // Validate response structure (be permissive and surface underlying errors)
         if (!json.candidates || !Array.isArray(json.candidates) || json.candidates.length === 0) {
+          // If API returned a structured error, bubble it instead of parse_error
+          if (json.error) {
+            console.error('[Gemini API Error Body]', json.error);
+            return sendResponse({ ok:false, error: 'gemini_http_error', status: res.status, body: json });
+          }
+          if (json.raw) {
+            console.error('[Gemini API Raw Body]', json.raw?.slice?.(0, 500) || json.raw);
+            return sendResponse({ ok:false, error: 'gemini_http_error', status: res.status || 502, body: json });
+          }
           console.error('[Gemini API] No candidates in response:', json);
           return sendResponse({ ok:false, error: 'gemini_parse_error', message: 'No candidates in response', body: json });
         }

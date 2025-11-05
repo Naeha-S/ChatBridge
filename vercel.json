@@ -5,12 +5,6 @@
       "runtime": "nodejs22.x"
     }
   },
-  "builds": [
-    {
-      "src": "api/**/*.js",
-      "use": "@vercel/node"
-    }
-  ],
   "routes": [
     {
       "src": "/api/(.*)",

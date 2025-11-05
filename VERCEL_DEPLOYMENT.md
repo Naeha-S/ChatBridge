@@ -67,9 +67,9 @@ This guide walks you through deploying the Vercel serverless proxy to secure you
    - Value: `AIzaSyDH7q1lOI8grDht1H-WHNtsyptIiSrgogQ`
    - Environment: Production ✓
 
-   **Variable 2:**
-   - Name: `EXT_SECRET` (or `EXT_KEY`)
-   - Value: Generate a random string (example: `cb_s3cr3t_2024_xyz789`)
+   **Variable 2 (Recommended):**
+   - Name: `EXT_KEY` (you can also use `EXT_SECRET` if you prefer)
+   - Value: Generate a random string (example: `ns_s3cr3t_2025_xyz2416`)
    - Environment: Production ✓
    - **⚠️ SAVE THIS VALUE** - you'll need it in Step C
 
@@ -136,7 +136,7 @@ This guide walks you through deploying the Vercel serverless proxy to secure you
    ```powershell
    $headers = @{
        "Content-Type" = "application/json"
-       "x-ext-secret" = "YOUR_EXT_SECRET_HERE"
+   "x-ext-key" = "YOUR_EXT_KEY_HERE"
    }
    
    $body = @{
