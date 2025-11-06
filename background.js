@@ -1,6 +1,27 @@
 // background.js
+
+// Import RAG and MCP modules (using importScripts for service worker)
+try {
+  // Note: Service workers in MV3 support ES modules if manifest sets "type": "module"
+  // We'll use dynamic import for these modules
+  importScripts('ragEngine.js', 'mcpBridge.js');
+  console.log('[ChatBridge] RAG and MCP modules loaded in background');
+} catch (e) {
+  console.warn('[ChatBridge] Could not load RAG/MCP modules:', e);
+}
+
 chrome.runtime.onInstalled.addListener(() => {
   console.log("ChatBridge installed/updated");
+  
+  // Initialize MCP Bridge in background
+  try {
+    if (typeof window.MCPBridge !== 'undefined') {
+      window.MCPBridge.init();
+      console.log('[ChatBridge] MCP Bridge initialized in background');
+    }
+  } catch (e) {
+    console.error('[ChatBridge] Failed to initialize MCP:', e);
+  }
 });
 
 // Migration endpoint: content script can send stored conversations to background for persistent storage

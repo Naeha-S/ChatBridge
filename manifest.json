@@ -15,7 +15,11 @@
     }
   },
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
   },
   "content_scripts": [
     {
@@ -34,7 +38,7 @@
     "*://www.bing.com/*",
     "*://meta.ai/*"
   ],
-      "js": ["adapters.js", "storage.js", "content_script.js"],
+      "js": ["adapters.js", "storage.js", "ragEngine.js", "mcpBridge.js", "content_script.js"],
       "css": ["styles.css"],
       "run_at": "document_end",
       "all_frames": false

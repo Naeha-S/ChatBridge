@@ -43,6 +43,34 @@
 
   console.log('[ChatBridge] Injecting on approved site:', window.location.hostname);
 
+  // Initialize RAG Engine and MCP Bridge
+  (async () => {
+    try {
+      // Initialize MCP Bridge for agent communication
+      if (typeof window.MCPBridge !== 'undefined') {
+        window.MCPBridge.init();
+        console.log('[ChatBridge] MCP Bridge initialized');
+      } else {
+        console.warn('[ChatBridge] MCP Bridge not available');
+      }
+      
+      // Preload embedding model in background (non-blocking)
+      if (typeof window.RAGEngine !== 'undefined') {
+        setTimeout(() => {
+          window.RAGEngine.initEmbeddingPipeline().then(() => {
+            console.log('[ChatBridge] RAG embedding model preloaded');
+          }).catch(e => {
+            console.warn('[ChatBridge] RAG model preload failed (will use fallback):', e);
+          });
+        }, 2000); // Delay 2s to not block initial load
+      } else {
+        console.warn('[ChatBridge] RAG Engine not available');
+      }
+    } catch (e) {
+      console.error('[ChatBridge] Failed to initialize RAG/MCP:', e);
+    }
+  })();
+
   // avoid const redeclaration causing SyntaxError in some injection scenarios
   var CB_MAX_MESSAGES = (typeof window !== 'undefined' && window.__CHATBRIDGE && window.__CHATBRIDGE.MAX_MESSAGES) ? window.__CHATBRIDGE.MAX_MESSAGES : 200;
   const DOM_STABLE_MS = 600;
@@ -253,7 +281,7 @@
     try {
       if (!elems || !elems.length) return;
       ensureHighlightStyles(); clearHighlights();
-      CB_HIGHLIGHT_ROOT = document.createElement('div'); CB_HIGHLIGHT_ROOT.id = 'cb-scan-highlights'; CB_HIGHLIGHT_ROOT.setAttribute('data-cb-ignore','true');
+  CB_HIGHLIGHT_ROOT = document.createElement('div'); CB_HIGHLIGHT_ROOT.id = 'cb-scan-highlights'; CB_HIGHLIGHT_ROOT.setAttribute('data-cb-ignore','true'); CB_HIGHLIGHT_ROOT.style.pointerEvents = 'none';
       document.body.appendChild(CB_HIGHLIGHT_ROOT);
       elems.slice(0, 60).forEach((el, i) => {
         try {
@@ -497,7 +525,7 @@
     --cb-shadow: rgba(0, 0, 0, 0.08);
   }
   :host * { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important; letter-spacing: -0.01em; }
-  .cb-panel { box-sizing: border-box; position:fixed; top:12px; right:12px; width:380px; max-height:86vh; overflow-y:auto; overflow-x:hidden; border-radius:16px; background: var(--cb-bg2); color:var(--cb-white) !important; z-index:2147483647; box-shadow: 0 20px 60px var(--cb-shadow), 0 0 40px rgba(140, 30, 255, 0.15); border: 1px solid var(--cb-border); backdrop-filter: blur(12px); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); word-wrap: break-word; }
+  .cb-panel { box-sizing: border-box; position:fixed; top:12px; right:12px; width:380px; max-height:86vh; overflow-y:auto; overflow-x:hidden; border-radius:16px; background: var(--cb-bg2); color:var(--cb-white) !important; z-index:2147483647; box-shadow: 0 20px 60px var(--cb-shadow), 0 0 40px rgba(140, 30, 255, 0.15); border: 1px solid var(--cb-border); backdrop-filter: blur(12px); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); word-wrap: break-word; pointer-events:auto; }
   .cb-panel * { max-width: 100%; word-wrap: break-word; overflow-wrap: break-word; }
   .cb-panel::-webkit-scrollbar { width: 10px; }
   .cb-panel::-webkit-scrollbar-track { background: var(--cb-bg); border-radius: 10px; }
@@ -508,9 +536,9 @@
   .cb-subtitle { font-size:13px; color: var(--cb-subtext); font-weight:500; margin-top:4px; margin-bottom:2px; letter-spacing:-0.01em; }
     .cb-actions { padding:16px 18px 12px 18px; display:flex; flex-direction:column; gap:12px; align-items:stretch; justify-content:flex-start; }
   .cb-actions-grid { display:grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap:10px; width:100%; }
-  .cb-actions .cb-btn { min-width:0; padding:12px 14px; font-size:12px; white-space:nowrap; font-weight:600; letter-spacing:-0.01em; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); text-transform: uppercase; width:100%; position: relative; overflow: hidden; }
+  .cb-actions .cb-btn { min-width:0; padding:12px 14px; font-size:12px; white-space:nowrap; font-weight:600; letter-spacing:-0.01em; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); text-transform: uppercase; width:100%; position: relative; overflow: hidden; z-index: 0; }
     .cb-btn { background: var(--cb-bg3); border:1px solid var(--cb-border); color:var(--cb-white) !important; padding:12px 16px; border-radius:10px; cursor:pointer; font-size:13px; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); font-weight:600; box-shadow: 0 2px 8px var(--cb-shadow); }
-  .cb-btn::before { content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent); transition: left 0.5s ease; }
+  .cb-btn::before { content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent); transition: left 0.5s ease; pointer-events: none; }
   .cb-btn:hover::before { left: 100%; }
   .cb-btn:hover { transform:translateY(-2px); box-shadow: 0 4px 16px var(--cb-shadow), 0 0 24px rgba(0, 180, 255, 0.15); border-color: var(--cb-accent-primary); }
   .cb-btn:focus { outline: none; box-shadow: 0 0 0 3px rgba(0, 180, 255, 0.25); }
@@ -557,7 +585,7 @@
       .cb-internal-view.cb-view-active { display: block; }
       @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
       .cb-view-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
-      .cb-view-close { background:transparent; border:1px solid var(--cb-border); color:var(--cb-white); padding:6px 12px; border-radius:8px; cursor:pointer; font-size:12px; font-weight:600; transition: all 0.2s ease; }
+      .cb-view-close { background:transparent; border:1px solid var(--cb-border); color:var(--cb-white); padding:6px 12px; border-radius:8px; cursor:pointer; font-size:12px; font-weight:600; transition: all 0.2s ease; position:relative; z-index:2; }
       .cb-view-close:hover { background:var(--cb-bg3); border-color: var(--cb-accent-primary); box-shadow: 0 2px 8px rgba(0, 180, 255, 0.2); transform: translateY(-1px); }
       .cb-view-title { font-weight:700; font-size:16px; color:var(--cb-white); letter-spacing:-0.01em; }
       .cb-view-intro { font-size:13px; color:var(--cb-subtext); line-height:1.6; margin:12px 0 16px 0; padding:12px 14px; background:var(--cb-bg3); border-left:3px solid var(--cb-accent-primary); border-radius:8px; }
@@ -627,7 +655,7 @@
   const btnRestore = document.createElement('button'); btnRestore.className = 'cb-btn'; btnRestore.textContent = 'Restore'; btnRestore.title = 'Continue where you left off - Pick any saved chat and paste it into this AI'; btnRestore.setAttribute('aria-label','Restore conversation');
   const btnClipboard = document.createElement('button'); btnClipboard.className = 'cb-btn'; btnClipboard.textContent = 'Copy'; btnClipboard.title = 'Quick export - Copy this conversation to share or save externally'; btnClipboard.setAttribute('aria-label','Copy conversation to clipboard');
   const btnSmartQuery = document.createElement('button'); btnSmartQuery.className = 'cb-btn'; btnSmartQuery.textContent = 'Query'; btnSmartQuery.title = 'Ask questions across ALL your saved chats - Natural language search powered by AI'; btnSmartQuery.setAttribute('aria-label','Open Smart Query');
-  const btnKnowledgeGraph = document.createElement('button'); btnKnowledgeGraph.className = 'cb-btn'; btnKnowledgeGraph.textContent = 'Graph'; btnKnowledgeGraph.title = 'Visualize your conversation network - Interactive map of how your chats connect'; btnKnowledgeGraph.setAttribute('aria-label','Open Knowledge Graph');
+  const btnKnowledgeGraph = document.createElement('button'); btnKnowledgeGraph.className = 'cb-btn'; btnKnowledgeGraph.textContent = 'Agent'; btnKnowledgeGraph.title = 'AI Agent – analyze this chat and suggest next actions'; btnKnowledgeGraph.setAttribute('aria-label','Open Agent');
   const btnInsights = document.createElement('button'); btnInsights.className = 'cb-btn'; btnInsights.textContent = 'Insights'; btnInsights.title = 'Smart workspace tools - Compare, merge, extract, and organize your conversations'; btnInsights.setAttribute('aria-label','Open Smart Workspace');
 
   // Gemini API buttons
@@ -889,55 +917,23 @@
 
   panel.appendChild(smartView);
 
-  // Knowledge Graph Explorer view
-  const graphView = document.createElement('div'); graphView.className = 'cb-internal-view'; graphView.id = 'cb-graph-view'; graphView.setAttribute('data-cb-ignore','true');
-  const graphTop = document.createElement('div'); graphTop.className = 'cb-view-top';
-  const graphTitle = document.createElement('div'); graphTitle.className = 'cb-view-title'; graphTitle.textContent = 'Knowledge Graph';
-  const btnCloseGraph = document.createElement('button'); btnCloseGraph.className = 'cb-view-close'; btnCloseGraph.textContent = '✕';
-  btnCloseGraph.setAttribute('aria-label','Close Graph view');
-  graphTop.appendChild(graphTitle); graphTop.appendChild(btnCloseGraph);
-  graphView.appendChild(graphTop);
+  // Agent Hub view (replaces Knowledge Graph) - Multi-agent system
+  const agentView = document.createElement('div'); agentView.className = 'cb-internal-view'; agentView.id = 'cb-agent-view'; agentView.setAttribute('data-cb-ignore','true');
+  const agentTop = document.createElement('div'); agentTop.className = 'cb-view-top';
+  const agentTitle = document.createElement('div'); agentTitle.className = 'cb-view-title'; agentTitle.textContent = '🤖 AI Agent Hub';
+  const btnCloseAgent = document.createElement('button'); btnCloseAgent.className = 'cb-view-close'; btnCloseAgent.textContent = '✕';
+  btnCloseAgent.setAttribute('aria-label','Close Agent Hub');
+  agentTop.appendChild(agentTitle); agentTop.appendChild(btnCloseAgent);
+  agentView.appendChild(agentTop);
 
-  const graphIntro = document.createElement('div'); graphIntro.className = 'cb-view-intro'; graphIntro.textContent = 'See how your conversations connect and build on each other. An interactive network revealing patterns, contradictions, and knowledge threads across all your chats.';
-  graphView.appendChild(graphIntro);
+  const agentIntro = document.createElement('div'); agentIntro.className = 'cb-view-intro'; agentIntro.textContent = 'Advanced AI agents that work in the background to enhance your conversations across platforms.';
+  agentView.appendChild(agentIntro);
 
-  const graphControls = document.createElement('div'); graphControls.className = 'cb-view-controls';
-  const btnExportPNG = document.createElement('button'); btnExportPNG.className = 'cb-btn'; btnExportPNG.textContent = 'Export PNG'; btnExportPNG.title = 'Export knowledge graph as PNG (optionally generated via Gemini)';
-  const btnExportHTML = document.createElement('button'); btnExportHTML.className = 'cb-btn'; btnExportHTML.textContent = 'Export HTML'; btnExportHTML.title = 'Export knowledge graph as standalone HTML snapshot';
-  const btnRefreshGraph = document.createElement('button'); btnRefreshGraph.className = 'cb-btn'; btnRefreshGraph.textContent = 'Refresh'; btnRefreshGraph.title = 'Rebuild graph visualization';
-  graphControls.appendChild(btnExportPNG); graphControls.appendChild(btnExportHTML); graphControls.appendChild(btnRefreshGraph);
+  // Agent content container (will be populated by renderAgentHub)
+  const agentContent = document.createElement('div'); agentContent.id = 'cb-agent-content'; agentContent.style.cssText = 'padding:12px 0;overflow-y:auto;max-height:calc(100vh - 250px);';
+  agentView.appendChild(agentContent);
 
-  const graphCanvas = document.createElement('canvas'); graphCanvas.id = 'cb-graph-canvas'; graphCanvas.width = 350; graphCanvas.height = 400;
-  graphCanvas.style.cssText = 'width:100%;height:400px;background:#0b0f17;border-radius:10px;margin-top:12px;cursor:grab;position:relative;';
-  // Accessibility: make canvas focusable and announceable
-  graphCanvas.setAttribute('tabindex', '0');
-  graphCanvas.setAttribute('role', 'application');
-  graphCanvas.setAttribute('aria-label', 'Knowledge graph visualization. Use arrow keys to pan, enter to open a node.');
-  graphView.appendChild(graphCanvas);
-
-  const graphLegend = document.createElement('div'); graphLegend.className = 'cb-graph-legend';
-  graphLegend.innerHTML = `
-    <div style="font-size:11px;color:rgba(212,175,119,0.75);margin-top:8px;display:flex;flex-wrap:wrap;gap:12px;justify-content:center;">
-      <div><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#10a37f;margin-right:4px;"></span>ChatGPT</div>
-      <div><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#9b87f5;margin-right:4px;"></span>Claude</div>
-      <div><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#4285f4;margin-right:4px;"></span>Gemini</div>
-      <div><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#00a4ef;margin-right:4px;"></span>Copilot</div>
-      <div><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#6366f1;margin-right:4px;"></span>Perplexity</div>
-    </div>
-  `;
-  graphView.appendChild(graphLegend);
-
-  // Place export / refresh controls after the image and legend as requested
-  graphView.appendChild(graphControls);
-
-  const graphTooltip = document.createElement('div'); graphTooltip.id = 'cb-graph-tooltip';
-  graphTooltip.style.cssText = 'display:none;position:absolute;background:rgba(20,20,30,0.98);color:#e6cf9f;padding:10px 12px;border-radius:8px;font-size:12px;line-height:1.4;max-width:250px;pointer-events:none;z-index:10;border:1px solid rgba(230,207,159,0.3);box-shadow:0 4px 12px rgba(0,0,0,0.4);';
-  graphView.appendChild(graphTooltip);
-
-  const graphStats = document.createElement('div'); graphStats.className = 'cb-view-result'; graphStats.id = 'cb-graph-stats'; graphStats.style.marginTop = '12px'; graphStats.textContent = 'Loading graph...';
-  graphView.appendChild(graphStats);
-
-  panel.appendChild(graphView);
+  panel.appendChild(agentView);
 
   // ============================================
   // INSIGHTS / SMART WORKSPACE VIEW
@@ -1052,7 +1048,7 @@
       try {
         const ux = document.createElement('style'); ux.id = 'cb-ux-style'; ux.textContent = `
           /* Skeleton loaders */
-          .cb-skeleton { background: linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.06) 37%, rgba(255,255,255,0.03) 63%); background-size: 400% 100%; animation: cb-skel-shimmer 1.6s linear infinite; border-radius:6px; }
+          .cb-skeleton { background: linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.06) 37%, rgba(255,255,255,0.03) 63%); background-size: 400% 100%; animation: cb-skel-shimmer 1.6s linear infinite; border-radius:6px; pointer-events: none; }
           @keyframes cb-skel-shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
           /* Micro-animations */
           .cb-fade-in { animation: cb-fade .22s ease-out; }
@@ -1450,7 +1446,7 @@
         card.style.background = 'rgba(16,24,43,0.4)';
         card.style.transform = 'translateY(0)';
       });
-      card.addEventListener('click', onClick);
+  card.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); try { onClick && onClick(e); } catch(_){} });
       return card;
     }
 
@@ -1796,6 +1792,673 @@
       }
       
       return suggestions.slice(0, 3); // Max 3 suggestions
+    }
+
+    // ============================================
+    // AI AGENT HUB FUNCTIONS
+    // ============================================
+
+    // Render Agent Hub UI with all four agents
+    async function renderAgentHub() {
+      try {
+        if (!agentContent) {
+          debugLog('agentContent not found!');
+          toast('Error: UI element missing');
+          return;
+        }
+        agentContent.innerHTML = '';
+        debugLog('Rendering Agent Hub...');
+
+        // Agent Cards Grid
+    const agentsGrid = document.createElement('div');
+    agentsGrid.style.cssText = 'display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px;padding:0 12px;position:relative;z-index:0;';
+
+        // 1. Continuum - Context Reconstruction Agent
+        const continuumCard = createAgentCard(
+          'Continuum',
+          'Restore context across AI platforms',
+          '🔄',
+          'Never lose your train of thought when switching between AI tools',
+          async () => {
+            try {
+              await showContinuumAgent();
+            } catch (e) {
+              toast('Continuum failed');
+              debugLog('Continuum error', e);
+            }
+          }
+        );
+
+        // 2. Memory Architect - Knowledge Organizer
+        const memoryCard = createAgentCard(
+          'Memory Architect',
+          'Build your AI knowledge base',
+          '🧠',
+          'Convert all chats into structured, searchable knowledge',
+          async () => {
+            try {
+              await showMemoryArchitect();
+            } catch (e) {
+              toast('Memory Architect failed');
+              debugLog('Memory Architect error', e);
+            }
+          }
+        );
+
+        // 3. EchoSynth - Multi-AI Synthesizer
+        const echoCard = createAgentCard(
+          'EchoSynth',
+          'Merge insights from multiple AIs',
+          '⚡',
+          'One prompt queries all AIs, synthesizes best answer',
+          async () => {
+            try {
+              await showEchoSynth();
+            } catch (e) {
+              toast('EchoSynth failed');
+              debugLog('EchoSynth error', e);
+            }
+          }
+        );
+
+        // 4. Quick Agent - Simple task agent (original functionality)
+        const quickCard = createAgentCard(
+          'Quick Agent',
+          'Analyze & suggest next steps',
+          '🎯',
+          'Quick analysis and action recommendations',
+          async () => {
+            try {
+              await showQuickAgent();
+            } catch (e) {
+              toast('Quick Agent failed');
+              debugLog('Quick Agent error', e);
+            }
+          }
+        );
+
+        [continuumCard, memoryCard, echoCard, quickCard].forEach(card => agentsGrid.appendChild(card));
+        agentContent.appendChild(agentsGrid);
+
+        // Agent Output Area
+        const outputSection = document.createElement('div');
+        outputSection.style.cssText = 'padding:0 12px;margin-bottom:16px;';
+        
+        const outputLabel = document.createElement('div');
+        outputLabel.style.cssText = 'font-weight:600;font-size:12px;margin-bottom:8px;color:var(--cb-subtext);';
+        outputLabel.textContent = '📊 Agent Output';
+        outputSection.appendChild(outputLabel);
+        
+        const outputArea = document.createElement('div');
+        outputArea.id = 'cb-agent-output';
+        outputArea.className = 'cb-view-text';
+        outputArea.style.cssText = 'min-height:120px;max-height:400px;overflow-y:auto;background:rgba(16,24,43,0.4);border:1px solid rgba(0,180,255,0.2);border-radius:8px;padding:12px;font-size:12px;line-height:1.5;white-space:pre-wrap;';
+        outputArea.textContent = '(Agent results will appear here)';
+        outputSection.appendChild(outputArea);
+        
+        const outputControls = document.createElement('div');
+        outputControls.style.cssText = 'display:flex;gap:8px;margin-top:8px;';
+        
+        const btnAgentToChat = document.createElement('button');
+        btnAgentToChat.className = 'cb-btn cb-btn-primary';
+        btnAgentToChat.textContent = '➤ Insert to Chat';
+        btnAgentToChat.style.cssText = 'flex:1;';
+        btnAgentToChat.addEventListener('click', async () => {
+          const outputText = outputArea.textContent;
+          if (!outputText || outputText === '(Agent results will appear here)') {
+            toast('No output to insert');
+            return;
+          }
+          
+          try {
+            await restoreToChat(outputText, []);
+            toast('Inserted to chat!');
+          } catch (e) {
+            debugLog('Insert to chat error', e);
+            toast('Failed to insert');
+          }
+        });
+        
+        const btnCopyAgentOutput = document.createElement('button');
+        btnCopyAgentOutput.className = 'cb-btn';
+        btnCopyAgentOutput.textContent = '📋 Copy';
+        btnCopyAgentOutput.addEventListener('click', async () => {
+          const outputText = outputArea.textContent;
+          if (!outputText || outputText === '(Agent results will appear here)') {
+            toast('No output to copy');
+            return;
+          }
+          
+          try {
+            await navigator.clipboard.writeText(outputText);
+            toast('Copied to clipboard');
+          } catch (e) {
+            toast('Copy failed');
+          }
+        });
+        
+        outputControls.appendChild(btnAgentToChat);
+        outputControls.appendChild(btnCopyAgentOutput);
+        outputSection.appendChild(outputControls);
+        
+        agentContent.appendChild(outputSection);
+
+        debugLog('Agent Hub rendered successfully');
+
+      } catch (e) {
+        debugLog('renderAgentHub error', e);
+        if (agentContent) {
+          agentContent.innerHTML = `<div style="padding:12px;color:rgba(255,100,100,0.9);">Failed to load Agent Hub: ${e.message || 'Unknown error'}</div>`;
+        }
+      }
+    }
+
+    // Helper: Create agent card
+    function createAgentCard(name, description, icon, details, onClick) {
+  const card = document.createElement('button');
+  card.className = 'cb-btn';
+  card.style.cssText = 'padding:14px 12px;text-align:left;height:auto;display:flex;flex-direction:column;gap:6px;background:rgba(16,24,43,0.4);border:1px solid rgba(0,180,255,0.2);transition:all 0.2s; position:relative; z-index:1;';
+  card.setAttribute('type','button');
+      card.innerHTML = `
+        <div style="font-size:24px;line-height:1;">${icon}</div>
+        <div style="font-weight:700;font-size:13px;">${name}</div>
+        <div style="font-size:10px;opacity:0.8;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--cb-accent-primary);">${description}</div>
+        <div style="font-size:11px;opacity:0.7;line-height:1.3;margin-top:2px;">${details}</div>
+      `;
+      card.addEventListener('mouseenter', () => {
+        card.style.background = 'rgba(0,180,255,0.15)';
+        card.style.transform = 'translateY(-2px)';
+        card.style.boxShadow = '0 4px 12px rgba(0,180,255,0.2)';
+      });
+      card.addEventListener('mouseleave', () => {
+        card.style.background = 'rgba(16,24,43,0.4)';
+        card.style.transform = 'translateY(0)';
+        card.style.boxShadow = '';
+      });
+      card.addEventListener('click', onClick);
+      return card;
+    }
+
+    // Show Continuum Agent Interface (combines ALL relevant conversations using RAG)
+    async function showContinuumAgent() {
+  const outputArea = (agentContent && agentContent.querySelector('#cb-agent-output')) || (shadow && shadow.getElementById && shadow.getElementById('cb-agent-output'));
+      if (!outputArea) return;
+      
+      outputArea.innerHTML = '<div style="text-align:center;padding:20px;"><div class="cb-spinner" style="display:inline-block;"></div><div style="margin-top:12px;">Analyzing context across platforms with RAG...</div></div>';
+      
+      try {
+        // Get all conversations (for fallback)
+        const convs = await loadConversationsAsync();
+        if (!convs || convs.length === 0) {
+          outputArea.textContent = '⚠️ No previous conversations found. Scan some chats first to enable Continuum.';
+          return;
+        }
+        
+        // Get current platform
+        const currentHost = location.hostname;
+        function hostFromConv(c){
+          try {
+            return (c.platform || (c.url && new URL(c.url).hostname) || '').toString() || '';
+          } catch(_) { return ''; }
+        }
+        
+        // Get most recent conversation to build query context
+        const recentDifferent = (convs||[]).find(c => hostFromConv(c) && hostFromConv(c) !== currentHost);
+        const recentSame = (convs||[]).find(c => hostFromConv(c) && hostFromConv(c) === currentHost) || convs[0];
+        const seedConv = recentDifferent || recentSame;
+        const seedTopics = seedConv.topics || [];
+        
+        // Build query from recent messages and topics
+        const recentMessages = seedConv.conversation || [];
+        const queryText = [
+          ...seedTopics,
+          ...(recentMessages.slice(-3).map(m => m.text.slice(0, 200)))
+        ].join(' ');
+        
+        let relatedConvs = [];
+        let usingRAG = false;
+        
+        // Try RAG-powered semantic search first
+        if (typeof window.RAGEngine !== 'undefined') {
+          try {
+            debugLog('[Continuum] Using RAG to find related conversations');
+            const ragResults = await window.RAGEngine.retrieve(queryText, 8);
+            
+            if (ragResults && ragResults.length > 0) {
+              usingRAG = true;
+              debugLog('[Continuum] RAG found', ragResults.length, 'related conversations');
+              
+              // Map RAG results back to full conversation objects
+              relatedConvs = ragResults.map(r => {
+                const conv = convs.find(c => String(c.ts) === String(r.id));
+                return conv || {
+                  ts: r.id,
+                  platform: r.metadata?.platform || 'unknown',
+                  topics: r.metadata?.topics || [],
+                  conversation: [{ role: 'assistant', text: r.text }],
+                  ragScore: r.score
+                };
+              });
+            }
+          } catch (e) {
+            debugLog('[Continuum] RAG search failed, falling back to topic matching:', e);
+          }
+        }
+        
+        // Fallback: topic-based matching if RAG not available or failed
+        if (!usingRAG || relatedConvs.length === 0) {
+          debugLog('[Continuum] Using topic-based fallback');
+          relatedConvs = (convs||[]).filter(c => {
+            if (c === seedConv) return true;
+            const cTopics = c.topics || [];
+            return cTopics.some(t => seedTopics.includes(t));
+          }).slice(0, 8);
+        }
+        
+        debugLog('[Continuum] Found', relatedConvs.length, 'related conversations on topics:', seedTopics, '(RAG:', usingRAG, ')');
+        
+        // Build combined context from all related conversations
+        let combinedContext = '';
+        relatedConvs.forEach((conv, idx) => {
+          const host = hostFromConv(conv) || 'unknown';
+          const ago = Math.round((Date.now() - (conv.ts||Date.now())) / (1000 * 60 * 60));
+          const msgs = conv.conversation || [];
+          const snippet = msgs.slice(-4).map(m => `${m.role}: ${m.text.slice(0,200)}`).join('\n');
+          const ragScore = conv.ragScore ? ` [Relevance: ${(conv.ragScore * 100).toFixed(0)}%]` : '';
+          combinedContext += `\n---\nConversation ${idx+1}: ${host}, ${ago}h ago${ragScore}\nTopics: ${(conv.topics||[]).join(', ')}\n${snippet}\n`;
+        });
+        
+        // Truncate if too long
+        if (combinedContext.length > 4000) {
+          combinedContext = combinedContext.slice(0, 4000) + '\n\n...(truncated)';
+        }
+
+        const prompt = `You are Continuum, a context reconstruction agent with RAG-powered semantic search. You have ${relatedConvs.length} related conversations${usingRAG ? ' (found via semantic similarity)' : ''} on topics: ${seedTopics.join(', ')}.
+
+Analyze ALL these conversations and create a unified, actionable context summary (3-4 sentences) for continuing the work on ${currentHost}.
+
+Constraints:
+- Synthesize insights across ALL conversations, not just the most recent one
+- Identify patterns, decisions, and unresolved questions from the combined context
+- Keep it practical and specific (goals, constraints, key definitions)
+- Include 1-2 suggested next steps
+
+Output format (Markdown):
+**Unified Context Summary** ${usingRAG ? '🔍 (RAG-Enhanced)' : ''}
+Topics: ${seedTopics.slice(0,3).join(', ')}
+Conversations: ${relatedConvs.length} across ${new Set(relatedConvs.map(c => hostFromConv(c))).size} platforms
+
+[3-4 sentence synthesis of combined context]
+
+**Suggested Next Steps**
+1. [First actionable step]
+2. [Second actionable step]
+
+Combined conversation history:
+${combinedContext}`;
+
+        const res = await callGeminiAsync({ action: 'prompt', text: prompt, length: 'short' });
+
+        if (res && res.ok) {
+          const summary = res.result || 'Context reconstructed.';
+          // Render with quick action buttons
+          outputArea.innerHTML = `
+            <div style="display:flex;flex-direction:column;gap:10px;">
+              <div style="white-space:pre-wrap;line-height:1.6;">${summary}</div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <button id="continuum-continue" class="cb-btn cb-btn-primary">Continue here</button>
+                <button id="continuum-review" class="cb-btn">Review key points</button>
+                <button id="continuum-fresh" class="cb-btn">Start fresh with context</button>
+              </div>
+            </div>`;
+
+          const btnCont = outputArea.querySelector('#continuum-continue');
+          const btnRev = outputArea.querySelector('#continuum-review');
+          const btnFresh = outputArea.querySelector('#continuum-fresh');
+
+          const summaryPlain = (summary || '').replace(/<[^>]*>/g,'');
+          const baseAsk = 'Please pick up from the previous session using the summary below.';
+
+          btnCont && btnCont.addEventListener('click', async () => {
+            try { await restoreToChat(`${baseAsk}\n\nSummary:\n${summaryPlain}`, []); toast('Inserted to chat'); } catch(e){ toast('Insert failed'); }
+          });
+          btnRev && btnRev.addEventListener('click', async () => {
+            try { await restoreToChat(`Before continuing, briefly review these key points and ask me to confirm any assumptions.\n\nSummary:\n${summaryPlain}`, []); toast('Inserted to chat'); } catch(e){ toast('Insert failed'); }
+          });
+          btnFresh && btnFresh.addEventListener('click', async () => {
+            try { await restoreToChat(`Start a new approach but keep this context in mind. Provide a short plan first.\n\nContext:\n${summaryPlain}`, []); toast('Inserted to chat'); } catch(e){ toast('Insert failed'); }
+          });
+
+          toast('Context bridge ready!');
+        } else {
+          outputArea.textContent = `❌ Failed to reconstruct context: ${res && res.error ? res.error : 'unknown error'}`;
+        }
+      } catch (e) {
+        outputArea.textContent = `❌ Continuum error: ${e.message || 'Unknown error'}`;
+        debugLog('Continuum error', e);
+      }
+    }
+
+    // Show Memory Architect Interface (end-user actionable with RAG stats)
+    async function showMemoryArchitect() {
+  const outputArea = (agentContent && agentContent.querySelector('#cb-agent-output')) || (shadow && shadow.getElementById && shadow.getElementById('cb-agent-output'));
+      if (!outputArea) return;
+      
+      outputArea.innerHTML = '<div style="text-align:center;padding:20px;"><div class="cb-spinner" style="display:inline-block;"></div><div style="margin-top:12px;">Building knowledge map with RAG...</div></div>';
+      
+      try {
+        const convs = await loadConversationsAsync();
+        if (!convs || convs.length === 0) {
+          outputArea.textContent = '⚠️ No conversations to organize. Scan some chats first.';
+          return;
+        }
+        
+        // Get RAG stats if available
+        let ragStats = null;
+        if (typeof window.RAGEngine !== 'undefined') {
+          try {
+            ragStats = await window.RAGEngine.getStats();
+            debugLog('[Memory Architect] RAG stats:', ragStats);
+          } catch (e) {
+            debugLog('[Memory Architect] Failed to get RAG stats:', e);
+          }
+        }
+        
+        // Analyze and categorize conversations
+        const domainMap = {};
+        const timeline = [];
+        
+        for (const conv of convs.slice(0, 20)) { // Limit to recent 20
+          const topics = conv.topics || [];
+          const date = new Date(conv.ts).toLocaleDateString();
+          
+          topics.forEach(topic => {
+            if (!domainMap[topic]) domainMap[topic] = [];
+            domainMap[topic].push({
+              date,
+              platform: conv.platform || 'unknown',
+              preview: (conv.conversation && conv.conversation[0] && conv.conversation[0].text.slice(0, 80)) || '...'
+            });
+          });
+          
+          timeline.push({
+            date,
+            topics: topics.slice(0, 3),
+            platform: conv.platform
+          });
+        }
+        
+        // Build knowledge report (user-facing with RAG enhancement)
+        const domains = Object.keys(domainMap).sort((a, b) => domainMap[b].length - domainMap[a].length);
+        const topDomain = domains[0] || 'General';
+        const total = convs.length;
+        const range = `${timeline[timeline.length - 1]?.date || ''} - ${timeline[0]?.date || ''}`;
+
+        let reportMd = `**📚 Knowledge Glance** ${ragStats ? '🔍 (RAG-Enhanced)' : ''}\n\n`+
+          `Conversations Indexed: ${total}\n`;
+        
+        if (ragStats && ragStats.totalEmbeddings > 0) {
+          reportMd += `RAG Embeddings: ${ragStats.totalEmbeddings} (${((ragStats.totalEmbeddings/total)*100).toFixed(0)}% indexed)\n`;
+        }
+        
+        reportMd += `Top Themes: ${domains.slice(0,5).join(', ') || '—'}\n`+
+          `Date Range: ${range}\n\n`+
+          `**Recent Timeline**\n`;
+        timeline.slice(0, 5).forEach((entry) => {
+          reportMd += `• ${entry.date} [${entry.platform||'unknown'}]: ${entry.topics.join(', ') || 'General'}\n`;
+        });
+        reportMd += `\n**Next Steps**\n`+
+          `- Ask: "What have I learned about ${topDomain} recently?"\n`+
+          `- Use MCP to query: MCPBridge.queryMemory("${topDomain}")\n`+
+          `- Consolidate 3 key takeaways into a single brief\n`+
+          `- Identify 2 gaps or open questions to resolve next\n`;
+        
+        if (ragStats && ragStats.totalEmbeddings < total) {
+          const missing = total - ragStats.totalEmbeddings;
+          reportMd += `\n💡 **Tip:** ${missing} conversations not yet indexed. They'll be indexed automatically next time you scan.\n`;
+        }
+
+        outputArea.innerHTML = `
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <div style="white-space:pre-wrap;line-height:1.6;">${reportMd}</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <button id="memory-compose" class="cb-btn cb-btn-primary">Compose follow-up</button>
+            </div>
+          </div>`;
+
+        const btnCompose = outputArea.querySelector('#memory-compose');
+        btnCompose && btnCompose.addEventListener('click', async () => {
+          try {
+            // Try to use MCP to query related memories
+            let contextInfo = '';
+            if (typeof window.MCPBridge !== 'undefined' && ragStats && ragStats.totalEmbeddings > 0) {
+              try {
+                const memoryResults = await window.MCPBridge.queryMemory(topDomain, { topK: 3 });
+                if (memoryResults && memoryResults.length > 0) {
+                  contextInfo = `\n\n[Context from ${memoryResults.length} related conversations via MCP/RAG]`;
+                  debugLog('[Memory Architect] MCP query returned:', memoryResults);
+                }
+              } catch (mcpError) {
+                debugLog('[Memory Architect] MCP query failed, using fallback:', mcpError);
+              }
+            }
+            
+            const follow = `Using my recent chats${contextInfo}, summarize the 3 most important takeaways about "${topDomain}" and propose the next actionable step. If context is missing, ask me 2 clarifying questions first.`;
+            await restoreToChat(follow, []);
+            toast('Inserted follow-up with MCP context');
+          } catch(e) {
+            toast('Insert failed');
+            debugLog('[Memory Architect] Compose failed:', e);
+          }
+        });
+
+        toast('Knowledge base indexed!');
+        
+      } catch (e) {
+        outputArea.textContent = `❌ Memory Architect error: ${e.message || 'Unknown error'}`;
+        debugLog('Memory Architect error', e);
+      }
+    }
+
+    // Show EchoSynth Interface (ensure shadow-scoped bindings)
+    async function showEchoSynth() {
+      const outputArea = (agentContent && agentContent.querySelector('#cb-agent-output')) || (shadow && shadow.getElementById && shadow.getElementById('cb-agent-output'));
+      if (!outputArea) return;
+      
+      // Show input UI for EchoSynth
+      outputArea.innerHTML = `
+        <div style="margin-bottom:12px;">
+          <div style="font-weight:600;margin-bottom:8px;font-size:13px;">⚡ EchoSynth - Multi-AI Query</div>
+          <div style="font-size:11px;opacity:0.8;margin-bottom:12px;">Ask one question, get synthesized answer from multiple AIs</div>
+          <textarea id="echosynth-prompt" placeholder="Enter your question..." style="width:100%;min-height:80px;padding:10px;background:rgba(10,15,28,0.6);border:1px solid rgba(0,180,255,0.3);border-radius:8px;color:#E6E9F0;font-size:13px;resize:vertical;font-family:inherit;"></textarea>
+          <div style="display:flex;gap:8px;margin-top:8px;">
+            <button id="echosynth-run" class="cb-btn cb-btn-primary" style="flex:1;">▶ Run EchoSynth</button>
+            <button id="echosynth-cancel" class="cb-btn">Cancel</button>
+          </div>
+        </div>
+        <div id="echosynth-results" style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(0,180,255,0.2);display:none;"></div>
+      `;
+      
+  const promptInput = outputArea.querySelector('#echosynth-prompt');
+  const runBtn = outputArea.querySelector('#echosynth-run');
+  const cancelBtn = outputArea.querySelector('#echosynth-cancel');
+  const resultsDiv = outputArea.querySelector('#echosynth-results');
+      
+      cancelBtn.addEventListener('click', () => {
+        outputArea.textContent = '(Agent results will appear here)';
+      });
+      
+      runBtn.addEventListener('click', async () => {
+        const userPrompt = promptInput.value.trim();
+        if (!userPrompt) {
+          toast('Enter a question first');
+          return;
+        }
+        
+        runBtn.disabled = true;
+        runBtn.textContent = 'Processing...';
+        resultsDiv.style.display = 'block';
+        resultsDiv.innerHTML = '<div style="text-align:center;padding:12px;"><div class="cb-spinner" style="display:inline-block;"></div><div style="margin-top:8px;font-size:12px;">Retrieving context via RAG, then querying Gemini & ChatGPT...</div></div>';
+        
+        try {
+          // Retrieve relevant context from past conversations using RAG
+          let ragContext = '';
+          let ragResultCount = 0;
+          if (typeof window.RAGEngine !== 'undefined') {
+            try {
+              const ragResults = await window.RAGEngine.retrieve(userPrompt, 3);
+              if (ragResults && ragResults.length > 0) {
+                ragResultCount = ragResults.length;
+                ragContext = '\n\n[Relevant context from past conversations:]\n' + 
+                  ragResults.map((r, i) => `${i+1}. ${r.text.slice(0, 200)}... (relevance: ${(r.score * 100).toFixed(0)}%)`).join('\n');
+                debugLog('[EchoSynth] Retrieved RAG context:', ragResults);
+              }
+            } catch (e) {
+              debugLog('[EchoSynth] RAG retrieval failed:', e);
+            }
+          }
+          
+          // Enhance prompt with RAG context if available
+          const enhancedPrompt = ragContext ? userPrompt + ragContext : userPrompt;
+          
+          // Query both Gemini and ChatGPT in parallel for true multi-AI synthesis
+          const geminiPromise = callGeminiAsync({ action: 'prompt', text: enhancedPrompt, length: 'medium' }).catch(e => ({ ok: false, error: e.message }));
+          const openaiPromise = callOpenAIAsync({ text: enhancedPrompt }).catch(e => ({ ok: false, error: e.message }));
+          
+          const [geminiRes, openaiRes] = await Promise.all([geminiPromise, openaiPromise]);
+          
+          // Collect successful responses
+          const responses = [];
+          if (geminiRes && geminiRes.ok && geminiRes.result) {
+            responses.push({ source: 'Gemini (Flash 2.0)', answer: geminiRes.result });
+          }
+          if (openaiRes && openaiRes.ok && openaiRes.result) {
+            responses.push({ source: 'ChatGPT (GPT-4o-mini)', answer: openaiRes.result });
+          }
+          
+          if (responses.length === 0) {
+            resultsDiv.innerHTML = `<div style="color:rgba(255,100,100,0.9);">❌ Both AI models failed to respond. Check API keys and try again.</div>`;
+            return;
+          }
+          
+          // If we have multiple responses, synthesize them
+          let finalAnswer = '';
+          if (responses.length > 1) {
+            // Build synthesis prompt
+            const synthesisPrompt = `You are EchoSynth, a meta-AI synthesizer. Two AI models answered the same question. Create ONE unified, comprehensive answer that:
+1. Combines the best insights from both responses
+2. Resolves any contradictions by noting different perspectives
+3. Provides a clear, actionable conclusion
+4. Uses Markdown headings and bullet points
+
+Question: ${userPrompt}
+
+**Gemini's Answer:**
+${responses.find(r => r.source.includes('Gemini'))?.answer || '(none)'}
+
+**ChatGPT's Answer:**
+${responses.find(r => r.source.includes('ChatGPT'))?.answer || '(none)'}
+
+Synthesized Answer (unified and comprehensive):`;
+
+            const synthRes = await callGeminiAsync({ action: 'prompt', text: synthesisPrompt, length: 'comprehensive' });
+            if (synthRes && synthRes.ok) {
+              finalAnswer = synthRes.result || '';
+            } else {
+              // Fallback: just show both answers side by side
+              finalAnswer = responses.map(r => `**${r.source}:**\n${r.answer}`).join('\n\n---\n\n');
+            }
+          } else {
+            // Only one response succeeded
+            finalAnswer = responses[0].answer;
+          }
+          
+          resultsDiv.innerHTML = `
+            <div style="font-weight:700;margin-bottom:8px;color:var(--cb-accent-primary);">✨ Synthesized Answer ${ragResultCount > 0 ? '🔍 (RAG-Enhanced)' : ''}</div>
+            <div style="white-space:pre-wrap;line-height:1.6;">${finalAnswer || 'No result'}</div>
+            <div style="margin-top:12px;padding:8px;background:rgba(0,180,255,0.1);border-radius:6px;font-size:11px;">
+              <strong>Sources:</strong> ${responses.map(r => r.source).join(' + ')}${ragResultCount > 0 ? ` + ${ragResultCount} past conversations (RAG)` : ''} • Synthesized at ${new Date().toLocaleTimeString()}
+            </div>
+          `;
+          toast('Multi-AI synthesis complete!');
+        } catch (e) {
+          resultsDiv.innerHTML = `<div style="color:rgba(255,100,100,0.9);">❌ Error: ${e.message || 'Unknown error'}</div>`;
+          debugLog('EchoSynth error', e);
+        } finally {
+          runBtn.disabled = false;
+          runBtn.textContent = '▶ Run EchoSynth';
+        }
+      });
+    }
+
+    // Show Quick Agent Interface (original simple agent, lightly polished UI)
+    async function showQuickAgent() {
+  const outputArea = (agentContent && agentContent.querySelector('#cb-agent-output')) || (shadow && shadow.getElementById && shadow.getElementById('cb-agent-output'));
+      if (!outputArea) return;
+      
+      outputArea.innerHTML = `
+        <div style="margin-bottom:12px;">
+          <div style="font-weight:700;margin-bottom:4px;font-size:13px;">🎯 Quick Agent</div>
+          <div style="font-size:11px;opacity:0.85;margin-bottom:12px;">Analyze the current conversation and suggest next actions</div>
+          <select id="quick-agent-goal" class="cb-select" style="width:100%;margin-bottom:8px;">
+            <option value="Improve answer">Improve answer quality</option>
+            <option value="Extract tasks">Extract action items</option>
+            <option value="Generate follow-ups">Generate follow-up questions</option>
+            <option value="Summarize executive">Executive summary</option>
+            <option value="Debug plan">Debug & troubleshoot</option>
+          </select>
+          <button id="quick-agent-run" class="cb-btn cb-btn-primary" style="width:100%;margin-top:4px;">▶ Run Analysis</button>
+        </div>
+        <div id="quick-agent-results" style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(0,180,255,0.2);display:none;">
+          <div style="font-weight:600;margin-bottom:8px;color:var(--cb-subtext);">Results</div>
+        </div>
+      `;
+      
+  const goalSelect = outputArea.querySelector('#quick-agent-goal');
+  const runBtn = outputArea.querySelector('#quick-agent-run');
+  const resultsDiv = outputArea.querySelector('#quick-agent-results');
+      
+      runBtn.addEventListener('click', async () => {
+        runBtn.disabled = true;
+        runBtn.textContent = 'Analyzing...';
+        resultsDiv.style.display = 'block';
+        resultsDiv.innerHTML = '<div style="text-align:center;padding:12px;"><div class="cb-spinner" style="display:inline-block;"></div></div>';
+        
+        try {
+          const chatText = await getConversationText();
+          if (!chatText || chatText.length < 10) {
+            resultsDiv.innerHTML = '<div style="color:rgba(255,100,100,0.9);">⚠️ No conversation found. Start chatting first.</div>';
+            return;
+          }
+          
+          const goal = goalSelect.value;
+          const prompt = `You are a Quick Agent assistant. Based on the goal "${goal}", analyze this conversation and provide:
+
+1. **Analysis** (2-3 bullet points)
+2. **Recommendations** (3-5 specific action items)
+3. **Next Steps** (What to do right now)
+
+Keep it concise and actionable. Use Markdown formatting.
+
+Conversation:
+${chatText.slice(0, 3000)}`;
+
+          const res = await callGeminiAsync({ action: 'prompt', text: prompt, length: 'medium' });
+          
+          if (res && res.ok) {
+            resultsDiv.innerHTML = `<div style="white-space:pre-wrap;line-height:1.6;">${res.result || 'Analysis complete'}</div>`;
+            toast('Analysis complete!');
+          } else {
+            resultsDiv.innerHTML = `<div style="color:rgba(255,100,100,0.9);">❌ Failed: ${res && res.error ? res.error : 'unknown error'}</div>`;
+          }
+        } catch (e) {
+          resultsDiv.innerHTML = `<div style="color:rgba(255,100,100,0.9);">❌ Error: ${e.message || 'Unknown error'}</div>`;
+          debugLog('Quick Agent error', e);
+        } finally {
+          runBtn.disabled = false;
+          runBtn.textContent = '▶ Run Analysis';
+        }
+      });
     }
 
     // Open Sync Tone view
@@ -2820,36 +3483,38 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
             debugLog('Background knowledge extraction failed', e);
           }
 
-          // Auto-summarize if 20+ messages or 50,000+ characters
+          // Auto-summarize if 20+ messages or 50,000+ characters (run in background, don't block)
           const totalChars = final.reduce((sum, m) => sum + (m.text || '').length, 0);
           if (final.length >= 20 || totalChars >= 50000) {
-            status.textContent = `Status: auto-summarizing ${final.length} messages (${totalChars} chars)...`;
-            const inputText = final.map(m => `${m.role}: ${m.text}`).join('\n');
-            try {
-              showSkeleton(preview, 120);
-              // For long chats, generate an AI-to-AI transfer summary to preserve intent, relationships, and next steps
-              hierarchicalSummarize(inputText, { chunkSize: 14000, maxParallel: 3, length: 'comprehensive', summaryType: 'transfer' })
-                .then(result => {
-                  hideSkeleton(preview);
-                  preview.textContent = `Auto-Summary (${final.length} msgs, comprehensive context preserved):\n\n` + result;
-                  preview.classList.add('cb-slide-up'); setTimeout(()=> preview.classList.remove('cb-slide-up'), 360);
-                  status.textContent = 'Status: done (auto-summarized)';
-                  toast('Auto-summarized with full context!');
-                  restoreToChat(result);
-                }).catch(err => {
-                  hideSkeleton(preview);
-                  status.textContent = `Status: saved ${final.length} (summarize failed)`;
-                  debugLog('hierarchicalSummarize error', err);
-                  showError('Auto-summarize failed: ' + (err && err.message ? err.message : 'unknown'), async () => { try { btnScan.click(); } catch(_) {} });
-                });
-            } catch (e) {
-              hideSkeleton(preview);
-              debugLog('auto-summarize setup failed', e);
-            }
+            // Don't block the scan completion - run this in the background
+            (async () => {
+              try {
+                status.textContent = `Status: auto-summarizing ${final.length} messages in background...`;
+                const inputText = final.map(m => `${m.role}: ${m.text}`).join('\n');
+                showSkeleton(preview, 120);
+                // For long chats, generate an AI-to-AI transfer summary to preserve intent, relationships, and next steps
+                const result = await hierarchicalSummarize(inputText, { chunkSize: 14000, maxParallel: 3, length: 'comprehensive', summaryType: 'transfer' });
+                hideSkeleton(preview);
+                preview.textContent = `Auto-Summary (${final.length} msgs, comprehensive context preserved):\n\n` + result;
+                preview.classList.add('cb-slide-up'); setTimeout(()=> preview.classList.remove('cb-slide-up'), 360);
+                status.textContent = 'Status: done (auto-summarized)';
+                toast('Auto-summarized with full context!');
+              } catch (err) {
+                hideSkeleton(preview);
+                status.textContent = `Status: saved ${final.length}`;
+                debugLog('hierarchicalSummarize error', err);
+              }
+            })();
           }
         }
-      } catch (e) { status.textContent = 'Status: error'; toast('Scan failed: ' + (e && e.message)); showError('Scan failed: ' + (e && e.message), async () => { try { btnScan.click(); } catch(_) {} }); announce('Scan failed'); }
-      removeLoadingFromButton(btnScan, 'Scan Chat');
+      } catch (e) { 
+        status.textContent = 'Status: error'; 
+        toast('Scan failed: ' + (e && e.message)); 
+        showError('Scan failed: ' + (e && e.message), async () => { try { btnScan.click(); } catch(_) {} }); 
+        announce('Scan failed'); 
+      } finally {
+        removeLoadingFromButton(btnScan, 'Scan Chat');
+      }
     });
 
     // Clipboard button - copy most recent output (preview, summary, rewrite, translate, sync)
@@ -2933,27 +3598,22 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
     // KNOWLEDGE GRAPH VISUALIZATION & ADVANCED FEATURES
     // ============================================
 
-    // Knowledge Graph: Open graph view and render visualization
+    // Agent: Open view
     btnKnowledgeGraph.addEventListener('click', async () => {
       try {
         closeAllViews();
-        graphView.classList.add('cb-view-active');
-        const simulationPromise = renderKnowledgeGraph();
-        // Let simulation run in background (no need to block UI opening)
+        agentView.classList.add('cb-view-active');
+        await renderAgentHub();
       } catch (e) {
-        toast('Failed to open knowledge graph');
-        debugLog('Knowledge Graph open error', e);
+        toast('Failed to open Agent Hub');
+        debugLog('Agent Hub open error', e);
       }
     });
 
-    // Knowledge Graph: Close view
-    btnCloseGraph.addEventListener('click', () => {
-      graphView.classList.remove('cb-view-active');
+    // Agent: Close view
+    btnCloseAgent.addEventListener('click', () => {
+      agentView.classList.remove('cb-view-active');
     });
-
-    // ============================================
-    // SMART WORKSPACE / INSIGHTS HANDLERS
-    // ============================================
 
     // Insights: Open Smart Workspace view
     btnInsights.addEventListener('click', async () => {
@@ -2970,181 +3630,6 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
     // Insights: Close view
     btnCloseInsights.addEventListener('click', () => {
       insightsView.classList.remove('cb-view-active');
-    });
-
-    // Knowledge Graph: Refresh visualization
-    btnRefreshGraph.addEventListener('click', async () => {
-      try {
-        addLoadingToButton(btnRefreshGraph, 'Refreshing…');
-        announce('Refreshing knowledge graph');
-        try { showSkeleton(graphStats, 80); } catch(e){}
-        const simulationPromise = renderKnowledgeGraph();
-        // Wait for simulation to complete before showing "done" toast
-        await Promise.race([simulationPromise, new Promise(r => setTimeout(r, 5000))]);
-        try { hideSkeleton(graphStats); } catch(e){}
-        toast('Graph refreshed');
-        announce('Knowledge graph refreshed');
-      } catch (e) {
-        toast('Refresh failed');
-        showError('Graph refresh failed', async () => { try { btnRefreshGraph.click(); } catch(_) {} });
-        debugLog('Graph refresh error', e);
-      } finally {
-        removeLoadingFromButton(btnRefreshGraph, 'Refresh');
-      }
-    });
-
-    // Knowledge Graph: Export PNG via Gemini (if available) or fallback to canvas snapshot
-    btnExportPNG.addEventListener('click', async () => {
-      try {
-        // Ensure graph data exists and graph is rendered
-        const kg = await loadKnowledgeGraph();
-        if (!kg || !kg.length) {
-          toast('No knowledge graph data found — exporting canvas snapshot instead');
-          // still try to render canvas (may show "no data")
-          const simulationPromise = renderKnowledgeGraph();
-          // Wait for simulation to complete (or timeout after 5s)
-          await Promise.race([simulationPromise, new Promise(r => setTimeout(r, 5000))]);
-          try {
-            const canvas = graphCanvas;
-            const scale = 2;
-            const tmp = document.createElement('canvas');
-            tmp.width = canvas.width * scale;
-            tmp.height = canvas.height * scale;
-            const tctx = tmp.getContext('2d');
-            tctx.fillStyle = '#0b0f17';
-            tctx.fillRect(0, 0, tmp.width, tmp.height);
-            tctx.drawImage(canvas, 0, 0, tmp.width, tmp.height);
-            const dataUrl = tmp.toDataURL('image/png');
-            const a = document.createElement('a'); a.href = dataUrl; a.download = `chatbridge-graph-${Date.now()}.png`; a.click();
-            toast('Graph exported as PNG (canvas snapshot)');
-            return;
-          } catch (e) { debugLog('fallback canvas export failed', e); toast('Export failed'); return; }
-        }
-
-        const simulationPromise = renderKnowledgeGraph();
-        // Wait for force-directed layout to settle (or timeout after 5s)
-        await Promise.race([simulationPromise, new Promise(r => setTimeout(r, 5000))]);
-        toast('Preparing graph for export...');
-
-        // Build a descriptive prompt for Imagen 3 to generate the graph visualization
-        const convs = await loadConversationsAsync();
-        const nodeCount = kg.length;
-        const topEntities = Array.from(new Set([].concat(...(kg.map(k => k.entities || []))))).slice(0,8);
-        const topThemes = Array.from(new Set([].concat(...(kg.map(k => k.themes || []))))).slice(0,8);
-        const platforms = Array.from(new Set(kg.map(k => {
-          const c = convs.find(cv => cv.id === k.id);
-          return c?.platform || 'unknown';
-        }).filter(Boolean))).slice(0,5);
-        
-        const prompt = `Create a beautiful, high-quality network graph visualization showing ${nodeCount} interconnected conversation nodes. Style: modern tech aesthetic with a dark navy background (#0b0f17). Draw circles for nodes in these colors: ChatGPT (green #10a37f), Claude (purple #9b87f5), Gemini (blue #4285f4), Copilot (cyan #00a4ef), Perplexity (indigo #6366f1). Connect related nodes with glowing golden lines (#e6cf9f). Label key nodes with these topics: ${topThemes.slice(0,5).join(', ')}. Show a knowledge graph that emphasizes clusters and connections between AI conversations. Platforms: ${platforms.join(', ')}. Entities discussed: ${topEntities.join(', ')}. Professional, clean, and data-driven visualization.`;
-
-        // Ask background to generate image via Imagen 3
-        let geminiImage = null;
-        try {
-          debugLog('Requesting Imagen 3 generation with prompt:', prompt.slice(0, 150) + '...');
-          const resp = await new Promise(res => {
-            try {
-              chrome.runtime.sendMessage({ type: 'generate_image', payload: { model: 'imagen-3.0-generate-001', prompt } }, (r) => {
-                if (chrome.runtime.lastError) return res({ ok: false, error: chrome.runtime.lastError.message });
-                return res(r || { ok: false });
-              });
-            } catch (e) { return res({ ok: false, error: e && e.message }); }
-          });
-          debugLog('gemini image response', resp);
-          if (resp && resp.ok && resp.imageBase64) geminiImage = resp.imageBase64;
-        } catch (e) { debugLog('gemini image request failed', e); }
-
-        // Helper: check if an image (dataURL) is mostly black
-        const isMostlyBlack = async (dataUrl) => {
-          return new Promise((res) => {
-            try {
-              const img = new Image();
-              img.onload = () => {
-                try {
-                  const c = document.createElement('canvas');
-                  c.width = Math.min(img.width, 300);
-                  c.height = Math.min(img.height, 300);
-                  const cx = c.getContext('2d');
-                  cx.drawImage(img, 0, 0, c.width, c.height);
-                  const d = cx.getImageData(0, 0, c.width, c.height).data;
-                  let black = 0, total = 0;
-                  for (let i = 0; i < d.length; i += 4 * 10) { // sample every 10th pixel
-                    const r = d[i], g = d[i+1], b = d[i+2];
-                    total++;
-                    if (r < 12 && g < 12 && b < 12) black++;
-                  }
-                  res((black / Math.max(1,total)) > 0.95);
-                } catch (e) { res(false); }
-              };
-              img.onerror = () => res(false);
-              img.src = dataUrl;
-            } catch (e) { res(false); }
-          });
-        };
-
-        // If we have an image from Gemini, validate it (avoid pure-black images)
-        if (geminiImage) {
-          try {
-            const dataUrl = 'data:image/png;base64,' + geminiImage;
-            const black = await isMostlyBlack(dataUrl);
-            if (!black) {
-              const a = document.createElement('a'); a.href = dataUrl; a.download = `chatbridge-graph-${Date.now()}.png`; a.click();
-              toast('Graph exported as PNG (generated by Gemini)');
-              return;
-            } else {
-              debugLog('Gemini image appears mostly black, falling back to canvas snapshot');
-            }
-          } catch (e) { debugLog('gemini image validation failed', e); }
-        }
-
-        // Fallback: capture canvas snapshot
-        try {
-          const canvas = graphCanvas;
-          const scale = 2;
-          const tmp = document.createElement('canvas');
-          tmp.width = canvas.width * scale;
-          tmp.height = canvas.height * scale;
-          const tctx = tmp.getContext('2d');
-          tctx.fillStyle = '#0b0f17';
-          tctx.fillRect(0, 0, tmp.width, tmp.height);
-          tctx.drawImage(canvas, 0, 0, tmp.width, tmp.height);
-          const dataUrl = tmp.toDataURL('image/png');
-          const a = document.createElement('a'); a.href = dataUrl; a.download = `chatbridge-graph-${Date.now()}.png`; a.click();
-          toast('Graph exported as PNG (canvas snapshot)');
-        } catch (e) {
-          toast('Export PNG failed');
-          debugLog('Export PNG failed', e);
-        }
-      } catch (e) {
-        toast('Export PNG failed');
-        debugLog('Export PNG error', e);
-      }
-    });
-
-    // Knowledge Graph: Export HTML snapshot (standalone page embedding canvas image)
-    btnExportHTML.addEventListener('click', async () => {
-      try {
-        const simulationPromise = renderKnowledgeGraph();
-        // Wait for force-directed layout to complete (or timeout after 5s)
-        await Promise.race([simulationPromise, new Promise(r => setTimeout(r, 5000))]);
-        const canvas = graphCanvas;
-        let dataUrl = '';
-        try { dataUrl = canvas.toDataURL('image/png'); } catch (e) { dataUrl = ''; }
-
-        const html = `<!doctype html>\n<html><head><meta charset="utf-8"><title>ChatBridge Knowledge Graph</title><style>body{margin:0;background:#0A0F1C;color:#E6E9F0;font-family:Arial,sans-serif} .wrap{padding:18px}</style></head><body><div class="wrap"><h2>ChatBridge Knowledge Graph (snapshot)</h2><p>Generated: ${new Date().toLocaleString()}</p>${dataUrl ? `<img src="${dataUrl}" alt="Knowledge graph snapshot" style="max-width:100%;height:auto;border-radius:8px;box-shadow:0 10px 30px rgba(0,0,0,0.5)" />` : '<p>(Preview unavailable)</p>'}</div></body></html>`;
-
-        const blob = new Blob([html], { type: 'text/html' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `chatbridge-graph-snapshot-${Date.now()}.html`;
-        a.click();
-        setTimeout(() => URL.revokeObjectURL(url), 2000);
-        toast('Graph snapshot exported (HTML)');
-      } catch (e) {
-        toast('Export HTML failed');
-        debugLog('Export HTML error', e);
-      }
     });
 
     // Knowledge Graph: Render force-directed graph on canvas
@@ -4113,72 +4598,36 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           } else { sel = arr[0]; }
         } catch (_) { sel = arr[0]; }
         if (!sel || !sel.conversation || !sel.conversation.length) { toast('No messages in selected conversation'); return; }
-          // If a summary exists, restore that instead of the full chat
-          let formatted = '';
-          if (sel.summary && typeof sel.summary === 'string' && sel.summary.trim().length > 0) {
-            formatted = sel.summary.trim();
-          } else {
-            formatted = sel.conversation.map(m => (m.role === 'user' ? 'User: ' : 'Assistant: ') + m.text).join('\n\n') + '\n\n🔄 Please continue the conversation.';
+        // If a summary exists, restore that instead of the full chat
+        let formatted = '';
+        if (sel.summary && typeof sel.summary === 'string' && sel.summary.trim().length > 0) {
+          formatted = sel.summary.trim();
+        } else {
+          formatted = sel.conversation.map(m => (m.role === 'user' ? 'User: ' : 'Assistant: ') + m.text).join('\n\n') + '\n\n🔄 Please continue the conversation.';
+        }
+        // Collect attachments from conversation
+        const allAtts = [];
+        try {
+          for (const m of sel.conversation) {
+            if (Array.isArray(m.attachments) && m.attachments.length) allAtts.push(...m.attachments);
           }
-          // Collect attachments from conversation
-          const allAtts = [];
+        } catch (e) {}
+        
+        // Use the restoreToChat function which has all the proper logic
+        const success = await restoreToChat(formatted, allAtts);
+        if (!success) {
+          // If restore failed, copy to clipboard as fallback
           try {
-            for (const m of sel.conversation) {
-              if (Array.isArray(m.attachments) && m.attachments.length) allAtts.push(...m.attachments);
-            }
-          } catch (e) {}
-          // Find only visible textarea or contenteditable input
-          let input = null;
-          const candidates = Array.from(document.querySelectorAll('textarea, [contenteditable="true"]'));
-          for (const el of candidates) {
-            const style = window.getComputedStyle(el);
-            if (style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0') {
-              input = el;
-              break;
-            }
-          }
-          try {
-            if (input && input.isContentEditable) {
-              console.log('[ChatBridge Restore] Found contenteditable input:', input);
-              input.textContent = formatted;
-              input.dispatchEvent(new Event('input', { bubbles: true }));
-              input.focus();
-              input.blur();
-              console.log('[ChatBridge Restore] Set textContent and dispatched input event.');
-              // Attach files after text
-              try { if (allAtts.length) { attachFilesToChat(allAtts); } } catch(e){}
-              toast('Restored conversation');
-              setTimeout(() => {
-                console.log('[ChatBridge Restore] Final input value:', input.textContent);
-              }, 100);
-            } else if (input) {
-              console.log('[ChatBridge Restore] Found textarea input:', input);
-              input.value = formatted;
-              input.dispatchEvent(new Event('input', { bubbles: true }));
-              input.focus();
-              input.blur();
-              const evt = new KeyboardEvent('keydown', { bubbles: true, cancelable: true, key: ' ' });
-              input.dispatchEvent(evt);
-              setTimeout(() => {
-                input.dispatchEvent(new Event('input', { bubbles: true }));
-                console.log('[ChatBridge Restore] Final input value:', input.value);
-              }, 100);
-              // Attach files after text
-              try { if (allAtts.length) { attachFilesToChat(allAtts); } } catch(e){}
-              toast('Restored conversation');
-            } else throw new Error('no input');
-          } catch (e) {
-            console.log('[ChatBridge Restore] Error during restore:', e);
-            navigator.clipboard.writeText(formatted).then(()=>toast('Copied to clipboard (fallback)'));
+            await navigator.clipboard.writeText(formatted);
+            toast('Copied to clipboard (paste into chat)');
             // Attempt to put first image on clipboard as well
-            try {
-              const img = allAtts.find(a => a.kind === 'image');
-              if (img) {
-                fetch(img.url).then(r=>r.blob()).then(b=>{
-                  const item = new ClipboardItem({ [b.type||'image/png']: b });
-                  return navigator.clipboard.write([item]);
-                }).then(()=>toast('Image copied to clipboard too')).catch(()=>{});
-              }
+            const img = allAtts.find(a => a.kind === 'image');
+            if (img) {
+              fetch(img.url).then(r=>r.blob()).then(b=>{
+                const item = new ClipboardItem({ [b.type||'image/png']: b });
+                return navigator.clipboard.write([item]);
+              }).then(()=>toast('Image copied too')).catch(()=>{});
+            }
             } catch (_) {}
           }
       } catch (e) { toast('Restore failed'); }
@@ -4191,6 +4640,15 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       return new Promise((resolve) => {
         try {
           chrome.runtime.sendMessage({ type: 'call_gemini', payload }, res => { resolve(res || { ok: false, error: 'no-response' }); });
+        } catch (e) { resolve({ ok: false, error: e && e.message }); }
+      });
+    }
+
+    // OpenAI API wrapper for EchoSynth multi-AI synthesis
+    function callOpenAIAsync(payload) {
+      return new Promise((resolve) => {
+        try {
+          chrome.runtime.sendMessage({ type: 'call_openai', payload }, res => { resolve(res || { ok: false, error: 'no-response' }); });
         } catch (e) { resolve({ ok: false, error: e && e.message }); }
       });
     }
@@ -4515,41 +4973,58 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       }
     });
 
-    // Smart Query handlers
+    // Smart Query handlers (open instantly, lazy-populate filters/suggestions)
+    let __cbSmartOpenBusy = false;
     btnSmartQuery.addEventListener('click', async () => {
+      if (__cbSmartOpenBusy) return; // simple click guard to avoid double-activation
+      __cbSmartOpenBusy = true;
       try {
         closeAllViews();
-        smartResults.textContent = '(No results yet)';
-        smartAnswer.textContent = '';
-        smartInput.value = '';
-        // populate host and tag filters from saved conversations
-        try {
-          const convs = await loadConversationsAsync();
-          // hosts
-          try { while (hostSelect.firstChild) hostSelect.removeChild(hostSelect.firstChild); const ho = document.createElement('option'); ho.value = ''; ho.textContent = 'All hosts'; hostSelect.appendChild(ho); } catch (e) {}
-          const hosts = Array.from(new Set((convs||[]).map(c => { try { return (c.platform || (c.url && new URL(c.url).hostname) || location.hostname).toString(); } catch(_) { return location.hostname; } }))).slice(0,50);
-          hosts.forEach(h => { const o = document.createElement('option'); o.value = h; o.textContent = h.length > 24 ? (h.slice(0,20) + '…') : h; hostSelect.appendChild(o); });
-          // tags
-          try { while (tagSelect.firstChild) tagSelect.removeChild(tagSelect.firstChild); const to = document.createElement('option'); to.value = ''; to.textContent = 'All tags'; tagSelect.appendChild(to); } catch (e) {}
-          // normalize existing tags when populating filters (handles older saved convs)
-          const rawTags = [].concat(...(convs||[]).map(c => (c.topics||[])));
-          const normTags = [];
-          const seenTag = new Set();
-          rawTags.forEach(tt => {
+        // Reset visible state immediately for perceived snappiness
+        try { smartResults.textContent = '(No results yet)'; } catch(_) {}
+        try { smartAnswer.textContent = ''; } catch(_) {}
+        try { smartInput.value = ''; } catch(_) {}
+        try { smartView.classList.add('cb-view-active'); } catch(_) {}
+
+        // Defer heavy work to keep first-click instant
+        setTimeout(async () => {
+          try {
+            // populate host and tag filters from saved conversations
             try {
-              const tnorm = String(tt||'').toLowerCase().replace(/["'()\.]/g, '').replace(/\s+/g, ' ').trim();
-              if (tnorm && !seenTag.has(tnorm)) { seenTag.add(tnorm); normTags.push(tnorm); }
-            } catch(_) {}
-          });
-          const tags = normTags.slice(0,100);
-          tags.forEach(t => { const o = document.createElement('option'); o.value = t; const disp = String(t).split(/[_\-\s]+/).map(w=>w.charAt(0).toUpperCase()+w.slice(1)).join(' '); o.textContent = disp; tagSelect.appendChild(o); });
-        } catch (e) { debugLog('populate filters failed', e); }
+              const convs = await loadConversationsAsync();
+              // hosts
+              try { while (hostSelect.firstChild) hostSelect.removeChild(hostSelect.firstChild); const ho = document.createElement('option'); ho.value = ''; ho.textContent = 'All hosts'; hostSelect.appendChild(ho); } catch (e) {}
+              const hosts = Array.from(new Set((convs||[]).map(c => { try { return (c.platform || (c.url && new URL(c.url).hostname) || location.hostname).toString(); } catch(_) { return location.hostname; } }))).slice(0,50);
+              hosts.forEach(h => { const o = document.createElement('option'); o.value = h; o.textContent = h.length > 24 ? (h.slice(0,20) + '…') : h; hostSelect.appendChild(o); });
+              // tags
+              try { while (tagSelect.firstChild) tagSelect.removeChild(tagSelect.firstChild); const to = document.createElement('option'); to.value = ''; to.textContent = 'All tags'; tagSelect.appendChild(to); } catch (e) {}
+              // normalize existing tags when populating filters (handles older saved convs)
+              const rawTags = [].concat(...(convs||[]).map(c => (c.topics||[])));
+              const normTags = [];
+              const seenTag = new Set();
+              rawTags.forEach(tt => {
+                try {
+                  const tnorm = String(tt||'').toLowerCase().replace(/["'()\.]/g, '').replace(/\s+/g, ' ').trim();
+                  if (tnorm && !seenTag.has(tnorm)) { seenTag.add(tnorm); normTags.push(tnorm); }
+                } catch(_) {}
+              });
+              const tags = normTags.slice(0,100);
+              tags.forEach(t => { const o = document.createElement('option'); o.value = t; const disp = String(t).split(/[_\-\s]+/).map(w=>w.charAt(0).toUpperCase()+w.slice(1)).join(' '); o.textContent = disp; tagSelect.appendChild(o); });
+            } catch (e) { debugLog('populate filters failed', e); }
 
-        // populate smart suggestions (chips) and placeholder
-        try { await populateSmartSuggestions(); } catch(e) { debugLog('populateSmartSuggestions failed', e); }
-
-        smartView.classList.add('cb-view-active');
-      } catch (e) { toast('Failed to open Smart Query'); debugLog('open smart view', e); }
+            // populate smart suggestions (chips) and placeholder
+            try { await populateSmartSuggestions(); } catch(e) { debugLog('populateSmartSuggestions failed', e); }
+          } catch (e) {
+            debugLog('open smart view (deferred work) failed', e);
+          } finally {
+            __cbSmartOpenBusy = false;
+          }
+        }, 0);
+      } catch (e) {
+        __cbSmartOpenBusy = false;
+        toast('Failed to open Smart Query');
+        debugLog('open smart view', e);
+      }
     });
 
     btnCloseSmart.addEventListener('click', () => { try { smartView.classList.remove('cb-view-active'); } catch (e) {} });
@@ -5959,6 +6434,30 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       // persist to BOTH localStorage (page-local) AND chrome.storage.local (extension-wide)
       const key = 'chatbridge:conversations';
 
+      // Deduplication guard: if the most-recent stored conversation looks identical
+      // (same platform and same last message) and was saved very recently, skip saving.
+      try {
+        let top = null;
+        if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+          const data = await new Promise(r => chrome.storage.local.get([key], d => r(d && d[key]))).catch(() => null);
+          const arr = Array.isArray(data) ? data : (Array.isArray(data) ? data : (Array.isArray(data) ? data : []));
+          top = (Array.isArray(arr) && arr[0]) ? arr[0] : null;
+        } else {
+          try { const arr = JSON.parse(localStorage.getItem(key) || '[]'); top = (Array.isArray(arr) && arr[0]) ? arr[0] : null; } catch(_) { top = null; }
+        }
+
+        if (top) {
+          const lastA = (conv && Array.isArray(conv.conversation) && conv.conversation.length) ? String(conv.conversation[conv.conversation.length-1].text||'').trim().slice(0,300) : '';
+          const lastB = (top && Array.isArray(top.conversation) && top.conversation.length) ? String(top.conversation[top.conversation.length-1].text||'').trim().slice(0,300) : '';
+          const samePlatform = String(top.platform || '').toLowerCase() === String(conv.platform || '').toLowerCase();
+          const timeDiff = Math.abs((conv.ts || Date.now()) - (top.ts || 0));
+          if (samePlatform && lastA && lastB && lastA === lastB && timeDiff < 60 * 1000) {
+            debugLog('saveConversation: duplicate detected (same last message within 60s), skipping save');
+            return true;
+          }
+        }
+      } catch (e) { /* if dedupe check fails, continue to save */ }
+
       // 1) Persist to background IndexedDB first and wait for ack (prevents race with UI refresh)
       try {
         if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
@@ -6045,7 +6544,35 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
             }
           } catch (e) { debugLog('save update topics failed', e); }
 
-          // send to background to index (background will request embeddings)
+          // Index conversation with RAG engine for semantic search
+          try {
+            if (typeof window.RAGEngine !== 'undefined') {
+              window.RAGEngine.indexConversation(
+                String(conv.ts),
+                full,
+                {
+                  platform: conv.platform || location.hostname,
+                  url: conv.url || location.href,
+                  topics: conv.topics || [],
+                  model: conv.model || 'unknown'
+                }
+              ).then(success => {
+                if (success) {
+                  debugLog('[RAG] Conversation indexed:', conv.ts);
+                } else {
+                  debugLog('[RAG] Indexing failed for:', conv.ts);
+                }
+              }).catch(e => {
+                debugLog('[RAG] Indexing error:', e);
+              });
+            } else {
+              debugLog('[RAG] Engine not available, skipping indexing');
+            }
+          } catch (e) {
+            debugLog('[RAG] Index dispatch failed', e);
+          }
+          
+          // Also send to background to index (legacy vector_index handler)
           try {
             chrome.runtime.sendMessage({ type: 'vector_index', payload: { id: String(conv.ts), text: full, metadata: { platform: conv.platform || location.hostname, url: conv.url || location.href, ts: conv.ts, topics: conv.topics || [] } } }, (res) => {
               try { if (res && res.ok) debugLog('vector index ok', conv.ts); else debugLog('vector index failed', res); } catch(_) {}
