@@ -320,13 +320,46 @@ async function getGeminiApiKey(opts) {
   }
 }
 
+// OpenAI API key getter with cache (for EchoSynth)
+const __cbOpenAIKeyCache = { value: null, ts: 0 };
+const DEV_HARDCODED_OPENAI_KEY = 'sk-1234efgh5678ijkl1234efgh5678ijkl1234efgh'; // SECURITY NOTE: For development/demo only. Store in chrome.storage for production.
+
+async function getOpenAIApiKey(opts) {
+  const force = !!(opts && opts.force);
+  const now = Date.now();
+  if (!force && __cbOpenAIKeyCache.value && (now - __cbOpenAIKeyCache.ts) < 60_000) {
+    return __cbOpenAIKeyCache.value;
+  }
+  try {
+    let key = await new Promise(r => chrome.storage.local.get(['chatbridge_openai_key'], d => r(d && d.chatbridge_openai_key)));
+    // Fallback to hardcoded key if nothing found in storage
+    if (!key && DEV_HARDCODED_OPENAI_KEY) key = DEV_HARDCODED_OPENAI_KEY;
+    __cbOpenAIKeyCache.value = key || null;
+    __cbOpenAIKeyCache.ts = now;
+    return __cbOpenAIKeyCache.value;
+  } catch (_) {
+    if (DEV_HARDCODED_OPENAI_KEY) {
+      __cbOpenAIKeyCache.value = DEV_HARDCODED_OPENAI_KEY;
+      __cbOpenAIKeyCache.ts = now;
+      return DEV_HARDCODED_OPENAI_KEY;
+    }
+    return null;
+  }
+}
+
 // Keep cache fresh when the key changes in Options
 try {
   if (chrome.storage && chrome.storage.onChanged) {
     chrome.storage.onChanged.addListener((changes, area) => {
       try {
-        if (area === 'local' && changes && changes.chatbridge_gemini_key) {
-          __cbGeminiKeyCache = { value: changes.chatbridge_gemini_key.newValue || null, ts: Date.now() };
+        if (area === 'local') {
+          if (changes && changes.chatbridge_gemini_key) {
+            __cbGeminiKeyCache = { value: changes.chatbridge_gemini_key.newValue || null, ts: Date.now() };
+          }
+          if (changes && changes.chatbridge_openai_key) {
+            __cbOpenAIKeyCache.value = changes.chatbridge_openai_key.newValue || null;
+            __cbOpenAIKeyCache.ts = Date.now();
+          }
         }
       } catch (_) {}
     });
@@ -1025,6 +1058,80 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       }
     })();
     // indicate we'll respond asynchronously
+    return true;
+  }
+
+  // OpenAI API handler for EchoSynth multi-AI synthesis
+  if (msg && msg.type === 'call_openai') {
+    if (!limiterTry()) return sendResponse({ ok:false, error: 'rate_limited' });
+    (async () => {
+      try {
+        const OPENAI_API_KEY = await getOpenAIApiKey();
+        if (!OPENAI_API_KEY) {
+          return sendResponse({ ok:false, error: 'no_api_key', message: 'OpenAI API key not configured.' });
+        }
+        const payload = msg.payload || {};
+        const promptText = payload.text || payload.prompt || '';
+        
+        // Check cache first
+        try {
+          const cacheKey = hashString(stableStringify({ type:'call_openai', prompt: promptText }));
+          const rec = await cacheGet(cacheKey);
+          if (rec && rec.ts && rec.ttl && (Date.now() - rec.ts) < rec.ttl && rec.response) {
+            return sendResponse(rec.response);
+          }
+        } catch (e) { /* ignore */ }
+
+        const endpoint = 'https://api.openai.com/v1/chat/completions';
+        const body = {
+          model: 'gpt-4o-mini',
+          messages: [{ role: 'user', content: promptText }],
+          temperature: 0.7,
+          max_tokens: 2000
+        };
+        
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${OPENAI_API_KEY}`
+          },
+          body: JSON.stringify(body)
+        });
+        
+        let json;
+        try {
+          const text = await res.text();
+          json = text ? JSON.parse(text) : {};
+        } catch (e) {
+          console.error('[OpenAI API] Failed to parse response as JSON:', e);
+          return sendResponse({ ok:false, error: 'openai_parse_error', message: 'Invalid JSON response', status: res.status });
+        }
+        
+        if (!res.ok) {
+          console.error('[OpenAI API Error]', res.status, json);
+          return sendResponse({ ok:false, error: 'openai_http_error', status: res.status, body: json });
+        }
+        
+        if (!json.choices || !Array.isArray(json.choices) || json.choices.length === 0) {
+          console.error('[OpenAI API] No choices in response:', json);
+          return sendResponse({ ok:false, error: 'openai_parse_error', message: 'No choices in response', body: json });
+        }
+        
+        const result = json.choices[0].message?.content || '';
+        
+        // Cache successful result (5min TTL)
+        try {
+          const cacheKey = hashString(stableStringify({ type:'call_openai', prompt: promptText }));
+          await cachePut({ id: cacheKey, ts: Date.now(), ttl: 1000 * 60 * 5, response: { ok:true, result } });
+          cacheCleanExpired();
+        } catch (e) { /* ignore */ }
+        
+        return sendResponse({ ok:true, result });
+      } catch (e) {
+        return sendResponse({ ok:false, error: 'openai_fetch_error', message: (e && e.message) || String(e) });
+      }
+    })();
     return true;
   }
 
