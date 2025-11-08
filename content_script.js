@@ -73,10 +73,10 @@
 
   // avoid const redeclaration causing SyntaxError in some injection scenarios
   var CB_MAX_MESSAGES = (typeof window !== 'undefined' && window.__CHATBRIDGE && window.__CHATBRIDGE.MAX_MESSAGES) ? window.__CHATBRIDGE.MAX_MESSAGES : 200;
-  const DOM_STABLE_MS = 600;
-  const DOM_STABLE_TIMEOUT_MS = 8000;
+    const DOM_STABLE_MS = 400; // Reduced from 600ms for faster scan
+    const DOM_STABLE_TIMEOUT_MS = 4000; // Reduced from 8000ms for faster scan
   const SCROLL_MAX_STEPS = 25;
-  const SCROLL_STEP_PAUSE_MS = 320;
+    const SCROLL_STEP_PAUSE_MS = 200; // Reduced from 320ms for faster scrolling
   const DEBUG = !!(typeof window !== 'undefined' && window.__CHATBRIDGE_DEBUG === true);
 
   function debugLog(...args) { if (!DEBUG) return; try { console.debug('[ChatBridge]', ...args); } catch (e) {} }
@@ -182,6 +182,70 @@
         })();
         return true; // Keep channel open for async response
       }
+      
+      // Handle MCP requests from popup or other sources
+      if (msg && msg.type === 'mcp_request') {
+        console.log('[ChatBridge] Received MCP request:', msg.resource, msg.method);
+        
+        (async () => {
+          try {
+            // Forward to MCP bridge for handling
+            if (typeof window.MCPBridge !== 'undefined') {
+              const response = await window.MCPBridge.sendRequest(
+                msg.resource,
+                msg.method,
+                msg.params || {},
+                msg.source || 'unknown'
+              );
+              if (sendResponse) sendResponse(response);
+            } else {
+              if (sendResponse) sendResponse({ ok: false, error: 'MCP Bridge not available' });
+            }
+          } catch (e) {
+            console.error('[ChatBridge] MCP request error:', e);
+            if (sendResponse) sendResponse({ ok: false, error: e.message });
+          }
+        })();
+        return true; // Keep channel open for async response
+      }
+      
+      // Handle clear RAG cache request from popup
+      if (msg && msg.type === 'clear_rag_cache') {
+        (async () => {
+          try {
+            if (typeof window.RAGEngine !== 'undefined') {
+              await window.RAGEngine.clearAllEmbeddings();
+              if (sendResponse) sendResponse({ ok: true });
+            } else {
+              if (sendResponse) sendResponse({ ok: false, error: 'RAG Engine not available' });
+            }
+          } catch (e) {
+            console.error('[ChatBridge] Clear RAG cache error:', e);
+            if (sendResponse) sendResponse({ ok: false, error: e.message });
+          }
+        })();
+        return true;
+      }
+      
+      // Open Memory Architect focused on a specific theme (from popup Timeline)
+      if (msg && msg.type === 'open_memory_architect') {
+        (async () => {
+          try {
+            window.__CB_FOCUS_THEME = msg.theme || '';
+            // Ensure UI visible
+            try { const h = document.getElementById('cb-host'); if (h) h.style.display = 'block'; } catch(e) {}
+            // Switch to Memory Architect view
+            if (typeof showMemoryArchitect === 'function') {
+              await showMemoryArchitect();
+            }
+            if (sendResponse) sendResponse({ ok: true });
+          } catch (e) {
+            if (sendResponse) sendResponse({ ok: false, error: e.message });
+          }
+        })();
+        return true;
+      }
+      
       if (msg && msg.type === 'cs_self_test') {
         try {
           // Minimal sanity checks only; no DOM mutations
@@ -388,6 +452,94 @@
     });
   }
 
+  // Extract text from element preserving code blocks, lists, links, and structure
+  function extractTextWithFormatting(element) {
+    if (!element) return '';
+    
+    try {
+      let result = '';
+      
+      // Process child nodes recursively
+      function processNode(node) {
+        if (!node) return '';
+        
+        // Text nodes - return content
+        if (node.nodeType === Node.TEXT_NODE) {
+          return node.textContent || '';
+        }
+        
+        // Element nodes - handle special formatting
+        if (node.nodeType === Node.ELEMENT_NODE) {
+          const tag = node.tagName?.toLowerCase();
+          
+          // Code blocks - preserve with markdown formatting
+          if (tag === 'pre' || tag === 'code') {
+            const codeText = node.textContent || '';
+            // If it's a code block (pre), wrap in triple backticks
+            if (tag === 'pre') {
+              const lang = node.querySelector('code')?.className?.match(/language-(\w+)/)?.[1] || '';
+              return `\n\`\`\`${lang}\n${codeText}\n\`\`\`\n`;
+            }
+            // Inline code
+            return `\`${codeText}\``;
+          }
+          
+          // Lists - preserve structure with bullets/numbers
+          if (tag === 'ul' || tag === 'ol') {
+            const items = Array.from(node.querySelectorAll(':scope > li'));
+            const prefix = tag === 'ol' ? (i) => `${i + 1}. ` : () => '- ';
+            return '\n' + items.map((li, i) => prefix(i) + (li.textContent || '').trim()).join('\n') + '\n';
+          }
+          
+          // List items (if not caught by above)
+          if (tag === 'li') {
+            return '- ' + Array.from(node.childNodes).map(processNode).join('') + '\n';
+          }
+          
+          // Links - preserve with markdown format
+          if (tag === 'a') {
+            const text = node.textContent || '';
+            const href = node.getAttribute('href') || '';
+            if (href && text) {
+              return `[${text}](${href})`;
+            }
+            return text;
+          }
+          
+          // Block elements - add line breaks
+          if (['div', 'p', 'br', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'].includes(tag)) {
+            const content = Array.from(node.childNodes).map(processNode).join('');
+            return tag === 'br' ? '\n' : content + '\n';
+          }
+          
+          // Bold/italic - preserve with markdown
+          if (tag === 'strong' || tag === 'b') {
+            return '**' + Array.from(node.childNodes).map(processNode).join('') + '**';
+          }
+          if (tag === 'em' || tag === 'i') {
+            return '*' + Array.from(node.childNodes).map(processNode).join('') + '*';
+          }
+          
+          // Default - process children
+          return Array.from(node.childNodes).map(processNode).join('');
+        }
+        
+        return '';
+      }
+      
+      result = processNode(element);
+      
+      // Clean up excessive newlines while preserving intentional structure
+      result = result.replace(/\n{3,}/g, '\n\n').trim();
+      
+      return result;
+    } catch (e) {
+      console.warn('[ChatBridge] extractTextWithFormatting error:', e);
+      // Fallback to innerText
+      return element.innerText || element.textContent || '';
+    }
+  }
+
   // Extract attachments (images, videos, docs) from a message element
   function extractAttachmentsFromElement(root) {
     const atts = [];
@@ -438,7 +590,10 @@
     const out = [];
     for (const m of raw) {
       if (!m || !m.text) continue;
-      const text = (m.text || '').replace(/\s+/g, ' ').trim(); if (!text) continue;
+        let text = (m.text || '').replace(/\s+/g, ' ').trim();
+        // Strip role prefixes that might have been captured during scan (e.g., "Assistant:", "User:")
+        text = text.replace(/^(Assistant|User|System|AI|Human|Claude|ChatGPT|Gemini|Copilot|Me):\s*/i, '');
+        if (!text) continue;
       const role = (m.role === 'user') ? 'user' : 'assistant'; const prev = out[out.length - 1];
       const attachments = Array.isArray(m.attachments) ? m.attachments.slice(0) : [];
       if (!prev || prev.text !== text || prev.role !== role) out.push({ role, text, attachments });
@@ -463,6 +618,8 @@
     window.ChatBridgeHelpers.isInExtension = isInExtension;
     window.ChatBridgeHelpers.debugLog = debugLog;
     window.ChatBridgeHelpers.normalizeChatMessages = normalizeMessages;
+    // Expose for adapters to extract formatted text (code blocks, lists, links)
+    window.extractTextWithFormatting = extractTextWithFormatting;
     // expose utils under a namespaced object to avoid collisions
     window.ChatBridgeHelpers.utils = Object.assign({}, (window.ChatBridgeHelpers.utils||{}), {
       sleep: cbSleep,
@@ -1975,7 +2132,31 @@
         card.style.transform = 'translateY(0)';
         card.style.boxShadow = '';
       });
-      card.addEventListener('click', onClick);
+      // Add debouncing to prevent multiple rapid clicks
+      let isProcessing = false;
+      card.addEventListener('click', async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (isProcessing) {
+          debugLog('Agent card click ignored - already processing');
+          return;
+        }
+        isProcessing = true;
+        card.style.opacity = '0.6';
+        card.style.pointerEvents = 'none';
+        
+        try {
+          await onClick();
+        } catch (err) {
+          debugLog('Agent card onClick error:', err);
+        } finally {
+          setTimeout(() => {
+            isProcessing = false;
+            card.style.opacity = '1';
+            card.style.pointerEvents = '';
+          }, 500);
+        }
+      });
       return card;
     }
 
@@ -2073,26 +2254,41 @@
           combinedContext = combinedContext.slice(0, 4000) + '\n\n...(truncated)';
         }
 
+        // Get detail level preference
+        const detailLevel = await getDetailLevel();
+        
+        const depthInstructions = {
+          concise: '2-3 sentences with key insights only',
+          detailed: '3-4 sentences with patterns, decisions, and unresolved questions',
+          expert: '5-6 sentences with comprehensive analysis, edge cases, and technical context'
+        };
+        
+        const nextStepCount = {
+          concise: '1',
+          detailed: '2',
+          expert: '3-4'
+        };
+        
         const prompt = `You are Continuum, a context reconstruction agent with RAG-powered semantic search. You have ${relatedConvs.length} related conversations${usingRAG ? ' (found via semantic similarity)' : ''} on topics: ${seedTopics.join(', ')}.
 
-Analyze ALL these conversations and create a unified, actionable context summary (3-4 sentences) for continuing the work on ${currentHost}.
+Analyze ALL these conversations and create a unified, actionable context summary (${depthInstructions[detailLevel]}) for continuing the work on ${currentHost}.
 
 Constraints:
 - Synthesize insights across ALL conversations, not just the most recent one
 - Identify patterns, decisions, and unresolved questions from the combined context
 - Keep it practical and specific (goals, constraints, key definitions)
-- Include 1-2 suggested next steps
+- Include ${nextStepCount[detailLevel]} suggested next steps
+- Detail level: ${detailLevel}
 
 Output format (Markdown):
 **Unified Context Summary** ${usingRAG ? '🔍 (RAG-Enhanced)' : ''}
 Topics: ${seedTopics.slice(0,3).join(', ')}
 Conversations: ${relatedConvs.length} across ${new Set(relatedConvs.map(c => hostFromConv(c))).size} platforms
 
-[3-4 sentence synthesis of combined context]
+[${depthInstructions[detailLevel]}]
 
 **Suggested Next Steps**
-1. [First actionable step]
-2. [Second actionable step]
+${detailLevel === 'concise' ? '1. [Actionable step]' : detailLevel === 'detailed' ? '1. [First step]\n2. [Second step]' : '1. [First step]\n2. [Second step]\n3. [Third step]\n4. [Fourth step (optional)]'}
 
 Combined conversation history:
 ${combinedContext}`;
@@ -2101,20 +2297,53 @@ ${combinedContext}`;
 
         if (res && res.ok) {
           const summary = res.result || 'Context reconstructed.';
+          
+          // Build related conversations list with inject buttons
+          let relatedHtml = '';
+          if (relatedConvs && relatedConvs.length > 0) {
+            relatedHtml = '<div style="margin-top:16px;padding-top:12px;border-top:1px solid rgba(0,180,255,0.2);"><div style="font-weight:600;font-size:12px;margin-bottom:8px;opacity:0.8;">📚 Related Conversations:</div>';
+            relatedConvs.slice(0, 5).forEach((conv, idx) => {
+              const host = hostFromConv(conv) || 'unknown';
+              const ago = Math.round((Date.now() - (conv.ts||Date.now())) / (1000 * 60 * 60));
+              const ragScore = conv.ragScore ? `${(conv.ragScore * 100).toFixed(0)}% relevant` : '';
+              const preview = (conv.conversation?.[0]?.text || '').slice(0, 100);
+              relatedHtml += `
+                <div style="background:rgba(10,15,28,0.4);border:1px solid rgba(0,180,255,0.2);border-radius:6px;padding:8px;margin-bottom:6px;font-size:11px;">
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                    <span style="font-weight:600;color:rgba(0,180,255,0.9);">${host}</span>
+                    <span style="opacity:0.7;">${ago}h ago${ragScore ? ' • ' + ragScore : ''}</span>
+                  </div>
+                  <div style="opacity:0.8;line-height:1.4;margin-bottom:6px;">${preview}...</div>
+                  <button class="cb-btn cb-inject-conv" data-conv-idx="${idx}" style="font-size:10px;padding:4px 8px;">💉 Inject This</button>
+                </div>
+              `;
+            });
+            relatedHtml += '</div>';
+          }
+          
           // Render with quick action buttons
           outputArea.innerHTML = `
             <div style="display:flex;flex-direction:column;gap:10px;">
+              <div id="continuum-detail-container"></div>
               <div style="white-space:pre-wrap;line-height:1.6;">${summary}</div>
               <div style="display:flex;gap:8px;flex-wrap:wrap;">
                 <button id="continuum-continue" class="cb-btn cb-btn-primary">Continue here</button>
                 <button id="continuum-review" class="cb-btn">Review key points</button>
                 <button id="continuum-fresh" class="cb-btn">Start fresh with context</button>
               </div>
+              ${relatedHtml}
             </div>`;
+          
+          // Add detail level toggle
+          createDetailLevelToggle('continuum-detail-container', async (newLevel) => {
+            // Re-run analysis with new detail level
+            showContinuumAgent();
+          });
 
           const btnCont = outputArea.querySelector('#continuum-continue');
           const btnRev = outputArea.querySelector('#continuum-review');
           const btnFresh = outputArea.querySelector('#continuum-fresh');
+          const btnInjectConvs = outputArea.querySelectorAll('.cb-inject-conv');
 
           const summaryPlain = (summary || '').replace(/<[^>]*>/g,'');
           const baseAsk = 'Please pick up from the previous session using the summary below.';
@@ -2127,6 +2356,26 @@ ${combinedContext}`;
           });
           btnFresh && btnFresh.addEventListener('click', async () => {
             try { await restoreToChat(`Start a new approach but keep this context in mind. Provide a short plan first.\n\nContext:\n${summaryPlain}`, []); toast('Inserted to chat'); } catch(e){ toast('Insert failed'); }
+          });
+          
+          // Inject individual conversation context
+          btnInjectConvs.forEach(btn => {
+            btn.addEventListener('click', async () => {
+              const convIdx = parseInt(btn.dataset.convIdx);
+              const conv = relatedConvs[convIdx];
+              if (!conv) return;
+              
+              const convText = (conv.conversation || []).map(m => `${m.role}: ${m.text}`).join('\n\n');
+              const convSummary = `[Context from ${hostFromConv(conv)}]\nTopics: ${(conv.topics||[]).join(', ')}\n\n${convText.slice(0, 2000)}`;
+              
+              try { 
+                await restoreToChat(convSummary, []); 
+                toast('Context injected!'); 
+              } catch(e) { 
+                toast('Inject failed'); 
+                debugLog('[Continuum] Inject conv failed:', e);
+              }
+            });
           });
 
           toast('Context bridge ready!');
@@ -2188,68 +2437,102 @@ ${combinedContext}`;
           });
         }
         
-        // Build knowledge report (user-facing with RAG enhancement)
+        // Phase 3: Get theme clusters
+        let themeClusters = [];
+        if (typeof window.MCPBridge !== 'undefined') {
+          try {
+            const themeResponse = await window.MCPBridge.getThemes(0.7);
+            themeClusters = themeResponse.clusters || [];
+            debugLog('[Memory Architect] Theme clusters:', themeClusters);
+          } catch (e) {
+            debugLog('[Memory Architect] Failed to get theme clusters:', e);
+          }
+        }
+        
+        // Get detail level preference
+        const detailLevel = await getDetailLevel();
+        
+        // Build knowledge report (Phase 3: content-focused, adaptive depth)
         const domains = Object.keys(domainMap).sort((a, b) => domainMap[b].length - domainMap[a].length);
-        const topDomain = domains[0] || 'General';
+        let topDomain = domains[0] || 'General';
+        const focusTheme = (window.__CB_FOCUS_THEME || '').trim();
+        if (focusTheme) {
+          topDomain = focusTheme;
+          if (!domains.includes(focusTheme)) domains.unshift(focusTheme);
+        }
         const total = convs.length;
         const range = `${timeline[timeline.length - 1]?.date || ''} - ${timeline[0]?.date || ''}`;
-
-        let reportMd = `**📚 Knowledge Glance** ${ragStats ? '🔍 (RAG-Enhanced)' : ''}\n\n`+
-          `Conversations Indexed: ${total}\n`;
         
-        if (ragStats && ragStats.totalEmbeddings > 0) {
-          reportMd += `RAG Embeddings: ${ragStats.totalEmbeddings} (${((ragStats.totalEmbeddings/total)*100).toFixed(0)}% indexed)\n`;
+        const maxClusters = { concise: 3, detailed: 5, expert: 8 }[detailLevel];
+        const maxConvs = { concise: 3, detailed: 5, expert: 10 }[detailLevel];
+        const contentLength = { concise: 80, detailed: 120, expert: 200 }[detailLevel];
+
+        // Build user-friendly conversation list instead of technical report
+        let outputHtml = '<div style="display:flex;flex-direction:column;gap:12px;">';
+        outputHtml += '<div id="memory-detail-container"></div>';
+        
+        // Header with simple stats
+        outputHtml += `<div style="font-weight:700;font-size:14px;margin-bottom:4px;">💬 Your Recent Conversations (${total})</div>`;
+        if (focusTheme) {
+          outputHtml += `<div style="font-size:11px;opacity:0.8;margin-bottom:8px;">Focusing on: <strong>${focusTheme}</strong></div>`;
         }
         
-        reportMd += `Top Themes: ${domains.slice(0,5).join(', ') || '—'}\n`+
-          `Date Range: ${range}\n\n`+
-          `**Recent Timeline**\n`;
-        timeline.slice(0, 5).forEach((entry) => {
-          reportMd += `• ${entry.date} [${entry.platform||'unknown'}]: ${entry.topics.join(', ') || 'General'}\n`;
-        });
-        reportMd += `\n**Next Steps**\n`+
-          `- Ask: "What have I learned about ${topDomain} recently?"\n`+
-          `- Use MCP to query: MCPBridge.queryMemory("${topDomain}")\n`+
-          `- Consolidate 3 key takeaways into a single brief\n`+
-          `- Identify 2 gaps or open questions to resolve next\n`;
-        
-        if (ragStats && ragStats.totalEmbeddings < total) {
-          const missing = total - ragStats.totalEmbeddings;
-          reportMd += `\n💡 **Tip:** ${missing} conversations not yet indexed. They'll be indexed automatically next time you scan.\n`;
-        }
-
-        outputArea.innerHTML = `
-          <div style="display:flex;flex-direction:column;gap:10px;">
-            <div style="white-space:pre-wrap;line-height:1.6;">${reportMd}</div>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;">
-              <button id="memory-compose" class="cb-btn cb-btn-primary">Compose follow-up</button>
+        // Show conversations as clickable cards
+        convs.slice(0, maxConvs).forEach((conv, idx) => {
+          const date = new Date(conv.ts).toLocaleDateString();
+          const time = new Date(conv.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          const platform = conv.platform || 'unknown';
+          const firstMsg = conv.conversation?.find(m => m.role === 'user');
+          const content = firstMsg ? firstMsg.text.slice(0, contentLength) : 'No preview available';
+          const topics = (conv.topics || []).slice(0, 3).join(', ') || 'General';
+          
+          outputHtml += `
+            <div style="background:rgba(16,24,43,0.5);border:1px solid rgba(0,180,255,0.2);border-radius:8px;padding:12px;">
+              <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:8px;">
+                <div style="font-weight:600;color:var(--cb-accent-primary);font-size:12px;">${platform}</div>
+                <div style="font-size:10px;opacity:0.7;">${date} • ${time}</div>
+              </div>
+              <div style="font-size:12px;line-height:1.5;margin-bottom:8px;opacity:0.9;">"${content}..."</div>
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <div style="font-size:10px;opacity:0.7;">Topics: ${topics}</div>
+                <button class="cb-btn memory-continue-btn" data-conv-idx="${idx}" style="font-size:10px;padding:4px 8px;">Continue Here</button>
+              </div>
             </div>
-          </div>`;
+          `;
+        });
+        
+        outputHtml += '</div>';
 
-        const btnCompose = outputArea.querySelector('#memory-compose');
-        btnCompose && btnCompose.addEventListener('click', async () => {
-          try {
-            // Try to use MCP to query related memories
-            let contextInfo = '';
-            if (typeof window.MCPBridge !== 'undefined' && ragStats && ragStats.totalEmbeddings > 0) {
-              try {
-                const memoryResults = await window.MCPBridge.queryMemory(topDomain, { topK: 3 });
-                if (memoryResults && memoryResults.length > 0) {
-                  contextInfo = `\n\n[Context from ${memoryResults.length} related conversations via MCP/RAG]`;
-                  debugLog('[Memory Architect] MCP query returned:', memoryResults);
-                }
-              } catch (mcpError) {
-                debugLog('[Memory Architect] MCP query failed, using fallback:', mcpError);
-              }
-            }
+        outputArea.innerHTML = outputHtml;
+        
+        // Add detail level toggle
+        createDetailLevelToggle('memory-detail-container', async (newLevel) => {
+          showMemoryArchitect();
+        });
+
+        // Wire up continue buttons
+        const continueButtons = outputArea.querySelectorAll('.memory-continue-btn');
+        continueButtons.forEach(btn => {
+          btn.addEventListener('click', async () => {
+            const idx = parseInt(btn.dataset.convIdx);
+            const conv = convs[idx];
+            if (!conv) return;
             
-            const follow = `Using my recent chats${contextInfo}, summarize the 3 most important takeaways about "${topDomain}" and propose the next actionable step. If context is missing, ask me 2 clarifying questions first.`;
-            await restoreToChat(follow, []);
-            toast('Inserted follow-up with MCP context');
-          } catch(e) {
-            toast('Insert failed');
-            debugLog('[Memory Architect] Compose failed:', e);
-          }
+            const firstMsg = conv.conversation?.find(m => m.role === 'user');
+            const preview = firstMsg ? firstMsg.text.slice(0, 150) : '';
+            const platform = conv.platform || 'unknown';
+            const topics = (conv.topics || []).join(', ') || 'General';
+            
+            const contextPrompt = `I want to continue from my previous conversation on ${platform} about: ${topics}.\n\nI was discussing: "${preview}..."\n\nCan you help me pick up where I left off and provide the next steps?`;
+            
+            try {
+              await restoreToChat(contextPrompt, []);
+              toast('Context inserted!');
+            } catch (e) {
+              toast('Insert failed');
+              debugLog('[Memory Architect] Continue failed:', e);
+            }
+          });
         });
 
         toast('Knowledge base indexed!');
@@ -2267,9 +2550,17 @@ ${combinedContext}`;
       
       // Show input UI for EchoSynth
       outputArea.innerHTML = `
+        <div id="echosynth-detail-container"></div>
         <div style="margin-bottom:12px;">
           <div style="font-weight:600;margin-bottom:8px;font-size:13px;">⚡ EchoSynth - Multi-AI Query</div>
-          <div style="font-size:11px;opacity:0.8;margin-bottom:12px;">Ask one question, get synthesized answer from multiple AIs</div>
+          <div style="font-size:11px;opacity:0.8;margin-bottom:12px;">Ask one question, get synthesized answer from multiple AIs with adaptive depth and tone</div>
+          <div id="echosynth-tone" style="display:flex;gap:8px;margin-bottom:8px;align-items:center;">
+            <span style="font-size:11px;opacity:0.8;">Tone:</span>
+            <button class="cb-btn cb-btn-sm" data-tone="analytical">Analytical</button>
+            <button class="cb-btn cb-btn-sm" data-tone="narrative">Narrative</button>
+            <button class="cb-btn cb-btn-sm" data-tone="structured">Structured</button>
+            <span id="tone-preview" style="font-size:11px;opacity:0.75;margin-left:auto;">Preview: auto</span>
+          </div>
           <textarea id="echosynth-prompt" placeholder="Enter your question..." style="width:100%;min-height:80px;padding:10px;background:rgba(10,15,28,0.6);border:1px solid rgba(0,180,255,0.3);border-radius:8px;color:#E6E9F0;font-size:13px;resize:vertical;font-family:inherit;"></textarea>
           <div style="display:flex;gap:8px;margin-top:8px;">
             <button id="echosynth-run" class="cb-btn cb-btn-primary" style="flex:1;">▶ Run EchoSynth</button>
@@ -2279,10 +2570,36 @@ ${combinedContext}`;
         <div id="echosynth-results" style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(0,180,255,0.2);display:none;"></div>
       `;
       
+      // Add detail level toggle
+      createDetailLevelToggle('echosynth-detail-container', (level) => {
+        debugLog('[EchoSynth] Detail level changed to:', level);
+      });
+      
   const promptInput = outputArea.querySelector('#echosynth-prompt');
   const runBtn = outputArea.querySelector('#echosynth-run');
   const cancelBtn = outputArea.querySelector('#echosynth-cancel');
   const resultsDiv = outputArea.querySelector('#echosynth-results');
+  const toneBar = outputArea.querySelector('#echosynth-tone');
+  const toneButtons = toneBar.querySelectorAll('button[data-tone]');
+  const tonePreview = toneBar.querySelector('#tone-preview');
+
+      // Tone detection heuristics
+      const inferTone = (text) => {
+        const s = (text||'').toLowerCase();
+        if (/(implement|api|bug|error|stack|code|optimiz|complexity|latency|schema)/.test(s)) return 'analytical';
+        if (/(story|creative|metaphor|vision|inspire|narrative|analogy)/.test(s)) return 'narrative';
+        if (/(plan|roadmap|steps|milestone|timeline|prioritize|OKR|bullet)/.test(s)) return 'structured';
+        return 'structured';
+      };
+      let selectedTone = 'auto';
+      toneButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+          selectedTone = btn.dataset.tone;
+          toneButtons.forEach(b => b.classList.remove('cb-btn-primary'));
+          btn.classList.add('cb-btn-primary');
+          tonePreview.textContent = `Preview: ${selectedTone}`;
+        });
+      });
       
       cancelBtn.addEventListener('click', () => {
         outputArea.textContent = '(Agent results will appear here)';
@@ -2320,6 +2637,8 @@ ${combinedContext}`;
           
           // Enhance prompt with RAG context if available
           const enhancedPrompt = ragContext ? userPrompt + ragContext : userPrompt;
+          const tone = selectedTone === 'auto' ? inferTone(userPrompt) : selectedTone;
+          tonePreview.textContent = `Preview: ${tone}`;
           
           // Query both Gemini and ChatGPT in parallel for true multi-AI synthesis
           const geminiPromise = callGeminiAsync({ action: 'prompt', text: enhancedPrompt, length: 'medium' }).catch(e => ({ ok: false, error: e.message }));
@@ -2341,36 +2660,80 @@ ${combinedContext}`;
             return;
           }
           
-          // If we have multiple responses, synthesize them
+          // Phase 3: Multi-stage generation pipeline
+          const detailLevel = await getDetailLevel(); // Get from user preference
           let finalAnswer = '';
+          
           if (responses.length > 1) {
-            // Build synthesis prompt
-            const synthesisPrompt = `You are EchoSynth, a meta-AI synthesizer. Two AI models answered the same question. Create ONE unified, comprehensive answer that:
-1. Combines the best insights from both responses
-2. Resolves any contradictions by noting different perspectives
-3. Provides a clear, actionable conclusion
-4. Uses Markdown headings and bullet points
+            // Stage 1: Create outline
+            resultsDiv.innerHTML += '<div style="font-size:11px;opacity:0.7;margin-top:8px;">Stage 1/3: Outlining key points...</div>';
+            const outlinePrompt = `Analyze these two AI responses and create a brief outline (3-5 bullet points) of key points to cover:
 
 Question: ${userPrompt}
 
-**Gemini's Answer:**
-${responses.find(r => r.source.includes('Gemini'))?.answer || '(none)'}
+Gemini: ${responses[0].answer.slice(0, 500)}...
+ChatGPT: ${responses[1]?.answer?.slice(0, 500) || 'N/A'}...
 
-**ChatGPT's Answer:**
-${responses.find(r => r.source.includes('ChatGPT'))?.answer || '(none)'}
+Outline (bullet points only):`;
+            
+            const outlineRes = await callGeminiAsync({ action: 'prompt', text: outlinePrompt, length: 'short' });
+            const outline = outlineRes?.result || '• Main points\n• Key insights\n• Conclusion';
+            
+            // Stage 2: Expand with context
+            resultsDiv.innerHTML += '<div style="font-size:11px;opacity:0.7;">Stage 2/3: Expanding with retrieved context...</div>';
+            
+            const depthInstructions = {
+              concise: 'brief and to-the-point (2-3 paragraphs maximum)',
+              detailed: 'comprehensive with examples and explanations',
+              expert: 'highly technical with implementation details, edge cases, and best practices'
+            };
+            
+            const toneInstructions = {
+              analytical: 'Use precise technical language, include code or pseudo-code when helpful, and call out edge cases.',
+              narrative: 'Use engaging, metaphor-rich prose with relatable examples while staying accurate.',
+              structured: 'Use clear sections and bullet points, focusing on steps, priorities, and crisp phrasing.'
+            };
+            const expandPrompt = `You are EchoSynth. Using this outline and the RAG context below, write a ${depthInstructions[detailLevel]} answer in a ${tone} tone. ${toneInstructions[tone]}
 
-Synthesized Answer (unified and comprehensive):`;
+Outline:
+${outline}
 
-            const synthRes = await callGeminiAsync({ action: 'prompt', text: synthesisPrompt, length: 'comprehensive' });
-            if (synthRes && synthRes.ok) {
-              finalAnswer = synthRes.result || '';
-            } else {
-              // Fallback: just show both answers side by side
-              finalAnswer = responses.map(r => `**${r.source}:**\n${r.answer}`).join('\n\n---\n\n');
-            }
+RAG Context:
+${ragContext || 'No additional context'}
+
+Gemini's Full Answer:
+${responses[0].answer}
+
+ChatGPT's Full Answer:
+${responses[1]?.answer || 'N/A'}
+
+Expanded Answer (use Markdown, depth level: ${detailLevel}, tone: ${tone}):`;
+            
+            const expandRes = await callGeminiAsync({ action: 'prompt', text: expandPrompt, length: 'comprehensive' });
+            const expanded = expandRes?.result || responses.map(r => `**${r.source}:**\n${r.answer}`).join('\n\n---\n\n');
+            
+            // Stage 3: Refine and structure
+            resultsDiv.innerHTML += '<div style="font-size:11px;opacity:0.7;">Stage 3/3: Refining final output...</div>';
+            const refinePrompt = `Polish this answer for clarity and structure. Maintain the ${tone} tone. Add section headings, ensure logical flow, and highlight key takeaways:
+
+${expanded}
+
+Refined Answer (final, polished):`;
+            
+            const refineRes = await callGeminiAsync({ action: 'prompt', text: refinePrompt, length: 'comprehensive' });
+            finalAnswer = refineRes?.result || expanded;
+            
           } else {
-            // Only one response succeeded
-            finalAnswer = responses[0].answer;
+            // Only one response - still apply multi-stage enhancement
+            resultsDiv.innerHTML += '<div style="font-size:11px;opacity:0.7;">Enhancing single response...</div>';
+            const enhancePrompt = `Enhance this answer with additional context and structure:
+
+Original: ${responses[0].answer}
+RAG Context: ${ragContext}
+
+Enhanced Answer:`;
+            const enhanceRes = await callGeminiAsync({ action: 'prompt', text: enhancePrompt, length: 'comprehensive' });
+            finalAnswer = enhanceRes?.result || responses[0].answer;
           }
           
           resultsDiv.innerHTML = `
@@ -2380,6 +2743,7 @@ Synthesized Answer (unified and comprehensive):`;
               <strong>Sources:</strong> ${responses.map(r => r.source).join(' + ')}${ragResultCount > 0 ? ` + ${ragResultCount} past conversations (RAG)` : ''} • Synthesized at ${new Date().toLocaleTimeString()}
             </div>
           `;
+          try { if (window.RAGEngine && window.RAGEngine.incrementMetric) window.RAGEngine.incrementMetric('totalSynthesisSessions', 1); } catch(_){}
           toast('Multi-AI synthesis complete!');
         } catch (e) {
           resultsDiv.innerHTML = `<div style="color:rgba(255,100,100,0.9);">❌ Error: ${e.message || 'Unknown error'}</div>`;
@@ -4383,180 +4747,87 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           return false;
         }
 
+        // Clean text - remove role prefixes that might have leaked from scan
+        let cleanText = text.trim();
+        // Remove "Assistant:", "User:", etc. from beginning of text
+        cleanText = cleanText.replace(/^(Assistant|User|System|AI):\s*/i, '');
+        restoreLog('Cleaned text (first 100 chars):', cleanText.slice(0, 100));
+
         // Try to use adapter's getInput() method first (more reliable for site-specific inputs)
         let input = null;
         try {
           const pick = (typeof window.pickAdapter === 'function') ? window.pickAdapter : null;
           const adapter = pick ? pick() : null;
-          restoreLog('Adapter detected:', adapter ? adapter.id : 'none');
           if (adapter && typeof adapter.getInput === 'function') {
-            restoreLog('Trying adapter.getInput() from adapter:', adapter.id);
             input = adapter.getInput();
             if (input) {
-              restoreLog('Found input via adapter:', input.tagName, input.type || 'contenteditable', input.id || input.className || 'no id/class');
-            } else {
-              restoreLog('Adapter.getInput() returned null');
+              restoreLog('Found input via adapter:', input.tagName);
             }
           }
         } catch (e) {
           restoreLog('Adapter.getInput() error:', e);
         }
 
-        // Fallback to generic findVisibleInputCandidate if adapter didn't find anything
+        // Fallback to generic input finder or wait
         if (!input) {
-          restoreLog('Trying findVisibleInputCandidate()');
           input = findVisibleInputCandidate();
-          if (input) {
-            restoreLog('Found input via findVisibleInputCandidate():', input.tagName);
-          } else {
-            restoreLog('findVisibleInputCandidate() returned null');
-          }
         }
-
-        // If still no input, wait for composer to appear
+        
         if (!input) {
-          restoreLog('Waiting for composer (15s timeout)...');
-          input = await waitForComposer(15000, 400); // Increased timeout and poll interval
-          if (input) {
-            restoreLog('Found input after waiting:', input.tagName);
-          }
+          restoreLog('Waiting for composer...');
+          input = await waitForComposer(10000, 300); // Reduced timeout to 10s
         }
 
         if (!input) {
-          restoreLog('ERROR: No input found after waiting');
-          try { await navigator.clipboard.writeText(text); toast('Copied to clipboard (input not found)'); } catch(e) { toast('Copied to clipboard'); }
+          restoreLog('ERROR: No input found');
+          try { await navigator.clipboard.writeText(cleanText); toast('Copied to clipboard'); } catch(e) {}
           return false;
         }
 
-        restoreLog('Found input:', input.tagName, input.isContentEditable ? 'contenteditable' : 'textarea/input', 'id:', input.id || 'none', 'class:', (input.className || '').toString().slice(0, 50));
+        restoreLog('Found input:', input.tagName, input.isContentEditable ? 'contenteditable' : 'textarea');
 
-        // Insert text based on input type
+        // Fast insert based on input type
         if (input.isContentEditable) {
-          restoreLog('Setting textContent for contenteditable input');
-          
-          // For contenteditable, use Range/Selection API for better compatibility with React/Vue frameworks
-          try {
-            // Focus first to ensure we can set selection
-            input.focus();
-            
-            // Clear any existing content and set up range
-            const range = document.createRange();
-            const selection = window.getSelection();
-            selection.removeAllRanges();
-            
-            // Select all content in the contenteditable
-            if (input.childNodes.length > 0) {
-              range.selectNodeContents(input);
-              range.deleteContents();
-            } else {
-              // If empty, set range at start of element
-              range.setStart(input, 0);
-              range.setEnd(input, 0);
-            }
-            
-            // Insert text as text node for better framework compatibility
-            const textNode = document.createTextNode(text);
-            range.insertNode(textNode);
-            
-            // Move cursor to end
-            range.setStartAfter(textNode);
-            range.collapse(true);
-            selection.removeAllRanges();
-            selection.addRange(range);
-            
-            restoreLog('Inserted text via Range API');
-          } catch (e) {
-            restoreLog('Range API failed, falling back to textContent:', e);
-            // Fallback: direct textContent manipulation
-            input.textContent = text;
-          }
-          
-          // Trigger multiple events to ensure frameworks pick it up
-          input.dispatchEvent(new Event('beforeinput', { bubbles: true, cancelable: true }));
-          input.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
-          input.dispatchEvent(new Event('textInput', { bubbles: true, cancelable: true }));
-          
-          // Additional focus events
-          input.dispatchEvent(new Event('focus', { bubbles: true }));
-          input.dispatchEvent(new Event('focusin', { bubbles: true }));
-          
-          setTimeout(() => {
-            // Re-verify and dispatch more events
-            input.dispatchEvent(new Event('input', { bubbles: true }));
-            input.dispatchEvent(new Event('change', { bubbles: true }));
-            
-            // Verify text was set
-            const actualText = input.textContent || input.innerText || '';
-            restoreLog('Contenteditable text after insert (first 100 chars):', actualText.slice(0, 100));
-            restoreLog('Text length:', actualText.length, 'Expected:', text.length);
-            
-            if (!actualText.trim() && text.trim()) {
-              restoreLog('WARNING: Text may not have been inserted properly, trying innerText');
-              // Try innerText as fallback
-              input.innerText = text;
-              input.textContent = text;
-              input.dispatchEvent(new Event('input', { bubbles: true }));
-              input.dispatchEvent(new Event('change', { bubbles: true }));
-              
-              // For React/Vue: try setting the value property if it exists
-              if ('value' in input && typeof input.value !== 'undefined') {
-                input.value = text;
-                input.dispatchEvent(new Event('input', { bubbles: true }));
-              }
-            }
-          }, 150);
-          toast('Restored to chat');
-        } else if (input) {
-          restoreLog('Setting value for textarea/input');
-          // Clear any existing value first
-          input.value = '';
-          // Set the text
-          input.value = text;
-          
-          // Trigger multiple events to ensure frameworks pick it up
-          input.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
-          input.dispatchEvent(new Event('beforeinput', { bubbles: true, cancelable: true }));
-          
-          // Focus and trigger additional events
+          // For contenteditable (ChatGPT, Claude, etc.)
           input.focus();
-          input.dispatchEvent(new Event('focus', { bubbles: true }));
           
-          // Additional events for different frameworks
-          try { input.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, cancelable: true, key: ' ', code: 'Space' })); } catch(e) {}
-          setTimeout(() => {
-            input.dispatchEvent(new Event('input', { bubbles: true }));
-            input.dispatchEvent(new Event('change', { bubbles: true }));
-            // Verify text was set
-            const actualValue = input.value || '';
-            restoreLog('Input value after insert (first 100 chars):', actualValue.slice(0, 100));
-            restoreLog('Input value length:', actualValue.length, 'Expected:', text.length);
-            if (!actualValue.trim() && text.trim()) {
-              restoreLog('WARNING: Text may not have been inserted properly');
-              input.value = text;
-              input.dispatchEvent(new Event('input', { bubbles: true }));
-              input.dispatchEvent(new Event('change', { bubbles: true }));
-            }
-          }, 150);
-          toast('Restored to chat');
+          // Clear existing content quickly
+          input.textContent = '';
+          
+          // Insert text node
+          const textNode = document.createTextNode(cleanText);
+          input.appendChild(textNode);
+          
+          // Trigger essential events only (reduced from multiple)
+          input.dispatchEvent(new Event('input', { bubbles: true }));
+          input.dispatchEvent(new Event('change', { bubbles: true }));
+          
+          restoreLog('Inserted to contenteditable');
+        } else {
+          // For textarea/input
+          input.focus();
+          input.value = cleanText;
+          
+          // Trigger essential events
+          input.dispatchEvent(new Event('input', { bubbles: true }));
+          input.dispatchEvent(new Event('change', { bubbles: true }));
+          
+          restoreLog('Inserted to textarea/input');
         }
 
-        // Attach files if provided
-        try {
-          const atts = Array.isArray(attachments) ? attachments : [];
-          if (atts.length) {
-            restoreLog('Attaching files:', atts.length);
-            const res = await attachFilesToChat(atts);
-            if (res.failed && res.failed.length) {
-              console.warn('[ChatBridge] Some attachments failed to attach:', res.failed);
-              toast((res.uploaded||0) + ' attached, ' + res.failed.length + ' failed');
-            }
-          }
-        } catch (e) { console.warn('[ChatBridge] attachFiles error', e); }
+        toast('Restored to chat');
+
+        // Attach files if provided (async, don't block)
+        if (Array.isArray(attachments) && attachments.length > 0) {
+          attachFilesToChat(attachments).catch(e => {
+            restoreLog('Attachment error:', e);
+          });
+        }
         
         return true;
       } catch (e) {
         restoreLog('ERROR in restoreToChat:', e);
-        try { await navigator.clipboard.writeText(text); toast('Copied to clipboard (error occurred)'); } catch(_) { toast('Copied to clipboard'); }
+        try { await navigator.clipboard.writeText(text); toast('Copied to clipboard'); } catch(_) {}
         return false;
       }
     }
@@ -5047,6 +5318,90 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         }, delayMs);
         __cbSetQueue.set(key, { value, timer });
       } catch (e) { debugLog('schedule set failed', e); }
+    }
+
+    // Phase 3: Detail Level Preference Management
+    let cachedDetailLevel = null;
+    
+    async function getDetailLevel() {
+      if (cachedDetailLevel) return cachedDetailLevel;
+      
+      return new Promise((resolve) => {
+        try {
+          chrome.storage.local.get(['cb_detail_level'], (result) => {
+            const level = result?.cb_detail_level || 'concise'; // Default: concise
+            cachedDetailLevel = level;
+            resolve(level);
+          });
+        } catch (e) {
+          debugLog('[DetailLevel] Failed to get:', e);
+          resolve('concise'); // Fallback
+        }
+      });
+    }
+    
+    async function setDetailLevel(level) {
+      if (!['concise', 'detailed', 'expert'].includes(level)) {
+        debugLog('[DetailLevel] Invalid level:', level);
+        return false;
+      }
+      
+      cachedDetailLevel = level;
+      
+      return new Promise((resolve) => {
+        try {
+          chrome.storage.local.set({ cb_detail_level: level }, () => {
+            debugLog('[DetailLevel] Set to:', level);
+            resolve(true);
+          });
+        } catch (e) {
+          debugLog('[DetailLevel] Failed to set:', e);
+          resolve(false);
+        }
+      });
+    }
+    
+    function createDetailLevelToggle(containerId, onChangeCallback) {
+      const container = document.getElementById(containerId);
+      if (!container) return;
+      
+      const toggleHTML = `
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:8px;background:rgba(0,180,255,0.1);border-radius:6px;">
+          <span style="font-size:11px;font-weight:600;opacity:0.9;">Detail Level:</span>
+          <div class="cb-detail-toggle" style="display:flex;gap:4px;">
+            <button class="cb-detail-btn" data-level="concise" style="padding:4px 10px;font-size:11px;border-radius:4px;border:1px solid rgba(0,180,255,0.3);background:rgba(0,180,255,0.2);color:#E6E9F0;cursor:pointer;">Concise</button>
+            <button class="cb-detail-btn" data-level="detailed" style="padding:4px 10px;font-size:11px;border-radius:4px;border:1px solid rgba(0,180,255,0.3);background:transparent;color:#E6E9F0;cursor:pointer;">Detailed</button>
+            <button class="cb-detail-btn" data-level="expert" style="padding:4px 10px;font-size:11px;border-radius:4px;border:1px solid rgba(0,180,255,0.3);background:transparent;color:#E6E9F0;cursor:pointer;">Expert</button>
+          </div>
+        </div>
+      `;
+      
+      container.insertAdjacentHTML('afterbegin', toggleHTML);
+      
+      // Set initial state
+      getDetailLevel().then(level => {
+        container.querySelectorAll('.cb-detail-btn').forEach(btn => {
+          btn.style.background = btn.dataset.level === level ? 'rgba(0,180,255,0.4)' : 'transparent';
+          btn.style.fontWeight = btn.dataset.level === level ? '700' : '400';
+        });
+      });
+      
+      // Add click handlers
+      container.querySelectorAll('.cb-detail-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const level = btn.dataset.level;
+          await setDetailLevel(level);
+          
+          // Update UI
+          container.querySelectorAll('.cb-detail-btn').forEach(b => {
+            b.style.background = b === btn ? 'rgba(0,180,255,0.4)' : 'transparent';
+            b.style.fontWeight = b === btn ? '700' : '400';
+          });
+          
+          // Callback
+          if (onChangeCallback) onChangeCallback(level);
+        });
+      });
     }
 
     // Load conversations as a Promise with cache: prefer background persistent store, fallback to window.getConversations or localStorage
@@ -6352,7 +6707,12 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
   try { if (CB_HIGHLIGHT_ENABLED || DEBUG) highlightNodesByElements(nodes); } catch (e) { debugLog('highlight error:', e); }
   
   try {
-    raw = nodes.map(n => ({ text: (n.innerText||'').trim(), role: inferRoleFromNode(n), el: n, attachments: extractAttachmentsFromElement(n) }));
+    raw = nodes.map(n => ({ 
+      text: extractTextWithFormatting(n), 
+      role: inferRoleFromNode(n), 
+      el: n, 
+      attachments: extractAttachmentsFromElement(n) 
+    }));
     debugLog('mapped to', raw.length, 'raw messages');
   } catch (e) {
     debugLog('node mapping error:', e);

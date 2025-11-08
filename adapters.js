@@ -300,8 +300,14 @@ const SiteAdapters = [
           return;
         }
         
+        // Use extractTextWithFormatting if available, otherwise fall back to innerText
         const text = (() => {
-          try { return (body.innerText || '').trim(); } catch (err) { return ''; }
+          try {
+            if (typeof window.extractTextWithFormatting === 'function') {
+              return window.extractTextWithFormatting(body);
+            }
+            return (body.innerText || '').trim();
+          } catch (err) { return ''; }
         })();
         
         if (!text || text.length === 0) {

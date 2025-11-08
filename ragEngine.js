@@ -1,38 +1,19 @@
 /**
- * ragEngine.js - Local Retrieval-Augmented Generation Engine
+ * Phase 4 — Learning Interface & Adaptive Voice Layer
  * 
- * Purpose:
- * - Generate text embeddings locally using transformers.js (all-MiniLM-L6-v2)
- * - Store embeddings and chat metadata in IndexedDB
- * - Retrieve top-K similar conversations using cosine similarity
- * - Works 100% offline with no external vector database
+ * This file implements a local Retrieval-Augmented Generation engine and now
+ * also exposes learning analytics utilities used by Timeline/Reflection.
  * 
- * Data Flow:
- * 1. When a conversation is saved → generate embedding → store in IndexedDB
- * 2. When querying → embed query text → compute cosine similarity → return top matches
- * 3. Agents (Continuum/Memory/EchoSynth) call retrieve() to get relevant context
+ * Additions in Phase 4:
+ * - Theme evolution computation and persistence (theme_nodes)
+ * - Lightweight weekly reflection synthesis (local, template-based)
+ * - Learning metrics aggregation (/analytics via MCP)
  * 
- * Usage Examples:
+ * Existing (Phase 3):
+ * - Local embeddings (transformers.js) + IndexedDB storage
+ * - Semantic chunking, adaptive weighting, and topic clustering
  * 
- * // Check if RAG is ready
- * await RAGEngine.initEmbeddingPipeline(); // Pre-load model (done automatically on init)
- * const stats = await RAGEngine.getStats(); // { totalEmbeddings, platforms, dbSizeBytes }
- * 
- * // Index a conversation (auto-called when saving)
- * await RAGEngine.indexConversation('conv_123', 'conversation text here', { platform: 'chatgpt', topics: ['AI'] });
- * 
- * // Retrieve similar conversations
- * const results = await RAGEngine.retrieve('tell me about AI', 5);
- * // Returns: [{ id, score, text, metadata, timestamp }, ...]
- * 
- * // Batch index existing conversations
- * const conversations = await Storage.conversations.getAll();
- * await RAGEngine.batchIndex(conversations, (progress) => console.log(`Indexed ${progress.current}/${progress.total}`));
- * 
- * // Debug commands (browser console)
- * RAGEngine.getStats()                     // Show embedding count
- * RAGEngine.retrieve('your query', 3)      // Test retrieval
- * RAGEngine.clearAllEmbeddings()           // Clear database (use with caution)
+ * Notes: All data stays local (IndexedDB/chrome.storage.local). No external calls.
  */
 
 // =============================================================================
@@ -44,6 +25,10 @@ const RAG_STORE_NAME = 'embeddings';
 const RAG_DB_VERSION = 1;
 
 let ragDB = null;
+
+// Phase 4: Local storage keys for analytics/evolution
+const THEME_NODES_KEY = 'cb_theme_nodes_v1';
+const METRICS_KEY = 'cb_learning_metrics_v1';
 
 /**
  * Open/initialize the RAG IndexedDB store
@@ -176,6 +161,88 @@ async function deleteEmbedding(id) {
 }
 
 // =============================================================================
+// Semantic Chunking & Adaptive Weighting (Phase 3)
+// =============================================================================
+
+/**
+ * Split text into semantic chunks (~300 tokens each)
+ * Strategy: Split by sentences/paragraphs, combine until ~300 tokens, with overlap
+ * 
+ * @param {string} text - Full conversation text
+ * @param {number} chunkSize - Target chunk size in characters (~300 tokens ≈ 1200 chars)
+ * @param {number} overlap - Overlap between chunks (characters)
+ * @returns {Array<string>} Array of text chunks
+ */
+function semanticChunk(text, chunkSize = 1200, overlap = 200) {
+  if (!text || text.length < chunkSize) {
+    return [text]; // Return whole text if too small
+  }
+  
+  const chunks = [];
+  
+  // Split by paragraphs first, then sentences
+  const paragraphs = text.split(/\n\n+/);
+  let currentChunk = '';
+  
+  for (const para of paragraphs) {
+    // If adding this paragraph exceeds chunk size, save current chunk
+    if (currentChunk.length + para.length > chunkSize && currentChunk.length > 0) {
+      chunks.push(currentChunk.trim());
+      // Start new chunk with overlap from previous
+      const overlapText = currentChunk.slice(-overlap);
+      currentChunk = overlapText + ' ' + para;
+    } else {
+      currentChunk += (currentChunk ? '\n\n' : '') + para;
+    }
+  }
+  
+  // Add remaining chunk
+  if (currentChunk.trim()) {
+    chunks.push(currentChunk.trim());
+  }
+  
+  console.log(`[RAG Chunking] Split text (${text.length} chars) into ${chunks.length} chunks`);
+  return chunks;
+}
+
+/**
+ * Calculate adaptive weight for a conversation/chunk
+ * Formula: weight = recencyFactor * frequencyFactor * topicSimilarity
+ * 
+ * @param {object} metadata - Conversation metadata
+ * @param {string} queryText - Current query for topic similarity
+ * @returns {number} Weight score (0 to 1)
+ */
+function calculateAdaptiveWeight(metadata, queryText = '') {
+  let weight = 1.0;
+  
+  // Recency factor: exponential decay (newer = higher weight)
+  if (metadata.timestamp) {
+    const ageInDays = (Date.now() - metadata.timestamp) / (1000 * 60 * 60 * 24);
+    const recencyFactor = Math.exp(-ageInDays / 30); // Decay over 30 days
+    weight *= recencyFactor;
+  }
+  
+  // Frequency factor: conversations accessed more often have higher weight
+  if (metadata.accessCount) {
+    const frequencyFactor = Math.min(1.0, metadata.accessCount / 10); // Cap at 10 accesses
+    weight *= (0.7 + 0.3 * frequencyFactor); // Base 0.7, up to 1.0
+  }
+  
+  // Topic similarity: boost if query mentions topics from this conversation
+  if (queryText && metadata.topics && metadata.topics.length > 0) {
+    const queryLower = queryText.toLowerCase();
+    const matchingTopics = metadata.topics.filter(t => 
+      queryLower.includes(t.toLowerCase())
+    );
+    const topicSimilarity = matchingTopics.length / metadata.topics.length;
+    weight *= (0.8 + 0.2 * topicSimilarity); // Base 0.8, up to 1.0
+  }
+  
+  return Math.min(1.0, weight); // Cap at 1.0
+}
+
+// =============================================================================
 // Transformers.js Integration (Local Embeddings)
 // =============================================================================
 
@@ -186,53 +253,21 @@ let pipelineLoading = false;
  * Initialize the transformers.js embedding pipeline
  * Model: all-MiniLM-L6-v2 (384-dim embeddings, ~23MB)
  * Runs entirely in the browser via ONNX Runtime
+ * 
+ * NOTE: CDN loading disabled due to connection issues.
+ * Using lightweight local TF-IDF based embedding instead.
  */
 async function initEmbeddingPipeline() {
-  // Return existing pipeline if already loaded
-  if (embeddingPipeline) return embeddingPipeline;
-  
-  // Wait if currently loading
-  if (pipelineLoading) {
-    while (pipelineLoading) {
-      await new Promise(r => setTimeout(r, 100));
-    }
-    return embeddingPipeline;
-  }
-  
-  try {
-    pipelineLoading = true;
-    console.log('[RAG] Loading transformers.js embedding model...');
-    
-    // Dynamic import of transformers.js
-    // Note: In a Chrome extension, you'll need to include transformers.js via CDN in manifest.json
-    // or bundle it. For now, we'll use the CDN approach.
-    const { pipeline } = await import('https://cdn.jsdelivr.net/npm/@xenova/transformers@2.10.0');
-    
-    // Load the feature-extraction pipeline with all-MiniLM-L6-v2
-    embeddingPipeline = await pipeline(
-      'feature-extraction',
-      'Xenova/all-MiniLM-L6-v2',
-      {
-        quantized: true, // Use quantized model for smaller size
-      }
-    );
-    
-    console.log('[RAG] Embedding model loaded successfully');
-    pipelineLoading = false;
-    return embeddingPipeline;
-  } catch (e) {
-    console.error('[RAG] Failed to load embedding model:', e);
-    pipelineLoading = false;
-    
-    // Fallback: return null and use simple keyword matching instead
-    return null;
-  }
+  // Skip CDN loading - use local fallback instead
+  console.log('[RAG] Using local TF-IDF based embedding (transformers.js CDN unavailable)');
+  return null;
 }
 
 /**
  * Generate embedding for a text string
+ * Uses local TF-IDF based approach as fallback when transformers.js is unavailable
  * @param {string} text - Input text
- * @returns {Promise<Float32Array|null>} 384-dim embedding vector or null if failed
+ * @returns {Promise<Float32Array|null>} Embedding vector or null if failed
  */
 async function generateEmbedding(text) {
   try {
@@ -241,31 +276,83 @@ async function generateEmbedding(text) {
       return null;
     }
     
-    // Truncate very long texts (model has 512 token limit)
+    // Truncate very long texts
     const truncated = text.slice(0, 4000);
     
     const pipeline = await initEmbeddingPipeline();
     if (!pipeline) {
-      console.warn('[RAG] Pipeline not available, using fallback');
-      return null;
+      // Use local TF-IDF based embedding as fallback
+      return generateLocalEmbedding(truncated);
     }
     
-    // Generate embedding
+    // Generate embedding (if transformers.js loads in future)
     const output = await pipeline(truncated, {
-      pooling: 'mean', // Mean pooling of token embeddings
-      normalize: true  // L2 normalize for cosine similarity
+      pooling: 'mean',
+      normalize: true
     });
     
-    // Extract the embedding array
-    // transformers.js returns a Tensor, convert to Float32Array
     const embedding = new Float32Array(output.data);
-    
     console.log('[RAG] Generated embedding, dim:', embedding.length);
     return embedding;
   } catch (e) {
     console.error('[RAG] generateEmbedding failed:', e);
-    return null;
+    // Fallback to local embedding
+    return generateLocalEmbedding(text);
   }
+}
+
+/**
+ * Generate a simple local embedding using TF-IDF inspired approach
+ * Creates a 128-dimensional vector based on term frequencies and keywords
+ * @param {string} text - Input text
+ * @returns {Float32Array} 128-dim embedding vector
+ */
+function generateLocalEmbedding(text) {
+  const dim = 128;
+  const embedding = new Float32Array(dim);
+  
+  // Normalize text
+  const normalized = text.toLowerCase().replace(/[^\w\s]/g, ' ');
+  const words = normalized.split(/\s+/).filter(w => w.length > 2);
+  
+  // Common stop words to filter out
+  const stopWords = new Set(['the', 'and', 'for', 'with', 'this', 'that', 'from', 'are', 'was', 'were', 'been', 'have', 'has']);
+  const filtered = words.filter(w => !stopWords.has(w));
+  
+  // Create term frequency map
+  const termFreq = {};
+  for (const word of filtered) {
+    termFreq[word] = (termFreq[word] || 0) + 1;
+  }
+  
+  // Hash words into embedding dimensions
+  for (const [word, freq] of Object.entries(termFreq)) {
+    // Simple hash function to map word to dimension
+    let hash = 0;
+    for (let i = 0; i < word.length; i++) {
+      hash = ((hash << 5) - hash) + word.charCodeAt(i);
+      hash = hash & hash; // Convert to 32-bit integer
+    }
+    
+    const idx = Math.abs(hash) % dim;
+    const weight = Math.log(1 + freq); // TF component
+    embedding[idx] += weight;
+  }
+  
+  // L2 normalization
+  let norm = 0;
+  for (let i = 0; i < dim; i++) {
+    norm += embedding[i] * embedding[i];
+  }
+  norm = Math.sqrt(norm);
+  
+  if (norm > 0) {
+    for (let i = 0; i < dim; i++) {
+      embedding[i] /= norm;
+    }
+  }
+  
+  return embedding;
 }
 
 // =============================================================================
@@ -317,40 +404,97 @@ async function retrieve(queryText, topK = 3, filters = {}) {
       return await fallbackKeywordSearch(queryText, topK, filters);
     }
     
-    // Get all stored embeddings
+    // Get all stored embeddings (now chunks)
     const allEmbeddings = await getAllEmbeddings();
-    console.log('[RAG] Retrieved', allEmbeddings.length, 'stored embeddings');
+    console.log('[RAG] Retrieved', allEmbeddings.length, 'stored chunk embeddings');
     
     if (allEmbeddings.length === 0) {
       console.log('[RAG] No embeddings in database yet');
       return [];
     }
     
-    // Compute similarities
-    const results = [];
+    // Phase 3: Compute similarities with adaptive weighting
+    const chunkResults = [];
     for (const record of allEmbeddings) {
       // Apply filters if provided
       if (filters.platform && record.metadata?.platform !== filters.platform) {
         continue;
       }
       
+      // Cosine similarity
       const similarity = cosineSimilarity(queryEmbedding, record.embedding);
-      results.push({
+      
+      // Apply adaptive weight
+      const weight = record.metadata?.weight || calculateAdaptiveWeight(record.metadata, queryText);
+      const weightedScore = similarity * weight;
+      
+      chunkResults.push({
         id: record.id,
+        parentId: record.metadata?.parentId || record.id,
+        chunkIndex: record.metadata?.chunkIndex || 0,
         score: similarity,
+        weightedScore: weightedScore,
+        weight: weight,
         metadata: record.metadata,
         text: record.text,
         timestamp: record.timestamp
       });
     }
     
-    // Sort by similarity (highest first) and return top-K
-    results.sort((a, b) => b.score - a.score);
-    const topResults = results.slice(0, topK);
+    // Sort by weighted score (highest first) and return top-K chunks
+    chunkResults.sort((a, b) => b.weightedScore - a.weightedScore);
     
-    console.log('[RAG] Top', topK, 'results:', topResults.map(r => ({
+    // Take top N*3 chunks to have enough for re-ranking
+    const topChunks = chunkResults.slice(0, topK * 3);
+    
+    // Re-rank: Group by parent conversation and select best chunks
+    const conversationGroups = {};
+    for (const chunk of topChunks) {
+      const parentId = chunk.parentId;
+      if (!conversationGroups[parentId]) {
+        conversationGroups[parentId] = [];
+      }
+      conversationGroups[parentId].push(chunk);
+    }
+    
+    // Combine chunks from same conversation into context packages
+    const contextPackages = Object.entries(conversationGroups).map(([parentId, chunks]) => {
+      // Sort chunks by position in original conversation
+      chunks.sort((a, b) => a.chunkIndex - b.chunkIndex);
+      
+      // Combine text with ellipsis between non-consecutive chunks
+      let combinedText = '';
+      let lastIndex = -1;
+      for (const chunk of chunks) {
+        if (lastIndex >= 0 && chunk.chunkIndex !== lastIndex + 1) {
+          combinedText += '\n\n[...]\n\n';
+        }
+        combinedText += chunk.text;
+        lastIndex = chunk.chunkIndex;
+      }
+      
+      // Aggregate score (max score from chunks)
+      const maxScore = Math.max(...chunks.map(c => c.weightedScore));
+      
+      return {
+        id: parentId,
+        score: maxScore,
+        chunks: chunks.length,
+        metadata: chunks[0].metadata,
+        text: combinedText,
+        timestamp: chunks[0].timestamp,
+        chunkDetails: chunks.map(c => ({ index: c.chunkIndex, score: c.score.toFixed(3) }))
+      };
+    });
+    
+    // Sort packages by score and return top-K
+    contextPackages.sort((a, b) => b.score - a.score);
+    const topResults = contextPackages.slice(0, topK);
+    
+    console.log('[RAG] Top', topK, 'context packages:', topResults.map(r => ({
       id: r.id,
       score: r.score.toFixed(3),
+      chunks: r.chunks,
       platform: r.metadata?.platform
     })));
     
@@ -425,25 +569,51 @@ async function fallbackKeywordSearch(queryText, topK = 3, filters = {}) {
  */
 async function indexConversation(id, text, metadata) {
   try {
-    console.log('[RAG] Indexing conversation:', id);
+    console.log('[RAG] Indexing conversation with chunking:', id);
     
-    // Check if already indexed
-    const existing = await getEmbeddingById(id);
+    // Check if already indexed (check first chunk)
+    const existing = await getEmbeddingById(id + '_chunk_0');
     if (existing) {
       console.log('[RAG] Conversation already indexed, skipping:', id);
       return true;
     }
     
-    // Generate embedding
-    const embedding = await generateEmbedding(text);
-    if (!embedding) {
-      console.warn('[RAG] Failed to generate embedding for:', id);
-      return false;
+    // Phase 3: Split into semantic chunks
+    const chunks = semanticChunk(text);
+    console.log(`[RAG] Split conversation ${id} into ${chunks.length} chunks`);
+    
+    // Calculate adaptive weight
+    const weight = calculateAdaptiveWeight(metadata, text);
+    
+    // Index each chunk separately
+    let successCount = 0;
+    for (let i = 0; i < chunks.length; i++) {
+      const chunkId = `${id}_chunk_${i}`;
+      const chunkText = chunks[i];
+      
+      // Generate embedding for chunk
+      const embedding = await generateEmbedding(chunkText);
+      if (!embedding) {
+        console.warn(`[RAG] Failed to generate embedding for chunk ${i} of ${id}`);
+        continue;
+      }
+      
+      // Store chunk with parent reference and weight
+      const chunkMetadata = {
+        ...metadata,
+        parentId: id,
+        chunkIndex: i,
+        totalChunks: chunks.length,
+        weight: weight,
+        accessCount: metadata.accessCount || 0
+      };
+      
+      const stored = await storeEmbedding(chunkId, embedding, chunkMetadata, chunkText);
+      if (stored) successCount++;
     }
     
-    // Store embedding
-    const stored = await storeEmbedding(id, embedding, metadata, text);
-    return stored;
+    console.log(`[RAG] Indexed ${successCount}/${chunks.length} chunks for conversation ${id} (weight: ${weight.toFixed(2)})`);
+    return successCount > 0;
   } catch (e) {
     console.error('[RAG] indexConversation failed:', e);
     return false;
@@ -536,6 +706,110 @@ async function clearAllEmbeddings() {
 }
 
 // =============================================================================
+// Topic Clustering (Phase 3)
+// =============================================================================
+
+/**
+ * Cluster topics using cosine similarity thresholding
+ * Groups topics that are semantically similar (e.g., "Firebase Auth" + "Authentication Issues")
+ * 
+ * @param {number} threshold - Similarity threshold (0.7 = 70% similar)
+ * @returns {Promise<Array>} Array of theme clusters: [{ theme: string, topics: [], count: number }]
+ */
+async function getThemeClusters(threshold = 0.7) {
+  try {
+    console.log('[RAG Clustering] Starting topic clustering...');
+    
+    // Get all embeddings
+    const allEmbeddings = await getAllEmbeddings();
+    
+    // Extract unique topics across all conversations
+    const topicMap = new Map(); // topic -> { text, count, embeddings: [] }
+    
+    for (const record of allEmbeddings) {
+      const topics = record.metadata?.topics || [];
+      for (const topic of topics) {
+        if (!topicMap.has(topic)) {
+          topicMap.set(topic, { text: topic, count: 0, embeddings: [] });
+        }
+        const entry = topicMap.get(topic);
+        entry.count++;
+        // Store chunk embedding as proxy for topic embedding
+        entry.embeddings.push(record.embedding);
+      }
+    }
+    
+    console.log(`[RAG Clustering] Found ${topicMap.size} unique topics`);
+    
+    if (topicMap.size === 0) return [];
+    
+    // Average embeddings for each topic
+    const topicEmbeddings = [];
+    for (const [topic, data] of topicMap.entries()) {
+      // Average all chunk embeddings for this topic
+      const avgEmbedding = new Float32Array(data.embeddings[0].length);
+      for (const emb of data.embeddings) {
+        for (let i = 0; i < emb.length; i++) {
+          avgEmbedding[i] += emb[i];
+        }
+      }
+      for (let i = 0; i < avgEmbedding.length; i++) {
+        avgEmbedding[i] /= data.embeddings.length;
+      }
+      
+      topicEmbeddings.push({
+        topic,
+        count: data.count,
+        embedding: avgEmbedding
+      });
+    }
+    
+    // Cosine similarity clustering (greedy approach)
+    const clusters = [];
+    const clustered = new Set();
+    
+    for (let i = 0; i < topicEmbeddings.length; i++) {
+      if (clustered.has(i)) continue;
+      
+      const cluster = {
+        theme: topicEmbeddings[i].topic, // Use most common topic as theme name
+        topics: [topicEmbeddings[i].topic],
+        count: topicEmbeddings[i].count
+      };
+      
+      clustered.add(i);
+      
+      // Find similar topics
+      for (let j = i + 1; j < topicEmbeddings.length; j++) {
+        if (clustered.has(j)) continue;
+        
+        const similarity = cosineSimilarity(
+          topicEmbeddings[i].embedding,
+          topicEmbeddings[j].embedding
+        );
+        
+        if (similarity >= threshold) {
+          cluster.topics.push(topicEmbeddings[j].topic);
+          cluster.count += topicEmbeddings[j].count;
+          clustered.add(j);
+        }
+      }
+      
+      clusters.push(cluster);
+    }
+    
+    // Sort clusters by count (most frequent first)
+    clusters.sort((a, b) => b.count - a.count);
+    
+    console.log(`[RAG Clustering] Created ${clusters.length} theme clusters`);
+    return clusters;
+  } catch (e) {
+    console.error('[RAG Clustering] Failed:', e);
+    return [];
+  }
+}
+
+// =============================================================================
 // Public API
 // =============================================================================
 
@@ -544,6 +818,194 @@ window.RAGEngine = {
   initEmbeddingPipeline,
   generateEmbedding,
   retrieve,
+  
+  // Phase 4: Learning & Reflection helpers
+  async getThemeEvolution(options = {}) {
+    const { threshold = 0.7, bucket = 'day', startTs = null, endTs = null } = options;
+    // Build per-conversation view first (dedupe chunks)
+    const all = await getAllEmbeddings();
+    if (all.length === 0) return { themes: [], timeline: [] };
+
+    // Map parentId -> { ts, topics, platform }
+    const convMap = new Map();
+    for (const r of all) {
+      const pid = r.metadata?.parentId || r.id;
+      const ts = r.timestamp || Date.now();
+      const topics = r.metadata?.topics || [];
+      const platform = r.metadata?.platform || 'unknown';
+      if (!convMap.has(pid)) {
+        convMap.set(pid, { ts, topics: new Set(topics), platform });
+      } else {
+        const ent = convMap.get(pid);
+        ent.ts = Math.min(ent.ts, ts);
+        topics.forEach(t => ent.topics.add(t));
+      }
+    }
+
+    // Build clusters to normalize themes
+    const clusters = await getThemeClusters(threshold);
+    const normalizeToTheme = (topic) => {
+      // Find cluster containing topic
+      for (const c of clusters) {
+        if (c.topics.includes(topic)) return c.theme;
+      }
+      return topic;
+    };
+
+    // Bucket helper
+    const fmtBucket = (ts) => {
+      const d = new Date(ts);
+      if (bucket === 'week') {
+        // ISO week key: YYYY-Www
+        const onejan = new Date(d.getFullYear(),0,1);
+        const week = Math.ceil((((d - onejan) / 86400000) + onejan.getDay()+1)/7);
+        return `${d.getFullYear()}-W${String(week).padStart(2,'0')}`;
+      }
+      // default day
+      return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    };
+
+    // Aggregate counts per theme per bucket
+    const themeBuckets = new Map(); // theme -> Map(bucketKey -> count)
+    let minTs = Infinity, maxTs = -Infinity;
+    for (const [pid, ent] of convMap.entries()) {
+      const ts = ent.ts;
+      if ((startTs && ts < startTs) || (endTs && ts > endTs)) continue;
+      minTs = Math.min(minTs, ts); maxTs = Math.max(maxTs, ts);
+      const key = fmtBucket(ts);
+      for (const t of ent.topics) {
+        const theme = normalizeToTheme(t);
+        if (!themeBuckets.has(theme)) themeBuckets.set(theme, new Map());
+        const m = themeBuckets.get(theme);
+        m.set(key, (m.get(key) || 0) + 1);
+      }
+    }
+
+    // Build sparkline arrays (sorted by time)
+    const sortKeys = (keys) => keys.sort((a,b) => a.localeCompare(b));
+    const themes = [];
+    for (const [theme, bucketMap] of themeBuckets.entries()) {
+      const keys = sortKeys(Array.from(bucketMap.keys()));
+      const counts = keys.map(k => bucketMap.get(k));
+      const total = counts.reduce((s,c)=>s+c,0);
+      const firstKey = keys[0];
+      const lastKey = keys[keys.length-1];
+      themes.push({
+        theme,
+        total,
+        firstKey,
+        lastKey,
+        spark: counts,
+        keys
+      });
+    }
+    themes.sort((a,b)=> b.total - a.total);
+
+    // Persist as theme_nodes for quick access
+    try {
+      const payload = themes.map(t => ({
+        theme: t.theme,
+        total: t.total,
+        firstKey: t.firstKey,
+        lastKey: t.lastKey,
+        spark: t.spark,
+        keys: t.keys,
+        updatedAt: Date.now()
+      }));
+      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+        const obj = {}; obj[THEME_NODES_KEY] = payload; chrome.storage.local.set(obj, ()=>{});
+      } else {
+        localStorage.setItem(THEME_NODES_KEY, JSON.stringify(payload));
+      }
+    } catch {}
+
+    return { themes, range: { start: isFinite(minTs)?minTs:null, end: isFinite(maxTs)?maxTs:null }, bucket };
+  },
+
+  async getSavedThemeNodes() {
+    try {
+      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+        return await new Promise((resolve)=> chrome.storage.local.get([THEME_NODES_KEY], r => resolve(r[THEME_NODES_KEY] || [])));
+      }
+      const raw = localStorage.getItem(THEME_NODES_KEY); return raw ? JSON.parse(raw) : [];
+    } catch { return []; }
+  },
+
+  async getAnalytics() {
+    // Compute metrics from embeddings plus persisted counters
+    const embeddings = await getAllEmbeddings();
+    const parentIds = new Set();
+    const topics = new Set();
+    for (const e of embeddings) {
+      if (e.metadata?.parentId) parentIds.add(e.metadata.parentId);
+      (e.metadata?.topics || []).forEach(t=> topics.add(t));
+    }
+    const totalConversations = parentIds.size || 0;
+    const uniqueTags = topics.size || 0;
+
+    // Load counters
+    let counters = { totalSynthesisSessions: 0, revisits: 0 };
+    try {
+      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+        const res = await new Promise((resolve)=> chrome.storage.local.get([METRICS_KEY], r => resolve(r[METRICS_KEY] || {})));
+        counters = { totalSynthesisSessions: res.totalSynthesisSessions||0, revisits: res.revisits||0 };
+      } else {
+        const raw = localStorage.getItem(METRICS_KEY); const obj = raw? JSON.parse(raw):{};
+        counters = { totalSynthesisSessions: obj.totalSynthesisSessions||0, revisits: obj.revisits||0 };
+      }
+    } catch {}
+
+    return {
+      totalConversations,
+      uniqueTags,
+      totalSynthesisSessions: counters.totalSynthesisSessions,
+      revisitedTopics: counters.revisits
+    };
+  },
+
+  async incrementMetric(name, delta = 1) {
+    try {
+      let obj = {};
+      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+        const cur = await new Promise((resolve)=> chrome.storage.local.get([METRICS_KEY], r => resolve(r[METRICS_KEY] || {})));
+        obj = cur || {};
+        obj[name] = (obj[name] || 0) + delta;
+        const payload = {}; payload[METRICS_KEY] = obj; chrome.storage.local.set(payload, ()=>{});
+      } else {
+        const raw = localStorage.getItem(METRICS_KEY); obj = raw? JSON.parse(raw):{};
+        obj[name] = (obj[name] || 0) + delta;
+        localStorage.setItem(METRICS_KEY, JSON.stringify(obj));
+      }
+      return true;
+    } catch { return false; }
+  },
+
+  async generateReflection({ days = 7 } = {}) {
+    const endTs = Date.now();
+    const startTs = endTs - days * 24 * 60 * 60 * 1000;
+    const evo = await this.getThemeEvolution({ startTs, endTs, bucket: 'day' });
+    const themes = evo.themes.slice(0, 8); // top themes
+    if (themes.length === 0) return '# Weekly Reflection\n\nNo new activity in the selected period.';
+
+    // Template-based summary
+    const lines = [];
+    lines.push('# Weekly Reflection');
+    lines.push(`Period: ${new Date(startTs).toLocaleDateString()} → ${new Date(endTs).toLocaleDateString()}`);
+    lines.push('');
+    lines.push('## Theme Evolutions');
+    for (const t of themes) {
+      const dir = (t.spark[t.spark.length-1]||0) >= (t.spark[0]||0) ? 'growing' : 'stabilizing';
+      const trend = t.spark.slice(-3).reduce((s,c)=> s+c,0) >= t.spark.slice(0,3).reduce((s,c)=> s+c,0) ? 'uptrend' : 'downtrend';
+      lines.push(`- ${t.theme}: ${dir} (${trend}). Total refs: ${t.total}.`);
+    }
+    lines.push('');
+    lines.push('## Focus for Next Week');
+    lines.push('- Double down on the top 1-2 growing themes.');
+    lines.push('- Revisit stabilizing topics to consolidate learnings.');
+    lines.push('');
+    lines.push('> Generated locally from your recent conversations (no external calls).');
+    return lines.join('\n');
+  },
   
   // Indexing
   indexConversation,
@@ -556,17 +1018,29 @@ window.RAGEngine = {
   deleteEmbedding,
   clearAllEmbeddings,
   
+  // Phase 3: Advanced features
+  semanticChunk,
+  calculateAdaptiveWeight,
+  getThemeClusters,
+  
   // Utilities
   cosineSimilarity,
   
   // Stats
   async getStats() {
     const embeddings = await getAllEmbeddings();
+    const chunks = embeddings.filter(e => e.metadata?.parentId);
+    const conversations = new Set(chunks.map(c => c.metadata.parentId)).size;
+    
     return {
       totalEmbeddings: embeddings.length,
+      totalChunks: chunks.length,
+      totalConversations: conversations,
+      avgChunksPerConv: conversations > 0 ? (chunks.length / conversations).toFixed(1) : 0,
       oldestTimestamp: embeddings.length > 0 ? Math.min(...embeddings.map(e => e.timestamp)) : null,
       newestTimestamp: embeddings.length > 0 ? Math.max(...embeddings.map(e => e.timestamp)) : null,
-      platforms: [...new Set(embeddings.map(e => e.metadata?.platform).filter(Boolean))]
+      platforms: [...new Set(embeddings.map(e => e.metadata?.platform).filter(Boolean))],
+      dbSizeBytes: embeddings.reduce((sum, e) => sum + (e.embedding?.byteLength || 0) + (e.text?.length || 0) * 2, 0)
     };
   }
 };
