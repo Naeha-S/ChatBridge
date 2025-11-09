@@ -246,6 +246,17 @@
         return true;
       }
       
+      // Get insights from last scan (for popup Insights tab)
+      if (msg && msg.type === 'get_insights') {
+        try {
+          const insights = (window.ChatBridge && window.ChatBridge._lastScan && window.ChatBridge._lastScan.insights) || null;
+          if (sendResponse) sendResponse({ ok: true, insights });
+        } catch (e) {
+          if (sendResponse) sendResponse({ ok: false, error: e.message });
+        }
+        return true;
+      }
+      
       if (msg && msg.type === 'cs_self_test') {
         try {
           // Minimal sanity checks only; no DOM mutations
@@ -545,30 +556,67 @@
     const atts = [];
     if (!root || !root.querySelectorAll) return atts;
     try {
-      // Images
-  const imgs = cbQSA(root, 'img[src]');
+      // Images - improved selector to catch all image formats
+      const imgs = cbQSA(root, 'img[src], img[data-src], picture img, figure img');
       for (const img of imgs) {
         try {
-          const src = img.getAttribute('src') || '';
+          let src = img.getAttribute('src') || img.getAttribute('data-src') || '';
+          
+          // Handle base64 and blob URLs
+          if (!src && img.currentSrc) src = img.currentSrc;
           if (!src) continue;
-          // skip tiny UI icons
+          
+          // Don't skip data URLs - they're valid images
+          const isDataUrl = src.startsWith('data:image');
+          const isBlobUrl = src.startsWith('blob:');
+          const isHttpUrl = src.startsWith('http');
+          
+          if (!isDataUrl && !isBlobUrl && !isHttpUrl && !src.startsWith('/')) continue;
+          
+          // Get image dimensions
           const r = img.getBoundingClientRect();
-          if (r && (r.width < 24 || r.height < 24)) continue;
-          atts.push({ kind: 'image', url: src, alt: img.getAttribute('alt') || '', name: (src.split('?')[0].split('#')[0].split('/').pop() || 'image') });
-        } catch (e) {}
+          const width = r?.width || img.naturalWidth || img.width || 0;
+          const height = r?.height || img.naturalHeight || img.height || 0;
+          
+          // Skip tiny UI icons (but be more lenient - some valid images are small)
+          if (width > 0 && height > 0 && width < 20 && height < 20) continue;
+          
+          // Extract metadata
+          const alt = img.getAttribute('alt') || img.getAttribute('title') || '';
+          let name = 'image';
+          if (!isDataUrl && !isBlobUrl) {
+            name = src.split('?')[0].split('#')[0].split('/').pop() || 'image';
+          } else if (isDataUrl) {
+            const match = src.match(/data:image\/(\w+)/);
+            name = match ? `image.${match[1]}` : 'image';
+          }
+          
+          atts.push({ 
+            kind: 'image', 
+            url: src, 
+            alt, 
+            name,
+            width: Math.round(width),
+            height: Math.round(height)
+          });
+        } catch (e) {
+          console.warn('[ChatBridge] Image extraction error:', e);
+        }
       }
+      
       // Videos
-  const vids = cbQSA(root, 'video[src], video source[src]');
+      const vids = cbQSA(root, 'video[src], video source[src], [data-video-src]');
       for (const v of vids) {
         try {
-          const src = v.getAttribute('src') || '';
+          const src = v.getAttribute('src') || v.getAttribute('data-video-src') || '';
           if (!src) continue;
           atts.push({ kind: 'video', url: src, name: (src.split('?')[0].split('#')[0].split('/').pop() || 'video') });
         } catch (e) {}
       }
+      
       // Docs/links
       const exts = /(\.pdf|\.docx?|\.pptx?|\.xlsx?|\.zip|\.rar|\.7z|\.csv|\.md|\.txt)$/i;
-  const links = cbQSA(root, 'a[href]');
+      const links = cbQSA(root, 'a[href]');
       for (const a of links) {
         try {
           const href = a.getAttribute('href') || '';
@@ -578,10 +626,116 @@
           }
         } catch (e) {}
       }
-    } catch (e) {}
+    } catch (e) {
+      console.warn('[ChatBridge] Attachment extraction error:', e);
+    }
     // dedupe by url
     const seen = new Set();
     return atts.filter(a => { if (seen.has(a.url)) return false; seen.add(a.url); return true; });
+  }
+
+  // Extract structured content metadata for insights (code blocks, lists, URLs, images)
+  function extractContentMetadata(root) {
+    const metadata = {
+      codeBlocks: [],
+      lists: [],
+      links: [],
+      images: [],
+      hasCode: false,
+      hasList: false,
+      hasLinks: false,
+      hasImages: false
+    };
+    
+    if (!root) return metadata;
+    
+    try {
+      // Extract code blocks
+      const codeBlocks = cbQSA(root, 'pre, code, [class*="code"], [class*="Code"]');
+      for (const block of codeBlocks) {
+        try {
+          const code = block.textContent || '';
+          if (code.trim().length < 5) continue;
+          
+          const lang = block.className?.match(/language-(\w+)/)?.[1] || 
+                      block.getAttribute('data-lang') || 
+                      (block.tagName === 'PRE' ? 'text' : 'inline');
+          
+          metadata.codeBlocks.push({
+            language: lang,
+            code: code.trim(),
+            isBlock: block.tagName === 'PRE',
+            lineCount: code.split('\n').length
+          });
+          metadata.hasCode = true;
+        } catch (e) {}
+      }
+      
+      // Extract lists
+      const lists = cbQSA(root, 'ul, ol');
+      for (const list of lists) {
+        try {
+          const items = cbQSA(list, ':scope > li').map(li => (li.textContent || '').trim()).filter(t => t);
+          if (items.length === 0) continue;
+          
+          metadata.lists.push({
+            type: list.tagName.toLowerCase(), // 'ul' or 'ol'
+            items,
+            itemCount: items.length
+          });
+          metadata.hasList = true;
+        } catch (e) {}
+      }
+      
+      // Extract all links (not just file links)
+      const links = cbQSA(root, 'a[href]');
+      for (const link of links) {
+        try {
+          const href = link.getAttribute('href') || '';
+          const text = (link.textContent || '').trim();
+          if (!href || !text) continue;
+          
+          // Skip internal anchors and javascript links
+          if (href.startsWith('#') || href.startsWith('javascript:')) continue;
+          
+          metadata.links.push({
+            url: href,
+            text,
+            isExternal: href.startsWith('http')
+          });
+          metadata.hasLinks = true;
+        } catch (e) {}
+      }
+      
+      // Extract images (enhanced)
+      const imgs = cbQSA(root, 'img[src], img[data-src], picture img');
+      for (const img of imgs) {
+        try {
+          const src = img.getAttribute('src') || img.getAttribute('data-src') || img.currentSrc || '';
+          if (!src) continue;
+          
+          const r = img.getBoundingClientRect();
+          const width = r?.width || img.naturalWidth || img.width || 0;
+          const height = r?.height || img.naturalHeight || img.height || 0;
+          
+          // Skip tiny icons
+          if (width > 0 && height > 0 && width < 20 && height < 20) continue;
+          
+          metadata.images.push({
+            url: src,
+            alt: img.getAttribute('alt') || '',
+            width: Math.round(width),
+            height: Math.round(height)
+          });
+          metadata.hasImages = true;
+        } catch (e) {}
+      }
+      
+    } catch (e) {
+      console.warn('[ChatBridge] Content metadata extraction error:', e);
+    }
+    
+    return metadata;
   }
 
   function normalizeMessages(raw, maxMessages) {
@@ -596,7 +750,15 @@
         if (!text) continue;
       const role = (m.role === 'user') ? 'user' : 'assistant'; const prev = out[out.length - 1];
       const attachments = Array.isArray(m.attachments) ? m.attachments.slice(0) : [];
-      if (!prev || prev.text !== text || prev.role !== role) out.push({ role, text, attachments });
+      
+      // Extract metadata for insights if element is available
+      const metadata = m.el ? extractContentMetadata(m.el) : null;
+      
+      if (!prev || prev.text !== text || prev.role !== role) {
+        const msg = { role, text, attachments };
+        if (metadata) msg.metadata = metadata;
+        out.push(msg);
+      }
       else {
         // merge attachments when deduping contiguous duplicates
         try {
@@ -604,6 +766,20 @@
           const combined = (existing.concat(attachments) || []).filter(a => a && a.url);
           const seen = new Set();
           prev.attachments = combined.filter(a => { const k = a.url + '|' + (a.kind||''); if (seen.has(k)) return false; seen.add(k); return true; });
+          
+          // Merge metadata
+          if (metadata && prev.metadata) {
+            prev.metadata.codeBlocks = [...(prev.metadata.codeBlocks || []), ...(metadata.codeBlocks || [])];
+            prev.metadata.lists = [...(prev.metadata.lists || []), ...(metadata.lists || [])];
+            prev.metadata.links = [...(prev.metadata.links || []), ...(metadata.links || [])];
+            prev.metadata.images = [...(prev.metadata.images || []), ...(metadata.images || [])];
+            prev.metadata.hasCode = prev.metadata.hasCode || metadata.hasCode;
+            prev.metadata.hasList = prev.metadata.hasList || metadata.hasList;
+            prev.metadata.hasLinks = prev.metadata.hasLinks || metadata.hasLinks;
+            prev.metadata.hasImages = prev.metadata.hasImages || metadata.hasImages;
+          } else if (metadata) {
+            prev.metadata = metadata;
+          }
         } catch (e) {}
       }
     }
@@ -620,6 +796,7 @@
     window.ChatBridgeHelpers.normalizeChatMessages = normalizeMessages;
     // Expose for adapters to extract formatted text (code blocks, lists, links)
     window.extractTextWithFormatting = extractTextWithFormatting;
+    window.extractContentMetadata = extractContentMetadata;
     // expose utils under a namespaced object to avoid collisions
     window.ChatBridgeHelpers.utils = Object.assign({}, (window.ChatBridgeHelpers.utils||{}), {
       sleep: cbSleep,
@@ -6511,6 +6688,96 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
     return { host, avatar, panel };
   }
 
+  // Extract insights from messages metadata (code blocks, lists, links, images)
+  function extractInsightsFromMessages(messages) {
+    const insights = {
+      totalCodeBlocks: 0,
+      totalLists: 0,
+      totalLinks: 0,
+      totalImages: 0,
+      codeLanguages: {},
+      allCodeBlocks: [],
+      allLists: [],
+      allLinks: [],
+      allImages: [],
+      messagesWithCode: 0,
+      messagesWithLists: 0,
+      messagesWithLinks: 0,
+      messagesWithImages: 0
+    };
+    
+    if (!Array.isArray(messages)) return insights;
+    
+    try {
+      for (const msg of messages) {
+        if (!msg.metadata) continue;
+        
+        const meta = msg.metadata;
+        
+        // Code blocks
+        if (meta.hasCode && meta.codeBlocks) {
+          insights.messagesWithCode++;
+          insights.totalCodeBlocks += meta.codeBlocks.length;
+          
+          for (const block of meta.codeBlocks) {
+            const lang = block.language || 'text';
+            insights.codeLanguages[lang] = (insights.codeLanguages[lang] || 0) + 1;
+            insights.allCodeBlocks.push({
+              language: lang,
+              code: block.code,
+              lineCount: block.lineCount,
+              isBlock: block.isBlock
+            });
+          }
+        }
+        
+        // Lists
+        if (meta.hasList && meta.lists) {
+          insights.messagesWithLists++;
+          insights.totalLists += meta.lists.length;
+          insights.allLists.push(...meta.lists);
+        }
+        
+        // Links
+        if (meta.hasLinks && meta.links) {
+          insights.messagesWithLinks++;
+          insights.totalLinks += meta.links.length;
+          insights.allLinks.push(...meta.links);
+        }
+        
+        // Images
+        if (meta.hasImages && meta.images) {
+          insights.messagesWithImages++;
+          insights.totalImages += meta.images.length;
+          insights.allImages.push(...meta.images);
+        }
+      }
+      
+      // Dedupe links and images by URL
+      const seenLinks = new Set();
+      insights.allLinks = insights.allLinks.filter(link => {
+        if (seenLinks.has(link.url)) return false;
+        seenLinks.add(link.url);
+        return true;
+      });
+      
+      const seenImages = new Set();
+      insights.allImages = insights.allImages.filter(img => {
+        if (seenImages.has(img.url)) return false;
+        seenImages.add(img.url);
+        return true;
+      });
+      
+      insights.totalLinks = insights.allLinks.length;
+      insights.totalImages = insights.allImages.length;
+      
+    } catch (e) {
+      console.warn('[ChatBridge] extractInsightsFromMessages error:', e);
+    }
+    
+    return insights;
+  }
+
   async function scanChat() {
     try {
       debugLog('=== SCAN START ===');
@@ -6734,6 +7001,10 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         const atts = [];
         try { normalized.forEach(m => { if (Array.isArray(m.attachments)) atts.push(...m.attachments); }); } catch(_){}
         window.ChatBridge._lastScan.attachments = atts;
+        
+        // Extract insights from metadata
+        const insights = extractInsightsFromMessages(normalized);
+        window.ChatBridge._lastScan.insights = insights;
       }
     } catch(_) {}
 
