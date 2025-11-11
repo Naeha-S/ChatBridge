@@ -73,10 +73,10 @@
 
   // avoid const redeclaration causing SyntaxError in some injection scenarios
   var CB_MAX_MESSAGES = (typeof window !== 'undefined' && window.__CHATBRIDGE && window.__CHATBRIDGE.MAX_MESSAGES) ? window.__CHATBRIDGE.MAX_MESSAGES : 200;
-    const DOM_STABLE_MS = 400; // Reduced from 600ms for faster scan
-    const DOM_STABLE_TIMEOUT_MS = 4000; // Reduced from 8000ms for faster scan
-  const SCROLL_MAX_STEPS = 25;
-    const SCROLL_STEP_PAUSE_MS = 200; // Reduced from 320ms for faster scrolling
+    const DOM_STABLE_MS = 150; // Ultra-fast scan - minimal wait
+    const DOM_STABLE_TIMEOUT_MS = 2000; // Reduced timeout for faster completion
+  const SCROLL_MAX_STEPS = 20; // Fewer steps but faster
+    const SCROLL_STEP_PAUSE_MS = 80; // Minimal pause for ultra-fast scrolling
   const DEBUG = !!(typeof window !== 'undefined' && window.__CHATBRIDGE_DEBUG === true);
 
   function debugLog(...args) { if (!DEBUG) return; try { console.debug('[ChatBridge]', ...args); } catch (e) {} }
@@ -1416,47 +1416,83 @@
           }
         });
 
-        // 4. Auto-Organize (tag and organize conversations)
-        const organizeBtn = createFeatureCard('Auto-Organize', 'Automatically tag and organize your chats', '🗂️', async () => {
-          addLoadingToButton(organizeBtn, 'Organizing...');
+        // 4. Context Snapshot (Quick export current chat context)
+        const snapshotBtn = createFeatureCard('Context Snapshot', 'Export current chat as shareable context', '�', async () => {
+          addLoadingToButton(snapshotBtn, 'Creating snapshot...');
           try {
-            const convs = await loadConversationsAsync();
-            let organized = 0;
+            // Scan current chat
+            const msgs = await scanChat();
+            if (!msgs || msgs.length === 0) {
+              toast('No messages found in current chat');
+              removeLoadingFromButton(snapshotBtn, 'Context Snapshot');
+              return;
+            }
             
-            for (const conv of convs.slice(0, 20)) { // Limit to recent 20
-              if (!conv.topics || !conv.topics.length) {
-                // Extract topics
-                const full = conv.conversation.map(m => `${m.role}: ${m.text}`).join('\n\n');
-                const prompt = `Extract 3-5 short topic tags for this conversation. Output only comma-separated tags:\n\n${full.slice(0, 2000)}`;
-                const res = await callGeminiAsync({ action: 'prompt', text: prompt, length: 'short' });
-                
-                if (res && res.ok) {
-                  const topics = res.result.split(',').map(t => t.trim()).slice(0, 5);
-                  conv.topics = topics;
-                  organized++;
-                }
+            // Generate comprehensive snapshot with metadata
+            const now = new Date();
+            const platform = location.hostname || 'Unknown';
+            const url = location.href;
+            
+            let snapshot = `# ChatBridge Context Snapshot\n`;
+            snapshot += `**Generated**: ${now.toLocaleString()}\n`;
+            snapshot += `**Platform**: ${platform}\n`;
+            snapshot += `**Messages**: ${msgs.length}\n`;
+            snapshot += `**URL**: ${url}\n\n`;
+            snapshot += `---\n\n`;
+            
+            // Add conversation with proper formatting
+            msgs.forEach((m, idx) => {
+              const role = m.role === 'user' ? '👤 **User**' : '🤖 **Assistant**';
+              snapshot += `### Message ${idx + 1} (${role})\n\n`;
+              snapshot += `${m.text}\n\n`;
+              
+              // Add attachments if present
+              if (m.attachments && m.attachments.length > 0) {
+                snapshot += `**Attachments**: ${m.attachments.length}\n`;
+                m.attachments.forEach(att => {
+                  snapshot += `- ${att.kind}: ${att.name || att.url}\n`;
+                });
+                snapshot += `\n`;
               }
+              snapshot += `---\n\n`;
+            });
+            
+            // Add AI-generated summary
+            const summaryPrompt = msgs.map(m => `${m.role}: ${m.text}`).join('\n\n');
+            const summaryRes = await callGeminiAsync({ 
+              action: 'summarize', 
+              text: summaryPrompt, 
+              length: 'medium',
+              summaryType: 'transfer'
+            });
+            
+            if (summaryRes && summaryRes.ok) {
+              snapshot += `## AI Summary\n\n${summaryRes.result}\n\n`;
             }
             
-            // Save updated conversations
-            if (organized > 0) {
-              localStorage.setItem('chatbridge:conversations', JSON.stringify(convs));
-              toast(`Organized ${organized} conversations`);
-            } else {
-              toast('All conversations already organized');
+            // Show in output area
+            const outputArea = document.getElementById('cb-insights-output');
+            if (outputArea) {
+              outputArea.textContent = snapshot;
+              outputArea.scrollTop = 0;
             }
+            
+            // Copy to clipboard
+            await navigator.clipboard.writeText(snapshot);
+            toast(`Snapshot created (${msgs.length} messages) - Copied to clipboard`);
+            
           } catch (e) {
-            toast('Organize failed');
-            debugLog('Organize error', e);
+            toast('Snapshot creation failed');
+            debugLog('Snapshot error', e);
           } finally {
-            removeLoadingFromButton(organizeBtn, 'Auto-Organize');
+            removeLoadingFromButton(snapshotBtn, 'Context Snapshot');
           }
         });
 
         actionsGrid.appendChild(compareBtn);
         actionsGrid.appendChild(mergeBtn);
         actionsGrid.appendChild(extractBtn);
-        actionsGrid.appendChild(organizeBtn);
+        actionsGrid.appendChild(snapshotBtn);
         insightsContent.appendChild(actionsGrid);
 
         // Output Preview Area
@@ -2689,25 +2725,76 @@ Outline (bullet points only):`;
             };
             
             const toneInstructions = {
-              analytical: 'Use precise technical language, include code or pseudo-code when helpful, and call out edge cases.',
-              narrative: 'Use engaging, metaphor-rich prose with relatable examples while staying accurate.',
-              structured: 'Use clear sections and bullet points, focusing on steps, priorities, and crisp phrasing.'
+              analytical: `Technical Excellence Guidelines:
+- Lead with core concepts and definitions
+- Include code snippets, algorithms, or pseudo-code where relevant
+- Explain time/space complexity for algorithms
+- Call out edge cases, gotchas, and common pitfalls
+- Reference specific technologies, versions, and APIs
+- Use precise terminology (avoid vague words like "better" without metrics)
+- Include performance considerations and trade-offs`,
+              narrative: `Storytelling Excellence Guidelines:
+- Open with a relatable scenario or metaphor
+- Use analogies to explain complex concepts
+- Build a narrative arc (setup → challenge → resolution)
+- Include real-world examples or case studies
+- Make abstract ideas concrete and visual
+- End with key takeaways or actionable insights
+- Keep the reader engaged with conversational flow`,
+              structured: `Clarity & Organization Guidelines:
+- Use clear section headings (##) and subheadings (###)
+- Lead with an executive summary or TL;DR
+- Break down into numbered steps or bullet points
+- Prioritize information (most important first)
+- Use tables or lists for comparisons
+- Include a "Next Steps" or "Action Items" section
+- Keep paragraphs short (2-4 sentences max)`
             };
-            const expandPrompt = `You are EchoSynth. Using this outline and the RAG context below, write a ${depthInstructions[detailLevel]} answer in a ${tone} tone. ${toneInstructions[tone]}
+            const expandPrompt = `You are EchoSynth, an elite AI synthesis engine that combines insights from multiple AI models into superior outputs.
 
-Outline:
+**Your Mission**: Create a ${depthInstructions[detailLevel]} answer that synthesizes the best of both AI responses while adding your own expert insights.
+
+**Tone**: ${tone}
+${toneInstructions[tone]}
+
+**Quality Standards**:
+✓ Accuracy: Verify facts and correct any errors
+✓ Completeness: Address all aspects of the question
+✓ Clarity: Use clear language and logical structure
+✓ Actionability: Include practical next steps when relevant
+✓ Sources: Integrate insights from both models seamlessly
+
+**Available Insights**:
+
+📋 **Outline** (Key Points to Cover):
 ${outline}
 
-RAG Context:
-${ragContext || 'No additional context'}
+🧠 **Retrieved Context** (From Past Conversations):
+${ragContext || 'No additional context available'}
 
-Gemini's Full Answer:
+🤖 **Gemini's Perspective**:
 ${responses[0].answer}
 
-ChatGPT's Full Answer:
-${responses[1]?.answer || 'N/A'}
+💡 **ChatGPT's Perspective**:
+${responses[1]?.answer || 'Not available'}
 
-Expanded Answer (use Markdown, depth level: ${detailLevel}, tone: ${tone}):`;
+**Your Task**: Synthesize these perspectives into a unified, superior answer. Don't just merge—enhance. Add examples, clarify ambiguities, correct errors, and structure for maximum impact.
+
+**Output Format**: Use Markdown formatting with:
+- ## Section headings for major topics
+- ### Subheadings for subtopics
+- **Bold** for key terms
+- \`code\` for technical references
+- > Blockquotes for important notes
+- Bullet points and numbered lists for clarity
+
+**Depth Level**: ${detailLevel}
+**Tone**: ${tone}
+
+---
+
+**Begin Your Synthesized Answer**:`;
+
             
             const expandRes = await callGeminiAsync({ action: 'prompt', text: expandPrompt, length: 'comprehensive' });
             const expanded = expandRes?.result || responses.map(r => `**${r.source}:**\n${r.answer}`).join('\n\n---\n\n');

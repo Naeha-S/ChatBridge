@@ -343,7 +343,7 @@ async function getGeminiApiKey(opts) {
 
 // OpenAI API key getter with cache (for EchoSynth)
 const __cbOpenAIKeyCache = { value: null, ts: 0 };
-const DEV_HARDCODED_OPENAI_KEY = 'sk-1234efgh5678ijkl1234efgh5678ijkl1234efgh'; // SECURITY NOTE: For development/demo only. Store in chrome.storage for production.
+const DEV_HARDCODED_OPENAI_KEY = 'sk-1234efgh5678ijkl1234efgh5678ijkl1234efg'; // SECURITY NOTE: For development/demo only. Store in chrome.storage for production.
 
 async function getOpenAIApiKey(opts) {
   const force = !!(opts && opts.force);
@@ -1167,9 +1167,13 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         }
         const payload = msg.payload || {};
         let promptText = '';
+        let systemInstruction = ''; // Add system instruction for better outputs
+        
         if (payload.action === 'prompt') {
+          systemInstruction = 'You are an expert conversation analyst. Provide insightful, actionable analysis focusing on key patterns, decisions, and next steps.';
           promptText = `Analyze this conversation and provide helpful insights or suggestions:\n\n${payload.text}`;
         } else if (payload.action === 'summarize') {
+          systemInstruction = 'You are an expert at creating clear, comprehensive summaries that preserve critical context and actionable details. Focus on accuracy and completeness.';
           // Use summary length/type if provided
           let opts = '';
           if (payload.length === 'comprehensive') {
@@ -1235,6 +1239,7 @@ ${payload.text}`;
             }
           }
         } else if (payload.action === 'rewrite') {
+          systemInstruction = 'You are a professional writing assistant. Rewrite text to match the requested style while preserving all important information and intent.';
           const style = payload.rewriteStyle || 'normal';
           if (style === 'concise') {
             promptText = `Rewrite the following text to be concise and to-the-point. Remove unnecessary words and keep only essential information:\n\n${payload.text}`;
@@ -1249,8 +1254,10 @@ ${payload.text}`;
             promptText = `Rewrite this text to be clearer and more professional:\n\n${payload.text}`;
           }
         } else if (payload.action === 'translate') {
+          systemInstruction = 'You are a professional translator. Provide accurate, natural translations that preserve meaning, tone, and nuance. Output ONLY the translation.';
           promptText = `Translate the following text to ${payload.targetLang || 'English'}. Output ONLY the translated text with no explanations, notes, or additional commentary:\n\n${payload.text}`;
         } else if (payload.action === 'syncTone') {
+          systemInstruction = 'You are an elite prompt engineer specialized in optimizing conversations for different AI models. Transform inputs to maximize output quality for the target model.';
           // Tone sync: prompt engineering for the target AI model
           const src = payload.sourceModel || 'SourceModel';
           const tgt = payload.targetModel || 'TargetModel';
@@ -1279,10 +1286,19 @@ Rewritten conversation (optimized for ${tgt}):`;
             return sendResponse(rec.response);
           }
         } catch (e) { /* ignore */ }
-  const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + GEMINI_API_KEY;
+  const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=' + GEMINI_API_KEY;
         const body = {
-          contents: [{ parts: [{ text: promptText }] }]
+          systemInstruction: systemInstruction ? { parts: [{ text: systemInstruction }] } : undefined,
+          contents: [{ parts: [{ text: promptText }] }],
+          generationConfig: {
+            temperature: 0.7,
+            topP: 0.95,
+            topK: 40,
+            maxOutputTokens: 8192
+          }
         };
+        // Remove undefined fields
+        if (!systemInstruction) delete body.systemInstruction;
         const res = await fetch(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
