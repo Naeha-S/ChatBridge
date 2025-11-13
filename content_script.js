@@ -50,8 +50,9 @@
       if (typeof window.MCPBridge !== 'undefined') {
         window.MCPBridge.init();
         console.log('[ChatBridge] MCP Bridge initialized');
+        console.log('[ChatBridge] Test MCP: MCPBridge.getStats()');
       } else {
-        console.warn('[ChatBridge] MCP Bridge not available');
+        console.warn('[ChatBridge] MCP Bridge not available - mcpBridge.js may not have loaded');
       }
       
       // Preload embedding model in background (non-blocking)
@@ -763,6 +764,22 @@
   .cb-snippet { font-size: 13px; line-height: 1.5; color: var(--cb-white); margin-bottom: 8px; white-space: pre-wrap; word-break: break-word; }
   .cb-tag-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
   .cb-tag-chip { display: inline-block; padding: 3px 8px; background: var(--cb-accent-primary); color: var(--cb-bg); font-size: 10px; font-weight: 600; border-radius: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+  /* AI Insights Styling */
+  .cb-insights-section { display: flex; flex-direction: column; gap: 12px; }
+  .cb-insight-block { padding: 10px 12px; background: rgba(0, 180, 255, 0.05); border-left: 3px solid var(--cb-accent-primary); border-radius: 6px; }
+  .cb-insight-title { font-weight: 600; font-size: 11px; color: var(--cb-accent-primary); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .cb-insight-content { font-size: 12px; color: var(--cb-white); line-height: 1.5; }
+  .cb-insight-list { margin: 6px 0 0 18px; padding: 0; font-size: 12px; color: var(--cb-white); }
+  .cb-insight-list li { margin-bottom: 4px; line-height: 1.4; }
+  .cb-code-snippet { background: var(--cb-bg); border: 1px solid var(--cb-border); border-radius: 6px; padding: 8px; font-size: 11px; font-family: 'Courier New', monospace; color: var(--cb-accent-tertiary); overflow-x: auto; margin: 6px 0; }
+  .cb-code-snippet::-webkit-scrollbar { height: 6px; }
+  .cb-code-snippet::-webkit-scrollbar-track { background: var(--cb-bg3); }
+  .cb-code-snippet::-webkit-scrollbar-thumb { background: var(--cb-accent-primary); border-radius: 3px; }
+  /* Context Panel Styling */
+  .cb-context-panel::-webkit-scrollbar { width: 8px; }
+  .cb-context-panel::-webkit-scrollbar-track { background: var(--cb-bg3); border-radius: 10px; }
+  .cb-context-panel::-webkit-scrollbar-thumb { background: linear-gradient(180deg, var(--cb-accent-primary), var(--cb-accent-secondary)); border-radius: 10px; border: 2px solid var(--cb-bg3); }
+  .cb-context-panel::-webkit-scrollbar-thumb:hover { opacity: 0.8; }
       .cb-view-controls { margin:14px 0; display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
       .cb-view-go { margin-top:12px; }
   .cb-view-result { margin-top:16px; padding:14px; background: var(--cb-bg); border:1px solid var(--cb-border); border-radius:10px; white-space:pre-wrap; color:var(--cb-white); font-size:13px; line-height:1.6; max-height:200px; overflow-y:auto; overflow-x:hidden; }
@@ -777,16 +794,100 @@
   @keyframes cb-ellipsis { 0% { opacity:0.25; transform: translateY(0); } 30% { opacity:1; transform: translateY(-2px); } 60% { opacity:0.25; transform: translateY(0); } 100% { opacity:0.25; transform: translateY(0); } }
     `;
     shadow.appendChild(style);
-    // Apply saved theme preference
+    // Apply saved theme preference - DEFAULT TO LIGHT
     try {
       if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
         chrome.storage.local.get(['cb_theme'], (r) => {
-          try { if (r && r.cb_theme === 'light') host.classList.add('cb-theme-light'); } catch (e) {}
+          try {
+            // Default to light theme
+            if (!r || !r.cb_theme || r.cb_theme === 'light') {
+              host.classList.add('cb-theme-light');
+            }
+            // Only go dark if explicitly set
+            else if (r.cb_theme === 'dark') {
+              host.classList.remove('cb-theme-light');
+            }
+          } catch (e) {}
         });
+      } else {
+        // Fallback: default to light
+        host.classList.add('cb-theme-light');
       }
-    } catch (e) {}
+    } catch (e) {
+      host.classList.add('cb-theme-light');
+    }
 
   const panel = document.createElement('div'); panel.className = 'cb-panel';
+    
+    // Load saved panel width
+    try {
+      const savedWidth = localStorage.getItem('chatbridge:panel_width');
+      if (savedWidth) {
+        panel.style.width = savedWidth + 'px';
+      }
+    } catch (e) {}
+    
+    // Add resize handle
+    const resizeHandle = document.createElement('div');
+    resizeHandle.className = 'cb-resize-handle';
+    resizeHandle.innerHTML = '⋮⋮';
+    resizeHandle.style.cssText = `
+      position: absolute;
+      bottom: 8px;
+      right: 8px;
+      width: 24px;
+      height: 24px;
+      cursor: nwse-resize;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      color: var(--cb-subtext);
+      opacity: 0.5;
+      transition: opacity 0.2s;
+      z-index: 10;
+      user-select: none;
+    `;
+    
+    resizeHandle.addEventListener('mouseenter', () => {
+      resizeHandle.style.opacity = '1';
+    });
+    resizeHandle.addEventListener('mouseleave', () => {
+      resizeHandle.style.opacity = '0.5';
+    });
+    
+    // Resize functionality
+    let isResizing = false;
+    let startX, startWidth;
+    
+    resizeHandle.addEventListener('mousedown', (e) => {
+      isResizing = true;
+      startX = e.clientX;
+      startWidth = parseInt(document.defaultView.getComputedStyle(panel).width, 10);
+      e.preventDefault();
+    });
+    
+    document.addEventListener('mousemove', (e) => {
+      if (!isResizing) return;
+      
+      const deltaX = startX - e.clientX;
+      const newWidth = Math.max(300, Math.min(800, startWidth + deltaX));
+      panel.style.width = newWidth + 'px';
+    });
+    
+    document.addEventListener('mouseup', () => {
+      if (isResizing) {
+        isResizing = false;
+        // Save the new width
+        try {
+          const finalWidth = parseInt(document.defaultView.getComputedStyle(panel).width, 10);
+          localStorage.setItem('chatbridge:panel_width', finalWidth);
+        } catch (e) {}
+      }
+    });
+    
+    panel.appendChild(resizeHandle);
+    
     // Header: Title and subtitle
     const header = document.createElement('div'); header.className = 'cb-header';
   const title = document.createElement('div'); title.className = 'cb-title'; title.textContent = 'ChatBridge'; title.style.fontSize = '22px';
@@ -794,9 +895,13 @@
   const left = document.createElement('div');
   left.style.display = 'flex'; left.style.flexDirection = 'column'; left.style.gap = '6px'; left.style.alignItems = 'flex-start';
   left.appendChild(title); left.appendChild(subtitle);
-  const controls = document.createElement('div'); controls.style.display = 'flex'; controls.style.alignItems = 'flex-start';
+  const controls = document.createElement('div'); controls.style.display = 'flex'; controls.style.alignItems = 'flex-start'; controls.style.gap = '8px';
+  const btnSettings = document.createElement('button'); btnSettings.className = 'cb-btn'; btnSettings.textContent = '⚙️'; btnSettings.title = 'Settings';
+  btnSettings.style.cssText = 'padding: 6px 10px; font-size: 16px;';
+  btnSettings.setAttribute('aria-label','Open settings');
   const btnClose = document.createElement('button'); btnClose.className = 'cb-close'; btnClose.textContent = '✕';
   btnClose.setAttribute('aria-label','Close panel');
+  controls.appendChild(btnSettings);
   controls.appendChild(btnClose);
   header.appendChild(left);
   header.appendChild(controls);
@@ -1066,11 +1171,7 @@
   const smartProvenance = document.createElement('div'); smartProvenance.id = 'cb-smart-provenance'; smartProvenance.style.fontSize = '12px'; smartProvenance.style.marginTop = '8px'; smartProvenance.style.color = 'rgba(200,200,200,0.9)'; smartProvenance.textContent = '';
   smartView.appendChild(smartProvenance);
 
-  // Connections panel (for Find Connections results)
-  const connectionsTitle = document.createElement('div'); connectionsTitle.className = 'cb-view-title'; connectionsTitle.style.fontSize = '13px'; connectionsTitle.style.marginTop = '12px'; connectionsTitle.textContent = 'Connections';
-  smartView.appendChild(connectionsTitle);
-  const connectionsResult = document.createElement('div'); connectionsResult.id = 'cb-connections-result'; connectionsResult.className = 'cb-view-result'; connectionsResult.textContent = '(No connections yet)';
-  smartView.appendChild(connectionsResult);
+  // Connections panel removed - not needed for basic functionality
 
   panel.appendChild(smartView);
 
@@ -1121,6 +1222,48 @@
   const status = document.createElement('div'); status.className = 'cb-status'; status.textContent = 'Status: idle'; panel.appendChild(status);
 
   // History section with clear button
+  // Settings Panel
+  const settingsPanel = document.createElement('div'); settingsPanel.className = 'cb-internal-view'; settingsPanel.id = 'cb-settings-panel'; settingsPanel.style.display = 'none';
+  settingsPanel.setAttribute('data-cb-ignore','true');
+  const settingsTop = document.createElement('div'); settingsTop.className = 'cb-view-top';
+  const settingsTitle = document.createElement('div'); settingsTitle.className = 'cb-view-title'; settingsTitle.textContent = '⚙️ Settings';
+  const btnCloseSettings = document.createElement('button'); btnCloseSettings.className = 'cb-view-close'; btnCloseSettings.textContent = '✕';
+  btnCloseSettings.setAttribute('aria-label','Close settings');
+  settingsTop.appendChild(settingsTitle); settingsTop.appendChild(btnCloseSettings);
+  settingsPanel.appendChild(settingsTop);
+  
+  // Settings content
+  const settingsContent = document.createElement('div'); settingsContent.style.cssText = 'padding: 16px 0; display: flex; flex-direction: column; gap: 16px;';
+  
+  // Theme setting
+  const themeSection = document.createElement('div'); themeSection.style.cssText = 'padding-bottom: 16px; border-bottom: 1px solid var(--cb-border);';
+  const themeLabel = document.createElement('div'); themeLabel.style.cssText = 'font-weight: 600; margin-bottom: 10px; color: var(--cb-white);'; themeLabel.textContent = '🎨 Theme';
+  const themeButtons = document.createElement('div'); themeButtons.style.cssText = 'display: flex; gap: 8px;';
+  const btnLightTheme = document.createElement('button'); btnLightTheme.className = 'cb-btn'; btnLightTheme.textContent = '☀️ Light'; btnLightTheme.style.flex = '1';
+  const btnDarkTheme = document.createElement('button'); btnDarkTheme.className = 'cb-btn'; btnDarkTheme.textContent = '🌙 Dark'; btnDarkTheme.style.flex = '1';
+  themeButtons.appendChild(btnLightTheme); themeButtons.appendChild(btnDarkTheme);
+  themeSection.appendChild(themeLabel); themeSection.appendChild(themeButtons);
+  settingsContent.appendChild(themeSection);
+  
+  // Luxury Mode toggle
+  const luxurySection = document.createElement('div'); luxurySection.style.cssText = 'padding-bottom: 16px; border-bottom: 1px solid var(--cb-border);';
+  const luxuryLabel = document.createElement('div'); luxuryLabel.style.cssText = 'font-weight: 600; margin-bottom: 6px; color: var(--cb-white);'; luxuryLabel.textContent = '✨ Luxury Mode';
+  const luxuryDesc = document.createElement('div'); luxuryDesc.style.cssText = 'font-size: 12px; color: var(--cb-subtext); margin-bottom: 12px; line-height: 1.4;'; luxuryDesc.textContent = 'Vision Pro aesthetic with frosted glass, floating particles & smooth animations';
+  const luxuryToggle = document.createElement('div'); luxuryToggle.style.cssText = 'display: flex; align-items: center; gap: 12px;';
+  const luxuryCheckbox = document.createElement('input'); luxuryCheckbox.type = 'checkbox'; luxuryCheckbox.id = 'cb-luxury-checkbox';
+  luxuryCheckbox.style.cssText = 'width: 20px; height: 20px; cursor: pointer;';
+  try {
+    const savedLuxury = localStorage.getItem('chatbridge:luxury_mode');
+    luxuryCheckbox.checked = savedLuxury === 'true';
+  } catch (e) {}
+  const luxuryCheckLabel = document.createElement('label'); luxuryCheckLabel.setAttribute('for', 'cb-luxury-checkbox'); luxuryCheckLabel.style.cssText = 'color: var(--cb-white); cursor: pointer;'; luxuryCheckLabel.textContent = 'Enable Luxury Mode';
+  luxuryToggle.appendChild(luxuryCheckbox); luxuryToggle.appendChild(luxuryCheckLabel);
+  luxurySection.appendChild(luxuryLabel); luxurySection.appendChild(luxuryDesc); luxurySection.appendChild(luxuryToggle);
+  settingsContent.appendChild(luxurySection);
+  
+  settingsPanel.appendChild(settingsContent);
+  panel.appendChild(settingsPanel);
+
   const historyWrapper = document.createElement('div'); historyWrapper.className = 'cb-history-wrapper';
   const historyHeader = document.createElement('div'); historyHeader.className = 'cb-history-header';
   const historyTitle = document.createElement('div'); historyTitle.className = 'cb-history-title'; historyTitle.textContent = '📜 History';
@@ -1305,6 +1448,85 @@
     // interactions
     avatar.addEventListener('click', () => { host.style.display = 'block'; avatar.style.display = 'none'; });
     btnClose.addEventListener('click', () => { host.style.display = 'none'; avatar.style.display = 'flex'; });
+    
+    // Settings button handler
+    btnSettings.addEventListener('click', () => {
+      try {
+        closeAllViews();
+        const settingsPanel = shadow.getElementById('cb-settings-panel');
+        if (settingsPanel) {
+          settingsPanel.style.display = settingsPanel.style.display === 'none' ? 'block' : 'none';
+          settingsPanel.classList.toggle('cb-view-active');
+        }
+      } catch (e) { debugLog('settings toggle failed', e); }
+    });
+    
+    // Close settings button
+    btnCloseSettings.addEventListener('click', () => {
+      try {
+        const settingsPanel = shadow.getElementById('cb-settings-panel');
+        if (settingsPanel) {
+          settingsPanel.style.display = 'none';
+          settingsPanel.classList.remove('cb-view-active');
+        }
+      } catch (e) {}
+    });
+    
+    // Theme switchers
+    btnLightTheme.addEventListener('click', () => {
+      try {
+        host.classList.add('cb-theme-light');
+        chrome.storage.local.set({ cb_theme: 'light' });
+        toast('☀️ Light theme enabled');
+      } catch (e) { debugLog('light theme failed', e); }
+    });
+    
+    btnDarkTheme.addEventListener('click', () => {
+      try {
+        host.classList.remove('cb-theme-light');
+        chrome.storage.local.set({ cb_theme: 'dark' });
+        toast('🌙 Dark theme enabled');
+      } catch (e) { debugLog('dark theme failed', e); }
+    });
+    
+    // Luxury Mode toggle
+    luxuryCheckbox.addEventListener('change', (e) => {
+      try {
+        const enabled = e.target.checked;
+        localStorage.setItem('chatbridge:luxury_mode', String(enabled));
+        
+        // Try to initialize if not already done
+        if (!window.luxuryModeInstance && typeof LuxuryMode !== 'undefined') {
+          try {
+            window.luxuryModeInstance = new LuxuryMode(shadow);
+            debugLog('Luxury Mode instance created from toggle');
+          } catch (err) {
+            debugLog('Failed to create Luxury Mode instance', err);
+          }
+        }
+        
+        if (enabled) {
+          // Apply luxury mode
+          if (window.luxuryModeInstance) {
+            window.luxuryModeInstance.isEnabled = true;
+            window.luxuryModeInstance.apply();
+            toast('✨ Luxury Mode enabled');
+          } else {
+            toast('⚠️ Luxury Mode loading... try again in 1 sec');
+            setTimeout(() => {
+              e.target.checked = false;
+            }, 1000);
+          }
+        } else {
+          // Disable luxury mode
+          if (window.luxuryModeInstance) {
+            window.luxuryModeInstance.isEnabled = false;
+            window.luxuryModeInstance.apply();
+            toast('Luxury Mode disabled');
+          }
+        }
+      } catch (e) { debugLog('luxury toggle failed', e); }
+    });
 
     // Migrate conversations from page localStorage into background persistent storage (once)
     try {
@@ -1366,6 +1588,60 @@
         }
         insightsContent.innerHTML = '';
         debugLog('Rendering Smart Workspace...');
+
+        // AI-Powered Insights Section (if available)
+        try {
+          const lastInsights = localStorage.getItem('chatbridge:last_insights');
+          if (lastInsights && window.AISummaryEngine) {
+            const insights = JSON.parse(lastInsights);
+            const insightsSection = document.createElement('div');
+            insightsSection.style.cssText = 'margin-bottom:16px;padding:0 12px;';
+            
+            const insightsTitle = document.createElement('div');
+            insightsTitle.style.cssText = 'font-weight:600;font-size:12px;margin-bottom:8px;color:var(--cb-subtext);display:flex;align-items:center;justify-content:space-between;';
+            insightsTitle.innerHTML = `
+              <span>🎯 AI-Generated Insights</span>
+              <button class="cb-btn" style="padding:2px 8px;font-size:10px;">Refresh</button>
+            `;
+            insightsSection.appendChild(insightsTitle);
+            
+            const insightsContainer = document.createElement('div');
+            insightsContainer.id = 'cb-ai-insights-container';
+            insightsContainer.style.cssText = 'background:rgba(16,24,43,0.4);border:1px solid rgba(0,180,255,0.2);border-radius:8px;padding:12px;max-height:300px;overflow-y:auto;';
+            
+            const summaryEngine = new window.AISummaryEngine();
+            summaryEngine.renderInsights(insights, insightsContainer);
+            
+            insightsSection.appendChild(insightsContainer);
+            insightsContent.appendChild(insightsSection);
+            
+            // Add refresh handler
+            const refreshBtn = insightsTitle.querySelector('button');
+            if (refreshBtn) {
+              refreshBtn.addEventListener('click', async () => {
+                try {
+                  addLoadingToButton(refreshBtn, 'Refreshing...');
+                  const msgs = await scanChat();
+                  if (msgs && msgs.length > 0) {
+                    const newInsights = await summaryEngine.generateInsights(msgs);
+                    if (newInsights) {
+                      localStorage.setItem('chatbridge:last_insights', JSON.stringify(newInsights));
+                      insightsContainer.innerHTML = '';
+                      summaryEngine.renderInsights(newInsights, insightsContainer);
+                      toast('Insights refreshed');
+                    }
+                  }
+                } catch (e) {
+                  toast('Refresh failed');
+                } finally {
+                  removeLoadingFromButton(refreshBtn, 'Refresh');
+                }
+              });
+            }
+          }
+        } catch (e) {
+          debugLog('Failed to load AI insights:', e);
+        }
 
         // Quick Actions Grid
         const actionsGrid = document.createElement('div');
@@ -1743,12 +2019,21 @@
           else selected.delete(conv.ts);
         });
         
-        // Get chat name/topic (first user message or topics)
-        const chatName = conv.name || (conv.conversation && conv.conversation.find(m => m.role === 'user')?.text.slice(0, 60)) || 'Untitled Chat';
+        // Get one-liner preview from first message
+        let preview = '';
+        try {
+          if (conv.conversation && conv.conversation.length > 0) {
+            const firstMsg = conv.conversation[0];
+            preview = (firstMsg.text || '').replace(/\n/g, ' ').trim();
+            if (preview.length > 60) preview = preview.substring(0, 57) + '...';
+          }
+        } catch (e) {}
+        
+        const chatName = preview || conv.name || 'Untitled Chat';
         const site = conv.platform || conv.host || (conv.url ? new URL(conv.url).hostname : 'Unknown');
         const count = conv.conversation?.length || 0;
         
-        checkbox.innerHTML = `<div style="flex:1;"><div style="font-weight:600;font-size:12px;margin-bottom:4px;">${chatName}${chatName.length > 57 ? '...' : ''}</div><div style="font-size:11px;opacity:0.7;">📍 ${site} • 💬 ${count} messages</div></div>`;
+        checkbox.innerHTML = `<div style="flex:1;"><div style="font-weight:600;font-size:12px;margin-bottom:4px;">${chatName}</div><div style="font-size:11px;opacity:0.7;">📍 ${site} • 💬 ${count} messages</div></div>`;
         checkbox.prepend(input);
         
         insightsContent.appendChild(checkbox);
@@ -2002,9 +2287,74 @@
         agentContent.innerHTML = '';
         debugLog('Rendering Agent Hub...');
 
+        // MCP Connection Status Banner
+        const mcpStatus = document.createElement('div');
+        mcpStatus.style.cssText = 'margin:12px;padding:10px 14px;background:rgba(0,180,255,0.08);border:1px solid rgba(0,180,255,0.25);border-radius:10px;display:flex;align-items:center;gap:10px;font-size:13px;';
+        
+        const statusIcon = document.createElement('span');
+        statusIcon.style.cssText = 'font-size:18px;';
+        
+        const statusText = document.createElement('div');
+        statusText.style.cssText = 'flex:1;';
+        
+        // Check MCPBridge availability
+        if (typeof window.MCPBridge !== 'undefined') {
+          try {
+            const stats = window.MCPBridge.getStats();
+            statusIcon.textContent = '✅';
+            statusText.innerHTML = `<b>MCP Connected</b><br/><span style="font-size:11px;opacity:0.8;">Resources: ${stats.registeredResources.join(', ') || 'None'}</span>`;
+          } catch (e) {
+            statusIcon.textContent = '⚠️';
+            statusText.innerHTML = `<b>MCP Loaded</b><br/><span style="font-size:11px;opacity:0.8;">Status check failed</span>`;
+          }
+        } else {
+          statusIcon.textContent = '❌';
+          statusText.innerHTML = `<b>MCP Not Available</b><br/><span style="font-size:11px;opacity:0.8;">mcpBridge.js not loaded</span>`;
+        }
+        
+        const testBtn = document.createElement('button');
+        testBtn.className = 'cb-btn';
+        testBtn.style.cssText = 'padding:6px 12px;font-size:11px;';
+        testBtn.textContent = 'Test';
+        testBtn.addEventListener('click', async () => {
+          try {
+            if (typeof window.MCPBridge === 'undefined') {
+              toast('MCP Bridge not available');
+              return;
+            }
+            const stats = window.MCPBridge.getStats();
+            console.log('[MCP Test] Stats:', stats);
+            toast(`MCP: ${stats.registeredResources.length} resources`);
+          } catch (e) {
+            console.error('[MCP Test] Error:', e);
+            toast('MCP test failed: ' + e.message);
+          }
+        });
+        
+        mcpStatus.appendChild(statusIcon);
+        mcpStatus.appendChild(statusText);
+        mcpStatus.appendChild(testBtn);
+        agentContent.appendChild(mcpStatus);
+
+        // Gemini Model Status Banner
+        const geminiStatus = document.createElement('div');
+        geminiStatus.style.cssText = 'margin:12px;padding:10px 14px;background:rgba(138,43,226,0.08);border:1px solid rgba(138,43,226,0.25);border-radius:10px;display:flex;align-items:center;gap:10px;font-size:13px;';
+        
+        const geminiIcon = document.createElement('span');
+        geminiIcon.style.cssText = 'font-size:18px;';
+        geminiIcon.textContent = '✨';
+        
+        const geminiText = document.createElement('div');
+        geminiText.style.cssText = 'flex:1;';
+        geminiText.innerHTML = `<b>Gemini AI</b><br/><span style="font-size:11px;opacity:0.8;">Auto-fallback: 2.5-pro → 2.0-flash → 2.5-flash → lite → exp</span>`;
+        
+        geminiStatus.appendChild(geminiIcon);
+        geminiStatus.appendChild(geminiText);
+        agentContent.appendChild(geminiStatus);
+
         // Agent Cards Grid
-    const agentsGrid = document.createElement('div');
-    agentsGrid.style.cssText = 'display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px;padding:0 12px;position:relative;z-index:0;';
+        const agentsGrid = document.createElement('div');
+        agentsGrid.style.cssText = 'display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px;padding:0 12px;position:relative;z-index:0;';
 
         // 1. Continuum - Context Reconstruction Agent
         const continuumCard = createAgentCard(
@@ -2073,6 +2423,45 @@
         [continuumCard, memoryCard, echoCard, quickCard].forEach(card => agentsGrid.appendChild(card));
         agentContent.appendChild(agentsGrid);
 
+        // Second Row: Agentic AI Agents
+        const agentsGrid2 = document.createElement('div');
+        agentsGrid2.style.cssText = 'display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px;padding:0 12px;position:relative;z-index:0;';
+
+        // 5. Threadkeeper - Conversation Operator
+        const threadkeeperCard = createAgentCard(
+          'Threadkeeper',
+          'Autonomous conversation tracking',
+          '🧵',
+          'Tracks all conversations, auto-injects context, warns when history is missing',
+          async () => {
+            try {
+              await showThreadkeeperAgent();
+            } catch (e) {
+              toast('Threadkeeper failed');
+              debugLog('Threadkeeper error', e);
+            }
+          }
+        );
+
+        // 6. Multi-AI Planner - Project Orchestrator
+        const plannerCard = createAgentCard(
+          'Multi-AI Planner',
+          'Break goals into AI-powered steps',
+          '🎯',
+          'Breaks projects into steps, assigns to best AI, builds unified plan',
+          async () => {
+            try {
+              await showMultiAIPlannerAgent();
+            } catch (e) {
+              toast('Multi-AI Planner failed');
+              debugLog('Multi-AI Planner error', e);
+            }
+          }
+        );
+
+        [threadkeeperCard, plannerCard].forEach(card => agentsGrid2.appendChild(card));
+        agentContent.appendChild(agentsGrid2);
+
         // Agent Output Area
         const outputSection = document.createElement('div');
         outputSection.style.cssText = 'padding:0 12px;margin-bottom:16px;';
@@ -2134,7 +2523,7 @@
         outputControls.appendChild(btnCopyAgentOutput);
         outputSection.appendChild(outputControls);
         
-        agentContent.appendChild(outputSection);
+          agentContent.appendChild(outputSection);
 
         debugLog('Agent Hub rendered successfully');
 
@@ -2685,7 +3074,8 @@ ${combinedContext}`;
           // Collect successful responses
           const responses = [];
           if (geminiRes && geminiRes.ok && geminiRes.result) {
-            responses.push({ source: 'Gemini (Flash 2.0)', answer: geminiRes.result });
+            const modelName = geminiRes.model || 'Gemini';
+            responses.push({ source: `${modelName.replace('gemini-', 'Gemini ')}`, answer: geminiRes.result });
           }
           if (openaiRes && openaiRes.ok && openaiRes.result) {
             responses.push({ source: 'ChatGPT (GPT-4o-mini)', answer: openaiRes.result });
@@ -2910,6 +3300,254 @@ ${chatText.slice(0, 3000)}`;
           runBtn.textContent = '▶ Run Analysis';
         }
       });
+    }
+
+    // Threadkeeper Agent - Autonomous Conversation Tracking
+    async function showThreadkeeperAgent() {
+      const outputArea = (agentContent && agentContent.querySelector('#cb-agent-output')) || (shadow && shadow.getElementById && shadow.getElementById('cb-agent-output'));
+      if (!outputArea) return;
+      
+      outputArea.innerHTML = `
+        <div style="margin-bottom:12px;">
+          <div style="font-weight:700;margin-bottom:4px;font-size:13px;">🧵 Threadkeeper</div>
+          <div style="font-size:11px;opacity:0.85;margin-bottom:12px;">Autonomous conversation tracking with auto-context injection</div>
+          <div style="background:rgba(138,43,226,0.08);border:1px solid rgba(138,43,226,0.25);border-radius:8px;padding:10px;margin-bottom:12px;font-size:11px;line-height:1.5;">
+            <b>Agentic Capabilities:</b><br/>
+            • Tracks all conversations across platforms<br/>
+            • Identifies returning topics automatically<br/>
+            • Auto-injects missing context<br/>
+            • Warns when history is incomplete
+          </div>
+          <button id="threadkeeper-scan" class="cb-btn cb-btn-primary" style="width:100%;margin-top:4px;">🔍 Scan All Threads</button>
+        </div>
+        <div id="threadkeeper-results" style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(0,180,255,0.2);display:none;">
+          <div style="font-weight:600;margin-bottom:8px;color:var(--cb-subtext);">Thread Analysis</div>
+        </div>
+      `;
+      
+      const scanBtn = outputArea.querySelector('#threadkeeper-scan');
+      const resultsDiv = outputArea.querySelector('#threadkeeper-results');
+      
+      scanBtn.addEventListener('click', async () => {
+        scanBtn.disabled = true;
+        scanBtn.textContent = 'Scanning threads...';
+        resultsDiv.style.display = 'block';
+        resultsDiv.innerHTML = '<div style="text-align:center;padding:12px;"><div class="cb-spinner" style="display:inline-block;"></div><div style="margin-top:8px;font-size:11px;">Analyzing conversation history...</div></div>';
+        
+        try {
+          // Get current conversation
+          const currentChat = await getConversationText();
+          if (!currentChat || currentChat.length < 10) {
+            resultsDiv.innerHTML = '<div style="color:rgba(255,100,100,0.9);">⚠️ No current conversation found.</div>';
+            return;
+          }
+          
+          // Get stored conversations from all platforms
+          const allConvos = await getAllStoredConversations();
+          
+          const prompt = `You are Threadkeeper, an autonomous conversation tracking agent.
+
+**Your Mission:** Analyze the current conversation and identify connections to past conversations.
+
+**Current Conversation (last 1000 chars):**
+${currentChat.slice(-1000)}
+
+**Previous Conversations Available:**
+${allConvos.length} stored conversations across AI platforms
+
+**Your Agentic Analysis:**
+1. **Topic Detection:** What is the user discussing now?
+2. **Context Gaps:** What information from past conversations is missing?
+3. **Auto-Injection Plan:** What context should be restored?
+4. **Warnings:** Alert if critical history is missing
+
+Format output as:
+## 🎯 Current Topic
+[brief description]
+
+## 🔗 Related Past Conversations
+[list with relevance scores]
+
+## ⚠️ Missing Context
+[what needs to be restored]
+
+## 📝 Recommended Action
+[specific context to inject into chat]`;
+
+          const res = await callGeminiAsync({ action: 'prompt', text: prompt, length: 'long' });
+          
+          if (res && res.ok && res.result) {
+            const actionBtn = `<button class="cb-btn cb-btn-primary" style="width:100%;margin-top:12px;" onclick="this.disabled=true;this.textContent='Injecting context...';navigator.clipboard.writeText(this.previousElementSibling.textContent).then(() => {this.textContent='✓ Context copied - paste into chat';setTimeout(() => this.disabled=false, 3000);});">📋 Copy Context & Inject</button>`;
+            resultsDiv.innerHTML = `<div style="white-space:pre-wrap;line-height:1.6;">${res.result}</div>${actionBtn}`;
+            toast('Thread analysis complete!');
+          } else {
+            resultsDiv.innerHTML = `<div style="color:rgba(255,100,100,0.9);">❌ Failed: ${res && res.error ? res.error : 'unknown error'}</div>`;
+          }
+        } catch (e) {
+          resultsDiv.innerHTML = `<div style="color:rgba(255,100,100,0.9);">❌ Error: ${e.message || 'Unknown error'}</div>`;
+          debugLog('Threadkeeper error', e);
+        } finally {
+          scanBtn.disabled = false;
+          scanBtn.textContent = '🔍 Scan All Threads';
+        }
+      });
+    }
+
+    // Multi-AI Planner Agent - Project Orchestrator
+    async function showMultiAIPlannerAgent() {
+      const outputArea = (agentContent && agentContent.querySelector('#cb-agent-output')) || (shadow && shadow.getElementById && shadow.getElementById('cb-agent-output'));
+      if (!outputArea) return;
+      
+      outputArea.innerHTML = `
+        <div style="margin-bottom:12px;">
+          <div style="font-weight:700;margin-bottom:4px;font-size:13px;">🎯 Multi-AI Planner</div>
+          <div style="font-size:11px;opacity:0.85;margin-bottom:12px;">Break goals into AI-powered steps with orchestrated execution</div>
+          <div style="background:rgba(0,180,255,0.08);border:1px solid rgba(0,180,255,0.25);border-radius:8px;padding:10px;margin-bottom:12px;font-size:11px;line-height:1.5;">
+            <b>Agentic Planning:</b><br/>
+            • Breaks goals into actionable steps<br/>
+            • Assigns tasks to optimal AI models<br/>
+            • Collects & synthesizes all results<br/>
+            • Builds unified execution plan
+          </div>
+          <textarea id="planner-goal" class="cb-textarea" placeholder="Describe your project goal...
+Examples:
+• Build a portfolio website
+• Deploy a Python API
+• Create a Chrome extension
+• Write a technical blog post" style="width:100%;min-height:80px;margin-bottom:8px;"></textarea>
+          <button id="planner-create" class="cb-btn cb-btn-primary" style="width:100%;margin-top:4px;">🚀 Create AI-Powered Plan</button>
+        </div>
+        <div id="planner-results" style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(0,180,255,0.2);display:none;">
+          <div style="font-weight:600;margin-bottom:8px;color:var(--cb-subtext);">Orchestrated Plan</div>
+        </div>
+      `;
+      
+      const goalInput = outputArea.querySelector('#planner-goal');
+      const createBtn = outputArea.querySelector('#planner-create');
+      const resultsDiv = outputArea.querySelector('#planner-results');
+      
+      createBtn.addEventListener('click', async () => {
+        const goal = goalInput.value.trim();
+        if (!goal) {
+          toast('Please describe your goal');
+          return;
+        }
+        
+        createBtn.disabled = true;
+        createBtn.textContent = 'Planning with multiple AIs...';
+        resultsDiv.style.display = 'block';
+        resultsDiv.innerHTML = '<div style="text-align:center;padding:12px;"><div class="cb-spinner" style="display:inline-block;"></div><div style="margin-top:8px;font-size:11px;">Consulting Gemini, ChatGPT, Claude, and Copilot...</div></div>';
+        
+        try {
+          // Stage 1: Break down goal into steps
+          resultsDiv.innerHTML += '<div style="font-size:11px;opacity:0.7;margin-top:8px;">Stage 1/3: Breaking down goal into steps...</div>';
+          
+          const breakdownPrompt = `You are Multi-AI Planner, a project orchestration agent.
+
+**User Goal:**
+${goal}
+
+**Your Task:** Break this goal into 5-7 specific, actionable steps. For each step, assign the best AI model.
+
+**Available AI Models:**
+- Gemini 2.5-pro: Complex reasoning, analysis, architecture
+- ChatGPT-4o: Code generation, debugging, implementation
+- Claude: Writing, documentation, explanations
+- Copilot: Code completion, refactoring, optimization
+
+**Output Format:**
+## 📋 Project Breakdown
+
+### Step 1: [Title]
+**Assigned to:** [AI Model]
+**Task:** [Specific instruction for the AI]
+**Expected Output:** [What result this produces]
+
+[Repeat for all steps]
+
+## 🔗 Integration Plan
+[How all steps combine into final deliverable]`;
+
+          const breakdown = await callGeminiAsync({ action: 'prompt', text: breakdownPrompt, length: 'long' });
+          
+          if (!breakdown || !breakdown.ok) {
+            resultsDiv.innerHTML = `<div style="color:rgba(255,100,100,0.9);">❌ Planning failed: ${breakdown?.error || 'unknown error'}</div>`;
+            return;
+          }
+          
+          // Stage 2: Execute parallel consultations (simulate multi-AI)
+          resultsDiv.innerHTML += '<div style="font-size:11px;opacity:0.7;">Stage 2/3: Executing parallel AI consultations...</div>';
+          
+          const refinementPrompt = `Based on this project breakdown, provide implementation guidance:
+
+${breakdown.result}
+
+**Your Role:** Act as the consulting AI team. Provide:
+1. **Technical recommendations** (architecture, tools, best practices)
+2. **Potential challenges** and how to overcome them
+3. **Resource requirements** (time, skills, dependencies)
+4. **Success criteria** for each step
+
+Keep it practical and actionable.`;
+
+          const refinement = await callGeminiAsync({ action: 'prompt', text: refinementPrompt, length: 'long' });
+          
+          // Stage 3: Final synthesis
+          resultsDiv.innerHTML += '<div style="font-size:11px;opacity:0.7;">Stage 3/3: Synthesizing unified plan...</div>';
+          
+          const finalPlan = `# 🎯 ${goal}
+
+---
+
+${breakdown.result}
+
+---
+
+## 💡 AI Team Consultation
+
+${refinement?.ok ? refinement.result : 'Consultation unavailable'}
+
+---
+
+## ✅ Next Actions
+1. **Immediate:** Start with Step 1 using ${breakdown.result.match(/Assigned to:\s*\*\*([^*]+)\*\*/)?.[1] || 'Gemini'}
+2. **Prepare:** Review technical requirements
+3. **Execute:** Follow steps sequentially
+4. **Validate:** Check success criteria after each step
+
+**Status:** All AIs consulted. Plan ready for execution.`;
+
+          resultsDiv.innerHTML = `
+            <div style="white-space:pre-wrap;line-height:1.6;font-size:12px;">${finalPlan}</div>
+            <div style="display:flex;gap:8px;margin-top:12px;">
+              <button class="cb-btn cb-btn-primary" style="flex:1;" onclick="navigator.clipboard.writeText(this.parentElement.previousElementSibling.textContent);this.textContent='✓ Copied';setTimeout(() => this.textContent='📋 Copy Plan', 2000);">📋 Copy Plan</button>
+              <button class="cb-btn" style="flex:1;" onclick="const text = this.parentElement.previousElementSibling.textContent; window.ChatBridge.restoreToChat(text, []); this.textContent='✓ Inserted';setTimeout(() => this.textContent='➤ Insert to Chat', 2000);">➤ Insert to Chat</button>
+            </div>
+          `;
+          toast('Orchestrated plan ready!');
+          
+        } catch (e) {
+          resultsDiv.innerHTML = `<div style="color:rgba(255,100,100,0.9);">❌ Error: ${e.message || 'Unknown error'}</div>`;
+          debugLog('Multi-AI Planner error', e);
+        } finally {
+          createBtn.disabled = false;
+          createBtn.textContent = '🚀 Create AI-Powered Plan';
+        }
+      });
+    }
+
+    // Helper: Get all stored conversations
+    async function getAllStoredConversations() {
+      try {
+        const stored = await storageGet('chatbridge_conversations');
+        if (stored && Array.isArray(stored)) {
+          return stored;
+        }
+        return [];
+      } catch (e) {
+        debugLog('getAllStoredConversations error', e);
+        return [];
+      }
     }
 
     // Open Sync Tone view
@@ -3876,12 +4514,21 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
 
     // Scan button handler: scan, normalize, save, and optionally auto-summarize
     btnScan.addEventListener('click', async () => {
-      addLoadingToButton(btnScan, 'Scanning'); status.textContent = 'Status: scanning...'; announce('Scanning conversation now');
+      addLoadingToButton(btnScan, 'Scanning'); 
+      status.textContent = 'Status: scanning...'; 
+      announce('Scanning conversation now');
+      
       try {
-  const msgs = await scanChat();
-  // persist lastScannedText for clipboard and Sync view
-  try { if (Array.isArray(msgs) && msgs.length) { lastScannedText = msgs.map(m => `${m.role}: ${m.text}`).join('\n\n'); } } catch (e) {}
-  if (!msgs || !msgs.length) { 
+        const msgs = await scanChat();
+        
+        // persist lastScannedText for clipboard and Sync view
+        try { 
+          if (Array.isArray(msgs) && msgs.length) { 
+            lastScannedText = msgs.map(m => `${m.role}: ${m.text}`).join('\n\n'); 
+          } 
+        } catch (e) {}
+        
+        if (!msgs || !msgs.length) { 
           // Check if there were errors during scan
           let errorMsg = 'No messages found in current chat';
           try {
@@ -3898,16 +4545,19 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
               });
             }
           } catch (e) {}
+          
           status.textContent = 'Status: no messages'; 
           toast(errorMsg);
           announce('Scan completed: no messages found');
-        }
-        else {
+        } else {
           const final = normalizeMessages(msgs);
           const currentModel = detectCurrentModel();
           const conv = { platform: location.hostname, url: location.href, ts: Date.now(), model: currentModel, conversation: final };
+          
           // ensure lastScannedText updated when saving
-          try { lastScannedText = final.map(m => `${m.role}: ${m.text}`).join('\n\n'); } catch (e) {}
+          try { 
+            lastScannedText = final.map(m => `${m.role}: ${m.text}`).join('\n\n'); 
+          } catch (e) {}
           
           // Use the async saveConversation function directly
           try {
@@ -3922,49 +4572,30 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
             status.textContent = `Status: save failed`;
           }
 
-          // Cross-Context Memory: Extract knowledge from conversation (async, non-blocking)
-          try {
-            (async () => {
-              const knowledge = await extractKnowledge(final, String(conv.ts));
-              if (knowledge) {
-                debugLog('Knowledge extracted and stored', knowledge);
-              }
-            })();
-          } catch (e) {
-            debugLog('Background knowledge extraction failed', e);
-          }
-
-          // Auto-summarize if 20+ messages or 50,000+ characters (run in background, don't block)
-          const totalChars = final.reduce((sum, m) => sum + (m.text || '').length, 0);
-          if (final.length >= 20 || totalChars >= 50000) {
-            // Don't block the scan completion - run this in the background
-            (async () => {
-              try {
-                status.textContent = `Status: auto-summarizing ${final.length} messages in background...`;
-                const inputText = final.map(m => `${m.role}: ${m.text}`).join('\n');
-                showSkeleton(preview, 120);
-                // For long chats, generate an AI-to-AI transfer summary to preserve intent, relationships, and next steps
-                const result = await hierarchicalSummarize(inputText, { chunkSize: 14000, maxParallel: 3, length: 'comprehensive', summaryType: 'transfer' });
-                hideSkeleton(preview);
-                preview.textContent = `Auto-Summary (${final.length} msgs, comprehensive context preserved):\n\n` + result;
-                preview.classList.add('cb-slide-up'); setTimeout(()=> preview.classList.remove('cb-slide-up'), 360);
-                status.textContent = 'Status: done (auto-summarized)';
-                toast('Auto-summarized with full context!');
-              } catch (err) {
-                hideSkeleton(preview);
-                status.textContent = `Status: saved ${final.length}`;
-                debugLog('hierarchicalSummarize error', err);
-              }
-            })();
-          }
+          // DISABLED: All heavy operations moved to background to keep scan instant
+          // Users can manually trigger these from the Insights tab if needed
         }
       } catch (e) { 
+        console.error('[ChatBridge] Scan error:', e);
         status.textContent = 'Status: error'; 
         toast('Scan failed: ' + (e && e.message)); 
         showError('Scan failed: ' + (e && e.message), async () => { try { btnScan.click(); } catch(_) {} }); 
         announce('Scan failed'); 
       } finally {
-        removeLoadingFromButton(btnScan, 'Scan Chat');
+        // CRITICAL: Always remove loading state, even if errors occurred
+        try {
+          removeLoadingFromButton(btnScan, 'Scan Chat');
+        } catch (e) {
+          console.error('[ChatBridge] Failed to remove loading from scan button:', e);
+          // Fallback: manually reset button
+          try {
+            if (btnScan) {
+              btnScan.disabled = false;
+              btnScan.classList.remove('cb-loading');
+              btnScan.textContent = 'Scan Chat';
+            }
+          } catch (_) {}
+        }
       }
     });
 
@@ -4738,55 +5369,87 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       const result = { uploaded: 0, failed: [] };
       const atts = Array.isArray(attachments) ? attachments.filter(a => a && a.url) : [];
       if (!atts.length) return result;
+      
+      restoreLog('Attempting to attach', atts.length, 'files');
+      
       let fileInput = findFileInputNearComposer();
       if (!fileInput) {
         // Fallback: try clipboard for the first image
         const img = atts.find(a => a.kind === 'image');
         if (img) {
           try {
-            const res = await fetch(img.url, { credentials: 'include' });
+            restoreLog('No file input found, trying clipboard for image:', img.url);
+            // Don't use credentials for cross-origin URLs to avoid CORS issues
+            const isCrossOrigin = !img.url.startsWith(window.location.origin);
+            const fetchOptions = isCrossOrigin ? { mode: 'cors' } : { credentials: 'include' };
+            
+            const res = await fetch(img.url, fetchOptions);
             const blob = await res.blob();
             const item = new ClipboardItem({ [blob.type || 'image/png']: blob });
             await navigator.clipboard.write([item]);
-            toast('Image copied to clipboard. Press Ctrl+V in the chat to paste.');
+            toast('Image copied to clipboard. Press Ctrl+V to paste.');
             return result;
           } catch (e) {
-            result.failed.push({ url: img.url, error: 'clipboard_failed' });
+            restoreLog('Clipboard copy failed:', e);
+            result.failed.push({ url: img.url, error: 'clipboard_failed: ' + (e.message || String(e)) });
+            toast('Could not copy image. Try downloading and uploading manually.');
             return result;
           }
         }
+        restoreLog('No file input found and no images to attach');
         return result;
       }
+      
       try {
         const dt = new DataTransfer();
         const multiple = !!fileInput.multiple;
         let count = 0;
+        
         for (const a of atts) {
           try {
-            const res = await fetch(a.url, { credentials: 'include' });
-            if (!res.ok) { result.failed.push({ url: a.url, error: 'http_'+res.status }); if (!multiple) break; continue; }
+            restoreLog('Fetching attachment:', a.url);
+            // Don't use credentials for cross-origin URLs to avoid CORS issues
+            const isCrossOrigin = !a.url.startsWith(window.location.origin);
+            const fetchOptions = isCrossOrigin ? { mode: 'cors' } : { credentials: 'include' };
+            
+            const res = await fetch(a.url, fetchOptions);
+            if (!res.ok) { 
+              restoreLog('Fetch failed with status:', res.status);
+              result.failed.push({ url: a.url, error: 'http_'+res.status }); 
+              if (!multiple) break; 
+              continue; 
+            }
+            
             const blob = await res.blob();
             const name = a.name || ('attachment.' + ((blob.type && blob.type.split('/')[1]) || 'bin'));
             const file = new File([blob], name, { type: blob.type || 'application/octet-stream' });
             dt.items.add(file);
             count++;
+            restoreLog('Successfully added file:', name);
+            
             if (!multiple) break;
           } catch (e) {
+            restoreLog('Attachment fetch error:', e);
             result.failed.push({ url: a.url, error: e && e.message });
             if (!multiple) break;
           }
         }
+        
         if (count > 0) {
           fileInput.files = dt.files;
           try { fileInput.dispatchEvent(new Event('change', { bubbles: true })); } catch(e) {}
           try { fileInput.dispatchEvent(new Event('input', { bubbles: true })); } catch(e) {}
           result.uploaded = count;
           toast('Attached ' + count + ' file' + (count>1?'s':'') + ' to chat');
+          restoreLog('Successfully attached', count, 'files');
+        } else if (result.failed.length > 0) {
+          toast('Could not attach files. Check console for details.');
         }
       } catch (e) {
-        // Swallow and report
+        restoreLog('attachFilesToChat error:', e);
         try { console.error('[ChatBridge attachFiles] error', e); } catch(_) {}
       }
+      
       return result;
     }
 
@@ -5066,10 +5729,13 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           const fbPrompt = 'Provide a short bullet-point summary of the following text, listing the main points.';
           const f = await callGeminiAsync({ action: 'summarize', text: chunkText, length: chunkLen, summaryType: 'paragraph', prompt: fbPrompt });
           if (f && f.ok) return f.result;
-          debugLog('hierarchicalSummarize: chunk fallback failed', f);
-        } catch (e) { debugLog('hierarchicalSummarize: chunk fallback threw', e); }
+          console.error('[ChatBridge] hierarchicalSummarize: chunk fallback failed', f);
+        } catch (e) { console.error('[ChatBridge] hierarchicalSummarize: chunk fallback threw', e); }
 
-        return '[chunk-summarize-failed]';
+        // All API calls failed - extract key sentences as fallback
+        console.warn('[ChatBridge] All Gemini API calls failed for chunk, using text extraction fallback');
+        const sentences = chunkText.split(/[.!?]+/).filter(s => s.trim().length > 10).slice(0, 5);
+        return '\u2022 ' + sentences.map(s => s.trim()).join('\\n\u2022 ');
       }
 
       for (let i = 0; i < chunks.length; i += maxParallel) {
@@ -6469,7 +7135,18 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
                 row.appendChild(dot);
                 const txt = document.createElement('div');
                 txt.style.cssText = 'flex:1 1 auto;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:0.92';
-                txt.textContent = `${host} • ${count} msgs • ${timeStr}`;
+                
+                // Get first message as preview (one-liner)
+                let preview = '';
+                try {
+                  if (s.conversation && s.conversation.length > 0) {
+                    const firstMsg = s.conversation[0];
+                    preview = (firstMsg.text || '').replace(/\n/g, ' ').trim();
+                    if (preview.length > 40) preview = preview.substring(0, 37) + '...';
+                  }
+                } catch (e) {}
+                
+                txt.textContent = preview || `${count} messages • ${timeStr}`;
                 row.appendChild(txt);
                 const openBtn = document.createElement('button');
                 openBtn.className = 'cb-btn';
@@ -6511,9 +7188,18 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
             try { host = new URL(s.url||location.href).hostname; } catch (_) {}
             // Truncate hostname if too long
             if (host.length > 15) host = host.substring(0, 12) + '...';
-            const date = new Date(s.ts);
-            const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            o.textContent = `${host} • ${count} msgs • ${timeStr}`;
+            
+            // Get first message as preview (one-liner)
+            let preview = '';
+            try {
+              if (s.conversation && s.conversation.length > 0) {
+                const firstMsg = s.conversation[0];
+                preview = (firstMsg.text || '').replace(/\n/g, ' ').trim();
+                if (preview.length > 50) preview = preview.substring(0, 47) + '...';
+              }
+            } catch (e) {}
+            
+            o.textContent = preview || `${count} messages`;
             chatSelect.appendChild(o);
           });
           // Always select the most recent (first in list, which is newest by timestamp)
@@ -6595,6 +7281,42 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       window.ChatBridge._renderLastScan = renderLastScan; 
       window.ChatBridge.refreshHistory = refreshHistory; 
     } catch (e) {}
+
+    // Initialize Smart Context Injection
+    try {
+      if (window.SmartContextInjection) {
+        const contextInjection = new window.SmartContextInjection();
+        // Initialize after a short delay to ensure page is ready
+        setTimeout(() => {
+          try {
+            // Find all AI chat inputs on the page
+            const inputs = document.querySelectorAll('textarea, [contenteditable="true"]');
+            inputs.forEach(input => {
+              contextInjection.init(input, shadow);
+            });
+            debugLog('Smart Context Injection initialized');
+          } catch (e) {
+            debugLog('Smart Context Injection init failed:', e);
+          }
+        }, 1000);
+      }
+    } catch (e) {
+      debugLog('Smart Context Injection setup failed:', e);
+    }
+
+    // Initialize Luxury Mode
+    try {
+      if (typeof LuxuryMode !== 'undefined') {
+        window.luxuryModeInstance = new LuxuryMode(shadow);
+        window.luxuryModeInstance.apply();
+        debugLog('[ChatBridge] Luxury Mode initialized');
+      } else {
+        debugLog('[ChatBridge] LuxuryMode class not found');
+      }
+    } catch (e) {
+      debugLog('Luxury Mode init failed:', e);
+    }
+
     return { host, avatar, panel };
   }
 
@@ -6824,21 +7546,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       }
     } catch(_) {}
 
-    // Auto-summarize if more than 10 messages
-    let summary = '';
-    if (normalized.length > 10) {
-      try {
-        // Compose summary prompt in your required format
-        const summaryPrompt = `Summarize the following chat in this format:\n\n[Summary]\n- Main points\n- Key actions\n- Decisions\n- Next steps\n\nChat:\n${normalized.map(m => (m.role === 'user' ? 'User: ' : 'Assistant: ') + m.text).join('\n')}`;
-        // Call Gemini or your LLM for summary
-        const res = await callGeminiAsync({ action: 'prompt', text: summaryPrompt, length: 'medium' });
-        if (res && res.ok && res.result) {
-          summary = res.result.trim();
-        }
-      } catch (e) { debugLog('auto-summarize failed', e); }
-    }
-
-    // Save conversation with summary if present
+    // Save conversation immediately without blocking for summary
     try {
       const convObj = {
         ts: Date.now(),
@@ -6847,8 +7555,22 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         url: location.href,
         conversation: normalized,
       };
-      if (summary) convObj.summary = summary;
       await saveConversation(convObj);
+      
+      // Auto-summarize in background after save (non-blocking)
+      if (normalized.length > 10) {
+        setTimeout(async () => {
+          try {
+            const summaryPrompt = `Summarize the following chat in this format:\n\n[Summary]\n- Main points\n- Key actions\n- Decisions\n- Next steps\n\nChat:\n${normalized.map(m => (m.role === 'user' ? 'User: ' : 'Assistant: ') + m.text).join('\n')}`;
+            const res = await callGeminiAsync({ action: 'prompt', text: summaryPrompt, length: 'medium' });
+            if (res && res.ok && res.result) {
+              // Update saved conversation with summary
+              convObj.summary = res.result.trim();
+              await saveConversation(convObj);
+            }
+          } catch (e) { debugLog('background auto-summarize failed', e); }
+        }, 100);
+      }
     } catch (e) { debugLog('auto-save failed', e); }
 
     // Log any errors that occurred

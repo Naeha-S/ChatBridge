@@ -10,6 +10,52 @@ try {
   console.warn('[ChatBridge] Could not load RAG/MCP modules:', e);
 }
 
+// Gemini model priority: Best to worst based on rate limits
+const GEMINI_MODEL_PRIORITY = [
+  'gemini-2.5-pro',           // Best quality, 2 RPM
+  'gemini-2.0-flash',         // 15 RPM, 1M TPM
+  'gemini-2.5-flash',         // 10 RPM, 250K TPM
+  'gemini-2.5-flash-lite',    // 15 RPM, 250K TPM
+  'gemini-2.0-flash-exp'      // Experimental, 50 RPD
+];
+
+let currentModelIndex = 0; // Track which model we're using
+let modelFailureCount = {}; // Track failures per model
+const MAX_MODEL_FAILURES = 3; // Switch models after 3 consecutive failures
+
+// Get next available model, skipping those with too many failures
+function getNextAvailableModel() {
+  for (let i = 0; i < GEMINI_MODEL_PRIORITY.length; i++) {
+    const idx = (currentModelIndex + i) % GEMINI_MODEL_PRIORITY.length;
+    const model = GEMINI_MODEL_PRIORITY[idx];
+    if ((modelFailureCount[model] || 0) < MAX_MODEL_FAILURES) {
+      currentModelIndex = idx;
+      return model;
+    }
+  }
+  // All models have failures, reset and try again
+  modelFailureCount = {};
+  currentModelIndex = 0;
+  return GEMINI_MODEL_PRIORITY[0];
+}
+
+// Mark model as failed and switch to next
+function markModelFailed(model, statusCode) {
+  modelFailureCount[model] = (modelFailureCount[model] || 0) + 1;
+  console.warn(`[Gemini] Model ${model} failed (${modelFailureCount[model]}/${MAX_MODEL_FAILURES})`, statusCode);
+  if (modelFailureCount[model] >= MAX_MODEL_FAILURES) {
+    console.warn(`[Gemini] Switching from ${model} due to repeated failures`);
+    currentModelIndex = (currentModelIndex + 1) % GEMINI_MODEL_PRIORITY.length;
+  }
+}
+
+// Mark model as successful, reset failure count
+function markModelSuccess(model) {
+  if (modelFailureCount[model]) {
+    modelFailureCount[model] = 0;
+  }
+}
+
 chrome.runtime.onInstalled.addListener(() => {
   console.log("ChatBridge installed/updated");
   
@@ -1161,8 +1207,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     if (!limiterTry()) return sendResponse({ ok:false, error: 'rate_limited' });
     (async () => {
       try {
-        const GEMINI_API_KEY = await getGeminiApiKey();
-        if (!GEMINI_API_KEY) {
+        let geminiApiKey = await getGeminiApiKey();
+        if (!geminiApiKey) {
           return sendResponse({ ok:false, error: 'no_api_key', message: 'Gemini API key not configured. Open ChatBridge Options to set it.' });
         }
         const payload = msg.payload || {};
@@ -1286,67 +1332,136 @@ Rewritten conversation (optimized for ${tgt}):`;
             return sendResponse(rec.response);
           }
         } catch (e) { /* ignore */ }
-  const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=' + GEMINI_API_KEY;
-        const body = {
-          systemInstruction: systemInstruction ? { parts: [{ text: systemInstruction }] } : undefined,
-          contents: [{ parts: [{ text: promptText }] }],
-          generationConfig: {
-            temperature: 0.7,
-            topP: 0.95,
-            topK: 40,
-            maxOutputTokens: 8192
+        geminiApiKey = await getGeminiApiKey();
+        if (!geminiApiKey) {
+          return sendResponse({ ok:false, error: 'no_api_key', message: 'Gemini API key not configured.' });
+        }
+        
+        // Try models with fallback
+        let lastError = null;
+        const maxRetries = GEMINI_MODEL_PRIORITY.length;
+        
+        for (let attempt = 0; attempt < maxRetries; attempt++) {
+          const currentModel = getNextAvailableModel();
+          const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${currentModel}:generateContent?key=${geminiApiKey}`;
+          const body = {
+            systemInstruction: systemInstruction ? { parts: [{ text: systemInstruction }] } : undefined,
+            contents: [{ parts: [{ text: promptText }] }],
+            generationConfig: {
+              temperature: 0.7,
+              topP: 0.95,
+              topK: 40,
+              maxOutputTokens: 8192
+            }
+          };
+          // Remove undefined fields
+          if (!systemInstruction) delete body.systemInstruction;
+          
+          console.log(`[Gemini] Attempt ${attempt + 1}/${maxRetries} using model: ${currentModel}`);
+          
+          let res;
+          try {
+            res = await fetch(endpoint, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(body)
+            });
+          } catch (fetchError) {
+            console.error(`[Gemini] Fetch failed for ${currentModel}:`, fetchError);
+            markModelFailed(currentModel, 'fetch_error');
+            lastError = { model: currentModel, error: fetchError };
+            continue; // Try next model
           }
-        };
-        // Remove undefined fields
-        if (!systemInstruction) delete body.systemInstruction;
-        const res = await fetch(endpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body)
+        
+          // Parse JSON response - handle both success and error responses
+          let json;
+          try {
+            const text = await res.text();
+            json = text ? JSON.parse(text) : {};
+          } catch (e) {
+            console.error(`[Gemini API] Failed to parse response as JSON for ${currentModel}:`, e);
+            markModelFailed(currentModel, 'parse_error');
+            lastError = { model: currentModel, error: e, status: res.status };
+            continue; // Try next model
+          }
+          
+          // Check if HTTP request was successful
+          if (!res.ok) {
+            const errorInfo = {
+              400: 'Invalid request - check API key or model name',
+              403: 'API key invalid or lacks permissions',
+              429: 'Rate limit exceeded - switching to next model',
+              500: 'Gemini API server error',
+              503: 'Gemini API unavailable'
+            }[res.status] || 'Unknown error';
+            
+            console.error(`[Gemini API Error] HTTP ${res.status} for ${currentModel}:`, json);
+            console.error(`[Gemini API Error] ${errorInfo}`);
+            
+            // Rate limit (429) or server errors - try next model
+            if (res.status === 429 || res.status >= 500) {
+              markModelFailed(currentModel, res.status);
+              lastError = { model: currentModel, status: res.status, body: json };
+              continue; // Try next model
+            }
+            
+            // Auth errors (400, 403) - don't retry, return immediately
+            return sendResponse({ 
+              ok: false, 
+              error: 'gemini_http_error', 
+              status: res.status, 
+              body: json, 
+              message: json.error?.message || errorInfo,
+              model: currentModel
+            });
+          }
+        
+          // Validate response structure
+          if (!json.candidates || !Array.isArray(json.candidates) || json.candidates.length === 0) {
+            console.error(`[Gemini API] No candidates in response for ${currentModel}:`, json);
+            markModelFailed(currentModel, 'no_candidates');
+            lastError = { model: currentModel, error: 'no_candidates', body: json };
+            continue; // Try next model
+          }
+          
+          const candidate = json.candidates[0];
+          if (!candidate || !candidate.content || !candidate.content.parts || !Array.isArray(candidate.content.parts) || candidate.content.parts.length === 0) {
+            console.error(`[Gemini API] Invalid candidate structure for ${currentModel}:`, candidate);
+            markModelFailed(currentModel, 'invalid_structure');
+            lastError = { model: currentModel, error: 'invalid_structure', body: json };
+            continue; // Try next model
+          }
+          
+          // Check for finish reason (might be blocked, stopped, etc.)
+          if (candidate.finishReason && candidate.finishReason !== 'STOP') {
+            console.warn(`[Gemini API] Unexpected finish reason for ${currentModel}:`, candidate.finishReason);
+            // Still try to extract text if available
+          }
+          
+          const result = candidate.content.parts[0].text || '';
+          
+          // Success! Mark model as working
+          markModelSuccess(currentModel);
+          console.log(`[Gemini] ✓ Success with model: ${currentModel}`);
+          
+          // Cache successful result (5min TTL)
+          try {
+            const cacheKey = hashString(stableStringify({ type:'call_gemini', action: payload.action || 'unknown', prompt: promptText, length: payload.length || '', summaryType: payload.summaryType || '' }));
+            await cachePut({ id: cacheKey, ts: Date.now(), ttl: 1000 * 60 * 5, response: { ok:true, result, model: currentModel } });
+            cacheCleanExpired();
+          } catch (e) { /* ignore */ }
+          
+          return sendResponse({ ok:true, result, model: currentModel });
+        }
+        
+        // All models failed, return last error
+        console.error('[Gemini] All models failed, last error:', lastError);
+        return sendResponse({ 
+          ok: false, 
+          error: 'all_models_failed', 
+          message: 'All Gemini models exhausted. Please try again later.',
+          lastError 
         });
-        
-        // Parse JSON response - handle both success and error responses
-        let json;
-        try {
-          const text = await res.text();
-          json = text ? JSON.parse(text) : {};
-        } catch (e) {
-          console.error('[Gemini API] Failed to parse response as JSON:', e);
-          return sendResponse({ ok:false, error: 'gemini_parse_error', message: 'Invalid JSON response', status: res.status });
-        }
-        
-        // Check if HTTP request was successful
-        if (!res.ok) {
-          console.error('[Gemini API Error]', res.status, json);
-          return sendResponse({ ok:false, error: 'gemini_http_error', status: res.status, body: json });
-        }
-        
-        // Validate response structure
-        if (!json.candidates || !Array.isArray(json.candidates) || json.candidates.length === 0) {
-          console.error('[Gemini API] No candidates in response:', json);
-          return sendResponse({ ok:false, error: 'gemini_parse_error', message: 'No candidates in response', body: json });
-        }
-        
-        const candidate = json.candidates[0];
-        if (!candidate || !candidate.content || !candidate.content.parts || !Array.isArray(candidate.content.parts) || candidate.content.parts.length === 0) {
-          console.error('[Gemini API] Invalid candidate structure:', candidate);
-          return sendResponse({ ok:false, error: 'gemini_parse_error', message: 'Invalid candidate structure', body: json });
-        }
-        
-        // Check for finish reason (might be blocked, stopped, etc.)
-        if (candidate.finishReason && candidate.finishReason !== 'STOP') {
-          console.warn('[Gemini API] Unexpected finish reason:', candidate.finishReason);
-          // Still try to extract text if available
-        }
-        
-        const result = candidate.content.parts[0].text || '';
-        // cache gemini successful result (5min TTL)
-        try {
-          const cacheKey = hashString(stableStringify({ type:'call_gemini', action: payload.action || 'unknown', prompt: promptText, length: payload.length || '', summaryType: payload.summaryType || '' }));
-          await cachePut({ id: cacheKey, ts: Date.now(), ttl: 1000 * 60 * 5, response: { ok:true, result } });
-          cacheCleanExpired();
-        } catch (e) { /* ignore */ }
-        return sendResponse({ ok:true, result });
       } catch (e) {
         return sendResponse({ ok:false, error: 'gemini_fetch_error', message: (e && e.message) || String(e) });
       }
