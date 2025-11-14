@@ -1671,40 +1671,67 @@
         codeBlocks.forEach(cb => cb.split(/\n/).forEach(cmd => {
           const c = cmd.trim();
           if (!c) return;
-          if (/^(npm|yarn|pnpm|pip|pip3|python|node|npx|git|docker|kubectl|az|aws|gcloud|make|bash|sh|pwsh|powershell)\b/i.test(c)) {
+          if (/^(npm|yarn|pnpm|pip|pip3|python|node|npx|git|docker|kubectl|az|aws|gcloud|make|bash|sh|pwsh|powershell|cd|mkdir|rm|mv|cp|curl|wget)\b/i.test(c)) {
             out.commands.push(c);
           }
         }));
 
-        // Simple heuristics
-        const taskVerbs = /(install|set\s*up|configure|create|build|deploy|design|draft|write|document|research|investigate|prototype|refactor|optimi[sz]e|test|fix|debug|review|plan|migrate|backup|monitor|enable|disable)\b/i;
-        const reminderTerms = /(remind|follow\s*up|check\s*back|tomorrow|next\s*(week|month)|later|by\s*\d{1,2}\/\d{1,2}|due\s*(date)?)/i;
-        const stepMarker = /^(?:\d+\.|\d+\)|step\s*\d+\s*[:\-]|[-*•]\s+)/i;
+        // Expanded heuristics: action verbs, imperative, and user requests
+        const taskVerbs = /(install|set\s*up|configure|create|build|deploy|design|draft|write|document|research|investigate|prototype|refactor|optimi[sz]e|test|fix|debug|review|plan|migrate|backup|monitor|enable|disable|implement|add|update|replace|remove|delete|change|modify|improve|enhance|ensure|verify|check)\b/i;
+        const userRequestPattern = /^(user:|👤|User)\s*(.+?)$/i;
+        const reminderTerms = /(remind|follow\s*up|check\s*back|tomorrow|next\s*(week|month)|later|by\s*\d{1,2}\/\d{1,2}|due\s*(date)?|schedule|deadline)/i;
+        const stepMarker = /^(?:\d+\.|\d+\)|step\s*\d+\s*[:\-]|[-*•]\s+|—\s+|–\s+)/i;
+        const todoPattern = /^(todo|to\s*do|action\s*item|task)[:\s]+(.+)/i;
 
         for (const l of lines) {
           if (/^>/.test(l)) continue; // skip blockquotes
           if (/^```/.test(l)) continue;
+          if (/^(assistant:|🤖|Assistant)\s*$/i.test(l)) continue; // skip role markers alone
 
-          if (stepMarker.test(l)) {
-            const clean = l.replace(stepMarker, '').trim();
-            if (taskVerbs.test(clean)) out.steps.push(clean);
-            else out.steps.push(clean);
+          // Detect explicit to-do items
+          const todoMatch = l.match(todoPattern);
+          if (todoMatch && todoMatch[2]) {
+            out.todos.push(todoMatch[2].trim());
             continue;
           }
+
+          // Step markers (lists)
+          if (stepMarker.test(l)) {
+            const clean = l.replace(stepMarker, '').trim();
+            if (clean.length > 5) out.steps.push(clean);
+            continue;
+          }
+
+          // Reminders
           if (reminderTerms.test(l)) {
             out.reminders.push(l);
             continue;
           }
-          if (taskVerbs.test(l)) {
-            // classify as task or todo
-            if (/todo|to\s*do|action\s*item/i.test(l)) out.todos.push(l);
-            else out.tasks.push(l);
-            continue;
+
+          // Extract user requests as tasks
+          const userMatch = l.match(userRequestPattern);
+          if (userMatch && userMatch[2]) {
+            const req = userMatch[2].trim();
+            if (taskVerbs.test(req) && req.length > 10) {
+              out.tasks.push(req);
+              continue;
+            }
           }
+
+          // General task detection (imperative sentences with action verbs)
+          if (taskVerbs.test(l) && l.length > 10) {
+            // Heuristic: if starts with verb or contains "should", "need to", "want to"
+            if (/^(please\s+)?[a-z]+/i.test(l) || /(should|need\s*to|want\s*to|must|have\s*to)\s+/i.test(l)) {
+              if (/todo|to\s*do|action\s*item/i.test(l)) out.todos.push(l);
+              else out.tasks.push(l);
+              continue;
+            }
+          }
+
           // Commands inline with backticks
           const inlineCmds = [...l.matchAll(/`([^`]+)`/g)].map(m=>m[1]);
           inlineCmds.forEach(c => {
-            if (/^(npm|yarn|pnpm|pip|pip3|python|node|npx|git|docker|kubectl|az|aws|gcloud|make|bash|sh|pwsh|powershell)\b/i.test(c.trim())) {
+            if (/^(npm|yarn|pnpm|pip|pip3|python|node|npx|git|docker|kubectl|az|aws|gcloud|make|bash|sh|pwsh|powershell|cd|mkdir|rm|mv|cp|curl|wget)\b/i.test(c.trim())) {
               out.commands.push(c.trim());
             }
           });
@@ -1728,16 +1755,43 @@
       } catch (e) { debugLog('extractActionPlanFromText error', e); return { tasks:[], steps:[], todos:[], commands:[], reminders:[] }; }
     }
 
-    function actionPlanToJSON(plan) {
+    function actionPlanToReadable(plan) {
       try {
-        const obj = {};
-        if (plan.tasks && plan.tasks.length) obj.tasks = plan.tasks;
-        if (plan.steps && plan.steps.length) obj.steps = plan.steps;
-        if (plan.todos && plan.todos.length) obj.todos = plan.todos;
-        if (plan.commands && plan.commands.length) obj.commands = plan.commands;
-        if (plan.reminders && plan.reminders.length) obj.reminders = plan.reminders;
-        return JSON.stringify(obj, null, 2);
-      } catch (_) { return '{ }'; }
+        let out = '📌 Action Plan\n\n';
+        let count = 0;
+        if (plan.tasks && plan.tasks.length) {
+          out += '— Tasks\n';
+          plan.tasks.forEach(t => { out += `  • ${t}\n`; });
+          out += '\n';
+          count += plan.tasks.length;
+        }
+        if (plan.steps && plan.steps.length) {
+          out += '— Steps\n';
+          plan.steps.forEach((s, i) => { out += `  ${i+1}. ${s}\n`; });
+          out += '\n';
+          count += plan.steps.length;
+        }
+        if (plan.todos && plan.todos.length) {
+          out += '— To-dos\n';
+          plan.todos.forEach(t => { out += `  • ${t}\n`; });
+          out += '\n';
+          count += plan.todos.length;
+        }
+        if (plan.commands && plan.commands.length) {
+          out += '— Commands\n';
+          plan.commands.forEach(c => { out += `  $ ${c}\n`; });
+          out += '\n';
+          count += plan.commands.length;
+        }
+        if (plan.reminders && plan.reminders.length) {
+          out += '— Reminders\n';
+          plan.reminders.forEach(r => { out += `  ⏰ ${r}\n`; });
+          out += '\n';
+          count += plan.reminders.length;
+        }
+        if (count === 0) return '📌 Action Plan\n\n(No actionable items detected in this conversation)';
+        return out.trim();
+      } catch (_) { return '📌 Action Plan\n\n(Error formatting plan)'; }
     }
 
     // Render Smart Workspace UI
@@ -1877,7 +1931,7 @@
           }
         });
 
-        // 4. Action Extractor (Convert chat into actionable plan JSON)
+        // 4. Action Extractor (Convert chat into actionable plan)
         const actionBtn = createFeatureCard('Action Extractor', 'Convert this chat into a concise plan', '🗂️', async () => {
           addLoadingToButton(actionBtn, 'Extracting...');
           try {
@@ -1885,11 +1939,10 @@
             if (!msgs || msgs.length === 0) { toast('No messages found in current chat'); removeLoadingFromButton(actionBtn, 'Action Extractor'); return; }
             const text = msgs.map(m => `${m.role}: ${m.text}`).join('\n');
             const plan = extractActionPlanFromText(text);
-            const json = actionPlanToJSON(plan);
+            const readable = actionPlanToReadable(plan);
             const outputArea = document.getElementById('cb-insights-output');
-            if (outputArea) { outputArea.textContent = json; outputArea.scrollTop = 0; }
-            await navigator.clipboard.writeText(json);
-            toast('Action plan JSON copied to clipboard');
+            if (outputArea) { outputArea.textContent = readable; outputArea.scrollTop = 0; }
+            toast('Action plan extracted');
           } catch (e) {
             toast('Extraction failed'); debugLog('Action Extractor error', e);
           } finally {
