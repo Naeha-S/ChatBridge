@@ -368,37 +368,7 @@ function showInsightsOutput(result) {
 // ============================================
 // ADD to the style section in content_script.js (around line 780):
 
-  .cb-followup-list { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
-  .cb-followup-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 12px;
-    background: var(--cb-bg);
-    border: 1px solid var(--cb-border);
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-  .cb-followup-item:hover {
-    border-color: var(--cb-accent-primary);
-    transform: translateX(4px);
-  }
-  .cb-followup-icon { font-size: 16px; }
-  .cb-followup-text { flex: 1; font-size: 12px; color: var(--cb-white); }
-  .cb-followup-btn {
-    padding: 4px 10px;
-    background: var(--cb-accent-primary);
-    border: none;
-    border-radius: 6px;
-    color: white;
-    font-size: 12px;
-    font-weight: 600;
-    cursor: pointer;
-    opacity: 0.8;
-    transition: opacity 0.2s;
-  }
-  .cb-followup-btn:hover { opacity: 1; }
+// (CSS for follow-up questions removed from JS. Place in styles.css or a <style> block in content_script.js)
 
 // ============================================
 // DONE - All UX improvements complete!

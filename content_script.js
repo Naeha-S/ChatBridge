@@ -32,13 +32,13 @@
   // Check if current site is approved
   function isApprovedSite() {
     const hostname = window.location.hostname;
-    return APPROVED_SITES.some(site => hostname === site || hostname.endsWith('.' + site));
+     return APPROVED_SITES.some(site => hostname === site || hostname.endsWith('.' + site)) || hostname === 'localhost';
   }
 
   // Exit early if not on approved site
   if (!isApprovedSite()) {
     console.log('[ChatBridge] Not on approved site, skipping injection. Current:', window.location.hostname);
-    return;
+     return; // Early exit if not approved
   }
 
   console.log('[ChatBridge] Injecting on approved site:', window.location.hostname);
@@ -634,7 +634,7 @@
     // If host already exists, ensure avatar is present (in case it was removed)
     if (document.getElementById('cb-host')) {
       try { ensureAvatarExists(); } catch (e) {}
-      return null;
+       return;
     }
   const avatar = document.createElement('div'); avatar.id = 'cb-avatar'; avatar.setAttribute('data-cb-ignore', 'true');
   const avatarImg = document.createElement('img');
@@ -1277,9 +1277,80 @@
 
   const footer = document.createElement('div'); footer.className = 'cb-footer'; panel.appendChild(footer);
 
+  // Subtle suggestions container (This Might Help)
+  const subtleSuggest = document.createElement('div');
+  subtleSuggest.id = 'cb-subtle-suggestions';
+  subtleSuggest.setAttribute('data-cb-ignore','true');
+  subtleSuggest.style.cssText = 'margin-top:8px;padding:8px;border-top:1px dashed rgba(0,180,255,0.15);opacity:0.85;font-size:11px;color:var(--cb-subtext);display:none;';
+  subtleSuggest.innerHTML = '<div style="font-weight:600;opacity:0.8;margin-bottom:6px;">This might help</div><div id="cb-subtle-list" style="display:flex;flex-direction:column;gap:6px;"></div>';
+  panel.appendChild(subtleSuggest);
+
     function renderLastScan() { /* end-user UI hides debug */ }
 
     shadow.appendChild(panel);
+
+    // Load subtle archive-based hints (quiet, optional)
+    async function loadSubtleSuggestions() {
+      try {
+        const container = shadow.getElementById ? shadow.getElementById('cb-subtle-suggestions') : null;
+        const list = shadow.getElementById ? shadow.getElementById('cb-subtle-list') : null;
+        if (!container || !list) return;
+        list.innerHTML = '';
+
+        // Get a bit of current context
+        const lastScan = (window.ChatBridge && window.ChatBridge.getLastScan && window.ChatBridge.getLastScan()) || {};
+        const lastScanText = String(lastScan.text || '').slice(0, 400);
+        const host = window.location.hostname.replace(/^www\./,'');
+
+        // Pull recent conversations from background
+        let convs = [];
+        try { convs = await getAllStoredConversations(); } catch(_){ /* ignore */ }
+
+        const items = [];
+        if (convs && convs.length) {
+          // Relevant old answer (same host)
+          const byHost = convs.find(c => (c.host||'').includes(host));
+          if (byHost && (byHost.title || byHost.text)) {
+            items.push({ label: 'Relevant old answer', text: (byHost.title || 'Conversation').slice(0,80), action: () => {
+              try { showOutputWithSendButton(String(byHost.summary||byHost.text||'').slice(0,1200), 'Revisit Answer'); } catch(_){}
+            }});
+          }
+
+          // Related topic (top tag)
+          const tagCounts = {};
+          convs.slice(0,50).forEach(c => (c.tags||[]).forEach(t => { const k=(t||'').toLowerCase(); if(!k) return; tagCounts[k]=(tagCounts[k]||0)+1; }));
+          const topTag = Object.entries(tagCounts).sort((a,b)=>b[1]-a[1])[0]?.[0];
+          if (topTag) {
+            items.push({ label: 'Related topic', text: `#${topTag}`, action: async () => {
+              try {
+                const matches = convs.filter(c => (c.tags||[]).map(x=>String(x).toLowerCase()).includes(topTag)).slice(0,3);
+                const quick = matches.map((m,i)=>`${i+1}. ${(m.title||'Conversation').slice(0,60)}`).join('\n');
+                showOutputWithSendButton(`Top related items for ${topTag}:\n\n${quick||'(none found)'}`, 'Related Topic');
+              } catch(_){}
+            }});
+          }
+
+          // Supporting material (open extract view)
+          items.push({ label: 'Supporting materials', text: 'Extract code blocks or media from recent chats', action: () => { try { showExtractView(); } catch(_){} }});
+        }
+
+        if (!items.length) { container.style.display='none'; return; }
+
+        items.slice(0,3).forEach(it => {
+          const btn = document.createElement('button');
+          btn.className = 'cb-btn'; btn.type = 'button';
+          btn.style.cssText = 'text-align:left;padding:8px;background:rgba(16,24,43,0.35);border:1px solid rgba(0,180,255,0.15);font-size:11px;display:flex;gap:6px;align-items:center;';
+          btn.innerHTML = `<span style="opacity:0.85;">•</span><span style="opacity:0.9;font-weight:600;">${it.label}:</span><span style="opacity:0.85;">${it.text}</span>`;
+          btn.addEventListener('click', () => { try { it.action(); } catch(_){} });
+          list.appendChild(btn);
+        });
+
+        container.style.display = 'block';
+      } catch(_){ /* quiet */ }
+    }
+
+    // Defer a bit to avoid UI jank
+    setTimeout(loadSubtleSuggestions, 600);
 
     // Accessible live region for screen readers and visually-hidden styling
     const ariaLive = document.createElement('div');
@@ -3135,7 +3206,6 @@ CRITICAL: Be analytical and concise. This is for a user switching AI platforms m
           
           resultsDiv.innerHTML = '<div style="text-align:center;padding:12px;"><div class="cb-spinner" style="display:inline-block;"></div><div style="margin-top:8px;font-size:12px;">Retrieving context via RAG, then querying AIs...</div></div>';
           
-          try {
           // Retrieve relevant context from past conversations using RAG
           let ragContext = '';
           let ragResultCount = 0;
@@ -3649,6 +3719,67 @@ Examples:
         resultsDiv.innerHTML = '<div style="text-align:center;padding:12px;"><div class="cb-spinner" style="display:inline-block;"></div><div style="margin-top:8px;font-size:11px;">Consulting Gemini, ChatGPT, Claude, and Copilot...</div></div>';
         
         try {
+          // Helper: Convert breakdown/refinement into concise, skimmable plan
+          function postProcessPlanner(breakdownText, goalText, refinementText) {
+            try {
+              const txt = String(breakdownText||'');
+              const steps = [];
+              // Find step headings
+              const re = /(\n|^)\s*(?:##+\s*)?Step\s*(\d+)\s*[:\-]\s*([^\n]+)\s*/gi;
+              let m;
+              const indices = [];
+              while ((m = re.exec(txt)) !== null) {
+                indices.push({ idx: m.index, num: parseInt(m[2],10)||steps.length+1, title: (m[3]||'').trim() });
+              }
+              // Build step blocks
+              for (let i=0;i<indices.length;i++) {
+                const start = indices[i].idx;
+                const end = i+1<indices.length ? indices[i+1].idx : txt.length;
+                const block = txt.slice(start, end);
+                const assignedMatch = block.match(/Assigned\s*to\s*:?\s*(?:\*\*|\*)?([^\n*]+)(?:\*\*|\*)?/i);
+                const taskMatch = block.match(/Task\s*:?\s*([^\n\r]+(?:\n(?!\s*\w+\s*:\s).+)*)/i);
+                const model = assignedMatch ? assignedMatch[1].trim() : '';
+                const taskRaw = taskMatch ? taskMatch[1].trim() : '';
+                const taskOne = (() => {
+                  const t = taskRaw.replace(/\s+/g,' ').trim();
+                  // keep up to 2 short sentences or ~160 chars
+                  const parts = t.split(/(?<=\.)\s+/).filter(Boolean);
+                  const clipped = parts.slice(0,2).join(' ');
+                  return (clipped || t).slice(0, 160);
+                })();
+                steps.push({ num: indices[i].num, title: indices[i].title, model, task: taskOne });
+              }
+
+              // Fallback: if no steps matched, create a single-line summary
+              if (!steps.length) {
+                const one = (txt.split('\n').find(l=>/Assigned to|Task|Step/i.test(l))||txt).replace(/\s+/g,' ').trim().slice(0,180);
+                return `# ${goalText}\n\n- ${one}`;
+              }
+
+              // Integration flow extraction
+              let flow = '';
+              try {
+                const sec = /Integration\s*Plan[\s\S]*?\n+([^\n][^#\n]{0,160})/i.exec(txt);
+                if (sec && sec[1]) flow = sec[1].replace(/\s+/g,' ').trim();
+              } catch(_) {}
+              if (!flow) {
+                const order = steps.map(s=>`S${s.num}`).join(' → ');
+                flow = `${order} → Final deliverable`;
+              }
+
+              // Compose concise plan
+              const header = `# ${goalText}`;
+              const lines = steps
+                .sort((a,b)=>a.num-b.num)
+                .slice(0,7)
+                .map(s => `- [${s.model||'Model'}] ${s.title || s.task}`);
+              // Ensure at least 5 items if available
+              const concise = `${header}\n\n${lines.join('\n')}\n\nIntegration Flow: ${flow}`;
+              return concise;
+            } catch (e) {
+              return String(breakdownText||'');
+            }
+          }
           // Stage 1: Break down goal into steps
           resultsDiv.innerHTML += '<div style="font-size:11px;opacity:0.7;margin-top:8px;">Stage 1/3: Breaking down goal into steps...</div>';
           
@@ -3705,30 +3836,9 @@ Keep it practical and actionable.`;
           // Stage 3: Final synthesis
           resultsDiv.innerHTML += '<div style="font-size:11px;opacity:0.7;">Stage 3/3: Synthesizing unified plan...</div>';
           
-          const finalPlan = `# 🎯 ${goal}
-
----
-
-${breakdown.result}
-
----
-
-## 💡 AI Team Consultation
-
-${refinement?.ok ? refinement.result : 'Consultation unavailable'}
-
----
-
-## ✅ Next Actions
-1. **Immediate:** Start with Step 1 using ${breakdown.result.match(/Assigned to:\s*\*\*([^*]+)\*\*/)?.[1] || 'Gemini'}
-2. **Prepare:** Review technical requirements
-3. **Execute:** Follow steps sequentially
-4. **Validate:** Check success criteria after each step
-
-**Status:** All AIs consulted. Plan ready for execution.`;
-
+          const concisePlan = postProcessPlanner(String(breakdown.result||''), goal, String(refinement?.result||''));
           resultsDiv.innerHTML = `
-            <div style="white-space:pre-wrap;line-height:1.6;font-size:12px;">${finalPlan}</div>
+            <div style="white-space:pre-wrap;line-height:1.6;font-size:12px;">${concisePlan}</div>
             <div style="display:flex;gap:8px;margin-top:12px;">
               <button class="cb-btn cb-btn-primary" style="flex:1;" onclick="navigator.clipboard.writeText(this.parentElement.previousElementSibling.textContent);this.textContent='✓ Copied';setTimeout(() => this.textContent='📋 Copy Plan', 2000);">📋 Copy Plan</button>
               <button class="cb-btn" style="flex:1;" onclick="const text = this.parentElement.previousElementSibling.textContent; window.ChatBridge.restoreToChat(text, []); this.textContent='✓ Inserted';setTimeout(() => this.textContent='➤ Insert to Chat', 2000);">➤ Insert to Chat</button>
