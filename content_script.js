@@ -1649,6 +1649,97 @@
     // SMART WORKSPACE FUNCTIONS
     // ============================================
 
+    // Extract actionable items from plain chat text without AI calls
+    function extractActionPlanFromText(text) {
+      try {
+        const out = { tasks: [], steps: [], todos: [], commands: [], reminders: [] };
+        if (!text || !text.trim()) return out;
+
+        const lines = String(text).split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+
+        // Collect code fences as commands
+        const codeBlocks = [];
+        let inCode = false, codeLang = '', buffer = [];
+        for (const l of lines) {
+          if (/^```/.test(l)) {
+            if (!inCode) { inCode = true; codeLang = l.replace(/```\s*/,'').trim(); buffer = []; }
+            else { inCode = false; if (buffer.length) codeBlocks.push(buffer.join('\n')); buffer = []; codeLang=''; }
+            continue;
+          }
+          if (inCode) { buffer.push(l); }
+        }
+        codeBlocks.forEach(cb => cb.split(/\n/).forEach(cmd => {
+          const c = cmd.trim();
+          if (!c) return;
+          if (/^(npm|yarn|pnpm|pip|pip3|python|node|npx|git|docker|kubectl|az|aws|gcloud|make|bash|sh|pwsh|powershell)\b/i.test(c)) {
+            out.commands.push(c);
+          }
+        }));
+
+        // Simple heuristics
+        const taskVerbs = /(install|set\s*up|configure|create|build|deploy|design|draft|write|document|research|investigate|prototype|refactor|optimi[sz]e|test|fix|debug|review|plan|migrate|backup|monitor|enable|disable)\b/i;
+        const reminderTerms = /(remind|follow\s*up|check\s*back|tomorrow|next\s*(week|month)|later|by\s*\d{1,2}\/\d{1,2}|due\s*(date)?)/i;
+        const stepMarker = /^(?:\d+\.|\d+\)|step\s*\d+\s*[:\-]|[-*•]\s+)/i;
+
+        for (const l of lines) {
+          if (/^>/.test(l)) continue; // skip blockquotes
+          if (/^```/.test(l)) continue;
+
+          if (stepMarker.test(l)) {
+            const clean = l.replace(stepMarker, '').trim();
+            if (taskVerbs.test(clean)) out.steps.push(clean);
+            else out.steps.push(clean);
+            continue;
+          }
+          if (reminderTerms.test(l)) {
+            out.reminders.push(l);
+            continue;
+          }
+          if (taskVerbs.test(l)) {
+            // classify as task or todo
+            if (/todo|to\s*do|action\s*item/i.test(l)) out.todos.push(l);
+            else out.tasks.push(l);
+            continue;
+          }
+          // Commands inline with backticks
+          const inlineCmds = [...l.matchAll(/`([^`]+)`/g)].map(m=>m[1]);
+          inlineCmds.forEach(c => {
+            if (/^(npm|yarn|pnpm|pip|pip3|python|node|npx|git|docker|kubectl|az|aws|gcloud|make|bash|sh|pwsh|powershell)\b/i.test(c.trim())) {
+              out.commands.push(c.trim());
+            }
+          });
+        }
+
+        // De-duplicate and clip to one sentence
+        const dedupe = arr => Array.from(new Set(arr.map(s => s.replace(/\s+/g,' ').trim())));
+        const oneSentence = s => {
+          const clipped = s.replace(/\s+/g,' ').trim();
+          const cut = clipped.split(/(?<=\.)\s+/)[0] || clipped;
+          return cut.length > 200 ? cut.slice(0,200) : cut;
+        };
+
+        out.tasks = dedupe(out.tasks).map(oneSentence).slice(0,12);
+        out.steps = dedupe(out.steps).map(oneSentence).slice(0,12);
+        out.todos = dedupe(out.todos).map(oneSentence).slice(0,12);
+        out.commands = dedupe(out.commands).map(s=>s.slice(0,200)).slice(0,12);
+        out.reminders = dedupe(out.reminders).map(oneSentence).slice(0,12);
+
+        return out;
+      } catch (e) { debugLog('extractActionPlanFromText error', e); return { tasks:[], steps:[], todos:[], commands:[], reminders:[] }; }
+    }
+
+    function actionPlanToJSON(plan) {
+      try {
+        const obj = {};
+        if (plan.tasks && plan.tasks.length) obj.tasks = plan.tasks;
+        if (plan.steps && plan.steps.length) obj.steps = plan.steps;
+        if (plan.todos && plan.todos.length) obj.todos = plan.todos;
+        if (plan.commands && plan.commands.length) obj.commands = plan.commands;
+        if (plan.reminders && plan.reminders.length) obj.reminders = plan.reminders;
+        return JSON.stringify(obj, null, 2);
+      } catch (_) { return '{ }'; }
+    }
+
     // Render Smart Workspace UI
     async function renderSmartWorkspace() {
       try {
@@ -1714,6 +1805,29 @@
           debugLog('Failed to load AI insights:', e);
         }
 
+        // Auto Summary when long threads (>15 messages)
+        try {
+          const msgs = await scanChat();
+          if (msgs && msgs.length > 15) {
+            const autoSection = document.createElement('div');
+            autoSection.style.cssText = 'margin:12px;padding:12px;background:rgba(16,24,43,0.4);border:1px solid rgba(0,180,255,0.25);border-radius:8px;';
+            autoSection.innerHTML = '<div style="font-weight:600;font-size:12px;margin-bottom:6px;color:var(--cb-subtext);">🧠 Auto Summary</div><div id="cb-auto-sum" style="font-size:12px;opacity:0.9;">Summarizing conversation…</div>';
+            insightsContent.appendChild(autoSection);
+            try {
+              const prompt = msgs.map(m => `${m.role}: ${m.text}`).join('\n\n');
+              const sum = await callGeminiAsync({ action: 'summarize', text: prompt, length: 'medium', summaryType: 'transfer' });
+              const tgt = autoSection.querySelector('#cb-auto-sum');
+              if (sum && sum.ok && tgt) {
+                // Ensure structured feel by lightly formatting
+                const txt = String(sum.result||'').trim();
+                tgt.textContent = txt;
+              } else if (tgt) {
+                tgt.textContent = '(Auto summary unavailable)';
+              }
+            } catch (_) {}
+          }
+        } catch (e) { debugLog('auto summary failed', e); }
+
         // Quick Actions Grid
         const actionsGrid = document.createElement('div');
         actionsGrid.style.cssText = 'display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px;padding:0 12px;';
@@ -1763,83 +1877,30 @@
           }
         });
 
-        // 4. Context Snapshot (Quick export current chat context)
-        const snapshotBtn = createFeatureCard('Context Snapshot', 'Export current chat as shareable context', '�', async () => {
-          addLoadingToButton(snapshotBtn, 'Creating snapshot...');
+        // 4. Action Extractor (Convert chat into actionable plan JSON)
+        const actionBtn = createFeatureCard('Action Extractor', 'Convert this chat into a concise plan', '🗂️', async () => {
+          addLoadingToButton(actionBtn, 'Extracting...');
           try {
-            // Scan current chat
             const msgs = await scanChat();
-            if (!msgs || msgs.length === 0) {
-              toast('No messages found in current chat');
-              removeLoadingFromButton(snapshotBtn, 'Context Snapshot');
-              return;
-            }
-            
-            // Generate comprehensive snapshot with metadata
-            const now = new Date();
-            const platform = location.hostname || 'Unknown';
-            const url = location.href;
-            
-            let snapshot = `# ChatBridge Context Snapshot\n`;
-            snapshot += `**Generated**: ${now.toLocaleString()}\n`;
-            snapshot += `**Platform**: ${platform}\n`;
-            snapshot += `**Messages**: ${msgs.length}\n`;
-            snapshot += `**URL**: ${url}\n\n`;
-            snapshot += `---\n\n`;
-            
-            // Add conversation with proper formatting
-            msgs.forEach((m, idx) => {
-              const role = m.role === 'user' ? '👤 **User**' : '🤖 **Assistant**';
-              snapshot += `### Message ${idx + 1} (${role})\n\n`;
-              snapshot += `${m.text}\n\n`;
-              
-              // Add attachments if present
-              if (m.attachments && m.attachments.length > 0) {
-                snapshot += `**Attachments**: ${m.attachments.length}\n`;
-                m.attachments.forEach(att => {
-                  snapshot += `- ${att.kind}: ${att.name || att.url}\n`;
-                });
-                snapshot += `\n`;
-              }
-              snapshot += `---\n\n`;
-            });
-            
-            // Add AI-generated summary
-            const summaryPrompt = msgs.map(m => `${m.role}: ${m.text}`).join('\n\n');
-            const summaryRes = await callGeminiAsync({ 
-              action: 'summarize', 
-              text: summaryPrompt, 
-              length: 'medium',
-              summaryType: 'transfer'
-            });
-            
-            if (summaryRes && summaryRes.ok) {
-              snapshot += `## AI Summary\n\n${summaryRes.result}\n\n`;
-            }
-            
-            // Show in output area
+            if (!msgs || msgs.length === 0) { toast('No messages found in current chat'); removeLoadingFromButton(actionBtn, 'Action Extractor'); return; }
+            const text = msgs.map(m => `${m.role}: ${m.text}`).join('\n');
+            const plan = extractActionPlanFromText(text);
+            const json = actionPlanToJSON(plan);
             const outputArea = document.getElementById('cb-insights-output');
-            if (outputArea) {
-              outputArea.textContent = snapshot;
-              outputArea.scrollTop = 0;
-            }
-            
-            // Copy to clipboard
-            await navigator.clipboard.writeText(snapshot);
-            toast(`Snapshot created (${msgs.length} messages) - Copied to clipboard`);
-            
+            if (outputArea) { outputArea.textContent = json; outputArea.scrollTop = 0; }
+            await navigator.clipboard.writeText(json);
+            toast('Action plan JSON copied to clipboard');
           } catch (e) {
-            toast('Snapshot creation failed');
-            debugLog('Snapshot error', e);
+            toast('Extraction failed'); debugLog('Action Extractor error', e);
           } finally {
-            removeLoadingFromButton(snapshotBtn, 'Context Snapshot');
+            removeLoadingFromButton(actionBtn, 'Action Extractor');
           }
         });
 
         actionsGrid.appendChild(compareBtn);
         actionsGrid.appendChild(mergeBtn);
         actionsGrid.appendChild(extractBtn);
-        actionsGrid.appendChild(snapshotBtn);
+        actionsGrid.appendChild(actionBtn);
         insightsContent.appendChild(actionsGrid);
 
         // Output Preview Area
