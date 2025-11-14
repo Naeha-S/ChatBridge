@@ -2624,18 +2624,31 @@
         let relatedConvs = [];
         let usingRAG = false;
         
-        // Try RAG-powered semantic search first
+        // Try RAG-powered semantic search first with enhanced relevance filtering
         if (typeof window.RAGEngine !== 'undefined') {
           try {
             debugLog('[Continuum] Using RAG to find related conversations');
-            const ragResults = await window.RAGEngine.retrieve(queryText, 8);
+            const ragResults = await window.RAGEngine.retrieve(queryText, 12); // Get more candidates for filtering
             
             if (ragResults && ragResults.length > 0) {
               usingRAG = true;
-              debugLog('[Continuum] RAG found', ragResults.length, 'related conversations');
+              
+              // Enhanced filtering: only keep high-relevance results
+              const RELEVANCE_THRESHOLD = 0.35; // Higher threshold = more selective
+              const filteredResults = ragResults.filter(r => {
+                // Filter out noise, greetings, generic responses
+                const text = (r.text || '').toLowerCase();
+                const isNoise = /^(hi|hello|thanks|thank you|ok|okay|yes|no|sure|got it)[\s\.\!]*$/i.test(text.trim());
+                const isGreeting = text.length < 50 && /greeting|introduction|welcome/i.test(text);
+                const hasContent = text.length > 100; // Require substantial content
+                
+                return r.score >= RELEVANCE_THRESHOLD && !isNoise && !isGreeting && hasContent;
+              });
+              
+              debugLog('[Continuum] RAG found', filteredResults.length, 'high-relevance conversations (filtered from', ragResults.length, ')');
               
               // Map RAG results back to full conversation objects
-              relatedConvs = ragResults.map(r => {
+              relatedConvs = filteredResults.slice(0, 8).map(r => {
                 const conv = convs.find(c => String(c.ts) === String(r.id));
                 return conv || {
                   ts: r.id,
@@ -2663,20 +2676,36 @@
         
         debugLog('[Continuum] Found', relatedConvs.length, 'related conversations on topics:', seedTopics, '(RAG:', usingRAG, ')');
         
-        // Build combined context from all related conversations
+        // Build combined context focusing on continuity and decisions
         let combinedContext = '';
         relatedConvs.forEach((conv, idx) => {
           const host = hostFromConv(conv) || 'unknown';
           const ago = Math.round((Date.now() - (conv.ts||Date.now())) / (1000 * 60 * 60));
           const msgs = conv.conversation || [];
-          const snippet = msgs.slice(-4).map(m => `${m.role}: ${m.text.slice(0,200)}`).join('\n');
-          const ragScore = conv.ragScore ? ` [Relevance: ${(conv.ragScore * 100).toFixed(0)}%]` : '';
-          combinedContext += `\n---\nConversation ${idx+1}: ${host}, ${ago}h ago${ragScore}\nTopics: ${(conv.topics||[]).join(', ')}\n${snippet}\n`;
+          
+          // Extract decision points, questions, and substantive exchanges
+          const substantiveMessages = msgs.filter(m => {
+            const text = (m.text || '').toLowerCase();
+            // Filter out noise and focus on content
+            const hasSubstance = text.length > 80;
+            const isDecision = /decided|chose|selected|going with|will use|implemented/i.test(text);
+            const isQuestion = text.includes('?') || /how|why|what|when|where|should|could|would/i.test(text);
+            const isConstraint = /require|must|need|constraint|limitation|cannot/i.test(text);
+            
+            return hasSubstance && (isDecision || isQuestion || isConstraint);
+          });
+          
+          // Use substantive messages if available, otherwise fall back to recent
+          const relevantMsgs = substantiveMessages.length > 0 ? substantiveMessages.slice(-3) : msgs.slice(-3);
+          const snippet = relevantMsgs.map(m => `${m.role}: ${m.text.slice(0,250)}`).join('\n');
+          const ragScore = conv.ragScore ? ` [${(conv.ragScore * 100).toFixed(0)}% match]` : '';
+          
+          combinedContext += `\n---\nConv ${idx+1} (${host}, ${ago}h ago${ragScore}):\n${snippet}\n`;
         });
         
-        // Truncate if too long
-        if (combinedContext.length > 4000) {
-          combinedContext = combinedContext.slice(0, 4000) + '\n\n...(truncated)';
+        // Truncate if too long, but prioritize recent conversations
+        if (combinedContext.length > 3500) {
+          combinedContext = combinedContext.slice(0, 3500) + '\n\n...(context truncated - showing most relevant exchanges)';
         }
 
         // Get detail level preference
@@ -2694,56 +2723,92 @@
           expert: '3-4'
         };
         
-        const prompt = `You are Continuum, a context reconstruction agent with RAG-powered semantic search. You have ${relatedConvs.length} related conversations${usingRAG ? ' (found via semantic similarity)' : ''} on topics: ${seedTopics.join(', ')}.
+        const prompt = `You are Continuum, a context reconstruction agent. Analyze ${relatedConvs.length} related conversations${usingRAG ? ' (semantic search)' : ''} and extract ONLY what matters for continuing work.
 
-Analyze ALL these conversations and create a unified, actionable context summary (${depthInstructions[detailLevel]}) for continuing the work on ${currentHost}.
+**Your Task:** Identify the user's underlying intent, key decisions, and what's unresolved.
 
-Constraints:
-- Synthesize insights across ALL conversations, not just the most recent one
-- Identify patterns, decisions, and unresolved questions from the combined context
-- Keep it practical and specific (goals, constraints, key definitions)
-- Include ${nextStepCount[detailLevel]} suggested next steps
-- Detail level: ${detailLevel}
+**Input:**
+${combinedContext}
 
-Output format (Markdown):
-**Unified Context Summary** ${usingRAG ? '🔍 (RAG-Enhanced)' : ''}
-Topics: ${seedTopics.slice(0,3).join(', ')}
-Conversations: ${relatedConvs.length} across ${new Set(relatedConvs.map(c => hostFromConv(c))).size} platforms
+**Output Requirements:**
 
-[${depthInstructions[detailLevel]}]
+1. **Unified Context Summary** (4-5 lines MAX)
+   - Focus on USER INTENT, not surface keywords
+   - What is the user trying to accomplish?
+   - What decisions/constraints were established?
+   - What's still unclear or unresolved?
+   - Use analytical, direct language - NO fluff
+
+2. **Topics** (3-5 precise concepts)
+   - High-signal conceptual labels ONLY
+   - NO generic terms like "discussion", "conversation", "questions"
+   - Prefer technical/domain terms over keywords
+   - Examples: "React Context API", "OAuth2 flow", "PostgreSQL indexing"
+
+3. **Suggested Next Steps** (1-3 items)
+   - MUST be actionable and specific
+   - Prioritize: clarification > missing info > decisions > next logical action
+   - Format: "Clarify X", "Define Y constraints", "Decide between A vs B"
+   - NO generic advice like "continue working" or "test the code"
+
+**Format (exact structure):**
+**Unified Context Summary** ${usingRAG ? '🔍' : ''}
+[4-5 line intent analysis]
+
+**Topics:** [Concept 1], [Concept 2], [Concept 3]
+**Conversations:** ${relatedConvs.length} across ${new Set(relatedConvs.map(c => hostFromConv(c))).size} platforms
 
 **Suggested Next Steps**
-${detailLevel === 'concise' ? '1. [Actionable step]' : detailLevel === 'detailed' ? '1. [First step]\n2. [Second step]' : '1. [First step]\n2. [Second step]\n3. [Third step]\n4. [Fourth step (optional)]'}
+1. [Specific actionable step]
+2. [Specific actionable step]
+${detailLevel !== 'concise' ? '3. [Specific actionable step]' : ''}
 
-Combined conversation history:
-${combinedContext}`;
+CRITICAL: Be analytical and concise. This is for a user switching AI platforms mid-task who needs continuity, NOT a general summary.`;
 
         const res = await callGeminiAsync({ action: 'prompt', text: prompt, length: 'short' });
 
         if (res && res.ok) {
           const summary = res.result || 'Context reconstructed.';
           
-          // Build related conversations list with inject buttons
+          // Build related conversations list - only show high-relevance ones
           let relatedHtml = '';
           if (relatedConvs && relatedConvs.length > 0) {
-            relatedHtml = '<div style="margin-top:16px;padding-top:12px;border-top:1px solid rgba(0,180,255,0.2);"><div style="font-weight:600;font-size:12px;margin-bottom:8px;opacity:0.8;">📚 Related Conversations:</div>';
-            relatedConvs.slice(0, 5).forEach((conv, idx) => {
-              const host = hostFromConv(conv) || 'unknown';
-              const ago = Math.round((Date.now() - (conv.ts||Date.now())) / (1000 * 60 * 60));
-              const ragScore = conv.ragScore ? `${(conv.ragScore * 100).toFixed(0)}% relevant` : '';
-              const preview = (conv.conversation?.[0]?.text || '').slice(0, 100);
-              relatedHtml += `
+            // Filter to only show conversations with clear relevance
+            const HIGH_DISPLAY_THRESHOLD = usingRAG ? 0.40 : 0; // Higher bar for display
+            const displayConvs = relatedConvs.filter(conv => {
+              if (!usingRAG) return true; // Show all if no RAG scores
+              return conv.ragScore && conv.ragScore >= HIGH_DISPLAY_THRESHOLD;
+            }).slice(0, 4); // Max 4 related conversations
+            
+            if (displayConvs.length > 0) {
+              relatedHtml = '<div style="margin-top:16px;padding-top:12px;border-top:1px solid rgba(0,180,255,0.2);"><div style="font-weight:600;font-size:12px;margin-bottom:8px;opacity:0.8;">🔗 High-Relevance Context:</div>';
+              displayConvs.forEach((conv, idx) => {
+                const host = hostFromConv(conv) || 'unknown';
+                const ago = Math.round((Date.now() - (conv.ts||Date.now())) / (1000 * 60 * 60));
+                const agoLabel = ago < 1 ? 'recent' : ago < 24 ? `${ago}h ago` : `${Math.round(ago/24)}d ago`;
+                const ragScore = conv.ragScore ? `${(conv.ragScore * 100).toFixed(0)}%` : '';
+                
+                // Get a more meaningful preview - prefer questions or decisions
+                const msgs = conv.conversation || [];
+                const meaningfulMsg = msgs.find(m => {
+                  const t = m.text || '';
+                  return t.length > 100 && (t.includes('?') || /decided|chose|implemented|will use/i.test(t));
+                }) || msgs[0] || { text: '' };
+                const preview = meaningfulMsg.text.slice(0, 120).trim();
+                
+                relatedHtml += `
                 <div style="background:rgba(10,15,28,0.4);border:1px solid rgba(0,180,255,0.2);border-radius:6px;padding:8px;margin-bottom:6px;font-size:11px;">
                   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
                     <span style="font-weight:600;color:rgba(0,180,255,0.9);">${host}</span>
-                    <span style="opacity:0.7;">${ago}h ago${ragScore ? ' • ' + ragScore : ''}</span>
+                    <span style="opacity:0.7;font-size:10px;">${agoLabel}${ragScore ? ' • ' + ragScore : ''}</span>
                   </div>
-                  <div style="opacity:0.8;line-height:1.4;margin-bottom:6px;">${preview}...</div>
-                  <button class="cb-btn cb-inject-conv" data-conv-idx="${idx}" style="font-size:10px;padding:4px 8px;">💉 Inject This</button>
+                  <div style="opacity:0.8;line-height:1.4;margin-bottom:6px;">${preview}${preview.length >= 120 ? '...' : ''}</div>
+                  <button class="cb-btn cb-inject-conv" data-conv-idx="${idx}" style="font-size:10px;padding:4px 8px;">💉 Inject Context</button>
                 </div>
               `;
-            });
-            relatedHtml += '</div>';
+              });
+              relatedHtml += '</div>';
+            }
           }
           
           // Render with quick action buttons
@@ -3040,15 +3105,43 @@ ${combinedContext}`;
         runBtn.disabled = true;
         runBtn.textContent = 'Processing...';
         resultsDiv.style.display = 'block';
-        resultsDiv.innerHTML = '<div style="text-align:center;padding:12px;"><div class="cb-spinner" style="display:inline-block;"></div><div style="margin-top:8px;font-size:12px;">Retrieving context via RAG, then querying Gemini & ChatGPT...</div></div>';
+        resultsDiv.innerHTML = '<div style="text-align:center;padding:12px;"><div class="cb-spinner" style="display:inline-block;"></div><div style="margin-top:8px;font-size:12px;">Analyzing query...</div></div>';
         
         try {
+          // ═══ ENHANCEMENT 1: Sub-Question Decomposer ═══
+          // Detect multi-part questions using lightweight rule-based logic
+          const hasMultiPart = /\band\b.*\?|\bor\b.*\?|,.*\?/.test(userPrompt) || 
+                               (userPrompt.match(/\?/g) || []).length > 1;
+          const subQuestions = hasMultiPart ? 
+            userPrompt.split(/\?/).filter(q => q.trim().length > 10).map(q => q.trim() + '?').slice(0, 3) : 
+            [userPrompt];
+          
+          if (subQuestions.length > 1) {
+            resultsDiv.innerHTML += `<div style="font-size:11px;opacity:0.7;">Detected ${subQuestions.length} sub-questions...</div>`;
+          }
+          
+          // ═══ ENHANCEMENT 2: Intent Clarifier ═══
+          // Optional lightweight query clarification (<20 tokens)
+          let clarifiedPrompt = userPrompt;
+          if (userPrompt.length > 100 || /\b(basically|kind of|like|sort of)\b/i.test(userPrompt)) {
+            resultsDiv.innerHTML = '<div style="text-align:center;padding:12px;"><div class="cb-spinner" style="display:inline-block;"></div><div style="margin-top:8px;font-size:12px;">Clarifying intent...</div></div>';
+            const clarifyPrompt = `Rewrite as clear instruction (<15 words): "${userPrompt.slice(0, 200)}"`;
+            const clarifyRes = await callGeminiAsync({ action: 'prompt', text: clarifyPrompt, length: 'short' });
+            if (clarifyRes?.ok && clarifyRes.result && clarifyRes.result.length < userPrompt.length) {
+              clarifiedPrompt = clarifyRes.result.trim().replace(/^["']|["']$/g, '');
+              debugLog('[EchoSynth] Intent clarified:', clarifiedPrompt);
+            }
+          }
+          
+          resultsDiv.innerHTML = '<div style="text-align:center;padding:12px;"><div class="cb-spinner" style="display:inline-block;"></div><div style="margin-top:8px;font-size:12px;">Retrieving context via RAG, then querying AIs...</div></div>';
+          
+          try {
           // Retrieve relevant context from past conversations using RAG
           let ragContext = '';
           let ragResultCount = 0;
           if (typeof window.RAGEngine !== 'undefined') {
             try {
-              const ragResults = await window.RAGEngine.retrieve(userPrompt, 3);
+              const ragResults = await window.RAGEngine.retrieve(clarifiedPrompt, 3);
               if (ragResults && ragResults.length > 0) {
                 ragResultCount = ragResults.length;
                 ragContext = '\n\n[Relevant context from past conversations:]\n' + 
@@ -3061,7 +3154,7 @@ ${combinedContext}`;
           }
           
           // Enhance prompt with RAG context if available
-          const enhancedPrompt = ragContext ? userPrompt + ragContext : userPrompt;
+          const enhancedPrompt = ragContext ? clarifiedPrompt + ragContext : clarifiedPrompt;
           const tone = selectedTone === 'auto' ? inferTone(userPrompt) : selectedTone;
           tonePreview.textContent = `Preview: ${tone}`;
           
@@ -3071,19 +3164,89 @@ ${combinedContext}`;
           
           const [geminiRes, openaiRes] = await Promise.all([geminiPromise, openaiPromise]);
           
-          // Collect successful responses
+          // ═══ ENHANCEMENT 3: Ramble Filter ═══
+          // Clean up AI responses locally before synthesis
+          const cleanResponse = (text) => {
+            if (!text) return '';
+            return text
+              .replace(/^(As an AI|As a language model|I'm an AI|I don't have|I cannot|I can't actually).*?[\.\n]/gmi, '')
+              .replace(/\n{3,}/g, '\n\n') // Remove excessive newlines
+              .replace(/^[\s\n]+|[\s\n]+$/g, '') // Trim whitespace
+              .replace(/(.+)\n\1/g, '$1') // Remove duplicate consecutive lines
+              .slice(0, 8000); // Reasonable length limit
+          };
+          
+          // Collect successful responses with ramble filtering
           const responses = [];
           if (geminiRes && geminiRes.ok && geminiRes.result) {
             const modelName = geminiRes.model || 'Gemini';
-            responses.push({ source: `${modelName.replace('gemini-', 'Gemini ')}`, answer: geminiRes.result });
+            const cleaned = cleanResponse(geminiRes.result);
+            responses.push({ 
+              source: `${modelName.replace('gemini-', 'Gemini ')}`, 
+              answer: cleaned,
+              raw: geminiRes.result 
+            });
           }
           if (openaiRes && openaiRes.ok && openaiRes.result) {
-            responses.push({ source: 'ChatGPT (GPT-4o-mini)', answer: openaiRes.result });
+            const cleaned = cleanResponse(openaiRes.result);
+            responses.push({ 
+              source: 'ChatGPT (GPT-4o-mini)', 
+              answer: cleaned,
+              raw: openaiRes.result 
+            });
           }
           
           if (responses.length === 0) {
             resultsDiv.innerHTML = `<div style="color:rgba(255,100,100,0.9);">❌ Both AI models failed to respond. Check API keys and try again.</div>`;
             return;
+          }
+          
+          // ═══ ENHANCEMENT 4: Referee Mode ═══
+          // Compare AI responses locally without re-querying
+          let refereeAnalysis = '';
+          if (responses.length > 1) {
+            const text1 = responses[0].answer.toLowerCase();
+            const text2 = responses[1].answer.toLowerCase();
+            
+            // Find shared claims (simple overlap detection)
+            const sentences1 = text1.split(/[.!?]+/).map(s => s.trim()).filter(s => s.length > 30);
+            const sentences2 = text2.split(/[.!?]+/).map(s => s.trim()).filter(s => s.length > 30);
+            
+            const agreements = sentences1.filter(s1 => 
+              sentences2.some(s2 => {
+                const words1 = s1.split(/\s+/).filter(w => w.length > 4);
+                const words2 = s2.split(/\s+/).filter(w => w.length > 4);
+                const overlap = words1.filter(w => words2.includes(w)).length;
+                return overlap / Math.max(words1.length, words2.length) > 0.4;
+              })
+            );
+            
+            // Detect contradictions (opposite sentiments on same topic)
+            const contradictions = [];
+            const polarWords = { positive: ['yes', 'true', 'correct', 'better', 'should', 'recommended'], 
+                                 negative: ['no', 'false', 'incorrect', 'worse', 'shouldn\'t', 'not recommended'] };
+            
+            sentences1.forEach(s1 => {
+              sentences2.forEach(s2 => {
+                const hasPos1 = polarWords.positive.some(w => s1.includes(w));
+                const hasNeg1 = polarWords.negative.some(w => s1.includes(w));
+                const hasPos2 = polarWords.positive.some(w => s2.includes(w));
+                const hasNeg2 = polarWords.negative.some(w => s2.includes(w));
+                
+                if ((hasPos1 && hasNeg2) || (hasNeg1 && hasPos2)) {
+                  contradictions.push({ sent1: s1.slice(0, 100), sent2: s2.slice(0, 100) });
+                }
+              });
+            });
+            
+            refereeAnalysis = `
+              <div style="margin:12px 0;padding:8px;background:rgba(138,43,226,0.08);border:1px solid rgba(138,43,226,0.25);border-radius:6px;font-size:11px;">
+                <b>🔍 Referee Analysis:</b><br/>
+                ✓ Agreements: ${agreements.length} shared claims<br/>
+                ${contradictions.length > 0 ? `⚠️ Contradictions: ${contradictions.length} conflicting views<br/>` : ''}
+                ${contradictions.length > 0 ? `<div style="opacity:0.8;margin-top:4px;">Note: Synthesis will prioritize more specific and well-reasoned claims.</div>` : ''}
+              </div>
+            `;
           }
           
           // Phase 3: Multi-stage generation pipeline
@@ -3213,13 +3376,60 @@ Enhanced Answer:`;
             finalAnswer = enhanceRes?.result || responses[0].answer;
           }
           
+          // ═══ ENHANCEMENT 5: Follow-Up Suggestions ═══
+          // Generate 1-3 follow-up suggestions locally (no AI calls)
+          const generateFollowUps = (question, answer) => {
+            const suggestions = [];
+            const lowerQ = question.toLowerCase();
+            const lowerA = answer.toLowerCase();
+            
+            // Detect domain and suggest relevant follow-ups
+            if (/\b(how|implement|build|create)\b/.test(lowerQ)) {
+              if (lowerA.includes('error') || lowerA.includes('issue')) {
+                suggestions.push('How can I debug common errors in this implementation?');
+              }
+              if (lowerA.includes('performance') || lowerA.includes('optimize')) {
+                suggestions.push('What are the performance considerations?');
+              }
+              suggestions.push('What are best practices for this approach?');
+            } else if (/\b(what|explain|understand)\b/.test(lowerQ)) {
+              suggestions.push('Can you provide a practical example?');
+              if (lowerA.includes('vs') || lowerA.includes('compared')) {
+                suggestions.push('Which option should I choose for my use case?');
+              }
+            } else if (/\b(why|reason)\b/.test(lowerQ)) {
+              suggestions.push('What are alternative approaches?');
+            }
+            
+            return suggestions.slice(0, 3);
+          };
+          
+          const followUps = generateFollowUps(userPrompt, finalAnswer);
+          const followUpHtml = followUps.length > 0 ? `
+            <div style="margin-top:12px;padding:8px;background:rgba(0,180,255,0.05);border:1px solid rgba(0,180,255,0.2);border-radius:6px;">
+              <div style="font-size:11px;font-weight:600;margin-bottom:6px;opacity:0.9;">💡 Suggested Follow-Ups:</div>
+              ${followUps.map((q, i) => `<button class="cb-btn cb-followup" data-question="${q}" style="display:block;width:100%;text-align:left;margin:4px 0;padding:6px 8px;font-size:11px;">${i+1}. ${q}</button>`).join('')}
+            </div>
+          ` : '';
+          
           resultsDiv.innerHTML = `
+            ${refereeAnalysis}
             <div style="font-weight:700;margin-bottom:8px;color:var(--cb-accent-primary);">✨ Synthesized Answer ${ragResultCount > 0 ? '🔍 (RAG-Enhanced)' : ''}</div>
             <div style="white-space:pre-wrap;line-height:1.6;">${finalAnswer || 'No result'}</div>
             <div style="margin-top:12px;padding:8px;background:rgba(0,180,255,0.1);border-radius:6px;font-size:11px;">
               <strong>Sources:</strong> ${responses.map(r => r.source).join(' + ')}${ragResultCount > 0 ? ` + ${ragResultCount} past conversations (RAG)` : ''} • Synthesized at ${new Date().toLocaleTimeString()}
             </div>
+            ${followUpHtml}
           `;
+          
+          // Attach follow-up button handlers
+          const followUpButtons = resultsDiv.querySelectorAll('.cb-followup');
+          followUpButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+              promptInput.value = btn.dataset.question;
+              toast('Follow-up loaded - click Run');
+            });
+          });
           try { if (window.RAGEngine && window.RAGEngine.incrementMetric) window.RAGEngine.incrementMetric('totalSynthesisSessions', 1); } catch(_){}
           toast('Multi-AI synthesis complete!');
         } catch (e) {
