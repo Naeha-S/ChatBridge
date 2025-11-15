@@ -504,43 +504,68 @@ try {
   }
 } catch(_){}
 
-// Fetch embedding using Gemini API (text-embedding-004 model)
-async function fetchEmbeddingGemini(text) {
+// Route embedding computation to content script (local transformers.js)
+async function getLocalEmbeddingViaContent(text) {
+  const queryTabs = () => new Promise(resolve => chrome.tabs.query({ active: true, currentWindow: true }, resolve));
+  const sendToTab = (tabId) => new Promise(resolve => {
+    try {
+      chrome.tabs.sendMessage(tabId, { type: 'local_get_embedding', payload: { text } }, (res) => {
+        if (chrome.runtime.lastError) return resolve(null);
+        resolve(res && res.ok && Array.isArray(res.vector) ? res.vector : null);
+      });
+    } catch (_) { resolve(null); }
+  });
   try {
-    const apiKey = await getGeminiApiKey();
-    if (!apiKey) return null;
-    // Use stable v1 endpoint
-    const endpoint = `https://generativelanguage.googleapis.com/v1/models/text-embedding-004:embedContent?key=${apiKey}`;
-    const body = {
-      model: "models/text-embedding-004",
-      content: {
-        parts: [{
-          text: text.slice(0, 10000) // Gemini embedding limit
-        }]
-      }
-    };
-    const res = await fetch(endpoint, { 
-      method: 'POST', 
-      headers: { 'Content-Type':'application/json' }, 
-      body: JSON.stringify(body) 
-    });
-    if (!res.ok) {
-      console.warn('Gemini embedding failed:', res.status);
-      return null;
+    // Try active tab first
+    const tabs = await queryTabs();
+    if (tabs && tabs[0] && tabs[0].id) {
+      const v = await sendToTab(tabs[0].id);
+      if (v) return v;
     }
-    const j = await res.json();
-    if (j && j.embedding && j.embedding.values) return j.embedding.values;
-    return null;
-  } catch (e) { 
-    console.warn('fetchEmbeddingGemini err', e); 
-    return null; 
-  }
+    // Fallback: try all tabs where content script may exist
+    return await new Promise(resolve => {
+      chrome.tabs.query({}, async (all) => {
+        for (const t of all) {
+          const v = await sendToTab(t.id);
+          if (v) return resolve(v);
+        }
+        resolve(null);
+      });
+    });
+  } catch (e) { return null; }
 }
 
-// Legacy function - now uses Gemini
-async function fetchEmbeddingOpenAI(text) {
-  return fetchEmbeddingGemini(text);
+async function getLocalEmbeddingsBatchViaContent(texts) {
+  const queryTabs = () => new Promise(resolve => chrome.tabs.query({ active: true, currentWindow: true }, resolve));
+  const sendToTab = (tabId) => new Promise(resolve => {
+    try {
+      chrome.tabs.sendMessage(tabId, { type: 'local_get_embeddings_batch', payload: { texts } }, (res) => {
+        if (chrome.runtime.lastError) return resolve(null);
+        resolve(res && res.ok && Array.isArray(res.vectors) ? res.vectors : null);
+      });
+    } catch (_) { resolve(null); }
+  });
+  try {
+    const tabs = await queryTabs();
+    if (tabs && tabs[0] && tabs[0].id) {
+      const vs = await sendToTab(tabs[0].id);
+      if (vs) return vs;
+    }
+    return await new Promise(resolve => {
+      chrome.tabs.query({}, async (all) => {
+        for (const t of all) {
+          const vs = await sendToTab(t.id);
+          if (vs) return resolve(vs);
+        }
+        resolve(null);
+      });
+    });
+  } catch (e) { return null; }
 }
+
+// Fetch embedding (now local via content script)
+async function fetchEmbeddingGemini(text) { return getLocalEmbeddingViaContent(text); }
+async function fetchEmbeddingOpenAI(text) { return getLocalEmbeddingViaContent(text); }
 
 // Message handlers for vector index / query
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
@@ -868,49 +893,12 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
         // Request embeddings for candidate phrases in batches to compute semantic similarity
         async function fetchEmbeddingBatch(texts) {
-          try {
-            const key = await getGeminiApiKey();
-            if (!key) return null;
-            // Prefer batch endpoint in v1
-            const endpoint = `https://generativelanguage.googleapis.com/v1/models/text-embedding-004:batchEmbedContents?key=${key}`;
-            const body = {
-              requests: texts.map(t => ({
-                model: 'models/text-embedding-004',
-                content: { parts: [{ text: String(t || '').slice(0, 10000) }] }
-              }))
-            };
-            const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify(body) });
-            if (!res.ok) {
-              // Fallback to per-text calls if batch not supported
-              const arr = [];
-              for (const t of texts) {
-                const v = await fetchEmbeddingGemini(t);
-                arr.push(v || null);
-              }
-              return arr;
-            }
-            const j = await res.json();
-            if (j && Array.isArray(j.embeddings)) {
-              return j.embeddings.map(e => (e && e.values) ? e.values : null);
-            }
-            // Some responses may nest under 'responses' depending on API version
-            if (j && Array.isArray(j.responses)) {
-              return j.responses.map(r => (r && r.embedding && r.embedding.values) ? r.embedding.values : null);
-            }
-            return null;
-          } catch (e) {
-            // As a last resort, per-text sequential fetch
-            try {
-              const arr = [];
-              for (const t of texts) {
-                const v = await fetchEmbeddingGemini(t);
-                arr.push(v || null);
-              }
-              return arr;
-            } catch (_) {
-              return null;
-            }
-          }
+          const vs = await getLocalEmbeddingsBatchViaContent(texts);
+          if (vs && Array.isArray(vs)) return vs;
+          // fallback: sequential local calls
+          const arr = [];
+          for (const t of texts) { arr.push(await fetchEmbeddingGemini(t)); }
+          return arr;
         }
 
         const chunkSize = 32;

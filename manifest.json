@@ -38,7 +38,7 @@
     "*://www.bing.com/*",
     "*://meta.ai/*"
   ],
-      "js": ["adapters.js", "storage.js", "ragEngine.js", "mcpBridge.js", "smartFeatures.js", "luxuryMode.js", "content_script.js"],
+      "js": ["adapters.js", "storage.js", "embeddings.js", "ragEngine.js", "mcpBridge.js", "smartFeatures.js", "luxuryMode.js", "content_script.js"],
       "css": ["styles.css"],
       "run_at": "document_end",
       "all_frames": false

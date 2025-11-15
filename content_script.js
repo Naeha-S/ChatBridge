@@ -183,6 +183,44 @@
         })();
         return true; // Keep channel open for async response
       }
+      // Local embedding request from background (compute in content script)
+      if (msg && msg.type === 'local_get_embedding') {
+        (async () => {
+          try {
+            const text = (msg.payload && msg.payload.text) ? String(msg.payload.text) : '';
+            if (!text) return sendResponse({ ok:false, error:'no_text' });
+            if (window.ChatBridgeEmbeddings && typeof window.ChatBridgeEmbeddings.getEmbedding === 'function') {
+              const emb = await window.ChatBridgeEmbeddings.getEmbedding(text);
+              const arr = Array.from(emb || []);
+              return sendResponse({ ok:true, vector: arr });
+            }
+            return sendResponse({ ok:false, error:'embeddings_unavailable' });
+          } catch (e) {
+            return sendResponse({ ok:false, error: e && e.message });
+          }
+        })();
+        return true;
+      }
+      if (msg && msg.type === 'local_get_embeddings_batch') {
+        (async () => {
+          try {
+            const texts = (msg.payload && Array.isArray(msg.payload.texts)) ? msg.payload.texts : [];
+            if (!texts.length) return sendResponse({ ok:false, error:'no_texts' });
+            if (window.ChatBridgeEmbeddings && typeof window.ChatBridgeEmbeddings.getEmbedding === 'function') {
+              const vectors = [];
+              for (const t of texts) {
+                const emb = await window.ChatBridgeEmbeddings.getEmbedding(String(t||''));
+                vectors.push(Array.from(emb || []));
+              }
+              return sendResponse({ ok:true, vectors });
+            }
+            return sendResponse({ ok:false, error:'embeddings_unavailable' });
+          } catch (e) {
+            return sendResponse({ ok:false, error: e && e.message });
+          }
+        })();
+        return true;
+      }
       
       // Handle MCP requests from popup or other sources
       if (msg && msg.type === 'mcp_request') {
