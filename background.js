@@ -23,6 +23,22 @@ let currentModelIndex = 0; // Track which model we're using
 let modelFailureCount = {}; // Track failures per model
 const MAX_MODEL_FAILURES = 3; // Switch models after 3 consecutive failures
 
+// Centralized rewrite templates map
+// Safe, meaning-preserving prompts. No detector evasion or academic-integrity bypass.
+const REWRITE_TEMPLATES = {
+  normal: ({ text }) => `Rewrite this text to be clearer and more professional while preserving meaning and intent. Avoid changing facts or adding new claims.\n\n${text}`,
+  concise: ({ text }) => `Rewrite the following text to be concise and to-the-point. Remove redundancy and filler. Preserve meaning and essential context.\n\n${text}`,
+  direct: ({ text }) => `Rewrite the following text to be direct and straightforward. Use active voice and clear wording, keeping the original meaning unchanged.\n\n${text}`,
+  detailed: ({ text }) => `Rewrite the following text to be more detailed and comprehensive. Clarify ambiguities, add structure, and preserve factual content.\n\n${text}`,
+  academic: ({ text }) => `Rewrite the following text in a formal, academic tone. Use precise terminology and structured paragraphs. Do not fabricate sources or citations. Preserve meaning.\n\n${text}`,
+  humanized: ({ text }) => `Rewrite the following text to sound more natural and human, with varied sentence rhythm and flow. Maintain the original meaning and key details.\n\n${text}`,
+  creative: ({ text }) => `Rewrite the following text with light stylistic flair and engaging phrasing, without changing meaning, claims, or facts. Keep it tasteful and clear.\n\n${text}`,
+  professional: ({ text }) => `Rewrite the following text in a polished, professional tone suitable for workplace communication. Keep it respectful, clear, and accurate.\n\n${text}`,
+  simple: ({ text }) => `Rewrite the following text in simple, easy-to-read language. Reduce complexity while preserving important details and meaning.\n\n${text}`,
+  friendly: ({ text }) => `Rewrite the following text in a friendly, warm tone while remaining clear and respectful. Keep the original meaning intact.\n\n${text}`,
+  customStyle: ({ text, styleHint = '' }) => `Rewrite the following text in this personalized style: "${(styleHint || '').slice(0,160)}". Maintain original meaning and facts. Do not use detector-evasion tricks or academic-integrity violations.\n\n${text}`
+};
+
 // Get next available model, skipping those with too many failures
 function getNextAvailableModel() {
   for (let i = 0; i < GEMINI_MODEL_PRIORITY.length; i++) {
@@ -1274,19 +1290,10 @@ ${payload.text}`;
           }
         } else if (payload.action === 'rewrite') {
           systemInstruction = 'You are a professional writing assistant. Rewrite text to match the requested style while preserving all important information and intent.';
-          const style = payload.rewriteStyle || 'normal';
-          if (style === 'concise') {
-            promptText = `Rewrite the following text to be concise and to-the-point. Remove unnecessary words and keep only essential information:\n\n${payload.text}`;
-          } else if (style === 'direct') {
-            promptText = `Rewrite the following text to be direct and straightforward. Use clear, assertive language and active voice:\n\n${payload.text}`;
-          } else if (style === 'detailed') {
-            promptText = `Rewrite the following text to be more detailed and comprehensive. Add clarity, context, and elaboration where helpful:\n\n${payload.text}`;
-          } else if (style === 'academic') {
-            promptText = `Rewrite the following text in an academic tone. Use formal language, precise terminology, and scholarly phrasing:\n\n${payload.text}`;
-          } else {
-            // normal
-            promptText = `Rewrite this text to be clearer and more professional:\n\n${payload.text}`;
-          }
+          const styleKey = (payload.rewriteStyle || 'normal');
+          const styleHint = payload.styleHint || payload.style || '';
+          const builder = REWRITE_TEMPLATES[styleKey] || REWRITE_TEMPLATES.normal;
+          promptText = builder({ text: payload.text || '', styleHint });
         } else if (payload.action === 'translate') {
           systemInstruction = 'You are a professional translator. Provide accurate, natural translations that preserve meaning, tone, and nuance. Output ONLY the translation.';
           promptText = `Translate the following text to ${payload.targetLang || 'English'}. Output ONLY the translated text with no explanations, notes, or additional commentary:\n\n${payload.text}`;

@@ -153,6 +153,10 @@ $RECYCLE.BIN/
 *.safetensors
 models/
 weights/
+vendor/
+onnx/
+!vendor/.keep
+!onnx/.keep
 
 # Ignore generated screenshots/exports
 screenshots/

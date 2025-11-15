@@ -52,6 +52,15 @@
     {
       "resources": ["iconic.jpeg"],
       "matches": ["<all_urls>"]
+    },
+    {
+      "resources": [
+        "vendor/*",
+        "models/*",
+        "onnx/*",
+        "onnx/**/*.wasm"
+      ],
+      "matches": ["<all_urls>"]
     }
   ],
   "commands": {

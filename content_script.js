@@ -826,6 +826,29 @@
   .cb-dots .dot { display:inline-block; opacity:0.25; animation: cb-ellipsis 1.1s ease-in-out infinite; }
   .cb-dots .dot:nth-child(2) { animation-delay: .18s; }
   .cb-dots .dot:nth-child(3) { animation-delay: .36s; }
+  /* Reply list for assistant messages - compact preview mode */
+  .cb-replies-wrap { margin-top: 8px; }
+  .cb-replies-header { display:flex; align-items:center; justify-content:space-between; padding:6px 0 8px 0; }
+  .cb-replies-title { font-size:12px; color:var(--cb-subtext); font-weight:700; letter-spacing:-0.01em; text-transform: uppercase; }
+  .cb-replies { padding: 10px 12px; max-height: 260px; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; gap: 8px; background: var(--cb-bg); border: 1px solid var(--cb-border); border-radius: 10px; }
+  .cb-replies::-webkit-scrollbar { width: 8px; }
+  .cb-replies::-webkit-scrollbar-track { background: var(--cb-bg3); border-radius: 10px; }
+  .cb-replies::-webkit-scrollbar-thumb { background: linear-gradient(180deg, var(--cb-accent-primary), var(--cb-accent-secondary)); border-radius: 10px; border: 2px solid var(--cb-bg3); }
+  .cb-reply { background: var(--cb-bg2); border: 1px solid var(--cb-border); border-radius: 10px; padding: 10px 12px; font-size: 13px; line-height: 1.4; cursor: pointer; transition: all 0.2s ease; position:relative; min-height: 48px; max-height: 56px; overflow: hidden; }
+  .cb-reply:hover { border-color: var(--cb-accent-primary); box-shadow: 0 4px 12px rgba(0, 180, 255, 0.12); transform: translateY(-1px); }
+  .cb-reply.cb-selected { border-color: var(--cb-accent-primary); background: rgba(14,165,233,0.08); box-shadow: 0 6px 18px rgba(14,165,233,0.18); }
+  .cb-reply-preview { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; color: var(--cb-white); font-size: 12px; line-height: 1.4; white-space: normal; word-break: break-word; }
+  .cb-reply-meta { font-size: 10px; color: var(--cb-subtext); margin-top: 4px; opacity: 0.7; }
+  /* Rewrite editor section (shown when a reply is selected) */
+  .cb-rewrite-editor { display: none; margin-top: 12px; padding: 14px; background: var(--cb-bg2); border: 1px solid var(--cb-border); border-radius: 10px; animation: slideIn 0.25s ease-out; }
+  .cb-rewrite-editor.cb-active { display: block; }
+  .cb-editor-label { font-size: 11px; color: var(--cb-subtext); font-weight: 600; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .cb-editor-textarea { width: 100%; min-height: 160px; max-height: 240px; resize: vertical; background: var(--cb-bg); color: var(--cb-white); border: 1px solid var(--cb-border); padding: 10px; border-radius: 8px; font-family: inherit; font-size: 13px; line-height: 1.6; overflow-y: auto; transition: all 0.2s ease; }
+  .cb-editor-textarea:focus { border-color: var(--cb-accent-primary); box-shadow: 0 0 0 3px rgba(0, 180, 255, 0.12); outline: none; }
+  .cb-editor-actions { display: flex; gap: 8px; margin-top: 10px; }
+  .cb-style-hint-wrap { margin-top: 10px; }
+  .cb-input { width: 100%; background: var(--cb-bg); color: var(--cb-white); border: 1px solid var(--cb-border); padding: 8px 10px; border-radius: 8px; font-size: 13px; font-family: inherit; transition: all 0.2s ease; }
+  .cb-input:focus { border-color: var(--cb-accent-primary); box-shadow: 0 0 0 3px rgba(0, 180, 255, 0.12); outline: none; }
   /* small inline spinner used with loading buttons */
   .cb-spinner { display:inline-block; width:14px; height:14px; border-radius:50%; vertical-align:middle; margin-right:8px; background: conic-gradient(var(--cb-progress), rgba(255,255,255,0.9)); box-shadow: 0 0 12px rgba(0, 180, 255, 0.3), 0 0 0 1px rgba(0,0,0,0.08) inset; animation: cb-spin 0.9s linear infinite; }
   @keyframes cb-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
@@ -1089,14 +1112,59 @@
   rewView.appendChild(rewIntro);
   const rewStyleLabel = document.createElement('label'); rewStyleLabel.className = 'cb-label'; rewStyleLabel.textContent = 'Style:';
   const rewStyleSelect = document.createElement('select'); rewStyleSelect.className = 'cb-select'; rewStyleSelect.id = 'cb-rew-style';
-  ['normal','concise','direct','detailed','academic'].forEach(v => { const o = document.createElement('option'); o.value = v; o.textContent = v.charAt(0).toUpperCase()+v.slice(1); rewStyleSelect.appendChild(o); });
+  // Organized dropdown with groups
+  const groupBasic = document.createElement('optgroup'); groupBasic.label = 'Basic';
+  ;['normal','concise','direct','detailed','academic'].forEach(v => { const o = document.createElement('option'); o.value = v; o.textContent = v.charAt(0).toUpperCase()+v.slice(1); groupBasic.appendChild(o); });
+  rewStyleSelect.appendChild(groupBasic);
+  const groupTonal = document.createElement('optgroup'); groupTonal.label = 'Tonal & Style';
+  ;['humanized','creative','professional','simple','friendly'].forEach(v => { const o = document.createElement('option'); o.value = v; o.textContent = v.charAt(0).toUpperCase()+v.slice(1); groupTonal.appendChild(o); });
+  rewStyleSelect.appendChild(groupTonal);
+  const groupPersonal = document.createElement('optgroup'); groupPersonal.label = 'Personalized';
+  ;['customStyle'].forEach(v => { const o = document.createElement('option'); o.value = v; o.textContent = 'Personalized Style'; groupPersonal.appendChild(o); });
+  rewStyleSelect.appendChild(groupPersonal);
   rewStyleSelect.value = 'normal';
   const rewControls = document.createElement('div'); rewControls.className = 'cb-view-controls';
   rewControls.appendChild(rewStyleLabel); rewControls.appendChild(rewStyleSelect);
+  // Style hint (only for Personalized Style)
+  const styleHintWrap = document.createElement('div'); styleHintWrap.className = 'cb-style-hint-wrap'; styleHintWrap.style.display = 'none';
+  const styleHintLabel = document.createElement('label'); styleHintLabel.className = 'cb-label'; styleHintLabel.textContent = 'Style hint (optional):';
+  const styleHintInput = document.createElement('input'); styleHintInput.className = 'cb-input'; styleHintInput.type = 'text'; styleHintInput.id = 'cb-rew-style-hint'; styleHintInput.placeholder = 'e.g., “Calm, minimalist, technical product docs”';
+  styleHintWrap.appendChild(styleHintLabel); styleHintWrap.appendChild(styleHintInput);
+  rewControls.appendChild(styleHintWrap);
   rewView.appendChild(rewControls);
+  // Replies list (assistant only - compact preview mode)
+  const rewRepliesWrap = document.createElement('div'); rewRepliesWrap.className = 'cb-replies-wrap';
+  const rewRepliesHeader = document.createElement('div'); rewRepliesHeader.className = 'cb-replies-header';
+  const rewRepliesTitle = document.createElement('div'); rewRepliesTitle.className = 'cb-replies-title'; rewRepliesTitle.textContent = 'Assistant Replies';
+  const rewRepliesNote = document.createElement('div'); rewRepliesNote.style.cssText = 'font-size:11px;color:var(--cb-subtext)'; rewRepliesNote.textContent = 'Click to edit';
+  rewRepliesHeader.appendChild(rewRepliesTitle); rewRepliesHeader.appendChild(rewRepliesNote);
+  const rewReplies = document.createElement('div'); rewReplies.className = 'cb-replies'; rewReplies.id = 'cb-replies-list';
+  rewRepliesWrap.appendChild(rewRepliesHeader); rewRepliesWrap.appendChild(rewReplies);
+  rewView.appendChild(rewRepliesWrap);
+  
+  // Rewrite editor (appears when a reply is selected)
+  const rewEditor = document.createElement('div'); rewEditor.className = 'cb-rewrite-editor'; rewEditor.id = 'cb-rewrite-editor';
+  const editorLabel = document.createElement('div'); editorLabel.className = 'cb-editor-label'; editorLabel.textContent = 'Editing Reply';
+  rewEditor.appendChild(editorLabel);
+  const editorTextarea = document.createElement('textarea'); editorTextarea.className = 'cb-editor-textarea'; editorTextarea.id = 'cb-editor-textarea'; editorTextarea.placeholder = 'Full reply text...';
+  rewEditor.appendChild(editorTextarea);
+  const editorActions = document.createElement('div'); editorActions.className = 'cb-editor-actions';
+  const btnEditorRewrite = document.createElement('button'); btnEditorRewrite.className = 'cb-btn cb-btn-primary'; btnEditorRewrite.textContent = 'Rewrite'; btnEditorRewrite.id = 'cb-btn-editor-rewrite';
+  const btnEditorCancel = document.createElement('button'); btnEditorCancel.className = 'cb-btn'; btnEditorCancel.textContent = 'Cancel'; btnEditorCancel.id = 'cb-btn-editor-cancel';
+  const btnEditorCopy = document.createElement('button'); btnEditorCopy.className = 'cb-btn'; btnEditorCopy.textContent = 'Copy'; btnEditorCopy.id = 'cb-btn-editor-copy';
+  editorActions.appendChild(btnEditorRewrite); editorActions.appendChild(btnEditorCopy); editorActions.appendChild(btnEditorCancel);
+  rewEditor.appendChild(editorActions);
+  rewView.appendChild(rewEditor);
   // Restore saved rewrite style
   try { const savedRew = localStorage.getItem('chatbridge:pref:rewStyle'); if (savedRew) rewStyleSelect.value = savedRew; } catch(e){}
-  rewStyleSelect.addEventListener('change', () => { try { localStorage.setItem('chatbridge:pref:rewStyle', rewStyleSelect.value); } catch(e){} });
+  try { const savedHint = localStorage.getItem('chatbridge:pref:rewStyleHint'); if (savedHint) styleHintInput.value = savedHint; } catch(e){}
+  function updateStyleHintVisibility(){ styleHintWrap.style.display = (rewStyleSelect.value === 'customStyle') ? 'block' : 'none'; }
+  updateStyleHintVisibility();
+  rewStyleSelect.addEventListener('change', () => { 
+    try { localStorage.setItem('chatbridge:pref:rewStyle', rewStyleSelect.value); } catch(e){} 
+    updateStyleHintVisibility();
+  });
+  styleHintInput.addEventListener('input', ()=>{ try { localStorage.setItem('chatbridge:pref:rewStyleHint', styleHintInput.value); } catch(e){} });
   const rewSourceText = document.createElement('div'); rewSourceText.className = 'cb-view-text'; rewSourceText.id = 'cb-rew-source-text'; rewSourceText.setAttribute('contenteditable','false'); rewSourceText.textContent = '';
   rewView.appendChild(rewSourceText);
   const btnGoRew = document.createElement('button'); btnGoRew.className = 'cb-btn cb-view-go'; btnGoRew.textContent = 'Rewrite';
@@ -3180,9 +3248,23 @@ CRITICAL: Be analytical and concise. This is for a user switching AI platforms m
         const maxConvs = { concise: 3, detailed: 5, expert: 10 }[detailLevel];
         const contentLength = { concise: 80, detailed: 120, expert: 200 }[detailLevel];
 
-        // Build user-friendly conversation list instead of technical report
+        // Build user-friendly conversation list and topic compiler
         let outputHtml = '<div style="display:flex;flex-direction:column;gap:12px;">';
         outputHtml += '<div id="memory-detail-container"></div>';
+        outputHtml += `
+          <div style="display:flex;gap:8px;align-items:center;padding:8px 0;">
+            <input id="memory-topic-input" class="cb-input" placeholder="Project/topic (e.g., onboarding portal)" style="flex:1;padding:8px;border-radius:6px;border:1px solid rgba(0,180,255,0.25);background:rgba(16,24,43,0.5);color:#E6E9F0;" />
+            <button id="memory-compile" class="cb-btn cb-btn-primary">Compile Context</button>
+          </div>
+          <div id="memory-compiled" style="display:none;margin-top:8px;background:rgba(16,24,43,0.5);border:1px solid rgba(0,180,255,0.2);border-radius:8px;">
+            <div style="padding:10px 12px;border-bottom:1px solid rgba(0,180,255,0.15);font-weight:600;">📚 Compiled Project Context</div>
+            <div id="memory-compiled-body" style="white-space:pre-wrap;line-height:1.5;padding:12px;font-size:12px;"></div>
+            <div style="display:flex;gap:8px;border-top:1px solid rgba(0,180,255,0.15);padding:10px 12px;">
+              <button id="memory-copy" class="cb-btn cb-btn-primary" style="flex:1;">📋 Copy Context</button>
+              <button id="memory-insert" class="cb-btn" style="flex:1;">➤ Insert to Chat</button>
+            </div>
+          </div>
+        `;
         
         // Header with simple stats
         outputHtml += `<div style="font-weight:700;font-size:14px;margin-bottom:4px;">💬 Your Recent Conversations (${total})</div>`;
@@ -3222,6 +3304,65 @@ CRITICAL: Be analytical and concise. This is for a user switching AI platforms m
         createDetailLevelToggle('memory-detail-container', async (newLevel) => {
           showMemoryArchitect();
         });
+
+        // Seed topic input with focus or top domain
+        const topicInput = outputArea.querySelector('#memory-topic-input');
+        if (topicInput) topicInput.value = (focusTheme || topDomain || '').toString();
+
+        // Compile Context handler
+        const compileBtn = outputArea.querySelector('#memory-compile');
+        const compiledBox = outputArea.querySelector('#memory-compiled');
+        const compiledBody = outputArea.querySelector('#memory-compiled-body');
+        const copyBtn = outputArea.querySelector('#memory-copy');
+        const insertBtn = outputArea.querySelector('#memory-insert');
+
+        function compileContextForTopic(topic) {
+          try {
+            const q = (topic||'').trim().toLowerCase();
+            if (!q) return '';
+            // Collect all messages across conversations that mention the topic
+            const hits = [];
+            convs.forEach(conv => {
+              const ts = conv.ts || Date.now();
+              const date = new Date(ts).toLocaleString();
+              (conv.conversation||[]).forEach((m, idx) => {
+                const t = (m.text||'');
+                if (!t) return;
+                if ((conv.topics||[]).some(tp => String(tp).toLowerCase().includes(q)) || t.toLowerCase().includes(q)) {
+                  hits.push({ ts, date, role: m.role, text: t.slice(0, 800), platform: conv.platform || 'unknown' });
+                }
+              });
+            });
+            if (!hits.length) return '';
+            hits.sort((a,b)=> a.ts - b.ts);
+            let out = `Project/Topic: ${topic}\nTotal mentions: ${hits.length}\n\n`;
+            hits.forEach((h,i)=>{
+              out += `#${i+1} • ${h.date} • ${h.platform} • ${h.role}\n${h.text}\n\n`;
+            });
+            out += '---\nContinue from here with the consolidated context above.';
+            return out;
+          } catch(_) { return ''; }
+        }
+
+        if (compileBtn && compiledBox && compiledBody && copyBtn && insertBtn) {
+          compileBtn.addEventListener('click', () => {
+            try {
+              const topic = topicInput ? topicInput.value : '';
+              const ctx = compileContextForTopic(topic);
+              if (ctx) {
+                compiledBody.textContent = ctx; compiledBox.style.display = 'block';
+              } else {
+                compiledBody.textContent = '(No mentions found across your chats)'; compiledBox.style.display = 'block';
+              }
+            } catch(_){}
+          });
+          copyBtn.addEventListener('click', async ()=>{
+            try { await navigator.clipboard.writeText(compiledBody.textContent||''); copyBtn.textContent='✓ Copied'; setTimeout(()=> copyBtn.textContent='📋 Copy Context', 2000); } catch(_){}
+          });
+          insertBtn.addEventListener('click', async ()=>{
+            try { const t = compiledBody.textContent||''; if (window.ChatBridge && typeof window.ChatBridge.restoreToChat==='function') { await window.ChatBridge.restoreToChat(t, []); } insertBtn.textContent='✓ Inserted'; setTimeout(()=> insertBtn.textContent='➤ Insert to Chat', 2000); } catch(_){}
+          });
+        }
 
         // Wire up continue buttons
         const continueButtons = outputArea.querySelectorAll('.memory-continue-btn');
@@ -3809,8 +3950,24 @@ Format output as:
           const res = await callGeminiAsync({ action: 'prompt', text: prompt, length: 'long' });
           
           if (res && res.ok && res.result) {
-            const actionBtn = `<button class="cb-btn cb-btn-primary" style="width:100%;margin-top:12px;" onclick="this.disabled=true;this.textContent='Injecting context...';navigator.clipboard.writeText(this.previousElementSibling.textContent).then(() => {this.textContent='✓ Context copied - paste into chat';setTimeout(() => this.disabled=false, 3000);});">📋 Copy Context & Inject</button>`;
-            resultsDiv.innerHTML = `<div style="white-space:pre-wrap;line-height:1.6;">${res.result}</div>${actionBtn}`;
+            // Render result
+            resultsDiv.innerHTML = `<div class="cb-threadkeeper-result" style="white-space:pre-wrap;line-height:1.6;">${res.result}</div>`;
+            // Add safe button (no inline handlers)
+            const btn = document.createElement('button');
+            btn.className = 'cb-btn cb-btn-primary';
+            btn.style.cssText = 'width:100%;margin-top:12px;';
+            btn.textContent = '📋 Copy Context & Inject';
+            btn.addEventListener('click', async () => {
+              try {
+                btn.disabled = true; btn.textContent = 'Injecting context...';
+                const contentDiv = resultsDiv.querySelector('.cb-threadkeeper-result');
+                const text = contentDiv ? contentDiv.textContent : '';
+                if (text) { await navigator.clipboard.writeText(text); }
+                btn.textContent = '✓ Context copied - paste into chat';
+                setTimeout(() => { btn.disabled = false; btn.textContent = '📋 Copy Context & Inject'; }, 3000);
+              } catch (_) { btn.disabled = false; btn.textContent = '📋 Copy Context & Inject'; }
+            });
+            resultsDiv.appendChild(btn);
             toast('Thread analysis complete!');
           } else {
             resultsDiv.innerHTML = `<div style="color:rgba(255,100,100,0.9);">❌ Failed: ${res && res.error ? res.error : 'unknown error'}</div>`;
@@ -3989,13 +4146,31 @@ Keep it practical and actionable.`;
           resultsDiv.innerHTML += '<div style="font-size:11px;opacity:0.7;">Stage 3/3: Synthesizing unified plan...</div>';
           
           const concisePlan = postProcessPlanner(String(breakdown.result||''), goal, String(refinement?.result||''));
-          resultsDiv.innerHTML = `
-            <div style="white-space:pre-wrap;line-height:1.6;font-size:12px;">${concisePlan}</div>
-            <div style="display:flex;gap:8px;margin-top:12px;">
-              <button class="cb-btn cb-btn-primary" style="flex:1;" onclick="navigator.clipboard.writeText(this.parentElement.previousElementSibling.textContent);this.textContent='✓ Copied';setTimeout(() => this.textContent='📋 Copy Plan', 2000);">📋 Copy Plan</button>
-              <button class="cb-btn" style="flex:1;" onclick="const text = this.parentElement.previousElementSibling.textContent; window.ChatBridge.restoreToChat(text, []); this.textContent='✓ Inserted';setTimeout(() => this.textContent='➤ Insert to Chat', 2000);">➤ Insert to Chat</button>
-            </div>
-          `;
+          // Clear and render plan without inline handlers
+          resultsDiv.innerHTML = '';
+          const planDiv = document.createElement('div');
+          planDiv.style.cssText = 'white-space:pre-wrap;line-height:1.6;font-size:12px;';
+          planDiv.textContent = concisePlan;
+          const btnBar = document.createElement('div');
+          btnBar.style.cssText = 'display:flex;gap:8px;margin-top:12px;';
+          const copyBtn = document.createElement('button');
+          copyBtn.className = 'cb-btn cb-btn-primary';
+          copyBtn.style.cssText = 'flex:1;';
+          copyBtn.textContent = '📋 Copy Plan';
+          copyBtn.addEventListener('click', async ()=>{
+            try { await navigator.clipboard.writeText(planDiv.textContent||''); copyBtn.textContent = '✓ Copied'; setTimeout(()=> copyBtn.textContent='📋 Copy Plan', 2000); } catch(_){}
+          });
+          const insertBtn = document.createElement('button');
+          insertBtn.className = 'cb-btn';
+          insertBtn.style.cssText = 'flex:1;';
+          insertBtn.textContent = '➤ Insert to Chat';
+          insertBtn.addEventListener('click', async ()=>{
+            try { const text = planDiv.textContent || ''; if (window.ChatBridge && typeof window.ChatBridge.restoreToChat === 'function') { await window.ChatBridge.restoreToChat(text, []); } insertBtn.textContent = '✓ Inserted'; setTimeout(()=> insertBtn.textContent='➤ Insert to Chat', 2000); } catch(_){}
+          });
+          btnBar.appendChild(copyBtn);
+          btnBar.appendChild(insertBtn);
+          resultsDiv.appendChild(planDiv);
+          resultsDiv.appendChild(btnBar);
           toast('Orchestrated plan ready!');
           
         } catch (e) {
@@ -6127,21 +6302,422 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
     });
 
 
-    // Gemini Cloud API handlers
-    // small promise wrapper around chrome.runtime.sendMessage
-    function callGeminiAsync(payload) {
-      return new Promise((resolve) => {
+    // ========================= Ramble Filter (Post-Processing) =========================
+    /**
+     * Clean AI model output locally:
+     * - Remove meta-text and disclaimers
+     * - Remove repeated sentences
+     * - Shorten verbose intros/outros
+     * - Normalize formatting
+     * Preserves meaning and core content.
+     */
+    
+    const META_PATTERNS = [
+      /^(As an AI (language model|assistant)|I'm (an AI|a language model)|I don't have personal|I cannot (actually|physically)|I must (remind you|clarify|note)|It's important to note|Please note|I should mention|I want to (emphasize|clarify|note)|Let me (clarify|explain)|To be clear)[^.!?]*[.!?]\s*/gim,
+      /\b(I('m| am) not able to|I (can't|cannot) (provide|give|offer) personal|as (a|an) AI,? I)[^.!?]*[.!?]\s*/gi,
+      /\b(however,? it's worth noting|it's important to understand|keep in mind|bear in mind|note that)\b/gi,
+      /\*\*Disclaimer:?\*\*[^]*?(\n\n|$)/gi,
+      /\(Disclaimer:[^)]*\)/gi
+    ];
+
+    const VERBOSE_INTROS = [
+      /^(Certainly|Sure|Of course|Absolutely|Great question|That's a good question|I'd be happy to help|Let me help you with that|Here's what (I can tell you|you need to know))[.!,]\s*/i,
+      /^(Based on (your question|what you've (described|mentioned|asked))|In response to your question)[,:]?\s*/i,
+      /^To answer your question[,:]?\s*/i
+    ];
+
+    const VERBOSE_OUTROS = [
+      /\n\n(I hope this helps|Hope this helps|Let me know if you (have|need)|Feel free to ask|If you have any (other|further|more) questions|Is there anything else)[^]*?$/i,
+      /\n\n(Please let me know|Don't hesitate to)[^]*?$/i
+    ];
+
+    const FILLER_TRANSITIONS = [
+      /\b(Additionally|Furthermore|Moreover|In addition|Also|As well|What's more),?\s+/gi,
+      /\bIn other words,?\s+/gi,
+      /\bThat (being )?said,?\s+/gi,
+      /\bWith that in mind,?\s+/gi
+    ];
+
+    function rambleFilter(rawOutput) {
+      try {
+        if (!rawOutput || typeof rawOutput !== 'string') return rawOutput;
+        
+        let text = rawOutput.trim();
+        const originalLength = text.length;
+        
+        // Skip for very short outputs
+        if (text.length < 100) return text;
+        
+        // Step 1: Remove AI meta-text and disclaimers
+        for (const pattern of META_PATTERNS) {
+          text = text.replace(pattern, '');
+        }
+        
+        // Step 2: Remove verbose intros (first 200 chars only)
+        const intro = text.slice(0, 200);
+        let cleanIntro = intro;
+        for (const pattern of VERBOSE_INTROS) {
+          cleanIntro = cleanIntro.replace(pattern, '');
+        }
+        if (cleanIntro !== intro) {
+          text = cleanIntro + text.slice(200);
+        }
+        
+        // Step 3: Remove verbose outros
+        for (const pattern of VERBOSE_OUTROS) {
+          text = text.replace(pattern, '');
+        }
+        
+        // Step 4: Remove filler transitions
+        for (const pattern of FILLER_TRANSITIONS) {
+          text = text.replace(pattern, '');
+        }
+        
+        // Step 5: Deduplicate repeated sentences
+        const lines = text.split('\n');
+        const uniqueLines = [];
+        const seenNormalized = new Set();
+        
+        for (const line of lines) {
+          const trimmed = line.trim();
+          
+          // Keep empty lines for structure
+          if (!trimmed) {
+            // Avoid consecutive empty lines
+            if (uniqueLines.length > 0 && uniqueLines[uniqueLines.length - 1] !== '') {
+              uniqueLines.push('');
+            }
+            continue;
+          }
+          
+          // Normalize for comparison (remove punctuation, lowercase)
+          const normalized = trimmed.toLowerCase()
+            .replace(/[^a-z0-9\s]/g, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+          
+          // Skip if we've seen this exact content
+          if (normalized.length > 15 && seenNormalized.has(normalized)) {
+            continue;
+          }
+          
+          seenNormalized.add(normalized);
+          uniqueLines.push(trimmed);
+        }
+        
+        text = uniqueLines.join('\n');
+        
+        // Step 6: Normalize bullet points and spacing
+        text = text
+          // Normalize bullet markers
+          .replace(/^[\s]*[-*+]\s+/gm, '• ')
+          .replace(/^[\s]*(\d+)\.\s+/gm, '$1. ')
+          // Fix spacing around headers
+          .replace(/^(#{1,6})\s*([^\n]+)\s*$/gm, '$1 $2')
+          // Remove excessive newlines (max 2)
+          .replace(/\n{3,}/g, '\n\n')
+          // Fix spacing before punctuation
+          .replace(/\s+([,.!?;:])/g, '$1')
+          // Remove trailing spaces
+          .replace(/[ \t]+$/gm, '');
+        
+        // Step 7: Shorten redundant sentence starters
+        text = text
+          .replace(/^It is important to note that\s+/gim, '')
+          .replace(/^It('s| is) worth mentioning that\s+/gim, '')
+          .replace(/^You (should|might|may) want to\s+/gim, '')
+          .replace(/^One thing to (consider|remember|keep in mind) is that\s+/gim, '');
+        
+        // Step 8: Clean up conversational hedging within sentences
+        text = text
+          .replace(/\s+might want to consider\s+/gi, ' ')
+          .replace(/\s+you may want to\s+/gi, ' ')
+          .replace(/\s+it would be (a good idea|advisable|wise) to\s+/gi, ' ')
+          .replace(/\s+I would (recommend|suggest) that you\s+/gi, ' ');
+        
+        // Final cleanup
+        text = text.trim();
+        
+        const reduction = originalLength > 0 ? Math.round((1 - text.length / originalLength) * 100) : 0;
+        
+        if (reduction > 5 && window.ChatBridge && window.ChatBridge._debug) {
+          console.log(`[Ramble Filter] Cleaned ${reduction}% (${originalLength} → ${text.length} chars)`);
+        }
+        
+        return text;
+      } catch (e) {
+        console.error('[Ramble Filter] Failed:', e);
+        return rawOutput; // Return original on error
+      }
+    }
+
+    // ========================= Prompt Optimizer =========================
+    /**
+     * Compress user input before sending to model:
+     * - Remove filler phrases, repeated sentences, greetings
+     * - Collapse paragraphs into concise bullet points
+     * - Detect and structure multiple questions
+     * - Preserve essential context and original meaning
+     */
+    
+    const FILLER_PHRASES = [
+      /\b(um|uh|like|you know|I mean|basically|actually|literally|obviously|honestly|just|really|very|quite|perhaps|maybe|kind of|sort of)\b/gi,
+      /\b(I was wondering if|I'd like to know|could you please|would you mind|if you could|I want to|I need to|can you|please)\b/gi,
+      /^(hi|hello|hey|greetings|good morning|good afternoon|good evening)[,!\s]*/i,
+      /\b(thank you|thanks|thx|appreciate it|cheers)[\s!.]*$/i
+    ];
+
+    const REDUNDANT_PATTERNS = [
+      /\b(the thing is|what I'm trying to say is|to be honest|in my opinion|I think that|it seems like)\b/gi,
+      /\b(as I said|as mentioned|like I said|as I mentioned)\b/gi
+    ];
+
+    function optimizePrompt(rawText) {
+      try {
+        if (!rawText || typeof rawText !== 'string') return rawText;
+        
+        let text = rawText.trim();
+        const originalLength = text.length;
+        
+        // Skip optimization for very short prompts
+        if (text.length < 80) return text;
+        
+        // Step 1: Remove filler phrases
+        for (const pattern of FILLER_PHRASES) {
+          text = text.replace(pattern, '');
+        }
+        for (const pattern of REDUNDANT_PATTERNS) {
+          text = text.replace(pattern, '');
+        }
+        
+        // Step 2: Normalize whitespace
+        text = text.replace(/\s+/g, ' ').trim();
+        
+        // Step 3: Detect and deduplicate repeated sentences
+        const sentences = text.split(/([.!?]+\s+)/).filter(s => s.trim());
+        const uniqueSentences = [];
+        const seenHashes = new Set();
+        
+        for (let i = 0; i < sentences.length; i++) {
+          const sent = sentences[i].trim();
+          if (!sent || /^[.!?,;:\s]+$/.test(sent)) {
+            if (uniqueSentences.length > 0) uniqueSentences[uniqueSentences.length - 1] += sent;
+            continue;
+          }
+          
+          // Hash sentence (normalize case/punctuation for comparison)
+          const normalized = sent.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
+          const hash = normalized.slice(0, 50); // Use first 50 chars as hash
+          
+          if (!seenHashes.has(hash)) {
+            seenHashes.add(hash);
+            uniqueSentences.push(sent);
+          }
+        }
+        
+        text = uniqueSentences.join(' ');
+        
+        // Step 4: Detect multiple questions and structure them
+        const questions = text.match(/[^.!?]*\?/g);
+        if (questions && questions.length > 2) {
+          // Extract questions
+          const cleanQuestions = questions.map(q => q.trim()).filter(q => q.length > 5);
+          
+          // Extract non-question context
+          let context = text;
+          for (const q of questions) {
+            context = context.replace(q, '');
+          }
+          context = context.replace(/[.!?]+\s*/g, '. ').trim();
+          
+          // Rebuild: context first, then structured questions
+          if (context.length > 10) {
+            text = context + '\n\nQuestions:\n' + cleanQuestions.map((q, i) => `${i + 1}. ${q}`).join('\n');
+          } else {
+            text = 'Questions:\n' + cleanQuestions.map((q, i) => `${i + 1}. ${q}`).join('\n');
+          }
+        }
+        
+        // Step 5: Collapse paragraphs into bullets (if long-form text)
+        if (text.length > 400 && !text.includes('\n') && !text.startsWith('Questions:')) {
+          const parts = text.split(/\.\s+/).filter(p => p.trim().length > 10);
+          
+          if (parts.length > 3) {
+            // Group related sentences (simple heuristic: topic word overlap)
+            const bullets = [];
+            let currentBullet = '';
+            
+            for (let i = 0; i < parts.length; i++) {
+              const part = parts[i].trim();
+              
+              if (currentBullet.length === 0) {
+                currentBullet = part;
+              } else if (currentBullet.length + part.length < 120) {
+                // Combine short related sentences
+                currentBullet += '. ' + part;
+              } else {
+                // Start new bullet
+                bullets.push(currentBullet);
+                currentBullet = part;
+              }
+            }
+            
+            if (currentBullet) bullets.push(currentBullet);
+            
+            // Only use bullets if we actually reduce complexity
+            if (bullets.length >= 2 && bullets.length < parts.length) {
+              text = bullets.map(b => '• ' + b + (b.endsWith('.') ? '' : '.')).join('\n');
+            }
+          }
+        }
+        
+        // Step 6: Final cleanup
+        text = text.replace(/\s+([,.!?;:])/g, '$1'); // Fix spacing before punctuation
+        text = text.replace(/([.!?])\s*([.!?])+/g, '$1'); // Remove duplicate punctuation
+        text = text.replace(/\n{3,}/g, '\n\n'); // Max 2 newlines
+        text = text.trim();
+        
+        const compressed = originalLength > 0 ? Math.round((1 - text.length / originalLength) * 100) : 0;
+        
+        if (compressed > 5 && window.ChatBridge && window.ChatBridge._debug) {
+          console.log(`[Prompt Optimizer] Compressed ${compressed}% (${originalLength} → ${text.length} chars)`);
+        }
+        
+        return text;
+      } catch (e) {
+        console.error('[Prompt Optimizer] Failed:', e);
+        return rawText; // Return original on error
+      }
+    }
+
+    // ========================= Token Governor Middleware =========================
+    const _CB_TOKEN_CACHE = new Map(); // key -> { ts, res }
+    const _CB_TOKEN_CACHE_MAX = 50;
+    const _CB_TOKEN_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+
+    function _normalize(str){ return String(str||'').replace(/\s+/g,' ').trim(); }
+    function _hashKey(s){ let h=0; for (let i=0;i<s.length;i++){ h=((h<<5)-h)+s.charCodeAt(i); h|=0; } return h.toString(36); }
+    function _isSimplePrompt(t){
+      const txt=_normalize(t); if (txt.length>=200) return false;
+      const q = (txt.match(/[?]/g)||[]).length; const commas=(txt.match(/[,;:]/g)||[]).length; const bullets=(txt.match(/[-*•]/g)||[]).length;
+      return (q+commas+bullets) <= 2; // low structural complexity
+    }
+    function _localSummary(t){
+      const txt = _normalize(t);
+      const sentences = txt.split(/[.!?]\s+/).filter(s=>s && s.length>3).slice(0,4);
+      if (!sentences.length) return txt.slice(0,180);
+      return '\u2022 ' + sentences.map(s=>s.trim()).join('\n\u2022 ');
+    }
+    function _topicCount(t){
+      const words = String(t||'').toLowerCase().split(/[^a-z0-9_]+/).filter(w=>w.length>=5);
+      const stop=new Set(['about','which','there','their','would','could','should','these','those','think','using','thing','things','after','before','where','while','doing','being','having','from','with','without','between','under','above','again']);
+      const freq={}; words.forEach(w=>{ if(!stop.has(w)) freq[w]=(freq[w]||0)+1; });
+      const keys=Object.keys(freq).filter(k=>freq[k]>=2);
+      return Math.max(1, Math.min(5, keys.length));
+    }
+    function _stripRAGContextIfSparse(text){
+      try {
+        const rc = (window.RAGEngine && typeof window.RAGEngine._lastRetrievedCount==='number') ? window.RAGEngine._lastRetrievedCount : null;
+        if (rc !== null && rc < 2 && /\[Relevant context from past conversations:\]/.test(text)) {
+          return text.replace(/\n\n\[Relevant context from past conversations:\][\s\S]*$/,'');
+        }
+      } catch(_){}
+      return text;
+    }
+    function _tryCacheGet(key){
+      const e=_CB_TOKEN_CACHE.get(key); if(!e) return null; if ((Date.now()-e.ts)>_CB_TOKEN_CACHE_TTL_MS) { _CB_TOKEN_CACHE.delete(key); return null; } return e.res;
+    }
+    function _cachePut(key,res){
+      _CB_TOKEN_CACHE.set(key,{ ts: Date.now(), res });
+      if (_CB_TOKEN_CACHE.size>_CB_TOKEN_CACHE_MAX){ const first=_CB_TOKEN_CACHE.keys().next().value; _CB_TOKEN_CACHE.delete(first); }
+    }
+
+    async function tokenGovernor(payload, provider){
+      try {
+        const action = payload && payload.action ? String(payload.action) : 'prompt';
+        let text = payload && payload.text ? String(payload.text) : '';
+        
+        // Apply prompt optimization FIRST (before any other processing)
+        const originalText = text;
+        text = optimizePrompt(text);
+        
+        // Update payload with optimized text
+        if (text !== originalText && payload) {
+          payload = Object.assign({}, payload, { text });
+        }
+        
+        const normalized = _normalize(text);
+        const len = normalized.length;
+        const key = provider + '|' + action + '|' + _hashKey(normalized) + '|' + (payload.length||'');
+
+        // RAG sparse context strip
+        if (text && /\[Relevant context from past conversations:\]/.test(text)) {
+          text = _stripRAGContextIfSparse(text);
+          payload = Object.assign({}, payload, { text });
+        }
+
+        // Cache reuse for identical recent queries
+        const cached = _tryCacheGet(key);
+        if (cached) return { intercepted: true, res: cached };
+
+        // Small simple summarize → local fast path
+        if (action === 'summarize' && _isSimplePrompt(normalized)) {
+          const result = _localSummary(text);
+          const res = { ok: true, result, model: 'local-fast' };
+          _cachePut(key, res);
+          return { intercepted: true, res };
+        }
+
+        // Sub-question decomposition skip (heuristic on instruction text)
+        if (/\b(sub[- ]?question|decompose|break\s+into\s+(steps|questions)|outline)/i.test(normalized)) {
+          if (_topicCount(text) <= 1) {
+            const one = 'Step 1: ' + (text.replace(/"/g,'').slice(0,80) || 'Single-focus task');
+            const res = { ok: true, result: one, model: 'local-fast' };
+            _cachePut(key, res);
+            return { intercepted: true, res };
+          }
+        }
+
+        return { intercepted: false, payload, cacheKey: key };
+      } catch(_) {
+        return { intercepted: false, payload, cacheKey: null };
+      }
+    }
+
+    // Gemini Cloud API handlers with governor
+    function callGeminiAsync(originalPayload) {
+      return new Promise(async (resolve) => {
         try {
-          chrome.runtime.sendMessage({ type: 'call_gemini', payload }, res => { resolve(res || { ok: false, error: 'no-response' }); });
+          const gov = await tokenGovernor(Object.assign({}, originalPayload), 'gemini');
+          if (gov.intercepted) return resolve(gov.res);
+          chrome.runtime.sendMessage({ type: 'call_gemini', payload: gov.payload }, res => {
+            const out = res || { ok: false, error: 'no-response' };
+            // Apply ramble filter to successful responses
+            if (out && out.ok && out.result && typeof out.result === 'string') {
+              out.result = rambleFilter(out.result);
+            }
+            if (gov.cacheKey && out && out.ok) _cachePut(gov.cacheKey, out);
+            resolve(out);
+          });
         } catch (e) { resolve({ ok: false, error: e && e.message }); }
       });
     }
 
-    // OpenAI API wrapper for EchoSynth multi-AI synthesis
-    function callOpenAIAsync(payload) {
-      return new Promise((resolve) => {
+    // OpenAI API wrapper with governor (used by EchoSynth)
+    function callOpenAIAsync(originalPayload) {
+      return new Promise(async (resolve) => {
         try {
-          chrome.runtime.sendMessage({ type: 'call_openai', payload }, res => { resolve(res || { ok: false, error: 'no-response' }); });
+          const gov = await tokenGovernor(Object.assign({ action: 'prompt' }, originalPayload), 'openai');
+          if (gov.intercepted) return resolve(gov.res);
+          chrome.runtime.sendMessage({ type: 'call_openai', payload: gov.payload }, res => {
+            const out = res || { ok: false, error: 'no-response' };
+            // Apply ramble filter to successful responses
+            if (out && out.ok && out.result && typeof out.result === 'string') {
+              out.result = rambleFilter(out.result);
+            }
+            if (gov.cacheKey && out && out.ok) _cachePut(gov.cacheKey, out);
+            resolve(out);
+          });
         } catch (e) { resolve({ ok: false, error: e && e.message }); }
       });
     }
@@ -6318,6 +6894,22 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       if (mergeRes && mergeRes.ok) { try { onProgress && onProgress({ phase: 'done' }); } catch(e){}; return mergeRes.result; }
       throw new Error('merge-failed');
     }
+    
+    // Unified Rewrite API
+    // Selects template via background templates and handles chunk/merge.
+    async function rewriteText(mode, text, options = {}) {
+      const styleKey = mode || 'normal';
+      const styleHint = options.style || options.styleHint || '';
+      const onProgress = typeof options.onProgress === 'function' ? options.onProgress : null;
+      const opts = {
+        chunkSize: options.chunkSize || 14000,
+        maxParallel: options.maxParallel || 3,
+        length: options.length || 'medium',
+        extraPayload: { rewriteStyle: styleKey, styleHint },
+        onProgress
+      };
+      return await hierarchicalProcess(text, 'rewrite', opts);
+    }
     // Prompt button removed in favor of Sync Tone UI (see btnSyncTone)
 
     btnSummarize.addEventListener('click', async () => {
@@ -6370,6 +6962,101 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       } catch (e) { toast('Insert failed'); }
     });
 
+    // State for reply selection & originals
+    let _cbSelectedReplyId = null;
+    let _cbRepliesData = []; // [{ id, text, preview, idx }]
+    const _cbOriginals = new Map();
+
+    function _hashStr(s){ let h=0; for(let i=0;i<s.length;i++){ h=((h<<5)-h)+s.charCodeAt(i); h|=0; } return h.toString(36); }
+
+    function _generatePreview(text) {
+      if (!text || text.length === 0) return '(empty)';
+      // Extract first sentence or first ~120 chars
+      const normalized = text.replace(/\s+/g, ' ').trim();
+      const firstSentence = normalized.match(/^[^.!?]{1,120}[.!?]?/);
+      if (firstSentence && firstSentence[0]) {
+        const preview = firstSentence[0].trim();
+        return preview.length > 120 ? preview.slice(0, 117) + '...' : preview;
+      }
+      return normalized.length > 120 ? normalized.slice(0, 117) + '...' : normalized;
+    }
+
+    async function loadAssistantReplies() {
+      try {
+        const msgs = await scanChat();
+        let assistants = (msgs || []).filter(m => (m && m.role === 'assistant' && m.text && m.text.trim().length>0));
+        
+        // Auto-summarize if combined message count > 20
+        if (msgs && msgs.length > 20) {
+          try {
+            const fullText = msgs.map(m => `${m.role}: ${m.text}`).join('\n\n');
+            const summaryRes = await callGeminiAsync({ action: 'summarize', text: fullText, summaryType: 'paragraph', length: 'short' });
+            if (summaryRes && summaryRes.ok && summaryRes.result) {
+              assistants = [{ role: 'assistant', text: `📌 Auto-Summary (${msgs.length} messages):\n\n${summaryRes.result}` }].concat(assistants);
+            }
+          } catch (e) { debugLog('auto-summarize error', e); }
+        }
+        
+        // newest first
+        assistants.reverse();
+        _cbRepliesData = assistants.map((m, i) => ({ 
+          id: `r-${i}-${_hashStr(m.text.slice(0,64))}`, 
+          text: m.text, 
+          preview: _generatePreview(m.text),
+          idx: i 
+        }));
+        _cbSelectedReplyId = null;
+        renderReplies();
+        hideEditor();
+      } catch (e) {
+        debugLog('loadAssistantReplies error', e);
+        _cbRepliesData = []; _cbSelectedReplyId = null; renderReplies(); hideEditor();
+      }
+    }
+
+    function renderReplies() {
+      try {
+        const list = rewView.querySelector('#cb-replies-list');
+        if (!list) return;
+        while (list.firstChild) list.removeChild(list.firstChild);
+        if (!_cbRepliesData.length) {
+          const empty = document.createElement('div'); empty.style.cssText='font-size:12px;color:var(--cb-subtext)'; empty.textContent='No assistant replies found.'; list.appendChild(empty); return;
+        }
+        for (const r of _cbRepliesData) {
+          const bubble = document.createElement('div'); bubble.className='cb-reply'; bubble.dataset.id = r.id;
+          if (_cbSelectedReplyId === r.id) bubble.classList.add('cb-selected');
+          const previewEl = document.createElement('div'); previewEl.className='cb-reply-preview'; previewEl.textContent = r.preview;
+          bubble.appendChild(previewEl);
+          const meta = document.createElement('div'); meta.className='cb-reply-meta'; meta.textContent = `${r.text.length} chars`;
+          bubble.appendChild(meta);
+          bubble.addEventListener('click', ()=>{
+            _cbSelectedReplyId = r.id;
+            renderReplies();
+            showEditor(r);
+          });
+          list.appendChild(bubble);
+        }
+      } catch(e){ debugLog('renderReplies error', e); }
+    }
+
+    function showEditor(reply) {
+      try {
+        const editor = rewView.querySelector('#cb-rewrite-editor');
+        const textarea = rewView.querySelector('#cb-editor-textarea');
+        if (!editor || !textarea) return;
+        textarea.value = reply.text;
+        editor.classList.add('cb-active');
+        setTimeout(() => { try { textarea.focus(); textarea.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch(e){} }, 100);
+      } catch(e){ debugLog('showEditor error', e); }
+    }
+
+    function hideEditor() {
+      try {
+        const editor = rewView.querySelector('#cb-rewrite-editor');
+        if (editor) editor.classList.remove('cb-active');
+      } catch(e){}
+    }
+
     btnRewrite.addEventListener('click', async () => {
       closeAllViews();
       try {
@@ -6377,12 +7064,72 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         rewSourceText.textContent = inputText || '(no conversation found)';
         rewResult.textContent = '';
         rewView.classList.add('cb-view-active');
+        // Load replies on open
+        await loadAssistantReplies();
       } catch (e) { toast('Failed to open Rewrite'); debugLog('open rew view', e); }
     });
 
     btnCloseRew.addEventListener('click', () => {
-      try { rewView.classList.remove('cb-view-active'); } catch (e) {}
+      try { rewView.classList.remove('cb-view-active'); _cbSelectedReplyId = null; hideEditor(); } catch (e) {}
     })
+
+    // Editor rewrite button
+    try {
+      const btnEditorRewrite = rewView.querySelector('#cb-btn-editor-rewrite');
+      const btnEditorCancel = rewView.querySelector('#cb-btn-editor-cancel');
+      const btnEditorCopy = rewView.querySelector('#cb-btn-editor-copy');
+      const editorTextarea = rewView.querySelector('#cb-editor-textarea');
+
+      if (btnEditorRewrite) {
+        btnEditorRewrite.addEventListener('click', async () => {
+          try {
+            if (!_cbSelectedReplyId || !editorTextarea) { toast('No reply selected'); return; }
+            const target = _cbRepliesData.find(r => r.id === _cbSelectedReplyId);
+            if (!target) { toast('Reply not found'); return; }
+            const style = (rewStyleSelect && rewStyleSelect.value) || 'normal';
+            const styleHint = (typeof styleHintInput !== 'undefined' && styleHintInput && styleHintInput.value) ? styleHintInput.value : '';
+            const currentText = editorTextarea.value || target.text;
+            if (!currentText || currentText.trim().length < 3) { toast('Text is empty'); return; }
+            btnEditorRewrite.disabled = true; addLoadingToButton(btnEditorRewrite, 'Rewriting');
+            const result = await rewriteText(style, currentText, { styleHint, chunkSize: 14000, maxParallel: 3, length: 'medium' });
+            if (result && result.trim().length > 0) {
+              if (!_cbOriginals.has(target.id)) _cbOriginals.set(target.id, target.text);
+              target.text = result;
+              target.preview = _generatePreview(result);
+              editorTextarea.value = result;
+              renderReplies();
+              toast('Rewritten');
+            } else {
+              toast('No result');
+            }
+          } catch (err) {
+            toast('Rewrite failed: ' + (err && err.message ? err.message : err));
+            debugLog('editor rewrite error', err);
+          } finally {
+            removeLoadingFromButton(btnEditorRewrite, 'Rewrite');
+          }
+        });
+      }
+
+      if (btnEditorCancel) {
+        btnEditorCancel.addEventListener('click', () => {
+          _cbSelectedReplyId = null;
+          hideEditor();
+          renderReplies();
+        });
+      }
+
+      if (btnEditorCopy) {
+        btnEditorCopy.addEventListener('click', () => {
+          try {
+            if (editorTextarea && editorTextarea.value) {
+              navigator.clipboard.writeText(editorTextarea.value);
+              toast('Copied');
+            }
+          } catch(e) { toast('Copy failed'); }
+        });
+      }
+    } catch(e) { debugLog('editor buttons setup error', e); }
 
     btnGoRew.addEventListener('click', async () => {
       try {
@@ -6390,16 +7137,14 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         rewProg.style.display = 'inline'; updateProgress(rewProg, 'rewrite', { phase: 'preparing' });
         const chatText = (rewSourceText && rewSourceText.textContent) ? rewSourceText.textContent : '';
         const style = (rewStyleSelect && rewStyleSelect.value) || 'normal';
-  if (!chatText || chatText.trim().length < 10) { toast('No conversation to rewrite'); btnGoRew.disabled = false; btnGoRew.textContent = 'Rewrite'; return; }
-
-        const result = await hierarchicalProcess(chatText, 'rewrite', { chunkSize: 14000, maxParallel: 3, length: 'medium', extraPayload: { rewriteStyle: style }, onProgress: (ev)=>updateProgress(rewProg, 'rewrite', ev) });
-
-        // Update text area with result and show Insert button
+        const styleHint = (typeof styleHintInput !== 'undefined' && styleHintInput && styleHintInput.value) ? styleHintInput.value : '';
+        // Fallback to whole conversation rewrite (legacy behavior)
+        if (!chatText || chatText.trim().length < 10) { toast('No conversation to rewrite'); btnGoRew.disabled = false; btnGoRew.textContent = 'Rewrite'; return; }
+        const result = await rewriteText(style, chatText, { styleHint, chunkSize: 14000, maxParallel: 3, length: 'medium', onProgress: (ev)=>updateProgress(rewProg, 'rewrite', ev) });
         rewSourceText.textContent = result || '(no result)';
         rewResult.textContent = '✅ Rewrite completed! The text area above now shows the rewritten version.';
         btnInsertRew.style.display = 'inline-block';
         rewProg.style.display = 'none';
-  // No duplicate output in preview; go straight to history below
         toast('Rewrite completed');
       } catch (err) {
         toast('Rewrite failed: ' + (err && err.message ? err.message : err));
@@ -7632,9 +8377,10 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
               }
             };
             try { historyEl.__virtRender = render; historyEl.__virtItems = arr; } catch(_){}
-            historyEl.removeEventListener('scroll', historyEl.__virtScroll || (()=>{}));
+            historyEl.removeEventListener('scroll', historyEl.__virtScroll || (()=>{}), { passive: true });
             historyEl.__virtScroll = () => render();
-            historyEl.addEventListener('scroll', historyEl.__virtScroll);
+            // Mark scroll listener as passive to avoid main-thread blocking warnings
+            historyEl.addEventListener('scroll', historyEl.__virtScroll, { passive: true });
             render();
           } else {
             historyEl.textContent = arr.slice(0,6).map(s => {

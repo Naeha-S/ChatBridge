@@ -409,6 +409,7 @@ async function retrieve(queryText, topK = 3, filters = {}) {
     contextPackages.sort((a, b) => b.score - a.score);
     const topResults = contextPackages.slice(0, topK);
     
+    try { if (window && window.RAGEngine) window.RAGEngine._lastRetrievedCount = topResults.length; } catch {}
     console.log('[RAG] Top', topK, 'context packages:', topResults.map(r => ({
       id: r.id,
       score: r.score.toFixed(3),

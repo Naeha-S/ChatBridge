@@ -6,12 +6,15 @@
 (function() {
   'use strict';
 
-  // Use CDN-hosted transformers.js (no npm needed for chrome extension)
-  const TRANSFORMERS_CDN = 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2';
-  
+  // Optional local vendor path (if you package transformers locally later)
+  // Place minified build at vendor/transformers.min.js and allow as web_accessible_resource.
+  const LOCAL_VENDOR_PATH = (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getURL)
+    ? chrome.runtime.getURL('vendor/transformers.min.js') : null;
+
   let pipelineInstance = null;
   let isLoading = false;
   let loadPromise = null;
+  let fallbackMode = false; // when true, we use hash-based embeddings
 
   /**
    * Lazy-load the sentence transformer model
@@ -24,9 +27,49 @@
     isLoading = true;
     loadPromise = (async () => {
       try {
-        // Dynamically import transformers.js from CDN
-        const { pipeline } = await import(TRANSFORMERS_CDN);
-        
+        // Prefer existing global (if you injected transformers elsewhere)
+        let pipeline = null;
+        try {
+          // If transformers is already available globally
+          const g = (typeof globalThis !== 'undefined') ? globalThis : window;
+          if (g && g.transformers && typeof g.transformers.pipeline === 'function') {
+            pipeline = g.transformers.pipeline;
+          }
+        } catch(_) {}
+
+        // Attempt optional local vendor import (if packaged). This is safe in extensions.
+        if (!pipeline && LOCAL_VENDOR_PATH) {
+          try {
+            const mod = await import(LOCAL_VENDOR_PATH);
+            if (mod && typeof mod.pipeline === 'function') pipeline = mod.pipeline;
+            else if (mod && mod.default && typeof mod.default.pipeline === 'function') pipeline = mod.default.pipeline;
+          } catch (e) {
+            // ignore; we'll fall back
+          }
+        }
+
+        // Configure transformers env if available
+        try {
+          const g = (typeof globalThis !== 'undefined') ? globalThis : window;
+          if (g && g.transformers && g.transformers.env) {
+            const env = g.transformers.env;
+            // Prefer local models if you add them later
+            env.allowLocalModels = true;
+            try { env.localModelPath = chrome.runtime.getURL('models'); } catch(_) {}
+            // Point ONNX runtime to local wasm path if you add files later
+            if (env.backends && env.backends.onnx && env.backends.onnx.wasm) {
+              try { env.backends.onnx.wasm.wasmPaths = chrome.runtime.getURL('onnx/'); } catch(_) {}
+            }
+          }
+        } catch(_) {}
+
+        if (!pipeline) {
+          // No library available; enable fallback embeddings
+          console.warn('[ChatBridge Embeddings] transformers.js not available. Using lightweight hash embeddings.');
+          fallbackMode = true;
+          return null;
+        }
+
         // Load the feature extraction pipeline with all-MiniLM-L6-v2
         // This model is small, fast, and good for general-purpose semantic similarity
         pipelineInstance = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2', {
@@ -41,10 +84,10 @@
         console.log('[ChatBridge Embeddings] Model loaded successfully');
         return pipelineInstance;
       } catch (e) {
-        console.error('[ChatBridge Embeddings] Failed to load model:', e);
-        isLoading = false;
+        console.warn('[ChatBridge Embeddings] Failed to initialize transformers pipeline, enabling fallback:', e);
+        fallbackMode = true;
         pipelineInstance = null;
-        throw e;
+        return null;
       } finally {
         isLoading = false;
       }
@@ -70,14 +113,31 @@
       const truncated = text.length > maxLength ? text.slice(0, maxLength) : text;
 
       const model = await loadEmbeddingModel();
-      
-      // Generate embedding (mean pooling is done automatically)
-      const output = await model(truncated, { pooling: 'mean', normalize: true });
-      
-      // Extract the embedding tensor data as Float32Array
-      const embedding = output.data;
-      
-      return embedding;
+      if (!fallbackMode && model) {
+        // Generate embedding (mean pooling is done automatically)
+        const output = await model(truncated, { pooling: 'mean', normalize: true });
+        const embedding = output.data;
+        return embedding;
+      }
+
+      // Fallback: lightweight hash-based embedding (character n-grams)
+      const dim = 384;
+      const vec = new Float32Array(dim);
+      const s = truncated.toLowerCase();
+      for (let i = 0; i < s.length; i++) {
+        const c1 = s.charCodeAt(i);
+        const c2 = s.charCodeAt(i+1) || 0;
+        const c3 = s.charCodeAt(i+2) || 0;
+        // simple rolling hash
+        let h = ((c1 * 31 + c2) * 31 + c3) >>> 0;
+        const idx = h % dim;
+        vec[idx] += 1;
+      }
+      // L2 normalize
+      let norm = 0; for (let i=0;i<dim;i++) norm += vec[i]*vec[i];
+      norm = Math.sqrt(norm) || 1;
+      for (let i=0;i<dim;i++) vec[i] = vec[i]/norm;
+      return vec;
     } catch (e) {
       console.error('[ChatBridge Embeddings] getEmbedding error:', e);
       // Fallback: return zero vector
