@@ -45,6 +45,8 @@
         "utils/domUtils.js",
         "utils/textUtils.js",
         "utils/messageUtils.js",
+        "utils/translator.js",
+        "translatePanel.js",
         "adapters.js",
         "storage.js",
         "embeddings.js",

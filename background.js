@@ -1537,4 +1537,153 @@ Rewritten conversation (optimized for ${tgt}):`;
     })();
     return true;
   }
+
+  // Translation module handlers
+  if (msg && msg.type === 'translate_text') {
+    if (!limiterTry()) return sendResponse({ ok:false, error: 'rate_limited' });
+    (async () => {
+      try {
+        const geminiApiKey = await getGeminiApiKey();
+        if (!geminiApiKey) {
+          return sendResponse({ ok:false, error: 'no_api_key', message: 'Gemini API key not configured' });
+        }
+
+        const { text, targetLanguage, domain, prompt } = msg;
+        
+        // Use the provided prompt from translator module
+        const systemInstruction = 'You are a professional translator specializing in preserving meaning, tone, and formatting. Output ONLY the translated text with no explanations or notes.';
+        
+        // Try models with fallback
+        let lastError = null;
+        for (let attempt = 0; attempt < GEMINI_MODEL_PRIORITY.length; attempt++) {
+          const currentModel = getNextAvailableModel();
+          const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${currentModel}:generateContent`;
+          
+          try {
+            const body = {
+              contents: [{ parts: [{ text: prompt }] }],
+              systemInstruction: { parts: [{ text: systemInstruction }] },
+              generationConfig: {
+                temperature: 0.3,
+                topK: 40,
+                topP: 0.95,
+                maxOutputTokens: 8192
+              }
+            };
+
+            const res = await fetch(`${endpoint}?key=${geminiApiKey}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(body)
+            });
+
+            const json = await res.json();
+
+            if (!res.ok) {
+              console.error(`[Gemini Translation] HTTP error ${res.status} for ${currentModel}:`, json);
+              markModelFailed(currentModel, res.status);
+              lastError = { model: currentModel, status: res.status, body: json };
+              continue;
+            }
+
+            if (!json.candidates?.[0]?.content?.parts?.[0]?.text) {
+              markModelFailed(currentModel, 'no_text');
+              lastError = { model: currentModel, error: 'no_text', body: json };
+              continue;
+            }
+
+            const translated = json.candidates[0].content.parts[0].text;
+            markModelSuccess(currentModel);
+            
+            return sendResponse({ ok: true, translated, model: currentModel });
+          } catch (e) {
+            console.error(`[Gemini Translation] Error with ${currentModel}:`, e);
+            lastError = { model: currentModel, error: e.message };
+          }
+        }
+
+        return sendResponse({ 
+          ok: false, 
+          error: 'translation_failed', 
+          message: 'All translation models failed',
+          lastError 
+        });
+      } catch (e) {
+        return sendResponse({ ok: false, error: 'translation_error', message: e.message });
+      }
+    })();
+    return true;
+  }
+
+  if (msg && msg.type === 'summarize_for_translation') {
+    if (!limiterTry()) return sendResponse({ ok:false, error: 'rate_limited' });
+    (async () => {
+      try {
+        const geminiApiKey = await getGeminiApiKey();
+        if (!geminiApiKey) {
+          return sendResponse({ ok:false, error: 'no_api_key', message: 'Gemini API key not configured' });
+        }
+
+        const { text, domain, prompt } = msg;
+        
+        const systemInstruction = `You are an expert summarizer. Create concise summaries that preserve key intent, facts, and actionable information. Focus on ${domain} content.`;
+        
+        let lastError = null;
+        for (let attempt = 0; attempt < GEMINI_MODEL_PRIORITY.length; attempt++) {
+          const currentModel = getNextAvailableModel();
+          const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${currentModel}:generateContent`;
+          
+          try {
+            const body = {
+              contents: [{ parts: [{ text: prompt }] }],
+              systemInstruction: { parts: [{ text: systemInstruction }] },
+              generationConfig: {
+                temperature: 0.3,
+                topK: 40,
+                topP: 0.95,
+                maxOutputTokens: 4096
+              }
+            };
+
+            const res = await fetch(`${endpoint}?key=${geminiApiKey}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(body)
+            });
+
+            const json = await res.json();
+
+            if (!res.ok) {
+              markModelFailed(currentModel, res.status);
+              lastError = { model: currentModel, status: res.status, body: json };
+              continue;
+            }
+
+            if (!json.candidates?.[0]?.content?.parts?.[0]?.text) {
+              markModelFailed(currentModel, 'no_text');
+              lastError = { model: currentModel, error: 'no_text', body: json };
+              continue;
+            }
+
+            const summary = json.candidates[0].content.parts[0].text;
+            markModelSuccess(currentModel);
+            
+            return sendResponse({ ok: true, summary, model: currentModel });
+          } catch (e) {
+            lastError = { model: currentModel, error: e.message };
+          }
+        }
+
+        return sendResponse({ 
+          ok: false, 
+          error: 'summarization_failed', 
+          message: 'All summarization models failed',
+          lastError 
+        });
+      } catch (e) {
+        return sendResponse({ ok: false, error: 'summarization_error', message: e.message });
+      }
+    })();
+    return true;
+  }
 });

@@ -1176,6 +1176,7 @@
   rewView.appendChild(rewResult);
 
   // Translate view
+  // Translate view - NEW SIMPLIFIED UI
   const transView = document.createElement('div'); transView.className = 'cb-internal-view'; transView.id = 'cb-trans-view'; transView.setAttribute('data-cb-ignore','true');
   const transTop = document.createElement('div'); transTop.className = 'cb-view-top';
   const transTitle = document.createElement('div'); transTitle.className = 'cb-view-title'; transTitle.textContent = 'Translate';
@@ -1183,38 +1184,64 @@
   btnCloseTrans.setAttribute('aria-label','Close Translate view');
   transTop.appendChild(transTitle); transTop.appendChild(btnCloseTrans);
   transView.appendChild(transTop);
-  const transIntro = document.createElement('div'); transIntro.className = 'cb-view-intro'; transIntro.textContent = 'Break language barriers instantly. Convert conversations to 20+ languages while preserving context and technical accuracy.';
-  transView.appendChild(transIntro);
-  const transLangLabel = document.createElement('div'); transLangLabel.className = 'cb-label'; transLangLabel.textContent = 'Target language';
-  const transLangSelect = document.createElement('select'); transLangSelect.className = 'cb-select'; transLangSelect.id = 'cb-trans-lang';
-  // include English and common targets; order: English first
-  ['English','Japanese','Spanish','French','German','Chinese','Korean','Italian','Portuguese','Russian','Arabic','Hindi','Turkish','Dutch','Swedish','Polish','Tamil'].forEach(lang => { const o = document.createElement('option'); o.value = lang; o.textContent = lang; transLangSelect.appendChild(o); });
-  // Auto-detect user's preferred language and restore saved preference
-  try {
-    const saved = localStorage.getItem('chatbridge:pref:transLang');
-    if (saved) {
-      try { transLangSelect.value = saved; } catch(e) {}
-    } else {
-      const nav = (navigator.language || navigator.userLanguage || 'en').toLowerCase();
-      // map primary tag to available option names
-      const langMap = { 'en': 'English', 'en-us': 'English', 'en-gb': 'English', 'ja': 'Japanese', 'es': 'Spanish', 'fr': 'French', 'de': 'German', 'zh': 'Chinese', 'ko': 'Korean', 'it': 'Italian', 'pt': 'Portuguese', 'ru': 'Russian', 'ar': 'Arabic', 'hi': 'Hindi', 'tr': 'Turkish', 'nl': 'Dutch', 'sv': 'Swedish', 'pl': 'Polish', 'ta': 'Tamil' };
-      const key = nav.split('-')[0];
-      const mapped = langMap[nav] || langMap[key] || 'English';
-      try { transLangSelect.value = mapped; } catch(e) { transLangSelect.value = 'English'; }
-    }
-  } catch (e) {}
-  // persist when changed
-  transLangSelect.addEventListener('change', () => { try { localStorage.setItem('chatbridge:pref:transLang', transLangSelect.value); } catch(e){} });
-  transView.appendChild(transLangLabel); transView.appendChild(transLangSelect);
-  const transSourceText = document.createElement('div'); transSourceText.className = 'cb-view-text'; transSourceText.id = 'cb-trans-source-text'; transSourceText.setAttribute('contenteditable','false'); transSourceText.textContent = '';
-  transView.appendChild(transSourceText);
-  const btnGoTrans = document.createElement('button'); btnGoTrans.className = 'cb-btn cb-view-go'; btnGoTrans.textContent = 'Translate';
-  transView.appendChild(btnGoTrans);
-  const transProg = document.createElement('span'); transProg.className = 'cb-progress'; transProg.style.display = 'none'; transView.appendChild(transProg);
-  const btnInsertTrans = document.createElement('button'); btnInsertTrans.className = 'cb-btn cb-view-go'; btnInsertTrans.textContent = 'Insert to Chat'; btnInsertTrans.style.display = 'none';
-  transView.appendChild(btnInsertTrans);
-  const transResult = document.createElement('div'); transResult.className = 'cb-view-result'; transResult.id = 'cb-trans-result'; transResult.textContent = '';
+  const transLangRow = document.createElement('div'); transLangRow.style.cssText = 'display:flex;align-items:center;gap:10px;margin:16px 0;';
+  const transLangLabel = document.createElement('label'); transLangLabel.textContent = 'Output language:'; transLangLabel.style.cssText = 'font-size:0.95em;font-weight:500;color:#e0e0e0;min-width:120px;';
+  const transLangSelect = document.createElement('select'); transLangSelect.className = 'cb-select'; transLangSelect.id = 'cb-trans-lang'; transLangSelect.style.cssText = 'flex:1;padding:8px 12px;border-radius:6px;';
+  const langNameToCode = {'English':'en','Spanish':'es','French':'fr','German':'de','Italian':'it','Portuguese':'pt','Russian':'ru','Japanese':'ja','Korean':'ko','Chinese':'zh','Arabic':'ar','Hindi':'hi','Dutch':'nl','Polish':'pl','Turkish':'tr','Vietnamese':'vi','Thai':'th','Swedish':'sv','Danish':'da','Finnish':'fi','Norwegian':'no','Czech':'cs','Hungarian':'hu','Romanian':'ro','Greek':'el','Hebrew':'he','Indonesian':'id','Malay':'ms','Ukrainian':'uk','Bulgarian':'bg','Tamil':'ta'};
+  Object.entries(langNameToCode).forEach(([name,code])=>{const opt=document.createElement('option');opt.value=code;opt.textContent=name;transLangSelect.appendChild(opt);});
+  const transGearBtn = document.createElement('button'); transGearBtn.textContent='⚙️'; transGearBtn.title='Options'; transGearBtn.style.cssText='background:none;border:none;font-size:1.3em;cursor:pointer;padding:4px 8px;border-radius:4px;transition:background 0.2s;';
+  transGearBtn.onmouseenter=()=>transGearBtn.style.background='rgba(255,255,255,0.1)'; transGearBtn.onmouseleave=()=>transGearBtn.style.background='none';
+  transLangRow.appendChild(transLangLabel); transLangRow.appendChild(transLangSelect); transLangRow.appendChild(transGearBtn); transView.appendChild(transLangRow);
+  const transOptions=document.createElement('div'); transOptions.id='cb-trans-options'; transOptions.style.cssText='display:none;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:14px;margin:0 0 14px 0;';
+  const transModeGroup=document.createElement('div'); transModeGroup.style.cssText='margin-bottom:14px;';
+  const transModeLabel=document.createElement('div'); transModeLabel.textContent='Selective translation:'; transModeLabel.style.cssText='font-size:0.9em;font-weight:600;color:#e0e0e0;margin-bottom:8px;'; transModeGroup.appendChild(transModeLabel);
+  const transRadioGroup=document.createElement('div'); transRadioGroup.className='cb-radio-group'; transRadioGroup.style.cssText='display:flex;gap:8px;flex-wrap:wrap;';
+  ['all','user','ai','last'].forEach((mode,idx)=>{
+    const label=document.createElement('label');
+    label.className='cb-radio';
+    label.style.cssText='display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border:1px solid rgba(255,255,255,0.15);border-radius:8px;background:rgba(255,255,255,0.04);cursor:pointer;transition:background .2s,border-color .2s;';
+    const radio=document.createElement('input'); radio.type='radio'; radio.name='cb-trans-mode'; radio.value=mode; radio.style.cursor='pointer'; if(idx===0) radio.checked=true;
+    const span=document.createElement('span'); span.textContent = mode==='all'?'All messages':mode==='user'?'Only user':mode==='ai'?'Only AI':'Last message'; span.className='cb-radio-text';
+    label.appendChild(radio); label.appendChild(span); transRadioGroup.appendChild(label);
+  });
+  transModeGroup.appendChild(transRadioGroup); transOptions.appendChild(transModeGroup);
+  const transShortenRow=document.createElement('div'); transShortenRow.style.cssText='display:flex;align-items:center;justify-content:space-between;';
+  const transShortenLabel=document.createElement('label'); transShortenLabel.textContent='Shorten output:'; transShortenLabel.htmlFor='cb-trans-shorten'; transShortenLabel.style.cssText='font-size:0.9em;font-weight:600;color:#e0e0e0;';
+  const transShortenToggle=document.createElement('input'); transShortenToggle.type='checkbox'; transShortenToggle.id='cb-trans-shorten'; transShortenToggle.className='cb-toggle'; transShortenToggle.style.cssText='width:44px;height:24px;cursor:pointer;';
+  transShortenRow.appendChild(transShortenLabel); transShortenRow.appendChild(transShortenToggle); transOptions.appendChild(transShortenRow); transView.appendChild(transOptions);
+  const transActionRow=document.createElement('div'); transActionRow.style.cssText='display:flex;align-items:center;gap:12px;margin:14px 0;';
+  const btnGoTrans=document.createElement('button'); btnGoTrans.className='cb-btn cb-btn-primary'; btnGoTrans.textContent='Translate'; btnGoTrans.style.cssText='padding:10px 20px;';
+  const transProg=document.createElement('span'); transProg.style.cssText='display:none;font-size:0.9em;color:rgba(255,255,255,0.7);'; transProg.textContent='⏳ Translating...';
+  transActionRow.appendChild(btnGoTrans); transActionRow.appendChild(transProg); transView.appendChild(transActionRow);
+  const transResult=document.createElement('div'); transResult.className='cb-view-result'; transResult.id='cb-trans-result'; transResult.style.cssText='margin-top:14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:14px;max-height:400px;overflow-y:auto;white-space:pre-wrap;line-height:1.6;display:none;';
   transView.appendChild(transResult);
+  const btnInsertTrans=document.createElement('button'); btnInsertTrans.className='cb-btn'; btnInsertTrans.textContent='Insert to Chat'; btnInsertTrans.style.cssText='margin-top:12px;display:none;'; transView.appendChild(btnInsertTrans);
+  transGearBtn.addEventListener('click',()=>{const isHidden=transOptions.style.display==='none';transOptions.style.display=isHidden?'block':'none';});
+  try{const saved=localStorage.getItem('chatbridge:pref:transLang');if(saved){transLangSelect.value=saved;}else{const nav=(navigator.language||navigator.userLanguage||'en').toLowerCase().split('-')[0];const navToCode={'en':'en','ja':'ja','es':'es','fr':'fr','de':'de','zh':'zh','ko':'ko','it':'it','pt':'pt','ru':'ru','ar':'ar','hi':'hi','tr':'tr','nl':'nl','sv':'sv','pl':'pl','ta':'ta'};transLangSelect.value=navToCode[nav]||'en';}}catch(e){}
+  transLangSelect.addEventListener('change',()=>{try{localStorage.setItem('chatbridge:pref:transLang',transLangSelect.value);}catch(e){}});
+
+  // Scoped polish styles for translate UI
+  (function(){
+    try {
+      if (!transView.querySelector('#cb-trans-style')) {
+        const style=document.createElement('style'); style.id='cb-trans-style';
+        style.textContent = `
+          .cb-radio:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.22); }
+          .cb-radio input { accent-color: #7aa2ff; }
+          .cb-radio input:checked + .cb-radio-text { font-weight: 600; color: #ffffff; }
+          #cb-trans-options { box-shadow: 0 4px 14px rgba(0,0,0,0.25); }
+          #cb-trans-result { box-shadow: inset 0 1px 0 rgba(255,255,255,0.04); }
+          .cb-btn.cb-btn-primary { background: linear-gradient(135deg, #6aa0ff 0%, #8b6aff 100%); border: none; }
+          .cb-btn.cb-btn-primary:hover { filter: brightness(1.05); }
+          input.cb-toggle { appearance: none; background: rgba(255,255,255,0.2); border-radius: 999px; position: relative; outline: none; transition: background .2s; }
+          input.cb-toggle:checked { background: #7aa2ff; }
+          input.cb-toggle::before { content: ''; position: absolute; top: 3px; left: 4px; width: 18px; height: 18px; background: #fff; border-radius: 50%; transition: transform .2s; }
+          input.cb-toggle:checked::before { transform: translateX(18px); }
+        `;
+        transView.appendChild(style);
+      }
+    } catch(_) {}
+  })();
 
   // Append all internal views to the panel (after actions, before status)
   panel.appendChild(syncView);
@@ -5256,8 +5283,8 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           txt = summSourceText.textContent;
         } else if (rewView.classList.contains('cb-view-active') && rewSourceText && rewSourceText.textContent && rewSourceText.textContent !== '(no conversation found)' && rewSourceText.textContent !== '(no result)') {
           txt = rewSourceText.textContent;
-        } else if (transView.classList.contains('cb-view-active') && transSourceText && transSourceText.textContent && transSourceText.textContent !== '(no conversation found)' && transSourceText.textContent !== '(no result)') {
-          txt = transSourceText.textContent;
+        } else if (transView.classList.contains('cb-view-active') && transResult && transResult.textContent) {
+          txt = transResult.textContent;
         } else if (syncView.classList.contains('cb-view-active') && syncSourceText && syncSourceText.textContent && syncSourceText.textContent !== '(no conversation found)' && syncSourceText.textContent !== '(no result)') {
           txt = syncSourceText.textContent;
         }
@@ -7163,9 +7190,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
     btnTranslate.addEventListener('click', async () => {
       closeAllViews();
       try {
-        const inputText = await getConversationText();
-        transSourceText.textContent = inputText || '(no conversation found)';
-        transResult.textContent = '';
+        transResult.textContent = ''; transResult.style.display = 'none'; btnInsertTrans.style.display = 'none';
         transView.classList.add('cb-view-active');
       } catch (e) { toast('Failed to open Translate'); debugLog('open trans view', e); }
     });
@@ -7176,42 +7201,64 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
 
     btnGoTrans.addEventListener('click', async () => {
       try {
-  btnGoTrans.disabled = true; addLoadingToButton(btnGoTrans, 'Translating'); transResult.textContent = ''; btnInsertTrans.style.display = 'none';
-        transProg.style.display = 'inline'; updateProgress(transProg, 'translate', { phase: 'preparing' });
-        const chatText = (transSourceText && transSourceText.textContent) ? transSourceText.textContent : '';
-        const lang = (transLangSelect && transLangSelect.value) || 'Japanese';
-  if (!chatText || chatText.trim().length < 10) { toast('No conversation to translate'); btnGoTrans.disabled = false; btnGoTrans.textContent = 'Translate'; return; }
-
-        const result = await hierarchicalProcess(chatText, 'translate', { chunkSize: 14000, maxParallel: 3, length: 'medium', extraPayload: { targetLang: lang }, onProgress: (ev)=>updateProgress(transProg, 'translate', ev) });
-
-        // Update text area with result and show Insert button
-        transSourceText.textContent = result || '(no result)';
-        transResult.textContent = `✅ Translation to ${lang} completed! The text area above now shows the translated version.`;
+        btnGoTrans.disabled = true; transProg.style.display = 'inline'; transResult.style.display = 'none'; transResult.textContent = ''; btnInsertTrans.style.display = 'none';
+        const targetLanguage = transLangSelect.value || 'en';
+        const radios = Array.from(transView.querySelectorAll('input[name="cb-trans-mode"]'));
+        console.log('[ChatBridge] Found radios:', radios.length);
+        const selectedMode = radios.find(r=>r && r.checked);
+        const mode = selectedMode ? selectedMode.value : 'all';
+        console.log('[ChatBridge] Translation mode:', mode);
+        const shortenEl = transView.querySelector('#cb-trans-shorten');
+        console.log('[ChatBridge] Shorten element:', shortenEl);
+        const shorten = !!(shortenEl && shortenEl.checked);
+        console.log('[ChatBridge] Shorten:', shorten);
+        let content;
+        if (mode === 'last') {
+          const lastScan = window.ChatBridge.getLastScan();
+          if (!lastScan || !lastScan.messages || lastScan.messages.length === 0) { toast('No messages found'); btnGoTrans.disabled = false; transProg.style.display = 'none'; return; }
+          const lastMsg = lastScan.messages[lastScan.messages.length - 1];
+          content = [{ role: lastMsg.role || 'assistant', text: lastMsg.text || '' }];
+        } else {
+          const lastScan = window.ChatBridge.getLastScan();
+          if (!lastScan || !lastScan.messages || lastScan.messages.length === 0) {
+            const chatText = await getConversationText();
+            content = chatText || '';
+          } else {
+            content = lastScan.messages;
+          }
+        }
+        if (typeof window.ChatBridgeTranslator === 'undefined') { toast('Translation module not loaded'); btnGoTrans.disabled = false; transProg.style.display = 'none'; return; }
+        const result = await window.ChatBridgeTranslator.translateContent({ targetLanguage, mode, shorten, content });
+        if (!result || !result.translated) { toast('Translation failed: no result'); btnGoTrans.disabled = false; transProg.style.display = 'none'; return; }
+        let displayText = '';
+        if (Array.isArray(result.translated)) {
+          displayText = result.translated.map(msg => {
+            const roleIcon = msg.role === 'user' ? '👤 User' : '🤖 AI';
+            return `${roleIcon}:\n${msg.text}`;
+          }).join('\n\n━━━━━━━━━━━━━━━━━━━━\n\n');
+        } else {
+          displayText = result.translated;
+        }
+        transResult.textContent = displayText;
+        transResult.style.display = 'block';
         btnInsertTrans.style.display = 'inline-block';
         transProg.style.display = 'none';
-  // No duplicate output in preview; go straight to history below
-        toast('Translate completed');
+        toast('Translation completed');
       } catch (err) {
-        toast('Translate failed: ' + (err && err.message ? err.message : err));
-        debugLog('hierarchicalProcess translate error', err);
-  } finally { removeLoadingFromButton(btnGoTrans, 'Translate'); }
+        toast('Translation failed: ' + (err && err.message ? err.message : err));
+        console.error('[ChatBridge] Translation error:', err);
+        transProg.style.display = 'none';
+      } finally { btnGoTrans.disabled = false; }
     });
 
     btnInsertTrans.addEventListener('click', async () => {
       try {
-        const text = (transSourceText && transSourceText.textContent) || '';
-        if (!text || text === '(no result)') { toast('Nothing to insert'); return; }
+        const text = transResult.textContent || '';
+        if (!text) { toast('Nothing to insert'); return; }
         console.log('[ChatBridge] Translate Insert clicked, text length:', text.length);
         const success = await restoreToChat(text);
-        if (success) {
-          toast('Translation inserted successfully');
-        } else {
-          console.log('[ChatBridge] restoreToChat returned false');
-        }
-      } catch (e) { 
-        console.error('[ChatBridge] Translate Insert error:', e);
-        toast('Insert failed: ' + (e.message || e)); 
-      }
+        if (success) { toast('Translation inserted successfully'); } else { console.log('[ChatBridge] restoreToChat returned false'); }
+      } catch (e) { console.error('[ChatBridge] Translate Insert error:', e); toast('Insert failed: ' + (e.message || e)); }
     });
 
     // Smart Query handlers (open instantly, lazy-populate filters/suggestions)
