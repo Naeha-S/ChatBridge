@@ -1,255 +1,178 @@
-// storage.js
-const STORAGE_KEY = "chatbridge_conversations_v1";
-const MAX_ITEMS = 50; // keep recent 50
-const MAX_RETRIES = 5;
-const RETRY_DELAY = 1000; // ms
+const StorageManager = (() => {
+  const KEYS = {
+    CONVERSATIONS: 'chatbridge_conversations_v1',
+    CONFIG: 'chatbridge_config',
+    THEME: 'cb_theme',
+    CACHE_PREFIX: 'chatbridge:cache:'
+  };
 
-// Initialize storage API
-let storageAPI = null;
-let initPromise = null;
+  const LIMITS = {
+    MAX_CONVERSATIONS: 50,
+    MAX_RETRIES: 5,
+    RETRY_DELAY: 1000
+  };
 
-// Wait for chrome.storage to be available
-function initStorage() {
-  if (initPromise) return initPromise;
+  let storageAPI = null;
+  let initPromise = null;
 
-  initPromise = new Promise((resolve, reject) => {
-    let retries = MAX_RETRIES;
-    
-    function check() {
-      // Check if we have direct access
-      if (typeof chrome !== 'undefined' && chrome?.storage?.local) {
-        storageAPI = chrome.storage.local;
-        resolve(storageAPI);
-        return;
-      }
+  function initStorage() {
+    if (initPromise) return initPromise;
 
-      // Check if we're in an extension context
-      if (window.chrome?.storage?.local) {
-        storageAPI = window.chrome.storage.local;
-        resolve(storageAPI);
-        return;
-      }
-
-      // Still no storage API
-      if (retries <= 0) {
-        const err = new Error('ChatBridge: chrome.storage not available after retries');
-        console.warn(err);
-        reject(err);
-        return;
-      }
-
-      retries--;
-      console.debug('ChatBridge: waiting for storage API, retries left:', retries);
-      setTimeout(check, RETRY_DELAY);
-    }
-
-    // Start checking
-    check();
-  });
-
-  return initPromise;
-}
-
-// Check if chrome.storage is available
-const hasStorage = typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local;
-
-function saveConversation(obj, cb) {
-  // obj: { platform, ts, conversation: [{role,text}, ...] }
-  function fallbackToLocalStorage() {
-    try {
-      let arr = [];
-      try {
-        arr = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-      } catch {}
-      arr.unshift(obj);
-      const trimmed = arr.slice(0, MAX_ITEMS);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(trimmed));
-      console.warn('ChatBridge: Used localStorage fallback for saveConversation');
-    } catch(e) {
-      console.warn('ChatBridge: localStorage fallback failed', e);
-    }
-    if (cb) cb();
-  }
-
-  if (storageAPI) {
-    // Use cached API if available
-    try {
-      storageAPI.get([STORAGE_KEY], res => {
-        const arr = res[STORAGE_KEY] || [];
-        arr.unshift(obj);
-        const trimmed = arr.slice(0, MAX_ITEMS);
-        const payload = {};
-        payload[STORAGE_KEY] = trimmed;
-        storageAPI.set(payload, () => {
-          if (chrome?.runtime?.lastError) {
-            if (chrome.runtime.lastError.message && chrome.runtime.lastError.message.includes('Extension context invalidated')) {
-              fallbackToLocalStorage();
-              return;
-            }
-            console.warn('ChatBridge storage error:', chrome.runtime.lastError);
-          }
-          if (cb) cb();
-        });
-      });
-    } catch(e) {
-      if (e && e.message && e.message.includes('Extension context invalidated')) {
-        fallbackToLocalStorage();
-        return;
-      }
-      if (e && e.message && e.message.includes('Extension context invalidated')) {
-        // Only show one toast and suppress repeated logs
-        if (!window.__CHATBRIDGE_CONTEXT_LOST) {
-          window.__CHATBRIDGE_CONTEXT_LOST = true;
-          showStorageErrorToast(e);
-        }
-        // fallback to localStorage
-        fallbackToLocalStorage();
-        return;
-      }
-      console.warn('ChatBridge direct storage error:', e);
-      showStorageErrorToast(e);
-      if (cb) cb();
-    }
-    return;
-  }
-
-  // Initialize if needed
-  initStorage()
-    .then(storage => {
-      storage.get([STORAGE_KEY], res => {
-        const arr = res[STORAGE_KEY] || [];
-        arr.unshift(obj);
-        const trimmed = arr.slice(0, MAX_ITEMS);
-        const payload = {};
-        payload[STORAGE_KEY] = trimmed;
-        storage.set(payload, () => {
-          if (chrome?.runtime?.lastError) {
-            if (chrome.runtime.lastError.message && chrome.runtime.lastError.message.includes('Extension context invalidated')) {
-              fallbackToLocalStorage();
-              return;
-            }
-            console.warn('ChatBridge storage error:', chrome.runtime.lastError);
-          }
-          if (cb) cb();
-        });
-      });
-    })
-    .catch(err => {
-      if (err && err.message && err.message.includes('Extension context invalidated')) {
-        fallbackToLocalStorage();
-        return;
-      }
-      console.warn('ChatBridge storage init error:', err);
-      showStorageErrorToast(err);
-      if (cb) cb();
-    });
-}
-
-function getConversations(cb) {
-  if (storageAPI) {
-    // Use cached API if available
-    try {
-      storageAPI.get([STORAGE_KEY], res => {
-        if (chrome?.runtime?.lastError) {
-          console.warn('ChatBridge storage error:', chrome.runtime.lastError);
-          cb([]);
+    initPromise = new Promise((resolve, reject) => {
+      let retries = LIMITS.MAX_RETRIES;
+      
+      function check() {
+        if (typeof chrome !== 'undefined' && chrome?.storage?.local) {
+          storageAPI = chrome.storage.local;
+          resolve(storageAPI);
           return;
         }
-        cb(res[STORAGE_KEY] || []);
-      });
-    } catch(e) {
-      console.warn('ChatBridge direct storage error:', e);
-      showStorageErrorToast(e);
-      cb([]);
-    }
-    return;
-  }
 
-  // Initialize if needed
-  initStorage()
-    .then(storage => {
-      storage.get([STORAGE_KEY], res => {
-        if (chrome?.runtime?.lastError) {
-          console.warn('ChatBridge storage error:', chrome.runtime.lastError);
-          cb([]);
+        if (window.chrome?.storage?.local) {
+          storageAPI = window.chrome.storage.local;
+          resolve(storageAPI);
           return;
         }
-        cb(res[STORAGE_KEY] || []);
-      });
-    })
-    .catch(err => {
-      console.warn('ChatBridge storage init error:', err);
-      showStorageErrorToast(err);
-      cb([]);
-    });
-}
 
-function clearConversations(cb) {
-  if (storageAPI) {
-    // Use cached API if available
-    try {
-      const payload = {};
-      payload[STORAGE_KEY] = [];
-      storageAPI.set(payload, () => {
-        if (chrome?.runtime?.lastError) {
-          console.warn('ChatBridge storage error:', chrome.runtime.lastError);
+        if (retries <= 0) {
+          reject(new Error('chrome.storage not available'));
+          return;
         }
-        if (cb) cb();
-      });
-    } catch(e) {
-      console.warn('ChatBridge direct storage error:', e);
-      showStorageErrorToast(e);
-      if (cb) cb();
-    }
-    return;
+
+        retries--;
+        setTimeout(check, LIMITS.RETRY_DELAY);
+      }
+
+      check();
+    });
+
+    return initPromise;
   }
 
-  // Initialize if needed
-  initStorage()
-    .then(storage => {
-      const payload = {};
-      payload[STORAGE_KEY] = [];
-      storage.set(payload, () => {
-        if (chrome?.runtime?.lastError) {
-          console.warn('ChatBridge storage error:', chrome.runtime.lastError);
-        }
-        if (cb) cb();
-      });
-    })
-    .catch(err => {
-      console.warn('ChatBridge storage init error:', err);
-      showStorageErrorToast(err);
-      if (cb) cb();
-    });
-}
-
-function showStorageErrorToast(err) {
-  if (typeof window !== 'undefined' && window.document) {
-    const msg = (err && err.message && err.message.includes('Extension context invalidated'))
-      ? 'ChatBridge: Extension context lost. Please refresh the page or reload the extension.'
-      : 'ChatBridge: Storage error. Try refreshing the page.';
+  async function get(key) {
     try {
-      const t = document.createElement('div');
-      t.innerText = msg;
-      t.style.position = 'fixed';
-      t.style.bottom = '22px';
-      t.style.left = '22px';
-      t.style.background = 'rgba(176, 0, 0, 0.95)';
-      t.style.color = '#fff';
-      t.style.padding = '8px 12px';
-      t.style.borderRadius = '8px';
-      t.style.zIndex = 2147483647;
-      document.body.appendChild(t);
-      setTimeout(() => t.remove(), 4000);
-    } catch(e) {
-      alert(msg);
+      const storage = storageAPI || await initStorage();
+      return new Promise((resolve, reject) => {
+        storage.get([key], result => {
+          if (chrome?.runtime?.lastError) {
+            reject(new Error(chrome.runtime.lastError.message));
+          } else {
+            resolve(result[key]);
+          }
+        });
+      });
+    } catch (error) {
+      console.warn('[ChatBridge] Storage get error:', error);
+      return null;
     }
   }
-}
 
-// Expose storage functions globally for content_script.js
+  async function set(key, value) {
+    try {
+      const storage = storageAPI || await initStorage();
+      return new Promise((resolve, reject) => {
+        storage.set({ [key]: value }, () => {
+          if (chrome?.runtime?.lastError) {
+            reject(new Error(chrome.runtime.lastError.message));
+          } else {
+            resolve();
+          }
+        });
+      });
+    } catch (error) {
+      console.warn('[ChatBridge] Storage set error:', error);
+      throw error;
+    }
+  }
+
+  async function remove(key) {
+    try {
+      const storage = storageAPI || await initStorage();
+      return new Promise((resolve, reject) => {
+        storage.remove(key, () => {
+          if (chrome?.runtime?.lastError) {
+            reject(new Error(chrome.runtime.lastError.message));
+          } else {
+            resolve();
+          }
+        });
+      });
+    } catch (error) {
+      console.warn('[ChatBridge] Storage remove error:', error);
+    }
+  }
+
+  async function saveConversation(conversation) {
+    try {
+      const conversations = (await get(KEYS.CONVERSATIONS)) || [];
+      conversations.unshift(conversation);
+      const trimmed = conversations.slice(0, LIMITS.MAX_CONVERSATIONS);
+      await set(KEYS.CONVERSATIONS, trimmed);
+    } catch (error) {
+      console.error('[ChatBridge] Save conversation error:', error);
+      fallbackToLocalStorage('save', conversation);
+    }
+  }
+
+  async function getConversations() {
+    try {
+      return (await get(KEYS.CONVERSATIONS)) || [];
+    } catch (error) {
+      console.error('[ChatBridge] Get conversations error:', error);
+      return [];
+    }
+  }
+
+  async function clearConversations() {
+    try {
+      await set(KEYS.CONVERSATIONS, []);
+    } catch (error) {
+      console.error('[ChatBridge] Clear conversations error:', error);
+    }
+  }
+
+  function fallbackToLocalStorage(operation, data) {
+    try {
+      if (operation === 'save' && data) {
+        let arr = JSON.parse(localStorage.getItem(KEYS.CONVERSATIONS) || '[]');
+        arr.unshift(data);
+        arr = arr.slice(0, LIMITS.MAX_CONVERSATIONS);
+        localStorage.setItem(KEYS.CONVERSATIONS, JSON.stringify(arr));
+      }
+    } catch (error) {
+      console.warn('[ChatBridge] localStorage fallback failed:', error);
+    }
+  }
+
+  function saveConversationSync(obj, cb) {
+    saveConversation(obj).then(() => cb && cb()).catch(() => cb && cb());
+  }
+
+  function getConversationsSync(cb) {
+    getConversations().then(data => cb && cb(data)).catch(() => cb && cb([]));
+  }
+
+  function clearConversationsSync(cb) {
+    clearConversations().then(() => cb && cb()).catch(() => cb && cb());
+  }
+
+  return {
+    KEYS,
+    get,
+    set,
+    remove,
+    saveConversation,
+    getConversations,
+    clearConversations,
+    saveConversationSync,
+    getConversationsSync,
+    clearConversationsSync
+  };
+})();
+
 if (typeof window !== 'undefined') {
-  window.saveConversation = saveConversation;
-  window.getConversations = getConversations;
-  window.clearConversations = clearConversations;
+  window.StorageManager = StorageManager;
+  window.saveConversation = StorageManager.saveConversationSync;
+  window.getConversations = StorageManager.getConversationsSync;
+  window.clearConversations = StorageManager.clearConversationsSync;
 }
