@@ -46,6 +46,7 @@
         "utils/textUtils.js",
         "utils/messageUtils.js",
         "utils/translator.js",
+        "utils/rewriter.js",
         "translatePanel.js",
         "adapters.js",
         "storage.js",

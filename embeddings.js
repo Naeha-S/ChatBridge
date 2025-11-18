@@ -1,6 +1,12 @@
 /**
  * Local Embeddings using transformers.js + ONNX Runtime Web
  * Lightweight sentence transformer for privacy-preserving similarity scoring, RAG, and topic detection.
+ * 
+ * OPTIMIZATION: Lazy loading and session caching to reduce CPU usage on low-end devices
+ * - Model loads ONLY when first needed (not on page load)
+ * - Session is cached and reused across all operations
+ * - Inference is throttled to max 1 call per 300ms to prevent CPU spikes
+ * - Model automatically unloads when page becomes hidden
  */
 
 (function() {
@@ -11,18 +17,21 @@
   const LOCAL_VENDOR_PATH = (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getURL)
     ? chrome.runtime.getURL('vendor/transformers.min.js') : null;
 
-  let pipelineInstance = null;
+  let pipelineInstance = null; // OPTIMIZATION: Cache pipeline instance - load once, reuse everywhere
   let isLoading = false;
   let loadPromise = null;
   let fallbackMode = false; // when true, we use hash-based embeddings
+  let lastInferenceTime = 0; // OPTIMIZATION: Track last inference to throttle calls
+  const INFERENCE_THROTTLE_MS = 300; // Minimum 300ms between inference calls
 
   /**
-   * Lazy-load the sentence transformer model
+   * OPTIMIZATION: Lazy-load the sentence transformer model ONLY when first requested
    * Uses all-MiniLM-L6-v2 quantized ONNX model (~23MB)
+   * Model is cached in pipelineInstance and reused for all subsequent calls
    */
   async function loadEmbeddingModel() {
-    if (pipelineInstance) return pipelineInstance;
-    if (isLoading) return loadPromise;
+    if (pipelineInstance) return pipelineInstance; // Return cached instance
+    if (isLoading) return loadPromise; // Wait for ongoing load
 
     isLoading = true;
     loadPromise = (async () => {
@@ -81,7 +90,7 @@
           }
         });
 
-        console.log('[ChatBridge Embeddings] Model loaded successfully');
+        console.log('[ChatBridge Embeddings] Model loaded successfully (cached for reuse)');
         return pipelineInstance;
       } catch (e) {
         console.warn('[ChatBridge Embeddings] Failed to initialize transformers pipeline, enabling fallback:', e);
@@ -95,11 +104,37 @@
 
     return loadPromise;
   }
+  
+  /**
+   * OPTIMIZATION: Cleanup function to release model when tab becomes inactive
+   * Reduces memory footprint when user switches away
+   */
+  function releaseModel() {
+    if (pipelineInstance) {
+      console.log('[ChatBridge Embeddings] Releasing model (page inactive)');
+      pipelineInstance = null;
+      isLoading = false;
+      loadPromise = null;
+    }
+  }
+  
+  // OPTIMIZATION: Auto-release model when page becomes hidden (tab switch)
+  if (typeof document !== 'undefined') {
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        // Give it a delay in case user quickly switches back
+        setTimeout(() => {
+          if (document.hidden) releaseModel();
+        }, 30000); // 30 seconds
+      }
+    }, { passive: true });
+  }
 
   /**
-   * Generate embedding for a text string
+   * OPTIMIZATION: Generate embedding with throttling to prevent CPU spikes
    * @param {string} text - Input text to embed
    * @returns {Promise<Float32Array>} - 384-dimensional embedding vector
+   * Throttled to max 1 call per 300ms to reduce CPU load on low-end devices
    */
   async function getEmbedding(text) {
     try {
@@ -107,6 +142,15 @@
         // Return zero vector for empty input
         return new Float32Array(384).fill(0);
       }
+      
+      // OPTIMIZATION: Throttle inference calls to prevent CPU spikes
+      const now = Date.now();
+      const timeSinceLastInference = now - lastInferenceTime;
+      if (timeSinceLastInference < INFERENCE_THROTTLE_MS) {
+        // Wait before calling again
+        await new Promise(r => setTimeout(r, INFERENCE_THROTTLE_MS - timeSinceLastInference));
+      }
+      lastInferenceTime = Date.now();
 
       // Truncate very long texts to avoid performance issues
       const maxLength = 512;

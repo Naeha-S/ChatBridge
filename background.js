@@ -31,7 +31,7 @@ const REWRITE_TEMPLATES = {
   direct: ({ text }) => `Rewrite the following text to be direct and straightforward. Use active voice and clear wording, keeping the original meaning unchanged.\n\n${text}`,
   detailed: ({ text }) => `Rewrite the following text to be more detailed and comprehensive. Clarify ambiguities, add structure, and preserve factual content.\n\n${text}`,
   academic: ({ text }) => `Rewrite the following text in a formal, academic tone. Use precise terminology and structured paragraphs. Do not fabricate sources or citations. Preserve meaning.\n\n${text}`,
-  humanized: ({ text }) => `Rewrite the following text to sound more natural and human, with varied sentence rhythm and flow. Maintain the original meaning and key details.\n\n${text}`,
+  humanized: ({ text, styleHint }) => `Rewrite the text in a Humanized Paraphrased style. Goals:\n- Natural, conversational voice (never robotic)\n- Smooth, deliberate transitions between ideas\n- Varied sentence lengths and cadence; avoid repetitive phrasing\n- Preserve meaning, facts, and nuance exactly (no additions)\n- Keep markdown intact; do not alter fenced/inline code, formulas, identifiers, or URLs\n- Keep length roughly similar; do not compress or expand unnaturally\n\nText to rewrite:\n\n${text}`,
   creative: ({ text }) => `Rewrite the following text with light stylistic flair and engaging phrasing, without changing meaning, claims, or facts. Keep it tasteful and clear.\n\n${text}`,
   professional: ({ text }) => `Rewrite the following text in a polished, professional tone suitable for workplace communication. Keep it respectful, clear, and accurate.\n\n${text}`,
   simple: ({ text }) => `Rewrite the following text in simple, easy-to-read language. Reduce complexity while preserving important details and meaning.\n\n${text}`,
@@ -116,7 +116,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
 });
 
-// Precompute embeddings during idle time: scan conversation DB and compute embeddings for missing items
+// OPTIMIZATION: Precompute embeddings during idle time with batching and throttling
+// This runs ONLY when the browser is idle to avoid impacting user experience
 async function precomputeEmbeddingsIdle(batch = 3) {
   try {
     const convs = await convoAll();
@@ -135,29 +136,34 @@ async function precomputeEmbeddingsIdle(batch = 3) {
           await idbPut({ id, vector: emb, metadata: { platform: c.platform || '', url: c.url || '', ts: c.ts || 0, topics: c.topics || [] }, ts: Date.now() });
           processed++;
         }
-        // small delay to avoid burst
-        await new Promise(r => setTimeout(r, 200));
+        // OPTIMIZATION: Small delay to avoid CPU burst even during idle
+        await new Promise(r => setTimeout(r, 300)); // Increased from 200ms to 300ms
       } catch (e) { /* ignore per-item */ }
     }
-    if (processed) console.log('[ChatBridge] precomputed embeddings for', processed, 'conversations');
+    if (processed) console.log('[ChatBridge] precomputed embeddings for', processed, 'conversations during idle');
   } catch (e) { console.warn('precomputeEmbeddingsIdle err', e); }
 }
 
-// Schedule precompute when browser goes idle
+// OPTIMIZATION: Use chrome.idle API to trigger background tasks only when truly idle
+// This prevents CPU usage when user is actively working
 if (chrome.idle && chrome.idle.onStateChanged) {
+  chrome.idle.setDetectionInterval(300); // Consider idle after 5 minutes
   chrome.idle.onStateChanged.addListener((state) => {
     try {
-      if (state === 'idle' || state === 'locked') {
-        precomputeEmbeddingsIdle(4);
+      if (state === 'idle') {
+        // User is idle - safe to do background work
+        precomputeEmbeddingsIdle(3); // Reduced batch from 4 to 3
       }
+      // When state === 'active' or 'locked', do nothing to save CPU
     } catch (e) {}
   });
 }
 
+// OPTIMIZATION: Reduce alarm frequency from 30min to 60min to lower background activity
 // Also create a periodic alarm to attempt precompute (background service workers may be stopped)
 try {
   if (chrome.alarms) {
-    chrome.alarms.create('chatbridge_precompute', { periodInMinutes: 30 });
+    chrome.alarms.create('chatbridge_precompute', { periodInMinutes: 60 }); // Increased from 30 to 60
     chrome.alarms.onAlarm.addListener((alarm) => {
       try { if (alarm && alarm.name === 'chatbridge_precompute') precomputeEmbeddingsIdle(2); } catch (e) {}
     });
@@ -165,7 +171,9 @@ try {
 } catch (e) {}
 
 // clean cache periodically
-try { setInterval(() => { cacheCleanExpired(); }, 1000 * 60 * 10); } catch(e) {}
+// OPTIMIZATION: Reduce cache cleanup frequency to lower background CPU usage
+// Changed from every 10 minutes to every 30 minutes
+try { setInterval(() => { cacheCleanExpired(); }, 1000 * 60 * 30); } catch(e) {} // Increased from 10 to 30
 // Simple IndexedDB vector store (fallback to in-memory on failure)
 const V_DB_NAME = 'chatbridge_vectors_v1';
 const V_STORE = 'vectors';
@@ -1464,6 +1472,117 @@ Rewritten conversation (optimized for ${tgt}):`;
     return true;
   }
 
+  // --- Rewriter Handlers --------------------------------------------------
+  if (msg && (msg.type === 'rewrite_text' || msg.type === 'extract_meaning' || msg.type === 'structure_document' || msg.type === 'apply_style_document' || msg.type === 'chat_to_document')) {
+    if (!limiterTry()) return sendResponse({ ok:false, error: 'rate_limited' });
+    (async () => {
+      try {
+        let geminiApiKey = await getGeminiApiKey();
+        if (!geminiApiKey) return sendResponse({ ok:false, error: 'no_api_key', message: 'Gemini API key not configured.' });
+
+        // Local helper to call Gemini with model fallback
+        async function geminiGenerate(systemInstruction, promptText){
+          let lastError = null;
+          for (let attempt = 0; attempt < GEMINI_MODEL_PRIORITY.length; attempt++) {
+            const currentModel = getNextAvailableModel();
+            const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${currentModel}:generateContent?key=${geminiApiKey}`;
+            const body = {
+              systemInstruction: systemInstruction ? { parts: [{ text: systemInstruction }] } : undefined,
+              contents: [{ parts: [{ text: promptText }] }],
+              generationConfig: { temperature: 0.2, topP: 0.8, topK: 32, maxOutputTokens: 8192 }
+            };
+            if (!systemInstruction) delete body.systemInstruction;
+            try {
+              const res = await fetch(endpoint, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+              const text = await res.text();
+              let json = {};
+              try { json = text ? JSON.parse(text) : {}; } catch(e){ markModelFailed(currentModel, 'parse_error'); lastError = e; continue; }
+              if (!res.ok) { markModelFailed(currentModel, res.status); lastError = { status: res.status, body: json }; continue; }
+              if (!json.candidates || !json.candidates[0] || !json.candidates[0].content || !json.candidates[0].content.parts || !json.candidates[0].content.parts[0]) {
+                markModelFailed(currentModel, 'no_candidates'); lastError = 'no_candidates'; continue;
+              }
+              const out = json.candidates[0].content.parts[0].text || '';
+              markModelSuccess(currentModel);
+              return { ok:true, text: out, model: currentModel };
+            } catch (e) { markModelFailed(currentModel, 'fetch_error'); lastError = e; continue; }
+          }
+          return { ok:false, error:'all_models_failed', detail: lastError };
+        }
+
+        const type = msg.type;
+        if (type === 'rewrite_text') {
+          const styleKey = msg.style || 'normal';
+          const styleHint = msg.styleHint || '';
+          const builder = REWRITE_TEMPLATES[styleKey] || REWRITE_TEMPLATES.normal;
+          const systemInstruction = 'You are a professional writing assistant. Rewrite text to match the requested style while preserving all important information and intent. Never alter or invent code blocks.';
+          const prompt = builder({ text: msg.text || '', styleHint });
+          const r = await geminiGenerate(systemInstruction, prompt);
+          if (!r.ok) return sendResponse(r);
+          return sendResponse({ ok:true, result: r.text, model: r.model });
+        }
+        if (type === 'extract_meaning') {
+          const systemInstruction = 'You are a conversation analyst. Extract only the key ideas, decisions, explanations, insights, and instructions from the chat. Remove greetings, tangents, mistakes, contradictions, and noise. Output a succinct “meaning draft” without role attributions.';
+          const src = Array.isArray(msg.content) ? msg.content.map(m=>`${m.role||'assistant'}: ${m.text||''}`).join('\n\n') : String(msg.content||'');
+          const prompt = `Conversation:\n\n${src}\n\nMeaning Draft (key ideas, decisions, explanations, insights, instructions only):`;
+          const r = await geminiGenerate(systemInstruction, prompt);
+          if (!r.ok) return sendResponse(r);
+          return sendResponse({ ok:true, result: r.text, model: r.model });
+        }
+        if (type === 'structure_document') {
+          const systemInstruction = 'You are a technical editor. Convert the meaning draft into a coherent, human-friendly document with section headings, bullet points, definitions, steps/processes, and summaries of reasoning. No “user said/assistant said”. Produce clean Markdown.';
+          const prompt = `Meaning Draft:\n\n${msg.draft||''}\n\nStructured Document (Markdown):`;
+          const r = await geminiGenerate(systemInstruction, prompt);
+          if (!r.ok) return sendResponse(r);
+          return sendResponse({ ok:true, result: r.text, model: r.model });
+        }
+        if (type === 'apply_style_document') {
+          const style = msg.style || 'professional';
+          const styleHint = msg.styleHint || '';
+          const systemInstruction = 'You are a style enforcer. Rewrite the structured document to match the requested style. Maintain markdown structure and never modify fenced code blocks.';
+          const styleGuide = (style === 'customStyle') ? `Personalized style: "${String(styleHint).slice(0,160)}".` : `Style preset: ${style}.`;
+          const prompt = `${styleGuide}\n\nStructured Document (Markdown):\n\n${msg.doc||''}\n\nStyled Document (same markdown, style applied):`;
+          const r = await geminiGenerate(systemInstruction, prompt);
+          if (!r.ok) return sendResponse(r);
+          return sendResponse({ ok:true, result: r.text, model: r.model });
+        }
+        if (type === 'chat_to_document') {
+          const style = msg.style || 'professional';
+          const styleHint = msg.styleHint || '';
+          // Orchestrate: extract → structure → style
+          const meaning = await (async()=>{
+            const systemInstruction = 'You are a conversation analyst. Extract only the key ideas, decisions, explanations, insights, and instructions from the chat. Remove greetings, tangents, mistakes, contradictions, and noise. Output a succinct “meaning draft” without role attributions.';
+            const src = Array.isArray(msg.content) ? msg.content.map(m=>`${m.role||'assistant'}: ${m.text||''}`).join('\n\n') : String(msg.content||'');
+            const prompt = `Conversation:\n\n${src}\n\nMeaning Draft (key ideas, decisions, explanations, insights, instructions only):`;
+            const r = await geminiGenerate(systemInstruction, prompt);
+            if (!r.ok) throw new Error(r.error||'extract_failed');
+            return r.text;
+          })();
+          const structured = await (async()=>{
+            const systemInstruction = 'You are a technical editor. Convert the meaning draft into a coherent, human-friendly document with section headings, bullet points, definitions, steps/processes, and summaries of reasoning. No “user said/assistant said”. Produce clean Markdown.';
+            const prompt = `Meaning Draft:\n\n${meaning}\n\nStructured Document (Markdown):`;
+            const r = await geminiGenerate(systemInstruction, prompt);
+            if (!r.ok) throw new Error(r.error||'structure_failed');
+            return r.text;
+          })();
+          const styled = await (async()=>{
+            const systemInstruction = 'You are a style enforcer. Rewrite the structured document to match the requested style. Maintain markdown structure and never modify fenced code blocks.';
+            const styleGuide = (style === 'customStyle') ? `Personalized style: "${String(styleHint).slice(0,160)}".` : `Style preset: ${style}.`;
+            const prompt = `${styleGuide}\n\nStructured Document (Markdown):\n\n${structured}\n\nStyled Document (same markdown, style applied):`;
+            const r = await geminiGenerate(systemInstruction, prompt);
+            if (!r.ok) throw new Error(r.error||'style_failed');
+            return r.text;
+          })();
+          return sendResponse({ ok:true, result: styled });
+        }
+
+        return sendResponse({ ok:false, error: 'unknown_rewriter_type' });
+      } catch (e) {
+        return sendResponse({ ok:false, error: 'rewriter_error', message: (e && e.message) || String(e) });
+      }
+    })();
+    return true;
+  }
+
   // Image generation via Gemini (optional - if API supports model)
   if (msg && msg.type === 'generate_image') {
     if (!limiterTry()) return sendResponse({ ok:false, error: 'rate_limited' });
@@ -1533,155 +1652,6 @@ Rewritten conversation (optimized for ${tgt}):`;
       } catch (e) {
         console.error('[ChatBridge BG] Image generation error:', e);
         return sendResponse({ ok:false, error: 'image_fetch_error', message: (e && e.message) || String(e) });
-      }
-    })();
-    return true;
-  }
-
-  // Translation module handlers
-  if (msg && msg.type === 'translate_text') {
-    if (!limiterTry()) return sendResponse({ ok:false, error: 'rate_limited' });
-    (async () => {
-      try {
-        const geminiApiKey = await getGeminiApiKey();
-        if (!geminiApiKey) {
-          return sendResponse({ ok:false, error: 'no_api_key', message: 'Gemini API key not configured' });
-        }
-
-        const { text, targetLanguage, domain, prompt } = msg;
-        
-        // Use the provided prompt from translator module
-        const systemInstruction = 'You are a professional translator specializing in preserving meaning, tone, and formatting. Output ONLY the translated text with no explanations or notes.';
-        
-        // Try models with fallback
-        let lastError = null;
-        for (let attempt = 0; attempt < GEMINI_MODEL_PRIORITY.length; attempt++) {
-          const currentModel = getNextAvailableModel();
-          const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${currentModel}:generateContent`;
-          
-          try {
-            const body = {
-              contents: [{ parts: [{ text: prompt }] }],
-              systemInstruction: { parts: [{ text: systemInstruction }] },
-              generationConfig: {
-                temperature: 0.3,
-                topK: 40,
-                topP: 0.95,
-                maxOutputTokens: 8192
-              }
-            };
-
-            const res = await fetch(`${endpoint}?key=${geminiApiKey}`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(body)
-            });
-
-            const json = await res.json();
-
-            if (!res.ok) {
-              console.error(`[Gemini Translation] HTTP error ${res.status} for ${currentModel}:`, json);
-              markModelFailed(currentModel, res.status);
-              lastError = { model: currentModel, status: res.status, body: json };
-              continue;
-            }
-
-            if (!json.candidates?.[0]?.content?.parts?.[0]?.text) {
-              markModelFailed(currentModel, 'no_text');
-              lastError = { model: currentModel, error: 'no_text', body: json };
-              continue;
-            }
-
-            const translated = json.candidates[0].content.parts[0].text;
-            markModelSuccess(currentModel);
-            
-            return sendResponse({ ok: true, translated, model: currentModel });
-          } catch (e) {
-            console.error(`[Gemini Translation] Error with ${currentModel}:`, e);
-            lastError = { model: currentModel, error: e.message };
-          }
-        }
-
-        return sendResponse({ 
-          ok: false, 
-          error: 'translation_failed', 
-          message: 'All translation models failed',
-          lastError 
-        });
-      } catch (e) {
-        return sendResponse({ ok: false, error: 'translation_error', message: e.message });
-      }
-    })();
-    return true;
-  }
-
-  if (msg && msg.type === 'summarize_for_translation') {
-    if (!limiterTry()) return sendResponse({ ok:false, error: 'rate_limited' });
-    (async () => {
-      try {
-        const geminiApiKey = await getGeminiApiKey();
-        if (!geminiApiKey) {
-          return sendResponse({ ok:false, error: 'no_api_key', message: 'Gemini API key not configured' });
-        }
-
-        const { text, domain, prompt } = msg;
-        
-        const systemInstruction = `You are an expert summarizer. Create concise summaries that preserve key intent, facts, and actionable information. Focus on ${domain} content.`;
-        
-        let lastError = null;
-        for (let attempt = 0; attempt < GEMINI_MODEL_PRIORITY.length; attempt++) {
-          const currentModel = getNextAvailableModel();
-          const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${currentModel}:generateContent`;
-          
-          try {
-            const body = {
-              contents: [{ parts: [{ text: prompt }] }],
-              systemInstruction: { parts: [{ text: systemInstruction }] },
-              generationConfig: {
-                temperature: 0.3,
-                topK: 40,
-                topP: 0.95,
-                maxOutputTokens: 4096
-              }
-            };
-
-            const res = await fetch(`${endpoint}?key=${geminiApiKey}`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(body)
-            });
-
-            const json = await res.json();
-
-            if (!res.ok) {
-              markModelFailed(currentModel, res.status);
-              lastError = { model: currentModel, status: res.status, body: json };
-              continue;
-            }
-
-            if (!json.candidates?.[0]?.content?.parts?.[0]?.text) {
-              markModelFailed(currentModel, 'no_text');
-              lastError = { model: currentModel, error: 'no_text', body: json };
-              continue;
-            }
-
-            const summary = json.candidates[0].content.parts[0].text;
-            markModelSuccess(currentModel);
-            
-            return sendResponse({ ok: true, summary, model: currentModel });
-          } catch (e) {
-            lastError = { model: currentModel, error: e.message };
-          }
-        }
-
-        return sendResponse({ 
-          ok: false, 
-          error: 'summarization_failed', 
-          message: 'All summarization models failed',
-          lastError 
-        });
-      } catch (e) {
-        return sendResponse({ ok: false, error: 'summarization_error', message: e.message });
       }
     })();
     return true;

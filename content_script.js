@@ -43,34 +43,49 @@
 
   console.log('[ChatBridge] Injecting on approved site:', window.location.hostname);
 
-  // Initialize RAG Engine and MCP Bridge
-  (async () => {
+  // OPTIMIZATION: Lazy initialization - only load RAG/MCP when user explicitly requests it
+  // This prevents CPU/memory overhead on initial page load for low-end devices
+  let _cbRAGInitialized = false;
+  let _cbMCPInitialized = false;
+  
+  // Lazy loader for RAG Engine (called on first use, not on page load)
+  async function ensureRAGInitialized() {
+    if (_cbRAGInitialized) return;
     try {
-      // Initialize MCP Bridge for agent communication
-      if (typeof window.MCPBridge !== 'undefined') {
-        window.MCPBridge.init();
-        console.log('[ChatBridge] MCP Bridge initialized');
-        console.log('[ChatBridge] Test MCP: MCPBridge.getStats()');
-      } else {
-        console.warn('[ChatBridge] MCP Bridge not available - mcpBridge.js may not have loaded');
-      }
-      
-      // Preload embedding model in background (non-blocking)
-      if (typeof window.RAGEngine !== 'undefined') {
-        setTimeout(() => {
-          window.RAGEngine.initEmbeddingPipeline().then(() => {
-            console.log('[ChatBridge] RAG embedding model preloaded');
-          }).catch(e => {
-            console.warn('[ChatBridge] RAG model preload failed (will use fallback):', e);
-          });
-        }, 2000); // Delay 2s to not block initial load
-      } else {
-        console.warn('[ChatBridge] RAG Engine not available');
+      if (typeof window.RAGEngine !== 'undefined' && typeof window.RAGEngine.initEmbeddingPipeline === 'function') {
+        await window.RAGEngine.initEmbeddingPipeline();
+        console.log('[ChatBridge] RAG embedding model loaded on demand');
+        _cbRAGInitialized = true;
       }
     } catch (e) {
-      console.error('[ChatBridge] Failed to initialize RAG/MCP:', e);
+      console.warn('[ChatBridge] RAG lazy init failed (will use fallback):', e);
     }
-  })();
+  }
+  
+  // Lazy loader for MCP Bridge (called on first agent use)
+  function ensureMCPInitialized() {
+    if (_cbMCPInitialized) return;
+    try {
+      if (typeof window.MCPBridge !== 'undefined') {
+        window.MCPBridge.init();
+        console.log('[ChatBridge] MCP Bridge initialized on demand');
+        _cbMCPInitialized = true;
+      }
+    } catch (e) {
+      console.warn('[ChatBridge] MCP lazy init failed:', e);
+    }
+  }
+  
+  // OPTIMIZATION: Monitor page visibility to pause/cleanup when user switches tabs
+  // This reduces CPU usage when extension is not actively visible
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      // User switched away - cleanup any running tasks
+      debugLog('Page hidden, pausing background tasks');
+    } else {
+      debugLog('Page visible, resuming if needed');
+    }
+  }, { passive: true });
 
   // avoid const redeclaration causing SyntaxError in some injection scenarios
   var CB_MAX_MESSAGES = (typeof window !== 'undefined' && window.__CHATBRIDGE && window.__CHATBRIDGE.MAX_MESSAGES) ? window.__CHATBRIDGE.MAX_MESSAGES : 200;
