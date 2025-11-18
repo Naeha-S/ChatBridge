@@ -89,6 +89,50 @@ chrome.runtime.onInstalled.addListener(() => {
 // Migration endpoint: content script can send stored conversations to background for persistent storage
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (!msg || !msg.type) return;
+  
+  // CLOUDFLARE FIX: Proxy fetch requests through background to avoid triggering security
+  if (msg.type === 'fetch_blob') {
+    (async () => {
+      try {
+        const url = msg.url;
+        if (!url) {
+          sendResponse({ ok: false, error: 'No URL provided' });
+          return;
+        }
+        
+        // Fetch through background script (has broader permissions and doesn't trigger Cloudflare)
+        const res = await fetch(url, { 
+          mode: 'cors',
+          credentials: 'omit', // Don't send cookies to avoid CORS issues
+          cache: 'default'
+        });
+        
+        if (!res.ok) {
+          sendResponse({ ok: false, error: `HTTP ${res.status}` });
+          return;
+        }
+        
+        const blob = await res.blob();
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          sendResponse({ 
+            ok: true, 
+            data: reader.result, // base64 data URL
+            type: blob.type,
+            size: blob.size
+          });
+        };
+        reader.onerror = () => {
+          sendResponse({ ok: false, error: 'Failed to read blob' });
+        };
+        reader.readAsDataURL(blob);
+      } catch (e) {
+        sendResponse({ ok: false, error: e.message || String(e) });
+      }
+    })();
+    return true; // Keep channel open for async response
+  }
+  
   if (msg.type === 'migrate_conversations') {
     (async () => {
       try {

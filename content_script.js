@@ -42,6 +42,12 @@
   }
 
   console.log('[ChatBridge] Injecting on approved site:', window.location.hostname);
+  
+  // CLOUDFLARE FIX: Defer UI injection until page is fully loaded to avoid triggering security checks
+  let _pageFullyLoaded = document.readyState === 'complete';
+  if (!_pageFullyLoaded) {
+    window.addEventListener('load', () => { _pageFullyLoaded = true; }, { once: true, passive: true });
+  }
 
   // OPTIMIZATION: Lazy initialization - only load RAG/MCP when user explicitly requests it
   // This prevents CPU/memory overhead on initial page load for low-end devices
@@ -78,14 +84,16 @@
   
   // OPTIMIZATION: Monitor page visibility to pause/cleanup when user switches tabs
   // This reduces CPU usage when extension is not actively visible
-  document.addEventListener('visibilitychange', () => {
-    if (document.hidden) {
-      // User switched away - cleanup any running tasks
-      debugLog('Page hidden, pausing background tasks');
-    } else {
-      debugLog('Page visible, resuming if needed');
-    }
-  }, { passive: true });
+  // CLOUDFLARE FIX: Use passive listeners to avoid blocking main thread
+  if (document.readyState !== 'loading') {
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        debugLog('Page hidden, pausing background tasks');
+      } else {
+        debugLog('Page visible, resuming if needed');
+      }
+    }, { passive: true });
+  }
 
   // avoid const redeclaration causing SyntaxError in some injection scenarios
   var CB_MAX_MESSAGES = (typeof window !== 'undefined' && window.__CHATBRIDGE && window.__CHATBRIDGE.MAX_MESSAGES) ? window.__CHATBRIDGE.MAX_MESSAGES : 200;
@@ -1123,7 +1131,7 @@
   btnCloseRew.setAttribute('aria-label','Close Rewrite view');
   rewTop.appendChild(rewTitle); rewTop.appendChild(btnCloseRew);
   rewView.appendChild(rewTop);
-  const rewIntro = document.createElement('div'); rewIntro.className = 'cb-view-intro'; rewIntro.textContent = 'Polish and refine your conversation. Improve clarity, adjust tone, or restructure for better readability and impact.';
+  const rewIntro = document.createElement('div'); rewIntro.className = 'cb-view-intro'; rewIntro.textContent = 'Polish and refine your conversation. Select style, choose messages, and generate beautiful documents.';
   rewView.appendChild(rewIntro);
   const rewStyleLabel = document.createElement('label'); rewStyleLabel.className = 'cb-label'; rewStyleLabel.textContent = 'Style:';
   const rewStyleSelect = document.createElement('select'); rewStyleSelect.className = 'cb-select'; rewStyleSelect.id = 'cb-rew-style';
@@ -3156,20 +3164,44 @@ Respond with JSON only:
           if (msgs && msgs.length > 15) {
             const autoSection = document.createElement('div');
             autoSection.style.cssText = 'margin:12px;padding:12px;background:rgba(16,24,43,0.4);border:1px solid rgba(0,180,255,0.25);border-radius:8px;';
-            autoSection.innerHTML = '<div style="font-weight:600;font-size:12px;margin-bottom:6px;color:var(--cb-subtext);">🧠 Auto Summary</div><div id="cb-auto-sum" style="font-size:12px;opacity:0.9;">Summarizing conversation…</div>';
+            autoSection.innerHTML = '<div style="font-weight:600;font-size:12px;margin-bottom:6px;color:var(--cb-subtext);">🧠 Auto Summary</div><div id="cb-auto-sum" style="font-size:12px;opacity:0.9;line-height:1.4;">Summarizing conversation…</div>';
             insightsContent.appendChild(autoSection);
-            try {
-              const prompt = msgs.map(m => `${m.role}: ${m.text}`).join('\n\n');
-              const sum = await callGeminiAsync({ action: 'summarize', text: prompt, length: 'short', summaryType: 'paragraph' });
-              const tgt = autoSection.querySelector('#cb-auto-sum');
-              if (sum && sum.ok && tgt) {
-                // Ensure structured feel by lightly formatting
-                const txt = String(sum.result||'').trim();
-                tgt.textContent = txt;
-              } else if (tgt) {
-                tgt.textContent = '(Auto summary unavailable)';
+            // Generate summary asynchronously without blocking UI
+            (async () => {
+              try {
+                const prompt = msgs.map(m => `${m.role}: ${m.text}`).join('\n\n');
+                const sum = await callGeminiAsync({ action: 'summarize', text: prompt, length: 'short', summaryType: 'paragraph' });
+                const tgt = autoSection.querySelector('#cb-auto-sum');
+                if (sum && sum.ok && tgt) {
+                  const txt = String(sum.result||'').trim();
+                  const maxLen = 200;
+                  if (txt.length > maxLen) {
+                    const preview = txt.slice(0, maxLen) + '…';
+                    tgt.innerHTML = `<span>${preview}</span><button style="margin-left:8px;padding:2px 8px;background:rgba(0,180,255,0.2);border:1px solid rgba(0,180,255,0.4);border-radius:4px;color:var(--cb-white);font-size:11px;cursor:pointer;" data-expanded="false">Expand</button>`;
+                    const expandBtn = tgt.querySelector('button');
+                    expandBtn.addEventListener('click', () => {
+                      const isExpanded = expandBtn.dataset.expanded === 'true';
+                      if (isExpanded) {
+                        tgt.querySelector('span').textContent = preview;
+                        expandBtn.textContent = 'Expand';
+                        expandBtn.dataset.expanded = 'false';
+                      } else {
+                        tgt.querySelector('span').textContent = txt;
+                        expandBtn.textContent = 'Collapse';
+                        expandBtn.dataset.expanded = 'true';
+                      }
+                    });
+                  } else {
+                    tgt.textContent = txt;
+                  }
+                } else if (tgt) {
+                  tgt.textContent = '(Auto summary unavailable)';
+                }
+              } catch (_) {
+                const tgt = autoSection.querySelector('#cb-auto-sum');
+                if (tgt) tgt.textContent = '(Auto summary failed)';
               }
-            } catch (_) {}
+            })();
           }
         } catch (e) { debugLog('auto summary failed', e); }
 
@@ -7229,13 +7261,19 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         if (img) {
           try {
             restoreLog('No file input found, trying clipboard for image:', img.url);
-            // Don't use credentials for cross-origin URLs to avoid CORS issues
-            const isCrossOrigin = !img.url.startsWith(window.location.origin);
-            const fetchOptions = isCrossOrigin ? { mode: 'cors' } : { credentials: 'include' };
+            // CLOUDFLARE FIX: Use background script proxy to fetch blob
+            const res = await new Promise((resolve) => {
+              chrome.runtime.sendMessage({ type: 'fetch_blob', url: img.url }, resolve);
+            });
             
-            const res = await fetch(img.url, fetchOptions);
-            const blob = await res.blob();
-            const item = new ClipboardItem({ [blob.type || 'image/png']: blob });
+            if (!res || !res.ok) {
+              throw new Error(res?.error || 'Fetch failed');
+            }
+            
+            // Convert base64 data URL back to blob
+            const response = await fetch(res.data);
+            const blob = await response.blob();
+            const item = new ClipboardItem({ [res.type || 'image/png']: blob });
             await navigator.clipboard.write([item]);
             toast('Image copied to clipboard. Press Ctrl+V to paste.');
             return result;
@@ -7258,19 +7296,21 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         for (const a of atts) {
           try {
             restoreLog('Fetching attachment:', a.url);
-            // Don't use credentials for cross-origin URLs to avoid CORS issues
-            const isCrossOrigin = !a.url.startsWith(window.location.origin);
-            const fetchOptions = isCrossOrigin ? { mode: 'cors' } : { credentials: 'include' };
+            // CLOUDFLARE FIX: Use background script proxy to fetch blob
+            const res = await new Promise((resolve) => {
+              chrome.runtime.sendMessage({ type: 'fetch_blob', url: a.url }, resolve);
+            });
             
-            const res = await fetch(a.url, fetchOptions);
-            if (!res.ok) { 
-              restoreLog('Fetch failed with status:', res.status);
-              result.failed.push({ url: a.url, error: 'http_'+res.status }); 
+            if (!res || !res.ok) { 
+              restoreLog('Fetch failed:', res?.error);
+              result.failed.push({ url: a.url, error: res?.error || 'fetch_failed' }); 
               if (!multiple) break; 
               continue; 
             }
             
-            const blob = await res.blob();
+            // Convert base64 data URL back to blob
+            const response = await fetch(res.data);
+            const blob = await response.blob();
             const name = a.name || ('attachment.' + ((blob.type && blob.type.split('/')[1]) || 'bin'));
             const file = new File([blob], name, { type: blob.type || 'application/octet-stream' });
             dt.items.add(file);
@@ -7494,10 +7534,18 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
             // Attempt to put first image on clipboard as well
             const img = allAtts.find(a => a.kind === 'image');
             if (img) {
-              fetch(img.url).then(r=>r.blob()).then(b=>{
-                const item = new ClipboardItem({ [b.type||'image/png']: b });
-                return navigator.clipboard.write([item]);
-              }).then(()=>toast('Image copied too')).catch(()=>{});
+              // CLOUDFLARE FIX: Use background proxy for fetch
+              chrome.runtime.sendMessage({ type: 'fetch_blob', url: img.url }, async (res) => {
+                if (res && res.ok) {
+                  try {
+                    const response = await fetch(res.data);
+                    const blob = await response.blob();
+                    const item = new ClipboardItem({ [res.type||'image/png']: blob });
+                    await navigator.clipboard.write([item]);
+                    toast('Image copied too');
+                  } catch(e) {}
+                }
+              });
             }
             } catch (_) {}
           }
@@ -8169,6 +8217,11 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
     let _cbSelectedReplyId = null;
     let _cbRepliesData = []; // [{ id, text, preview, idx }]
     const _cbOriginals = new Map();
+    
+    // NEW: State for chat message selection
+    let _selectedMessages = new Set();
+    let _allChatMessages = [];
+    let _rewFilter = 'all'; // all, user, ai
 
     function _hashStr(s){ let h=0; for(let i=0;i<s.length;i++){ h=((h<<5)-h)+s.charCodeAt(i); h|=0; } return h.toString(36); }
 
@@ -10396,8 +10449,10 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
   };
 
   // bootstrap UI and auto-scan
-  try { 
-    const ui = injectUI(); 
+  // CLOUDFLARE FIX: Wait for page to be fully loaded before injecting UI
+  function initChatBridge() {
+    try { 
+      const ui = injectUI(); 
     
     // Keyboard command handlers
     if (ui && ui.avatar && ui.panel) {
@@ -10520,6 +10575,14 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
     
     setTimeout(async ()=>{ const msgs = await scanChat(); if (msgs && msgs.length) { await saveConversation({ platform: location.hostname, url: location.href, ts: Date.now(), conversation: msgs }); debugLog('auto-saved', msgs.length); } }, 450); 
   } catch (e) { debugLog('boot error', e); }
+  }
+  
+  // CLOUDFLARE FIX: Defer initialization until page is fully loaded
+  if (document.readyState === 'complete') {
+    initChatBridge();
+  } else {
+    window.addEventListener('load', initChatBridge, { once: true, passive: true });
+  }
 
 })();
 
