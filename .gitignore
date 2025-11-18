@@ -102,18 +102,20 @@ chatbridge:knowledge_graph
 localStorage.json
 indexedDB/
 chrome-storage/
-
+# Smart Workspace widget data
+image-vault/
+prompt-designer/
+cb-image-vault*
+cb-prompt-designer*
 # Exported data files
 chatbridge-export-*.json
 knowledge-graph-export-*.json
 conversations-export-*.json
 *.export.json
-
 # User-generated backups
 *_backup_*.json
 backup_conversations_*.json
 backup_*.json
-
 # Debug logs
 debug_*.log
 *.debug.log
@@ -162,3 +164,8 @@ onnx/
 screenshots/
 exports/
 output/
+# IndexedDB browser artifacts
+*.indexeddb.leveldb/
+*.sqlite
+*.ldb
+*.sqlite3

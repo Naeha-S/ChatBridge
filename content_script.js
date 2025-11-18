@@ -1797,6 +1797,381 @@
     // SMART WORKSPACE FUNCTIONS
     // ============================================
 
+    // INSIGHT FINDER - Extract semantic insights from chat (comparisons, contradictions, requirements, todos, deprecated)
+    function extractInsights(messages) {
+      const insights = {
+        comparisons: [],
+        contradictions: [],
+        requirements: [],
+        todos: [],
+        deprecated: []
+      };
+
+      if (!messages || messages.length === 0) return insights;
+
+      // Process each message
+      messages.forEach((msg, idx) => {
+        const text = msg.text || '';
+        const lines = text.split(/\r?\n/).filter(l => l.trim());
+
+        // 1. COMPARISONS - Look for "vs", "versus", "compared to", "better than", "worse than", "unlike", "difference between"
+        lines.forEach(line => {
+          if (/\b(vs\.?|versus|compared to|compare|better than|worse than|unlike|in contrast to|difference between|whereas|while)\b/i.test(line)) {
+            insights.comparisons.push({ text: line.trim(), sourceIndex: idx });
+          }
+        });
+
+        // 2. CONTRADICTIONS - Look for "however", "but", "actually", "incorrect", "wrong", "mistake", negations
+        lines.forEach(line => {
+          if (/\b(however|but|actually|incorrect|wrong|mistake|not quite|that's not|doesn't work|won't work|can't|shouldn't|instead|rather than)\b/i.test(line)) {
+            insights.contradictions.push({ text: line.trim(), sourceIndex: idx });
+          }
+        });
+
+        // 3. REQUIREMENTS - Look for "must", "need to", "required", "should", "important to", "ensure"
+        lines.forEach(line => {
+          if (/\b(must|required|requirement|need to|needs to|should|essential|important to|ensure|make sure|don't forget|remember to|always|never)\b/i.test(line)) {
+            insights.requirements.push({ text: line.trim(), sourceIndex: idx });
+          }
+        });
+
+        // 4. TODOS - Look for explicit todo markers, checkboxes, action items
+        lines.forEach(line => {
+          if (/^[-*•]\s*\[[ x]\]|^(TODO|To\s*Do|Action\s*Item|Task)[:\s]|^[-*•]\s*(install|set\s*up|configure|create|build|deploy|implement|add|update|fix|test)\b/i.test(line)) {
+            insights.todos.push({ text: line.trim(), sourceIndex: idx });
+          }
+        });
+
+        // 5. DEPRECATED - Look for "deprecated", "obsolete", "no longer", "replaced by", "legacy", "outdated"
+        lines.forEach(line => {
+          if (/\b(deprecated|obsolete|no longer|replaced by|legacy|outdated|old version|don't use|avoid using|stop using)\b/i.test(line)) {
+            insights.deprecated.push({ text: line.trim(), sourceIndex: idx });
+          }
+        });
+      });
+
+      // Deduplicate by text
+      Object.keys(insights).forEach(key => {
+        const seen = new Set();
+        insights[key] = insights[key].filter(item => {
+          const normalized = item.text.toLowerCase().trim();
+          if (seen.has(normalized)) return false;
+          seen.add(normalized);
+          return true;
+        });
+      });
+
+      return insights;
+    }
+
+    // Show Insight Finder Modal
+    function showInsightFinderModal(insights, messages) {
+      // Remove existing modal if any
+      const existing = document.getElementById('cb-insight-finder-modal');
+      if (existing) existing.remove();
+
+      // Helper to get theme variables
+      function getThemeVars() {
+        const style = getComputedStyle(document.documentElement);
+        return {
+          bg: style.getPropertyValue('--cb-bg').trim() || '#0A0F1C',
+          bg2: style.getPropertyValue('--cb-bg2').trim() || '#10182B',
+          white: style.getPropertyValue('--cb-white').trim() || '#E6E9F0',
+          subtext: style.getPropertyValue('--cb-subtext').trim() || '#A0A7B5',
+          accent: style.getPropertyValue('--cb-accent-primary').trim() || '#00B4FF',
+          accent2: style.getPropertyValue('--cb-accent-secondary').trim() || '#8C1EFF',
+        };
+      }
+      let themeVars = getThemeVars();
+
+      // Create modal overlay
+      const modal = document.createElement('div');
+      modal.id = 'cb-insight-finder-modal';
+      modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 999999;
+        backdrop-filter: blur(4px);
+      `;
+
+      // Create modal content
+      const modalContent = document.createElement('div');
+      modalContent.style.cssText = `
+        background: linear-gradient(135deg, ${themeVars.bg2}F7 0%, ${themeVars.bg}F7 100%);
+        border: 2px solid ${themeVars.accent}4D;
+        border-radius: 16px;
+        width: 90%;
+        max-width: 1000px;
+        height: 80%;
+        max-height: 700px;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+      `;
+
+      // Header
+      const header = document.createElement('div');
+      header.style.cssText = `
+        padding: 20px 24px;
+        border-bottom: 1px solid ${themeVars.accent}33;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      `;
+      header.innerHTML = `
+        <div style="display:flex;align-items:center;gap:12px;">
+          <span style="font-size:24px;">🔍</span>
+          <div>
+            <div style="font-weight:700;font-size:18px;color:${themeVars.white};">Insight Finder</div>
+            <div style="font-size:12px;color:${themeVars.subtext};margin-top:2px;">Semantic spotlight on key chat elements</div>
+          </div>
+        </div>
+        <button id="cb-insight-close" style="background:none;border:none;color:${themeVars.white}B3;font-size:24px;cursor:pointer;padding:4px 8px;transition:all 0.2s;">×</button>
+      `;
+
+      // Main content area (split: categories left, snippets right)
+      const mainArea = document.createElement('div');
+      mainArea.style.cssText = `
+        display: flex;
+        flex: 1;
+        overflow: hidden;
+      `;
+
+      // Left panel: Categories
+      const leftPanel = document.createElement('div');
+      leftPanel.style.cssText = `
+        width: 200px;
+        border-right: 1px solid ${themeVars.accent}33;
+        padding: 16px;
+        overflow-y: auto;
+        background: ${themeVars.bg}33;
+      `;
+
+      const categories = [
+        { key: 'comparisons', icon: '⚖️', label: 'Comparisons', count: insights.comparisons.length },
+        { key: 'contradictions', icon: '⚠️', label: 'Contradictions', count: insights.contradictions.length },
+        { key: 'requirements', icon: '✓', label: 'Requirements', count: insights.requirements.length },
+        { key: 'todos', icon: '📋', label: 'Todos', count: insights.todos.length },
+        { key: 'deprecated', icon: '🗑️', label: 'Deprecated', count: insights.deprecated.length }
+      ];
+
+      let selectedCategory = categories.find(c => c.count > 0)?.key || 'comparisons';
+
+      categories.forEach(cat => {
+        const catBtn = document.createElement('div');
+        catBtn.className = 'cb-insight-category';
+        catBtn.dataset.category = cat.key;
+        catBtn.style.cssText = `
+          padding: 12px;
+          margin-bottom: 8px;
+          border-radius: 8px;
+          cursor: pointer;
+          transition: all 0.2s;
+          background: ${selectedCategory === cat.key ? themeVars.accent + '33' : 'transparent'};
+          border: 1px solid ${selectedCategory === cat.key ? themeVars.accent + '66' : 'transparent'};
+        `;
+        catBtn.innerHTML = `
+          <div style="display:flex;align-items:center;justify-content:space-between;">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span>${cat.icon}</span>
+              <span style="font-size:13px;font-weight:500;color:${themeVars.white};">${cat.label}</span>
+            </div>
+            <span style="font-size:11px;color:${themeVars.white}80;background:${themeVars.accent}33;padding:2px 6px;border-radius:10px;">${cat.count}</span>
+          </div>
+        `;
+
+        catBtn.addEventListener('mouseenter', () => {
+          if (catBtn.dataset.category !== selectedCategory) {
+            catBtn.style.background = themeVars.accent + '1A';
+          }
+        });
+        catBtn.addEventListener('mouseleave', () => {
+          if (catBtn.dataset.category !== selectedCategory) {
+            catBtn.style.background = 'transparent';
+          }
+        });
+        catBtn.addEventListener('click', () => {
+          selectedCategory = cat.key;
+          document.querySelectorAll('.cb-insight-category').forEach(el => {
+            el.style.background = 'transparent';
+            el.style.border = '1px solid transparent';
+          });
+          catBtn.style.background = themeVars.accent + '33';
+          catBtn.style.border = '1px solid ' + themeVars.accent + '66';
+          renderSnippets(cat.key);
+        });
+
+        leftPanel.appendChild(catBtn);
+      });
+
+      // Right panel: Snippets
+      const rightPanel = document.createElement('div');
+      rightPanel.id = 'cb-insight-snippets';
+      rightPanel.style.cssText = `
+        flex: 1;
+        padding: 16px;
+        overflow-y: auto;
+      `;
+
+      function renderSnippets(categoryKey) {
+        const items = insights[categoryKey] || [];
+        rightPanel.innerHTML = '';
+
+        if (items.length === 0) {
+          rightPanel.innerHTML = `
+            <div style="display:flex;align-items:center;justify-content:center;height:100%;color:${themeVars.subtext};font-size:14px;">
+              No ${categoryKey} found in this conversation
+            </div>
+          `;
+          return;
+        }
+
+        items.forEach(item => {
+          const snippetCard = document.createElement('div');
+          snippetCard.style.cssText = `
+            background: ${themeVars.accent}0D;
+            border: 1px solid ${themeVars.accent}26;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+          `;
+
+          const msgRole = messages[item.sourceIndex]?.role || 'unknown';
+          const roleIcon = msgRole === 'user' ? '👤' : '🤖';
+          const roleColor = msgRole === 'user' ? '#4ade80' : '#60a5fa';
+
+          snippetCard.innerHTML = `
+            <div style="display:flex;align-items:start;gap:8px;margin-bottom:6px;">
+              <span style="font-size:14px;">${roleIcon}</span>
+              <span style="font-size:11px;color:${roleColor};font-weight:500;text-transform:capitalize;">${msgRole}</span>
+              <span style="font-size:11px;color:${themeVars.subtext};margin-left:auto;">Message ${item.sourceIndex + 1}</span>
+            </div>
+            <div style="font-size:13px;line-height:1.5;color:${themeVars.white};white-space:pre-wrap;">${escapeHtml(item.text)}</div>
+          `;
+
+          snippetCard.addEventListener('mouseenter', () => {
+            snippetCard.style.background = themeVars.accent + '1A';
+            snippetCard.style.borderColor = themeVars.accent + '4D';
+          });
+          snippetCard.addEventListener('mouseleave', () => {
+            snippetCard.style.background = themeVars.accent + '0D';
+            snippetCard.style.borderColor = themeVars.accent + '26';
+          });
+
+          snippetCard.addEventListener('click', () => {
+            // Scroll to message in chat
+            scrollToMessage(item.sourceIndex);
+            toast(`Scrolled to message ${item.sourceIndex + 1}`);
+          });
+
+          rightPanel.appendChild(snippetCard);
+        });
+      }
+
+      // Helper: Scroll to message in chat
+      function scrollToMessage(index) {
+        try {
+          const adapter = Object.values(window.SiteAdapters || {}).find(a => a.detect && a.detect());
+          if (!adapter || !adapter.scrollContainer) return;
+
+          const container = adapter.scrollContainer();
+          if (!container) return;
+
+          // Find all message elements
+          const allMessages = Array.from(container.querySelectorAll('[data-message-id], .message, [class*="message"], [class*="Message"]')).filter(el => {
+            const text = el.textContent || '';
+            return text.trim().length > 10;
+          });
+
+          if (allMessages[index]) {
+            allMessages[index].scrollIntoView({ behavior: 'smooth', block: 'center' });
+            // Highlight briefly
+            const originalBg = allMessages[index].style.background;
+            allMessages[index].style.background = 'rgba(0,180,255,0.2)';
+            setTimeout(() => {
+              allMessages[index].style.background = originalBg;
+            }, 2000);
+          }
+        } catch (e) {
+          debugLog('Scroll to message failed', e);
+        }
+      }
+
+      // Helper: Escape HTML
+      function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+      }
+
+      // Initial render
+      renderSnippets(selectedCategory);
+
+      // Assemble modal
+      mainArea.appendChild(leftPanel);
+      mainArea.appendChild(rightPanel);
+      modalContent.appendChild(header);
+      modalContent.appendChild(mainArea);
+      modal.appendChild(modalContent);
+
+      // Close handler
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) modal.remove();
+      });
+      // Use event delegation for close button (since it's innerHTML)
+      modal.addEventListener('click', (e) => {
+        if (e.target && e.target.id === 'cb-insight-close') modal.remove();
+      });
+
+      // Theme update logic
+      function updateThemeVars() {
+        themeVars = getThemeVars();
+        // Update modal content and all dynamic elements
+        modalContent.style.background = `linear-gradient(135deg, ${themeVars.bg2}F7 0%, ${themeVars.bg}F7 100%)`;
+        modalContent.style.border = `2px solid ${themeVars.accent}4D`;
+        leftPanel.style.background = `${themeVars.bg}33`;
+        leftPanel.style.borderRight = `1px solid ${themeVars.accent}33`;
+        header.querySelector('div > div > div').style.color = themeVars.white;
+        header.querySelector('div > div > div + div').style.color = themeVars.subtext;
+        // Update all category buttons
+        leftPanel.querySelectorAll('.cb-insight-category').forEach(catBtn => {
+          const cat = catBtn.dataset.category;
+          catBtn.style.background = (cat === selectedCategory) ? themeVars.accent + '33' : 'transparent';
+          catBtn.style.border = (cat === selectedCategory) ? '1px solid ' + themeVars.accent + '66' : '1px solid transparent';
+          catBtn.querySelector('span[style*="font-size:13px"]').style.color = themeVars.white;
+          catBtn.querySelector('span[style*="font-size:11px"]').style.background = themeVars.accent + '33';
+          catBtn.querySelector('span[style*="font-size:11px"]').style.color = themeVars.white + '80';
+        });
+        // Update all snippet cards
+        rightPanel.querySelectorAll('div').forEach(snippetCard => {
+          snippetCard.style.background = themeVars.accent + '0D';
+          snippetCard.style.borderColor = themeVars.accent + '26';
+          const meta = snippetCard.querySelector('span[style*="margin-left:auto"]');
+          if (meta) meta.style.color = themeVars.subtext;
+          const text = snippetCard.querySelector('div[style*="font-size:13px"]');
+          if (text) text.style.color = themeVars.white;
+        });
+      }
+      // Listen for theme changes
+      const mql = window.matchMedia('(prefers-color-scheme: dark)');
+      mql.addEventListener('change', updateThemeVars);
+      // Also update on focus (in case theme changed while tab was inactive)
+      window.addEventListener('focus', updateThemeVars);
+
+      document.body.appendChild(modal);
+      // Initial theme sync
+      setTimeout(updateThemeVars, 10);
+    }
+
     // Extract actionable items from plain chat text without AI calls
     function extractActionPlanFromText(text) {
       try {
@@ -1942,6 +2317,774 @@
       } catch (_) { return '📌 Action Plan\n\n(Error formatting plan)'; }
     }
 
+    // ============================================
+    // IMAGE VAULT - Store and display all images from conversation
+    // ============================================
+    
+    const IMAGE_VAULT_DB_NAME = 'chatbridge_image_vault';
+    const IMAGE_VAULT_STORE_NAME = 'images';
+    let imageVaultDB = null;
+
+    // Initialize IndexedDB for Image Vault
+    async function initImageVaultDB() {
+      if (imageVaultDB) return imageVaultDB;
+      
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open(IMAGE_VAULT_DB_NAME, 1);
+        
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => {
+          imageVaultDB = request.result;
+          resolve(imageVaultDB);
+        };
+        
+        request.onupgradeneeded = (event) => {
+          const db = event.target.result;
+          if (!db.objectStoreNames.contains(IMAGE_VAULT_STORE_NAME)) {
+            const store = db.createObjectStore(IMAGE_VAULT_STORE_NAME, { keyPath: 'id' });
+            store.createIndex('timestamp', 'timestamp', { unique: false });
+            store.createIndex('role', 'role', { unique: false });
+            store.createIndex('messageIndex', 'messageIndex', { unique: false });
+          }
+        };
+      });
+    }
+
+    // Hash image source for deduplication
+    async function hashImageSrc(src) {
+      try {
+        const encoder = new TextEncoder();
+        const data = encoder.encode(src);
+        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+      } catch (e) {
+        // Fallback to simple hash
+        let hash = 0;
+        for (let i = 0; i < src.length; i++) {
+          const char = src.charCodeAt(i);
+          hash = ((hash << 5) - hash) + char;
+          hash = hash & hash;
+        }
+        return Math.abs(hash).toString(16);
+      }
+    }
+
+    // Extract images from messages
+    async function extractImagesFromMessages(messages) {
+      const images = [];
+      const seenHashes = new Set();
+      
+      for (let i = 0; i < messages.length; i++) {
+        const msg = messages[i];
+        const role = msg.role || 'unknown';
+        const text = msg.text || '';
+        const el = msg.el;
+        
+        const foundSrcs = new Set();
+        
+        // 1. Extract from message element if available
+        if (el) {
+          const imgTags = el.querySelectorAll('img');
+          imgTags.forEach(img => {
+            const src = img.src || img.dataset.src || img.getAttribute('data-src');
+            if (src && !src.includes('icon') && !src.includes('avatar')) {
+              foundSrcs.add(src);
+            }
+          });
+        }
+        
+        // 2. Extract from markdown images ![](url)
+        const markdownImages = text.matchAll(/!\[([^\]]*)\]\(([^)]+)\)/g);
+        for (const match of markdownImages) {
+          foundSrcs.add(match[2]);
+        }
+        
+        // 3. Extract from HTML img tags in text
+        const htmlImages = text.matchAll(/<img[^>]+src=["']([^"']+)["']/gi);
+        for (const match of htmlImages) {
+          foundSrcs.add(match[1]);
+        }
+        
+        // 4. Extract base64 and data URLs
+        const dataUrls = text.matchAll(/data:image\/[^;]+;base64,[A-Za-z0-9+\/=]+/g);
+        for (const match of dataUrls) {
+          foundSrcs.add(match[0]);
+        }
+        
+        // Process found sources
+        for (const src of foundSrcs) {
+          if (!src || src.length < 10) continue;
+          
+          const hash = await hashImageSrc(src);
+          if (seenHashes.has(hash)) continue;
+          seenHashes.add(hash);
+          
+          images.push({
+            id: hash,
+            src: src,
+            role: role,
+            timestamp: Date.now(),
+            messageIndex: i,
+            originatingModel: detectCurrentPlatform()
+          });
+        }
+      }
+      
+      return images;
+    }
+
+    // Save images to IndexedDB
+    async function saveImagesToVault(images) {
+      try {
+        const db = await initImageVaultDB();
+        const tx = db.transaction([IMAGE_VAULT_STORE_NAME], 'readwrite');
+        const store = tx.objectStore(IMAGE_VAULT_STORE_NAME);
+        
+        for (const img of images) {
+          try {
+            await new Promise((resolve, reject) => {
+              const request = store.put(img);
+              request.onsuccess = () => resolve();
+              request.onerror = () => reject(request.error);
+            });
+          } catch (e) {
+            debugLog('Failed to save image:', e);
+          }
+        }
+        
+        return true;
+      } catch (e) {
+        debugLog('saveImagesToVault error:', e);
+        return false;
+      }
+    }
+
+    // Get all images from vault
+    async function getImageVault() {
+      try {
+        const db = await initImageVaultDB();
+        const tx = db.transaction([IMAGE_VAULT_STORE_NAME], 'readonly');
+        const store = tx.objectStore(IMAGE_VAULT_STORE_NAME);
+        
+        return new Promise((resolve, reject) => {
+          const request = store.getAll();
+          request.onsuccess = () => resolve(request.result || []);
+          request.onerror = () => reject(request.error);
+        });
+      } catch (e) {
+        debugLog('getImageVault error:', e);
+        return [];
+      }
+    }
+
+    // Clear image vault
+    async function clearImageVault() {
+      try {
+        const db = await initImageVaultDB();
+        const tx = db.transaction([IMAGE_VAULT_STORE_NAME], 'readwrite');
+        const store = tx.objectStore(IMAGE_VAULT_STORE_NAME);
+        
+        return new Promise((resolve, reject) => {
+          const request = store.clear();
+          request.onsuccess = () => resolve(true);
+          request.onerror = () => reject(request.error);
+        });
+      } catch (e) {
+        debugLog('clearImageVault error:', e);
+        return false;
+      }
+    }
+
+    // Detect current platform
+    function detectCurrentPlatform() {
+      const hostname = window.location.hostname;
+      if (hostname.includes('chatgpt')) return 'ChatGPT';
+      if (hostname.includes('claude')) return 'Claude';
+      if (hostname.includes('gemini') || hostname.includes('bard')) return 'Gemini';
+      if (hostname.includes('copilot') || hostname.includes('bing')) return 'Copilot';
+      if (hostname.includes('perplexity')) return 'Perplexity';
+      if (hostname.includes('poe')) return 'Poe';
+      if (hostname.includes('x.ai') || hostname.includes('grok')) return 'Grok';
+      if (hostname.includes('deepseek')) return 'DeepSeek';
+      if (hostname.includes('mistral')) return 'Mistral';
+      if (hostname.includes('meta.ai')) return 'Meta AI';
+      return 'Unknown';
+    }
+
+    // Render Image Vault Widget
+    async function renderImageVaultWidget(container) {
+      try {
+        const vaultSection = document.createElement('div');
+        vaultSection.style.cssText = 'margin:16px 12px;';
+        
+        // Header with toggle
+        const header = document.createElement('div');
+        header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:12px;background:rgba(16,24,43,0.4);border:1px solid rgba(0,180,255,0.25);border-radius:8px 8px 0 0;cursor:pointer;';
+        header.innerHTML = `
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-size:16px;">🖼️</span>
+            <span style="font-weight:600;font-size:13px;color:#fff;">Image Vault</span>
+            <span id="cb-image-count" style="font-size:11px;color:rgba(255,255,255,0.5);background:rgba(0,180,255,0.2);padding:2px 6px;border-radius:10px;">0</span>
+          </div>
+          <span id="cb-vault-toggle" style="font-size:18px;transition:transform 0.2s;">▼</span>
+        `;
+        
+        // Content area (collapsible)
+        const content = document.createElement('div');
+        content.id = 'cb-vault-content';
+        content.style.cssText = 'display:none;padding:12px;background:rgba(16,24,43,0.4);border:1px solid rgba(0,180,255,0.25);border-top:none;border-radius:0 0 8px 8px;';
+        
+        // Thumbnail grid
+        const thumbGrid = document.createElement('div');
+        thumbGrid.id = 'cb-vault-grid';
+        thumbGrid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:8px;margin-bottom:12px;';
+        
+        // Controls
+        const controls = document.createElement('div');
+        controls.style.cssText = 'display:flex;gap:8px;';
+        controls.innerHTML = `
+          <button id="cb-vault-scan" class="cb-btn cb-btn-primary" style="flex:1;font-size:11px;padding:8px;">🔍 Scan Images</button>
+          <button id="cb-vault-clear" class="cb-btn" style="font-size:11px;padding:8px;">🗑️ Clear</button>
+        `;
+        
+        content.appendChild(thumbGrid);
+        content.appendChild(controls);
+        vaultSection.appendChild(header);
+        vaultSection.appendChild(content);
+        container.appendChild(vaultSection);
+        
+        // Toggle handler
+        let isExpanded = false;
+        header.addEventListener('click', () => {
+          isExpanded = !isExpanded;
+          content.style.display = isExpanded ? 'block' : 'none';
+          document.getElementById('cb-vault-toggle').style.transform = isExpanded ? 'rotate(180deg)' : 'rotate(0deg)';
+        });
+        
+        // Scan images handler
+        document.getElementById('cb-vault-scan').addEventListener('click', async () => {
+          const btn = document.getElementById('cb-vault-scan');
+          addLoadingToButton(btn, 'Scanning...');
+          try {
+            const msgs = await scanChat();
+            if (!msgs || msgs.length === 0) {
+              toast('No messages to scan');
+              return;
+            }
+            
+            const images = await extractImagesFromMessages(msgs);
+            if (images.length === 0) {
+              toast('No images found in conversation');
+              document.getElementById('cb-image-count').textContent = '0';
+              return;
+            }
+            
+            await saveImagesToVault(images);
+            await refreshImageVault();
+            toast(`Found ${images.length} image(s)`);
+          } catch (e) {
+            debugLog('Scan images error:', e);
+            toast('Image scan failed');
+          } finally {
+            removeLoadingFromButton(btn, '🔍 Scan Images');
+          }
+        });
+        
+        // Clear vault handler
+        document.getElementById('cb-vault-clear').addEventListener('click', async () => {
+          if (confirm('Clear all stored images?')) {
+            await clearImageVault();
+            await refreshImageVault();
+            toast('Image vault cleared');
+          }
+        });
+        
+        // Initial load
+        await refreshImageVault();
+        
+      } catch (e) {
+        debugLog('renderImageVaultWidget error:', e);
+      }
+    }
+
+    // Refresh image vault display
+    async function refreshImageVault() {
+      try {
+        const images = await getImageVault();
+        const grid = document.getElementById('cb-vault-grid');
+        const countEl = document.getElementById('cb-image-count');
+        
+        if (!grid) return;
+        
+        countEl.textContent = images.length.toString();
+        grid.innerHTML = '';
+        
+        if (images.length === 0) {
+          grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:20px;color:rgba(255,255,255,0.4);font-size:12px;">No images yet. Click "Scan Images" to find images in this conversation.</div>';
+          return;
+        }
+        
+        // Group by role
+        const userImages = images.filter(img => img.role === 'user');
+        const assistantImages = images.filter(img => img.role === 'assistant');
+        
+        const renderGroup = (imgs, label, icon) => {
+          if (imgs.length === 0) return;
+          
+          const groupLabel = document.createElement('div');
+          groupLabel.style.cssText = 'grid-column:1/-1;font-size:11px;font-weight:600;color:rgba(255,255,255,0.6);margin-top:8px;display:flex;align-items:center;gap:6px;';
+          groupLabel.innerHTML = `<span>${icon}</span><span>${label} (${imgs.length})</span>`;
+          grid.appendChild(groupLabel);
+          
+          imgs.slice(0, 6).forEach((img, idx) => {
+            const thumb = document.createElement('div');
+            thumb.style.cssText = 'position:relative;aspect-ratio:1;border-radius:6px;overflow:hidden;border:1px solid rgba(0,180,255,0.2);cursor:pointer;background:rgba(0,0,0,0.3);';
+            
+            const imgEl = document.createElement('img');
+            imgEl.src = img.src;
+            imgEl.style.cssText = 'width:100%;height:100%;object-fit:cover;';
+            imgEl.loading = 'lazy';
+            imgEl.onerror = () => {
+              thumb.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:24px;">🖼️</div>';
+            };
+            
+            // Hover overlay
+            const overlay = document.createElement('div');
+            overlay.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);display:none;align-items:center;justify-content:center;gap:8px;';
+            overlay.innerHTML = `
+              <button class="cb-img-copy" title="Copy" style="background:rgba(255,255,255,0.2);border:none;border-radius:4px;padding:4px 6px;cursor:pointer;font-size:14px;">📋</button>
+              <button class="cb-img-expand" title="Expand" style="background:rgba(255,255,255,0.2);border:none;border-radius:4px;padding:4px 6px;cursor:pointer;font-size:14px;">🔍</button>
+            `;
+            
+            thumb.appendChild(imgEl);
+            thumb.appendChild(overlay);
+            
+            thumb.addEventListener('mouseenter', () => overlay.style.display = 'flex');
+            thumb.addEventListener('mouseleave', () => overlay.style.display = 'none');
+            
+            // Copy handler
+            overlay.querySelector('.cb-img-copy').addEventListener('click', async (e) => {
+              e.stopPropagation();
+              try {
+                await navigator.clipboard.writeText(img.src);
+                toast('Image URL copied');
+              } catch (err) {
+                toast('Copy failed');
+              }
+            });
+            
+            // Expand handler
+            overlay.querySelector('.cb-img-expand').addEventListener('click', (e) => {
+              e.stopPropagation();
+              showImageModal(img);
+            });
+            
+            grid.appendChild(thumb);
+          });
+          
+          // Show "View All" if more than 6 images
+          if (imgs.length > 6) {
+            const viewAll = document.createElement('button');
+            viewAll.className = 'cb-btn';
+            viewAll.style.cssText = 'grid-column:1/-1;margin-top:8px;font-size:11px;';
+            viewAll.textContent = `View all ${imgs.length} images`;
+            viewAll.addEventListener('click', () => showAllImagesModal(imgs, label));
+            grid.appendChild(viewAll);
+          }
+        };
+        
+        renderGroup(userImages, 'User Uploads', '👤');
+        renderGroup(assistantImages, 'AI Generated', '🤖');
+        
+      } catch (e) {
+        debugLog('refreshImageVault error:', e);
+      }
+    }
+
+    // Show image in modal
+    function showImageModal(imgData) {
+      const modal = document.createElement('div');
+      modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);display:flex;align-items:center;justify-content:center;z-index:999999;';
+      
+      const img = document.createElement('img');
+      img.src = imgData.src;
+      img.style.cssText = 'max-width:90%;max-height:90%;border-radius:8px;box-shadow:0 20px 60px rgba(0,0,0,0.5);';
+      
+      const closeBtn = document.createElement('button');
+      closeBtn.textContent = '×';
+      closeBtn.style.cssText = 'position:absolute;top:20px;right:20px;background:rgba(255,255,255,0.2);border:none;color:#fff;font-size:32px;width:50px;height:50px;border-radius:25px;cursor:pointer;';
+      closeBtn.addEventListener('click', () => modal.remove());
+      
+      modal.appendChild(img);
+      modal.appendChild(closeBtn);
+      modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+      
+      document.body.appendChild(modal);
+    }
+
+    // Show all images modal
+    function showAllImagesModal(images, title) {
+      const modal = document.createElement('div');
+      modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999999;padding:40px;';
+      
+      const header = document.createElement('div');
+      header.style.cssText = 'color:#fff;font-size:24px;font-weight:700;margin-bottom:20px;';
+      header.textContent = title;
+      
+      const grid = document.createElement('div');
+      grid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:16px;max-width:1200px;max-height:70%;overflow-y:auto;padding:20px;background:rgba(16,24,43,0.8);border-radius:12px;';
+      
+      images.forEach(imgData => {
+        const thumb = document.createElement('img');
+        thumb.src = imgData.src;
+        thumb.style.cssText = 'width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;cursor:pointer;border:2px solid rgba(0,180,255,0.3);';
+        thumb.loading = 'lazy';
+        thumb.addEventListener('click', () => {
+          modal.remove();
+          showImageModal(imgData);
+        });
+        grid.appendChild(thumb);
+      });
+      
+      const closeBtn = document.createElement('button');
+      closeBtn.textContent = 'Close';
+      closeBtn.className = 'cb-btn cb-btn-primary';
+      closeBtn.style.cssText = 'margin-top:20px;padding:12px 24px;';
+      closeBtn.addEventListener('click', () => modal.remove());
+      
+      modal.appendChild(header);
+      modal.appendChild(grid);
+      modal.appendChild(closeBtn);
+      modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+      
+      document.body.appendChild(modal);
+    }
+
+    // ============================================
+    // PROMPT DESIGNER - Context-aware next-step generator
+    // ============================================
+
+    // Extract conversation context
+    function extractConversationContext(messages) {
+      const context = {
+        userGoal: '',
+        progressMade: [],
+        ambiguities: [],
+        contradictions: [],
+        missingRequirements: [],
+        pendingTasks: []
+      };
+      
+      // First user message often contains the goal
+      const firstUser = messages.find(m => m.role === 'user');
+      if (firstUser) {
+        context.userGoal = firstUser.text.substring(0, 200);
+      }
+      
+      // Recent messages show progress
+      const recentMsgs = messages.slice(-5);
+      context.progressMade = recentMsgs
+        .filter(m => m.role === 'assistant')
+        .map(m => m.text.substring(0, 100));
+      
+      // Look for questions and uncertainties
+      messages.forEach(msg => {
+        const text = msg.text;
+        if (/\?|unsure|not sure|unclear|ambiguous|confusing/i.test(text)) {
+          context.ambiguities.push(text.substring(0, 150));
+        }
+        if (/however|but|actually|wrong|incorrect|instead/i.test(text)) {
+          context.contradictions.push(text.substring(0, 150));
+        }
+        if (/need to|should|must|required|missing|lacking/i.test(text)) {
+          context.missingRequirements.push(text.substring(0, 150));
+        }
+        if (/todo|task|action|next step|to do/i.test(text)) {
+          context.pendingTasks.push(text.substring(0, 150));
+        }
+      });
+      
+      return context;
+    }
+
+    // Generate smart prompts using Gemini
+    async function generateSmartPrompts(messages) {
+      try {
+        const context = extractConversationContext(messages);
+        
+        // Build prompt for Gemini
+        const conversationText = messages.map(m => `${m.role}: ${m.text}`).join('\n\n');
+        const systemPrompt = `You are a thought partner helping a user continue their AI conversation productively.
+
+Analyze this conversation and generate exactly 5 follow-up questions that will help the user move forward:
+
+1. CLARIFICATION - Ask about something ambiguous or unclear
+2. IMPROVEMENT - Suggest how to make something better or more robust
+3. EXPANSION - Explore a related area or dig deeper into a topic
+4. CRITICAL THINKING - Challenge an assumption or identify a potential issue
+5. CREATIVE ALTERNATIVE - Propose a different approach or perspective
+
+Rules:
+- Each question must be grounded in the actual conversation content
+- Be specific, not generic
+- Keep questions concise (1-2 sentences max)
+- Act like a thoughtful colleague, not a template
+- No hallucinations - only reference what's actually discussed
+
+Conversation:
+${conversationText.substring(0, 4000)}
+
+Respond with JSON only:
+{
+  "questions": [
+    {"text": "...", "category": "clarification", "sourceIndexes": [0, 3]},
+    {"text": "...", "category": "improvement", "sourceIndexes": [5]},
+    {"text": "...", "category": "expansion", "sourceIndexes": [2, 7]},
+    {"text": "...", "category": "critical", "sourceIndexes": [4]},
+    {"text": "...", "category": "creative", "sourceIndexes": [1, 6]}
+  ]
+}`;
+        
+        const result = await callGeminiAsync({
+          action: 'custom',
+          prompt: systemPrompt,
+          temperature: 0.7
+        });
+        
+        if (result && result.ok && result.result) {
+          try {
+            // Try to parse JSON from result
+            let jsonStr = result.result;
+            // Extract JSON if wrapped in markdown
+            const jsonMatch = jsonStr.match(/```json\s*([\s\S]+?)```/) || jsonStr.match(/```\s*([\s\S]+?)```/);
+            if (jsonMatch) jsonStr = jsonMatch[1];
+            
+            const parsed = JSON.parse(jsonStr);
+            if (parsed.questions && Array.isArray(parsed.questions)) {
+              return parsed;
+            }
+          } catch (parseErr) {
+            debugLog('Failed to parse prompt designer JSON:', parseErr);
+          }
+        }
+        
+        // Fallback to generic prompts
+        return generateFallbackPrompts(context);
+        
+      } catch (e) {
+        debugLog('generateSmartPrompts error:', e);
+        return generateFallbackPrompts({});
+      }
+    }
+
+    // Fallback prompts when Gemini fails
+    function generateFallbackPrompts(context) {
+      return {
+        questions: [
+          { text: "What edge cases or error scenarios should we consider?", category: "clarification", sourceIndexes: [] },
+          { text: "How can we make this solution more maintainable or scalable?", category: "improvement", sourceIndexes: [] },
+          { text: "What related aspects of this problem should we explore?", category: "expansion", sourceIndexes: [] },
+          { text: "What assumptions are we making that might not hold true?", category: "critical", sourceIndexes: [] },
+          { text: "Is there a completely different approach we should consider?", category: "creative", sourceIndexes: [] }
+        ]
+      };
+    }
+
+    // Render Prompt Designer Widget
+    async function renderPromptDesignerWidget(container) {
+      try {
+        const designerSection = document.createElement('div');
+        designerSection.style.cssText = 'margin:16px 12px;';
+        
+        // Header with toggle
+        const header = document.createElement('div');
+        header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:12px;background:rgba(16,24,43,0.4);border:1px solid rgba(0,180,255,0.25);border-radius:8px 8px 0 0;cursor:pointer;';
+        header.innerHTML = `
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-size:16px;">✨</span>
+            <span style="font-weight:600;font-size:13px;color:#fff;">Prompt Designer</span>
+            <span style="font-size:10px;color:rgba(255,255,255,0.4);">AI-powered next steps</span>
+          </div>
+          <span id="cb-designer-toggle" style="font-size:18px;transition:transform 0.2s;">▼</span>
+        `;
+        
+        // Content area (collapsible)
+        const content = document.createElement('div');
+        content.id = 'cb-designer-content';
+        content.style.cssText = 'display:none;padding:12px;background:rgba(16,24,43,0.4);border:1px solid rgba(0,180,255,0.25);border-top:none;border-radius:0 0 8px 8px;';
+        
+        // Prompts list
+        const promptsList = document.createElement('div');
+        promptsList.id = 'cb-prompts-list';
+        promptsList.style.cssText = 'display:flex;flex-direction:column;gap:10px;margin-bottom:12px;';
+        
+        // Controls
+        const controls = document.createElement('div');
+        controls.style.cssText = 'display:flex;gap:8px;';
+        controls.innerHTML = `
+          <button id="cb-prompts-generate" class="cb-btn cb-btn-primary" style="flex:1;font-size:11px;padding:8px;">✨ Generate Prompts</button>
+          <button id="cb-prompts-refresh" class="cb-btn" style="font-size:11px;padding:8px;">🔄 Refresh</button>
+        `;
+        
+        content.appendChild(promptsList);
+        content.appendChild(controls);
+        designerSection.appendChild(header);
+        designerSection.appendChild(content);
+        container.appendChild(designerSection);
+        
+        // Toggle handler
+        let isExpanded = false;
+        header.addEventListener('click', () => {
+          isExpanded = !isExpanded;
+          content.style.display = isExpanded ? 'block' : 'none';
+          document.getElementById('cb-designer-toggle').style.transform = isExpanded ? 'rotate(180deg)' : 'rotate(0deg)';
+        });
+        
+        // Generate prompts handler
+        const generateHandler = async () => {
+          const btn = document.getElementById('cb-prompts-generate') || document.getElementById('cb-prompts-refresh');
+          addLoadingToButton(btn, 'Generating...');
+          try {
+            const msgs = await scanChat();
+            if (!msgs || msgs.length === 0) {
+              toast('No messages to analyze');
+              return;
+            }
+            
+            const prompts = await generateSmartPrompts(msgs);
+            renderPrompts(prompts, msgs);
+            toast('Prompts generated');
+          } catch (e) {
+            debugLog('Generate prompts error:', e);
+            toast('Prompt generation failed');
+          } finally {
+            removeLoadingFromButton(btn, btn.id === 'cb-prompts-generate' ? '✨ Generate Prompts' : '🔄 Refresh');
+          }
+        };
+        
+        document.getElementById('cb-prompts-generate').addEventListener('click', generateHandler);
+        document.getElementById('cb-prompts-refresh').addEventListener('click', generateHandler);
+        
+        // Render prompts in list
+        function renderPrompts(promptData, messages) {
+          const list = document.getElementById('cb-prompts-list');
+          if (!list) return;
+          
+          list.innerHTML = '';
+          
+          if (!promptData || !promptData.questions || promptData.questions.length === 0) {
+            list.innerHTML = '<div style="text-align:center;padding:20px;color:rgba(255,255,255,0.4);font-size:12px;">No prompts yet. Click "Generate Prompts" to get AI-powered suggestions.</div>';
+            return;
+          }
+          
+          const categoryIcons = {
+            clarification: '❓',
+            improvement: '⚡',
+            expansion: '🔭',
+            critical: '🧠',
+            creative: '💡'
+          };
+          
+          const categoryColors = {
+            clarification: '#60a5fa',
+            improvement: '#34d399',
+            expansion: '#a78bfa',
+            critical: '#f59e0b',
+            creative: '#ec4899'
+          };
+          
+          promptData.questions.forEach((q, idx) => {
+            const promptCard = document.createElement('div');
+            promptCard.style.cssText = `
+              padding:12px;
+              background:rgba(0,180,255,0.05);
+              border-left:3px solid ${categoryColors[q.category] || '#00b4ff'};
+              border-radius:6px;
+              transition:all 0.2s;
+            `;
+            
+            const icon = categoryIcons[q.category] || '💬';
+            const categoryLabel = q.category.charAt(0).toUpperCase() + q.category.slice(1);
+            
+            promptCard.innerHTML = `
+              <div style="display:flex;align-items:start;justify-content:space-between;gap:8px;">
+                <div style="flex:1;">
+                  <div style="font-size:10px;color:${categoryColors[q.category] || '#00b4ff'};font-weight:600;margin-bottom:4px;">
+                    ${icon} ${categoryLabel}
+                  </div>
+                  <div style="font-size:12px;line-height:1.4;color:#fff;">${escapeHtmlSimple(q.text)}</div>
+                </div>
+                <div style="display:flex;gap:6px;">
+                  <button class="cb-prompt-copy" title="Copy" style="background:rgba(255,255,255,0.1);border:none;border-radius:4px;padding:4px 8px;cursor:pointer;font-size:12px;color:#fff;">📋</button>
+                  <button class="cb-prompt-send" title="Send to chat" style="background:rgba(0,180,255,0.3);border:none;border-radius:4px;padding:4px 8px;cursor:pointer;font-size:12px;color:#fff;">➤</button>
+                </div>
+              </div>
+            `;
+            
+            promptCard.addEventListener('mouseenter', () => {
+              promptCard.style.background = 'rgba(0,180,255,0.1)';
+            });
+            promptCard.addEventListener('mouseleave', () => {
+              promptCard.style.background = 'rgba(0,180,255,0.05)';
+            });
+            
+            // Copy handler
+            promptCard.querySelector('.cb-prompt-copy').addEventListener('click', async () => {
+              try {
+                await navigator.clipboard.writeText(q.text);
+                toast('Prompt copied');
+              } catch (err) {
+                toast('Copy failed');
+              }
+            });
+            
+            // Send to chat handler
+            promptCard.querySelector('.cb-prompt-send').addEventListener('click', async () => {
+              try {
+                const adapter = Object.values(window.SiteAdapters || {}).find(a => a.detect && a.detect());
+                if (adapter && adapter.getInput) {
+                  const input = adapter.getInput();
+                  if (input) {
+                    input.value = q.text;
+                    input.textContent = q.text;
+                    ['input', 'change', 'keydown'].forEach(evType => {
+                      const ev = new Event(evType, { bubbles: true });
+                      input.dispatchEvent(ev);
+                    });
+                    input.focus();
+                    toast('Prompt inserted');
+                  } else {
+                    toast('Chat input not found');
+                  }
+                } else {
+                  toast('Platform not supported');
+                }
+              } catch (err) {
+                debugLog('Send prompt error:', err);
+                toast('Insert failed');
+              }
+            });
+            
+            list.appendChild(promptCard);
+          });
+        }
+        
+      } catch (e) {
+        debugLog('renderPromptDesignerWidget error:', e);
+      }
+    }
+
+    // Helper: Simple HTML escape for prompts
+    function escapeHtmlSimple(text) {
+      return String(text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
     // Render Smart Workspace UI
     async function renderSmartWorkspace() {
       try {
@@ -2017,7 +3160,7 @@
             insightsContent.appendChild(autoSection);
             try {
               const prompt = msgs.map(m => `${m.role}: ${m.text}`).join('\n\n');
-              const sum = await callGeminiAsync({ action: 'summarize', text: prompt, length: 'medium', summaryType: 'transfer' });
+              const sum = await callGeminiAsync({ action: 'summarize', text: prompt, length: 'short', summaryType: 'paragraph' });
               const tgt = autoSection.querySelector('#cb-auto-sum');
               if (sum && sum.ok && tgt) {
                 // Ensure structured feel by lightly formatting
@@ -2079,30 +3222,48 @@
           }
         });
 
-        // 4. Action Extractor (Convert chat into actionable plan)
-        const actionBtn = createFeatureCard('Action Extractor', 'Convert this chat into a concise plan', '🗂️', async () => {
-          addLoadingToButton(actionBtn, 'Extracting...');
+        // 4. Insight Finder (semantic spotlight - CTRL+SHIFT+F)
+        const insightBtn = createFeatureCard('Insight Finder', 'Extract comparisons, contradictions, requirements & more', '🔍', async () => {
+          addLoadingToButton(insightBtn, 'Analyzing...');
           try {
             const msgs = await scanChat();
-            if (!msgs || msgs.length === 0) { toast('No messages found in current chat'); removeLoadingFromButton(actionBtn, 'Action Extractor'); return; }
-            const text = msgs.map(m => `${m.role}: ${m.text}`).join('\n');
-            const plan = extractActionPlanFromText(text);
-            const readable = actionPlanToReadable(plan);
-            const outputArea = document.getElementById('cb-insights-output');
-            if (outputArea) { outputArea.textContent = readable; outputArea.scrollTop = 0; }
-            toast('Action plan extracted');
+            if (!msgs || msgs.length === 0) { 
+              toast('No messages found in current chat'); 
+              removeLoadingFromButton(insightBtn, 'Insight Finder'); 
+              return; 
+            }
+            const insights = extractInsights(msgs);
+            const total = Object.values(insights).reduce((sum, arr) => sum + arr.length, 0);
+            if (total === 0) {
+              toast('No insights found in this conversation');
+              removeLoadingFromButton(insightBtn, 'Insight Finder');
+              return;
+            }
+            showInsightFinderModal(insights, msgs);
+            toast(`Found ${total} insights`);
           } catch (e) {
-            toast('Extraction failed'); debugLog('Action Extractor error', e);
+            toast('Analysis failed'); 
+            debugLog('Insight Finder error', e);
           } finally {
-            removeLoadingFromButton(actionBtn, 'Action Extractor');
+            removeLoadingFromButton(insightBtn, 'Insight Finder');
           }
         });
 
         actionsGrid.appendChild(compareBtn);
         actionsGrid.appendChild(mergeBtn);
         actionsGrid.appendChild(extractBtn);
-        actionsGrid.appendChild(actionBtn);
+        actionsGrid.appendChild(insightBtn);
         insightsContent.appendChild(actionsGrid);
+
+        // ============================================
+        // IMAGE VAULT WIDGET
+        // ============================================
+        await renderImageVaultWidget(insightsContent);
+
+        // ============================================
+        // PROMPT DESIGNER WIDGET
+        // ============================================
+        await renderPromptDesignerWidget(insightsContent);
 
         // Output Preview Area
         const outputSection = document.createElement('div');
@@ -9058,6 +10219,14 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       return window.ChatBridge._lastScan || null; 
     } catch (e) { return null; } 
   };
+  window.ChatBridge.getImageVault = async function() {
+    try {
+      return await getImageVault();
+    } catch (e) {
+      debugLog('getImageVault public accessor error:', e);
+      return [];
+    }
+  };
   
   // End-to-end validation: save → dropdown refresh → restore
   // Usage: ChatBridge.testE2E({ text?: string })
@@ -9255,6 +10424,33 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
               // Ctrl+Shift+H: Toggle sidebar visibility
               ui.avatar.click();
               sendResponse({ ok: true });
+            }
+            else if (command === 'insight-finder') {
+              // Ctrl+Shift+F: Open Insight Finder modal
+              (async () => {
+                try {
+                  const msgs = await scanChat();
+                  if (!msgs || msgs.length === 0) {
+                    toast('No messages found in current chat');
+                    sendResponse({ ok: false });
+                    return;
+                  }
+                  const insights = extractInsights(msgs);
+                  const total = Object.values(insights).reduce((sum, arr) => sum + arr.length, 0);
+                  if (total === 0) {
+                    toast('No insights found in this conversation');
+                    sendResponse({ ok: false });
+                    return;
+                  }
+                  showInsightFinderModal(insights, msgs);
+                  toast(`Found ${total} insights`);
+                  sendResponse({ ok: true });
+                } catch (e) {
+                  debugLog('Insight Finder keyboard error', e);
+                  sendResponse({ ok: false });
+                }
+              })();
+              return true; // Will respond asynchronously
             } 
             else if (command === 'close-view') {
               // Escape: Close internal views or sidebar

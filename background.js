@@ -1324,6 +1324,10 @@ Original conversation (currently optimized for ${src}):
 ${payload.text}
 
 Rewritten conversation (optimized for ${tgt}):`;
+        } else if (payload.action === 'custom') {
+          // Custom prompt with optional system instruction and temperature
+          systemInstruction = payload.systemInstruction || '';
+          promptText = payload.prompt || payload.text || '';
         } else {
           promptText = payload.text || '';
         }
@@ -1351,8 +1355,8 @@ Rewritten conversation (optimized for ${tgt}):`;
             systemInstruction: systemInstruction ? { parts: [{ text: systemInstruction }] } : undefined,
             contents: [{ parts: [{ text: promptText }] }],
             generationConfig: {
-              temperature: 0.7,
-              topP: 0.95,
+              temperature: payload.temperature !== undefined ? payload.temperature : 0.7,
+              topP: payload.topP !== undefined ? payload.topP : 0.95,
               topK: 40,
               maxOutputTokens: 8192
             }
