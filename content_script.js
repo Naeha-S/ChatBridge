@@ -3491,33 +3491,34 @@
         
         // Build prompt for Gemini
         const conversationText = messages.map(m => `${m.role}: ${m.text}`).join('\n\n');
-        const systemPrompt = `You are a thought partner helping a user continue their AI conversation productively.
+        const systemPrompt = `You are an expert conversation strategist helping users extract maximum value from their AI interactions.
 
-Analyze this conversation and generate exactly 5 follow-up questions that will help the user move forward:
+Analyze this conversation and generate exactly 5 high-quality, actionable follow-up prompts:
 
-1. CLARIFICATION - Ask about something ambiguous or unclear
-2. IMPROVEMENT - Suggest how to make something better or more robust
-3. EXPANSION - Explore a related area or dig deeper into a topic
-4. CRITICAL THINKING - Challenge an assumption or identify a potential issue
-5. CREATIVE ALTERNATIVE - Propose a different approach or perspective
+1. **Clarification** - Identify the most important ambiguity or assumption that needs validation
+2. **Optimization** - Suggest a concrete improvement to enhance quality, efficiency, or robustness  
+3. **Deep Dive** - Propose exploring the most valuable unexplored angle or implication
+4. **Risk Analysis** - Highlight the most critical edge case, limitation, or potential failure mode
+5. **Innovation** - Offer a genuinely creative alternative approach or perspective
 
-Rules:
-- Each question must be grounded in the actual conversation content
-- Be specific, not generic
-- Keep questions concise (1-2 sentences max)
-- Act like a thoughtful colleague, not a template
-- No hallucinations - only reference what's actually discussed
+**Quality Standards:**
+- Ground each prompt in ACTUAL conversation content - no generic filler
+- Be precise and actionable - user should know exactly what to ask
+- Keep prompts concise but complete (15-25 words ideal)
+- Sound professional and insightful, not robotic
+- Focus on moving the conversation forward toward concrete outcomes
+- Vary sentence structure - avoid repetitive phrasing
 
-Conversation:
+**Conversation:**
 ${conversationText.substring(0, 4000)}
 
-Respond with JSON only:
+**Output Format (JSON only):**
 {
   "questions": [
-    {"text": "...", "category": "clarification", "sourceIndexes": [0, 3]},
-    {"text": "...", "category": "improvement", "sourceIndexes": [5]},
-    {"text": "...", "category": "expansion", "sourceIndexes": [2, 7]},
-    {"text": "...", "category": "critical", "sourceIndexes": [4]},
+    {"text": "<specific, grounded prompt>", "category": "clarification", "sourceIndexes": [0, 3]},
+    {"text": "<specific, grounded prompt>", "category": "improvement", "sourceIndexes": [5]},
+    {"text": "<specific, grounded prompt>", "category": "expansion", "sourceIndexes": [2, 7]},
+    {"text": "<specific, grounded prompt>", "category": "critical", "sourceIndexes": [4]},
     {"text": "...", "category": "creative", "sourceIndexes": [1, 6]}
   ]
 }`;
@@ -3558,11 +3559,11 @@ Respond with JSON only:
     function generateFallbackPrompts(context) {
       return {
         questions: [
-          { text: "What edge cases or error scenarios should we consider?", category: "clarification", sourceIndexes: [] },
-          { text: "How can we make this solution more maintainable or scalable?", category: "improvement", sourceIndexes: [] },
-          { text: "What related aspects of this problem should we explore?", category: "expansion", sourceIndexes: [] },
-          { text: "What assumptions are we making that might not hold true?", category: "critical", sourceIndexes: [] },
-          { text: "Is there a completely different approach we should consider?", category: "creative", sourceIndexes: [] }
+          { text: "What specific requirements or constraints haven't we fully defined yet?", category: "clarification", sourceIndexes: [] },
+          { text: "How could we optimize this solution for better performance and maintainability?", category: "improvement", sourceIndexes: [] },
+          { text: "What adjacent problems or use cases should we consider addressing?", category: "expansion", sourceIndexes: [] },
+          { text: "What are the most likely failure modes and how should we handle them?", category: "critical", sourceIndexes: [] },
+          { text: "What alternative approaches might achieve the same goal more elegantly?", category: "creative", sourceIndexes: [] }
         ]
       };
     }
@@ -3573,23 +3574,23 @@ Respond with JSON only:
         container.innerHTML = '';
         container.style.cssText = 'padding:0;margin:0;';
         
-        // Main wrapper
+        // Main wrapper - luxury dark theme
         const wrapper = document.createElement('div');
-        wrapper.style.cssText = 'background:rgba(15,23,42,0.6);border-radius:12px;overflow:hidden;border:1px solid rgba(96,165,250,0.2);';
+        wrapper.style.cssText = 'background:linear-gradient(180deg,rgba(10,15,28,0.95) 0%,rgba(15,20,35,0.98) 100%);border-radius:12px;overflow:hidden;border:1px solid rgba(0,180,255,0.15);box-shadow:0 8px 32px rgba(0,0,0,0.4);';
         
-        // Action bar at top
+        // Action bar at top - luxury styling
         const actionBar = document.createElement('div');
-        actionBar.style.cssText = 'padding:16px 20px;background:linear-gradient(135deg,rgba(59,130,246,0.12),rgba(147,51,234,0.12));border-bottom:1px solid rgba(96,165,250,0.15);display:flex;gap:10px;align-items:center;';
+        actionBar.style.cssText = 'padding:18px 20px;background:linear-gradient(135deg,rgba(0,180,255,0.08),rgba(120,80,200,0.08));border-bottom:1px solid rgba(0,180,255,0.12);display:flex;gap:12px;align-items:center;';
         actionBar.innerHTML = `
-          <button id="cb-prompts-generate" class="cb-btn cb-btn-primary" style="flex:1;font-size:14px;font-weight:600;padding:12px 20px;background:linear-gradient(135deg,#3b82f6,#8b5cf6);border:none;border-radius:8px;box-shadow:0 2px 8px rgba(59,130,246,0.3);transition:all 0.2s;">
-            <span style="font-size:16px;margin-right:6px;">✨</span>
-            Generate Smart Prompts
+          <button id="cb-prompts-generate" class="cb-btn cb-btn-primary" style="flex:1;font-size:14px;font-weight:600;padding:12px 20px;background:linear-gradient(135deg,rgba(0,180,255,0.2),rgba(120,80,200,0.2));border:1px solid rgba(0,180,255,0.3);border-radius:8px;color:#E6E9F0;transition:all 0.2s;font-family:'Bebas Neue',sans-serif;letter-spacing:0.5px;">
+            <span style="font-size:16px;margin-right:8px;">✨</span>
+            GENERATE PROMPTS
           </button>
-          <button id="cb-prompts-refresh" class="cb-btn" style="padding:12px 16px;font-size:13px;background:rgba(96,165,250,0.1);border:1px solid rgba(96,165,250,0.3);border-radius:8px;transition:all 0.2s;">
-            🔄
+          <button id="cb-prompts-refresh" class="cb-btn" title="Refresh - Generate new prompts" style="padding:12px 16px;font-size:16px;background:rgba(0,180,255,0.08);border:1px solid rgba(0,180,255,0.2);border-radius:8px;color:#00B4FF;transition:all 0.2s;cursor:pointer;">
+            ↻
           </button>
-          <button id="cb-prompts-history" class="cb-btn" style="padding:12px 16px;font-size:13px;background:rgba(96,165,250,0.1);border:1px solid rgba(96,165,250,0.3);border-radius:8px;transition:all 0.2s;">
-            📜
+          <button id="cb-prompts-history" class="cb-btn" title="History - View previous prompt sets" style="padding:12px 16px;font-size:16px;background:rgba(0,180,255,0.08);border:1px solid rgba(0,180,255,0.2);border-radius:8px;color:#00B4FF;transition:all 0.2s;cursor:pointer;">
+            📊
           </button>
         `;
         
@@ -3628,24 +3629,30 @@ Respond with JSON only:
         
         if (generateBtn) {
           generateBtn.addEventListener('mouseenter', () => {
+            generateBtn.style.background = 'linear-gradient(135deg,rgba(0,180,255,0.3),rgba(120,80,200,0.3))';
+            generateBtn.style.borderColor = 'rgba(0,180,255,0.5)';
             generateBtn.style.transform = 'translateY(-1px)';
-            generateBtn.style.boxShadow = '0 4px 16px rgba(59,130,246,0.4)';
+            generateBtn.style.boxShadow = '0 4px 16px rgba(0,180,255,0.3)';
           });
           generateBtn.addEventListener('mouseleave', () => {
+            generateBtn.style.background = 'linear-gradient(135deg,rgba(0,180,255,0.2),rgba(120,80,200,0.2))';
+            generateBtn.style.borderColor = 'rgba(0,180,255,0.3)';
             generateBtn.style.transform = 'translateY(0)';
-            generateBtn.style.boxShadow = '0 2px 8px rgba(59,130,246,0.3)';
+            generateBtn.style.boxShadow = 'none';
           });
         }
         
         [refreshBtn, historyBtn].forEach(btn => {
           if (btn) {
             btn.addEventListener('mouseenter', () => {
-              btn.style.background = 'rgba(96,165,250,0.2)';
-              btn.style.borderColor = 'rgba(96,165,250,0.5)';
+              btn.style.background = 'rgba(0,180,255,0.15)';
+              btn.style.borderColor = 'rgba(0,180,255,0.4)';
+              btn.style.transform = 'translateY(-1px)';
             });
             btn.addEventListener('mouseleave', () => {
-              btn.style.background = 'rgba(96,165,250,0.1)';
-              btn.style.borderColor = 'rgba(96,165,250,0.3)';
+              btn.style.background = 'rgba(0,180,255,0.08)';
+              btn.style.borderColor = 'rgba(0,180,255,0.2)';
+              btn.style.transform = 'translateY(0)';
             });
           }
         });
@@ -3824,19 +3831,19 @@ Respond with JSON only:
           };
           
           const categoryColors = {
-            clarification: '#3b82f6',
-            improvement: '#22c55e',
-            expansion: '#a855f7',
+            clarification: '#00b4ff',
+            improvement: '#10b981',
+            expansion: '#7850c8',
             critical: '#f59e0b',
-            creative: '#ec4899'
+            creative: '#a855f7'
           };
           
           const categoryBg = {
-            clarification: 'rgba(59,130,246,0.1)',
-            improvement: 'rgba(34,197,94,0.1)',
-            expansion: 'rgba(168,85,247,0.1)',
+            clarification: 'rgba(0,180,255,0.1)',
+            improvement: 'rgba(16,185,129,0.1)',
+            expansion: 'rgba(120,80,200,0.1)',
             critical: 'rgba(245,158,11,0.1)',
-            creative: 'rgba(236,72,153,0.1)'
+            creative: 'rgba(168,85,247,0.1)'
           };
           
           promptData.questions.forEach((q, idx) => {
@@ -3846,12 +3853,12 @@ Respond with JSON only:
             
             promptCard.style.cssText = `
               padding:18px;
-              background:${bg};
+              background:rgba(10,15,28,0.6);
               border:1px solid ${color}33;
               border-left:4px solid ${color};
               border-radius:10px;
               transition:all 0.2s ease;
-              cursor:pointer;
+              backdrop-filter:blur(10px);
             `;
             
             const icon = categoryIcons[q.category] || '💬';
@@ -3880,13 +3887,13 @@ Respond with JSON only:
             
             // Hover effects
             promptCard.addEventListener('mouseenter', () => {
-              promptCard.style.background = `${bg.replace('0.1', '0.15')}`;
+              promptCard.style.background = 'rgba(10,15,28,0.8)';
               promptCard.style.borderColor = `${color}66`;
               promptCard.style.transform = 'translateY(-2px)';
-              promptCard.style.boxShadow = `0 8px 24px ${color}22`;
+              promptCard.style.boxShadow = `0 8px 24px ${color}40`;
             });
             promptCard.addEventListener('mouseleave', () => {
-              promptCard.style.background = bg;
+              promptCard.style.background = 'rgba(10,15,28,0.6)';
               promptCard.style.borderColor = `${color}33`;
               promptCard.style.transform = 'translateY(0)';
               promptCard.style.boxShadow = 'none';
@@ -3959,6 +3966,53 @@ Respond with JSON only:
             
             list.appendChild(promptCard);
           });
+          
+          // Add regenerate button at the bottom
+          const regenerateContainer = document.createElement('div');
+          regenerateContainer.style.cssText = 'margin-top:24px;padding:20px;background:rgba(10,15,28,0.4);border:2px dashed rgba(0,180,255,0.3);border-radius:12px;text-align:center;';
+          regenerateContainer.innerHTML = `
+            <button id="cb-regenerate-btn" class="cb-btn" style="
+              padding:14px 32px;
+              font-size:14px;
+              font-weight:700;
+              background:linear-gradient(135deg,rgba(0,180,255,0.2),rgba(120,80,200,0.2));
+              border:2px solid rgba(0,180,255,0.3);
+              border-radius:10px;
+              color:#fff;
+              cursor:pointer;
+              transition:all 0.3s ease;
+              text-transform:uppercase;
+              letter-spacing:1px;
+              font-family:'Bebas Neue',sans-serif;
+            ">
+              🔄 Regenerate All Prompts
+            </button>
+          `;
+          
+          const regenerateBtn = regenerateContainer.querySelector('#cb-regenerate-btn');
+          regenerateBtn.addEventListener('mouseenter', () => {
+            regenerateBtn.style.background = 'linear-gradient(135deg,rgba(0,180,255,0.3),rgba(120,80,200,0.3))';
+            regenerateBtn.style.borderColor = 'rgba(0,180,255,0.5)';
+            regenerateBtn.style.transform = 'translateY(-2px)';
+            regenerateBtn.style.boxShadow = '0 6px 20px rgba(0,180,255,0.4)';
+          });
+          regenerateBtn.addEventListener('mouseleave', () => {
+            regenerateBtn.style.background = 'linear-gradient(135deg,rgba(0,180,255,0.2),rgba(120,80,200,0.2))';
+            regenerateBtn.style.borderColor = 'rgba(0,180,255,0.3)';
+            regenerateBtn.style.transform = 'translateY(0)';
+            regenerateBtn.style.boxShadow = 'none';
+          });
+          regenerateBtn.addEventListener('click', () => {
+            const generateBtn = shadow.getElementById('cb-generate-prompts');
+            if (generateBtn) {
+              regenerateBtn.innerHTML = '⏳ Regenerating...';
+              regenerateBtn.disabled = true;
+              regenerateBtn.style.opacity = '0.6';
+              generateBtn.click();
+            }
+          });
+          
+          list.appendChild(regenerateContainer);
         }
         
       } catch (e) {
