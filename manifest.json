@@ -51,6 +51,7 @@
         "utils/translator.js",
         "utils/rewriter.js",
         "translatePanel.js",
+        "security.js",
         "adapters.js",
         "storage.js",
         "embeddings.js",

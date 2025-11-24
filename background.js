@@ -1,13 +1,44 @@
 // background.js
 
-// Import RAG and MCP modules (using importScripts for service worker)
+// Import security, RAG and MCP modules (using importScripts for service worker)
 try {
   // Note: Service workers in MV3 support ES modules if manifest sets "type": "module"
   // We'll use dynamic import for these modules
-  importScripts('ragEngine.js', 'mcpBridge.js');
-  console.log('[ChatBridge] RAG and MCP modules loaded in background');
+  importScripts('security.js', 'ragEngine.js', 'mcpBridge.js');
+  console.log('[ChatBridge] Security, RAG and MCP modules loaded in background');
 } catch (e) {
-  console.warn('[ChatBridge] Could not load RAG/MCP modules:', e);
+  console.warn('[ChatBridge] Could not load modules:', e);
+}
+
+// Initialize rate limiters
+const rateLimiters = {
+  gemini: { maxPerMinute: 10, maxPerHour: 100, requests: [] },
+  scan: { maxPerMinute: 5, maxPerHour: 50, requests: [] }
+};
+
+function checkRateLimit(limiter) {
+  const now = Date.now();
+  const oneMinuteAgo = now - 60 * 1000;
+  const oneHourAgo = now - 60 * 60 * 1000;
+
+  limiter.requests = limiter.requests.filter(t => t > oneHourAgo);
+
+  const lastMinute = limiter.requests.filter(t => t > oneMinuteAgo).length;
+  const lastHour = limiter.requests.length;
+
+  if (lastMinute >= limiter.maxPerMinute) {
+    return { allowed: false, reason: 'rate_limit_minute', retryAfter: 60 };
+  }
+
+  if (lastHour >= limiter.maxPerHour) {
+    return { allowed: false, reason: 'rate_limit_hour', retryAfter: 3600 };
+  }
+
+  return { allowed: true };
+}
+
+function recordRequest(limiter) {
+  limiter.requests.push(Date.now());
 }
 
 // Gemini model priority: Best to worst based on rate limits
@@ -1260,9 +1291,23 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
   // Gemini cloud API handler
   if (msg && msg.type === 'call_gemini') {
+    // Check rate limit before processing
+    const rateCheck = checkRateLimit(rateLimiters.gemini);
+    if (!rateCheck.allowed) {
+      return sendResponse({ 
+        ok: false, 
+        error: 'rate_limited', 
+        message: `Rate limit exceeded. Try again in ${rateCheck.retryAfter} seconds.`,
+        retryAfter: rateCheck.retryAfter
+      });
+    }
+    
     if (!limiterTry()) return sendResponse({ ok:false, error: 'rate_limited' });
     (async () => {
       try {
+        // Record the request
+        recordRequest(rateLimiters.gemini);
+        
         let geminiApiKey = await getGeminiApiKey();
         if (!geminiApiKey) {
           return sendResponse({ ok:false, error: 'no_api_key', message: 'Gemini API key not configured. Open ChatBridge Options to set it.' });

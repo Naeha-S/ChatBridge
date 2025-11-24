@@ -3215,6 +3215,143 @@
     }
 
     // ============================================
+    // TRENDING THEMES WIDGET - Shows theme evolution over time using RAG
+    // ============================================
+    async function renderTrendingThemesWidget(container) {
+      try {
+        const themesSection = document.createElement('div');
+        themesSection.style.cssText = 'margin:16px 12px;';
+        
+        // Header
+        const header = document.createElement('div');
+        header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:12px;background:rgba(16,24,43,0.4);border:1px solid rgba(0,180,255,0.25);border-radius:8px 8px 0 0;cursor:pointer;';
+        header.innerHTML = `
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-size:16px;">📊</span>
+            <span style="font-weight:600;font-size:13px;color:#fff;">Trending Themes</span>
+            <span style="font-size:10px;color:rgba(255,255,255,0.4);">Conversation patterns over time</span>
+          </div>
+          <span id="cb-themes-toggle" style="font-size:18px;transition:transform 0.2s;">▼</span>
+        `;
+        
+        // Content area
+        const content = document.createElement('div');
+        content.id = 'cb-themes-content';
+        content.style.cssText = 'display:none;padding:12px;background:rgba(16,24,43,0.4);border:1px solid rgba(0,180,255,0.25);border-top:none;border-radius:0 0 8px 8px;';
+        
+        // Theme list
+        const themeList = document.createElement('div');
+        themeList.id = 'cb-themes-list';
+        themeList.style.cssText = 'display:flex;flex-direction:column;gap:12px;margin-bottom:12px;';
+        
+        // Time range selector
+        const controls = document.createElement('div');
+        controls.style.cssText = 'display:flex;gap:8px;margin-bottom:12px;';
+        controls.innerHTML = `
+          <button class="cb-themes-range cb-btn cb-btn-primary" data-range="day" style="flex:1;font-size:11px;padding:6px;">Today</button>
+          <button class="cb-themes-range cb-btn" data-range="week" style="flex:1;font-size:11px;padding:6px;">Week</button>
+          <button class="cb-themes-range cb-btn" data-range="month" style="flex:1;font-size:11px;padding:6px;">Month</button>
+          <button class="cb-themes-range cb-btn" data-range="all" style="flex:1;font-size:11px;padding:6px;">All Time</button>
+        `;
+        
+        content.appendChild(controls);
+        content.appendChild(themeList);
+        themesSection.appendChild(header);
+        themesSection.appendChild(content);
+        container.appendChild(themesSection);
+        
+        // Toggle handler
+        let isExpanded = false;
+        header.addEventListener('click', () => {
+          isExpanded = !isExpanded;
+          content.style.display = isExpanded ? 'block' : 'none';
+          document.getElementById('cb-themes-toggle').style.transform = isExpanded ? 'rotate(180deg)' : 'rotate(0deg)';
+          if (isExpanded && themeList.children.length === 0) {
+            refreshThemes('day');
+          }
+        });
+        
+        // Range button handlers
+        controls.querySelectorAll('.cb-themes-range').forEach(btn => {
+          btn.addEventListener('click', () => {
+            controls.querySelectorAll('.cb-themes-range').forEach(b => {
+              b.classList.remove('cb-btn-primary');
+              b.classList.add('cb-btn');
+            });
+            btn.classList.add('cb-btn-primary');
+            btn.classList.remove('cb-btn');
+            refreshThemes(btn.dataset.range);
+          });
+        });
+        
+        // Refresh themes display
+        async function refreshThemes(range) {
+          try {
+            themeList.innerHTML = '<div style="text-align:center;padding:20px;color:rgba(255,255,255,0.5);">Loading themes...</div>';
+            
+            if (typeof window.RAGEngine === 'undefined' || typeof window.RAGEngine.getThemeEvolution !== 'function') {
+              themeList.innerHTML = '<div style="text-align:center;padding:20px;color:rgba(255,255,255,0.5);">RAG Engine not available</div>';
+              return;
+            }
+            
+            const evolution = await window.RAGEngine.getThemeEvolution({ bucket: range });
+            
+            if (!evolution || !evolution.themes || evolution.themes.length === 0) {
+              themeList.innerHTML = '<div class="cb-empty-state">No themes found yet. Start conversations to see patterns emerge!</div>';
+              return;
+            }
+            
+            themeList.innerHTML = '';
+            
+            evolution.themes.slice(0, 8).forEach(theme => {
+              const themeCard = document.createElement('div');
+              themeCard.style.cssText = 'padding:10px;background:rgba(10,15,28,0.5);border:1px solid rgba(0,180,255,0.2);border-radius:6px;';
+              
+              const themeHeader = document.createElement('div');
+              themeHeader.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;';
+              
+              const themeName = document.createElement('div');
+              themeName.style.cssText = 'font-weight:600;font-size:12px;color:#fff;';
+              themeName.textContent = theme.name;
+              
+              const themeCount = document.createElement('div');
+              themeCount.style.cssText = 'font-size:11px;color:rgba(255,255,255,0.6);background:rgba(0,180,255,0.2);padding:2px 8px;border-radius:10px;';
+              themeCount.textContent = `${theme.count} mentions`;
+              
+              themeHeader.appendChild(themeName);
+              themeHeader.appendChild(themeCount);
+              
+              // Sparkline visualization
+              const sparkline = document.createElement('div');
+              sparkline.style.cssText = 'height:30px;display:flex;align-items:flex-end;gap:2px;margin-top:6px;';
+              
+              if (theme.sparkline && theme.sparkline.length > 0) {
+                const max = Math.max(...theme.sparkline, 1);
+                theme.sparkline.forEach(val => {
+                  const bar = document.createElement('div');
+                  const height = (val / max) * 100;
+                  bar.style.cssText = `flex:1;background:rgba(0,180,255,0.6);border-radius:2px 2px 0 0;height:${height}%;min-height:2px;`;
+                  sparkline.appendChild(bar);
+                });
+              }
+              
+              themeCard.appendChild(themeHeader);
+              themeCard.appendChild(sparkline);
+              themeList.appendChild(themeCard);
+            });
+            
+          } catch (e) {
+            debugLog('refreshThemes error:', e);
+            themeList.innerHTML = '<div style="text-align:center;padding:20px;color:rgba(255,99,71,0.8);">Failed to load themes</div>';
+          }
+        }
+        
+      } catch (e) {
+        debugLog('renderTrendingThemesWidget error:', e);
+      }
+    }
+
+    // ============================================
     // PROMPT DESIGNER - Context-aware next-step generator
     // ============================================
 
@@ -4052,6 +4189,11 @@ Respond with JSON only:
         await renderSmartLibraryWidget(insightsContent);
 
         // ============================================
+        // TRENDING THEMES WIDGET
+        // ============================================
+        await renderTrendingThemesWidget(insightsContent);
+
+        // ============================================
         // IMAGE VAULT WIDGET
         // ============================================
         await renderImageVaultWidget(insightsContent);
@@ -4586,8 +4728,14 @@ Respond with JSON only:
         if (typeof window.MCPBridge !== 'undefined') {
           try {
             const stats = window.MCPBridge.getStats();
-            statusIcon.textContent = '✅';
-            statusText.innerHTML = `<b>MCP Connected</b><br/><span style="font-size:11px;opacity:0.8;">Resources: ${stats.registeredResources.join(', ') || 'None'}</span>`;
+            const resourceCount = stats.registeredResources.length;
+            if (resourceCount > 0) {
+              statusIcon.textContent = '✅';
+              statusText.innerHTML = `<b>MCP Connected</b><br/><span style="font-size:11px;opacity:0.8;">${resourceCount} resources: ${stats.registeredResources.join(', ')}</span>`;
+            } else {
+              statusIcon.textContent = '⚠️';
+              statusText.innerHTML = `<b>MCP Initialized</b><br/><span style="font-size:11px;opacity:0.8;">No resources registered yet</span>`;
+            }
           } catch (e) {
             statusIcon.textContent = '⚠️';
             statusText.innerHTML = `<b>MCP Loaded</b><br/><span style="font-size:11px;opacity:0.8;">Status check failed</span>`;
@@ -10712,6 +10860,25 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         } catch (_) {}
       }
       
+      // AUTO-INDEX: Index conversation into RAG after successful scan (non-blocking)
+      const autoIndexConversation = async (messages) => {
+        if (!messages || messages.length === 0) return;
+        try {
+          if (typeof window.RAGEngine !== 'undefined' && typeof window.RAGEngine.indexConversation === 'function') {
+            const metadata = {
+              platform: window.location.hostname,
+              url: window.location.href,
+              timestamp: Date.now(),
+              messageCount: messages.length
+            };
+            await window.RAGEngine.indexConversation(messages, metadata);
+            debugLog('[Auto-Index] Indexed', messages.length, 'messages into RAG');
+          }
+        } catch (e) {
+          debugLog('[Auto-Index] Failed:', e);
+        }
+      };
+      
       // Try AdapterGeneric fallback
       if ((!raw || !raw.length) && typeof window.AdapterGeneric !== 'undefined' && typeof window.AdapterGeneric.getMessages === 'function') {
         try { 
@@ -10801,6 +10968,23 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       };
       await saveConversation(convObj);
       
+      // Auto-index into RAG (non-blocking)
+      setTimeout(async () => {
+        try {
+          if (typeof window.RAGEngine !== 'undefined' && typeof window.RAGEngine.indexConversation === 'function') {
+            await window.RAGEngine.indexConversation(normalized, {
+              platform: convObj.platform,
+              url: convObj.url,
+              timestamp: convObj.ts,
+              messageCount: normalized.length
+            });
+            debugLog('[Auto-Index] Successfully indexed', normalized.length, 'messages');
+          }
+        } catch (e) {
+          debugLog('[Auto-Index] Failed:', e);
+        }
+      }, 50);
+      
       // Auto-summarize in background after save (non-blocking)
       if (normalized.length > 10) {
         setTimeout(async () => {
@@ -10844,6 +11028,36 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
 
   async function saveConversation(conv) {
     try {
+      // SECURITY: Sanitize conversation before saving
+      if (typeof window.ChatBridgeSecurity !== 'undefined' && typeof window.ChatBridgeSecurity.sanitize === 'function') {
+        try {
+          // Check for sensitive data
+          const fullText = (conv && conv.conversation) ? conv.conversation.map(m => m.text || '').join('\n') : '';
+          const findings = window.ChatBridgeSecurity.detectSensitiveData(fullText);
+          
+          if (findings && findings.length > 0) {
+            console.warn('[ChatBridge Security] Sensitive data detected in conversation:', findings);
+            
+            // Auto-sanitize the conversation
+            if (Array.isArray(conv.conversation)) {
+              conv.conversation = conv.conversation.map(msg => ({
+                ...msg,
+                text: window.ChatBridgeSecurity.sanitize(msg.text || '', { preserve: 3 })
+              }));
+            }
+            
+            // Log security event
+            window.ChatBridgeSecurity.logSecurityEvent({
+              type: 'sensitive_data_detected',
+              details: { findings: findings.map(f => ({ type: f.type, count: f.count })), platform: conv.platform },
+              severity: 'high'
+            });
+          }
+        } catch (e) {
+          console.warn('[ChatBridge Security] Sanitization check failed:', e);
+        }
+      }
+      
       // persist to BOTH localStorage (page-local) AND chrome.storage.local (extension-wide)
       const key = 'chatbridge:conversations';
 
@@ -11203,6 +11417,17 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
   function initChatBridge() {
     try { 
       const ui = injectUI(); 
+      
+      // Initialize MCP Bridge to enable agent-to-agent communication
+      if (typeof window.MCPBridge !== 'undefined') {
+        try {
+          window.MCPBridge.init();
+          _cbMCPInitialized = true;
+          console.log('[ChatBridge] MCP Bridge initialized with resources:', window.MCPBridge.getStats().registeredResources);
+        } catch (e) {
+          console.warn('[ChatBridge] MCP init failed:', e);
+        }
+      }
     
     // Keyboard command handlers
     if (ui && ui.avatar && ui.panel) {
