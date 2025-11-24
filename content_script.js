@@ -1144,19 +1144,37 @@
 
   // --- Internal views (Prompt Designer, Summarize, Rewrite, Translate) - inline sections ---
   
-  // Prompt Designer view (formerly Sync Tone)
-  const promptDesignerView = document.createElement('div'); promptDesignerView.className = 'cb-internal-view'; promptDesignerView.id = 'cb-prompt-designer-view'; promptDesignerView.setAttribute('data-cb-ignore','true');
-  const pdTop = document.createElement('div'); pdTop.className = 'cb-view-top';
-  const pdTitle = document.createElement('div'); pdTitle.className = 'cb-view-title'; pdTitle.textContent = '✨ Prompt Designer';
-  const btnClosePD = document.createElement('button'); btnClosePD.className = 'cb-view-close'; btnClosePD.textContent = '✕';
+  // Prompt Designer view - Modern Clean Design
+  const promptDesignerView = document.createElement('div'); 
+  promptDesignerView.className = 'cb-internal-view'; 
+  promptDesignerView.id = 'cb-prompt-designer-view'; 
+  promptDesignerView.setAttribute('data-cb-ignore','true');
+  
+  const pdTop = document.createElement('div'); 
+  pdTop.className = 'cb-view-top';
+  
+  const pdTitle = document.createElement('div'); 
+  pdTitle.className = 'cb-view-title'; 
+  pdTitle.innerHTML = '<span style="font-size:20px;margin-right:8px;">✨</span>Smart Prompts';
+  
+  const btnClosePD = document.createElement('button'); 
+  btnClosePD.className = 'cb-view-close'; 
+  btnClosePD.textContent = '✕';
   btnClosePD.setAttribute('aria-label','Close Prompt Designer view');
-  pdTop.appendChild(pdTitle); pdTop.appendChild(btnClosePD);
+  
+  pdTop.appendChild(pdTitle); 
+  pdTop.appendChild(btnClosePD);
   promptDesignerView.appendChild(pdTop);
-  const pdIntro = document.createElement('div'); pdIntro.className = 'cb-view-intro'; pdIntro.textContent = 'Get AI-powered prompt suggestions for your next steps in this conversation. Smart prompts tailored to your chat context.';
+  
+  const pdIntro = document.createElement('div'); 
+  pdIntro.className = 'cb-view-intro'; 
+  pdIntro.innerHTML = '<strong>AI-powered prompt suggestions</strong> to help you get more from your conversations.<br><span style="font-size:12px;opacity:0.8;">Generated prompts are tailored to your chat context and conversation flow.</span>';
   promptDesignerView.appendChild(pdIntro);
   
   // Prompt Designer content container
-  const pdContent = document.createElement('div'); pdContent.id = 'cb-pd-content'; pdContent.style.cssText = 'margin:12px 0;';
+  const pdContent = document.createElement('div'); 
+  pdContent.id = 'cb-pd-content'; 
+  pdContent.style.cssText = 'margin:0;padding:0;';
   promptDesignerView.appendChild(pdContent);
   
   // Append to panel
@@ -1416,9 +1434,6 @@
   const btnIndexAll = document.createElement('button'); btnIndexAll.className = 'cb-btn'; btnIndexAll.id = 'btnIndexAll'; btnIndexAll.textContent = 'Index all saved chats'; btnIndexAll.title = 'Create embeddings and index all saved chats (requires API key)';
   btnIndexAll.setAttribute('aria-label', 'Index all saved chats');
   smartAskRow.appendChild(btnIndexAll);
-  const btnNormalizeTags = document.createElement('button'); btnNormalizeTags.className = 'cb-btn'; btnNormalizeTags.id = 'btnNormalizeTags'; btnNormalizeTags.textContent = 'Normalize tags & index'; btnNormalizeTags.title = 'Normalize tags for all saved chats and re-index them';
-  btnNormalizeTags.setAttribute('aria-label', 'Normalize tags and index');
-  smartAskRow.appendChild(btnNormalizeTags);
   smartView.appendChild(smartAskRow);
 
   const smartAnswer = document.createElement('div'); smartAnswer.id = 'cb-smart-answer'; smartAnswer.className = 'cb-view-result'; smartAnswer.textContent = '';
@@ -1942,6 +1957,9 @@
         try { if (typeof smartView !== 'undefined' && smartView) smartView.classList.remove('cb-view-active'); } catch(_) {}
         try { if (typeof graphView !== 'undefined' && graphView) graphView.classList.remove('cb-view-active'); } catch(_) {}
         try { if (typeof insightsView !== 'undefined' && insightsView) insightsView.classList.remove('cb-view-active'); } catch(_) {}
+        try { if (typeof promptDesignerView !== 'undefined' && promptDesignerView) promptDesignerView.classList.remove('cb-view-active'); } catch(_) {}
+        try { if (typeof agentView !== 'undefined' && agentView) agentView.classList.remove('cb-view-active'); } catch(_) {}
+        try { if (typeof settingsPanel !== 'undefined' && settingsPanel) settingsPanel.classList.remove('cb-view-active'); } catch(_) {}
       } catch (e) {}
     }
 
@@ -3549,87 +3567,133 @@ Respond with JSON only:
       };
     }
 
-    // Render Prompt Designer Widget
+    // Render Prompt Designer Widget - Clean Modern UI
     async function renderPromptDesignerWidget(container) {
       try {
-        const designerSection = document.createElement('div');
-        designerSection.style.cssText = 'margin:16px 12px;';
+        container.innerHTML = '';
+        container.style.cssText = 'padding:0;margin:0;';
         
-        // Header with toggle
-        const header = document.createElement('div');
-        header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:var(--cb-space-md);background:rgba(16,24,43,0.5);border:1px solid rgba(96,165,250,0.3);border-radius:var(--cb-radius-md) var(--cb-radius-md) 0 0;cursor:pointer;transition:background 0.2s;';
-        header.innerHTML = `
-          <div style="display:flex;align-items:center;gap:var(--cb-space-sm);">
-            <span style="font-size:18px;">✨</span>
-            <span style="font-weight:600;font-size:var(--cb-text-sm);color:var(--cb-white);">Prompt Designer</span>
-            <span style="font-size:var(--cb-text-xs);color:rgba(255,255,255,0.5);">AI-powered suggestions</span>
-          </div>
-          <span id="cb-designer-toggle" style="font-size:18px;transition:transform 0.2s;">▼</span>
+        // Main wrapper
+        const wrapper = document.createElement('div');
+        wrapper.style.cssText = 'background:rgba(15,23,42,0.6);border-radius:12px;overflow:hidden;border:1px solid rgba(96,165,250,0.2);';
+        
+        // Action bar at top
+        const actionBar = document.createElement('div');
+        actionBar.style.cssText = 'padding:16px 20px;background:linear-gradient(135deg,rgba(59,130,246,0.12),rgba(147,51,234,0.12));border-bottom:1px solid rgba(96,165,250,0.15);display:flex;gap:10px;align-items:center;';
+        actionBar.innerHTML = `
+          <button id="cb-prompts-generate" class="cb-btn cb-btn-primary" style="flex:1;font-size:14px;font-weight:600;padding:12px 20px;background:linear-gradient(135deg,#3b82f6,#8b5cf6);border:none;border-radius:8px;box-shadow:0 2px 8px rgba(59,130,246,0.3);transition:all 0.2s;">
+            <span style="font-size:16px;margin-right:6px;">✨</span>
+            Generate Smart Prompts
+          </button>
+          <button id="cb-prompts-refresh" class="cb-btn" style="padding:12px 16px;font-size:13px;background:rgba(96,165,250,0.1);border:1px solid rgba(96,165,250,0.3);border-radius:8px;transition:all 0.2s;">
+            🔄
+          </button>
+          <button id="cb-prompts-history" class="cb-btn" style="padding:12px 16px;font-size:13px;background:rgba(96,165,250,0.1);border:1px solid rgba(96,165,250,0.3);border-radius:8px;transition:all 0.2s;">
+            📜
+          </button>
         `;
         
-        // Content area (collapsible)
-        const content = document.createElement('div');
-        content.id = 'cb-designer-content';
-        content.style.cssText = 'display:none;padding:var(--cb-space-md);background:rgba(16,24,43,0.5);border:1px solid rgba(96,165,250,0.3);border-top:none;border-radius:0 0 var(--cb-radius-md) var(--cb-radius-md);';
+        // Prompts container
+        const promptsContainer = document.createElement('div');
+        promptsContainer.style.cssText = 'padding:20px;';
         
-        // Prompts list
         const promptsList = document.createElement('div');
         promptsList.id = 'cb-prompts-list';
-        promptsList.style.cssText = 'display:flex;flex-direction:column;gap:var(--cb-space-md);margin-bottom:var(--cb-space-md);';
+        promptsList.style.cssText = 'display:grid;gap:12px;';
         
-        // Controls
-        const controls = document.createElement('div');
-        controls.style.cssText = 'display:flex;gap:var(--cb-space-sm);flex-wrap:wrap;';
-        controls.innerHTML = `
-          <button id="cb-prompts-generate" class="cb-btn cb-btn-primary" style="flex:1 1 auto;min-width:120px;font-size:var(--cb-text-xs);padding:var(--cb-space-sm) var(--cb-space-md);">✨ Generate Prompts</button>
-          <button id="cb-prompts-refresh" class="cb-btn cb-btn-secondary" style="flex:0 1 auto;font-size:var(--cb-text-xs);padding:var(--cb-space-sm) var(--cb-space-md);">🔄 Refresh</button>
-          <button id="cb-prompts-history" class="cb-btn cb-btn-secondary" style="flex:0 1 auto;font-size:var(--cb-text-xs);padding:var(--cb-space-sm) var(--cb-space-md);">📜 History</button>
+        // Beautiful empty state
+        promptsList.innerHTML = `
+          <div style="text-align:center;padding:60px 20px;">
+            <div style="font-size:64px;margin-bottom:20px;opacity:0.7;line-height:1;">🎯</div>
+            <h3 style="margin:0 0 12px;font-size:18px;font-weight:700;color:#fff;">Ready to Generate</h3>
+            <p style="margin:0 0 24px;font-size:14px;color:rgba(255,255,255,0.6);max-width:320px;margin-left:auto;margin-right:auto;line-height:1.6;">
+              Click the button above to analyze your conversation and get AI-powered prompt suggestions.
+            </p>
+            <div style="display:inline-flex;align-items:center;gap:8px;padding:10px 16px;background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.3);border-radius:8px;font-size:12px;color:rgba(59,130,246,1);">
+              <span>💡</span>
+              <span>Works best with 3+ messages</span>
+            </div>
+          </div>
         `;
         
-        content.appendChild(promptsList);
-        content.appendChild(controls);
-        designerSection.appendChild(header);
-        designerSection.appendChild(content);
-        container.appendChild(designerSection);
+        promptsContainer.appendChild(promptsList);
+        wrapper.appendChild(actionBar);
+        wrapper.appendChild(promptsContainer);
+        container.appendChild(wrapper);
         
-        // Toggle handler
-        let isExpanded = false;
-        header.addEventListener('click', () => {
-          isExpanded = !isExpanded;
-          content.style.display = isExpanded ? 'block' : 'none';
-          document.getElementById('cb-designer-toggle').style.transform = isExpanded ? 'rotate(180deg)' : 'rotate(0deg)';
+        // Add hover effects
+        const generateBtn = shadow.getElementById('cb-prompts-generate');
+        const refreshBtn = shadow.getElementById('cb-prompts-refresh');
+        const historyBtn = shadow.getElementById('cb-prompts-history');
+        
+        if (generateBtn) {
+          generateBtn.addEventListener('mouseenter', () => {
+            generateBtn.style.transform = 'translateY(-1px)';
+            generateBtn.style.boxShadow = '0 4px 16px rgba(59,130,246,0.4)';
+          });
+          generateBtn.addEventListener('mouseleave', () => {
+            generateBtn.style.transform = 'translateY(0)';
+            generateBtn.style.boxShadow = '0 2px 8px rgba(59,130,246,0.3)';
+          });
+        }
+        
+        [refreshBtn, historyBtn].forEach(btn => {
+          if (btn) {
+            btn.addEventListener('mouseenter', () => {
+              btn.style.background = 'rgba(96,165,250,0.2)';
+              btn.style.borderColor = 'rgba(96,165,250,0.5)';
+            });
+            btn.addEventListener('mouseleave', () => {
+              btn.style.background = 'rgba(96,165,250,0.1)';
+              btn.style.borderColor = 'rgba(96,165,250,0.3)';
+            });
+          }
         });
         
         // Generate prompts handler
         const generateHandler = async () => {
-          const btn = document.getElementById('cb-prompts-generate') || document.getElementById('cb-prompts-refresh');
-          addLoadingToButton(btn, 'Generating...');
+          const btn = shadow.getElementById('cb-prompts-generate') || shadow.getElementById('cb-prompts-refresh');
+          if (!btn) return;
+          
+          const originalHTML = btn.innerHTML;
+          btn.innerHTML = '<span style="display:inline-block;animation:spin 1s linear infinite;">⚙️</span> Generating...';
+          btn.disabled = true;
+          btn.style.opacity = '0.7';
+          
           try {
             const msgs = await scanChat();
             if (!msgs || msgs.length === 0) {
-              toast('No messages to analyze');
+              toast('⚠️ No messages to analyze');
               return;
             }
             
             const prompts = await generateSmartPrompts(msgs);
-            savePromptVersion(prompts); // Save to history
+            savePromptVersion(prompts);
             renderPrompts(prompts, msgs);
-            toast('Prompts generated');
+            toast('✨ Prompts generated successfully');
           } catch (e) {
             debugLog('Generate prompts error:', e);
-            toast('Prompt generation failed');
+            toast('❌ Prompt generation failed');
           } finally {
-            removeLoadingFromButton(btn, btn.id === 'cb-prompts-generate' ? '✨ Generate Prompts' : '🔄 Refresh');
+            btn.innerHTML = originalHTML;
+            btn.disabled = false;
+            btn.style.opacity = '1';
           }
         };
         
-        document.getElementById('cb-prompts-generate').addEventListener('click', generateHandler);
-        document.getElementById('cb-prompts-refresh').addEventListener('click', generateHandler);
+        if (shadow.getElementById('cb-prompts-generate')) {
+          shadow.getElementById('cb-prompts-generate').addEventListener('click', generateHandler);
+        }
+        if (shadow.getElementById('cb-prompts-refresh')) {
+          shadow.getElementById('cb-prompts-refresh').addEventListener('click', generateHandler);
+        }
         
         // History button handler
-        document.getElementById('cb-prompts-history').addEventListener('click', () => {
-          showPromptHistory();
-        });
+        if (shadow.getElementById('cb-prompts-history')) {
+          shadow.getElementById('cb-prompts-history').addEventListener('click', () => {
+            showPromptHistory();
+          });
+        }
         
         // Save prompt version to history
         function savePromptVersion(promptData) {
@@ -3719,23 +3783,37 @@ Respond with JSON only:
           }
         }
         
-        // Render prompts in list
+        // Render prompts in list - Clean Modern Design
         function renderPrompts(promptData, messages) {
-          const list = document.getElementById('cb-prompts-list');
+          const list = shadow.getElementById('cb-prompts-list');
           if (!list) return;
           
           list.innerHTML = '';
           
           if (!promptData || !promptData.questions || promptData.questions.length === 0) {
             list.innerHTML = `
-              <div class="cb-empty-state">
-                <div class="cb-empty-state-icon">✨</div>
-                <div class="cb-empty-state-title">No Prompts Yet</div>
-                <div class="cb-empty-state-text">Click "Generate Prompts" below to get AI-powered suggestions tailored to your conversation.</div>
+              <div style="text-align:center;padding:40px 20px;">
+                <div style="font-size:48px;margin-bottom:16px;opacity:0.5;">💭</div>
+                <p style="margin:0;font-size:14px;color:rgba(255,255,255,0.5);">No prompts generated yet</p>
               </div>
             `;
             return;
           }
+          
+          // Success header
+          const header = document.createElement('div');
+          header.style.cssText = 'margin-bottom:20px;padding:16px;background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);border-radius:10px;display:flex;align-items:center;justify-content:space-between;';
+          header.innerHTML = `
+            <div style="display:flex;align-items:center;gap:12px;">
+              <span style="font-size:24px;">✅</span>
+              <div>
+                <div style="font-size:15px;font-weight:700;color:#22c55e;">${promptData.questions.length} Prompts Generated</div>
+                <div style="font-size:12px;color:rgba(255,255,255,0.5);margin-top:2px;">Ready to use or copy</div>
+              </div>
+            </div>
+            <div style="font-size:11px;color:rgba(255,255,255,0.4);">${new Date().toLocaleTimeString()}</div>
+          `;
+          list.appendChild(header);
           
           const categoryIcons = {
             clarification: '❓',
@@ -3746,21 +3824,32 @@ Respond with JSON only:
           };
           
           const categoryColors = {
-            clarification: '#60a5fa',
-            improvement: '#34d399',
-            expansion: '#a78bfa',
+            clarification: '#3b82f6',
+            improvement: '#22c55e',
+            expansion: '#a855f7',
             critical: '#f59e0b',
             creative: '#ec4899'
           };
           
+          const categoryBg = {
+            clarification: 'rgba(59,130,246,0.1)',
+            improvement: 'rgba(34,197,94,0.1)',
+            expansion: 'rgba(168,85,247,0.1)',
+            critical: 'rgba(245,158,11,0.1)',
+            creative: 'rgba(236,72,153,0.1)'
+          };
+          
           promptData.questions.forEach((q, idx) => {
             const promptCard = document.createElement('div');
+            const color = categoryColors[q.category] || '#3b82f6';
+            const bg = categoryBg[q.category] || 'rgba(59,130,246,0.1)';
+            
             promptCard.style.cssText = `
-              padding:var(--cb-space-md);
-              background:var(--cb-bg2);
-              border:1px solid var(--cb-border);
-              border-left:3px solid ${categoryColors[q.category] || '#60a5fa'};
-              border-radius:var(--cb-radius-md);
+              padding:18px;
+              background:${bg};
+              border:1px solid ${color}33;
+              border-left:4px solid ${color};
+              border-radius:10px;
               transition:all 0.2s ease;
               cursor:pointer;
             `;
@@ -3769,45 +3858,78 @@ Respond with JSON only:
             const categoryLabel = q.category.charAt(0).toUpperCase() + q.category.slice(1);
             
             promptCard.innerHTML = `
-              <div style="display:flex;flex-direction:column;gap:var(--cb-space-sm);">
-                <div style="display:flex;align-items:center;justify-content:space-between;gap:var(--cb-space-sm);">
-                  <div style="font-size:var(--cb-text-xs);color:${categoryColors[q.category] || '#60a5fa'};font-weight:600;padding:4px 8px;background:rgba(96,165,250,0.1);border-radius:var(--cb-radius-sm);letter-spacing:0.5px;">
-                    ${icon} ${categoryLabel}
-                  </div>
+              <div style="display:flex;flex-direction:column;gap:14px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;">
+                  <span style="display:inline-flex;align-items:center;gap:6px;font-size:11px;color:${color};font-weight:700;padding:6px 12px;background:${color}22;border-radius:20px;text-transform:uppercase;letter-spacing:0.5px;">
+                    <span style="font-size:14px;">${icon}</span>
+                    ${categoryLabel}
+                  </span>
+                  <span style="font-size:11px;color:rgba(255,255,255,0.3);font-weight:600;">#${idx + 1}</span>
                 </div>
-                <div style="font-size:var(--cb-text-sm);line-height:1.6;color:var(--cb-white);">${escapeHtmlSimple(q.text)}</div>
-                <div style="display:flex;gap:var(--cb-space-xs);margin-top:var(--cb-space-xs);">
-                  <button class="cb-prompt-copy cb-btn cb-btn-tertiary" title="Copy to clipboard" style="flex:1 1 auto;font-size:var(--cb-text-xs);padding:6px 10px;">📋 Copy</button>
-                  <button class="cb-prompt-send cb-btn cb-btn-primary" title="Send to chat input" style="flex:1 1 auto;font-size:var(--cb-text-xs);padding:6px 10px;">➤ Use</button>
+                <div style="font-size:14px;line-height:1.7;color:#fff;font-weight:400;">${escapeHtmlSimple(q.text)}</div>
+                <div style="display:flex;gap:8px;">
+                  <button class="cb-prompt-copy" style="flex:1;padding:10px;font-size:13px;font-weight:600;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:#fff;cursor:pointer;transition:all 0.2s;">
+                    📋 Copy
+                  </button>
+                  <button class="cb-prompt-send" style="flex:1;padding:10px;font-size:13px;font-weight:600;background:linear-gradient(135deg,${color},${color}dd);border:none;border-radius:8px;color:#fff;cursor:pointer;transition:all 0.2s;box-shadow:0 2px 8px ${color}33;">
+                    ➤ Use Now
+                  </button>
                 </div>
               </div>
             `;
             
+            // Hover effects
             promptCard.addEventListener('mouseenter', () => {
-              promptCard.style.borderColor = categoryColors[q.category] || '#60a5fa';
-              promptCard.style.background = 'rgba(96,165,250,0.05)';
-              promptCard.style.transform = 'translateY(-1px)';
-              promptCard.style.boxShadow = 'var(--cb-shadow-md)';
+              promptCard.style.background = `${bg.replace('0.1', '0.15')}`;
+              promptCard.style.borderColor = `${color}66`;
+              promptCard.style.transform = 'translateY(-2px)';
+              promptCard.style.boxShadow = `0 8px 24px ${color}22`;
             });
             promptCard.addEventListener('mouseleave', () => {
-              promptCard.style.borderColor = 'var(--cb-border)';
-              promptCard.style.background = 'var(--cb-bg2)';
+              promptCard.style.background = bg;
+              promptCard.style.borderColor = `${color}33`;
               promptCard.style.transform = 'translateY(0)';
               promptCard.style.boxShadow = 'none';
             });
             
+            // Copy button hover
+            const copyBtn = promptCard.querySelector('.cb-prompt-copy');
+            copyBtn.addEventListener('mouseenter', () => {
+              copyBtn.style.background = 'rgba(255,255,255,0.15)';
+              copyBtn.style.transform = 'scale(1.02)';
+            });
+            copyBtn.addEventListener('mouseleave', () => {
+              copyBtn.style.background = 'rgba(255,255,255,0.08)';
+              copyBtn.style.transform = 'scale(1)';
+            });
+            
+            // Send button hover
+            const sendBtn = promptCard.querySelector('.cb-prompt-send');
+            sendBtn.addEventListener('mouseenter', () => {
+              sendBtn.style.transform = 'scale(1.02)';
+              sendBtn.style.boxShadow = `0 4px 16px ${color}55`;
+            });
+            sendBtn.addEventListener('mouseleave', () => {
+              sendBtn.style.transform = 'scale(1)';
+              sendBtn.style.boxShadow = `0 2px 8px ${color}33`;
+            });
+            
             // Copy handler
-            promptCard.querySelector('.cb-prompt-copy').addEventListener('click', async () => {
+            copyBtn.addEventListener('click', async (e) => {
+              e.stopPropagation();
               try {
                 await navigator.clipboard.writeText(q.text);
-                toast('Prompt copied');
+                toast('✓ Copied to clipboard');
+                copyBtn.innerHTML = '✓ Copied!';
+                setTimeout(() => { copyBtn.innerHTML = '📋 Copy'; }, 2000);
               } catch (err) {
-                toast('Copy failed');
+                toast('❌ Copy failed');
               }
             });
             
             // Send to chat handler
-            promptCard.querySelector('.cb-prompt-send').addEventListener('click', async () => {
+            sendBtn.addEventListener('click', async (e) => {
+              e.stopPropagation();
               try {
                 const adapter = Object.values(window.SiteAdapters || {}).find(a => a.detect && a.detect());
                 if (adapter && adapter.getInput) {
@@ -3820,16 +3942,18 @@ Respond with JSON only:
                       input.dispatchEvent(ev);
                     });
                     input.focus();
-                    toast('Prompt inserted');
+                    toast('✓ Inserted into chat');
+                    sendBtn.innerHTML = '✓ Inserted!';
+                    setTimeout(() => { sendBtn.innerHTML = '➤ Use Now'; }, 2000);
                   } else {
-                    toast('Chat input not found');
+                    toast('⚠️ Chat input not found');
                   }
                 } else {
-                  toast('Platform not supported');
+                  toast('⚠️ Platform not supported');
                 }
               } catch (err) {
                 debugLog('Send prompt error:', err);
-                toast('Insert failed');
+                toast('❌ Insert failed');
               }
             });
             
@@ -8412,11 +8536,31 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           } else { sel = arr[0]; }
         } catch (_) { sel = arr[0]; }
         if (!sel || !sel.conversation || !sel.conversation.length) { toast('No messages in selected conversation'); return; }
-        // If a summary exists, restore that instead of the full chat
+        
+        // Auto-summarize if 10+ messages to preserve context without overwhelming the chat
         let formatted = '';
-        if (sel.summary && typeof sel.summary === 'string' && sel.summary.trim().length > 0) {
+        const msgCount = sel.conversation.length;
+        
+        if (msgCount >= 10 && (!sel.summary || sel.summary.trim().length === 0)) {
+          // Auto-summarize for better context preservation
+          toast(`Auto-summarizing ${msgCount} messages for optimal context...`);
+          try {
+            const fullText = sel.conversation.map(m => `${m.role}: ${m.text}`).join('\n\n');
+            const opts = { chunkSize: 14000, maxParallel: 3, length: 'comprehensive', summaryType: 'transfer' };
+            const summary = await hierarchicalSummarize(fullText, opts);
+            formatted = summary + '\n\n🔄 Please continue based on this context.';
+            // Save summary for future use
+            sel.summary = summary;
+            await saveConversation(sel);
+          } catch (sumErr) {
+            debugLog('Auto-summarize failed, using full text', sumErr);
+            formatted = sel.conversation.map(m => (m.role === 'user' ? 'User: ' : 'Assistant: ') + m.text).join('\n\n') + '\n\n🔄 Please continue the conversation.';
+          }
+        } else if (sel.summary && typeof sel.summary === 'string' && sel.summary.trim().length > 0) {
+          // Use existing summary
           formatted = sel.summary.trim();
         } else {
+          // Use full conversation for small chats
           formatted = sel.conversation.map(m => (m.role === 'user' ? 'User: ' : 'Assistant: ') + m.text).join('\n\n') + '\n\n🔄 Please continue the conversation.';
         }
         // Collect attachments from conversation
@@ -10263,17 +10407,49 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       try {
         const q = (smartInput && smartInput.value) ? smartInput.value.trim() : '';
         if (!q) { toast('Type a question to ask'); return; }
-        if (!lastSmartResults || !lastSmartResults.length) { toast('No search results to provide context. Run Search first.'); return; }
-  btnSmartAsk.disabled = true; addLoadingToButton(btnSmartAsk, 'Asking…'); smartAnswer.textContent = ''; announce('Asking AI for an answer');
-        // Combine top matches into context (limit to ~13000 chars)
-        let ctx = '';
-        for (let i=0;i<Math.min(6,lastSmartResults.length);i++) {
-          const t = lastSmartResults[i].snippetFull || '';
-          if (!t) continue;
-          if ((ctx + '\n\n' + t).length > 13000) break;
-          ctx += '\n\n--- Conversation excerpt ' + (i+1) + ' ---\n\n' + t;
+        
+        btnSmartAsk.disabled = true; addLoadingToButton(btnSmartAsk, 'Searching chats…'); smartAnswer.textContent = ''; announce('Searching saved chats for relevant info');
+        
+        // First, search saved chats for relevant context
+        let searchResults = [];
+        try {
+          const vres = await runVectorQuery(q, 8);
+          if (vres && vres.ok && Array.isArray(vres.results)) {
+            searchResults = vres.results;
+          }
+        } catch (searchErr) {
+          debugLog('Vector search failed', searchErr);
         }
-        const prompt = `You are an assistant that answers questions about a user's past chat logs. Use ONLY the provided conversation excerpts as context to answer the question. If the answer isn't contained in the excerpts, say you don't know.\n\nQuestion: ${q}\n\nContext: ${ctx}`;
+        
+        addLoadingToButton(btnSmartAsk, 'Asking AI…');
+        
+        // Build context from search results
+        let ctx = '';
+        if (searchResults.length > 0) {
+          const convs = await loadConversationsAsync();
+          for (let i = 0; i < Math.min(6, searchResults.length); i++) {
+            try {
+              const r = searchResults[i];
+              const id = String(r.id || '');
+              const conv = (convs || []).find(c => String(c.ts) === id);
+              if (conv && conv.conversation && conv.conversation.length) {
+                const snippet = conv.conversation.map(m => `${m.role}: ${m.text}`).join('\n').slice(0, 2000);
+                if ((ctx + '\n\n' + snippet).length > 13000) break;
+                ctx += '\n\n--- Conversation excerpt ' + (i + 1) + ' ---\n\n' + snippet;
+              }
+            } catch (e) {}
+          }
+        }
+        
+        // If context found, use it; otherwise answer directly with AI
+        let prompt = '';
+        if (ctx.trim().length > 100) {
+          prompt = `You are an assistant that answers questions about a user's past chat logs. Use the provided conversation excerpts as context to answer the question. If the answer isn't fully contained in the excerpts, you can supplement with your knowledge but clearly indicate what comes from the excerpts vs. your general knowledge.\n\nQuestion: ${q}\n\nContext from saved chats: ${ctx}`;
+        } else {
+          prompt = `Answer this question clearly and concisely: ${q}`;
+          smartAnswer.textContent = '(No relevant saved chats found. Using AI knowledge directly.)\n\n';
+        }
+        
         const res = await callGeminiAsync({ action: 'prompt', text: prompt, length: 'short' });
         if (res && res.ok) {
           const answerText = res.result || '(no answer)';
@@ -10498,62 +10674,6 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       }
     });
 
-    // Normalize tags (migration) for all saved conversations and re-index them
-    btnNormalizeTags.addEventListener('click', async () => {
-      try {
-  const prev = btnNormalizeTags.textContent;
-  addLoadingToButton(btnNormalizeTags, 'Normalizing...');
-        smartAnswer.textContent = '';
-
-        // load conversations
-        const convs = await loadConversationsAsync();
-        const arr = Array.isArray(convs) ? convs : [];
-        let updated = 0, extracted = 0;
-
-        for (let i = 0; i < arr.length; i++) {
-          const c = arr[i];
-          try {
-            const oldTopics = Array.isArray(c.topics) ? c.topics.slice() : [];
-            let normalized = [];
-
-            if (Array.isArray(c.topics) && c.topics.length) {
-              normalized = normalizeTopics(c.topics);
-            } else {
-              // try to extract topics for conversations that don't have them
-              try {
-                const full = (c && c.conversation) ? c.conversation.map(m => `${m.role}: ${m.text}`).join('\n\n') : '';
-                const prompt = `Extract up to 6 short topic tags (comma separated) that summarize the main topics in the following conversation. Output ONLY a comma-separated list of short tags (no extra text):\n\n${full}`;
-                const res = await callGeminiAsync({ action: 'prompt', text: prompt, length: 'short' });
-                if (res && res.ok && res.result) {
-                  const parts = (res.result || '').split(/[,\n]+/).map(t => t.trim()).filter(Boolean);
-                  const nt = normalizeTopics(parts);
-                  if (nt && nt.length) { normalized = nt; extracted++; }
-                }
-              } catch (e) { debugLog('topic extraction (migration) failed', e); }
-            }
-
-            // compare and update if changed
-            const oldJson = JSON.stringify(oldTopics || []);
-            const newJson = JSON.stringify(normalized || []);
-            if (newJson !== oldJson) {
-              arr[i].topics = normalized;
-              updated++;
-              try { localStorage.setItem('chatbridge:conversations', JSON.stringify(arr)); } catch (e) { debugLog('save migration update failed', e); }
-
-              // re-send to background for re-indexing
-              try {
-                const full = (c && c.conversation) ? c.conversation.map(m => `${m.role}: ${m.text}`).join('\n\n') : '';
-                chrome.runtime.sendMessage({ type: 'vector_index', payload: { id: String(c.ts), text: full, metadata: { platform: c.platform || location.hostname, url: c.url || location.href, ts: c.ts, topics: arr[i].topics || [] } } }, () => {});
-              } catch (e) { debugLog('vector_index send failed (migration)', e); }
-            }
-          } catch (e) { debugLog('migration loop item failed', e); }
-        }
-
-        smartAnswer.textContent = `Migration complete. Updated ${updated} conversations. Extracted tags for ${extracted} conversations.`;
-      } catch (e) { debugLog('normalize migration failed', e); smartAnswer.textContent = 'Migration failed: ' + (e && e.message ? e.message : String(e)); }
-  finally { removeLoadingFromButton(btnNormalizeTags, 'Normalize tags & index'); }
-    });
-
     function refreshHistory() {
       loadConversationsAsync().then(list => {
         const arr = Array.isArray(list) ? list : [];
@@ -10652,7 +10772,9 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         // Populate chat dropdown and always select the most recent (newly saved)
         try {
           while (chatSelect.firstChild) chatSelect.removeChild(chatSelect.firstChild);
-          arr.forEach(s => {
+          // Filter out chats with 0 messages
+          const validChats = arr.filter(s => s.conversation && s.conversation.length > 0);
+          validChats.forEach(s => {
             const o = document.createElement('option');
             o.value = String(s.ts);
             const count = (s.conversation||[]).length;
@@ -10792,7 +10914,21 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
     return { host, avatar, panel };
   }
 
+  // Debounce mechanism for scan operations
+  let scanDebounceTimer = null;
+  let lastScanTimestamp = 0;
+  const SCAN_DEBOUNCE_MS = 1000; // Wait 1 second between scans
+
   async function scanChat() {
+    // Debounce rapid scan calls
+    const now = Date.now();
+    if (now - lastScanTimestamp < SCAN_DEBOUNCE_MS) {
+      debugLog('[Scan] Debounced - too soon after last scan');
+      return window.ChatBridge?._lastScanResult || [];
+    }
+    lastScanTimestamp = now;
+    
+    debugLog('[Scan] Starting scan...');
     try {
       debugLog('=== SCAN START ===');
       const pick = (typeof window.pickAdapter === 'function') ? window.pickAdapter : null;
@@ -10940,25 +11076,6 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         } catch (_) {}
       }
       
-      // AUTO-INDEX: Index conversation into RAG after successful scan (non-blocking)
-      const autoIndexConversation = async (messages) => {
-        if (!messages || messages.length === 0) return;
-        try {
-          if (typeof window.RAGEngine !== 'undefined' && typeof window.RAGEngine.indexConversation === 'function') {
-            const metadata = {
-              platform: window.location.hostname,
-              url: window.location.href,
-              timestamp: Date.now(),
-              messageCount: messages.length
-            };
-            await window.RAGEngine.indexConversation(messages, metadata);
-            debugLog('[Auto-Index] Indexed', messages.length, 'messages into RAG');
-          }
-        } catch (e) {
-          debugLog('[Auto-Index] Failed:', e);
-        }
-      };
-      
       // Try AdapterGeneric fallback
       if ((!raw || !raw.length) && typeof window.AdapterGeneric !== 'undefined' && typeof window.AdapterGeneric.getMessages === 'function') {
         try { 
@@ -11026,6 +11143,12 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
     
     const normalized = normalizeMessages(raw || []);
     debugLog('=== SCAN COMPLETE ===', normalized.length, 'messages');
+    
+    // Cache the result for debouncing
+    try {
+      window.ChatBridge = window.ChatBridge || {};
+      window.ChatBridge._lastScanResult = normalized;
+    } catch (e) {}
 
     // Persist last scanned messages and attachments into debug object for downstream tools (e.g., media extract)
     try {
@@ -11037,49 +11160,64 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       }
     } catch(_) {}
 
-    // Save conversation immediately without blocking for summary
-    try {
-      const convObj = {
-        ts: Date.now(),
-        id: String(Date.now()),
-        platform: (function(){ try { return new URL(location.href).hostname; } catch(_) { return location.hostname || 'unknown'; } })(),
-        url: location.href,
-        conversation: normalized,
-      };
-      await saveConversation(convObj);
+    // Only save if we have messages
+    if (normalized.length === 0) {
+      debugLog('[Scan] No messages to save, skipping');
+      return normalized;
+    }
+
+    // Fire-and-forget: Save and index in background (don't block scan completion)
+    const convObj = {
+      ts: Date.now(),
+      id: String(Date.now()),
+      platform: (function(){ try { return new URL(location.href).hostname; } catch(_) { return location.hostname || 'unknown'; } })(),
+      url: location.href,
+      conversation: normalized,
+    };
+    
+    // Return scan results immediately
+    debugLog('[Scan] Returning', normalized.length, 'messages (save/index running in background)');
+    
+    // All async operations happen in background
+    (async () => {
+      try {
+        await saveConversation(convObj);
       
-      // Auto-index into RAG (non-blocking)
-      setTimeout(async () => {
-        try {
-          if (typeof window.RAGEngine !== 'undefined' && typeof window.RAGEngine.indexConversation === 'function') {
-            await window.RAGEngine.indexConversation(normalized, {
+        // Auto-index into RAG (async, don't wait)
+        if (normalized.length >= 3 && typeof window.RAGEngine !== 'undefined' && typeof window.RAGEngine.indexConversation === 'function') {
+          // Index each message separately to preserve structure
+          for (let i = 0; i < normalized.length; i++) {
+            const msg = normalized[i];
+            const msgId = `${convObj.id}_msg_${i}`;
+            const msgText = `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.text}`;
+            
+            // Don't await - fire and forget
+            window.RAGEngine.indexConversation(msgText, {
               platform: convObj.platform,
               url: convObj.url,
               timestamp: convObj.ts,
-              messageCount: normalized.length
-            });
-            debugLog('[Auto-Index] Successfully indexed', normalized.length, 'messages');
+              messageIndex: i,
+              messageRole: msg.role,
+              conversationId: convObj.id
+            }, msgId).catch(e => debugLog('[Auto-Index] Message', i, 'failed:', e));
           }
-        } catch (e) {
-          debugLog('[Auto-Index] Failed:', e);
+          debugLog('[Auto-Index] Queued', normalized.length, 'messages for indexing');
         }
-      }, 50);
       
-      // Auto-summarize in background after save (non-blocking)
-      if (normalized.length > 10) {
-        setTimeout(async () => {
-          try {
-            const summaryPrompt = `Summarize the following chat in this format:\n\n[Summary]\n- Main points\n- Key actions\n- Decisions\n- Next steps\n\nChat:\n${normalized.map(m => (m.role === 'user' ? 'User: ' : 'Assistant: ') + m.text).join('\n')}`;
-            const res = await callGeminiAsync({ action: 'prompt', text: summaryPrompt, length: 'medium' });
+        // Auto-summarize (async, only for longer conversations)
+        if (normalized.length > 15) {
+          const summaryPrompt = `Summarize the following chat in this format:\n\n[Summary]\n- Main points\n- Key actions\n- Decisions\n- Next steps\n\nChat:\n${normalized.map(m => (m.role === 'user' ? 'User: ' : 'Assistant: ') + m.text).join('\n')}`;
+          callGeminiAsync({ action: 'prompt', text: summaryPrompt, length: 'medium' }).then(res => {
             if (res && res.ok && res.result) {
-              // Update saved conversation with summary
               convObj.summary = res.result.trim();
-              await saveConversation(convObj);
+              saveConversation(convObj).catch(e => debugLog('summary save failed', e));
             }
-          } catch (e) { debugLog('background auto-summarize failed', e); }
-        }, 100);
+          }).catch(e => debugLog('auto-summarize failed', e));
+        }
+      } catch (e) { 
+        debugLog('background tasks failed', e); 
       }
-    } catch (e) { debugLog('auto-save failed', e); }
+    })();
 
     // Log any errors that occurred
     try {
@@ -11253,30 +11391,12 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
 
           // Index conversation with RAG engine for semantic search
           try {
-            if (typeof window.RAGEngine !== 'undefined') {
-              window.RAGEngine.indexConversation(
-                String(conv.ts),
-                full,
-                {
-                  platform: conv.platform || location.hostname,
-                  url: conv.url || location.href,
-                  topics: conv.topics || [],
-                  model: conv.model || 'unknown'
-                }
-              ).then(success => {
-                if (success) {
-                  debugLog('[RAG] Conversation indexed:', conv.ts);
-                } else {
-                  debugLog('[RAG] Indexing failed for:', conv.ts);
-                }
-              }).catch(e => {
-                debugLog('[RAG] Indexing error:', e);
-              });
-            } else {
-              debugLog('[RAG] Engine not available, skipping indexing');
+            if (typeof window.RAGEngine !== 'undefined' && typeof window.RAGEngine.indexConversation === 'function') {
+              // Don't double-index - this is handled in scanChat now
+              debugLog('[RAG] Skipping indexing in saveConversation (handled by scanChat)');
             }
           } catch (e) {
-            debugLog('[RAG] Index dispatch failed', e);
+            debugLog('[RAG] Index check failed', e);
           }
           
           // Also send to background to index (legacy vector_index handler)

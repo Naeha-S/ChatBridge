@@ -174,8 +174,26 @@ async function deleteEmbedding(id) {
  * @returns {Array<string>} Array of text chunks
  */
 function semanticChunk(text, chunkSize = 1200, overlap = 200) {
-  if (!text || text.length < chunkSize) {
-    return [text]; // Return whole text if too small
+  // Validate input
+  if (!text) {
+    console.warn('[RAG Chunking] No text provided');
+    return [];
+  }
+  
+  if (typeof text !== 'string') {
+    console.error('[RAG Chunking] Invalid input - expected string, got:', typeof text);
+    return [];
+  }
+  
+  if (text.length === 0) {
+    console.warn('[RAG Chunking] Empty text provided');
+    return [];
+  }
+  
+  // Return whole text if too small to chunk
+  if (text.length < chunkSize) {
+    console.log(`[RAG Chunking] Text too small (${text.length} chars), returning as single chunk`);
+    return [text];
   }
   
   const chunks = [];
@@ -202,7 +220,7 @@ function semanticChunk(text, chunkSize = 1200, overlap = 200) {
   }
   
   console.log(`[RAG Chunking] Split text (${text.length} chars) into ${chunks.length} chunks`);
-  return chunks;
+  return chunks.length > 0 ? chunks : [text]; // Fallback to single chunk if split failed
 }
 
 /**
@@ -497,12 +515,38 @@ async function indexConversation(id, text, metadata) {
       return true;
     }
     
+    // Validate and convert text to string if needed
+    let conversationText = text;
+    if (Array.isArray(text)) {
+      console.log('[RAG] Converting array input to formatted text string');
+      conversationText = text.map((m, idx) => {
+        const role = m.role === 'user' ? 'User' : 'Assistant';
+        const msgText = m.text || m.content || '';
+        return `${role}: ${msgText}`;
+      }).join('\n\n');
+    } else if (typeof text !== 'string') {
+      console.error('[RAG] Invalid text input type:', typeof text, 'expected string or array');
+      return false;
+    }
+    
+    // Validate we have actual content
+    if (!conversationText || conversationText.trim().length === 0) {
+      console.warn('[RAG] Empty conversation text, skipping indexing');
+      return false;
+    }
+    
+    console.log(`[RAG] Processing conversation text (${conversationText.length} chars)`);
+    
     // Phase 3: Split into semantic chunks
-    const chunks = semanticChunk(text);
+    const chunks = semanticChunk(conversationText);
+    if (!chunks || chunks.length === 0) {
+      console.warn('[RAG] Failed to create chunks, skipping');
+      return false;
+    }
     console.log(`[RAG] Split conversation ${id} into ${chunks.length} chunks`);
     
-    // Calculate adaptive weight
-    const weight = calculateAdaptiveWeight(metadata, text);
+    // Calculate adaptive weight using the converted text string
+    const weight = calculateAdaptiveWeight(metadata, conversationText);
     
     // Index each chunk separately
     let successCount = 0;
