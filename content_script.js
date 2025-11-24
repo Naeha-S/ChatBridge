@@ -719,6 +719,7 @@
       @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
       :host { all: initial; }
   :host {
+    /* Colors - Dark Theme */
     --cb-bg: #1a1a1a;
     --cb-bg2: #242424;
     --cb-bg3: #2e2e2e;
@@ -733,51 +734,87 @@
     --cb-progress: #60a5fa;
     --cb-border: rgba(255, 255, 255, 0.1);
     --cb-shadow: rgba(0, 0, 0, 0.4);
+    
+    /* Spacing System */
+    --cb-space-xs: 4px;
+    --cb-space-sm: 8px;
+    --cb-space-md: 12px;
+    --cb-space-lg: 16px;
+    --cb-space-xl: 20px;
+    --cb-space-2xl: 24px;
+    --cb-space-3xl: 32px;
+    
+    /* Typography Scale */
+    --cb-text-xs: 11px;
+    --cb-text-sm: 12px;
+    --cb-text-base: 14px;
+    --cb-text-lg: 16px;
+    --cb-text-xl: 20px;
+    --cb-text-2xl: 24px;
+    
+    /* Border Radius */
+    --cb-radius-sm: 6px;
+    --cb-radius-md: 10px;
+    --cb-radius-lg: 12px;
+    --cb-radius-xl: 16px;
+    --cb-radius-full: 9999px;
+    
+    /* Shadows */
+    --cb-shadow-sm: 0 1px 3px rgba(0,0,0,0.12);
+    --cb-shadow-md: 0 4px 6px rgba(0,0,0,0.1);
+    --cb-shadow-lg: 0 10px 20px rgba(0,0,0,0.15);
+    --cb-shadow-xl: 0 20px 60px rgba(0,0,0,0.4);
   }
   :host(.cb-theme-light) {
-    --cb-bg: #fafafa;
+    --cb-bg: #f8f9fa;
     --cb-bg2: #ffffff;
-    --cb-bg3: #f5f5f5;
+    --cb-bg3: #f1f3f5;
     --cb-white: #1a1a1a;
-    --cb-subtext: #666666;
-    --cb-accent-primary: #3b82f6;
-    --cb-accent-secondary: #8b5cf6;
-    --cb-accent-tertiary: #10b981;
+    --cb-subtext: #6c757d;
+    --cb-accent-primary: #2563eb;
+    --cb-accent-secondary: #7c3aed;
+    --cb-accent-tertiary: #059669;
     --cb-error: #dc2626;
     --cb-success: #059669;
     --cb-warning: #d97706;
-    --cb-progress: #3b82f6;
-    --cb-border: rgba(0, 0, 0, 0.1);
-    --cb-shadow: rgba(0, 0, 0, 0.1);
+    --cb-progress: #2563eb;
+    --cb-border: rgba(0, 0, 0, 0.12);
+    --cb-shadow: rgba(0, 0, 0, 0.08);
+    
+    /* Override spacing/typography (inherit from base) */
+    --cb-shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+    --cb-shadow-md: 0 2px 8px rgba(0,0,0,0.08);
+    --cb-shadow-lg: 0 8px 16px rgba(0,0,0,0.1);
+    --cb-shadow-xl: 0 20px 40px rgba(0,0,0,0.15);
   }
   :host(.cb-theme-high-contrast) {
     --cb-bg: #000000;
-    --cb-bg2: #000000;
-    --cb-bg3: #000000;
+    --cb-bg2: #0a0a0a;
+    --cb-bg3: #141414;
     --cb-white: #ffffff;
-    --cb-subtext: #ffffff;
-    --cb-accent-primary: #ffff00;
-    --cb-accent-secondary: #00ff00;
-    --cb-accent-tertiary: #00ffff;
-    --cb-error: #ff0000;
-    --cb-success: #00ff00;
-    --cb-warning: #ffff00;
-    --cb-progress: #ffff00;
-    --cb-border: #ffffff;
-    --cb-shadow: rgba(255, 255, 255, 0.3);
+    --cb-subtext: #e0e0e0;
+    --cb-accent-primary: #ffd700;
+    --cb-accent-secondary: #00ff88;
+    --cb-accent-tertiary: #00d9ff;
+    --cb-error: #ff3366;
+    --cb-success: #00ff88;
+    --cb-warning: #ffaa00;
+    --cb-progress: #ffd700;
+    --cb-border: rgba(255, 255, 255, 0.3);
+    --cb-shadow: rgba(255, 255, 255, 0.2);
   }
   :host * { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important; letter-spacing: -0.01em; }
-  .cb-panel { box-sizing: border-box; position:fixed; top:12px; right:12px; width:380px; max-height:86vh; overflow-y:auto; overflow-x:hidden; border-radius:16px; background: var(--cb-bg2); color:var(--cb-white) !important; z-index:2147483647; box-shadow: 0 20px 60px var(--cb-shadow), 0 0 40px rgba(140, 30, 255, 0.15); border: 1px solid var(--cb-border); backdrop-filter: blur(12px); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); word-wrap: break-word; pointer-events:auto; }
+  .cb-panel { box-sizing: border-box; position:fixed; top:var(--cb-space-md); right:var(--cb-space-md); width:400px; max-width:calc(100vw - 24px); max-height:calc(100vh - 120px); overflow-y:auto; overflow-x:hidden; border-radius:var(--cb-radius-xl); background: var(--cb-bg2); color:var(--cb-white) !important; z-index:2147483647; box-shadow: var(--cb-shadow-xl), 0 0 40px rgba(96, 165, 250, 0.1); border: 1px solid var(--cb-border); backdrop-filter: blur(12px); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); word-wrap: break-word; pointer-events:auto; }
   .cb-panel * { max-width: 100%; word-wrap: break-word; overflow-wrap: break-word; }
   .cb-panel::-webkit-scrollbar { width: 10px; }
   .cb-panel::-webkit-scrollbar-track { background: var(--cb-bg); border-radius: 10px; }
   .cb-panel::-webkit-scrollbar-thumb { background: linear-gradient(180deg, var(--cb-accent-primary), var(--cb-accent-secondary)); border-radius: 10px; border: 2px solid var(--cb-bg); }
   .cb-panel::-webkit-scrollbar-thumb:hover { opacity: 0.8; }
-  .cb-header { display:flex; flex-direction:row; align-items:flex-start; justify-content:space-between; padding:18px 20px 12px 20px; gap:8px; border-bottom: 1px solid var(--cb-border); }
+  .cb-header { display:flex; flex-direction:row; align-items:flex-start; justify-content:space-between; padding:var(--cb-space-xl) var(--cb-space-xl) var(--cb-space-lg) var(--cb-space-xl); gap:var(--cb-space-md); border-bottom: 1px solid var(--cb-border); }
   .cb-title { font-weight:800; font-size:20px; letter-spacing:-0.02em; color: var(--cb-white); background: linear-gradient(135deg, var(--cb-accent-primary), var(--cb-accent-secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
   .cb-subtitle { font-size:13px; color: var(--cb-subtext); font-weight:500; margin-top:4px; margin-bottom:2px; letter-spacing:-0.01em; }
-    .cb-actions { padding:16px 18px 12px 18px; display:flex; flex-direction:column; gap:12px; align-items:stretch; justify-content:flex-start; }
-  .cb-actions-grid { display:grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap:10px; width:100%; }
+    .cb-actions { padding:var(--cb-space-lg) var(--cb-space-xl) var(--cb-space-md) var(--cb-space-xl); display:flex; flex-direction:column; gap:var(--cb-space-md); align-items:stretch; justify-content:flex-start; }
+  .cb-actions-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap:var(--cb-space-md); width:100%; }
   .cb-actions .cb-btn { min-width:0; padding:12px 14px; font-size:12px; white-space:nowrap; font-weight:600; letter-spacing:-0.01em; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); text-transform: uppercase; width:100%; position: relative; overflow: hidden; z-index: 0; }
     .cb-btn { background: var(--cb-bg3); border:1px solid var(--cb-border); color:var(--cb-white) !important; padding:12px 16px; border-radius:10px; cursor:pointer; font-size:13px; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); font-weight:600; box-shadow: 0 2px 8px var(--cb-shadow); position: relative; overflow: hidden; }
   .cb-btn::before { content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent); transition: left 0.5s ease; pointer-events: none; z-index: 1; }
@@ -788,13 +825,18 @@
   .cb-btn.cb-loading { animation: cb-pulse 1.5s ease-in-out infinite; pointer-events: none; opacity: 0.7; }
   .cb-btn.cb-success { animation: cb-success 0.4s ease-out; background: var(--cb-success) !important; border-color: var(--cb-success) !important; }
   .cb-btn.cb-active { background: rgba(var(--cb-accent-primary-rgb, 96, 165, 250), 0.15); border-color: var(--cb-accent-primary); }
-  .cb-btn-primary { background: linear-gradient(135deg, var(--cb-accent-primary), var(--cb-accent-secondary)); color:#FFFFFF !important; font-weight:700; border: none; box-shadow: 0 4px 12px rgba(0,180,255,0.3); }
-  .cb-btn-primary:hover { box-shadow: 0 8px 24px rgba(0,180,255,0.4), 0 0 30px rgba(140, 30, 255, 0.3); transform: translateY(-2px); }
-  .cb-scan-row { padding: 12px 18px; }
-  .cb-scan-wide { width: 100%; margin: 0; padding:14px 16px; font-size:15px; font-weight:600; border-radius:12px; display:block; }
+  .cb-btn-primary { background: linear-gradient(135deg, var(--cb-accent-primary), var(--cb-accent-secondary)); color:#FFFFFF !important; font-weight:700; border: none; box-shadow: var(--cb-shadow-md); position:relative; overflow:visible; }
+  .cb-btn-primary:hover { box-shadow: var(--cb-shadow-lg), 0 0 20px rgba(96, 165, 250, 0.3); transform: translateY(-2px); }
+  .cb-btn-primary:active { transform: translateY(-1px); box-shadow: var(--cb-shadow-sm); }
+  .cb-btn-secondary { background: transparent; border: 1px solid var(--cb-border); color: var(--cb-subtext) !important; font-weight:500; }
+  .cb-btn-secondary:hover { background: var(--cb-bg3); border-color: var(--cb-accent-primary); color: var(--cb-white) !important; }
+  .cb-btn-tertiary { background: none; border: none; color: var(--cb-subtext) !important; padding:var(--cb-space-sm) var(--cb-space-md); font-weight:500; }
+  .cb-btn-tertiary:hover { background: var(--cb-bg3); color: var(--cb-white) !important; }
+  .cb-scan-row { padding: 0 var(--cb-space-xl) var(--cb-space-md) var(--cb-space-xl); }
+  .cb-scan-wide { width: 100%; margin: 0; padding:var(--cb-space-lg); font-size:var(--cb-text-lg); font-weight:700; border-radius:var(--cb-radius-lg); display:block; letter-spacing:-0.02em; }
       .cb-btn-danger { background: rgba(255,30,86,0.1); border:1px solid rgba(255,30,86,0.3); color:#FF7A9A !important; font-size:13px; padding:8px 12px; }
       .cb-btn-danger:hover { background: rgba(255,30,86,0.15); border-color: rgba(255,30,86,0.5); color:#FF9CB3 !important; box-shadow: 0 4px 12px rgba(255,30,86,0.2); transform: translateY(-2px); }
-      .cb-toolbar { display:flex; align-items:center; gap:12px; padding:16px 20px 12px 20px; border-bottom: 1px solid var(--cb-border); }
+      .cb-toolbar { display:flex; align-items:center; gap:var(--cb-space-md); padding:var(--cb-space-lg) var(--cb-space-xl); border-bottom: 1px solid var(--cb-border); }
       .cb-label { font-size:12px; color:var(--cb-subtext) !important; font-weight:600; }
   .cb-select { flex:1; appearance:none; background:var(--cb-bg); color:var(--cb-white) !important; border:1px solid var(--cb-border); border-radius:10px; padding:10px 12px; font-size:14px; outline:none; font-weight:500; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; transition: all 0.2s ease; }
       .cb-select:hover { border-color: var(--cb-accent-primary); box-shadow: 0 0 0 3px rgba(0, 180, 255, 0.1); }
@@ -826,7 +868,7 @@
       textarea:focus { outline: none; border-color: var(--cb-accent-primary); box-shadow: 0 0 0 3px rgba(0, 180, 255, 0.15); }
       select:focus { outline: none; border-color: var(--cb-accent-primary); box-shadow: 0 0 0 3px rgba(0, 180, 255, 0.15); }
       /* Internal view sections - inline in the sidebar */
-      .cb-internal-view { display: none; padding: 18px 20px; border-top: 1px solid var(--cb-border); background: var(--cb-bg); animation: slideIn 0.3s ease-out; }
+      .cb-internal-view { display: none; padding: var(--cb-space-xl); border-top: 1px solid var(--cb-border); background: var(--cb-bg); animation: slideIn 0.3s ease-out; }
       .cb-internal-view.cb-view-active { display: block; }
       @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
       .cb-view-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
@@ -863,11 +905,11 @@
   .cb-code-snippet::-webkit-scrollbar-track { background: var(--cb-bg3); }
   .cb-code-snippet::-webkit-scrollbar-thumb { background: var(--cb-accent-primary); border-radius: 3px; }
   /* Empty States */
-  .cb-empty-state { text-align: center; padding: 32px 20px; color: var(--cb-subtext); animation: cb-fade-in 0.4s ease-out; }
-  .cb-empty-state-icon { font-size: 48px; margin-bottom: 16px; opacity: 0.5; }
-  .cb-empty-state-title { font-size: 16px; font-weight: 600; color: var(--cb-white); margin-bottom: 8px; }
-  .cb-empty-state-text { font-size: 13px; line-height: 1.6; margin-bottom: 20px; max-width: 280px; margin-left: auto; margin-right: auto; }
-  .cb-empty-state-action { margin-top: 12px; }
+  .cb-empty-state { text-align: center; padding: var(--cb-space-3xl) var(--cb-space-xl); color: var(--cb-subtext); animation: cb-fade-in 0.4s ease-out; }
+  .cb-empty-state-icon { font-size: 56px; margin-bottom: var(--cb-space-lg); opacity: 0.4; filter: grayscale(0.3); }
+  .cb-empty-state-title { font-size: var(--cb-text-lg); font-weight: 600; color: var(--cb-white); margin-bottom: var(--cb-space-sm); }
+  .cb-empty-state-text { font-size: var(--cb-text-sm); line-height: 1.6; margin-bottom: var(--cb-space-xl); max-width: 280px; margin-left: auto; margin-right: auto; opacity: 0.9; }
+  .cb-empty-state-action { margin-top: var(--cb-space-md); }
   /* Success/Error Feedback */
   .cb-feedback-toast { position: fixed; bottom: 80px; right: 24px; background: var(--cb-bg2); border: 1px solid var(--cb-border); border-radius: 10px; padding: 12px 16px; box-shadow: 0 8px 24px var(--cb-shadow); z-index: 2147483648; animation: cb-slide-up 0.3s ease-out; max-width: 300px; }
   .cb-feedback-toast.success { border-color: var(--cb-success); background: rgba(var(--cb-success-rgb, 16, 185, 129), 0.1); }
@@ -877,7 +919,10 @@
   .cb-context-panel::-webkit-scrollbar-track { background: var(--cb-bg3); border-radius: 10px; }
   .cb-context-panel::-webkit-scrollbar-thumb { background: linear-gradient(180deg, var(--cb-accent-primary), var(--cb-accent-secondary)); border-radius: 10px; border: 2px solid var(--cb-bg3); }
   .cb-context-panel::-webkit-scrollbar-thumb:hover { opacity: 0.8; }
-      .cb-view-controls { margin:14px 0; display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+      .cb-view-controls { margin:var(--cb-space-lg) 0; display:flex; gap:var(--cb-space-md); align-items:stretch; flex-wrap:wrap; }
+      .cb-view-controls > * { min-width:0; flex:1 1 auto; }
+      .cb-view-controls .cb-select { min-width:120px; }
+      .cb-view-controls .cb-btn { flex:0 0 auto; min-width:80px; }
       .cb-view-go { margin-top:12px; }
   .cb-view-result { margin-top:16px; padding:14px; background: var(--cb-bg); border:1px solid var(--cb-border); border-radius:10px; white-space:pre-wrap; color:var(--cb-white); font-size:13px; line-height:1.6; max-height:200px; overflow-y:auto; overflow-x:hidden; }
   .cb-progress { display:inline-block; margin-left:10px; font-size:12px; color:var(--cb-subtext); opacity:0.9; font-weight:500; }
@@ -889,7 +934,8 @@
   .cb-replies-wrap { margin-top: 8px; }
   .cb-replies-header { display:flex; align-items:center; justify-content:space-between; padding:6px 0 8px 0; }
   .cb-replies-title { font-size:12px; color:var(--cb-subtext); font-weight:700; letter-spacing:-0.01em; text-transform: uppercase; }
-  .cb-replies { padding: 10px 12px; max-height: 260px; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; gap: 8px; background: var(--cb-bg); border: 1px solid var(--cb-border); border-radius: 10px; }
+  .cb-replies { padding: var(--cb-space-md); max-height: 260px; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; gap: var(--cb-space-sm); background: var(--cb-bg); border: 1px solid var(--cb-border); border-radius: var(--cb-radius-md); transition: padding-bottom 0.3s ease; }
+  .cb-replies.cb-editor-open { padding-bottom: 220px; } /* Prevent overlap when editor is visible */
   .cb-replies::-webkit-scrollbar { width: 8px; }
   .cb-replies::-webkit-scrollbar-track { background: var(--cb-bg3); border-radius: 10px; }
   .cb-replies::-webkit-scrollbar-thumb { background: linear-gradient(180deg, var(--cb-accent-primary), var(--cb-accent-secondary)); border-radius: 10px; border: 2px solid var(--cb-bg3); }
@@ -899,12 +945,13 @@
   .cb-reply-preview { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; color: var(--cb-white); font-size: 12px; line-height: 1.4; white-space: normal; word-break: break-word; }
   .cb-reply-meta { font-size: 10px; color: var(--cb-subtext); margin-top: 4px; opacity: 0.7; }
   /* Rewrite editor section (shown when a reply is selected) */
-  .cb-rewrite-editor { display: none; margin-top: 12px; padding: 14px; background: var(--cb-bg2); border: 1px solid var(--cb-border); border-radius: 10px; animation: slideIn 0.25s ease-out; }
+  .cb-rewrite-editor { display: none; margin-top: var(--cb-space-lg); padding: var(--cb-space-lg); background: var(--cb-bg2); border: 1px solid var(--cb-border); border-radius: var(--cb-radius-md); animation: slideIn 0.25s ease-out; }
   .cb-rewrite-editor.cb-active { display: block; }
-  .cb-editor-label { font-size: 11px; color: var(--cb-subtext); font-weight: 600; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
-  .cb-editor-textarea { width: 100%; min-height: 160px; max-height: 240px; resize: vertical; background: var(--cb-bg); color: var(--cb-white); border: 1px solid var(--cb-border); padding: 10px; border-radius: 8px; font-family: inherit; font-size: 13px; line-height: 1.6; overflow-y: auto; transition: all 0.2s ease; }
-  .cb-editor-textarea:focus { border-color: var(--cb-accent-primary); box-shadow: 0 0 0 3px rgba(0, 180, 255, 0.12); outline: none; }
-  .cb-editor-actions { display: flex; gap: 8px; margin-top: 10px; }
+  .cb-editor-label { font-size: var(--cb-text-xs); color: var(--cb-subtext); font-weight: 600; margin-bottom: var(--cb-space-sm); text-transform: uppercase; letter-spacing: 0.5px; }
+  .cb-editor-textarea { width: 100%; min-height: 160px; max-height: 240px; resize: vertical; background: var(--cb-bg); color: var(--cb-white); border: 1px solid var(--cb-border); padding: var(--cb-space-md); border-radius: var(--cb-radius-sm); font-family: inherit; font-size: var(--cb-text-sm); line-height: 1.6; overflow-y: auto; transition: all 0.2s ease; }
+  .cb-editor-textarea:focus { border-color: var(--cb-accent-primary); box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.12); outline: none; }
+  .cb-editor-actions { display: flex; gap: var(--cb-space-sm); margin-top: var(--cb-space-md); flex-wrap: wrap; }
+  .cb-editor-actions > .cb-btn { flex: 1 1 auto; min-width: 80px; }
   .cb-style-hint-wrap { margin-top: 10px; }
   .cb-input { width: 100%; background: var(--cb-bg); color: var(--cb-white); border: 1px solid var(--cb-border); padding: 8px 10px; border-radius: 8px; font-size: 13px; font-family: inherit; transition: all 0.2s ease; }
   .cb-input:focus { border-color: var(--cb-accent-primary); box-shadow: 0 0 0 3px rgba(0, 180, 255, 0.12); outline: none; }
@@ -1208,9 +1255,9 @@
   const rewRepliesWrap = document.createElement('div'); rewRepliesWrap.className = 'cb-replies-wrap';
   const rewRepliesHeader = document.createElement('div'); rewRepliesHeader.className = 'cb-replies-header';
   const rewRepliesTitle = document.createElement('div'); rewRepliesTitle.className = 'cb-replies-title'; rewRepliesTitle.textContent = 'Replies';
-  const rewReplyControls = document.createElement('div'); rewReplyControls.style.cssText = 'display:flex;align-items:center;gap:8px;';
-  const rewMultiBtn = document.createElement('button'); rewMultiBtn.className = 'cb-btn'; rewMultiBtn.style.cssText = 'padding:6px 8px;font-size:12px;min-width:56px;'; rewMultiBtn.textContent = 'Multi'; rewMultiBtn.title = 'Toggle multi-select mode';
-  const rewFilterBtn = document.createElement('button'); rewFilterBtn.className = 'cb-btn'; rewFilterBtn.style.cssText = 'padding:6px 8px;font-size:12px;min-width:64px;'; rewFilterBtn.textContent = 'Filter: All'; rewFilterBtn.title = 'Filter replies (All / Assistant / User)';
+  const rewReplyControls = document.createElement('div'); rewReplyControls.style.cssText = 'display:flex;align-items:center;gap:var(--cb-space-sm);flex-wrap:wrap;';
+  const rewMultiBtn = document.createElement('button'); rewMultiBtn.className = 'cb-btn cb-btn-secondary'; rewMultiBtn.style.cssText = 'padding:6px 12px;font-size:11px;'; rewMultiBtn.textContent = 'Multi'; rewMultiBtn.title = 'Toggle multi-select mode';
+  const rewFilterBtn = document.createElement('button'); rewFilterBtn.className = 'cb-btn cb-btn-secondary'; rewFilterBtn.style.cssText = 'padding:6px 12px;font-size:11px;'; rewFilterBtn.textContent = 'All'; rewFilterBtn.title = 'Filter replies (All / Assistant / User)';
   rewReplyControls.appendChild(rewMultiBtn); rewReplyControls.appendChild(rewFilterBtn);
   rewRepliesHeader.appendChild(rewRepliesTitle); rewRepliesHeader.appendChild(rewReplyControls);
   const rewReplies = document.createElement('div'); rewReplies.className = 'cb-replies'; rewReplies.id = 'cb-replies-list';
@@ -1416,6 +1463,27 @@
   insightsView.appendChild(insightsIntro);
 
   const insightsContent = document.createElement('div'); insightsContent.id = 'cb-insights-content'; insightsContent.style.cssText = 'padding:12px 0;overflow-y:auto;max-height:calc(100vh - 250px);';
+  // Add default insights blocks
+  insightsContent.innerHTML = `
+    <div class="cb-insights-section">
+      <div class="cb-insight-block">
+        <div class="cb-insight-title">Compare Models</div>
+        <div class="cb-insight-content">Quickly compare responses from different AI models side-by-side. Spot differences, strengths, and weaknesses for each platform.</div>
+      </div>
+      <div class="cb-insight-block">
+        <div class="cb-insight-title">Merge Threads</div>
+        <div class="cb-insight-content">Combine multiple chat threads into a single unified view. Useful for project tracking, research, or summarizing long discussions.</div>
+      </div>
+      <div class="cb-insight-block">
+        <div class="cb-insight-title">Extract Key Content</div>
+        <div class="cb-insight-content">Automatically extract highlights, action items, and decisions from your conversations. Perfect for meeting notes and follow-ups.</div>
+      </div>
+      <div class="cb-insight-block">
+        <div class="cb-insight-title">Organize & Tag</div>
+        <div class="cb-insight-content">Tag, categorize, and search your chats for easy retrieval. Stay organized and never lose track of important information.</div>
+      </div>
+    </div>
+  `;
   insightsView.appendChild(insightsContent);
 
   panel.appendChild(insightsView);
@@ -3489,12 +3557,12 @@ Respond with JSON only:
         
         // Header with toggle
         const header = document.createElement('div');
-        header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:12px;background:rgba(16,24,43,0.4);border:1px solid rgba(0,180,255,0.25);border-radius:8px 8px 0 0;cursor:pointer;';
+        header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:var(--cb-space-md);background:rgba(16,24,43,0.5);border:1px solid rgba(96,165,250,0.3);border-radius:var(--cb-radius-md) var(--cb-radius-md) 0 0;cursor:pointer;transition:background 0.2s;';
         header.innerHTML = `
-          <div style="display:flex;align-items:center;gap:8px;">
-            <span style="font-size:16px;">✨</span>
-            <span style="font-weight:600;font-size:13px;color:var(--cb-white);">Prompt Designer</span>
-            <span style="font-size:10px;color:rgba(255,255,255,0.4);">AI-powered next steps</span>
+          <div style="display:flex;align-items:center;gap:var(--cb-space-sm);">
+            <span style="font-size:18px;">✨</span>
+            <span style="font-weight:600;font-size:var(--cb-text-sm);color:var(--cb-white);">Prompt Designer</span>
+            <span style="font-size:var(--cb-text-xs);color:rgba(255,255,255,0.5);">AI-powered suggestions</span>
           </div>
           <span id="cb-designer-toggle" style="font-size:18px;transition:transform 0.2s;">▼</span>
         `;
@@ -3502,20 +3570,20 @@ Respond with JSON only:
         // Content area (collapsible)
         const content = document.createElement('div');
         content.id = 'cb-designer-content';
-        content.style.cssText = 'display:none;padding:12px;background:rgba(16,24,43,0.4);border:1px solid rgba(0,180,255,0.25);border-top:none;border-radius:0 0 8px 8px;';
+        content.style.cssText = 'display:none;padding:var(--cb-space-md);background:rgba(16,24,43,0.5);border:1px solid rgba(96,165,250,0.3);border-top:none;border-radius:0 0 var(--cb-radius-md) var(--cb-radius-md);';
         
         // Prompts list
         const promptsList = document.createElement('div');
         promptsList.id = 'cb-prompts-list';
-        promptsList.style.cssText = 'display:flex;flex-direction:column;gap:10px;margin-bottom:12px;';
+        promptsList.style.cssText = 'display:flex;flex-direction:column;gap:var(--cb-space-md);margin-bottom:var(--cb-space-md);';
         
         // Controls
         const controls = document.createElement('div');
-        controls.style.cssText = 'display:flex;gap:8px;';
+        controls.style.cssText = 'display:flex;gap:var(--cb-space-sm);flex-wrap:wrap;';
         controls.innerHTML = `
-          <button id="cb-prompts-generate" class="cb-btn cb-btn-primary" style="flex:1;font-size:11px;padding:8px;">✨ Generate Prompts</button>
-          <button id="cb-prompts-refresh" class="cb-btn" style="font-size:11px;padding:8px;">🔄 Refresh</button>
-          <button id="cb-prompts-history" class="cb-btn" style="font-size:11px;padding:8px;">📜 History</button>
+          <button id="cb-prompts-generate" class="cb-btn cb-btn-primary" style="flex:1 1 auto;min-width:120px;font-size:var(--cb-text-xs);padding:var(--cb-space-sm) var(--cb-space-md);">✨ Generate Prompts</button>
+          <button id="cb-prompts-refresh" class="cb-btn cb-btn-secondary" style="flex:0 1 auto;font-size:var(--cb-text-xs);padding:var(--cb-space-sm) var(--cb-space-md);">🔄 Refresh</button>
+          <button id="cb-prompts-history" class="cb-btn cb-btn-secondary" style="flex:0 1 auto;font-size:var(--cb-text-xs);padding:var(--cb-space-sm) var(--cb-space-md);">📜 History</button>
         `;
         
         content.appendChild(promptsList);
@@ -3688,36 +3756,44 @@ Respond with JSON only:
           promptData.questions.forEach((q, idx) => {
             const promptCard = document.createElement('div');
             promptCard.style.cssText = `
-              padding:12px;
-              background:rgba(0,180,255,0.05);
-              border-left:3px solid ${categoryColors[q.category] || '#00b4ff'};
-              border-radius:6px;
-              transition:all 0.2s;
+              padding:var(--cb-space-md);
+              background:var(--cb-bg2);
+              border:1px solid var(--cb-border);
+              border-left:3px solid ${categoryColors[q.category] || '#60a5fa'};
+              border-radius:var(--cb-radius-md);
+              transition:all 0.2s ease;
+              cursor:pointer;
             `;
             
             const icon = categoryIcons[q.category] || '💬';
             const categoryLabel = q.category.charAt(0).toUpperCase() + q.category.slice(1);
             
             promptCard.innerHTML = `
-              <div style="display:flex;align-items:start;justify-content:space-between;gap:8px;">
-                <div style="flex:1;">
-                  <div style="font-size:10px;color:${categoryColors[q.category] || '#00b4ff'};font-weight:600;margin-bottom:4px;">
+              <div style="display:flex;flex-direction:column;gap:var(--cb-space-sm);">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:var(--cb-space-sm);">
+                  <div style="font-size:var(--cb-text-xs);color:${categoryColors[q.category] || '#60a5fa'};font-weight:600;padding:4px 8px;background:rgba(96,165,250,0.1);border-radius:var(--cb-radius-sm);letter-spacing:0.5px;">
                     ${icon} ${categoryLabel}
                   </div>
-                  <div style="font-size:12px;line-height:1.4;color:#fff;">${escapeHtmlSimple(q.text)}</div>
                 </div>
-                <div style="display:flex;gap:6px;">
-                  <button class="cb-prompt-copy" title="Copy" style="background:transparent;border:none;border-radius:4px;padding:4px 8px;cursor:pointer;font-size:12px;color:var(--cb-subtext);">📋</button>
-                  <button class="cb-prompt-send" title="Send to chat" style="background:var(--cb-accent-primary);border:none;border-radius:4px;padding:4px 8px;cursor:pointer;font-size:12px;color:#fff;">➤</button>
+                <div style="font-size:var(--cb-text-sm);line-height:1.6;color:var(--cb-white);">${escapeHtmlSimple(q.text)}</div>
+                <div style="display:flex;gap:var(--cb-space-xs);margin-top:var(--cb-space-xs);">
+                  <button class="cb-prompt-copy cb-btn cb-btn-tertiary" title="Copy to clipboard" style="flex:1 1 auto;font-size:var(--cb-text-xs);padding:6px 10px;">📋 Copy</button>
+                  <button class="cb-prompt-send cb-btn cb-btn-primary" title="Send to chat input" style="flex:1 1 auto;font-size:var(--cb-text-xs);padding:6px 10px;">➤ Use</button>
                 </div>
               </div>
             `;
             
             promptCard.addEventListener('mouseenter', () => {
-              promptCard.style.background = 'rgba(0,180,255,0.1)';
+              promptCard.style.borderColor = categoryColors[q.category] || '#60a5fa';
+              promptCard.style.background = 'rgba(96,165,250,0.05)';
+              promptCard.style.transform = 'translateY(-1px)';
+              promptCard.style.boxShadow = 'var(--cb-shadow-md)';
             });
             promptCard.addEventListener('mouseleave', () => {
-              promptCard.style.background = 'rgba(0,180,255,0.05)';
+              promptCard.style.borderColor = 'var(--cb-border)';
+              promptCard.style.background = 'var(--cb-bg2)';
+              promptCard.style.transform = 'translateY(0)';
+              promptCard.style.boxShadow = 'none';
             });
             
             // Copy handler
@@ -9150,9 +9226,11 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       try {
         const editor = rewView.querySelector('#cb-rewrite-editor');
         const textarea = rewView.querySelector('#cb-editor-textarea');
+        const repliesList = rewView.querySelector('#cb-replies-list');
         if (!editor || !textarea) return;
         textarea.value = reply.text;
         editor.classList.add('cb-active');
+        if (repliesList) repliesList.classList.add('cb-editor-open');
         setTimeout(() => { try { textarea.focus(); textarea.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch(e){} }, 100);
       } catch(e){ debugLog('showEditor error', e); }
     }
@@ -9160,7 +9238,9 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
     function hideEditor() {
       try {
         const editor = rewView.querySelector('#cb-rewrite-editor');
+        const repliesList = rewView.querySelector('#cb-replies-list');
         if (editor) editor.classList.remove('cb-active');
+        if (repliesList) repliesList.classList.remove('cb-editor-open');
       } catch(e){}
     }
 

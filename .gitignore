@@ -63,6 +63,14 @@ api-keys.json
 config/secrets/
 *.key
 *.secret
+background.js.backup
+*_WITH_KEY.js
+*-api-key*.js
+
+# Prevent accidental commits of API keys
+**/GEMINI_KEY*
+**/API_KEY*
+*.credentials.json
 
 # TypeScript
 *.tsbuildinfo

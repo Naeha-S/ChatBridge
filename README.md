@@ -279,18 +279,16 @@ Default = 1 request/sec; add personal Gemini key for more.
 
 ---
 
-## 📚 Documentation
+## 📚 Documentation Index
 
-**Getting Started:**
-- [Quick Start Guide](documentation/QUICK_START.md) - Installation and basic usage
-- [Features Overview](documentation/FEATURES.md) - Complete feature list and use cases
-- [Troubleshooting](documentation/TROUBLESHOOTING.md) - Common issues and solutions
-
-**Technical:**
-- [Architecture](documentation/ARCHITECTURE.md) - System design and data flow
-- [API Reference](documentation/API_REFERENCE.md) - Complete API documentation
-- [Developer Guide](documentation/DEVELOPER_GUIDE.md) - Extension development guide
-- [Security & Privacy](documentation/SECURITY.md) - Security model and best practices
+- Agentic features: Agentic_Features.md
+- ONNX: ONNX_OVERVIEW.md
+- UI/UX: UI_UX_Guide.md
+- API Reference: documentation/API_REFERENCE.md
+- Architecture: documentation/ARCHITECTURE.md
+- Quick Start: documentation/QUICK_START.md
+- Security: documentation/SECURITY.md
+- Troubleshooting: documentation/TROUBLESHOOTING.md
 
 ---
 
