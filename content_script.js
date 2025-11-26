@@ -632,7 +632,7 @@
           // skip tiny UI icons
           const r = img.getBoundingClientRect();
           if (r && (r.width < 24 || r.height < 24)) continue;
-          atts.push({ kind: 'image', url: src, alt: img.getAttribute('alt') || '', name: (src.split('?')[0].split('#')[0].split('/').pop() || 'image') });
+          atts.push({ type: 'image', url: src, alt: img.getAttribute('alt') || '', name: (src.split('?')[0].split('#')[0].split('/').pop() || 'image') });
         } catch (e) {}
       }
       // Videos
@@ -641,7 +641,7 @@
         try {
           const src = v.getAttribute('src') || '';
           if (!src) continue;
-          atts.push({ kind: 'video', url: src, name: (src.split('?')[0].split('#')[0].split('/').pop() || 'video') });
+          atts.push({ type: 'video', url: src, name: (src.split('?')[0].split('#')[0].split('/').pop() || 'video') });
         } catch (e) {}
       }
       // Docs/links
@@ -652,7 +652,7 @@
           const href = a.getAttribute('href') || '';
           if (!href) continue;
           if (exts.test(href)) {
-            atts.push({ kind: 'file', url: href, name: (href.split('?')[0].split('#')[0].split('/').pop() || 'file') });
+            atts.push({ type: 'file', url: href, name: (href.split('?')[0].split('#')[0].split('/').pop() || 'file') });
           }
         } catch (e) {}
       }
@@ -4049,6 +4049,213 @@ Respond with JSON only:
     }
 
     // ============================================
+    // DIAGRAM MAKER HELPERS
+    // ============================================
+    
+    // Helper: Extract conversation structure for diagram generation
+    function extractConversationStructure(messages) {
+      if (!messages || messages.length === 0) return null;
+      const structure = { nodes: [], edges: [], topics: new Set() };
+      let nodeId = 0;
+      
+      messages.forEach((msg, idx) => {
+        const role = msg.role === 'user' ? 'User' : 'AI';
+        const snippet = msg.text.slice(0, 40).replace(/[\n\r]/g, ' ') + (msg.text.length > 40 ? '...' : '');
+        structure.nodes.push({ id: `n${nodeId}`, label: `${role}: ${snippet}`, role: msg.role });
+        if (idx > 0) {
+          structure.edges.push({ from: `n${nodeId-1}`, to: `n${nodeId}` });
+        }
+        // Extract topics from text
+        const words = msg.text.toLowerCase().match(/\b\w{4,}\b/g) || [];
+        words.slice(0, 3).forEach(w => structure.topics.add(w));
+        nodeId++;
+      });
+      
+      return structure;
+    }
+    
+    // Helper: Generate Mermaid diagram code
+    function generateDiagramMermaid(messages, type = 'flowchart') {
+      const structure = extractConversationStructure(messages);
+      if (!structure) return null;
+      
+      if (type === 'flowchart') {
+        let mermaid = 'graph TD\n';
+        structure.nodes.forEach(node => {
+          const shape = node.role === 'user' ? `[${node.label}]` : `(${node.label})`;
+          mermaid += `  ${node.id}${shape}\n`;
+        });
+        structure.edges.forEach(edge => {
+          mermaid += `  ${edge.from} --> ${edge.to}\n`;
+        });
+        return mermaid;
+      } else if (type === 'mindmap') {
+        let mermaid = 'mindmap\n  root((Conversation))\n';
+        const topics = Array.from(structure.topics).slice(0, 5);
+        topics.forEach(topic => {
+          mermaid += `    ${topic}\n`;
+        });
+        return mermaid;
+      } else if (type === 'sequence') {
+        let mermaid = 'sequenceDiagram\n';
+        structure.nodes.forEach((node, idx) => {
+          const from = node.role === 'user' ? 'User' : 'AI';
+          const to = node.role === 'user' ? 'AI' : 'User';
+          mermaid += `  ${from}->>${to}: ${node.label}\n`;
+        });
+        return mermaid;
+      }
+      
+      return null;
+    }
+    
+    // Helper: Render diagram preview in modal
+    function renderDiagramPreview(mermaidCode) {
+      const modal = document.createElement('div');
+      modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);z-index:999999;display:flex;align-items:center;justify-content:center;padding:20px;';
+      
+      const container = document.createElement('div');
+      container.style.cssText = 'background:var(--cb-bg);padding:24px;border-radius:12px;max-width:800px;width:100%;max-height:90vh;overflow:auto;box-shadow:0 8px 32px rgba(0,0,0,0.4);border:1px solid var(--cb-border);';
+      
+      container.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+          <h3 style="margin:0;color:var(--cb-white);font-size:16px;">📊 Conversation Diagram</h3>
+          <button id="cb-diagram-close" class="cb-btn" style="padding:4px 12px;">✕</button>
+        </div>
+        <div style="background:var(--cb-surface);padding:16px;border-radius:8px;margin-bottom:16px;font-family:monospace;font-size:12px;color:var(--cb-subtext);white-space:pre-wrap;max-height:300px;overflow:auto;">${mermaidCode}</div>
+        <div style="display:flex;gap:8px;">
+          <button id="cb-diagram-copy" class="cb-btn cb-btn-primary" style="flex:1;">📋 Copy Mermaid</button>
+          <button id="cb-diagram-markdown" class="cb-btn" style="flex:1;">📝 Copy as Markdown</button>
+        </div>
+        <p style="margin:8px 0 0 0;color:var(--cb-subtext);font-size:11px;text-align:center;">💡 Paste into Mermaid Live Editor or GitHub markdown</p>
+      `;
+      
+      modal.appendChild(container);
+      document.body.appendChild(modal);
+      
+      container.querySelector('#cb-diagram-close').addEventListener('click', () => modal.remove());
+      container.querySelector('#cb-diagram-copy').addEventListener('click', async () => {
+        await navigator.clipboard.writeText(mermaidCode);
+        toast('Mermaid code copied!');
+      });
+      container.querySelector('#cb-diagram-markdown').addEventListener('click', async () => {
+        await navigator.clipboard.writeText(`\`\`\`mermaid\n${mermaidCode}\n\`\`\``);
+        toast('Markdown code block copied!');
+      });
+      modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+    }
+    
+    // ============================================
+    // CONVERSATION CLEANUP HELPERS
+    // ============================================
+    
+    // Helper: Clean conversation messages
+    function cleanConversation(messages) {
+      if (!messages || messages.length === 0) return { cleaned: [], stats: {} };
+      
+      const cleaned = [];
+      const seen = new Set();
+      let duplicates = 0;
+      let emptyRemoved = 0;
+      
+      messages.forEach((msg, idx) => {
+        // Skip empty or meaningless messages
+        const text = msg.text.trim();
+        if (!text || text.length < 3) {
+          emptyRemoved++;
+          return;
+        }
+        
+        // Check for duplicates
+        const hash = `${msg.role}:${text.slice(0, 100)}`;
+        if (seen.has(hash)) {
+          duplicates++;
+          return;
+        }
+        seen.add(hash);
+        
+        // Normalize text
+        let cleanedText = text
+          .replace(/\n{3,}/g, '\n\n') // Collapse multiple newlines
+          .replace(/  +/g, ' ') // Collapse multiple spaces
+          .trim();
+        
+        // Fix broken markdown lists
+        cleanedText = cleanedText.replace(/^([\*\-])([^ ])/gm, '$1 $2');
+        
+        // Fix code blocks
+        cleanedText = cleanedText.replace(/```(\w+)\n/g, '```$1\n');
+        
+        cleaned.push({ ...msg, text: cleanedText });
+      });
+      
+      const stats = {
+        original: messages.length,
+        cleaned: cleaned.length,
+        duplicates,
+        emptyRemoved,
+        saved: messages.length - cleaned.length
+      };
+      
+      return { cleaned, stats };
+    }
+    
+    // Helper: Show before/after cleanup preview
+    function renderCleanupPreview(original, cleaned, stats) {
+      const modal = document.createElement('div');
+      modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);z-index:999999;display:flex;align-items:center;justify-content:center;padding:20px;';
+      
+      const container = document.createElement('div');
+      container.style.cssText = 'background:var(--cb-bg);padding:24px;border-radius:12px;max-width:900px;width:100%;max-height:90vh;overflow:auto;box-shadow:0 8px 32px rgba(0,0,0,0.4);border:1px solid var(--cb-border);';
+      
+      const originalText = original.map(m => `${m.role}: ${m.text}`).join('\n\n');
+      const cleanedText = cleaned.map(m => `${m.role}: ${m.text}`).join('\n\n');
+      
+      container.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+          <h3 style="margin:0;color:var(--cb-white);font-size:16px;">🧹 Cleanup Results</h3>
+          <button id="cb-cleanup-close" class="cb-btn" style="padding:4px 12px;">✕</button>
+        </div>
+        <div style="background:var(--cb-surface);padding:12px;border-radius:8px;margin-bottom:16px;">
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;text-align:center;">
+            <div><div style="color:var(--cb-white);font-size:20px;font-weight:bold;">${stats.original}</div><div style="color:var(--cb-subtext);font-size:11px;">Original</div></div>
+            <div><div style="color:var(--cb-white);font-size:20px;font-weight:bold;">${stats.cleaned}</div><div style="color:var(--cb-subtext);font-size:11px;">Cleaned</div></div>
+            <div><div style="color:#ff6b6b;font-size:20px;font-weight:bold;">${stats.duplicates}</div><div style="color:var(--cb-subtext);font-size:11px;">Duplicates</div></div>
+            <div><div style="color:#4ecdc4;font-size:20px;font-weight:bold;">${stats.saved}</div><div style="color:var(--cb-subtext);font-size:11px;">Removed</div></div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+          <div>
+            <h4 style="margin:0 0 8px 0;color:var(--cb-subtext);font-size:12px;">Before (${stats.original} messages)</h4>
+            <div style="background:var(--cb-surface);padding:12px;border-radius:8px;font-size:11px;color:var(--cb-subtext);white-space:pre-wrap;max-height:300px;overflow:auto;font-family:monospace;">${originalText.slice(0, 2000)}${originalText.length > 2000 ? '\n...(truncated)' : ''}</div>
+          </div>
+          <div>
+            <h4 style="margin:0 0 8px 0;color:var(--cb-subtext);font-size:12px;">After (${stats.cleaned} messages)</h4>
+            <div style="background:var(--cb-surface);padding:12px;border-radius:8px;font-size:11px;color:var(--cb-white);white-space:pre-wrap;max-height:300px;overflow:auto;font-family:monospace;">${cleanedText.slice(0, 2000)}${cleanedText.length > 2000 ? '\n...(truncated)' : ''}</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button id="cb-cleanup-copy-text" class="cb-btn cb-btn-primary" style="flex:1;">📋 Copy Cleaned Text</button>
+          <button id="cb-cleanup-copy-json" class="cb-btn" style="flex:1;">📦 Copy as JSON</button>
+        </div>
+      `;
+      
+      modal.appendChild(container);
+      document.body.appendChild(modal);
+      
+      container.querySelector('#cb-cleanup-close').addEventListener('click', () => modal.remove());
+      container.querySelector('#cb-cleanup-copy-text').addEventListener('click', async () => {
+        await navigator.clipboard.writeText(cleanedText);
+        toast('Cleaned conversation copied!');
+      });
+      container.querySelector('#cb-cleanup-copy-json').addEventListener('click', async () => {
+        await navigator.clipboard.writeText(JSON.stringify(cleaned, null, 2));
+        toast('JSON copied!');
+      });
+      modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+    }
+
+    // ============================================
     // SIMPLIFIED INSIGHTS HUB (Card-Based Layout)
     // ============================================
     async function renderInsightsHub() {
@@ -4087,14 +4294,308 @@ Respond with JSON only:
           return card;
         }
 
-        const quickActionsCard = createInsightCard('Quick Actions','Instant workflow tools','⚡','Summarize, rewrite, translate, sync tone instantly', async () => { showView('summarize'); });
-        const extractCard = createInsightCard('Extract Content','Export conversations','📋','Export as Markdown, JSON, or plain text', async () => { const msgs = await scanChat(); const md = msgs.map(m => `**${m.role}**: ${m.text}`).join('\n\n'); await navigator.clipboard.writeText(md); toast('Copied as Markdown!'); });
-        const insightsCard = createInsightCard('Deep Insights','Conversation analytics','🔍','Analyze message count, word stats, content type', async () => { const msgs = await scanChat(); if(!msgs || msgs.length===0) { toast('No messages to analyze'); return; } const userMsgs = msgs.filter(m => m.role==='user').length; const assistMsgs = msgs.filter(m => m.role==='assistant').length; const totalWords = msgs.reduce((sum,m) => sum+m.text.split(/\s+/).length, 0); const avgWords = Math.round(totalWords/msgs.length); const hasCode = msgs.some(m => m.text.includes('```')); toast(`${msgs.length} messages • ${totalWords.toLocaleString()} words • ${hasCode ? 'Contains code' : 'Text only'}`); });
-        const mediaCard = createInsightCard('Media Vault','Extract images & videos','🖼️','View all media attachments from conversation', async () => { const msgs = await scanChat(); const allMedia = []; for(const msg of msgs) { if(msg.attachments && msg.attachments.length>0) { allMedia.push(...msg.attachments.filter(a => a.type==='image'||a.type==='video')); } } if(allMedia.length===0) { toast('No media found in conversation'); } else { toast(`Found ${allMedia.length} media item${allMedia.length>1?'s':''}`); } });
-        const mergeCard = createInsightCard('Merge Chats','Combine conversations','🔗','Merge multiple chat threads into unified timeline', async () => { toast('🚧 Coming soon: Multi-chat merger'); });
-        const suggestionsCard = createInsightCard('Smart Suggestions','AI-powered next steps','💡','Get intelligent suggestions based on conversation', async () => { toast('🚧 Coming soon: AI suggestions'); });
+        const continueCard = createInsightCard('Continue With','Cross-model handoff','🔄','Continue this conversation on another AI platform', async () => {
+          const msgs = await scanChat();
+          if (!msgs || msgs.length === 0) { toast('No conversation to continue'); return; }
+          const modal = document.createElement('div');
+          modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:999999;display:flex;align-items:center;justify-content:center;';
+          modal.innerHTML = `<div style="background:var(--cb-bg);padding:24px;border-radius:12px;max-width:400px;box-shadow:0 8px 32px rgba(0,0,0,0.4);border:1px solid var(--cb-border);"><h3 style="margin:0 0 16px 0;color:var(--cb-white);font-size:16px;">Continue on Different Model</h3><p style="margin:0 0 16px 0;color:var(--cb-subtext);font-size:13px;line-height:1.4;">Select a model to continue this conversation. The conversation will be transferred and opened in a new tab.</p><select id="cb-continue-target" class="cb-select" style="width:100%;margin-bottom:16px;"><option value="Claude">Claude (Anthropic)</option><option value="ChatGPT">ChatGPT (OpenAI)</option><option value="Gemini">Gemini (Google)</option><option value="Copilot">Copilot (Microsoft)</option></select><div style="display:flex;gap:8px;"><button id="cb-continue-go" class="cb-btn cb-btn-primary" style="flex:1;">Continue</button><button id="cb-continue-cancel" class="cb-btn" style="flex:1;">Cancel</button></div></div>`;
+          document.body.appendChild(modal);
+          modal.querySelector('#cb-continue-cancel').addEventListener('click', () => { modal.remove(); });
+          modal.querySelector('#cb-continue-go').addEventListener('click', async () => {
+            const target = modal.querySelector('#cb-continue-target').value;
+            const goBtn = modal.querySelector('#cb-continue-go');
+            goBtn.textContent = 'Processing...';
+            try {
+              const convText = msgs.map(m => `${m.role}: ${m.text}`).join('\n\n');
+              const summary = `[Continued from previous conversation]\n\n${convText.slice(0, 4000)}\n\nPlease continue from where we left off.`;
+              const url = getTargetModelUrl(target);
+              if (url) {
+                try {
+                  chrome.runtime.sendMessage({ type: 'open_and_restore', payload: { url, text: summary } }, () => {});
+                  toast(`Opening ${target}...`);
+                } catch (e) {
+                  window.open(url, '_blank');
+                  await navigator.clipboard.writeText(summary);
+                  toast('Tab opened. Summary copied to clipboard.');
+                }
+                modal.remove();
+              } else { toast('Model not supported'); }
+            } catch (e) { toast('Continue failed'); } finally { goBtn.textContent = 'Continue'; }
+          });
+        });
+        const extractCard = createInsightCard('Extract Content','Export conversations','📋','Export as Markdown, JSON, or plain text', async () => {
+          const msgs = await scanChat();
+          if (!msgs || msgs.length === 0) { toast('No conversation to export'); return; }
+          
+          const modal = document.createElement('div');
+          modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);z-index:999999;display:flex;align-items:center;justify-content:center;padding:20px;';
+          
+          const container = document.createElement('div');
+          container.style.cssText = 'background:var(--cb-bg);padding:24px;border-radius:12px;max-width:600px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,0.4);border:1px solid var(--cb-border);';
+          
+          const md = msgs.map(m => `**${m.role}**: ${m.text}`).join('\n\n');
+          const txt = msgs.map(m => `${m.role}: ${m.text}`).join('\n\n');
+          const json = JSON.stringify(msgs, null, 2);
+          const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Chat Export</title><style>body{font-family:system-ui;max-width:800px;margin:40px auto;padding:20px;}.msg{margin:20px 0;padding:15px;border-radius:8px;}.user{background:#e3f2fd;}.assistant{background:#f5f5f5;}.role{font-weight:bold;margin-bottom:8px;}</style></head><body>${msgs.map(m => `<div class="msg ${m.role}"><div class="role">${m.role}</div><div>${m.text.replace(/\n/g, '<br>')}</div></div>`).join('')}</body></html>`;
+          
+          container.innerHTML = `
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+              <h3 style="margin:0;color:var(--cb-white);font-size:16px;">📋 Export Conversation</h3>
+              <button id="cb-export-close" class="cb-btn" style="padding:4px 12px;">✕</button>
+            </div>
+            <div style="margin-bottom:16px;">
+              <div style="color:var(--cb-subtext);font-size:13px;margin-bottom:12px;">${msgs.length} messages • ${msgs.filter(m=>m.attachments?.length>0).length} with attachments</div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+              <button id="cb-export-md" class="cb-btn cb-btn-primary" style="padding:12px;">📝 Markdown</button>
+              <button id="cb-export-txt" class="cb-btn" style="padding:12px;">📄 Plain Text</button>
+              <button id="cb-export-json" class="cb-btn" style="padding:12px;">📦 JSON</button>
+              <button id="cb-export-html" class="cb-btn" style="padding:12px;">🌐 HTML</button>
+            </div>
+          `;
+          
+          modal.appendChild(container);
+          document.body.appendChild(modal);
+          
+          container.querySelector('#cb-export-close').addEventListener('click', () => modal.remove());
+          container.querySelector('#cb-export-md').addEventListener('click', async () => {
+            await navigator.clipboard.writeText(md);
+            toast('Markdown copied to clipboard!');
+            modal.remove();
+          });
+          container.querySelector('#cb-export-txt').addEventListener('click', async () => {
+            await navigator.clipboard.writeText(txt);
+            toast('Plain text copied to clipboard!');
+            modal.remove();
+          });
+          container.querySelector('#cb-export-json').addEventListener('click', async () => {
+            await navigator.clipboard.writeText(json);
+            toast('JSON copied to clipboard!');
+            modal.remove();
+          });
+          container.querySelector('#cb-export-html').addEventListener('click', async () => {
+            const blob = new Blob([html], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `chat-export-${Date.now()}.html`;
+            a.click();
+            URL.revokeObjectURL(url);
+            toast('HTML file downloaded!');
+            modal.remove();
+          });
+          modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+        });
+        const diagramCard = createInsightCard('Diagram Maker','Turn conversations into flowcharts','📊','Generate flowcharts, mind maps, and sequence diagrams', async () => {
+          const msgs = await scanChat();
+          if (!msgs || msgs.length === 0) { toast('No conversation to diagram'); return; }
+          if (msgs.length > 30) { toast('⚠️ Large conversation - using first 30 messages'); msgs.splice(30); }
+          
+          const typeModal = document.createElement('div');
+          typeModal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:999999;display:flex;align-items:center;justify-content:center;';
+          typeModal.innerHTML = `<div style="background:var(--cb-bg);padding:24px;border-radius:12px;max-width:400px;box-shadow:0 8px 32px rgba(0,0,0,0.4);border:1px solid var(--cb-border);"><h3 style="margin:0 0 16px 0;color:var(--cb-white);font-size:16px;">📊 Select Diagram Type</h3><select id="cb-diagram-type" class="cb-select" style="width:100%;margin-bottom:16px;"><option value="flowchart">Flowchart (conversation flow)</option><option value="sequence">Sequence Diagram (turn-by-turn)</option><option value="mindmap">Mind Map (key topics)</option></select><div style="display:flex;gap:8px;"><button id="cb-diagram-generate" class="cb-btn cb-btn-primary" style="flex:1;">Generate</button><button id="cb-diagram-cancel" class="cb-btn" style="flex:1;">Cancel</button></div></div>`;
+          document.body.appendChild(typeModal);
+          
+          typeModal.querySelector('#cb-diagram-cancel').addEventListener('click', () => typeModal.remove());
+          typeModal.querySelector('#cb-diagram-generate').addEventListener('click', () => {
+            const type = typeModal.querySelector('#cb-diagram-type').value;
+            const mermaid = generateDiagramMermaid(msgs, type);
+            if (mermaid) {
+              renderDiagramPreview(mermaid);
+              toast('Diagram generated!');
+            } else {
+              toast('Failed to generate diagram');
+            }
+            typeModal.remove();
+          });
+        });
+        const mediaCard = createInsightCard('Media Vault','Extract images & videos','🖼️','View all media attachments from conversation', async () => {
+          const msgs = await scanChat();
+          const allMedia = [];
+          for(const msg of msgs) {
+            if(msg.attachments && msg.attachments.length>0) {
+              allMedia.push(...msg.attachments.filter(a => a.type==='image'||a.type==='video'));
+            }
+          }
+          
+          if(allMedia.length===0) { toast('No media found in conversation'); return; }
+          
+          // Save to storage
+          try {
+            const existing = await StorageManager.get('chatbridge_media_vault') || [];
+            const newMedia = allMedia.map(m => ({...m, timestamp: Date.now(), platform: detectCurrentPlatform()}));
+            const combined = [...newMedia, ...existing].slice(0, 100); // Keep last 100
+            await StorageManager.set('chatbridge_media_vault', combined);
+          } catch(e) { console.warn('Failed to save media:', e); }
+          
+          const modal = document.createElement('div');
+          modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.95);z-index:999999;display:flex;align-items:center;justify-content:center;padding:20px;';
+          
+          const container = document.createElement('div');
+          container.style.cssText = 'background:var(--cb-bg);padding:24px;border-radius:12px;max-width:900px;width:100%;max-height:90vh;overflow:auto;box-shadow:0 8px 32px rgba(0,0,0,0.4);border:1px solid var(--cb-border);';
+          
+          const imageGrid = allMedia.filter(m => m.type === 'image').map(img => 
+            `<div style="position:relative;border-radius:8px;overflow:hidden;aspect-ratio:1;background:var(--cb-surface);">
+              <img src="${img.url}" alt="${img.alt || ''}" style="width:100%;height:100%;object-fit:cover;cursor:pointer;" onclick="window.open('${img.url}', '_blank')">
+              <div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,0.8));padding:8px;font-size:10px;color:white;">${img.name || 'image'}</div>
+            </div>`
+          ).join('');
+          
+          const videoGrid = allMedia.filter(m => m.type === 'video').map(vid => 
+            `<div style="position:relative;border-radius:8px;overflow:hidden;background:var(--cb-surface);">
+              <video src="${vid.url}" controls style="width:100%;border-radius:8px;"></video>
+              <div style="padding:8px;font-size:11px;color:var(--cb-subtext);">${vid.name || 'video'}</div>
+            </div>`
+          ).join('');
+          
+          container.innerHTML = `
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+              <h3 style="margin:0;color:var(--cb-white);font-size:16px;">🖼️ Media Vault</h3>
+              <button id="cb-media-close" class="cb-btn" style="padding:4px 12px;">✕</button>
+            </div>
+            <div style="background:var(--cb-surface);padding:12px;border-radius:8px;margin-bottom:16px;display:flex;justify-content:space-around;text-align:center;">
+              <div><div style="color:var(--cb-white);font-size:20px;font-weight:bold;">${allMedia.filter(m=>m.type==='image').length}</div><div style="color:var(--cb-subtext);font-size:11px;">Images</div></div>
+              <div><div style="color:var(--cb-white);font-size:20px;font-weight:bold;">${allMedia.filter(m=>m.type==='video').length}</div><div style="color:var(--cb-subtext);font-size:11px;">Videos</div></div>
+              <div><div style="color:var(--cb-white);font-size:20px;font-weight:bold;">${allMedia.length}</div><div style="color:var(--cb-subtext);font-size:11px;">Total</div></div>
+            </div>
+            ${imageGrid ? `<h4 style="color:var(--cb-white);font-size:13px;margin:16px 0 8px 0;">Images</h4><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-bottom:16px;">${imageGrid}</div>` : ''}
+            ${videoGrid ? `<h4 style="color:var(--cb-white);font-size:13px;margin:16px 0 8px 0;">Videos</h4><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px;">${videoGrid}</div>` : ''}
+            <div style="margin-top:16px;display:flex;gap:8px;">
+              <button id="cb-media-export" class="cb-btn cb-btn-primary" style="flex:1;">📋 Copy URLs</button>
+              <button id="cb-media-clear" class="cb-btn" style="flex:1;">🗑️ Clear Vault</button>
+            </div>
+          `;
+          
+          modal.appendChild(container);
+          document.body.appendChild(modal);
+          
+          container.querySelector('#cb-media-close').addEventListener('click', () => modal.remove());
+          container.querySelector('#cb-media-export').addEventListener('click', async () => {
+            const urls = allMedia.map(m => m.url).join('\n');
+            await navigator.clipboard.writeText(urls);
+            toast('Media URLs copied!');
+          });
+          container.querySelector('#cb-media-clear').addEventListener('click', async () => {
+            try {
+              await StorageManager.set('chatbridge_media_vault', []);
+              toast('Media vault cleared!');
+              modal.remove();
+            } catch(e) { toast('Failed to clear vault'); }
+          });
+          modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+        });
+        const mergeCard = createInsightCard('Merge Chats','Combine conversations','🔗','Merge multiple chat threads into unified timeline', async () => {
+          const currentMsgs = await scanChat();
+          if (!currentMsgs || currentMsgs.length === 0) { toast('No current conversation to merge'); return; }
+          
+          // Get saved conversations from storage
+          const saved = await new Promise(resolve => {
+            if (typeof StorageManager !== 'undefined') {
+              StorageManager.getConversations().then(resolve).catch(() => resolve([]));
+            } else {
+              resolve([]);
+            }
+          });
+          
+          if (!saved || saved.length === 0) {
+            toast('No saved conversations to merge. Scan other chats first.');
+            return;
+          }
+          
+          const modal = document.createElement('div');
+          modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);z-index:999999;display:flex;align-items:center;justify-content:center;padding:20px;';
+          
+          const container = document.createElement('div');
+          container.style.cssText = 'background:var(--cb-bg);padding:24px;border-radius:12px;max-width:700px;width:100%;max-height:90vh;overflow:auto;box-shadow:0 8px 32px rgba(0,0,0,0.4);border:1px solid var(--cb-border);';
+          
+          let selectedIds = new Set();
+          
+          const listHTML = saved.slice(0, 10).map((conv, idx) => {
+            const preview = conv.messages?.slice(0, 2).map(m => m.text.slice(0, 50)).join(' • ') || 'No preview';
+            const count = conv.messages?.length || 0;
+            const date = new Date(conv.timestamp || Date.now()).toLocaleDateString();
+            return `<div class="merge-item" data-idx="${idx}" style="background:var(--cb-surface);padding:12px;border-radius:8px;margin-bottom:8px;cursor:pointer;border:2px solid transparent;transition:all 0.2s;"><div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="color:var(--cb-white);font-weight:bold;">${conv.platform || 'Unknown'}</span><span style="color:var(--cb-subtext);font-size:11px;">${date}</span></div><div style="color:var(--cb-subtext);font-size:12px;margin-bottom:4px;">${count} messages</div><div style="color:var(--cb-subtext);font-size:11px;opacity:0.7;">${preview}...</div></div>`;
+          }).join('');
+          
+          container.innerHTML = `
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+              <h3 style="margin:0;color:var(--cb-white);font-size:16px;">🔗 Merge Conversations</h3>
+              <button id="cb-merge-close" class="cb-btn" style="padding:4px 12px;">✕</button>
+            </div>
+            <div style="margin-bottom:16px;">
+              <div style="color:var(--cb-subtext);font-size:13px;margin-bottom:12px;">Current: ${currentMsgs.length} messages • Select conversations to merge:</div>
+              <div id="merge-list" style="max-height:400px;overflow:auto;">${listHTML}</div>
+            </div>
+            <div style="display:flex;gap:8px;">
+              <button id="cb-merge-go" class="cb-btn cb-btn-primary" style="flex:1;" disabled>Merge Selected</button>
+              <button id="cb-merge-cancel" class="cb-btn" style="flex:1;">Cancel</button>
+            </div>
+            <div id="merge-status" style="margin-top:8px;color:var(--cb-subtext);font-size:11px;text-align:center;"></div>
+          `;
+          
+          modal.appendChild(container);
+          document.body.appendChild(modal);
+          
+          const items = container.querySelectorAll('.merge-item');
+          const mergeBtn = container.querySelector('#cb-merge-go');
+          const statusEl = container.querySelector('#merge-status');
+          
+          items.forEach(item => {
+            item.addEventListener('click', () => {
+              const idx = item.getAttribute('data-idx');
+              if (selectedIds.has(idx)) {
+                selectedIds.delete(idx);
+                item.style.borderColor = 'transparent';
+                item.style.background = 'var(--cb-surface)';
+              } else {
+                selectedIds.add(idx);
+                item.style.borderColor = 'rgba(0,180,255,0.5)';
+                item.style.background = 'rgba(0,180,255,0.1)';
+              }
+              mergeBtn.disabled = selectedIds.size === 0;
+              statusEl.textContent = selectedIds.size > 0 ? `${selectedIds.size} selected` : '';
+            });
+          });
+          
+          container.querySelector('#cb-merge-cancel').addEventListener('click', () => modal.remove());
+          container.querySelector('#cb-merge-close').addEventListener('click', () => modal.remove());
+          
+          container.querySelector('#cb-merge-go').addEventListener('click', async () => {
+            const selectedConvs = Array.from(selectedIds).map(idx => saved[parseInt(idx)]);
+            const allMessages = [...currentMsgs];
+            
+            selectedConvs.forEach(conv => {
+              if (conv.messages && Array.isArray(conv.messages)) {
+                allMessages.push(...conv.messages.map(m => ({...m, source: conv.platform})));
+              }
+            });
+            
+            // Sort by timestamp if available, otherwise keep order
+            allMessages.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+            
+            const merged = allMessages.map(m => `**${m.role}** ${m.source ? `(${m.source})` : ''}: ${m.text}`).join('\n\n');
+            await navigator.clipboard.writeText(merged);
+            toast(`Merged ${allMessages.length} messages from ${selectedIds.size + 1} conversations!`);
+            modal.remove();
+          });
+          
+          modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+        });
+        const cleanupCard = createInsightCard('Clean & Organize','Fix formatting and clean messy conversations','🧹','Remove duplicates, fix spacing, normalize markdown', async () => {
+          const msgs = await scanChat();
+          if (!msgs || msgs.length === 0) { toast('No conversation to clean'); return; }
+          
+          const { cleaned, stats } = cleanConversation(msgs);
+          if (stats.saved === 0) {
+            toast('✨ Conversation is already clean!');
+          } else {
+            renderCleanupPreview(msgs, cleaned, stats);
+            toast(`Removed ${stats.saved} redundant message${stats.saved>1?'s':''}`);
+          }
+        });
 
-        [quickActionsCard, extractCard, insightsCard, mediaCard, mergeCard, suggestionsCard].forEach(card => insightsGrid.appendChild(card));
+        [continueCard, extractCard, diagramCard, mediaCard, mergeCard, cleanupCard].forEach(card => insightsGrid.appendChild(card));
         insightsContent.appendChild(insightsGrid);
 
         debugLog('[Insights Hub] Render complete');
@@ -8343,7 +8844,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       let fileInput = findFileInputNearComposer();
       if (!fileInput) {
         // Fallback: try clipboard for the first image
-        const img = atts.find(a => a.kind === 'image');
+        const img = atts.find(a => a.type === 'image');
         if (img) {
           try {
             restoreLog('No file input found, trying clipboard for image:', img.url);
@@ -11766,7 +12267,46 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         try {
           window.MCPBridge.init();
           _cbMCPInitialized = true;
-          console.log('[ChatBridge] MCP Bridge initialized with resources:', window.MCPBridge.getStats().registeredResources);
+          
+          // Register ChatBridge-specific resources
+          window.MCPBridge.registerResource('/chatbridge/scan', async (params) => {
+            try {
+              const msgs = await scanChat();
+              return {
+                ok: true,
+                messages: msgs,
+                count: msgs.length,
+                platform: detectCurrentPlatform(),
+                timestamp: Date.now()
+              };
+            } catch (e) {
+              return { ok: false, error: e.message };
+            }
+          });
+          
+          window.MCPBridge.registerResource('/chatbridge/restore', async (params) => {
+            try {
+              const text = params.text || '';
+              const attachments = params.attachments || [];
+              const success = await restoreToChat(text, attachments);
+              return { ok: success };
+            } catch (e) {
+              return { ok: false, error: e.message };
+            }
+          });
+          
+          window.MCPBridge.registerResource('/chatbridge/status', async (params) => {
+            return {
+              ok: true,
+              platform: detectCurrentPlatform(),
+              url: window.location.href,
+              hasRAG: typeof window.RAGEngine !== 'undefined',
+              hasONNX: typeof window.EmbeddingEngine !== 'undefined',
+              timestamp: Date.now()
+            };
+          });
+          
+          console.log('[ChatBridge] MCP initialized with', window.MCPBridge.getStats().registeredResources.length, 'resources:', window.MCPBridge.getStats().registeredResources);
         } catch (e) {
           console.warn('[ChatBridge] MCP init failed:', e);
         }
