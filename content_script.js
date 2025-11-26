@@ -97,10 +97,10 @@
 
   // avoid const redeclaration causing SyntaxError in some injection scenarios
   var CB_MAX_MESSAGES = (typeof window !== 'undefined' && window.__CHATBRIDGE && window.__CHATBRIDGE.MAX_MESSAGES) ? window.__CHATBRIDGE.MAX_MESSAGES : 200;
-    const DOM_STABLE_MS = 100; // Ultra-fast scan - minimal wait (optimized)
-    const DOM_STABLE_TIMEOUT_MS = 1500; // Fast timeout for quick completion
-  const SCROLL_MAX_STEPS = 15; // Fewer steps for instant feel
-    const SCROLL_STEP_PAUSE_MS = 50; // Minimal pause for lightning-fast scrolling
+    const DOM_STABLE_MS = 150; // Ultra-fast scan - minimal wait
+    const DOM_STABLE_TIMEOUT_MS = 2000; // Reduced timeout for faster completion
+  const SCROLL_MAX_STEPS = 20; // Fewer steps but faster
+    const SCROLL_STEP_PAUSE_MS = 80; // Minimal pause for ultra-fast scrolling
   const DEBUG = !!(typeof window !== 'undefined' && window.__CHATBRIDGE_DEBUG === true);
 
   function debugLog(...args) { if (!DEBUG) return; try { console.debug('[ChatBridge]', ...args); } catch (e) {} }
@@ -900,40 +900,6 @@
   .cb-insight-content { font-size: 12px; color: var(--cb-white); line-height: 1.5; }
   .cb-insight-list { margin: 6px 0 0 18px; padding: 0; font-size: 12px; color: var(--cb-white); }
   .cb-insight-list li { margin-bottom: 4px; line-height: 1.4; }
-  
-  /* Insights Panel Sidebar Tabs */
-  .cb-insights-container { display: flex; height: 100%; }
-  .cb-insights-sidebar { width: 160px; background: rgba(10,15,28,0.6); border-right: 1px solid rgba(0,180,255,0.2); padding: 12px 0; }
-  .cb-insight-tab { 
-    padding: 10px 16px; 
-    margin: 4px 8px; 
-    font-size: 12px; 
-    color: rgba(255,255,255,0.6); 
-    cursor: pointer; 
-    border-radius: 6px; 
-    transition: all 0.2s ease; 
-    display: flex; 
-    align-items: center; 
-    gap: 8px;
-  }
-  .cb-insight-tab:hover { 
-    background: rgba(0,180,255,0.1); 
-    color: rgba(255,255,255,0.9); 
-  }
-  .cb-insight-tab.active { 
-    background: rgba(0,180,255,0.2); 
-    color: var(--cb-white); 
-    border-left: 3px solid rgba(0,180,255,0.9); 
-    font-weight: 600; 
-  }
-  #cb-insights-main { 
-    flex: 1; 
-    overflow-y: auto; 
-    background: rgba(10,15,28,0.4); 
-  }
-  #cb-insights-main::-webkit-scrollbar { width: 8px; }
-  #cb-insights-main::-webkit-scrollbar-track { background: rgba(10,15,28,0.6); border-radius: 10px; }
-  #cb-insights-main::-webkit-scrollbar-thumb { background: linear-gradient(180deg, rgba(0,180,255,0.6), rgba(140,30,255,0.5)); border-radius: 10px; }
   .cb-code-snippet { background: var(--cb-bg); border: 1px solid var(--cb-border); border-radius: 6px; padding: 8px; font-size: 11px; font-family: 'Courier New', monospace; color: var(--cb-accent-tertiary); overflow-x: auto; margin: 6px 0; }
   .cb-code-snippet::-webkit-scrollbar { height: 6px; }
   .cb-code-snippet::-webkit-scrollbar-track { background: var(--cb-bg3); }
@@ -1165,7 +1131,15 @@
   actions.appendChild(actionsGrid);
   panel.appendChild(actions);
 
-    // Toolbar preview (moved above the Gemini textarea)
+    // Toolbar with Chat dropdown
+    const toolbar = document.createElement('div'); toolbar.className = 'cb-toolbar';
+  const lab = document.createElement('div'); lab.className = 'cb-label'; lab.textContent = 'Select Chat';
+    const chatSelect = document.createElement('select'); chatSelect.className = 'cb-select'; chatSelect.id = 'cb-chat-select';
+  chatSelect.setAttribute('aria-label', 'Select saved chat');
+    toolbar.appendChild(lab); toolbar.appendChild(chatSelect);
+    panel.appendChild(toolbar);
+
+  // Toolbar preview (moved above the Gemini textarea)
   const preview = document.createElement('div'); preview.className = 'cb-preview'; preview.textContent = 'Preview: (none)';
 
   // --- Internal views (Prompt Designer, Summarize, Rewrite, Translate) - inline sections ---
@@ -1500,321 +1474,32 @@
   insightsTop.appendChild(insightsTitle); insightsTop.appendChild(btnCloseInsights);
   insightsView.appendChild(insightsTop);
 
-  const insightsIntro = document.createElement('div'); insightsIntro.className = 'cb-view-intro'; insightsIntro.textContent = 'Smart tools to enhance your AI workflows. Extract insights, merge conversations, and work more efficiently.';
+  const insightsIntro = document.createElement('div'); insightsIntro.className = 'cb-view-intro'; insightsIntro.textContent = 'Practical tools to help you work smarter: compare models, merge threads, extract content, and stay organized.';
   insightsView.appendChild(insightsIntro);
 
-  const insightsContent = document.createElement('div'); insightsContent.id = 'cb-insights-content'; insightsContent.style.cssText = 'display:flex;gap:16px;padding:16px 12px;overflow-y:auto;max-height:calc(100vh - 250px);';
-  
-  // Left sidebar with tabs
-  const sidebar = document.createElement('div');
-  sidebar.style.cssText = 'width:180px;display:flex;flex-direction:column;gap:8px;flex-shrink:0;';
-  
-  const tabs = [
-    { id: 'actions', label: '⚡ Quick Actions', icon: '⚡' },
-    { id: 'extract', label: '📋 Extract', icon: '📋' },
-    { id: 'merge', label: '🔗 Merge', icon: '🔗' },
-    { id: 'insights', label: '🔍 Deep Insights', icon: '🔍' },
-    { id: 'media', label: '🖼️ Media Vault', icon: '🖼️' }
-  ];
-  
-  tabs.forEach(tab => {
-    const btn = document.createElement('button');
-    btn.className = 'cb-insight-tab';
-    btn.dataset.tab = tab.id;
-    btn.innerHTML = `<span style="font-size:16px;margin-right:8px;">${tab.icon}</span><span>${tab.label.replace(tab.icon + ' ', '')}</span>`;
-    btn.style.cssText = 'padding:12px 14px;background:rgba(10,15,28,0.4);border:1px solid rgba(0,180,255,0.2);border-radius:8px;color:var(--cb-white);font-size:13px;font-weight:500;text-align:left;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;';
-    btn.addEventListener('click', () => {
-      sidebar.querySelectorAll('.cb-insight-tab').forEach(b => {
-        b.style.background = 'rgba(10,15,28,0.4)';
-        b.style.borderColor = 'rgba(0,180,255,0.2)';
-      });
-      btn.style.background = 'linear-gradient(135deg,rgba(0,180,255,0.15),rgba(120,80,200,0.15))';
-      btn.style.borderColor = 'rgba(0,180,255,0.4)';
-      showInsightTab(tab.id);
-    });
-    btn.addEventListener('mouseenter', () => {
-      if (btn.style.background !== 'linear-gradient(135deg,rgba(0,180,255,0.15),rgba(120,80,200,0.15))') {
-        btn.style.background = 'rgba(10,15,28,0.6)';
-        btn.style.borderColor = 'rgba(0,180,255,0.3)';
-      }
-    });
-    btn.addEventListener('mouseleave', () => {
-      if (btn.style.background !== 'linear-gradient(135deg,rgba(0,180,255,0.15),rgba(120,80,200,0.15))') {
-        btn.style.background = 'rgba(10,15,28,0.4)';
-        btn.style.borderColor = 'rgba(0,180,255,0.2)';
-      }
-    });
-    sidebar.appendChild(btn);
-  });
-  
-  // Main content area
-  const mainContent = document.createElement('div');
-  mainContent.id = 'cb-insights-main';
-  mainContent.style.cssText = 'flex:1;background:rgba(10,15,28,0.3);border:1px solid rgba(0,180,255,0.15);border-radius:12px;padding:20px;min-height:400px;';
-  
-  insightsContent.appendChild(sidebar);
-  insightsContent.appendChild(mainContent);
+  const insightsContent = document.createElement('div'); insightsContent.id = 'cb-insights-content'; insightsContent.style.cssText = 'padding:12px 0;overflow-y:auto;max-height:calc(100vh - 250px);';
+  // Add default insights blocks
+  insightsContent.innerHTML = `
+    <div class="cb-insights-section">
+      <div class="cb-insight-block">
+        <div class="cb-insight-title">Compare Models</div>
+        <div class="cb-insight-content">Quickly compare responses from different AI models side-by-side. Spot differences, strengths, and weaknesses for each platform.</div>
+      </div>
+      <div class="cb-insight-block">
+        <div class="cb-insight-title">Merge Threads</div>
+        <div class="cb-insight-content">Combine multiple chat threads into a single unified view. Useful for project tracking, research, or summarizing long discussions.</div>
+      </div>
+      <div class="cb-insight-block">
+        <div class="cb-insight-title">Extract Key Content</div>
+        <div class="cb-insight-content">Automatically extract highlights, action items, and decisions from your conversations. Perfect for meeting notes and follow-ups.</div>
+      </div>
+      <div class="cb-insight-block">
+        <div class="cb-insight-title">Organize & Tag</div>
+        <div class="cb-insight-content">Tag, categorize, and search your chats for easy retrieval. Stay organized and never lose track of important information.</div>
+      </div>
+    </div>
+  `;
   insightsView.appendChild(insightsContent);
-  
-  // Function to show different tabs
-  function showInsightTab(tabId) {
-    const main = shadow.getElementById('cb-insights-main');
-    if (!main) return;
-    main.innerHTML = '';
-    
-    switch(tabId) {
-      case 'actions':
-        renderQuickActionsTab(main);
-        break;
-      case 'extract':
-        renderExtractTab(main);
-        break;
-      case 'merge':
-        renderMergeTab(main);
-        break;
-      case 'insights':
-        renderDeepInsightsTab(main);
-        break;
-      case 'media':
-        renderMediaVaultTab(main);
-        break;
-    }
-  }
-
-  // === Tab Rendering Functions ===
-  
-  function renderQuickActionsTab(container) {
-    container.innerHTML = `
-      <style>
-        .qa-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; padding: 20px; animation: fadeInUp 0.4s ease; }
-        @keyframes fadeInUp { from { opacity:0; transform:translateY(15px); } to { opacity:1; transform:translateY(0); } }
-        .qa-card { background: linear-gradient(135deg, rgba(0,180,255,0.15) 0%, rgba(99,102,241,0.15) 100%); border: 1px solid rgba(0,180,255,0.4); border-radius: 14px; padding: 20px; cursor: pointer; transition: all 0.35s cubic-bezier(0.4,0,0.2,1); position: relative; overflow: hidden; }
-        .qa-card::before { content:''; position:absolute; top:0; left:0; right:0; bottom:0; background: linear-gradient(135deg, rgba(0,180,255,0.25) 0%, rgba(99,102,241,0.25) 100%); opacity:0; transition: opacity 0.3s; }
-        .qa-card:hover { transform: translateY(-4px); box-shadow: 0 12px 28px rgba(0,180,255,0.3); border-color: rgba(0,180,255,0.7); }
-        .qa-card:hover::before { opacity:1; }
-        .qa-card:active { transform: translateY(-2px); }
-        .qa-icon { font-size: 44px; margin-bottom: 12px; filter: drop-shadow(0 4px 10px rgba(0,180,255,0.4)); position:relative; z-index:1; }
-        .qa-title { font-family: 'Bebas Neue', 'Arial Black', sans-serif; font-size: 20px; font-weight: 700; color: #ffffff; letter-spacing: 1.2px; position:relative; z-index:1; }
-      </style>
-      <div class="qa-grid">
-        <div class="qa-card" id="cb-quick-summarize">
-          <div class="qa-icon">📝</div>
-          <div class="qa-title">SUMMARIZE</div>
-        </div>
-        <div class="qa-card" id="cb-quick-rewrite">
-          <div class="qa-icon">✍️</div>
-          <div class="qa-title">REWRITE</div>
-        </div>
-        <div class="qa-card" id="cb-quick-translate">
-          <div class="qa-icon">🌐</div>
-          <div class="qa-title">TRANSLATE</div>
-        </div>
-        <div class="qa-card" id="cb-quick-tone">
-          <div class="qa-icon">🎭</div>
-          <div class="qa-title">SYNC TONE</div>
-        </div>
-      </div>
-    `;
-    
-    shadow.getElementById('cb-quick-summarize')?.addEventListener('click', () => showView('summarize'));
-    shadow.getElementById('cb-quick-rewrite')?.addEventListener('click', () => showView('rewrite'));
-    shadow.getElementById('cb-quick-translate')?.addEventListener('click', () => showView('translate'));
-    shadow.getElementById('cb-quick-tone')?.addEventListener('click', () => showView('tone'));
-  }
-
-  function renderExtractTab(container) {
-    container.innerHTML = `
-      <style>
-        .extract-wrap { padding: 20px; animation: fadeInUp 0.4s ease; }
-        .extract-title { font-family: 'Bebas Neue', 'Arial Black', sans-serif; font-size: 26px; color: #ffffff; margin-bottom: 8px; letter-spacing: 1.5px; background: linear-gradient(135deg, #00b4ff 0%, #6366f1 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .extract-desc { font-size: 13px; color: rgba(255,255,255,0.6); margin-bottom: 18px; }
-        .extract-options { display: flex; flex-direction: column; gap: 12px; }
-        .extract-btn { background: rgba(0,180,255,0.12); border: 1px solid rgba(0,180,255,0.35); border-radius: 10px; padding: 14px 16px; color: #fff; cursor: pointer; text-align: left; transition: all 0.3s ease; }
-        .extract-btn:hover { background: rgba(0,180,255,0.22); border-color: rgba(0,180,255,0.6); transform: translateX(4px); }
-        .extract-btn-title { font-weight: 600; font-size: 14px; margin-bottom: 4px; }
-        .extract-btn-sub { font-size: 11px; opacity: 0.65; }
-      </style>
-      <div class="extract-wrap">
-        <div class="extract-title">EXTRACT CONTENT</div>
-        <div class="extract-desc">Export conversation in multiple formats</div>
-        <div class="extract-options">
-          <button class="extract-btn" id="cb-extract-markdown">
-            <div class="extract-btn-title">📄 Export as Markdown</div>
-            <div class="extract-btn-sub">Clean .md file ready for documentation</div>
-          </button>
-          <button class="extract-btn" id="cb-extract-json">
-            <div class="extract-btn-title">📊 Export as JSON</div>
-            <div class="extract-btn-sub">Structured data with metadata</div>
-          </button>
-          <button class="extract-btn" id="cb-extract-text">
-            <div class="extract-btn-title">📝 Plain Text</div>
-            <div class="extract-btn-sub">Simple text export</div>
-          </button>
-        </div>
-      </div>
-    `;
-    
-    shadow.getElementById('cb-extract-markdown')?.addEventListener('click', async () => {
-      const msgs = await scanChat();
-      const md = msgs.map(m => `**${m.role}**: ${m.text}`).join('\n\n');
-      copyToClipboard(md);
-      showToast('Copied as Markdown!');
-    });
-    
-    shadow.getElementById('cb-extract-json')?.addEventListener('click', async () => {
-      const msgs = await scanChat();
-      copyToClipboard(JSON.stringify(msgs, null, 2));
-      showToast('Copied as JSON!');
-    });
-    
-    shadow.getElementById('cb-extract-text')?.addEventListener('click', async () => {
-      const msgs = await scanChat();
-      const txt = msgs.map(m => `${m.role}: ${m.text}`).join('\n\n');
-      copyToClipboard(txt);
-      showToast('Copied as text!');
-    });
-  }
-
-  function renderMergeTab(container) {
-    container.innerHTML = `
-      <style>
-        .merge-wrap { padding: 20px; animation: fadeInUp 0.4s ease; }
-        .merge-hero { background: linear-gradient(135deg, rgba(0,180,255,0.18) 0%, rgba(99,102,241,0.18) 100%); border: 1px solid rgba(0,180,255,0.4); border-radius: 14px; padding: 28px; text-align: center; margin-bottom: 20px; }
-        .merge-icon { font-size: 56px; margin-bottom: 14px; filter: drop-shadow(0 4px 14px rgba(0,180,255,0.5)); }
-        .merge-title { font-family: 'Bebas Neue', 'Arial Black', sans-serif; font-size: 28px; color: #ffffff; margin-bottom: 10px; letter-spacing: 2px; }
-        .merge-desc { font-size: 13px; color: rgba(255,255,255,0.7); line-height: 1.5; max-width: 400px; margin: 0 auto; }
-        .merge-btn { width: 100%; background: linear-gradient(135deg, #00b4ff 0%, #6366f1 100%); border: none; border-radius: 10px; padding: 16px; color: #fff; font-family: 'Bebas Neue', sans-serif; font-size: 17px; letter-spacing: 1px; cursor: pointer; transition: all 0.3s; box-shadow: 0 4px 14px rgba(0,180,255,0.35); }
-        .merge-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,180,255,0.45); }
-        .merge-status { margin-top: 12px; font-size: 11px; color: rgba(255,255,255,0.55); text-align: center; }
-      </style>
-      <div class="merge-wrap">
-        <div class="merge-hero">
-          <div class="merge-icon">🔀</div>
-          <div class="merge-title">MERGE CONVERSATIONS</div>
-          <div class="merge-desc">Combine multiple chat threads into a unified timeline for research and synthesis</div>
-        </div>
-        <button class="merge-btn" id="cb-merge-start">START MERGE PROCESS</button>
-        <div class="merge-status" id="cb-merge-status"></div>
-      </div>
-    `;
-    
-    shadow.getElementById('cb-merge-start')?.addEventListener('click', () => {
-      const status = shadow.getElementById('cb-merge-status');
-      if (status) status.textContent = '🚧 Coming soon: Multi-chat merger for cross-platform synthesis';
-    });
-  }
-
-  function renderDeepInsightsTab(container) {
-    container.innerHTML = `
-      <style>
-        .insights-wrap { padding: 20px; animation: fadeInUp 0.4s ease; }
-        .insights-title { font-family: 'Bebas Neue', 'Arial Black', sans-serif; font-size: 26px; color: #ffffff; margin-bottom: 18px; letter-spacing: 1.5px; text-align: center; }
-        .insights-grid { display: grid; gap: 14px; }
-        .insight-card { background: linear-gradient(135deg, rgba(0,180,255,0.12) 0%, rgba(99,102,241,0.12) 100%); border: 1px solid rgba(0,180,255,0.35); border-radius: 12px; padding: 18px; transition: all 0.3s; }
-        .insight-card:hover { border-color: rgba(0,180,255,0.55); background: linear-gradient(135deg, rgba(0,180,255,0.18) 0%, rgba(99,102,241,0.18) 100%); }
-        .insight-label { font-size: 11px; color: rgba(255,255,255,0.6); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; }
-        .insight-value { font-family: 'Bebas Neue', sans-serif; font-size: 32px; color: #ffffff; letter-spacing: 1px; }
-        .insight-desc { font-size: 12px; color: rgba(255,255,255,0.7); margin-top: 6px; }
-        .loading-shimmer { background: linear-gradient(90deg, rgba(0,180,255,0.1) 0%, rgba(99,102,241,0.2) 50%, rgba(0,180,255,0.1) 100%); background-size: 200% 100%; animation: shimmer 2s infinite; }
-        @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
-      </style>
-      <div class="insights-wrap">
-        <div class="insights-title">DEEP INSIGHTS</div>
-        <div class="insights-grid" id="cb-insights-content">
-          <div class="insight-card loading-shimmer">
-            <div class="insight-label">Analyzing conversation...</div>
-            <div class="insight-value">⏳</div>
-          </div>
-        </div>
-      </div>
-    `;
-    
-    (async () => {
-      const msgs = await scanChat();
-      const content = shadow.getElementById('cb-insights-content');
-      if (!content) return;
-      
-      if (!msgs || msgs.length === 0) {
-        content.innerHTML = '<div class="insight-card"><div class="insight-label">No Data</div><div class="insight-value">📭</div></div>';
-        return;
-      }
-      
-      const userMsgs = msgs.filter(m => m.role === 'user').length;
-      const assistMsgs = msgs.filter(m => m.role === 'assistant').length;
-      const totalWords = msgs.reduce((sum, m) => sum + m.text.split(/\s+/).length, 0);
-      const avgWords = Math.round(totalWords / msgs.length);
-      const hasCode = msgs.some(m => m.text.includes('```'));
-      
-      content.innerHTML = `
-        <div class="insight-card">
-          <div class="insight-label">Total Messages</div>
-          <div class="insight-value">${msgs.length}</div>
-          <div class="insight-desc">${userMsgs} from you, ${assistMsgs} from assistant</div>
-        </div>
-        <div class="insight-card">
-          <div class="insight-label">Word Count</div>
-          <div class="insight-value">${totalWords.toLocaleString()}</div>
-          <div class="insight-desc">~${avgWords} words per message</div>
-        </div>
-        <div class="insight-card">
-          <div class="insight-label">Content Type</div>
-          <div class="insight-value">${hasCode ? '💻' : '💬'}</div>
-          <div class="insight-desc">${hasCode ? 'Contains code snippets' : 'Text conversation'}</div>
-        </div>
-      `;
-    })();
-  }
-
-  function renderMediaVaultTab(container) {
-    container.innerHTML = `
-      <style>
-        .vault-wrap { padding: 20px; animation: fadeInUp 0.4s ease; }
-        .vault-title { font-family: 'Bebas Neue', 'Arial Black', sans-serif; font-size: 26px; color: #ffffff; margin-bottom: 18px; letter-spacing: 1.5px; text-align: center; }
-        .vault-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; }
-        .vault-item { aspect-ratio: 1; border-radius: 10px; overflow: hidden; background: rgba(0,180,255,0.1); border: 1px solid rgba(0,180,255,0.3); cursor: pointer; transition: all 0.3s; position: relative; }
-        .vault-item:hover { transform: scale(1.05); border-color: rgba(0,180,255,0.6); box-shadow: 0 8px 20px rgba(0,180,255,0.35); }
-        .vault-item img { width: 100%; height: 100%; object-fit: cover; }
-        .vault-empty { text-align: center; padding: 50px 20px; color: rgba(255,255,255,0.5); font-size: 13px; }
-        .vault-empty-icon { font-size: 56px; margin-bottom: 12px; opacity: 0.3; }
-      </style>
-      <div class="vault-wrap">
-        <div class="vault-title">MEDIA VAULT</div>
-        <div class="vault-grid" id="cb-media-grid">
-          <div class="vault-empty"><div class="vault-empty-icon">⏳</div>Scanning media...</div>
-        </div>
-      </div>
-    `;
-    
-    (async () => {
-      const msgs = await scanChat();
-      const grid = shadow.getElementById('cb-media-grid');
-      if (!grid) return;
-      
-      const allMedia = [];
-      for (const msg of msgs) {
-        if (msg.attachments && msg.attachments.length > 0) {
-          allMedia.push(...msg.attachments.filter(a => a.type === 'image' || a.type === 'video'));
-        }
-      }
-      
-      if (allMedia.length === 0) {
-        grid.innerHTML = '<div class="vault-empty"><div class="vault-empty-icon">📁</div>No media found in this conversation</div>';
-        return;
-      }
-      
-      grid.innerHTML = allMedia.map(media => `
-        <div class="vault-item" onclick="window.open('${media.url}', '_blank')">
-          ${media.type === 'image' ? `<img src="${media.url}" loading="lazy" />` : `<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:40px;">🎥</div>`}
-        </div>
-      `).join('');
-    })();
-  }
-  
-  // Initialize with Quick Actions
-  setTimeout(() => {
-    const firstTab = sidebar.querySelector('.cb-insight-tab');
-    if (firstTab) firstTab.click();
-  }, 100);
 
   panel.appendChild(insightsView);
 
@@ -3010,6 +2695,357 @@
       return 'Unknown';
     }
 
+    // Render Image Vault Widget
+    // Smart Library Widget - Browse saved conversations with semantic search
+    async function renderSmartLibraryWidget(container) {
+      try {
+        const librarySection = document.createElement('div');
+        librarySection.style.cssText = 'margin:16px 12px;';
+        
+        // Header with toggle
+        const header = document.createElement('div');
+        header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:12px;background:rgba(16,24,43,0.4);border:1px solid rgba(0,180,255,0.25);border-radius:8px 8px 0 0;cursor:pointer;';
+        header.innerHTML = `
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-size:16px;">📚</span>
+            <span style="font-weight:600;font-size:13px;color:var(--cb-white);">Smart Library</span>
+            <span id="cb-library-count" style="font-size:11px;color:rgba(255,255,255,0.5);background:rgba(0,180,255,0.2);padding:2px 6px;border-radius:10px;">0</span>
+          </div>
+          <span id="cb-library-toggle" style="font-size:18px;transition:transform 0.2s;">▼</span>
+        `;
+        
+        // Content area (collapsible)
+        const content = document.createElement('div');
+        content.id = 'cb-library-content';
+        content.style.cssText = 'display:none;padding:12px;background:rgba(16,24,43,0.4);border:1px solid rgba(0,180,255,0.25);border-top:none;border-radius:0 0 8px 8px;';
+        
+        // Search bar
+        const searchBar = document.createElement('div');
+        searchBar.style.cssText = 'display:flex;gap:8px;margin-bottom:12px;';
+        searchBar.innerHTML = `
+          <input type="text" id="cb-library-search" class="cb-input" placeholder="Search conversations semantically..." style="flex:1;font-size:12px;"/>
+          <button id="cb-library-search-btn" class="cb-btn cb-btn-primary" style="font-size:11px;padding:8px;">🔍 Search</button>
+        `;
+        
+        // Tag filter
+        const tagFilter = document.createElement('div');
+        tagFilter.style.cssText = 'display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;';
+        tagFilter.id = 'cb-library-tags';
+        
+        // Conversations list
+        const convList = document.createElement('div');
+        convList.id = 'cb-library-list';
+        convList.style.cssText = 'display:flex;flex-direction:column;gap:8px;max-height:400px;overflow-y:auto;margin-bottom:12px;';
+        
+        // Controls
+        const controls = document.createElement('div');
+        controls.style.cssText = 'display:flex;gap:8px;';
+        controls.innerHTML = `
+          <button id="cb-library-refresh" class="cb-btn cb-btn-primary" style="flex:1;font-size:11px;padding:8px;">🔄 Refresh</button>
+          <button id="cb-library-index" class="cb-btn" style="font-size:11px;padding:8px;">⚡ Index All</button>
+        `;
+        
+        content.appendChild(searchBar);
+        content.appendChild(tagFilter);
+        content.appendChild(convList);
+        content.appendChild(controls);
+        librarySection.appendChild(header);
+        librarySection.appendChild(content);
+        container.appendChild(librarySection);
+        
+        // Toggle handler
+        let isExpanded = false;
+        header.addEventListener('click', () => {
+          isExpanded = !isExpanded;
+          content.style.display = isExpanded ? 'block' : 'none';
+          document.getElementById('cb-library-toggle').style.transform = isExpanded ? 'rotate(180deg)' : 'rotate(0deg)';
+          if (isExpanded) refreshLibrary();
+        });
+        
+        // Search handler
+        document.getElementById('cb-library-search-btn').addEventListener('click', async () => {
+          const query = document.getElementById('cb-library-search').value.trim();
+          if (!query) {
+            refreshLibrary();
+            return;
+          }
+          
+          const btn = document.getElementById('cb-library-search-btn');
+          addLoadingToButton(btn, 'Searching...');
+          try {
+            await searchLibrarySemanticly(query);
+          } catch (e) {
+            debugLog('Semantic search error:', e);
+            toast('Search failed');
+          } finally {
+            removeLoadingFromButton(btn, '🔍 Search');
+          }
+        });
+        
+        // Enter key for search
+        document.getElementById('cb-library-search').addEventListener('keypress', (e) => {
+          if (e.key === 'Enter') {
+            document.getElementById('cb-library-search-btn').click();
+          }
+        });
+        
+        // Refresh handler
+        document.getElementById('cb-library-refresh').addEventListener('click', () => {
+          refreshLibrary();
+        });
+        
+        // Index all handler
+        document.getElementById('cb-library-index').addEventListener('click', async () => {
+          const btn = document.getElementById('cb-library-index');
+          addLoadingToButton(btn, 'Indexing...');
+          try {
+            const convs = await loadConversationsAsync();
+            let indexed = 0;
+            for (const conv of convs) {
+              if (!conv.embedding) {
+                const text = conv.messages?.map(m => m.text).join(' ') || conv.conversation?.map(m => m.text).join(' ') || '';
+                if (text && typeof window.getEmbedding === 'function') {
+                  const emb = await window.getEmbedding(text.slice(0, 5000));
+                  if (emb && emb.length > 0) {
+                    conv.embedding = emb;
+                    indexed++;
+                  }
+                }
+              }
+            }
+            await saveConversationsAsync(convs);
+            toast(`Indexed ${indexed} conversations`);
+            refreshLibrary();
+          } catch (e) {
+            debugLog('Index error:', e);
+            toast('Indexing failed');
+          } finally {
+            removeLoadingFromButton(btn, '⚡ Index All');
+          }
+        });
+        
+        // Render library list
+        async function refreshLibrary() {
+          try {
+            const convs = await loadConversationsAsync();
+            const list = document.getElementById('cb-library-list');
+            const countEl = document.getElementById('cb-library-count');
+            const tagsEl = document.getElementById('cb-library-tags');
+            
+            if (!list) return;
+            
+            countEl.textContent = convs.length.toString();
+            list.innerHTML = '';
+            tagsEl.innerHTML = '';
+            
+            if (convs.length === 0) {
+              list.innerHTML = `
+                <div class="cb-empty-state">
+                  <div class="cb-empty-state-icon">📚</div>
+                  <div class="cb-empty-state-title">No Saved Conversations</div>
+                  <div class="cb-empty-state-text">Scan and save conversations to build your personal library. They'll appear here with tags and semantic search.</div>
+                </div>
+              `;
+              return;
+            }
+            
+            // Collect all unique tags
+            const allTags = new Set();
+            convs.forEach(c => {
+              if (c.topics) c.topics.forEach(t => allTags.add(t));
+            });
+            
+            // Render tag filter chips
+            if (allTags.size > 0) {
+              Array.from(allTags).slice(0, 8).forEach(tag => {
+                const chip = document.createElement('button');
+                chip.className = 'cb-btn';
+                chip.style.cssText = 'font-size:10px;padding:4px 8px;background:rgba(0,180,255,0.1);border:1px solid rgba(0,180,255,0.3);';
+                chip.textContent = `#${tag}`;
+                chip.addEventListener('click', () => {
+                  document.getElementById('cb-library-search').value = tag;
+                  document.getElementById('cb-library-search-btn').click();
+                });
+                tagsEl.appendChild(chip);
+              });
+            }
+            
+            // Sort by timestamp (newest first)
+            const sorted = convs.sort((a, b) => (b.ts || 0) - (a.ts || 0));
+            
+            // Render conversation cards
+            sorted.slice(0, 20).forEach((conv, idx) => {
+              const card = document.createElement('div');
+              card.style.cssText = 'padding:10px;background:rgba(0,180,255,0.05);border:1px solid rgba(0,180,255,0.2);border-radius:6px;cursor:pointer;transition:all 0.2s;';
+              
+              const msgCount = conv.messages?.length || conv.conversation?.length || 0;
+              const platform = conv.platform || 'unknown';
+              const timestamp = conv.ts ? new Date(conv.ts).toLocaleDateString() : 'Unknown';
+              const topics = conv.topics ? conv.topics.slice(0, 3).map(t => `<span style="font-size:10px;background:rgba(0,180,255,0.2);padding:2px 6px;border-radius:10px;margin-right:4px;">#${t}</span>`).join('') : '';
+              const preview = conv.messages?.[0]?.text?.slice(0, 80) || conv.conversation?.[0]?.text?.slice(0, 80) || 'No preview';
+              const hasEmbedding = conv.embedding ? '⚡' : '';
+              
+              card.innerHTML = `
+                <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:6px;">
+                  <div style="font-size:12px;font-weight:600;color:var(--cb-white);">${platform} ${hasEmbedding}</div>
+                  <div style="font-size:10px;color:var(--cb-subtext);">${timestamp}</div>
+                </div>
+                <div style="font-size:11px;color:var(--cb-subtext);margin-bottom:6px;line-height:1.3;">${preview}...</div>
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                  <span style="font-size:10px;color:var(--cb-subtext);">${msgCount} messages</span>
+                  ${topics}
+                </div>
+              `;
+              
+              card.addEventListener('mouseenter', () => {
+                card.style.background = 'rgba(0,180,255,0.1)';
+                card.style.borderColor = 'rgba(0,180,255,0.4)';
+              });
+              card.addEventListener('mouseleave', () => {
+                card.style.background = 'rgba(0,180,255,0.05)';
+                card.style.borderColor = 'rgba(0,180,255,0.2)';
+              });
+              
+              card.addEventListener('click', () => {
+                // Load conversation into history view
+                try {
+                  const chatSelect = shadow.getElementById('cb-chat-select');
+                  if (chatSelect) {
+                    chatSelect.value = conv.id || idx.toString();
+                    chatSelect.dispatchEvent(new Event('change'));
+                    toast('Conversation loaded');
+                  }
+                } catch (e) {
+                  debugLog('Load conversation error:', e);
+                }
+              });
+              
+              list.appendChild(card);
+            });
+          } catch (e) {
+            debugLog('refreshLibrary error:', e);
+          }
+        }
+        
+        // Semantic search function
+        async function searchLibrarySemanticly(query) {
+          try {
+            const convs = await loadConversationsAsync();
+            const list = document.getElementById('cb-library-list');
+            
+            if (!window.getEmbedding) {
+              toast('Semantic search not available');
+              return;
+            }
+            
+            // Get query embedding
+            const queryEmb = await window.getEmbedding(query);
+            if (!queryEmb || queryEmb.length === 0) {
+              toast('Failed to process query');
+              return;
+            }
+            
+            // Calculate similarities
+            const results = [];
+            for (const conv of convs) {
+              if (conv.embedding && conv.embedding.length > 0) {
+                const sim = cosineSimilarity(queryEmb, conv.embedding);
+                if (sim > 0.3) { // Threshold for relevance
+                  results.push({ conv, similarity: sim });
+                }
+              }
+            }
+            
+            // Sort by similarity
+            results.sort((a, b) => b.similarity - a.similarity);
+            
+            // Render results
+            list.innerHTML = '';
+            if (results.length === 0) {
+              list.innerHTML = `
+                <div class="cb-empty-state">
+                  <div class="cb-empty-state-icon">🔍</div>
+                  <div class="cb-empty-state-title">No Results Found</div>
+                  <div class="cb-empty-state-text">Try a different search query or index more conversations.</div>
+                </div>
+              `;
+              return;
+            }
+            
+            results.slice(0, 10).forEach(({ conv, similarity }) => {
+              const card = document.createElement('div');
+              card.style.cssText = 'padding:10px;background:rgba(0,180,255,0.05);border:1px solid rgba(0,180,255,0.2);border-radius:6px;cursor:pointer;transition:all 0.2s;';
+              
+              const msgCount = conv.messages?.length || conv.conversation?.length || 0;
+              const platform = conv.platform || 'unknown';
+              const timestamp = conv.ts ? new Date(conv.ts).toLocaleDateString() : 'Unknown';
+              const topics = conv.topics ? conv.topics.slice(0, 3).map(t => `<span style="font-size:10px;background:rgba(0,180,255,0.2);padding:2px 6px;border-radius:10px;margin-right:4px;">#${t}</span>`).join('') : '';
+              const preview = conv.messages?.[0]?.text?.slice(0, 80) || conv.conversation?.[0]?.text?.slice(0, 80) || 'No preview';
+              const relevance = Math.round(similarity * 100);
+              
+              card.innerHTML = `
+                <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:6px;">
+                  <div style="font-size:12px;font-weight:600;color:var(--cb-white);">${platform} <span style="font-size:10px;color:#34d399;">${relevance}% match</span></div>
+                  <div style="font-size:10px;color:var(--cb-subtext);">${timestamp}</div>
+                </div>
+                <div style="font-size:11px;color:var(--cb-subtext);margin-bottom:6px;line-height:1.3;">${preview}...</div>
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                  <span style="font-size:10px;color:var(--cb-subtext);">${msgCount} messages</span>
+                  ${topics}
+                </div>
+              `;
+              
+              card.addEventListener('mouseenter', () => {
+                card.style.background = 'rgba(0,180,255,0.1)';
+                card.style.borderColor = 'rgba(0,180,255,0.4)';
+              });
+              card.addEventListener('mouseleave', () => {
+                card.style.background = 'rgba(0,180,255,0.05)';
+                card.style.borderColor = 'rgba(0,180,255,0.2)';
+              });
+              
+              card.addEventListener('click', () => {
+                try {
+                  const chatSelect = shadow.getElementById('cb-chat-select');
+                  if (chatSelect) {
+                    chatSelect.value = conv.id || '0';
+                    chatSelect.dispatchEvent(new Event('change'));
+                    toast(`Loaded conversation (${relevance}% match)`);
+                  }
+                } catch (e) {
+                  debugLog('Load conversation error:', e);
+                }
+              });
+              
+              list.appendChild(card);
+            });
+            
+            toast(`Found ${results.length} relevant conversation(s)`);
+          } catch (e) {
+            debugLog('searchLibrarySemanticly error:', e);
+            toast('Search failed');
+          }
+        }
+        
+        // Cosine similarity helper
+        function cosineSimilarity(a, b) {
+          if (!a || !b || a.length !== b.length) return 0;
+          let dotProduct = 0;
+          let normA = 0;
+          let normB = 0;
+          for (let i = 0; i < a.length; i++) {
+            dotProduct += a[i] * b[i];
+            normA += a[i] * a[i];
+            normB += b[i] * b[i];
+          }
+          return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
+        }
+        
+      } catch (e) {
+        debugLog('renderSmartLibraryWidget error:', e);
+      }
+    }
+
     async function renderImageVaultWidget(container) {
       try {
         const vaultSection = document.createElement('div');
@@ -3264,7 +3300,10 @@
       document.body.appendChild(modal);
     }
 
-    async function renderTrendingThemesWidget_REMOVED(container) {
+    // ============================================
+    // TRENDING THEMES WIDGET - Shows theme evolution over time using RAG
+    // ============================================
+    async function renderTrendingThemesWidget(container) {
       try {
         const themesSection = document.createElement('div');
         themesSection.style.cssText = 'margin:16px 12px;';
@@ -4176,7 +4215,28 @@ ${conversationText.substring(0, 4000)}
         const actionsGrid = document.createElement('div');
         actionsGrid.style.cssText = 'display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;padding:0 12px;';
 
-        // 1. Smart Merge (merge related conversations)
+        // 1. Quick Compare (compare responses from different models)
+        const compareBtn = createFeatureCard('Compare Models', 'Compare how different AIs answered the same question', '🔄', async () => {
+          try {
+            const convs = await loadConversationsAsync();
+            if (!convs || convs.length < 2) { toast('Need at least 2 conversations'); return; }
+            
+            // Find conversations with similar content
+            const comparableGroups = findComparableConversations(convs);
+            if (!comparableGroups.length) {
+              toast('No similar conversations found to compare');
+              return;
+            }
+            
+            // Show comparison UI
+            showComparisonView(comparableGroups[0]);
+          } catch (e) { 
+            toast('Compare failed');
+            debugLog('Compare error', e);
+          }
+        });
+
+        // 2. Smart Merge (merge related conversations)
         const mergeBtn = createFeatureCard('Merge Threads', 'Combine related conversations into one coherent thread', '🔗', async () => {
           try {
             const convs = await loadConversationsAsync();
@@ -4313,6 +4373,7 @@ ${conversationText.substring(0, 4000)}
           }
         });
 
+        actionsGrid.appendChild(compareBtn);
         actionsGrid.appendChild(mergeBtn);
         actionsGrid.appendChild(extractBtn);
         actionsGrid.appendChild(insightBtn);
@@ -4375,6 +4436,16 @@ Respond with JSON only:
         
         actionsGrid.appendChild(factCheckBtn);
         insightsContent.appendChild(actionsGrid);
+
+        // ============================================
+        // SMART LIBRARY WIDGET
+        // ============================================
+        await renderSmartLibraryWidget(insightsContent);
+
+        // ============================================
+        // TRENDING THEMES WIDGET
+        // ============================================
+        await renderTrendingThemesWidget(insightsContent);
 
         // ============================================
         // IMAGE VAULT WIDGET
@@ -10894,54 +10965,6 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       debugLog('Luxury Mode init failed:', e);
     }
 
-    // =============================================================================
-    // INITIALIZE MCP BRIDGE FOR AI AGENT HUB
-    // =============================================================================
-    try {
-      if (typeof window.MCPBridge !== 'undefined') {
-        debugLog('[MCP] Initializing bridge...');
-        window.MCPBridge.init();
-        
-        // Register ChatBridge-specific MCP resources
-        window.MCPBridge.registerHandler('/chatbridge/scan', async (params) => {
-          debugLog('[MCP /chatbridge/scan] Handling request');
-          const messages = await scanChat();
-          return { 
-            messages, 
-            count: messages.length, 
-            platform: detectCurrentPlatform(),
-            timestamp: Date.now() 
-          };
-        });
-        
-        window.MCPBridge.registerHandler('/chatbridge/restore', async (params) => {
-          debugLog('[MCP /chatbridge/restore] Handling request');
-          if (!params.text) throw new Error('text parameter required');
-          const success = await restoreToChat(params.text, params.attachments || []);
-          return { success, timestamp: Date.now() };
-        });
-        
-        window.MCPBridge.registerHandler('/chatbridge/status', async (params) => {
-          debugLog('[MCP /chatbridge/status] Handling request');
-          return {
-            platform: detectCurrentPlatform(),
-            url: location.href,
-            hasRAG: typeof window.RAGEngine !== 'undefined',
-            hasONNX: typeof window.getEmbedding !== 'undefined',
-            timestamp: Date.now()
-          };
-        });
-        
-        const stats = window.MCPBridge.getStats();
-        debugLog('[MCP] Bridge initialized:', stats);
-        console.log('[ChatBridge] MCP Initialized -', stats.registeredResources.length, 'resources');
-      } else {
-        console.warn('[ChatBridge] MCPBridge not loaded - Agent Hub features unavailable');
-      }
-    } catch (e) {
-      console.error('[ChatBridge] MCP initialization failed:', e);
-    }
-
     return { host, avatar, panel };
   }
 
@@ -11216,28 +11239,21 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       
         // Auto-index into RAG (async, don't wait)
         if (normalized.length >= 3 && typeof window.RAGEngine !== 'undefined' && typeof window.RAGEngine.indexConversation === 'function') {
+          // Index each message separately to preserve structure
           for (let i = 0; i < normalized.length; i++) {
             const msg = normalized[i];
             const msgId = `${convObj.id}_msg_${i}`;
-            // Only pass string to RAG indexConversation
-            let msgText = '';
-            if (typeof msg.text === 'string') {
-              msgText = `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.text}`;
-            } else if (Array.isArray(msg.text)) {
-              msgText = msg.text.map(t => String(t)).join(' ');
-            } else {
-              msgText = String(msg.text || '');
-            }
-            // Defensive: never pass object
-            if (typeof msgText !== 'string') msgText = '';
-            window.RAGEngine.indexConversation(msgId, msgText, {
+            const msgText = `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.text}`;
+            
+            // Don't await - fire and forget
+            window.RAGEngine.indexConversation(msgText, {
               platform: convObj.platform,
               url: convObj.url,
               timestamp: convObj.ts,
               messageIndex: i,
               messageRole: msg.role,
               conversationId: convObj.id
-            }).catch(e => debugLog('[Auto-Index] Message', i, 'failed:', e));
+            }, msgId).catch(e => debugLog('[Auto-Index] Message', i, 'failed:', e));
           }
           debugLog('[Auto-Index] Queued', normalized.length, 'messages for indexing');
         }
@@ -11253,12 +11269,18 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           }).catch(e => debugLog('auto-summarize failed', e));
         }
       } catch (e) { 
-        debugLog('[Background] Tasks failed:', e); 
+        debugLog('background tasks failed', e); 
       }
-      }, 0); // End background tasks setTimeout
-      
-      // Return messages immediately without waiting
-      return normalized;
+    })();
+
+    // Log any errors that occurred
+    try {
+      if (window.ChatBridge && window.ChatBridge._lastScan && window.ChatBridge._lastScan.errors && window.ChatBridge._lastScan.errors.length) {
+        debugLog('Scan completed with errors:', window.ChatBridge._lastScan.errors);
+      }
+    } catch (e) {}
+    
+    return normalized;
     } catch (e) { 
       debugLog('=== SCAN FAILED ===', e);
       console.error('[ChatBridge] Fatal scan error:', e);
