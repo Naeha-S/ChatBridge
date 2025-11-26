@@ -520,9 +520,13 @@ async function indexConversation(id, text, metadata) {
     if (Array.isArray(text)) {
       console.log('[RAG] Converting array input to formatted text string');
       conversationText = text.map((m, idx) => {
-        const role = m.role === 'user' ? 'User' : 'Assistant';
-        const msgText = m.text || m.content || '';
-        return `${role}: ${msgText}`;
+        if (typeof m === 'string') return m;
+        if (typeof m === 'object' && m !== null) {
+          const role = m.role === 'user' ? 'User' : 'Assistant';
+          const msgText = m.text || m.content || '';
+          return `${role}: ${msgText}`;
+        }
+        return String(m);
       }).join('\n\n');
     } else if (typeof text !== 'string') {
       console.error('[RAG] Invalid text input type:', typeof text, 'expected string or array');
