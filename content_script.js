@@ -380,6 +380,22 @@
     } catch (e) { debugLog('removeLoadingFromButton failed', e); }
   }
 
+  // Platform detection helper
+  function detectCurrentPlatform() {
+    const host = window.location.hostname.toLowerCase();
+    if (host.includes('chatgpt.com') || host.includes('chat.openai.com')) return 'chatgpt';
+    if (host.includes('claude.ai')) return 'claude';
+    if (host.includes('gemini.google.com')) return 'gemini';
+    if (host.includes('perplexity.ai')) return 'perplexity';
+    if (host.includes('copilot.microsoft.com') || host.includes('bing.com')) return 'copilot';
+    if (host.includes('poe.com')) return 'poe';
+    if (host.includes('x.ai')) return 'grok';
+    if (host.includes('meta.ai')) return 'meta';
+    if (host.includes('mistral.ai')) return 'mistral';
+    if (host.includes('deepseek.ai')) return 'deepseek';
+    return 'unknown';
+  }
+
   // Highlighting helpers for debug visualization
   var CB_HIGHLIGHT_ENABLED = false;
   var CB_HIGHLIGHT_ROOT = null;
@@ -787,21 +803,69 @@
     --cb-shadow-lg: 0 8px 16px rgba(0,0,0,0.1);
     --cb-shadow-xl: 0 20px 40px rgba(0,0,0,0.15);
   }
-  :host(.cb-theme-high-contrast) {
-    --cb-bg: #000000;
-    --cb-bg2: #0a0a0a;
-    --cb-bg3: #141414;
-    --cb-white: #ffffff;
-    --cb-subtext: #e0e0e0;
-    --cb-accent-primary: #ffd700;
-    --cb-accent-secondary: #00ff88;
-    --cb-accent-tertiary: #00d9ff;
-    --cb-error: #ff3366;
-    --cb-success: #00ff88;
-    --cb-warning: #ffaa00;
-    --cb-progress: #ffd700;
-    --cb-border: rgba(255, 255, 255, 0.3);
-    --cb-shadow: rgba(255, 255, 255, 0.2);
+  :host(.cb-theme-aurora) {
+    --cb-bg: #f7fbff;
+    --cb-bg2: #ffffff;
+    --cb-bg3: #eef7ff;
+    --cb-white: #1a2332;
+    --cb-subtext: #5a6b7d;
+    --cb-accent-primary: #00e6b8;
+    --cb-accent-secondary: #9370ff;
+    --cb-accent-tertiary: #6dd5ed;
+    --cb-error: #ff6b9d;
+    --cb-success: #00e6b8;
+    --cb-warning: #ffc947;
+    --cb-progress: #00e6b8;
+    --cb-border: rgba(0, 230, 184, 0.2);
+    --cb-shadow: rgba(0, 230, 184, 0.15);
+  }
+  :host(.cb-theme-synthwave) {
+    --cb-bg: #1a0b2e;
+    --cb-bg2: #241334;
+    --cb-bg3: #2d1b3d;
+    --cb-white: #f9f0ff;
+    --cb-subtext: #c4b5fd;
+    --cb-accent-primary: #ff00ff;
+    --cb-accent-secondary: #00ffff;
+    --cb-accent-tertiary: #ff6ec7;
+    --cb-error: #ff2975;
+    --cb-success: #72f1b8;
+    --cb-warning: #ffd93d;
+    --cb-progress: #ff00ff;
+    --cb-border: rgba(255, 0, 255, 0.3);
+    --cb-shadow: rgba(255, 0, 255, 0.4);
+  }
+  :host(.cb-theme-nebula) {
+    --cb-bg: #0f1120;
+    --cb-bg2: #171a29;
+    --cb-bg3: #1f2336;
+    --cb-white: #e8f0ff;
+    --cb-subtext: #a5b8d6;
+    --cb-accent-primary: #7cc9ff;
+    --cb-accent-secondary: #c6a8ff;
+    --cb-accent-tertiary: #9dd9ff;
+    --cb-error: #ff8fa3;
+    --cb-success: #7ce3c4;
+    --cb-warning: #ffca7a;
+    --cb-progress: #7cc9ff;
+    --cb-border: rgba(124, 201, 255, 0.25);
+    --cb-shadow: rgba(124, 201, 255, 0.2);
+  }
+  :host(.cb-theme-rose) {
+    --cb-bg: #f1e6e9;
+    --cb-bg2: #f9eff3;
+    --cb-bg3: #faf5f7;
+    --cb-white: #3d2e33;
+    --cb-subtext: #7a6268;
+    --cb-accent-primary: #d97a9b;
+    --cb-accent-secondary: #b46e8a;
+    --cb-accent-tertiary: #e89fb8;
+    --cb-error: #d85a7a;
+    --cb-success: #91c7b1;
+    --cb-warning: #e6a978;
+    --cb-progress: #d97a9b;
+    --cb-border: rgba(217, 122, 155, 0.25);
+    --cb-shadow: rgba(217, 122, 155, 0.15);
   }
   :host * { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important; letter-spacing: -0.01em; }
   .cb-panel { box-sizing: border-box; position:fixed; top:var(--cb-space-md); right:var(--cb-space-md); width:400px; max-width:calc(100vw - 24px); max-height:calc(100vh - 120px); overflow-y:auto; overflow-x:hidden; border-radius:var(--cb-radius-xl); background: var(--cb-bg2); color:var(--cb-white) !important; z-index:2147483647; box-shadow: var(--cb-shadow-xl), 0 0 40px rgba(96, 165, 250, 0.1); border: 1px solid var(--cb-border); backdrop-filter: blur(12px); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); word-wrap: break-word; pointer-events:auto; }
@@ -966,34 +1030,32 @@
   @keyframes cb-slide-up { from { transform: translateY(10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
     `;
     shadow.appendChild(style);
-    // Apply saved theme preference - DEFAULT TO LIGHT
+    // Apply saved theme preference - DEFAULT TO DARK
     try {
       if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
         chrome.storage.local.get(['cb_theme'], (r) => {
           try {
-            // Default to light theme
-            if (!r || !r.cb_theme || r.cb_theme === 'light') {
+            const theme = r?.cb_theme || 'dark';
+            // Remove all theme classes first
+            host.classList.remove('cb-theme-light', 'cb-theme-synthwave', 'cb-theme-aurora', 'cb-theme-nebula', 'cb-theme-rose');
+            
+            // Apply selected theme
+            if (theme === 'light') {
               host.classList.add('cb-theme-light');
+            } else if (theme === 'synthwave') {
+              host.classList.add('cb-theme-synthwave');
+            } else if (theme === 'aurora') {
+              host.classList.add('cb-theme-aurora');
+            } else if (theme === 'nebula') {
+              host.classList.add('cb-theme-nebula');
+            } else if (theme === 'rose') {
+              host.classList.add('cb-theme-rose');
             }
-            // Dark theme
-            else if (r.cb_theme === 'dark') {
-              host.classList.remove('cb-theme-light');
-              host.classList.remove('cb-theme-high-contrast');
-            }
-            // High-contrast accessibility theme
-            else if (r.cb_theme === 'high-contrast') {
-              host.classList.remove('cb-theme-light');
-              host.classList.add('cb-theme-high-contrast');
-            }
+            // dark is default (no class needed)
           } catch (e) {}
         });
-      } else {
-        // Fallback: default to light
-        host.classList.add('cb-theme-light');
       }
-    } catch (e) {
-      host.classList.add('cb-theme-light');
-    }
+    } catch (e) {}
 
   const panel = document.createElement('div'); panel.className = 'cb-panel';
     
@@ -1530,28 +1592,16 @@
   const themeSection = document.createElement('div'); themeSection.style.cssText = 'padding-bottom: 16px; border-bottom: 1px solid var(--cb-border);';
   const themeLabel = document.createElement('div'); themeLabel.style.cssText = 'font-weight: 600; margin-bottom: 10px; color: var(--cb-white);'; themeLabel.textContent = '🎨 Theme';
   const themeButtons = document.createElement('div'); themeButtons.style.cssText = 'display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;';
-  const btnLightTheme = document.createElement('button'); btnLightTheme.className = 'cb-btn'; btnLightTheme.textContent = '☀️ Light'; btnLightTheme.style.flex = '1';
-  const btnDarkTheme = document.createElement('button'); btnDarkTheme.className = 'cb-btn'; btnDarkTheme.textContent = '🌙 Dark'; btnDarkTheme.style.flex = '1';
-  const btnHighContrastTheme = document.createElement('button'); btnHighContrastTheme.className = 'cb-btn'; btnHighContrastTheme.id = 'cb-btn-high-contrast'; btnHighContrastTheme.textContent = '🎨 High-Contrast'; btnHighContrastTheme.style.flex = '1';
-  themeButtons.appendChild(btnLightTheme); themeButtons.appendChild(btnDarkTheme); themeButtons.appendChild(btnHighContrastTheme);
+  const btnDarkTheme = document.createElement('button'); btnDarkTheme.className = 'cb-btn'; btnDarkTheme.textContent = '🌙 Dark'; btnDarkTheme.dataset.theme = 'dark';
+  const btnLightTheme = document.createElement('button'); btnLightTheme.className = 'cb-btn'; btnLightTheme.textContent = '☀️ Light'; btnLightTheme.dataset.theme = 'light';
+  const btnSynthwaveTheme = document.createElement('button'); btnSynthwaveTheme.className = 'cb-btn'; btnSynthwaveTheme.textContent = '🌃 Synthwave'; btnSynthwaveTheme.dataset.theme = 'synthwave';
+  const btnAuroraTheme = document.createElement('button'); btnAuroraTheme.className = 'cb-btn'; btnAuroraTheme.textContent = '🌅 Aurora'; btnAuroraTheme.dataset.theme = 'aurora';
+  const btnNebulaTheme = document.createElement('button'); btnNebulaTheme.className = 'cb-btn'; btnNebulaTheme.textContent = '🌌 Nebula'; btnNebulaTheme.dataset.theme = 'nebula';
+  const btnRoseTheme = document.createElement('button'); btnRoseTheme.className = 'cb-btn'; btnRoseTheme.textContent = '🌸 Rose'; btnRoseTheme.dataset.theme = 'rose';
+  themeButtons.appendChild(btnDarkTheme); themeButtons.appendChild(btnLightTheme); themeButtons.appendChild(btnSynthwaveTheme);
+  themeButtons.appendChild(btnAuroraTheme); themeButtons.appendChild(btnNebulaTheme); themeButtons.appendChild(btnRoseTheme);
   themeSection.appendChild(themeLabel); themeSection.appendChild(themeButtons);
   settingsContent.appendChild(themeSection);
-  
-  // Luxury Mode toggle
-  const luxurySection = document.createElement('div'); luxurySection.style.cssText = 'padding-bottom: 16px; border-bottom: 1px solid var(--cb-border);';
-  const luxuryLabel = document.createElement('div'); luxuryLabel.style.cssText = 'font-weight: 600; margin-bottom: 6px; color: var(--cb-white);'; luxuryLabel.textContent = '✨ Luxury Mode';
-  const luxuryDesc = document.createElement('div'); luxuryDesc.style.cssText = 'font-size: 12px; color: var(--cb-subtext); margin-bottom: 12px; line-height: 1.4;'; luxuryDesc.textContent = 'Vision Pro aesthetic with frosted glass, floating particles & smooth animations';
-  const luxuryToggle = document.createElement('div'); luxuryToggle.style.cssText = 'display: flex; align-items: center; gap: 12px;';
-  const luxuryCheckbox = document.createElement('input'); luxuryCheckbox.type = 'checkbox'; luxuryCheckbox.id = 'cb-luxury-checkbox';
-  luxuryCheckbox.style.cssText = 'width: 20px; height: 20px; cursor: pointer;';
-  try {
-    const savedLuxury = localStorage.getItem('chatbridge:luxury_mode');
-    luxuryCheckbox.checked = savedLuxury === 'true';
-  } catch (e) {}
-  const luxuryCheckLabel = document.createElement('label'); luxuryCheckLabel.setAttribute('for', 'cb-luxury-checkbox'); luxuryCheckLabel.style.cssText = 'color: var(--cb-white); cursor: pointer;'; luxuryCheckLabel.textContent = 'Enable Luxury Mode';
-  luxuryToggle.appendChild(luxuryCheckbox); luxuryToggle.appendChild(luxuryCheckLabel);
-  luxurySection.appendChild(luxuryLabel); luxurySection.appendChild(luxuryDesc); luxurySection.appendChild(luxuryToggle);
-  settingsContent.appendChild(luxurySection);
   
   settingsPanel.appendChild(settingsContent);
   panel.appendChild(settingsPanel);
@@ -1836,76 +1886,29 @@
     });
     
     // Theme switchers
-    btnLightTheme.addEventListener('click', () => {
-      try {
-        host.classList.remove('cb-theme-high-contrast');
-        host.classList.add('cb-theme-light');
-        chrome.storage.local.set({ cb_theme: 'light' });
-        toast('☀️ Light theme enabled');
-      } catch (e) { debugLog('light theme failed', e); }
-    });
-    
-    btnDarkTheme.addEventListener('click', () => {
-      try {
-        host.classList.remove('cb-theme-light');
-        host.classList.remove('cb-theme-high-contrast');
-        chrome.storage.local.set({ cb_theme: 'dark' });
-        toast('🌙 Dark theme enabled');
-      } catch (e) { debugLog('dark theme failed', e); }
-    });
-    
-    // High-contrast theme (accessibility)
-    try {
-      const btnHighContrastTheme = shadow.querySelector('#cb-btn-high-contrast');
-      if (btnHighContrastTheme) {
-        btnHighContrastTheme.addEventListener('click', () => {
-          try {
-            host.classList.remove('cb-theme-light');
-            host.classList.add('cb-theme-high-contrast');
-            chrome.storage.local.set({ cb_theme: 'high-contrast' });
-            toast('🎨 High-contrast theme enabled');
-          } catch (e) { debugLog('high-contrast theme failed', e); }
-        });
-      }
-    } catch (e) { debugLog('high-contrast setup failed', e); }
-    
-    // Luxury Mode toggle
-    luxuryCheckbox.addEventListener('change', (e) => {
-      try {
-        const enabled = e.target.checked;
-        localStorage.setItem('chatbridge:luxury_mode', String(enabled));
-        
-        // Try to initialize if not already done
-        if (!window.luxuryModeInstance && typeof LuxuryMode !== 'undefined') {
-          try {
-            window.luxuryModeInstance = new LuxuryMode(shadow);
-            debugLog('Luxury Mode instance created from toggle');
-          } catch (err) {
-            debugLog('Failed to create Luxury Mode instance', err);
+    // Universal theme button handler for all 6 themes
+    [btnDarkTheme, btnLightTheme, btnSynthwaveTheme, btnAuroraTheme, btnNebulaTheme, btnRoseTheme].forEach(btn => {
+      if (!btn) return;
+      btn.addEventListener('click', () => {
+        try {
+          const theme = btn.dataset.theme;
+          // Remove all theme classes
+          host.classList.remove('cb-theme-light', 'cb-theme-synthwave', 'cb-theme-aurora', 'cb-theme-nebula', 'cb-theme-rose');
+          
+          // Add new theme class (except for dark which is default)
+          if (theme !== 'dark') {
+            host.classList.add(`cb-theme-${theme}`);
           }
-        }
-        
-        if (enabled) {
-          // Apply luxury mode
-          if (window.luxuryModeInstance) {
-            window.luxuryModeInstance.isEnabled = true;
-            window.luxuryModeInstance.apply();
-            toast('✨ Luxury Mode enabled');
-          } else {
-            toast('⚠️ Luxury Mode loading... try again in 1 sec');
-            setTimeout(() => {
-              e.target.checked = false;
-            }, 1000);
-          }
-        } else {
-          // Disable luxury mode
-          if (window.luxuryModeInstance) {
-            window.luxuryModeInstance.isEnabled = false;
-            window.luxuryModeInstance.apply();
-            toast('Luxury Mode disabled');
-          }
-        }
-      } catch (e) { debugLog('luxury toggle failed', e); }
+          
+          // Save preference
+          chrome.storage.local.set({ cb_theme: theme });
+          
+          // Toast with emoji
+          const emojis = { light: '☀️', dark: '🌙', synthwave: '🌃', aurora: '🌅', nebula: '🌌', rose: '🌸' };
+          const names = { light: 'Light', dark: 'Dark', synthwave: 'Synthwave', aurora: 'Aurora Mist', nebula: 'Nebula Fog', rose: 'Rose Mist' };
+          toast(`${emojis[theme] || '🎨'} ${names[theme] || theme} theme enabled`);
+        } catch (e) { debugLog('theme switch failed', e); }
+      });
     });
 
     // Migrate conversations from page localStorage into background persistent storage (once)
@@ -3491,34 +3494,33 @@
         
         // Build prompt for Gemini
         const conversationText = messages.map(m => `${m.role}: ${m.text}`).join('\n\n');
-        const systemPrompt = `You are an expert conversation strategist helping users extract maximum value from their AI interactions.
+        const systemPrompt = `You are a thought partner helping a user continue their AI conversation productively.
 
-Analyze this conversation and generate exactly 5 high-quality, actionable follow-up prompts:
+Analyze this conversation and generate exactly 5 follow-up questions that will help the user move forward:
 
-1. **Clarification** - Identify the most important ambiguity or assumption that needs validation
-2. **Optimization** - Suggest a concrete improvement to enhance quality, efficiency, or robustness  
-3. **Deep Dive** - Propose exploring the most valuable unexplored angle or implication
-4. **Risk Analysis** - Highlight the most critical edge case, limitation, or potential failure mode
-5. **Innovation** - Offer a genuinely creative alternative approach or perspective
+1. CLARIFICATION - Ask about something ambiguous or unclear
+2. IMPROVEMENT - Suggest how to make something better or more robust
+3. EXPANSION - Explore a related area or dig deeper into a topic
+4. CRITICAL THINKING - Challenge an assumption or identify a potential issue
+5. CREATIVE ALTERNATIVE - Propose a different approach or perspective
 
-**Quality Standards:**
-- Ground each prompt in ACTUAL conversation content - no generic filler
-- Be precise and actionable - user should know exactly what to ask
-- Keep prompts concise but complete (15-25 words ideal)
-- Sound professional and insightful, not robotic
-- Focus on moving the conversation forward toward concrete outcomes
-- Vary sentence structure - avoid repetitive phrasing
+Rules:
+- Each question must be grounded in the actual conversation content
+- Be specific, not generic
+- Keep questions concise (1-2 sentences max)
+- Act like a thoughtful colleague, not a template
+- No hallucinations - only reference what's actually discussed
 
-**Conversation:**
+Conversation:
 ${conversationText.substring(0, 4000)}
 
-**Output Format (JSON only):**
+Respond with JSON only:
 {
   "questions": [
-    {"text": "<specific, grounded prompt>", "category": "clarification", "sourceIndexes": [0, 3]},
-    {"text": "<specific, grounded prompt>", "category": "improvement", "sourceIndexes": [5]},
-    {"text": "<specific, grounded prompt>", "category": "expansion", "sourceIndexes": [2, 7]},
-    {"text": "<specific, grounded prompt>", "category": "critical", "sourceIndexes": [4]},
+    {"text": "...", "category": "clarification", "sourceIndexes": [0, 3]},
+    {"text": "...", "category": "improvement", "sourceIndexes": [5]},
+    {"text": "...", "category": "expansion", "sourceIndexes": [2, 7]},
+    {"text": "...", "category": "critical", "sourceIndexes": [4]},
     {"text": "...", "category": "creative", "sourceIndexes": [1, 6]}
   ]
 }`;
@@ -3559,11 +3561,11 @@ ${conversationText.substring(0, 4000)}
     function generateFallbackPrompts(context) {
       return {
         questions: [
-          { text: "What specific requirements or constraints haven't we fully defined yet?", category: "clarification", sourceIndexes: [] },
-          { text: "How could we optimize this solution for better performance and maintainability?", category: "improvement", sourceIndexes: [] },
-          { text: "What adjacent problems or use cases should we consider addressing?", category: "expansion", sourceIndexes: [] },
-          { text: "What are the most likely failure modes and how should we handle them?", category: "critical", sourceIndexes: [] },
-          { text: "What alternative approaches might achieve the same goal more elegantly?", category: "creative", sourceIndexes: [] }
+          { text: "What edge cases or error scenarios should we consider?", category: "clarification", sourceIndexes: [] },
+          { text: "How can we make this solution more maintainable or scalable?", category: "improvement", sourceIndexes: [] },
+          { text: "What related aspects of this problem should we explore?", category: "expansion", sourceIndexes: [] },
+          { text: "What assumptions are we making that might not hold true?", category: "critical", sourceIndexes: [] },
+          { text: "Is there a completely different approach we should consider?", category: "creative", sourceIndexes: [] }
         ]
       };
     }
@@ -3574,23 +3576,23 @@ ${conversationText.substring(0, 4000)}
         container.innerHTML = '';
         container.style.cssText = 'padding:0;margin:0;';
         
-        // Main wrapper - luxury dark theme
+        // Main wrapper
         const wrapper = document.createElement('div');
-        wrapper.style.cssText = 'background:linear-gradient(180deg,rgba(10,15,28,0.95) 0%,rgba(15,20,35,0.98) 100%);border-radius:12px;overflow:hidden;border:1px solid rgba(0,180,255,0.15);box-shadow:0 8px 32px rgba(0,0,0,0.4);';
+        wrapper.style.cssText = 'background:rgba(15,23,42,0.6);border-radius:12px;overflow:hidden;border:1px solid rgba(96,165,250,0.2);';
         
-        // Action bar at top - luxury styling
+        // Action bar at top
         const actionBar = document.createElement('div');
-        actionBar.style.cssText = 'padding:18px 20px;background:linear-gradient(135deg,rgba(0,180,255,0.08),rgba(120,80,200,0.08));border-bottom:1px solid rgba(0,180,255,0.12);display:flex;gap:12px;align-items:center;';
+        actionBar.style.cssText = 'padding:16px 20px;background:linear-gradient(135deg,rgba(59,130,246,0.12),rgba(147,51,234,0.12));border-bottom:1px solid rgba(96,165,250,0.15);display:flex;gap:10px;align-items:center;';
         actionBar.innerHTML = `
-          <button id="cb-prompts-generate" class="cb-btn cb-btn-primary" style="flex:1;font-size:14px;font-weight:600;padding:12px 20px;background:linear-gradient(135deg,rgba(0,180,255,0.2),rgba(120,80,200,0.2));border:1px solid rgba(0,180,255,0.3);border-radius:8px;color:#E6E9F0;transition:all 0.2s;font-family:'Bebas Neue',sans-serif;letter-spacing:0.5px;">
-            <span style="font-size:16px;margin-right:8px;">✨</span>
-            GENERATE PROMPTS
+          <button id="cb-prompts-generate" class="cb-btn cb-btn-primary" style="flex:1;font-size:14px;font-weight:600;padding:12px 20px;background:linear-gradient(135deg,#3b82f6,#8b5cf6);border:none;border-radius:8px;box-shadow:0 2px 8px rgba(59,130,246,0.3);transition:all 0.2s;">
+            <span style="font-size:16px;margin-right:6px;">✨</span>
+            Generate Smart Prompts
           </button>
-          <button id="cb-prompts-refresh" class="cb-btn" title="Refresh - Generate new prompts" style="padding:12px 16px;font-size:16px;background:rgba(0,180,255,0.08);border:1px solid rgba(0,180,255,0.2);border-radius:8px;color:#00B4FF;transition:all 0.2s;cursor:pointer;">
-            ↻
+          <button id="cb-prompts-refresh" class="cb-btn" style="padding:12px 16px;font-size:13px;background:rgba(96,165,250,0.1);border:1px solid rgba(96,165,250,0.3);border-radius:8px;transition:all 0.2s;">
+            🔄
           </button>
-          <button id="cb-prompts-history" class="cb-btn" title="History - View previous prompt sets" style="padding:12px 16px;font-size:16px;background:rgba(0,180,255,0.08);border:1px solid rgba(0,180,255,0.2);border-radius:8px;color:#00B4FF;transition:all 0.2s;cursor:pointer;">
-            📊
+          <button id="cb-prompts-history" class="cb-btn" style="padding:12px 16px;font-size:13px;background:rgba(96,165,250,0.1);border:1px solid rgba(96,165,250,0.3);border-radius:8px;transition:all 0.2s;">
+            📜
           </button>
         `;
         
@@ -3629,30 +3631,24 @@ ${conversationText.substring(0, 4000)}
         
         if (generateBtn) {
           generateBtn.addEventListener('mouseenter', () => {
-            generateBtn.style.background = 'linear-gradient(135deg,rgba(0,180,255,0.3),rgba(120,80,200,0.3))';
-            generateBtn.style.borderColor = 'rgba(0,180,255,0.5)';
             generateBtn.style.transform = 'translateY(-1px)';
-            generateBtn.style.boxShadow = '0 4px 16px rgba(0,180,255,0.3)';
+            generateBtn.style.boxShadow = '0 4px 16px rgba(59,130,246,0.4)';
           });
           generateBtn.addEventListener('mouseleave', () => {
-            generateBtn.style.background = 'linear-gradient(135deg,rgba(0,180,255,0.2),rgba(120,80,200,0.2))';
-            generateBtn.style.borderColor = 'rgba(0,180,255,0.3)';
             generateBtn.style.transform = 'translateY(0)';
-            generateBtn.style.boxShadow = 'none';
+            generateBtn.style.boxShadow = '0 2px 8px rgba(59,130,246,0.3)';
           });
         }
         
         [refreshBtn, historyBtn].forEach(btn => {
           if (btn) {
             btn.addEventListener('mouseenter', () => {
-              btn.style.background = 'rgba(0,180,255,0.15)';
-              btn.style.borderColor = 'rgba(0,180,255,0.4)';
-              btn.style.transform = 'translateY(-1px)';
+              btn.style.background = 'rgba(96,165,250,0.2)';
+              btn.style.borderColor = 'rgba(96,165,250,0.5)';
             });
             btn.addEventListener('mouseleave', () => {
-              btn.style.background = 'rgba(0,180,255,0.08)';
-              btn.style.borderColor = 'rgba(0,180,255,0.2)';
-              btn.style.transform = 'translateY(0)';
+              btn.style.background = 'rgba(96,165,250,0.1)';
+              btn.style.borderColor = 'rgba(96,165,250,0.3)';
             });
           }
         });
@@ -3831,19 +3827,19 @@ ${conversationText.substring(0, 4000)}
           };
           
           const categoryColors = {
-            clarification: '#00b4ff',
-            improvement: '#10b981',
-            expansion: '#7850c8',
+            clarification: '#3b82f6',
+            improvement: '#22c55e',
+            expansion: '#a855f7',
             critical: '#f59e0b',
-            creative: '#a855f7'
+            creative: '#ec4899'
           };
           
           const categoryBg = {
-            clarification: 'rgba(0,180,255,0.1)',
-            improvement: 'rgba(16,185,129,0.1)',
-            expansion: 'rgba(120,80,200,0.1)',
+            clarification: 'rgba(59,130,246,0.1)',
+            improvement: 'rgba(34,197,94,0.1)',
+            expansion: 'rgba(168,85,247,0.1)',
             critical: 'rgba(245,158,11,0.1)',
-            creative: 'rgba(168,85,247,0.1)'
+            creative: 'rgba(236,72,153,0.1)'
           };
           
           promptData.questions.forEach((q, idx) => {
@@ -3853,12 +3849,12 @@ ${conversationText.substring(0, 4000)}
             
             promptCard.style.cssText = `
               padding:18px;
-              background:rgba(10,15,28,0.6);
+              background:${bg};
               border:1px solid ${color}33;
               border-left:4px solid ${color};
               border-radius:10px;
               transition:all 0.2s ease;
-              backdrop-filter:blur(10px);
+              cursor:pointer;
             `;
             
             const icon = categoryIcons[q.category] || '💬';
@@ -3887,13 +3883,13 @@ ${conversationText.substring(0, 4000)}
             
             // Hover effects
             promptCard.addEventListener('mouseenter', () => {
-              promptCard.style.background = 'rgba(10,15,28,0.8)';
+              promptCard.style.background = `${bg.replace('0.1', '0.15')}`;
               promptCard.style.borderColor = `${color}66`;
               promptCard.style.transform = 'translateY(-2px)';
-              promptCard.style.boxShadow = `0 8px 24px ${color}40`;
+              promptCard.style.boxShadow = `0 8px 24px ${color}22`;
             });
             promptCard.addEventListener('mouseleave', () => {
-              promptCard.style.background = 'rgba(10,15,28,0.6)';
+              promptCard.style.background = bg;
               promptCard.style.borderColor = `${color}33`;
               promptCard.style.transform = 'translateY(0)';
               promptCard.style.boxShadow = 'none';
@@ -3966,53 +3962,6 @@ ${conversationText.substring(0, 4000)}
             
             list.appendChild(promptCard);
           });
-          
-          // Add regenerate button at the bottom
-          const regenerateContainer = document.createElement('div');
-          regenerateContainer.style.cssText = 'margin-top:24px;padding:20px;background:rgba(10,15,28,0.4);border:2px dashed rgba(0,180,255,0.3);border-radius:12px;text-align:center;';
-          regenerateContainer.innerHTML = `
-            <button id="cb-regenerate-btn" class="cb-btn" style="
-              padding:14px 32px;
-              font-size:14px;
-              font-weight:700;
-              background:linear-gradient(135deg,rgba(0,180,255,0.2),rgba(120,80,200,0.2));
-              border:2px solid rgba(0,180,255,0.3);
-              border-radius:10px;
-              color:#fff;
-              cursor:pointer;
-              transition:all 0.3s ease;
-              text-transform:uppercase;
-              letter-spacing:1px;
-              font-family:'Bebas Neue',sans-serif;
-            ">
-              🔄 Regenerate All Prompts
-            </button>
-          `;
-          
-          const regenerateBtn = regenerateContainer.querySelector('#cb-regenerate-btn');
-          regenerateBtn.addEventListener('mouseenter', () => {
-            regenerateBtn.style.background = 'linear-gradient(135deg,rgba(0,180,255,0.3),rgba(120,80,200,0.3))';
-            regenerateBtn.style.borderColor = 'rgba(0,180,255,0.5)';
-            regenerateBtn.style.transform = 'translateY(-2px)';
-            regenerateBtn.style.boxShadow = '0 6px 20px rgba(0,180,255,0.4)';
-          });
-          regenerateBtn.addEventListener('mouseleave', () => {
-            regenerateBtn.style.background = 'linear-gradient(135deg,rgba(0,180,255,0.2),rgba(120,80,200,0.2))';
-            regenerateBtn.style.borderColor = 'rgba(0,180,255,0.3)';
-            regenerateBtn.style.transform = 'translateY(0)';
-            regenerateBtn.style.boxShadow = 'none';
-          });
-          regenerateBtn.addEventListener('click', () => {
-            const generateBtn = shadow.getElementById('cb-generate-prompts');
-            if (generateBtn) {
-              regenerateBtn.innerHTML = '⏳ Regenerating...';
-              regenerateBtn.disabled = true;
-              regenerateBtn.style.opacity = '0.6';
-              generateBtn.click();
-            }
-          });
-          
-          list.appendChild(regenerateContainer);
         }
         
       } catch (e) {
@@ -4097,6 +4046,62 @@ ${conversationText.substring(0, 4000)}
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;');
+    }
+
+    // ============================================
+    // SIMPLIFIED INSIGHTS HUB (Card-Based Layout)
+    // ============================================
+    async function renderInsightsHub() {
+      try {
+        if (!insightsContent) {
+          debugLog('insightsContent not found!');
+          toast('Error: UI element missing');
+          return;
+        }
+        insightsContent.innerHTML = '';
+        debugLog('Rendering Insights Hub...');
+
+        const insightsGrid = document.createElement('div');
+        insightsGrid.style.cssText = 'display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px;padding:0 12px;position:relative;z-index:0;';
+
+        function createInsightCard(title, subtitle, icon, description, onClick) {
+          const card = document.createElement('div');
+          card.style.cssText = 'background:linear-gradient(135deg,rgba(0,180,255,0.08) 0%,rgba(99,102,241,0.08) 100%);border:1px solid rgba(0,180,255,0.25);border-radius:10px;padding:14px;cursor:pointer;transition:all 0.3s cubic-bezier(0.4,0,0.2,1);position:relative;overflow:hidden;';
+          const iconEl = document.createElement('div');
+          iconEl.textContent = icon;
+          iconEl.style.cssText = 'font-size:32px;margin-bottom:8px;filter:drop-shadow(0 2px 8px rgba(0,180,255,0.4));';
+          const titleEl = document.createElement('div');
+          titleEl.textContent = title;
+          titleEl.style.cssText = 'font-weight:700;font-size:13px;color:var(--cb-white);margin-bottom:2px;';
+          const subtitleEl = document.createElement('div');
+          subtitleEl.textContent = subtitle;
+          subtitleEl.style.cssText = 'font-size:10px;color:var(--cb-subtext);margin-bottom:8px;';
+          const descEl = document.createElement('div');
+          descEl.textContent = description;
+          descEl.style.cssText = 'font-size:10px;color:var(--cb-subtext);opacity:0.8;line-height:1.4;';
+          card.appendChild(iconEl); card.appendChild(titleEl); card.appendChild(subtitleEl); card.appendChild(descEl);
+          card.addEventListener('mouseenter', () => { card.style.transform='translateY(-3px)'; card.style.borderColor='rgba(0,180,255,0.5)'; card.style.background='linear-gradient(135deg,rgba(0,180,255,0.15) 0%,rgba(99,102,241,0.15) 100%)'; card.style.boxShadow='0 8px 24px rgba(0,180,255,0.25)'; });
+          card.addEventListener('mouseleave', () => { card.style.transform='translateY(0)'; card.style.borderColor='rgba(0,180,255,0.25)'; card.style.background='linear-gradient(135deg,rgba(0,180,255,0.08) 0%,rgba(99,102,241,0.08) 100%)'; card.style.boxShadow='none'; });
+          let isProcessing = false;
+          card.addEventListener('click', async () => { if(isProcessing) return; isProcessing=true; card.style.opacity='0.6'; card.style.pointerEvents='none'; try { await onClick(); } catch(err) { debugLog('Insight card error:',err); } finally { setTimeout(() => { isProcessing=false; card.style.opacity='1'; card.style.pointerEvents=''; }, 500); } });
+          return card;
+        }
+
+        const quickActionsCard = createInsightCard('Quick Actions','Instant workflow tools','⚡','Summarize, rewrite, translate, sync tone instantly', async () => { showView('summarize'); });
+        const extractCard = createInsightCard('Extract Content','Export conversations','📋','Export as Markdown, JSON, or plain text', async () => { const msgs = await scanChat(); const md = msgs.map(m => `**${m.role}**: ${m.text}`).join('\n\n'); await navigator.clipboard.writeText(md); toast('Copied as Markdown!'); });
+        const insightsCard = createInsightCard('Deep Insights','Conversation analytics','🔍','Analyze message count, word stats, content type', async () => { const msgs = await scanChat(); if(!msgs || msgs.length===0) { toast('No messages to analyze'); return; } const userMsgs = msgs.filter(m => m.role==='user').length; const assistMsgs = msgs.filter(m => m.role==='assistant').length; const totalWords = msgs.reduce((sum,m) => sum+m.text.split(/\s+/).length, 0); const avgWords = Math.round(totalWords/msgs.length); const hasCode = msgs.some(m => m.text.includes('```')); toast(`${msgs.length} messages • ${totalWords.toLocaleString()} words • ${hasCode ? 'Contains code' : 'Text only'}`); });
+        const mediaCard = createInsightCard('Media Vault','Extract images & videos','🖼️','View all media attachments from conversation', async () => { const msgs = await scanChat(); const allMedia = []; for(const msg of msgs) { if(msg.attachments && msg.attachments.length>0) { allMedia.push(...msg.attachments.filter(a => a.type==='image'||a.type==='video')); } } if(allMedia.length===0) { toast('No media found in conversation'); } else { toast(`Found ${allMedia.length} media item${allMedia.length>1?'s':''}`); } });
+        const mergeCard = createInsightCard('Merge Chats','Combine conversations','🔗','Merge multiple chat threads into unified timeline', async () => { toast('🚧 Coming soon: Multi-chat merger'); });
+        const suggestionsCard = createInsightCard('Smart Suggestions','AI-powered next steps','💡','Get intelligent suggestions based on conversation', async () => { toast('🚧 Coming soon: AI suggestions'); });
+
+        [quickActionsCard, extractCard, insightsCard, mediaCard, mergeCard, suggestionsCard].forEach(card => insightsGrid.appendChild(card));
+        insightsContent.appendChild(insightsGrid);
+
+        debugLog('[Insights Hub] Render complete');
+      } catch (e) {
+        debugLog('[Insights Hub] Render error:', e);
+        toast('Failed to render Insights Hub');
+      }
     }
 
     // Render Smart Workspace UI
@@ -7665,7 +7670,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       try {
         closeAllViews();
         insightsView.classList.add('cb-view-active');
-        await renderSmartWorkspace();
+        await renderInsightsHub();
       } catch (e) {
         toast('Failed to open Smart Workspace');
         debugLog('Insights open error', e);
@@ -8575,6 +8580,59 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       }, 100); // Small delay to ensure DOM is ready
     }
 
+    // Persistent Restore Status helpers (visible until restore completes)
+    function getOrCreateRestoreStatus() {
+      try {
+        let el = document.getElementById('cb-restore-status');
+        if (el) return el;
+        el = document.createElement('div');
+        el.id = 'cb-restore-status';
+        el.setAttribute('data-cb-ignore','true');
+        el.style.position = 'fixed';
+        el.style.bottom = '80px';
+        el.style.right = '26px';
+        el.style.maxWidth = '360px';
+        el.style.background = 'rgba(10,15,28,0.92)';
+        el.style.color = '#E6E9F0';
+        el.style.padding = '10px 14px';
+        el.style.borderRadius = '12px';
+        el.style.zIndex = '2147483647';
+        el.style.border = '1px solid rgba(0,180,255,0.28)';
+        el.style.boxShadow = '0 8px 24px rgba(0,180,255,0.25)';
+        el.style.fontSize = '13px';
+        el.style.fontWeight = '600';
+        el.style.letterSpacing = '0.2px';
+        el.style.backdropFilter = 'blur(6px)';
+        el.style.display = 'none';
+        el.setAttribute('role','status');
+        el.setAttribute('aria-live','polite');
+        document.body.appendChild(el);
+        return el;
+      } catch (e) { return null; }
+    }
+
+    function updateRestoreStatus(message) {
+      try {
+        const el = getOrCreateRestoreStatus();
+        if (!el) return;
+        el.textContent = `⚡ ${message}`;
+        el.style.display = 'block';
+      } catch (e) {}
+    }
+
+    function hideRestoreStatus(success = true) {
+      try {
+        const el = document.getElementById('cb-restore-status');
+        if (!el) return;
+        if (success) {
+          el.textContent = '✅ Restored';
+          setTimeout(() => { try { el.remove(); } catch(_){} }, 1400);
+        } else {
+          el.remove();
+        }
+      } catch (e) {}
+    }
+
     btnRestore.addEventListener('click', async () => {
       try {
         // Always load from the unified loader (merges background DB + chrome mirror)
@@ -8596,11 +8654,47 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         const msgCount = sel.conversation.length;
         
         if (msgCount >= 10 && (!sel.summary || sel.summary.trim().length === 0)) {
-          // Auto-summarize for better context preservation
-          toast(`Auto-summarizing ${msgCount} messages for optimal context...`);
+          // Auto-summarize for better context preservation with persistent status
+          updateRestoreStatus(`Preparing autosummary for ${msgCount} messages...`);
           try {
             const fullText = sel.conversation.map(m => `${m.role}: ${m.text}`).join('\n\n');
-            const opts = { chunkSize: 14000, maxParallel: 3, length: 'comprehensive', summaryType: 'transfer' };
+            const RESTORE_MERGE_PROMPT = 'You are generating a long, transfer-ready summary of a multi-turn conversation suitable for ANY AI tool (ChatGPT, Claude, Gemini, Copilot, etc.).\n\n'
+              + 'Output STRICTLY in clean Markdown with the following sections:\n\n'
+              + '1) Executive Overview\n'
+              + '2) Participants & Roles (only if inferable)\n'
+              + '3) Timeline of Discussion (chronological highlights)\n'
+              + '4) Key Topics & Decisions\n'
+              + '5) Context, Requirements & Constraints\n'
+              + '6) Action Items (with owners if present)\n'
+              + '7) Risks, Unknowns & Follow-ups\n'
+              + '8) Contradictions or Conflicts to Resolve\n'
+              + '9) Model/Platform Nuances Mentioned\n'
+              + '10) Attachments & Artifacts (summarize any referenced files/images)\n'
+              + '11) Source Quotes (short key quotes with message # if inferable)\n'
+              + '12) Next Prompt (one-line suggestion to continue)\n\n'
+              + 'Guidelines:\n'
+              + '- Preserve all facts; do NOT fabricate missing details.\n'
+              + '- Be comprehensive but concise (no fluff/no meta commentary).\n'
+              + '- Prefer bullet points and sub-bullets for readability.\n'
+              + '- Keep code blocks, URLs, and examples intact where relevant.\n'
+              + '- Optimize for immediate handoff to any AI chat input.\n';
+            const opts = {
+              chunkSize: 14000,
+              maxParallel: 3,
+              length: 'comprehensive',
+              summaryType: 'transfer',
+              mergePrompt: RESTORE_MERGE_PROMPT,
+              onProgress: (ev) => {
+                try {
+                  if (!ev || !ev.phase) return;
+                  if (ev.phase === 'preparing') updateRestoreStatus('Preparing autosummary...');
+                  else if (ev.phase === 'chunking') updateRestoreStatus(`Splitting into ${ev.total || '?'} chunks...`);
+                  else if (ev.phase === 'chunk') updateRestoreStatus(`Summarizing chunk ${ev.index || '?'} of ${ev.total || '?'}...`);
+                  else if (ev.phase === 'merging') updateRestoreStatus('Merging summaries into transfer-ready format...');
+                  else if (ev.phase === 'done') updateRestoreStatus('Summary ready. Restoring to chat...');
+                } catch (_) {}
+              }
+            };
             const summary = await hierarchicalSummarize(fullText, opts);
             formatted = summary + '\n\n🔄 Please continue based on this context.';
             // Save summary for future use
@@ -8608,13 +8702,16 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
             await saveConversation(sel);
           } catch (sumErr) {
             debugLog('Auto-summarize failed, using full text', sumErr);
+            updateRestoreStatus('Autosummary failed. Falling back to full text...');
             formatted = sel.conversation.map(m => (m.role === 'user' ? 'User: ' : 'Assistant: ') + m.text).join('\n\n') + '\n\n🔄 Please continue the conversation.';
           }
         } else if (sel.summary && typeof sel.summary === 'string' && sel.summary.trim().length > 0) {
           // Use existing summary
+          updateRestoreStatus('Using existing saved summary. Restoring to chat...');
           formatted = sel.summary.trim();
         } else {
           // Use full conversation for small chats
+          updateRestoreStatus('Small chat detected. Restoring full conversation...');
           formatted = sel.conversation.map(m => (m.role === 'user' ? 'User: ' : 'Assistant: ') + m.text).join('\n\n') + '\n\n🔄 Please continue the conversation.';
         }
         // Collect attachments from conversation
@@ -8626,7 +8723,9 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         } catch (e) {}
         
         // Use the restoreToChat function which has all the proper logic
+        updateRestoreStatus('Restoring into the chat composer...');
         const success = await restoreToChat(formatted, allAtts);
+        if (success) hideRestoreStatus(true); else hideRestoreStatus(false);
         if (!success) {
           // If restore failed, copy to clipboard as fallback
           try {
@@ -10952,18 +11051,8 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       debugLog('Smart Context Injection setup failed:', e);
     }
 
-    // Initialize Luxury Mode
-    try {
-      if (typeof LuxuryMode !== 'undefined') {
-        window.luxuryModeInstance = new LuxuryMode(shadow);
-        window.luxuryModeInstance.apply();
-        debugLog('[ChatBridge] Luxury Mode initialized');
-      } else {
-        debugLog('[ChatBridge] LuxuryMode class not found');
-      }
-    } catch (e) {
-      debugLog('Luxury Mode init failed:', e);
-    }
+    // Luxury Mode removed - themes handle visual styling now
+    debugLog('[ChatBridge] Using theme system for visual styles');
 
     return { host, avatar, panel };
   }
