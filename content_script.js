@@ -721,6 +721,19 @@
   avatar.appendChild(avatarImg);
   // store last scanned text so Clipboard and textarea can access it
   let lastScannedText = '';
+  
+  // Continuum context state (global)
+  let continuumContextState = {
+    unifiedContext: [],
+    activeGoals: [],
+    currentProgress: [],
+    unresolvedItems: [],
+    keyDetails: [],
+    nextActions: [],
+    lastUpdate: null,
+    messageHistory: []
+  };
+  
   // Slightly larger avatar, pulled in from the corner with refined styling
   avatar.style.cssText = 'position:fixed;bottom:22px;right:26px;width:48px;height:48px;border-radius:12px;z-index:2147483647;display:flex;align-items:center;justify-content:center;cursor:pointer;background:transparent;box-shadow:0 6px 20px rgba(0,0,0,0.18);transition: transform .12s ease, box-shadow .12s ease;overflow:hidden;';
   avatar.addEventListener('mouseenter', () => { try { avatar.style.transform = 'translateY(-2px)'; avatar.style.boxShadow = '0 10px 26px rgba(0,180,255,0.26), 0 0 12px rgba(0,180,255,0.35)'; } catch(e){} });
@@ -5916,149 +5929,225 @@ Respond with JSON only:
           expert: '3-4'
         };
         
-        const prompt = `You are Continuum, a context reconstruction agent. Analyze ${relatedConvs.length} related conversations${usingRAG ? ' (semantic search)' : ''} and extract ONLY what matters for continuing work.
+        const prompt = `You are Continuum, a context reconstruction agent. Rebuild the current conversation state from ${relatedConvs.length} conversations${usingRAG ? ' (RAG-powered semantic search)' : ''}.
 
-**Your Task:** Identify the user's underlying intent, key decisions, and what's unresolved.
-
-**Input:**
+**INPUT CONVERSATIONS:**
 ${combinedContext}
 
-**Output Requirements:**
+**YOUR TASK:**
+Analyze the conversations and extract structured context in 6 categories. Output REAL, SPECIFIC information - NEVER use placeholders like [What the user is doing] or [Current goal].
 
-1. **Unified Context Summary** (4-5 lines MAX)
-   - Focus on USER INTENT, not surface keywords
-   - What is the user trying to accomplish?
-   - What decisions/constraints were established?
-   - What's still unclear or unresolved?
-   - Use analytical, direct language - NO fluff
+**OUTPUT FORMAT (use exact markers):**
 
-2. **Topics** (3-5 precise concepts)
-   - High-signal conceptual labels ONLY
-   - NO generic terms like "discussion", "conversation", "questions"
-   - Prefer technical/domain terms over keywords
-   - Examples: "React Context API", "OAuth2 flow", "PostgreSQL indexing"
+---UNIFIED_CONTEXT---
+• Specific detail about what user is working on (real information only)
+• What they are trying to accomplish right now
+• Current approach or technology being used
+• Any key assumptions or working hypotheses
 
-3. **Suggested Next Steps** (1-3 items)
-   - MUST be actionable and specific
-   - Prioritize: clarification > missing info > decisions > next logical action
-   - Format: "Clarify X", "Define Y constraints", "Decide between A vs B"
-   - NO generic advice like "continue working" or "test the code"
+---ACTIVE_GOALS---
+• Specific goal mentioned in conversations
+• Another concrete objective if present
 
-**Format (exact structure):**
-**Unified Context Summary** ${usingRAG ? '🔍' : ''}
-[4-5 line intent analysis]
+---CURRENT_PROGRESS---
+• What was actually built, written, or decided
+• Concrete steps already completed
+• Technologies or approaches confirmed
 
-**Topics:** [Concept 1], [Concept 2], [Concept 3]
-**Conversations:** ${relatedConvs.length} across ${new Set(relatedConvs.map(c => hostFromConv(c))).size} platforms
+---UNRESOLVED_ITEMS---
+• Specific question or blocker from the messages
+• Missing information that's needed
+• Decision point that needs resolution
 
-**Suggested Next Steps**
-1. [Specific actionable step]
-2. [Specific actionable step]
-${detailLevel !== 'concise' ? '3. [Specific actionable step]' : ''}
+---KEY_DETAILS---
+• Technical constraint or requirement mentioned
+• Specific tool, framework, API, or library being used
+• Important limitation or boundary condition
 
-CRITICAL: Be analytical and concise. This is for a user switching AI platforms mid-task who needs continuity, NOT a general summary.`;
+---NEXT_ACTIONS---
+• Practical next step user can take immediately
+• Another actionable item based on context
+
+**CRITICAL RULES:**
+1. NEVER output placeholders like [CONVERSATION STATE], [STATE], [What user is doing], etc.
+2. NEVER output empty sections - if no real data, OMIT that section entirely
+3. ONLY output real, specific information from actual messages
+4. Each bullet (•) MUST contain concrete details from conversations
+5. Be specific - mention actual technologies, decisions, problems
+6. If you cannot find real information for a section, skip it completely
+
+**GOOD EXAMPLE:**
+---UNIFIED_CONTEXT---
+• User is implementing OAuth2 authentication with Google provider in Next.js 14
+• Trying to decide between JWT tokens vs server-side sessions for auth state
+• Currently stuck on redirect URI configuration in Google Console
+
+**BAD EXAMPLE (DO NOT DO THIS):**
+---UNIFIED_CONTEXT---
+• [What the user is currently doing]
+• User is working on a project
+• [Current approach or direction]`;
 
         const res = await callGeminiAsync({ action: 'prompt', text: prompt, length: 'short' });
 
         if (res && res.ok) {
-          const summary = res.result || 'Context reconstructed.';
+          const rawOutput = res.result || '';
           
-          // Build related conversations list - only show high-relevance ones
-          let relatedHtml = '';
-          if (relatedConvs && relatedConvs.length > 0) {
-            // Filter to only show conversations with clear relevance
-            const HIGH_DISPLAY_THRESHOLD = usingRAG ? 0.40 : 0; // Higher bar for display
-            const displayConvs = relatedConvs.filter(conv => {
-              if (!usingRAG) return true; // Show all if no RAG scores
-              return conv.ragScore && conv.ragScore >= HIGH_DISPLAY_THRESHOLD;
-            }).slice(0, 4); // Max 4 related conversations
-            
-            if (displayConvs.length > 0) {
-              relatedHtml = '<div style="margin-top:16px;padding-top:12px;border-top:1px solid rgba(0,180,255,0.2);"><div style="font-weight:600;font-size:12px;margin-bottom:8px;opacity:0.8;">🔗 High-Relevance Context:</div>';
-              displayConvs.forEach((conv, idx) => {
-                const host = hostFromConv(conv) || 'unknown';
-                const ago = Math.round((Date.now() - (conv.ts||Date.now())) / (1000 * 60 * 60));
-                const agoLabel = ago < 1 ? 'recent' : ago < 24 ? `${ago}h ago` : `${Math.round(ago/24)}d ago`;
-                const ragScore = conv.ragScore ? `${(conv.ragScore * 100).toFixed(0)}%` : '';
-                
-                // Get a more meaningful preview - prefer questions or decisions
-                const msgs = conv.conversation || [];
-                const meaningfulMsg = msgs.find(m => {
-                  const t = m.text || '';
-                  return t.length > 100 && (t.includes('?') || /decided|chose|implemented|will use/i.test(t));
-                }) || msgs[0] || { text: '' };
-                const preview = meaningfulMsg.text.slice(0, 120).trim();
-                
-                relatedHtml += `
-                <div style="background:rgba(10,15,28,0.4);border:1px solid rgba(0,180,255,0.2);border-radius:6px;padding:8px;margin-bottom:6px;font-size:11px;">
-                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-                    <span style="font-weight:600;color:rgba(0,180,255,0.9);">${host}</span>
-                    <span style="opacity:0.7;font-size:10px;">${agoLabel}${ragScore ? ' • ' + ragScore : ''}</span>
-                  </div>
-                  <div style="opacity:0.8;line-height:1.4;margin-bottom:6px;">${preview}${preview.length >= 120 ? '...' : ''}</div>
-                  <button class="cb-btn cb-inject-conv" data-conv-idx="${idx}" style="font-size:10px;padding:4px 8px;">💉 Inject Context</button>
-                </div>
-              `;
-              });
-              relatedHtml += '</div>';
-            }
+          // Parse structured sections from AI output
+          function extractSection(text, sectionName) {
+            const pattern = '---' + sectionName + '---([\\s\\S]*?)(?=---|$)';
+            const regex = new RegExp(pattern, 'i');
+            const match = text.match(regex);
+            if (!match) return [];
+            return match[1].trim().split('\n').filter(line => line.trim().startsWith('•')).map(line => line.trim().substring(1).trim());
           }
           
-          // Render with quick action buttons
-          outputArea.innerHTML = `
-            <div style="display:flex;flex-direction:column;gap:10px;">
-              <div id="continuum-detail-container"></div>
-              <div style="white-space:pre-wrap;line-height:1.6;">${summary}</div>
-              <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                <button id="continuum-continue" class="cb-btn cb-btn-primary">Continue here</button>
-                <button id="continuum-review" class="cb-btn">Review key points</button>
-                <button id="continuum-fresh" class="cb-btn">Start fresh with context</button>
+          const sections = {
+            unifiedContext: extractSection(rawOutput, 'UNIFIED_CONTEXT'),
+            activeGoals: extractSection(rawOutput, 'ACTIVE_GOALS'),
+            currentProgress: extractSection(rawOutput, 'CURRENT_PROGRESS'),
+            unresolvedItems: extractSection(rawOutput, 'UNRESOLVED_ITEMS'),
+            keyDetails: extractSection(rawOutput, 'KEY_DETAILS'),
+            nextActions: extractSection(rawOutput, 'NEXT_ACTIONS')
+          };
+          
+          // Build compact collapsible component
+          const createComponent = (title, icon, items, color, defaultCollapsed = true) => {
+            if (!items || items.length === 0) return '';
+            const id = 'continuum-' + title.toLowerCase().replace(/\\s+/g, '-');
+            
+            return `
+              <div style="background:var(--cb-surface);border:1px solid var(--cb-border);border-radius:4px;margin-bottom:4px;overflow:hidden;">
+                <div id="${id}-header" style="display:flex;align-items:center;gap:6px;padding:6px 8px;cursor:pointer;user-select:none;border-left:2px solid ${color};transition:background 0.15s;" 
+                     onmouseover="this.style.background='var(--cb-bg)'" 
+                     onmouseout="this.style.background='transparent'">
+                  <span id="${id}-toggle" style="font-size:9px;color:var(--cb-subtext);width:10px;">${defaultCollapsed ? '▶' : '▼'}</span>
+                  <span style="font-size:12px;line-height:1;">${icon}</span>
+                  <h4 style="margin:0;color:var(--cb-white);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;flex:1;">${title}</h4>
+                  <span style="font-size:8px;color:var(--cb-subtext);background:var(--cb-bg);padding:1px 5px;border-radius:8px;">${items.length}</span>
+                </div>
+                <div id="${id}-content" style="display:${defaultCollapsed ? 'none' : 'block'};padding:4px 8px 6px 24px;border-left:2px solid ${color};">
+                  ${items.map(item => `
+                    <div style="font-size:10px;color:var(--cb-subtext);line-height:1.5;padding:3px 0 3px 10px;position:relative;margin-bottom:1px;">
+                      <span style="position:absolute;left:0;top:7px;width:4px;height:4px;background:${color};border-radius:50%;opacity:0.7;"></span>
+                      ${item}
+                    </div>
+                  `).join('')}
+                </div>
               </div>
-              ${relatedHtml}
+            `;
+          };
+          
+          // Render beautiful structured UI
+          outputArea.innerHTML = `
+            <div style="display:flex;flex-direction:column;gap:0;max-height:calc(100vh - 160px);overflow-y:auto;padding-right:6px;">
+              ${createComponent('Context', '🔗', sections.unifiedContext, 'var(--cb-accent-primary)', true)}
+              ${createComponent('Goals', '🎯', sections.activeGoals, 'var(--cb-accent-tertiary)', true)}
+              ${createComponent('Progress', '✅', sections.currentProgress, 'var(--cb-success)', true)}
+              ${createComponent('Unresolved', '⚠️', sections.unresolvedItems, 'var(--cb-warning)', true)}
+              ${createComponent('Key Details', '🔑', sections.keyDetails, 'var(--cb-accent-secondary)', true)}
+              ${createComponent('Next Actions', '➡️', sections.nextActions, 'var(--cb-accent-primary)', true)}
+              
+              <div style="background:var(--cb-bg);border:1px solid var(--cb-border);border-radius:4px;margin-top:8px;padding:8px;position:sticky;bottom:0;box-shadow:0 -2px 8px rgba(0,0,0,0.1);">
+                <div style="display:flex;gap:6px;margin-bottom:6px;">
+                  <button id="continuum-continue" class="cb-btn cb-btn-primary" style="font-size:10px;padding:6px 12px;flex:1;font-weight:500;">💬 Continue</button>
+                  <button id="continuum-refresh" class="cb-btn" style="font-size:10px;padding:6px 12px;flex:1;font-weight:500;">🔄 Refresh</button>
+                </div>
+                <div style="display:flex;gap:4px;justify-content:center;">
+                  <button id="continuum-review" class="cb-btn" style="font-size:9px;padding:4px 8px;background:transparent;border:1px solid var(--cb-border);">🔍 Review</button>
+                  <button id="continuum-copy" class="cb-btn" style="font-size:9px;padding:4px 8px;background:transparent;border:1px solid var(--cb-border);">📋 Copy</button>
+                </div>
+                <div style="font-size:8px;color:var(--cb-subtext);margin-top:6px;text-align:center;opacity:0.7;">📊 ${relatedConvs.length} conversations • ${new Set(relatedConvs.map(c => hostFromConv(c))).size} platforms${usingRAG ? ' • RAG' : ''}</div>
+              </div>
             </div>`;
           
-          // Add detail level toggle
-          createDetailLevelToggle('continuum-detail-container', async (newLevel) => {
-            // Re-run analysis with new detail level
-            showContinuumAgent();
-          });
-
-          const btnCont = outputArea.querySelector('#continuum-continue');
-          const btnRev = outputArea.querySelector('#continuum-review');
-          const btnFresh = outputArea.querySelector('#continuum-fresh');
-          const btnInjectConvs = outputArea.querySelectorAll('.cb-inject-conv');
-
-          const summaryPlain = (summary || '').replace(/<[^>]*>/g,'');
-          const baseAsk = 'Please pick up from the previous session using the summary below.';
-
-          btnCont && btnCont.addEventListener('click', async () => {
-            try { await restoreToChat(`${baseAsk}\n\nSummary:\n${summaryPlain}`, []); toast('Inserted to chat'); } catch(e){ toast('Insert failed'); }
-          });
-          btnRev && btnRev.addEventListener('click', async () => {
-            try { await restoreToChat(`Before continuing, briefly review these key points and ask me to confirm any assumptions.\n\nSummary:\n${summaryPlain}`, []); toast('Inserted to chat'); } catch(e){ toast('Insert failed'); }
-          });
-          btnFresh && btnFresh.addEventListener('click', async () => {
-            try { await restoreToChat(`Start a new approach but keep this context in mind. Provide a short plan first.\n\nContext:\n${summaryPlain}`, []); toast('Inserted to chat'); } catch(e){ toast('Insert failed'); }
-          });
-          
-          // Inject individual conversation context
-          btnInjectConvs.forEach(btn => {
-            btn.addEventListener('click', async () => {
-              const convIdx = parseInt(btn.dataset.convIdx);
-              const conv = relatedConvs[convIdx];
-              if (!conv) return;
+          // Setup click handlers for dropdowns after rendering
+          setTimeout(() => {
+            ['context', 'goals', 'progress', 'unresolved', 'key-details', 'next-actions'].forEach(section => {
+              const header = document.getElementById('continuum-' + section + '-header');
+              const content = document.getElementById('continuum-' + section + '-content');
+              const toggle = document.getElementById('continuum-' + section + '-toggle');
               
-              const convText = (conv.conversation || []).map(m => `${m.role}: ${m.text}`).join('\n\n');
-              const convSummary = `[Context from ${hostFromConv(conv)}]\nTopics: ${(conv.topics||[]).join(', ')}\n\n${convText.slice(0, 2000)}`;
-              
-              try { 
-                await restoreToChat(convSummary, []); 
-                toast('Context injected!'); 
-              } catch(e) { 
-                toast('Inject failed'); 
-                debugLog('[Continuum] Inject conv failed:', e);
+              if (header && content && toggle) {
+                header.onclick = () => {
+                  const isCollapsed = content.style.display === 'none';
+                  content.style.display = isCollapsed ? 'block' : 'none';
+                  toggle.textContent = isCollapsed ? '▼' : '▶';
+                };
               }
             });
+          }, 100);
+          
+          // Store context state
+          continuumContextState = {
+            unifiedContext: sections.unifiedContext,
+            activeGoals: sections.activeGoals,
+            currentProgress: sections.currentProgress,
+            unresolvedItems: sections.unresolvedItems,
+            keyDetails: sections.keyDetails,
+            nextActions: sections.nextActions,
+            lastUpdate: Date.now(),
+            messageHistory: []
+          };
+          
+          // Auto-scroll
+          setTimeout(() => {
+            outputArea.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }, 100);
+          
+          // Build context block helper
+          const buildContextBlock = () => {
+            let block = '[CONVERSATION STATE - Generated by Continuum]\\n\\n';
+            if (sections.unifiedContext.length > 0) {
+              block += '🔗 CONTEXT:\\n' + sections.unifiedContext.map(i => `• ${i}`).join('\\n') + '\\n\\n';
+            }
+            if (sections.activeGoals.length > 0) {
+              block += '🎯 GOALS:\\n' + sections.activeGoals.map(i => `• ${i}`).join('\\n') + '\\n\\n';
+            }
+            if (sections.currentProgress.length > 0) {
+              block += '✅ PROGRESS:\\n' + sections.currentProgress.map(i => `• ${i}`).join('\\n') + '\\n\\n';
+            }
+            if (sections.unresolvedItems.length > 0) {
+              block += '⚠️ UNRESOLVED:\\n' + sections.unresolvedItems.map(i => `• ${i}`).join('\\n') + '\\n\\n';
+            }
+            if (sections.keyDetails.length > 0) {
+              block += '🔑 KEY DETAILS:\\n' + sections.keyDetails.map(i => `• ${i}`).join('\\n') + '\\n\\n';
+            }
+            if (sections.nextActions && sections.nextActions.length > 0) {
+              block += '➡️ NEXT:\\n' + sections.nextActions.map(i => `• ${i}`).join('\\n') + '\\n';
+            }
+            return block;
+          };
+          
+          // Button event listeners
+          const btnCont = outputArea.querySelector('#continuum-continue');
+          const btnRev = outputArea.querySelector('#continuum-review');
+          const btnRefresh = outputArea.querySelector('#continuum-refresh');
+          const btnCopy = outputArea.querySelector('#continuum-copy');
+          
+          btnCont && btnCont.addEventListener('click', async () => {
+            try { 
+              await restoreToChat(`Please continue from where we left off. Here is the working state:\\n\\n${buildContextBlock()}`, []); 
+              toast('Context inserted to chat'); 
+            } catch(e){ toast('Insert failed'); }
+          });
+          
+          btnRev && btnRev.addEventListener('click', async () => {
+            try { 
+              await restoreToChat(`Before continuing, review this context and confirm your understanding:\\n\\n${buildContextBlock()}`, []); 
+              toast('Review request inserted'); 
+            } catch(e){ toast('Insert failed'); }
+          });
+          
+          btnCopy && btnCopy.addEventListener('click', async () => {
+            try { 
+              await navigator.clipboard.writeText(buildContextBlock());
+              toast('Context copied to clipboard!'); 
+            } catch(e){ toast('Copy failed'); }
+          });
+          
+          btnRefresh && btnRefresh.addEventListener('click', async () => {
+            showContinuumAgent(); // Re-run the whole analysis
           });
 
           toast('Context bridge ready!');
@@ -8136,6 +8225,17 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           }
         }
         toast('History cleared');
+        // Clear Continuum context state
+        continuumContextState = {
+          unifiedContext: [],
+          activeGoals: [],
+          currentProgress: [],
+          unresolvedItems: [],
+          keyDetails: [],
+          nextActions: [],
+          lastUpdate: null,
+          messageHistory: []
+        };
         refreshHistory();
         // Clear the preview/last-scanned text
         try { preview.textContent = 'Preview: (none)'; } catch (e) {}
