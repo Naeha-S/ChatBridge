@@ -1,8 +1,8 @@
 // wrap everything in an IIFE and exit early if already injected to avoid redeclaration
-(function(){
+(function () {
   'use strict';
   if (typeof window !== 'undefined' && window.__CHATBRIDGE_INJECTED) {
-    try { console.debug && console.debug('[ChatBridge] double-injection detected, skipping init'); } catch (e) {}
+    try { console.debug && console.debug('[ChatBridge] double-injection detected, skipping init'); } catch (e) { }
     return;
   }
   if (typeof window !== 'undefined') {
@@ -32,17 +32,17 @@
   // Check if current site is approved
   function isApprovedSite() {
     const hostname = window.location.hostname;
-     return APPROVED_SITES.some(site => hostname === site || hostname.endsWith('.' + site)) || hostname === 'localhost';
+    return APPROVED_SITES.some(site => hostname === site || hostname.endsWith('.' + site)) || hostname === 'localhost';
   }
 
   // Exit early if not on approved site
   if (!isApprovedSite()) {
     console.log('[ChatBridge] Not on approved site, skipping injection. Current:', window.location.hostname);
-     return; // Early exit if not approved
+    return; // Early exit if not approved
   }
 
   console.log('[ChatBridge] Injecting on approved site:', window.location.hostname);
-  
+
   // CLOUDFLARE FIX: Defer UI injection until page is fully loaded to avoid triggering security checks
   let _pageFullyLoaded = document.readyState === 'complete';
   if (!_pageFullyLoaded) {
@@ -53,7 +53,7 @@
   // This prevents CPU/memory overhead on initial page load for low-end devices
   let _cbRAGInitialized = false;
   let _cbMCPInitialized = false;
-  
+
   // Lazy loader for RAG Engine (called on first use, not on page load)
   async function ensureRAGInitialized() {
     if (_cbRAGInitialized) return;
@@ -67,7 +67,7 @@
       console.warn('[ChatBridge] RAG lazy init failed (will use fallback):', e);
     }
   }
-  
+
   // Lazy loader for MCP Bridge (called on first agent use)
   function ensureMCPInitialized() {
     if (_cbMCPInitialized) return;
@@ -81,7 +81,7 @@
       console.warn('[ChatBridge] MCP lazy init failed:', e);
     }
   }
-  
+
   // OPTIMIZATION: Monitor page visibility to pause/cleanup when user switches tabs
   // This reduces CPU usage when extension is not actively visible
   // CLOUDFLARE FIX: Use passive listeners to avoid blocking main thread
@@ -97,61 +97,65 @@
 
   // avoid const redeclaration causing SyntaxError in some injection scenarios
   var CB_MAX_MESSAGES = (typeof window !== 'undefined' && window.__CHATBRIDGE && window.__CHATBRIDGE.MAX_MESSAGES) ? window.__CHATBRIDGE.MAX_MESSAGES : 200;
-    const DOM_STABLE_MS = 150; // Ultra-fast scan - minimal wait
-    const DOM_STABLE_TIMEOUT_MS = 2000; // Reduced timeout for faster completion
-  const SCROLL_MAX_STEPS = 20; // Fewer steps but faster
-    const SCROLL_STEP_PAUSE_MS = 80; // Minimal pause for ultra-fast scrolling
+  const DOM_STABLE_MS = 50; // Ultra-fast scan - minimal wait
+  const DOM_STABLE_TIMEOUT_MS = 500; // Reduced timeout for faster completion
+  const SCROLL_MAX_STEPS = 5; // Fewer steps but faster
+  const SCROLL_STEP_PAUSE_MS = 20; // Minimal pause for ultra-fast scrolling
   const DEBUG = !!(typeof window !== 'undefined' && window.__CHATBRIDGE_DEBUG === true);
 
-  function debugLog(...args) { if (!DEBUG) return; try { console.debug('[ChatBridge]', ...args); } catch (e) {} }
+  function debugLog(...args) { if (!DEBUG) return; try { console.debug('[ChatBridge]', ...args); } catch (e) { } }
   // Always log restore-related messages for debugging
-  function restoreLog(...args) { try { console.log('[ChatBridge Restore]', ...args); } catch (e) {} }
+  function restoreLog(...args) { try { console.log('[ChatBridge Restore]', ...args); } catch (e) { } }
 
   // --- Lightweight Config & Logger (non-invasive) ---------------------------
-  const CBConfig = (function(){
+  const CBConfig = (function () {
     const DEFAULTS = { debug: DEBUG === true };
     let cache = { value: DEFAULTS, ts: 0 };
-    function getAll(force){
-      if (!force && (Date.now()-cache.ts) < 60_000) return Promise.resolve(cache.value);
-      return new Promise((resolve)=>{
-        try { chrome.storage && chrome.storage.local.get(['chatbridge_config'], (d)=>{
-          const v = d && d.chatbridge_config ? d.chatbridge_config : {};
-          cache = { value: Object.assign({}, DEFAULTS, v), ts: Date.now() };
-          resolve(cache.value);
-        }); } catch(_) { resolve(cache.value); }
+    function getAll(force) {
+      if (!force && (Date.now() - cache.ts) < 60_000) return Promise.resolve(cache.value);
+      return new Promise((resolve) => {
+        try {
+          chrome.storage && chrome.storage.local.get(['chatbridge_config'], (d) => {
+            const v = d && d.chatbridge_config ? d.chatbridge_config : {};
+            cache = { value: Object.assign({}, DEFAULTS, v), ts: Date.now() };
+            resolve(cache.value);
+          });
+        } catch (_) { resolve(cache.value); }
       });
     }
-    function get(key){ return getAll(false).then(c=>c[key]); }
+    function get(key) { return getAll(false).then(c => c[key]); }
     try {
-      chrome.storage && chrome.storage.onChanged && chrome.storage.onChanged.addListener((changes, area)=>{
-        if (area==='local' && changes && changes.chatbridge_config) {
+      chrome.storage && chrome.storage.onChanged && chrome.storage.onChanged.addListener((changes, area) => {
+        if (area === 'local' && changes && changes.chatbridge_config) {
           const v = changes.chatbridge_config.newValue || {}; cache = { value: Object.assign({}, DEFAULTS, v), ts: Date.now() };
         }
       });
-    } catch(_){}
+    } catch (_) { }
     return { getAll, get };
   })();
 
-  const CBLogger = (function(){
+  const CBLogger = (function () {
     let debug = DEBUG === true;
-    CBConfig.get('debug').then(v=>{ if (typeof v==='boolean') debug = v; }).catch(()=>{});
-    try { chrome.storage && chrome.storage.onChanged && chrome.storage.onChanged.addListener((changes, area)=>{
-      if (area==='local' && changes && changes.chatbridge_config) {
-        const v = changes.chatbridge_config.newValue || {}; debug = !!v.debug;
-      }
-    }); } catch(_){}
-    function log(method, args){ try { console[method].apply(console, ['[ChatBridge]', ...args]); } catch(_){} }
+    CBConfig.get('debug').then(v => { if (typeof v === 'boolean') debug = v; }).catch(() => { });
+    try {
+      chrome.storage && chrome.storage.onChanged && chrome.storage.onChanged.addListener((changes, area) => {
+        if (area === 'local' && changes && changes.chatbridge_config) {
+          const v = changes.chatbridge_config.newValue || {}; debug = !!v.debug;
+        }
+      });
+    } catch (_) { }
+    function log(method, args) { try { console[method].apply(console, ['[ChatBridge]', ...args]); } catch (_) { } }
     return {
-      debug: (...a)=>{ if (debug) log('debug', a); },
-      info: (...a)=>log('log', a),
-      warn: (...a)=>log('warn', a),
-      error: (...a)=>log('error', a)
+      debug: (...a) => { if (debug) log('debug', a); },
+      info: (...a) => log('log', a),
+      warn: (...a) => log('warn', a),
+      error: (...a) => log('error', a)
     };
   })();
 
   // --- Small, safe utilities (non-invasive; exported for future reuse) ------
   /** Sleep helper */
-  function cbSleep(ms) { return new Promise(r => setTimeout(r, Number(ms)||0)); }
+  function cbSleep(ms) { return new Promise(r => setTimeout(r, Number(ms) || 0)); }
   /** Wait until predicate returns truthy or timeout (returns null on timeout) */
   async function cbWaitFor(predicate, opts) {
     const timeout = (opts && opts.timeoutMs) || 8000;
@@ -167,33 +171,33 @@
     return null;
   }
   /** Safe querySelector with root param */
-  function cbQS(root, sel) { try { return (root || document).querySelector(sel); } catch(_) { return null; } }
+  function cbQS(root, sel) { try { return (root || document).querySelector(sel); } catch (_) { return null; } }
   /** Safe querySelectorAll -> array */
-  function cbQSA(root, sel) { try { return Array.from((root || document).querySelectorAll(sel)); } catch(_) { return []; } }
+  function cbQSA(root, sel) { try { return Array.from((root || document).querySelectorAll(sel)); } catch (_) { return []; } }
 
   // Register restore message listener EARLY, before injectUI, so it's ready when the tab opens
   // Store restoreToChat reference - will be defined later but we can queue messages
   let pendingRestoreMessages = [];
   let restoreToChatFunction = null;
-  
+
   console.log('[ChatBridge] Registering restore_to_chat listener early');
   chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     try {
       if (msg && msg.type === 'restore_to_chat') {
         console.log('[ChatBridge] Received restore_to_chat message, text length:', msg.payload ? msg.payload.text ? msg.payload.text.length : 0 : 0);
         restoreLog('Restore message received early, queueing if needed');
-        
+
         const payload = msg.payload || {};
         const text = payload.text || '';
         const attachments = payload.attachments || [];
-        
+
         // If restoreToChat is not ready yet, queue the message
         if (!restoreToChatFunction) {
           restoreLog('restoreToChat function not ready yet, queueing message');
           pendingRestoreMessages.push({ text, attachments, sendResponse });
           return true; // Keep channel open
         }
-        
+
         // Use async function to properly handle response
         (async () => {
           try {
@@ -211,15 +215,15 @@
         (async () => {
           try {
             const text = (msg.payload && msg.payload.text) ? String(msg.payload.text) : '';
-            if (!text) return sendResponse({ ok:false, error:'no_text' });
+            if (!text) return sendResponse({ ok: false, error: 'no_text' });
             if (window.ChatBridgeEmbeddings && typeof window.ChatBridgeEmbeddings.getEmbedding === 'function') {
               const emb = await window.ChatBridgeEmbeddings.getEmbedding(text);
               const arr = Array.from(emb || []);
-              return sendResponse({ ok:true, vector: arr });
+              return sendResponse({ ok: true, vector: arr });
             }
-            return sendResponse({ ok:false, error:'embeddings_unavailable' });
+            return sendResponse({ ok: false, error: 'embeddings_unavailable' });
           } catch (e) {
-            return sendResponse({ ok:false, error: e && e.message });
+            return sendResponse({ ok: false, error: e && e.message });
           }
         })();
         return true;
@@ -228,27 +232,27 @@
         (async () => {
           try {
             const texts = (msg.payload && Array.isArray(msg.payload.texts)) ? msg.payload.texts : [];
-            if (!texts.length) return sendResponse({ ok:false, error:'no_texts' });
+            if (!texts.length) return sendResponse({ ok: false, error: 'no_texts' });
             if (window.ChatBridgeEmbeddings && typeof window.ChatBridgeEmbeddings.getEmbedding === 'function') {
               const vectors = [];
               for (const t of texts) {
-                const emb = await window.ChatBridgeEmbeddings.getEmbedding(String(t||''));
+                const emb = await window.ChatBridgeEmbeddings.getEmbedding(String(t || ''));
                 vectors.push(Array.from(emb || []));
               }
-              return sendResponse({ ok:true, vectors });
+              return sendResponse({ ok: true, vectors });
             }
-            return sendResponse({ ok:false, error:'embeddings_unavailable' });
+            return sendResponse({ ok: false, error: 'embeddings_unavailable' });
           } catch (e) {
-            return sendResponse({ ok:false, error: e && e.message });
+            return sendResponse({ ok: false, error: e && e.message });
           }
         })();
         return true;
       }
-      
+
       // Handle MCP requests from popup or other sources
       if (msg && msg.type === 'mcp_request') {
         console.log('[ChatBridge] Received MCP request:', msg.resource, msg.method);
-        
+
         (async () => {
           try {
             // Forward to MCP bridge for handling
@@ -270,7 +274,7 @@
         })();
         return true; // Keep channel open for async response
       }
-      
+
       // Handle clear RAG cache request from popup
       if (msg && msg.type === 'clear_rag_cache') {
         (async () => {
@@ -288,14 +292,14 @@
         })();
         return true;
       }
-      
+
       // Open Memory Architect focused on a specific theme (from popup Timeline)
       if (msg && msg.type === 'open_memory_architect') {
         (async () => {
           try {
             window.__CB_FOCUS_THEME = msg.theme || '';
             // Ensure UI visible
-            try { const h = document.getElementById('cb-host'); if (h) h.style.display = 'block'; } catch(e) {}
+            try { const h = document.getElementById('cb-host'); if (h) h.style.display = 'block'; } catch (e) { }
             // Switch to Memory Architect view
             if (typeof showMemoryArchitect === 'function') {
               await showMemoryArchitect();
@@ -307,7 +311,7 @@
         })();
         return true;
       }
-      
+
       if (msg && msg.type === 'cs_self_test') {
         try {
           // Minimal sanity checks only; no DOM mutations
@@ -315,7 +319,7 @@
           CBLogger.debug('cs_self_test approved?', siteOk);
           sendResponse({ ok: true, approved: siteOk });
         } catch (e) {
-          sendResponse({ ok:false, error: e && e.message });
+          sendResponse({ ok: false, error: e && e.message });
         }
         return true;
       }
@@ -345,14 +349,14 @@
           </g>
         </svg>`;
       a.style.cssText = 'position:fixed;bottom:22px;right:26px;width:48px;height:48px;border-radius:12px;z-index:2147483647;display:flex;align-items:center;justify-content:center;cursor:pointer;background:transparent;box-shadow:0 6px 20px rgba(0,0,0,0.18);transition: transform .12s ease, box-shadow .12s ease;';
-      a.addEventListener('mouseenter', () => { try { a.style.transform = 'translateY(-2px)'; a.style.boxShadow = '0 10px 26px rgba(230,207,159,0.18)'; } catch(e){} });
-      a.addEventListener('mouseleave', () => { try { a.style.transform = ''; a.style.boxShadow = '0 6px 20px rgba(0,0,0,0.18)'; } catch(e){} });
+      a.addEventListener('mouseenter', () => { try { a.style.transform = 'translateY(-2px)'; a.style.boxShadow = '0 10px 26px rgba(230,207,159,0.18)'; } catch (e) { } });
+      a.addEventListener('mouseleave', () => { try { a.style.transform = ''; a.style.boxShadow = '0 6px 20px rgba(0,0,0,0.18)'; } catch (e) { } });
       // Click should reveal the host sidebar if present
       a.addEventListener('click', () => {
         try {
           const h = document.getElementById('cb-host');
           if (h) { h.style.display = 'block'; a.style.display = 'none'; }
-        } catch (e) {}
+        } catch (e) { }
       });
       document.body.appendChild(a);
     } catch (e) { debugLog('ensureAvatarExists failed', e); }
@@ -408,50 +412,50 @@
         .cb-scan-label{ position: absolute; background: rgba(6,20,32,0.9); color:#ffdca3; font-size:12px; padding:2px 6px; border-radius:4px; z-index:2147483647; pointer-events:none; }
       `;
       document.head.appendChild(s);
-    } catch (e) {}
+    } catch (e) { }
   }
 
   function clearHighlights() {
     try {
       if (CB_HIGHLIGHT_ROOT) { CB_HIGHLIGHT_ROOT.remove(); CB_HIGHLIGHT_ROOT = null; }
-  cbQSA(document, '.cb-scan-highlight').forEach(n => { try { n.classList.remove('cb-scan-highlight'); } catch(e){} });
-  cbQSA(document, '.cb-scan-label').forEach(n => { try { n.remove(); } catch(e){} });
-    } catch (e) {}
+      cbQSA(document, '.cb-scan-highlight').forEach(n => { try { n.classList.remove('cb-scan-highlight'); } catch (e) { } });
+      cbQSA(document, '.cb-scan-label').forEach(n => { try { n.remove(); } catch (e) { } });
+    } catch (e) { }
   }
 
   function highlightNodesByElements(elems) {
     try {
       if (!elems || !elems.length) return;
       ensureHighlightStyles(); clearHighlights();
-  CB_HIGHLIGHT_ROOT = document.createElement('div'); CB_HIGHLIGHT_ROOT.id = 'cb-scan-highlights'; CB_HIGHLIGHT_ROOT.setAttribute('data-cb-ignore','true'); CB_HIGHLIGHT_ROOT.style.pointerEvents = 'none';
+      CB_HIGHLIGHT_ROOT = document.createElement('div'); CB_HIGHLIGHT_ROOT.id = 'cb-scan-highlights'; CB_HIGHLIGHT_ROOT.setAttribute('data-cb-ignore', 'true'); CB_HIGHLIGHT_ROOT.style.pointerEvents = 'none';
       document.body.appendChild(CB_HIGHLIGHT_ROOT);
       elems.slice(0, 60).forEach((el, i) => {
         try {
           if (!el || !(el instanceof Element)) return;
           el.classList.add('cb-scan-highlight');
           const rect = el.getBoundingClientRect();
-          const label = document.createElement('div'); label.className = 'cb-scan-label'; label.setAttribute('data-cb-ignore','true');
-          label.textContent = `#${i+1}`;
+          const label = document.createElement('div'); label.className = 'cb-scan-label'; label.setAttribute('data-cb-ignore', 'true');
+          label.textContent = `#${i + 1}`;
           label.style.left = (window.scrollX + Math.max(0, rect.left)) + 'px';
           label.style.top = (window.scrollY + Math.max(0, rect.top - 18)) + 'px';
           CB_HIGHLIGHT_ROOT.appendChild(label);
-        } catch (e) {}
+        } catch (e) { }
       });
-    } catch (e) {}
+    } catch (e) { }
   }
 
   function isInExtension(node) {
     if (!node) return false;
     let cur = node;
     while (cur && cur !== document) {
-      try { if (cur.id === 'cb-host' || (cur.getAttribute && cur.getAttribute('data-cb-ignore') === 'true')) return true; } catch (e) {}
+      try { if (cur.id === 'cb-host' || (cur.getAttribute && cur.getAttribute('data-cb-ignore') === 'true')) return true; } catch (e) { }
       cur = cur.parentElement;
     }
     return false;
   }
 
   function inferRoleFromNode(n) {
-    try { 
+    try {
       if (!n) return 'assistant';
       const cls = (n.className || '').toString().toLowerCase();
       if (cls.includes('user') || cls.includes('from-user') || cls.includes('you')) return 'user';
@@ -467,7 +471,7 @@
           if (/^user[:\-]/i.test(text)) return 'user';
           if (/^assistant[:\-]/i.test(text)) return 'assistant';
         }
-      } catch (e) {}
+      } catch (e) { }
       // default to assistant
       return 'assistant';
     } catch (e) { return 'assistant'; }
@@ -476,24 +480,24 @@
   // Enhance debug logging in filterCandidateNodes to log reasons for skipping nodes
   function filterCandidateNodes(nodes) {
     return nodes.filter(node => {
-        if (!node || !node.textContent || node.textContent.trim() === '') {
-            console.debug('[Claude Debug] Skipping node: Empty or whitespace-only content', node);
-            return false;
-        }
-        if (node.textContent.length < 5) { // Example threshold for minimum length
-            console.debug('[Claude Debug] Skipping node: Content too short', node.textContent);
-            return false;
-        }
-        if (node.nodeType !== Node.ELEMENT_NODE && node.nodeType !== Node.TEXT_NODE) {
-            console.debug('[Claude Debug] Skipping node: Unsupported node type', node.nodeType);
-            return false;
-        }
-        if (node.hasAttribute && node.hasAttribute('aria-hidden') && node.getAttribute('aria-hidden') === 'true') {
-            console.debug('[Claude Debug] Skipping node: aria-hidden=true', node);
-            return false;
-        }
-        // Add more conditions as needed
-        return true;
+      if (!node || !node.textContent || node.textContent.trim() === '') {
+        console.debug('[Claude Debug] Skipping node: Empty or whitespace-only content', node);
+        return false;
+      }
+      if (node.textContent.length < 5) { // Example threshold for minimum length
+        console.debug('[Claude Debug] Skipping node: Content too short', node.textContent);
+        return false;
+      }
+      if (node.nodeType !== Node.ELEMENT_NODE && node.nodeType !== Node.TEXT_NODE) {
+        console.debug('[Claude Debug] Skipping node: Unsupported node type', node.nodeType);
+        return false;
+      }
+      if (node.hasAttribute && node.hasAttribute('aria-hidden') && node.getAttribute('aria-hidden') === 'true') {
+        console.debug('[Claude Debug] Skipping node: aria-hidden=true', node);
+        return false;
+      }
+      // Add more conditions as needed
+      return true;
     });
   }
 
@@ -511,7 +515,7 @@
       for (let i = 0; i < maxSteps; i++) {
         const cur = container.scrollTop; if (cur <= 0) break;
         container.scrollTop = Math.max(0, cur - Math.ceil(container.clientHeight * 0.85));
-  await cbSleep(stepPause);
+        await cbSleep(stepPause);
       }
       container.scrollTop = 0;
     } catch (e) { console.warn('scroll error', e); }
@@ -520,7 +524,7 @@
   function waitForDomStability(container, stableMs = DOM_STABLE_MS, timeoutMs = DOM_STABLE_TIMEOUT_MS) {
     return new Promise(resolve => {
       const target = container || document.body; let timer = null; let resolved = false; let obs = null;
-      function done(timedOut) { if (resolved) return; resolved = true; if (timer) clearTimeout(timer); try { if (obs) obs.disconnect(); } catch (e) {} resolve(!timedOut); }
+      function done(timedOut) { if (resolved) return; resolved = true; if (timer) clearTimeout(timer); try { if (obs) obs.disconnect(); } catch (e) { } resolve(!timedOut); }
       try {
         obs = new MutationObserver(() => { if (timer) clearTimeout(timer); timer = setTimeout(() => done(false), stableMs); });
         obs.observe(target, { childList: true, subtree: true, characterData: true });
@@ -531,86 +535,109 @@
   }
 
   // Extract text from element preserving code blocks, lists, links, and structure
+  // Extract text from element preserving code blocks, lists, links, and structure
   function extractTextWithFormatting(element) {
     if (!element) return '';
-    
+
     try {
-      let result = '';
-      
-      // Process child nodes recursively
+      const buffer = [];
+
+      // Process child nodes recursively but push to shared buffer
       function processNode(node) {
-        if (!node) return '';
-        
-        // Text nodes - return content
+        if (!node) return;
+
+        // Text nodes - push content
         if (node.nodeType === Node.TEXT_NODE) {
-          return node.textContent || '';
+          buffer.push(node.textContent || '');
+          return;
         }
-        
+
         // Element nodes - handle special formatting
         if (node.nodeType === Node.ELEMENT_NODE) {
           const tag = node.tagName?.toLowerCase();
-          
+
           // Code blocks - preserve with markdown formatting
           if (tag === 'pre' || tag === 'code') {
             const codeText = node.textContent || '';
             // If it's a code block (pre), wrap in triple backticks
             if (tag === 'pre') {
               const lang = node.querySelector('code')?.className?.match(/language-(\w+)/)?.[1] || '';
-              return `\n\`\`\`${lang}\n${codeText}\n\`\`\`\n`;
+              buffer.push(`\n\`\`\`${lang}\n${codeText}\n\`\`\`\n`);
+              return;
             }
             // Inline code
-            return `\`${codeText}\``;
+            buffer.push(`\`${codeText}\``);
+            return;
           }
-          
+
           // Lists - preserve structure with bullets/numbers
           if (tag === 'ul' || tag === 'ol') {
+            buffer.push('\n');
             const items = Array.from(node.querySelectorAll(':scope > li'));
             const prefix = tag === 'ol' ? (i) => `${i + 1}. ` : () => '- ';
-            return '\n' + items.map((li, i) => prefix(i) + (li.textContent || '').trim()).join('\n') + '\n';
+            items.forEach((li, i) => {
+              buffer.push(prefix(i) + (li.textContent || '').trim() + '\n');
+            });
+            buffer.push('\n');
+            return;
           }
-          
+
           // List items (if not caught by above)
           if (tag === 'li') {
-            return '- ' + Array.from(node.childNodes).map(processNode).join('') + '\n';
+            buffer.push('- ');
+            Array.from(node.childNodes).forEach(processNode);
+            buffer.push('\n');
+            return;
           }
-          
+
           // Links - preserve with markdown format
           if (tag === 'a') {
             const text = node.textContent || '';
             const href = node.getAttribute('href') || '';
             if (href && text) {
-              return `[${text}](${href})`;
+              buffer.push(`[${text}](${href})`);
+              return;
             }
-            return text;
+            buffer.push(text);
+            return;
           }
-          
+
           // Block elements - add line breaks
-          if (['div', 'p', 'br', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'].includes(tag)) {
-            const content = Array.from(node.childNodes).map(processNode).join('');
-            return tag === 'br' ? '\n' : content + '\n';
+          if (['div', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'].includes(tag)) {
+            Array.from(node.childNodes).forEach(processNode);
+            buffer.push('\n');
+            return;
           }
-          
+
+          if (tag === 'br') {
+            buffer.push('\n');
+            return;
+          }
+
           // Bold/italic - preserve with markdown
           if (tag === 'strong' || tag === 'b') {
-            return '**' + Array.from(node.childNodes).map(processNode).join('') + '**';
+            buffer.push('**');
+            Array.from(node.childNodes).forEach(processNode);
+            buffer.push('**');
+            return;
           }
           if (tag === 'em' || tag === 'i') {
-            return '*' + Array.from(node.childNodes).map(processNode).join('') + '*';
+            buffer.push('*');
+            Array.from(node.childNodes).forEach(processNode);
+            buffer.push('*');
+            return;
           }
-          
+
           // Default - process children
-          return Array.from(node.childNodes).map(processNode).join('');
+          Array.from(node.childNodes).forEach(processNode);
         }
-        
-        return '';
       }
-      
-      result = processNode(element);
-      
+
+      processNode(element);
+
       // Clean up excessive newlines while preserving intentional structure
-      result = result.replace(/\n{3,}/g, '\n\n').trim();
-      
-      return result;
+      return buffer.join('').replace(/\n{3,}/g, '\n\n').trim();
+
     } catch (e) {
       console.warn('[ChatBridge] extractTextWithFormatting error:', e);
       // Fallback to innerText
@@ -624,7 +651,7 @@
     if (!root || !root.querySelectorAll) return atts;
     try {
       // Images
-  const imgs = cbQSA(root, 'img[src]');
+      const imgs = cbQSA(root, 'img[src]');
       for (const img of imgs) {
         try {
           const src = img.getAttribute('src') || '';
@@ -633,20 +660,20 @@
           const r = img.getBoundingClientRect();
           if (r && (r.width < 24 || r.height < 24)) continue;
           atts.push({ type: 'image', url: src, alt: img.getAttribute('alt') || '', name: (src.split('?')[0].split('#')[0].split('/').pop() || 'image') });
-        } catch (e) {}
+        } catch (e) { }
       }
       // Videos
-  const vids = cbQSA(root, 'video[src], video source[src]');
+      const vids = cbQSA(root, 'video[src], video source[src]');
       for (const v of vids) {
         try {
           const src = v.getAttribute('src') || '';
           if (!src) continue;
           atts.push({ type: 'video', url: src, name: (src.split('?')[0].split('#')[0].split('/').pop() || 'video') });
-        } catch (e) {}
+        } catch (e) { }
       }
       // Docs/links
       const exts = /(\.pdf|\.docx?|\.pptx?|\.xlsx?|\.zip|\.rar|\.7z|\.csv|\.md|\.txt)$/i;
-  const links = cbQSA(root, 'a[href]');
+      const links = cbQSA(root, 'a[href]');
       for (const a of links) {
         try {
           const href = a.getAttribute('href') || '';
@@ -654,9 +681,9 @@
           if (exts.test(href)) {
             atts.push({ type: 'file', url: href, name: (href.split('?')[0].split('#')[0].split('/').pop() || 'file') });
           }
-        } catch (e) {}
+        } catch (e) { }
       }
-    } catch (e) {}
+    } catch (e) { }
     // dedupe by url
     const seen = new Set();
     return atts.filter(a => { if (seen.has(a.url)) return false; seen.add(a.url); return true; });
@@ -668,10 +695,10 @@
     const out = [];
     for (const m of raw) {
       if (!m || !m.text) continue;
-        let text = (m.text || '').replace(/\s+/g, ' ').trim();
-        // Strip role prefixes that might have been captured during scan (e.g., "Assistant:", "User:")
-        text = text.replace(/^(Assistant|User|System|AI|Human|Claude|ChatGPT|Gemini|Copilot|Me):\s*/i, '');
-        if (!text) continue;
+      let text = (m.text || '').replace(/\s+/g, ' ').trim();
+      // Strip role prefixes that might have been captured during scan (e.g., "Assistant:", "User:")
+      text = text.replace(/^(Assistant|User|System|AI|Human|Claude|ChatGPT|Gemini|Copilot|Me):\s*/i, '');
+      if (!text) continue;
       const role = (m.role === 'user') ? 'user' : 'assistant'; const prev = out[out.length - 1];
       const attachments = Array.isArray(m.attachments) ? m.attachments.slice(0) : [];
       if (!prev || prev.text !== text || prev.role !== role) out.push({ role, text, attachments });
@@ -681,8 +708,8 @@
           const existing = prev.attachments || [];
           const combined = (existing.concat(attachments) || []).filter(a => a && a.url);
           const seen = new Set();
-          prev.attachments = combined.filter(a => { const k = a.url + '|' + (a.kind||''); if (seen.has(k)) return false; seen.add(k); return true; });
-        } catch (e) {}
+          prev.attachments = combined.filter(a => { const k = a.url + '|' + (a.kind || ''); if (seen.has(k)) return false; seen.add(k); return true; });
+        } catch (e) { }
       }
     }
     const filtered = out.filter(x => x.text.length > 4 && !/^(new chat|regenerate|clear|copy|download|history)$/i.test(x.text));
@@ -699,7 +726,7 @@
     // Expose for adapters to extract formatted text (code blocks, lists, links)
     window.extractTextWithFormatting = extractTextWithFormatting;
     // expose utils under a namespaced object to avoid collisions
-    window.ChatBridgeHelpers.utils = Object.assign({}, (window.ChatBridgeHelpers.utils||{}), {
+    window.ChatBridgeHelpers.utils = Object.assign({}, (window.ChatBridgeHelpers.utils || {}), {
       sleep: cbSleep,
       waitFor: cbWaitFor,
       qs: cbQS,
@@ -710,34 +737,34 @@
   function injectUI() {
     // If host already exists, ensure avatar is present (in case it was removed)
     if (document.getElementById('cb-host')) {
-      try { ensureAvatarExists(); } catch (e) {}
-       return;
+      try { ensureAvatarExists(); } catch (e) { }
+      return;
     }
-  const avatar = document.createElement('div'); avatar.id = 'cb-avatar'; avatar.setAttribute('data-cb-ignore', 'true');
-  const avatarImg = document.createElement('img');
-  avatarImg.src = chrome.runtime.getURL('iconic.jpeg');
-  avatarImg.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:12px;';
-  avatarImg.alt = 'ChatBridge';
-  avatar.appendChild(avatarImg);
-  // store last scanned text so Clipboard and textarea can access it
-  let lastScannedText = '';
-  
-  // Continuum context state (global)
-  let continuumContextState = {
-    unifiedContext: [],
-    activeGoals: [],
-    currentProgress: [],
-    unresolvedItems: [],
-    keyDetails: [],
-    nextActions: [],
-    lastUpdate: null,
-    messageHistory: []
-  };
-  
-  // Slightly larger avatar, pulled in from the corner with refined styling
-  avatar.style.cssText = 'position:fixed;bottom:22px;right:26px;width:48px;height:48px;border-radius:12px;z-index:2147483647;display:flex;align-items:center;justify-content:center;cursor:pointer;background:transparent;box-shadow:0 6px 20px rgba(0,0,0,0.18);transition: transform .12s ease, box-shadow .12s ease;overflow:hidden;';
-  avatar.addEventListener('mouseenter', () => { try { avatar.style.transform = 'translateY(-2px)'; avatar.style.boxShadow = '0 10px 26px rgba(0,180,255,0.26), 0 0 12px rgba(0,180,255,0.35)'; } catch(e){} });
-  avatar.addEventListener('mouseleave', () => { try { avatar.style.transform = ''; avatar.style.boxShadow = '0 6px 20px rgba(0,0,0,0.18)'; } catch(e){} });
+    const avatar = document.createElement('div'); avatar.id = 'cb-avatar'; avatar.setAttribute('data-cb-ignore', 'true');
+    const avatarImg = document.createElement('img');
+    avatarImg.src = chrome.runtime.getURL('iconic.jpeg');
+    avatarImg.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:12px;';
+    avatarImg.alt = 'ChatBridge';
+    avatar.appendChild(avatarImg);
+    // store last scanned text so Clipboard and textarea can access it
+    let lastScannedText = '';
+
+    // Continuum context state (global)
+    let continuumContextState = {
+      unifiedContext: [],
+      activeGoals: [],
+      currentProgress: [],
+      unresolvedItems: [],
+      keyDetails: [],
+      nextActions: [],
+      lastUpdate: null,
+      messageHistory: []
+    };
+
+    // Slightly larger avatar, pulled in from the corner with refined styling
+    avatar.style.cssText = 'position:fixed;bottom:22px;right:26px;width:48px;height:48px;border-radius:12px;z-index:2147483647;display:flex;align-items:center;justify-content:center;cursor:pointer;background:transparent;box-shadow:0 6px 20px rgba(0,0,0,0.18);transition: transform .12s ease, box-shadow .12s ease;overflow:hidden;';
+    avatar.addEventListener('mouseenter', () => { try { avatar.style.transform = 'translateY(-2px)'; avatar.style.boxShadow = '0 10px 26px rgba(0,180,255,0.26), 0 0 12px rgba(0,180,255,0.35)'; } catch (e) { } });
+    avatar.addEventListener('mouseleave', () => { try { avatar.style.transform = ''; avatar.style.boxShadow = '0 6px 20px rgba(0,0,0,0.18)'; } catch (e) { } });
     const host = document.createElement('div'); host.id = 'cb-host'; host.setAttribute('data-cb-ignore', 'true'); host.style.display = 'none';
     document.body.appendChild(avatar); document.body.appendChild(host);
     const shadow = host.attachShadow({ mode: 'open' });
@@ -1051,7 +1078,7 @@
             const theme = r?.cb_theme || 'dark';
             // Remove all theme classes first
             host.classList.remove('cb-theme-light', 'cb-theme-synthwave', 'cb-theme-aurora', 'cb-theme-nebula', 'cb-theme-rose');
-            
+
             // Apply selected theme
             if (theme === 'light') {
               host.classList.add('cb-theme-light');
@@ -1065,21 +1092,21 @@
               host.classList.add('cb-theme-rose');
             }
             // dark is default (no class needed)
-          } catch (e) {}
+          } catch (e) { }
         });
       }
-    } catch (e) {}
+    } catch (e) { }
 
-  const panel = document.createElement('div'); panel.className = 'cb-panel';
-    
+    const panel = document.createElement('div'); panel.className = 'cb-panel';
+
     // Load saved panel width
     try {
       const savedWidth = localStorage.getItem('chatbridge:panel_width');
       if (savedWidth) {
         panel.style.width = savedWidth + 'px';
       }
-    } catch (e) {}
-    
+    } catch (e) { }
+
     // Add resize handle
     const resizeHandle = document.createElement('div');
     resizeHandle.className = 'cb-resize-handle';
@@ -1101,33 +1128,33 @@
       z-index: 10;
       user-select: none;
     `;
-    
+
     resizeHandle.addEventListener('mouseenter', () => {
       resizeHandle.style.opacity = '1';
     });
     resizeHandle.addEventListener('mouseleave', () => {
       resizeHandle.style.opacity = '0.5';
     });
-    
+
     // Resize functionality
     let isResizing = false;
     let startX, startWidth;
-    
+
     resizeHandle.addEventListener('mousedown', (e) => {
       isResizing = true;
       startX = e.clientX;
       startWidth = parseInt(document.defaultView.getComputedStyle(panel).width, 10);
       e.preventDefault();
     });
-    
+
     document.addEventListener('mousemove', (e) => {
       if (!isResizing) return;
-      
+
       const deltaX = startX - e.clientX;
       const newWidth = Math.max(300, Math.min(800, startWidth + deltaX));
       panel.style.width = newWidth + 'px';
     });
-    
+
     document.addEventListener('mouseup', () => {
       if (isResizing) {
         isResizing = false;
@@ -1135,312 +1162,313 @@
         try {
           const finalWidth = parseInt(document.defaultView.getComputedStyle(panel).width, 10);
           localStorage.setItem('chatbridge:panel_width', finalWidth);
-        } catch (e) {}
+        } catch (e) { }
       }
     });
-    
+
     panel.appendChild(resizeHandle);
-    
+
     // Header: Title and subtitle
     const header = document.createElement('div'); header.className = 'cb-header';
-  const title = document.createElement('div'); title.className = 'cb-title'; title.textContent = 'ChatBridge'; title.style.fontSize = '22px';
-  const subtitle = document.createElement('div'); subtitle.className = 'cb-subtitle'; subtitle.textContent = 'Effortlessly continue conversations across models';
-  const left = document.createElement('div');
-  left.style.display = 'flex'; left.style.flexDirection = 'column'; left.style.gap = '6px'; left.style.alignItems = 'flex-start';
-  left.appendChild(title); left.appendChild(subtitle);
-  const controls = document.createElement('div'); controls.style.display = 'flex'; controls.style.alignItems = 'flex-start'; controls.style.gap = '8px';
-  const btnSettings = document.createElement('button'); btnSettings.className = 'cb-btn'; btnSettings.textContent = '⚙️'; btnSettings.title = 'Settings';
-  btnSettings.style.cssText = 'padding: 6px 10px; font-size: 16px;';
-  btnSettings.setAttribute('aria-label','Open settings');
-  const btnClose = document.createElement('button'); btnClose.className = 'cb-close'; btnClose.textContent = '✕';
-  btnClose.setAttribute('aria-label','Close panel');
-  controls.appendChild(btnSettings);
-  controls.appendChild(btnClose);
-  header.appendChild(left);
-  header.appendChild(controls);
+    const title = document.createElement('div'); title.className = 'cb-title'; title.textContent = 'ChatBridge'; title.style.fontSize = '22px';
+    const subtitle = document.createElement('div'); subtitle.className = 'cb-subtitle'; subtitle.textContent = 'Effortlessly continue conversations across models';
+    const left = document.createElement('div');
+    left.style.display = 'flex'; left.style.flexDirection = 'column'; left.style.gap = '6px'; left.style.alignItems = 'flex-start';
+    left.appendChild(title); left.appendChild(subtitle);
+    const controls = document.createElement('div'); controls.style.display = 'flex'; controls.style.alignItems = 'flex-start'; controls.style.gap = '8px';
+    const btnSettings = document.createElement('button'); btnSettings.className = 'cb-btn'; btnSettings.textContent = '⚙️'; btnSettings.title = 'Settings';
+    btnSettings.style.cssText = 'padding: 6px 10px; font-size: 16px;';
+    btnSettings.setAttribute('aria-label', 'Open settings');
+    const btnClose = document.createElement('button'); btnClose.className = 'cb-close'; btnClose.textContent = '✕';
+    btnClose.setAttribute('aria-label', 'Close panel');
+    controls.appendChild(btnSettings);
+    controls.appendChild(btnClose);
+    header.appendChild(left);
+    header.appendChild(controls);
     panel.appendChild(header);
 
-  // Actions: Scan, Restore, Gemini APIs
-  const actions = document.createElement('div'); actions.className = 'cb-actions';
-  
-  // Create a neat grid for secondary actions (luxury layout)
-  const actionsGrid = document.createElement('div'); actionsGrid.className = 'cb-actions-grid';
+    // Actions: Scan, Restore, Gemini APIs
+    const actions = document.createElement('div'); actions.className = 'cb-actions';
 
-  const btnScan = document.createElement('button'); btnScan.className = 'cb-btn cb-btn-primary cb-scan-wide'; btnScan.textContent = 'Scan Chat'; btnScan.title = 'Capture this conversation - Save it for later, search across it, or continue on another AI'; btnScan.id = 'btnScan';
-  const btnRestore = document.createElement('button'); btnRestore.className = 'cb-btn'; btnRestore.textContent = 'Restore'; btnRestore.title = 'Continue where you left off - Pick any saved chat and paste it into this AI'; btnRestore.setAttribute('aria-label','Restore conversation');
-  const btnClipboard = document.createElement('button'); btnClipboard.className = 'cb-btn'; btnClipboard.textContent = 'Copy'; btnClipboard.title = 'Quick export - Copy this conversation to share or save externally'; btnClipboard.setAttribute('aria-label','Copy conversation to clipboard');
-  const btnSmartQuery = document.createElement('button'); btnSmartQuery.className = 'cb-btn'; btnSmartQuery.textContent = 'Query'; btnSmartQuery.title = 'Ask questions across ALL your saved chats - Natural language search powered by AI'; btnSmartQuery.setAttribute('aria-label','Open Smart Query');
-  const btnKnowledgeGraph = document.createElement('button'); btnKnowledgeGraph.className = 'cb-btn'; btnKnowledgeGraph.textContent = 'Agent'; btnKnowledgeGraph.title = 'AI Agent – analyze this chat and suggest next actions'; btnKnowledgeGraph.setAttribute('aria-label','Open Agent');
-  const btnInsights = document.createElement('button'); btnInsights.className = 'cb-btn'; btnInsights.textContent = 'Insights'; btnInsights.title = 'Smart workspace tools - Compare, merge, extract, and organize your conversations'; btnInsights.setAttribute('aria-label','Open Smart Workspace');
+    // Create a neat grid for secondary actions (luxury layout)
+    const actionsGrid = document.createElement('div'); actionsGrid.className = 'cb-actions-grid';
 
-  // Gemini API buttons
-  const btnPromptDesigner = document.createElement('button'); btnPromptDesigner.className = 'cb-btn'; btnPromptDesigner.textContent = 'Prompts'; btnPromptDesigner.title = 'AI-powered prompt suggestions - Get smart next steps for your conversation';
-  const btnSummarize = document.createElement('button'); btnSummarize.className = 'cb-btn'; btnSummarize.textContent = 'Summarize'; btnSummarize.title = 'Get the key points - Condense long chats into concise summaries';
-  const btnRewrite = document.createElement('button'); btnRewrite.className = 'cb-btn'; btnRewrite.textContent = 'Rewrite'; btnRewrite.title = 'Polish your content - Improve clarity, tone, and professionalism. Adapt for different AI models';
-  const btnTranslate = document.createElement('button'); btnTranslate.className = 'cb-btn'; btnTranslate.textContent = 'Translate'; btnTranslate.title = 'Break language barriers - Convert chats to 20+ languages instantly';
-  btnPromptDesigner.setAttribute('aria-label','Open Prompt Designer');
-  btnSummarize.setAttribute('aria-label','Summarize conversation');
-  btnRewrite.setAttribute('aria-label','Rewrite conversation');
-  btnTranslate.setAttribute('aria-label','Translate conversation');
+    const btnScan = document.createElement('button'); btnScan.className = 'cb-btn cb-btn-primary cb-scan-wide'; btnScan.textContent = 'Scan Chat'; btnScan.title = 'Capture this conversation - Save it for later, search across it, or continue on another AI'; btnScan.id = 'btnScan';
+    const btnRestore = document.createElement('button'); btnRestore.className = 'cb-btn'; btnRestore.textContent = 'Restore'; btnRestore.title = 'Continue where you left off - Pick any saved chat and paste it into this AI'; btnRestore.setAttribute('aria-label', 'Restore conversation');
+    const btnClipboard = document.createElement('button'); btnClipboard.className = 'cb-btn'; btnClipboard.textContent = 'Copy'; btnClipboard.title = 'Quick export - Copy this conversation to share or save externally'; btnClipboard.setAttribute('aria-label', 'Copy conversation to clipboard');
+    const btnSmartQuery = document.createElement('button'); btnSmartQuery.className = 'cb-btn'; btnSmartQuery.textContent = 'Query'; btnSmartQuery.title = 'Ask questions across ALL your saved chats - Natural language search powered by AI'; btnSmartQuery.setAttribute('aria-label', 'Open Smart Query');
+    const btnKnowledgeGraph = document.createElement('button'); btnKnowledgeGraph.className = 'cb-btn'; btnKnowledgeGraph.textContent = 'Agent'; btnKnowledgeGraph.title = 'AI Agent – analyze this chat and suggest next actions'; btnKnowledgeGraph.setAttribute('aria-label', 'Open Agent');
+    const btnInsights = document.createElement('button'); btnInsights.className = 'cb-btn'; btnInsights.textContent = 'Insights'; btnInsights.title = 'Smart workspace tools - Compare, merge, extract, and organize your conversations'; btnInsights.setAttribute('aria-label', 'Open Smart Workspace');
 
-  // Place Scan button prominently in its own row below the header
-  try {
-    const scanRow = document.createElement('div'); scanRow.className = 'cb-scan-row';
-    scanRow.appendChild(btnScan);
-    panel.appendChild(scanRow);
-  } catch (e) { try { row1.appendChild(btnScan); } catch (e2) {} }
-  
-  // Grid: Restore, Query, Graph, Insights, Copy, Prompts, Summarize, Rewrite, Translate
-  [
-    btnRestore,
-    btnSmartQuery,
-    btnKnowledgeGraph,
-    btnInsights,
-    btnClipboard,
-    btnPromptDesigner,
-    btnSummarize,
-    btnRewrite,
-    btnTranslate
-  ].forEach(b => actionsGrid.appendChild(b));
+    // Gemini API buttons
+    const btnPromptDesigner = document.createElement('button'); btnPromptDesigner.className = 'cb-btn'; btnPromptDesigner.textContent = 'Prompts'; btnPromptDesigner.title = 'AI-powered prompt suggestions - Get smart next steps for your conversation';
+    const btnSummarize = document.createElement('button'); btnSummarize.className = 'cb-btn'; btnSummarize.textContent = 'Summarize'; btnSummarize.title = 'Get the key points - Condense long chats into concise summaries';
+    const btnRewrite = document.createElement('button'); btnRewrite.className = 'cb-btn'; btnRewrite.textContent = 'Rewrite'; btnRewrite.title = 'Polish your content - Improve clarity, tone, and professionalism. Adapt for different AI models';
+    const btnTranslate = document.createElement('button'); btnTranslate.className = 'cb-btn'; btnTranslate.textContent = 'Translate'; btnTranslate.title = 'Break language barriers - Convert chats to 20+ languages instantly';
+    btnPromptDesigner.setAttribute('aria-label', 'Open Prompt Designer');
+    btnSummarize.setAttribute('aria-label', 'Summarize conversation');
+    btnRewrite.setAttribute('aria-label', 'Rewrite conversation');
+    btnTranslate.setAttribute('aria-label', 'Translate conversation');
 
-  actions.appendChild(actionsGrid);
-  panel.appendChild(actions);
+    // Place Scan button prominently in its own row below the header
+    try {
+      const scanRow = document.createElement('div'); scanRow.className = 'cb-scan-row';
+      scanRow.appendChild(btnScan);
+      panel.appendChild(scanRow);
+    } catch (e) { try { row1.appendChild(btnScan); } catch (e2) { } }
+
+    // Grid: Restore, Query, Graph, Insights, Copy, Prompts, Summarize, Rewrite, Translate
+    [
+      btnRestore,
+      btnSmartQuery,
+      btnKnowledgeGraph,
+      btnInsights,
+      btnClipboard,
+      btnPromptDesigner,
+      btnSummarize,
+      btnRewrite,
+      btnTranslate
+    ].forEach(b => actionsGrid.appendChild(b));
+
+    actions.appendChild(actionsGrid);
+    panel.appendChild(actions);
 
     // Toolbar with Chat dropdown
     const toolbar = document.createElement('div'); toolbar.className = 'cb-toolbar';
-  const lab = document.createElement('div'); lab.className = 'cb-label'; lab.textContent = 'Select Chat';
+    const lab = document.createElement('div'); lab.className = 'cb-label'; lab.textContent = 'Select Chat';
     const chatSelect = document.createElement('select'); chatSelect.className = 'cb-select'; chatSelect.id = 'cb-chat-select';
-  chatSelect.setAttribute('aria-label', 'Select saved chat');
+    chatSelect.setAttribute('aria-label', 'Select saved chat');
     toolbar.appendChild(lab); toolbar.appendChild(chatSelect);
     panel.appendChild(toolbar);
 
-  // Toolbar preview (moved above the Gemini textarea)
-  const preview = document.createElement('div'); preview.className = 'cb-preview'; preview.textContent = 'Preview: (none)';
+    // Toolbar preview (moved above the Gemini textarea)
+    const preview = document.createElement('div'); preview.className = 'cb-preview'; preview.textContent = 'Preview: (none)';
 
-  // --- Internal views (Prompt Designer, Summarize, Rewrite, Translate) - inline sections ---
-  
-  // Prompt Designer view - Modern Clean Design
-  const promptDesignerView = document.createElement('div'); 
-  promptDesignerView.className = 'cb-internal-view'; 
-  promptDesignerView.id = 'cb-prompt-designer-view'; 
-  promptDesignerView.setAttribute('data-cb-ignore','true');
-  
-  const pdTop = document.createElement('div'); 
-  pdTop.className = 'cb-view-top';
-  
-  const pdTitle = document.createElement('div'); 
-  pdTitle.className = 'cb-view-title'; 
-  pdTitle.innerHTML = '<span style="font-size:20px;margin-right:8px;">✨</span>Smart Prompts';
-  
-  const btnClosePD = document.createElement('button'); 
-  btnClosePD.className = 'cb-view-close'; 
-  btnClosePD.textContent = '✕';
-  btnClosePD.setAttribute('aria-label','Close Prompt Designer view');
-  
-  pdTop.appendChild(pdTitle); 
-  pdTop.appendChild(btnClosePD);
-  promptDesignerView.appendChild(pdTop);
-  
-  const pdIntro = document.createElement('div'); 
-  pdIntro.className = 'cb-view-intro'; 
-  pdIntro.innerHTML = '<strong>AI-powered prompt suggestions</strong> to help you get more from your conversations.<br><span style="font-size:12px;opacity:0.8;">Generated prompts are tailored to your chat context and conversation flow.</span>';
-  promptDesignerView.appendChild(pdIntro);
-  
-  // Prompt Designer content container
-  const pdContent = document.createElement('div'); 
-  pdContent.id = 'cb-pd-content'; 
-  pdContent.style.cssText = 'margin:0;padding:0;';
-  promptDesignerView.appendChild(pdContent);
-  
-  // Append to panel
-  panel.appendChild(promptDesignerView);
+    // --- Internal views (Prompt Designer, Summarize, Rewrite, Translate) - inline sections ---
 
-  // Summarize view
-  const summView = document.createElement('div'); summView.className = 'cb-internal-view'; summView.id = 'cb-summ-view'; summView.setAttribute('data-cb-ignore','true');
-  const summTop = document.createElement('div'); summTop.className = 'cb-view-top';
-  const summTitle = document.createElement('div'); summTitle.className = 'cb-view-title'; summTitle.textContent = 'Summarize';
-  const btnCloseSumm = document.createElement('button'); btnCloseSumm.className = 'cb-view-close'; btnCloseSumm.textContent = '✕';
-  btnCloseSumm.setAttribute('aria-label','Close Summarize view');
-  summTop.appendChild(summTitle); summTop.appendChild(btnCloseSumm);
-  summView.appendChild(summTop);
-  const summIntro = document.createElement('div'); summIntro.className = 'cb-view-intro'; summIntro.textContent = 'Extract the key insights from long conversations. Perfect for quick reviews, sharing highlights, or creating meeting notes.';
-  summView.appendChild(summIntro);
-  const summControls = document.createElement('div'); summControls.className = 'cb-view-controls';
-  const summLengthLabel = document.createElement('label'); summLengthLabel.className = 'cb-label'; summLengthLabel.textContent = 'Length:';
-  const summLengthSelect = document.createElement('select'); summLengthSelect.className = 'cb-select'; summLengthSelect.id = 'cb-summ-length';
-  ['concise','short','medium','comprehensive','detailed'].forEach(v => { const o = document.createElement('option'); o.value = v; o.textContent = v.charAt(0).toUpperCase()+v.slice(1); summLengthSelect.appendChild(o); });
-  summLengthSelect.value = 'medium';
-  const summTypeLabel = document.createElement('label'); summTypeLabel.className = 'cb-label'; summTypeLabel.textContent = 'Style:';
-  const summTypeSelect = document.createElement('select'); summTypeSelect.className = 'cb-select'; summTypeSelect.id = 'cb-summ-type';
-  // Include a specialized AI-to-AI transfer style optimized for cross-model handoff
-  const summTypes = ['paragraph','bullet','detailed','executive','technical','transfer'];
-  summTypes.forEach(v => { 
-    const o = document.createElement('option'); 
-    o.value = v; 
-    o.textContent = (v === 'transfer') ? 'AI-to-AI Transfer' : (v.charAt(0).toUpperCase()+v.slice(1)); 
-    summTypeSelect.appendChild(o); 
-  });
-  summTypeSelect.value = 'paragraph';
-  summControls.appendChild(summLengthLabel); summControls.appendChild(summLengthSelect); summControls.appendChild(summTypeLabel); summControls.appendChild(summTypeSelect);
-  summView.appendChild(summControls);
-  // Restore saved summary preferences
-  try {
-    const savedLen = localStorage.getItem('chatbridge:pref:summLength');
-    const savedType = localStorage.getItem('chatbridge:pref:summType');
-    if (savedLen) summLengthSelect.value = savedLen;
-    if (savedType) summTypeSelect.value = savedType;
-  } catch(e){}
-  summLengthSelect.addEventListener('change', () => { try { localStorage.setItem('chatbridge:pref:summLength', summLengthSelect.value); } catch(e){} });
-  summTypeSelect.addEventListener('change', () => { try { localStorage.setItem('chatbridge:pref:summType', summTypeSelect.value); } catch(e){} });
-  const summSourceText = document.createElement('div'); summSourceText.className = 'cb-view-text'; summSourceText.id = 'cb-summ-source-text'; summSourceText.setAttribute('contenteditable','false'); summSourceText.textContent = '';
-  summView.appendChild(summSourceText);
-  const btnGoSumm = document.createElement('button'); btnGoSumm.className = 'cb-btn cb-view-go'; btnGoSumm.textContent = 'Summarize';
-  summView.appendChild(btnGoSumm);
-  const summProg = document.createElement('span'); summProg.className = 'cb-progress'; summProg.style.display = 'none'; summView.appendChild(summProg);
-  const btnInsertSumm = document.createElement('button'); btnInsertSumm.className = 'cb-btn cb-view-go'; btnInsertSumm.textContent = 'Insert to Chat'; btnInsertSumm.style.display = 'none';
-  summView.appendChild(btnInsertSumm);
-  const summResult = document.createElement('div'); summResult.className = 'cb-view-result'; summResult.id = 'cb-summ-result'; summResult.textContent = '';
-  summView.appendChild(summResult);
+    // Prompt Designer view - Modern Clean Design
+    const promptDesignerView = document.createElement('div');
+    promptDesignerView.className = 'cb-internal-view';
+    promptDesignerView.id = 'cb-prompt-designer-view';
+    promptDesignerView.setAttribute('data-cb-ignore', 'true');
 
-  // Rewrite view
-  const rewView = document.createElement('div'); rewView.className = 'cb-internal-view'; rewView.id = 'cb-rew-view'; rewView.setAttribute('data-cb-ignore','true');
-  const rewTop = document.createElement('div'); rewTop.className = 'cb-view-top';
-  const rewTitle = document.createElement('div'); rewTitle.className = 'cb-view-title'; rewTitle.textContent = 'Rewrite';
-  const btnCloseRew = document.createElement('button'); btnCloseRew.className = 'cb-view-close'; btnCloseRew.textContent = '✕';
-  btnCloseRew.setAttribute('aria-label','Close Rewrite view');
-  rewTop.appendChild(rewTitle); rewTop.appendChild(btnCloseRew);
-  rewView.appendChild(rewTop);
-  const rewIntro = document.createElement('div'); rewIntro.className = 'cb-view-intro'; rewIntro.textContent = 'Polish and refine your conversation. Select style, choose messages, and adapt for different AI models.';
-  rewView.appendChild(rewIntro);
-  const rewStyleLabel = document.createElement('label'); rewStyleLabel.className = 'cb-label'; rewStyleLabel.textContent = 'Style:';
-  const rewStyleSelect = document.createElement('select'); rewStyleSelect.className = 'cb-select'; rewStyleSelect.id = 'cb-rew-style';
-  // Organized dropdown with groups
-  const groupBasic = document.createElement('optgroup'); groupBasic.label = 'Basic';
-  ;['normal','concise','direct','detailed','academic'].forEach(v => { const o = document.createElement('option'); o.value = v; o.textContent = v.charAt(0).toUpperCase()+v.slice(1); groupBasic.appendChild(o); });
-  rewStyleSelect.appendChild(groupBasic);
-  const groupTonal = document.createElement('optgroup'); groupTonal.label = 'Tonal & Style';
-  ;['humanized','creative','professional','simple','friendly'].forEach(v => { const o = document.createElement('option'); o.value = v; o.textContent = v.charAt(0).toUpperCase()+v.slice(1); groupTonal.appendChild(o); });
-  rewStyleSelect.appendChild(groupTonal);
-  const groupPersonal = document.createElement('optgroup'); groupPersonal.label = 'Personalized';
-  ;['customStyle'].forEach(v => { const o = document.createElement('option'); o.value = v; o.textContent = 'Personalized Style'; groupPersonal.appendChild(o); });
-  rewStyleSelect.appendChild(groupPersonal);
-  rewStyleSelect.value = 'normal';
-  
-  // Target model selector (from Sync Tone)
-  const rewTargetLabel = document.createElement('label'); rewTargetLabel.className = 'cb-label'; rewTargetLabel.textContent = 'Target Model (optional):';
-  rewTargetLabel.style.marginTop = '12px';
-  const rewTargetSelect = document.createElement('select'); rewTargetSelect.className = 'cb-select'; rewTargetSelect.id = 'cb-rew-target-select';
-  const targetModels = ['None','Claude','ChatGPT','Gemini','OpenAI','Llama','Bing','Anthropic','Cohere','HuggingFace','Custom'];
-  targetModels.forEach(m => { const o = document.createElement('option'); o.value = m; o.textContent = m; rewTargetSelect.appendChild(o); });
-  rewTargetSelect.value = 'None';
-  
-  const rewControls = document.createElement('div'); rewControls.className = 'cb-view-controls';
-  rewControls.appendChild(rewStyleLabel); rewControls.appendChild(rewStyleSelect);
-  rewControls.appendChild(rewTargetLabel); rewControls.appendChild(rewTargetSelect);
-  // Style hint (only for Personalized Style)
-  const styleHintWrap = document.createElement('div'); styleHintWrap.className = 'cb-style-hint-wrap'; styleHintWrap.style.display = 'none';
-  const styleHintLabel = document.createElement('label'); styleHintLabel.className = 'cb-label'; styleHintLabel.textContent = 'Style hint (optional):';
-  const styleHintInput = document.createElement('input'); styleHintInput.className = 'cb-input'; styleHintInput.type = 'text'; styleHintInput.id = 'cb-rew-style-hint'; styleHintInput.placeholder = 'e.g., “Calm, minimalist, technical product docs”';
-  styleHintWrap.appendChild(styleHintLabel); styleHintWrap.appendChild(styleHintInput);
-  rewControls.appendChild(styleHintWrap);
-  rewView.appendChild(rewControls);
-  // Replies list (assistant only - compact preview mode)
-  const rewRepliesWrap = document.createElement('div'); rewRepliesWrap.className = 'cb-replies-wrap';
-  const rewRepliesHeader = document.createElement('div'); rewRepliesHeader.className = 'cb-replies-header';
-  const rewRepliesTitle = document.createElement('div'); rewRepliesTitle.className = 'cb-replies-title'; rewRepliesTitle.textContent = 'Replies';
-  const rewReplyControls = document.createElement('div'); rewReplyControls.style.cssText = 'display:flex;align-items:center;gap:var(--cb-space-sm);flex-wrap:wrap;';
-  const rewMultiBtn = document.createElement('button'); rewMultiBtn.className = 'cb-btn cb-btn-secondary'; rewMultiBtn.style.cssText = 'padding:6px 12px;font-size:11px;'; rewMultiBtn.textContent = 'Multi'; rewMultiBtn.title = 'Toggle multi-select mode';
-  const rewFilterBtn = document.createElement('button'); rewFilterBtn.className = 'cb-btn cb-btn-secondary'; rewFilterBtn.style.cssText = 'padding:6px 12px;font-size:11px;'; rewFilterBtn.textContent = 'All'; rewFilterBtn.title = 'Filter replies (All / Assistant / User)';
-  rewReplyControls.appendChild(rewMultiBtn); rewReplyControls.appendChild(rewFilterBtn);
-  rewRepliesHeader.appendChild(rewRepliesTitle); rewRepliesHeader.appendChild(rewReplyControls);
-  const rewReplies = document.createElement('div'); rewReplies.className = 'cb-replies'; rewReplies.id = 'cb-replies-list';
-  rewRepliesWrap.appendChild(rewRepliesHeader); rewRepliesWrap.appendChild(rewReplies);
-  rewView.appendChild(rewRepliesWrap);
-  
-  // Rewrite editor (appears when a reply is selected)
-  const rewEditor = document.createElement('div'); rewEditor.className = 'cb-rewrite-editor'; rewEditor.id = 'cb-rewrite-editor';
-  const editorLabel = document.createElement('div'); editorLabel.className = 'cb-editor-label'; editorLabel.textContent = 'Editing Reply';
-  rewEditor.appendChild(editorLabel);
-  const editorTextarea = document.createElement('textarea'); editorTextarea.className = 'cb-editor-textarea'; editorTextarea.id = 'cb-editor-textarea'; editorTextarea.placeholder = 'Full reply text...';
-  rewEditor.appendChild(editorTextarea);
-  const editorActions = document.createElement('div'); editorActions.className = 'cb-editor-actions';
-  const btnEditorRewrite = document.createElement('button'); btnEditorRewrite.className = 'cb-btn cb-btn-primary'; btnEditorRewrite.textContent = 'Rewrite'; btnEditorRewrite.id = 'cb-btn-editor-rewrite';
-  const btnEditorCancel = document.createElement('button'); btnEditorCancel.className = 'cb-btn'; btnEditorCancel.textContent = 'Cancel'; btnEditorCancel.id = 'cb-btn-editor-cancel';
-  const btnEditorCopy = document.createElement('button'); btnEditorCopy.className = 'cb-btn'; btnEditorCopy.textContent = 'Copy'; btnEditorCopy.id = 'cb-btn-editor-copy';
-  editorActions.appendChild(btnEditorRewrite); editorActions.appendChild(btnEditorCopy); editorActions.appendChild(btnEditorCancel);
-  rewEditor.appendChild(editorActions);
-  rewView.appendChild(rewEditor);
-  // Restore saved rewrite style
-  try { const savedRew = localStorage.getItem('chatbridge:pref:rewStyle'); if (savedRew) rewStyleSelect.value = savedRew; } catch(e){}
-  try { const savedHint = localStorage.getItem('chatbridge:pref:rewStyleHint'); if (savedHint) styleHintInput.value = savedHint; } catch(e){}
-  function updateStyleHintVisibility(){ styleHintWrap.style.display = (rewStyleSelect.value === 'customStyle') ? 'block' : 'none'; }
-  updateStyleHintVisibility();
-  rewStyleSelect.addEventListener('change', () => { 
-    try { localStorage.setItem('chatbridge:pref:rewStyle', rewStyleSelect.value); } catch(e){} 
-    updateStyleHintVisibility();
-  });
-  styleHintInput.addEventListener('input', ()=>{ try { localStorage.setItem('chatbridge:pref:rewStyleHint', styleHintInput.value); } catch(e){} });
-  const rewSourceText = document.createElement('div'); rewSourceText.className = 'cb-view-text'; rewSourceText.id = 'cb-rew-source-text'; rewSourceText.setAttribute('contenteditable','false'); rewSourceText.textContent = '';
-  rewView.appendChild(rewSourceText);
-  const btnGoRew = document.createElement('button'); btnGoRew.className = 'cb-btn cb-view-go'; btnGoRew.textContent = 'Rewrite';
-  rewView.appendChild(btnGoRew);
-  const rewProg = document.createElement('span'); rewProg.className = 'cb-progress'; rewProg.style.display = 'none'; rewView.appendChild(rewProg);
-  const btnInsertRew = document.createElement('button'); btnInsertRew.className = 'cb-btn cb-view-go'; btnInsertRew.textContent = 'Insert to Chat'; btnInsertRew.style.display = 'none';
-  rewView.appendChild(btnInsertRew);
-  const rewResult = document.createElement('div'); rewResult.className = 'cb-view-result'; rewResult.id = 'cb-rew-result'; rewResult.textContent = '';
-  rewView.appendChild(rewResult);
+    const pdTop = document.createElement('div');
+    pdTop.className = 'cb-view-top';
 
-  // Translate view
-  // Translate view - NEW SIMPLIFIED UI
-  const transView = document.createElement('div'); transView.className = 'cb-internal-view'; transView.id = 'cb-trans-view'; transView.setAttribute('data-cb-ignore','true');
-  const transTop = document.createElement('div'); transTop.className = 'cb-view-top';
-  const transTitle = document.createElement('div'); transTitle.className = 'cb-view-title'; transTitle.textContent = 'Translate';
-  const btnCloseTrans = document.createElement('button'); btnCloseTrans.className = 'cb-view-close'; btnCloseTrans.textContent = '✕';
-  btnCloseTrans.setAttribute('aria-label','Close Translate view');
-  transTop.appendChild(transTitle); transTop.appendChild(btnCloseTrans);
-  transView.appendChild(transTop);
-  const transLangRow = document.createElement('div'); transLangRow.style.cssText = 'display:flex;align-items:center;gap:10px;margin:16px 0;';
-  const transLangLabel = document.createElement('label'); transLangLabel.textContent = 'Output language:'; transLangLabel.style.cssText = 'font-size:0.95em;font-weight:500;color:#e0e0e0;min-width:120px;';
-  const transLangSelect = document.createElement('select'); transLangSelect.className = 'cb-select'; transLangSelect.id = 'cb-trans-lang'; transLangSelect.style.cssText = 'flex:1;padding:8px 12px;border-radius:6px;';
-  const langNameToCode = {'English':'en','Spanish':'es','French':'fr','German':'de','Italian':'it','Portuguese':'pt','Russian':'ru','Japanese':'ja','Korean':'ko','Chinese':'zh','Arabic':'ar','Hindi':'hi','Dutch':'nl','Polish':'pl','Turkish':'tr','Vietnamese':'vi','Thai':'th','Swedish':'sv','Danish':'da','Finnish':'fi','Norwegian':'no','Czech':'cs','Hungarian':'hu','Romanian':'ro','Greek':'el','Hebrew':'he','Indonesian':'id','Malay':'ms','Ukrainian':'uk','Bulgarian':'bg','Tamil':'ta'};
-  Object.entries(langNameToCode).forEach(([name,code])=>{const opt=document.createElement('option');opt.value=code;opt.textContent=name;transLangSelect.appendChild(opt);});
-  const transGearBtn = document.createElement('button'); transGearBtn.textContent='⚙️'; transGearBtn.title='Options'; transGearBtn.style.cssText='background:none;border:none;font-size:1.3em;cursor:pointer;padding:4px 8px;border-radius:4px;transition:background 0.2s;';
-  transGearBtn.onmouseenter=()=>transGearBtn.style.background='rgba(255,255,255,0.1)'; transGearBtn.onmouseleave=()=>transGearBtn.style.background='none';
-  transLangRow.appendChild(transLangLabel); transLangRow.appendChild(transLangSelect); transLangRow.appendChild(transGearBtn); transView.appendChild(transLangRow);
-  const transOptions=document.createElement('div'); transOptions.id='cb-trans-options'; transOptions.style.cssText='display:none;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:14px;margin:0 0 14px 0;';
-  const transModeGroup=document.createElement('div'); transModeGroup.style.cssText='margin-bottom:14px;';
-  const transModeLabel=document.createElement('div'); transModeLabel.textContent='Selective translation:'; transModeLabel.style.cssText='font-size:0.9em;font-weight:600;color:#e0e0e0;margin-bottom:8px;'; transModeGroup.appendChild(transModeLabel);
-  const transRadioGroup=document.createElement('div'); transRadioGroup.className='cb-radio-group'; transRadioGroup.style.cssText='display:flex;gap:8px;flex-wrap:wrap;';
-  ['all','user','ai','last'].forEach((mode,idx)=>{
-    const label=document.createElement('label');
-    label.className='cb-radio';
-    label.style.cssText='display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border:1px solid rgba(255,255,255,0.15);border-radius:8px;background:rgba(255,255,255,0.04);cursor:pointer;transition:background .2s,border-color .2s;';
-    const radio=document.createElement('input'); radio.type='radio'; radio.name='cb-trans-mode'; radio.value=mode; radio.style.cursor='pointer'; if(idx===0) radio.checked=true;
-    const span=document.createElement('span'); span.textContent = mode==='all'?'All messages':mode==='user'?'Only user':mode==='ai'?'Only AI':'Last message'; span.className='cb-radio-text';
-    label.appendChild(radio); label.appendChild(span); transRadioGroup.appendChild(label);
-  });
-  transModeGroup.appendChild(transRadioGroup); transOptions.appendChild(transModeGroup);
-  const transShortenRow=document.createElement('div'); transShortenRow.style.cssText='display:flex;align-items:center;justify-content:space-between;';
-  const transShortenLabel=document.createElement('label'); transShortenLabel.textContent='Shorten output:'; transShortenLabel.htmlFor='cb-trans-shorten'; transShortenLabel.style.cssText='font-size:0.9em;font-weight:600;color:#e0e0e0;';
-  const transShortenToggle=document.createElement('input'); transShortenToggle.type='checkbox'; transShortenToggle.id='cb-trans-shorten'; transShortenToggle.className='cb-toggle'; transShortenToggle.style.cssText='width:44px;height:24px;cursor:pointer;';
-  transShortenRow.appendChild(transShortenLabel); transShortenRow.appendChild(transShortenToggle); transOptions.appendChild(transShortenRow); transView.appendChild(transOptions);
-  const transActionRow=document.createElement('div'); transActionRow.style.cssText='display:flex;align-items:center;gap:12px;margin:14px 0;';
-  const btnGoTrans=document.createElement('button'); btnGoTrans.className='cb-btn cb-btn-primary'; btnGoTrans.textContent='Translate'; btnGoTrans.style.cssText='padding:10px 20px;';
-  const transProg=document.createElement('span'); transProg.style.cssText='display:none;font-size:0.9em;color:rgba(255,255,255,0.7);'; transProg.textContent='⏳ Translating...';
-  transActionRow.appendChild(btnGoTrans); transActionRow.appendChild(transProg); transView.appendChild(transActionRow);
-  const transResult=document.createElement('div'); transResult.className='cb-view-result'; transResult.id='cb-trans-result'; transResult.style.cssText='margin-top:14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:14px;max-height:400px;overflow-y:auto;white-space:pre-wrap;line-height:1.6;display:none;';
-  transView.appendChild(transResult);
-  const btnInsertTrans=document.createElement('button'); btnInsertTrans.className='cb-btn'; btnInsertTrans.textContent='Insert to Chat'; btnInsertTrans.style.cssText='margin-top:12px;display:none;'; transView.appendChild(btnInsertTrans);
-  transGearBtn.addEventListener('click',()=>{const isHidden=transOptions.style.display==='none';transOptions.style.display=isHidden?'block':'none';});
-  try{const saved=localStorage.getItem('chatbridge:pref:transLang');if(saved){transLangSelect.value=saved;}else{const nav=(navigator.language||navigator.userLanguage||'en').toLowerCase().split('-')[0];const navToCode={'en':'en','ja':'ja','es':'es','fr':'fr','de':'de','zh':'zh','ko':'ko','it':'it','pt':'pt','ru':'ru','ar':'ar','hi':'hi','tr':'tr','nl':'nl','sv':'sv','pl':'pl','ta':'ta'};transLangSelect.value=navToCode[nav]||'en';}}catch(e){}
-  transLangSelect.addEventListener('change',()=>{try{localStorage.setItem('chatbridge:pref:transLang',transLangSelect.value);}catch(e){}});
+    const pdTitle = document.createElement('div');
+    pdTitle.className = 'cb-view-title';
+    pdTitle.innerHTML = '<span style="font-size:20px;margin-right:8px;">✨</span>Smart Prompts';
 
-  // Scoped polish styles for translate UI
-  (function(){
+    const btnClosePD = document.createElement('button');
+    btnClosePD.className = 'cb-view-close';
+    btnClosePD.textContent = '✕';
+    btnClosePD.setAttribute('aria-label', 'Close Prompt Designer view');
+
+    pdTop.appendChild(pdTitle);
+    pdTop.appendChild(btnClosePD);
+    promptDesignerView.appendChild(pdTop);
+
+    const pdIntro = document.createElement('div');
+    pdIntro.className = 'cb-view-intro';
+    pdIntro.innerHTML = '<strong>AI-powered prompt suggestions</strong> to help you get more from your conversations.<br><span style="font-size:12px;opacity:0.8;">Generated prompts are tailored to your chat context and conversation flow.</span>';
+    promptDesignerView.appendChild(pdIntro);
+
+    // Prompt Designer content container
+    const pdContent = document.createElement('div');
+    pdContent.id = 'cb-pd-content';
+    pdContent.style.cssText = 'margin:0;padding:0;';
+    promptDesignerView.appendChild(pdContent);
+
+    // Append to panel
+    panel.appendChild(promptDesignerView);
+
+    // Summarize view
+    const summView = document.createElement('div'); summView.className = 'cb-internal-view'; summView.id = 'cb-summ-view'; summView.setAttribute('data-cb-ignore', 'true');
+    const summTop = document.createElement('div'); summTop.className = 'cb-view-top';
+    const summTitle = document.createElement('div'); summTitle.className = 'cb-view-title'; summTitle.textContent = 'Summarize';
+    const btnCloseSumm = document.createElement('button'); btnCloseSumm.className = 'cb-view-close'; btnCloseSumm.textContent = '✕';
+    btnCloseSumm.setAttribute('aria-label', 'Close Summarize view');
+    summTop.appendChild(summTitle); summTop.appendChild(btnCloseSumm);
+    summView.appendChild(summTop);
+    const summIntro = document.createElement('div'); summIntro.className = 'cb-view-intro'; summIntro.textContent = 'Extract the key insights from long conversations. Perfect for quick reviews, sharing highlights, or creating meeting notes.';
+    summView.appendChild(summIntro);
+    const summControls = document.createElement('div'); summControls.className = 'cb-view-controls';
+    const summLengthLabel = document.createElement('label'); summLengthLabel.className = 'cb-label'; summLengthLabel.textContent = 'Length:';
+    const summLengthSelect = document.createElement('select'); summLengthSelect.className = 'cb-select'; summLengthSelect.id = 'cb-summ-length';
+    ['concise', 'short', 'medium', 'comprehensive', 'detailed'].forEach(v => { const o = document.createElement('option'); o.value = v; o.textContent = v.charAt(0).toUpperCase() + v.slice(1); summLengthSelect.appendChild(o); });
+    summLengthSelect.value = 'medium';
+    const summTypeLabel = document.createElement('label'); summTypeLabel.className = 'cb-label'; summTypeLabel.textContent = 'Style:';
+    const summTypeSelect = document.createElement('select'); summTypeSelect.className = 'cb-select'; summTypeSelect.id = 'cb-summ-type';
+    // Include a specialized AI-to-AI transfer style optimized for cross-model handoff
+    const summTypes = ['paragraph', 'bullet', 'detailed', 'executive', 'technical', 'transfer'];
+    summTypes.forEach(v => {
+      const o = document.createElement('option');
+      o.value = v;
+      o.textContent = (v === 'transfer') ? 'AI-to-AI Transfer' : (v.charAt(0).toUpperCase() + v.slice(1));
+      summTypeSelect.appendChild(o);
+    });
+    summTypeSelect.value = 'paragraph';
+    summControls.appendChild(summLengthLabel); summControls.appendChild(summLengthSelect); summControls.appendChild(summTypeLabel); summControls.appendChild(summTypeSelect);
+    summView.appendChild(summControls);
+    // Restore saved summary preferences
     try {
-      if (!transView.querySelector('#cb-trans-style')) {
-        const style=document.createElement('style'); style.id='cb-trans-style';
-        style.textContent = `
+      const savedLen = localStorage.getItem('chatbridge:pref:summLength');
+      const savedType = localStorage.getItem('chatbridge:pref:summType');
+      if (savedLen) summLengthSelect.value = savedLen;
+      if (savedType) summTypeSelect.value = savedType;
+    } catch (e) { }
+    summLengthSelect.addEventListener('change', () => { try { localStorage.setItem('chatbridge:pref:summLength', summLengthSelect.value); } catch (e) { } });
+    summTypeSelect.addEventListener('change', () => { try { localStorage.setItem('chatbridge:pref:summType', summTypeSelect.value); } catch (e) { } });
+    const summSourceText = document.createElement('div'); summSourceText.className = 'cb-view-text'; summSourceText.id = 'cb-summ-source-text'; summSourceText.setAttribute('contenteditable', 'false'); summSourceText.textContent = '';
+    summView.appendChild(summSourceText);
+    const btnGoSumm = document.createElement('button'); btnGoSumm.className = 'cb-btn cb-view-go'; btnGoSumm.textContent = 'Summarize';
+    summView.appendChild(btnGoSumm);
+    const summProg = document.createElement('span'); summProg.className = 'cb-progress'; summProg.style.display = 'none'; summView.appendChild(summProg);
+    const btnInsertSumm = document.createElement('button'); btnInsertSumm.className = 'cb-btn cb-view-go'; btnInsertSumm.textContent = 'Insert to Chat'; btnInsertSumm.style.display = 'none';
+    summView.appendChild(btnInsertSumm);
+    const summResult = document.createElement('div'); summResult.className = 'cb-view-result'; summResult.id = 'cb-summ-result'; summResult.textContent = '';
+    summView.appendChild(summResult);
+
+    // Rewrite view
+    const rewView = document.createElement('div'); rewView.className = 'cb-internal-view'; rewView.id = 'cb-rew-view'; rewView.setAttribute('data-cb-ignore', 'true');
+    const rewTop = document.createElement('div'); rewTop.className = 'cb-view-top';
+    const rewTitle = document.createElement('div'); rewTitle.className = 'cb-view-title'; rewTitle.textContent = 'Rewrite';
+    const btnCloseRew = document.createElement('button'); btnCloseRew.className = 'cb-view-close'; btnCloseRew.textContent = '✕';
+    btnCloseRew.setAttribute('aria-label', 'Close Rewrite view');
+    rewTop.appendChild(rewTitle); rewTop.appendChild(btnCloseRew);
+    rewView.appendChild(rewTop);
+    const rewIntro = document.createElement('div'); rewIntro.className = 'cb-view-intro'; rewIntro.textContent = 'Polish and refine your conversation. Select style, choose messages, and adapt for different AI models.';
+    rewView.appendChild(rewIntro);
+    const rewStyleLabel = document.createElement('label'); rewStyleLabel.className = 'cb-label'; rewStyleLabel.textContent = 'Style:';
+    const rewStyleSelect = document.createElement('select'); rewStyleSelect.className = 'cb-select'; rewStyleSelect.id = 'cb-rew-style';
+    // Organized dropdown with groups
+    const groupBasic = document.createElement('optgroup'); groupBasic.label = 'Basic';
+    ;['normal', 'concise', 'direct', 'detailed', 'academic'].forEach(v => { const o = document.createElement('option'); o.value = v; o.textContent = v.charAt(0).toUpperCase() + v.slice(1); groupBasic.appendChild(o); });
+    rewStyleSelect.appendChild(groupBasic);
+    const groupTonal = document.createElement('optgroup'); groupTonal.label = 'Tonal & Style';
+    ;['humanized', 'creative', 'professional', 'simple', 'friendly'].forEach(v => { const o = document.createElement('option'); o.value = v; o.textContent = v.charAt(0).toUpperCase() + v.slice(1); groupTonal.appendChild(o); });
+    rewStyleSelect.appendChild(groupTonal);
+    const groupPersonal = document.createElement('optgroup'); groupPersonal.label = 'Personalized';
+    ;['customStyle'].forEach(v => { const o = document.createElement('option'); o.value = v; o.textContent = 'Personalized Style'; groupPersonal.appendChild(o); });
+    rewStyleSelect.appendChild(groupPersonal);
+    rewStyleSelect.value = 'normal';
+
+    // Target model selector (from Sync Tone)
+    const rewTargetLabel = document.createElement('label'); rewTargetLabel.className = 'cb-label'; rewTargetLabel.textContent = 'Target Model (optional):';
+    rewTargetLabel.style.marginTop = '12px';
+    const rewTargetSelect = document.createElement('select'); rewTargetSelect.className = 'cb-select'; rewTargetSelect.id = 'cb-rew-target-select';
+    const targetModels = ['None', 'Claude', 'ChatGPT', 'Gemini', 'OpenAI', 'Llama', 'Bing', 'Anthropic', 'Cohere', 'HuggingFace', 'Custom'];
+    targetModels.forEach(m => { const o = document.createElement('option'); o.value = m; o.textContent = m; rewTargetSelect.appendChild(o); });
+    rewTargetSelect.value = 'None';
+
+    const rewControls = document.createElement('div'); rewControls.className = 'cb-view-controls';
+    rewControls.style.marginBottom = '20px';
+    rewControls.appendChild(rewStyleLabel); rewControls.appendChild(rewStyleSelect);
+    rewControls.appendChild(rewTargetLabel); rewControls.appendChild(rewTargetSelect);
+    // Style hint (only for Personalized Style)
+    const styleHintWrap = document.createElement('div'); styleHintWrap.className = 'cb-style-hint-wrap'; styleHintWrap.style.display = 'none';
+    const styleHintLabel = document.createElement('label'); styleHintLabel.className = 'cb-label'; styleHintLabel.textContent = 'Style hint (optional):';
+    const styleHintInput = document.createElement('input'); styleHintInput.className = 'cb-input'; styleHintInput.type = 'text'; styleHintInput.id = 'cb-rew-style-hint'; styleHintInput.placeholder = 'e.g., “Calm, minimalist, technical product docs”';
+    styleHintWrap.appendChild(styleHintLabel); styleHintWrap.appendChild(styleHintInput);
+    rewControls.appendChild(styleHintWrap);
+    rewView.appendChild(rewControls);
+    // Replies list (assistant only - compact preview mode)
+    const rewRepliesWrap = document.createElement('div'); rewRepliesWrap.className = 'cb-replies-wrap';
+    const rewRepliesHeader = document.createElement('div'); rewRepliesHeader.className = 'cb-replies-header';
+    const rewRepliesTitle = document.createElement('div'); rewRepliesTitle.className = 'cb-replies-title'; rewRepliesTitle.textContent = 'Replies';
+    const rewReplyControls = document.createElement('div'); rewReplyControls.style.cssText = 'display:flex;align-items:center;gap:var(--cb-space-sm);flex-wrap:wrap;';
+    const rewMultiBtn = document.createElement('button'); rewMultiBtn.className = 'cb-btn cb-btn-secondary'; rewMultiBtn.style.cssText = 'padding:6px 12px;font-size:11px;'; rewMultiBtn.textContent = 'Multi'; rewMultiBtn.title = 'Toggle multi-select mode';
+    const rewFilterBtn = document.createElement('button'); rewFilterBtn.className = 'cb-btn cb-btn-secondary'; rewFilterBtn.style.cssText = 'padding:6px 12px;font-size:11px;'; rewFilterBtn.textContent = 'All'; rewFilterBtn.title = 'Filter replies (All / Assistant / User)';
+    rewReplyControls.appendChild(rewMultiBtn); rewReplyControls.appendChild(rewFilterBtn);
+    rewRepliesHeader.appendChild(rewRepliesTitle); rewRepliesHeader.appendChild(rewReplyControls);
+    const rewReplies = document.createElement('div'); rewReplies.className = 'cb-replies'; rewReplies.id = 'cb-replies-list';
+    rewRepliesWrap.appendChild(rewRepliesHeader); rewRepliesWrap.appendChild(rewReplies);
+    rewView.appendChild(rewRepliesWrap);
+
+    // Rewrite editor (appears when a reply is selected)
+    const rewEditor = document.createElement('div'); rewEditor.className = 'cb-rewrite-editor'; rewEditor.id = 'cb-rewrite-editor';
+    const editorLabel = document.createElement('div'); editorLabel.className = 'cb-editor-label'; editorLabel.textContent = 'Editing Reply';
+    rewEditor.appendChild(editorLabel);
+    const editorTextarea = document.createElement('textarea'); editorTextarea.className = 'cb-editor-textarea'; editorTextarea.id = 'cb-editor-textarea'; editorTextarea.placeholder = 'Full reply text...';
+    rewEditor.appendChild(editorTextarea);
+    const editorActions = document.createElement('div'); editorActions.className = 'cb-editor-actions';
+    const btnEditorRewrite = document.createElement('button'); btnEditorRewrite.className = 'cb-btn cb-btn-primary'; btnEditorRewrite.textContent = 'Rewrite'; btnEditorRewrite.id = 'cb-btn-editor-rewrite';
+    const btnEditorCancel = document.createElement('button'); btnEditorCancel.className = 'cb-btn'; btnEditorCancel.textContent = 'Cancel'; btnEditorCancel.id = 'cb-btn-editor-cancel';
+    const btnEditorCopy = document.createElement('button'); btnEditorCopy.className = 'cb-btn'; btnEditorCopy.textContent = 'Copy'; btnEditorCopy.id = 'cb-btn-editor-copy';
+    editorActions.appendChild(btnEditorRewrite); editorActions.appendChild(btnEditorCopy); editorActions.appendChild(btnEditorCancel);
+    rewEditor.appendChild(editorActions);
+    rewView.appendChild(rewEditor);
+    // Restore saved rewrite style
+    try { const savedRew = localStorage.getItem('chatbridge:pref:rewStyle'); if (savedRew) rewStyleSelect.value = savedRew; } catch (e) { }
+    try { const savedHint = localStorage.getItem('chatbridge:pref:rewStyleHint'); if (savedHint) styleHintInput.value = savedHint; } catch (e) { }
+    function updateStyleHintVisibility() { styleHintWrap.style.display = (rewStyleSelect.value === 'customStyle') ? 'block' : 'none'; }
+    updateStyleHintVisibility();
+    rewStyleSelect.addEventListener('change', () => {
+      try { localStorage.setItem('chatbridge:pref:rewStyle', rewStyleSelect.value); } catch (e) { }
+      updateStyleHintVisibility();
+    });
+    styleHintInput.addEventListener('input', () => { try { localStorage.setItem('chatbridge:pref:rewStyleHint', styleHintInput.value); } catch (e) { } });
+    const rewSourceText = document.createElement('div'); rewSourceText.className = 'cb-view-text'; rewSourceText.id = 'cb-rew-source-text'; rewSourceText.setAttribute('contenteditable', 'false'); rewSourceText.textContent = '';
+    rewView.appendChild(rewSourceText);
+    const btnGoRew = document.createElement('button'); btnGoRew.className = 'cb-btn cb-view-go'; btnGoRew.textContent = 'Rewrite';
+    rewView.appendChild(btnGoRew);
+    const rewProg = document.createElement('span'); rewProg.className = 'cb-progress'; rewProg.style.display = 'none'; rewView.appendChild(rewProg);
+    const btnInsertRew = document.createElement('button'); btnInsertRew.className = 'cb-btn cb-view-go'; btnInsertRew.textContent = 'Insert to Chat'; btnInsertRew.style.display = 'none';
+    rewView.appendChild(btnInsertRew);
+    const rewResult = document.createElement('div'); rewResult.className = 'cb-view-result'; rewResult.id = 'cb-rew-result'; rewResult.textContent = '';
+    rewView.appendChild(rewResult);
+
+    // Translate view
+    // Translate view - NEW SIMPLIFIED UI
+    const transView = document.createElement('div'); transView.className = 'cb-internal-view'; transView.id = 'cb-trans-view'; transView.setAttribute('data-cb-ignore', 'true');
+    const transTop = document.createElement('div'); transTop.className = 'cb-view-top';
+    const transTitle = document.createElement('div'); transTitle.className = 'cb-view-title'; transTitle.textContent = 'Translate';
+    const btnCloseTrans = document.createElement('button'); btnCloseTrans.className = 'cb-view-close'; btnCloseTrans.textContent = '✕';
+    btnCloseTrans.setAttribute('aria-label', 'Close Translate view');
+    transTop.appendChild(transTitle); transTop.appendChild(btnCloseTrans);
+    transView.appendChild(transTop);
+    const transLangRow = document.createElement('div'); transLangRow.style.cssText = 'display:flex;align-items:center;gap:10px;margin:16px 0;';
+    const transLangLabel = document.createElement('label'); transLangLabel.textContent = 'Output language:'; transLangLabel.style.cssText = 'font-size:0.95em;font-weight:500;color:#e0e0e0;min-width:120px;';
+    const transLangSelect = document.createElement('select'); transLangSelect.className = 'cb-select'; transLangSelect.id = 'cb-trans-lang'; transLangSelect.style.cssText = 'flex:1;padding:8px 12px;border-radius:6px;';
+    const langNameToCode = { 'English': 'en', 'Spanish': 'es', 'French': 'fr', 'German': 'de', 'Italian': 'it', 'Portuguese': 'pt', 'Russian': 'ru', 'Japanese': 'ja', 'Korean': 'ko', 'Chinese': 'zh', 'Arabic': 'ar', 'Hindi': 'hi', 'Dutch': 'nl', 'Polish': 'pl', 'Turkish': 'tr', 'Vietnamese': 'vi', 'Thai': 'th', 'Swedish': 'sv', 'Danish': 'da', 'Finnish': 'fi', 'Norwegian': 'no', 'Czech': 'cs', 'Hungarian': 'hu', 'Romanian': 'ro', 'Greek': 'el', 'Hebrew': 'he', 'Indonesian': 'id', 'Malay': 'ms', 'Ukrainian': 'uk', 'Bulgarian': 'bg', 'Tamil': 'ta' };
+    Object.entries(langNameToCode).forEach(([name, code]) => { const opt = document.createElement('option'); opt.value = code; opt.textContent = name; transLangSelect.appendChild(opt); });
+    const transGearBtn = document.createElement('button'); transGearBtn.textContent = '⚙️'; transGearBtn.title = 'Options'; transGearBtn.style.cssText = 'background:none;border:none;font-size:1.3em;cursor:pointer;padding:4px 8px;border-radius:4px;transition:background 0.2s;';
+    transGearBtn.onmouseenter = () => transGearBtn.style.background = 'rgba(255,255,255,0.1)'; transGearBtn.onmouseleave = () => transGearBtn.style.background = 'none';
+    transLangRow.appendChild(transLangLabel); transLangRow.appendChild(transLangSelect); transLangRow.appendChild(transGearBtn); transView.appendChild(transLangRow);
+    const transOptions = document.createElement('div'); transOptions.id = 'cb-trans-options'; transOptions.style.cssText = 'display:none;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:14px;margin:0 0 14px 0;';
+    const transModeGroup = document.createElement('div'); transModeGroup.style.cssText = 'margin-bottom:14px;';
+    const transModeLabel = document.createElement('div'); transModeLabel.textContent = 'Selective translation:'; transModeLabel.style.cssText = 'font-size:0.9em;font-weight:600;color:#e0e0e0;margin-bottom:8px;'; transModeGroup.appendChild(transModeLabel);
+    const transRadioGroup = document.createElement('div'); transRadioGroup.className = 'cb-radio-group'; transRadioGroup.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;';
+    ['all', 'user', 'ai', 'last'].forEach((mode, idx) => {
+      const label = document.createElement('label');
+      label.className = 'cb-radio';
+      label.style.cssText = 'display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border:1px solid rgba(255,255,255,0.15);border-radius:8px;background:rgba(255,255,255,0.04);cursor:pointer;transition:background .2s,border-color .2s;';
+      const radio = document.createElement('input'); radio.type = 'radio'; radio.name = 'cb-trans-mode'; radio.value = mode; radio.style.cursor = 'pointer'; if (idx === 0) radio.checked = true;
+      const span = document.createElement('span'); span.textContent = mode === 'all' ? 'All messages' : mode === 'user' ? 'Only user' : mode === 'ai' ? 'Only AI' : 'Last message'; span.className = 'cb-radio-text';
+      label.appendChild(radio); label.appendChild(span); transRadioGroup.appendChild(label);
+    });
+    transModeGroup.appendChild(transRadioGroup); transOptions.appendChild(transModeGroup);
+    const transShortenRow = document.createElement('div'); transShortenRow.style.cssText = 'display:flex;align-items:center;justify-content:space-between;';
+    const transShortenLabel = document.createElement('label'); transShortenLabel.textContent = 'Shorten output:'; transShortenLabel.htmlFor = 'cb-trans-shorten'; transShortenLabel.style.cssText = 'font-size:0.9em;font-weight:600;color:#e0e0e0;';
+    const transShortenToggle = document.createElement('input'); transShortenToggle.type = 'checkbox'; transShortenToggle.id = 'cb-trans-shorten'; transShortenToggle.className = 'cb-toggle'; transShortenToggle.style.cssText = 'width:44px;height:24px;cursor:pointer;';
+    transShortenRow.appendChild(transShortenLabel); transShortenRow.appendChild(transShortenToggle); transOptions.appendChild(transShortenRow); transView.appendChild(transOptions);
+    const transActionRow = document.createElement('div'); transActionRow.style.cssText = 'display:flex;align-items:center;gap:12px;margin:14px 0;';
+    const btnGoTrans = document.createElement('button'); btnGoTrans.className = 'cb-btn cb-btn-primary'; btnGoTrans.textContent = 'Translate'; btnGoTrans.style.cssText = 'padding:10px 20px;';
+    const transProg = document.createElement('span'); transProg.style.cssText = 'display:none;font-size:0.9em;color:var(--cb-subtext);'; transProg.textContent = '⏳ Translating...';
+    transActionRow.appendChild(btnGoTrans); transActionRow.appendChild(transProg); transView.appendChild(transActionRow);
+    const transResult = document.createElement('div'); transResult.className = 'cb-view-result'; transResult.id = 'cb-trans-result'; transResult.style.cssText = 'margin-top:14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:14px;max-height:400px;overflow-y:auto;white-space:pre-wrap;line-height:1.6;display:none;';
+    transView.appendChild(transResult);
+    const btnInsertTrans = document.createElement('button'); btnInsertTrans.className = 'cb-btn'; btnInsertTrans.textContent = 'Insert to Chat'; btnInsertTrans.style.cssText = 'margin-top:12px;display:none;'; transView.appendChild(btnInsertTrans);
+    transGearBtn.addEventListener('click', () => { const isHidden = transOptions.style.display === 'none'; transOptions.style.display = isHidden ? 'block' : 'none'; });
+    try { const saved = localStorage.getItem('chatbridge:pref:transLang'); if (saved) { transLangSelect.value = saved; } else { const nav = (navigator.language || navigator.userLanguage || 'en').toLowerCase().split('-')[0]; const navToCode = { 'en': 'en', 'ja': 'ja', 'es': 'es', 'fr': 'fr', 'de': 'de', 'zh': 'zh', 'ko': 'ko', 'it': 'it', 'pt': 'pt', 'ru': 'ru', 'ar': 'ar', 'hi': 'hi', 'tr': 'tr', 'nl': 'nl', 'sv': 'sv', 'pl': 'pl', 'ta': 'ta' }; transLangSelect.value = navToCode[nav] || 'en'; } } catch (e) { }
+    transLangSelect.addEventListener('change', () => { try { localStorage.setItem('chatbridge:pref:transLang', transLangSelect.value); } catch (e) { } });
+
+    // Scoped polish styles for translate UI
+    (function () {
+      try {
+        if (!transView.querySelector('#cb-trans-style')) {
+          const style = document.createElement('style'); style.id = 'cb-trans-style';
+          style.textContent = `
           .cb-radio:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.22); }
           .cb-radio input { accent-color: #7aa2ff; }
           .cb-radio input:checked + .cb-radio-text { font-weight: 600; color: #ffffff; }
@@ -1453,108 +1481,108 @@
           input.cb-toggle::before { content: ''; position: absolute; top: 3px; left: 4px; width: 18px; height: 18px; background: #fff; border-radius: 50%; transition: transform .2s; }
           input.cb-toggle:checked::before { transform: translateX(18px); }
         `;
-        transView.appendChild(style);
-      }
-    } catch(_) {}
-  })();
+          transView.appendChild(style);
+        }
+      } catch (_) { }
+    })();
 
-  // Append all internal views to the panel (after actions, before status)
-  // Note: promptDesignerView is already appended in its creation block
-  panel.appendChild(summView);
-  panel.appendChild(rewView);
-  panel.appendChild(transView);
+    // Append all internal views to the panel (after actions, before status)
+    // Note: promptDesignerView is already appended in its creation block
+    panel.appendChild(summView);
+    panel.appendChild(rewView);
+    panel.appendChild(transView);
 
-  // Smart Query view
-  const smartView = document.createElement('div'); smartView.className = 'cb-internal-view'; smartView.id = 'cb-smart-view'; smartView.setAttribute('data-cb-ignore','true');
-  const smartTop = document.createElement('div'); smartTop.className = 'cb-view-top';
-  const smartTitle = document.createElement('div'); smartTitle.className = 'cb-view-title'; smartTitle.textContent = 'Smart Archive + Query';
-  const btnCloseSmart = document.createElement('button'); btnCloseSmart.className = 'cb-view-close'; btnCloseSmart.textContent = '✕';
-  btnCloseSmart.setAttribute('aria-label','Close Smart Query view');
-  smartTop.appendChild(smartTitle); smartTop.appendChild(btnCloseSmart);
-  smartView.appendChild(smartTop);
+    // Smart Query view
+    const smartView = document.createElement('div'); smartView.className = 'cb-internal-view'; smartView.id = 'cb-smart-view'; smartView.setAttribute('data-cb-ignore', 'true');
+    const smartTop = document.createElement('div'); smartTop.className = 'cb-view-top';
+    const smartTitle = document.createElement('div'); smartTitle.className = 'cb-view-title'; smartTitle.textContent = 'Smart Archive + Query';
+    const btnCloseSmart = document.createElement('button'); btnCloseSmart.className = 'cb-view-close'; btnCloseSmart.textContent = '✕';
+    btnCloseSmart.setAttribute('aria-label', 'Close Smart Query view');
+    smartTop.appendChild(smartTitle); smartTop.appendChild(btnCloseSmart);
+    smartView.appendChild(smartTop);
 
-  const smartIntro = document.createElement('div'); smartIntro.className = 'cb-view-intro'; smartIntro.textContent = 'Ask questions across all your saved conversations using natural language. Find insights, patterns, and connections you might have missed.';
-  smartView.appendChild(smartIntro);
-  // Suggestions row: pre-populated chips based on recent scans
-  const smartSuggestRow = document.createElement('div'); smartSuggestRow.className = 'cb-view-controls'; smartSuggestRow.id = 'cb-smart-suggest-row';
-  smartView.appendChild(smartSuggestRow);
-  // Filters row: host, tag, date-range
-  const smartFilterRow = document.createElement('div'); smartFilterRow.className = 'cb-view-controls';
-  const hostSelect = document.createElement('select'); hostSelect.className = 'cb-select'; hostSelect.id = 'cb-smart-host';
-  const tagSelect = document.createElement('select'); tagSelect.className = 'cb-select'; tagSelect.id = 'cb-smart-tag';
-  const dateSelect = document.createElement('select'); dateSelect.className = 'cb-select'; dateSelect.id = 'cb-smart-date';
-  // Default options
-  const ho = document.createElement('option'); ho.value = ''; ho.textContent = 'All hosts'; hostSelect.appendChild(ho);
-  const to = document.createElement('option'); to.value = ''; to.textContent = 'All tags'; tagSelect.appendChild(to);
-  ['All time','Last 7 days','Last 30 days'].forEach(v => { const o = document.createElement('option'); o.value = v; o.textContent = v; dateSelect.appendChild(o); });
-  dateSelect.value = 'All time';
-  smartFilterRow.appendChild(hostSelect); smartFilterRow.appendChild(tagSelect); smartFilterRow.appendChild(dateSelect);
-  smartView.appendChild(smartFilterRow);
+    const smartIntro = document.createElement('div'); smartIntro.className = 'cb-view-intro'; smartIntro.textContent = 'Ask questions across all your saved conversations using natural language. Find insights, patterns, and connections you might have missed.';
+    smartView.appendChild(smartIntro);
+    // Suggestions row: pre-populated chips based on recent scans
+    const smartSuggestRow = document.createElement('div'); smartSuggestRow.className = 'cb-view-controls'; smartSuggestRow.id = 'cb-smart-suggest-row';
+    smartView.appendChild(smartSuggestRow);
+    // Filters row: host, tag, date-range
+    const smartFilterRow = document.createElement('div'); smartFilterRow.className = 'cb-view-controls';
+    const hostSelect = document.createElement('select'); hostSelect.className = 'cb-select'; hostSelect.id = 'cb-smart-host';
+    const tagSelect = document.createElement('select'); tagSelect.className = 'cb-select'; tagSelect.id = 'cb-smart-tag';
+    const dateSelect = document.createElement('select'); dateSelect.className = 'cb-select'; dateSelect.id = 'cb-smart-date';
+    // Default options
+    const ho = document.createElement('option'); ho.value = ''; ho.textContent = 'All hosts'; hostSelect.appendChild(ho);
+    const to = document.createElement('option'); to.value = ''; to.textContent = 'All tags'; tagSelect.appendChild(to);
+    ['All time', 'Last 7 days', 'Last 30 days'].forEach(v => { const o = document.createElement('option'); o.value = v; o.textContent = v; dateSelect.appendChild(o); });
+    dateSelect.value = 'All time';
+    smartFilterRow.appendChild(hostSelect); smartFilterRow.appendChild(tagSelect); smartFilterRow.appendChild(dateSelect);
+    smartView.appendChild(smartFilterRow);
 
-  const smartQueryRow = document.createElement('div'); smartQueryRow.className = 'cb-view-controls';
-  const smartInput = document.createElement('input'); smartInput.type = 'text'; smartInput.className = 'cb-select'; smartInput.id = 'cb-smart-query'; smartInput.placeholder = 'e.g. What did Gemini say about API rate limits?';
-  smartInput.setAttribute('aria-label', 'Smart query input');
-  const btnSmartSearch = document.createElement('button'); btnSmartSearch.className = 'cb-btn'; btnSmartSearch.id = 'btnSmartSearch'; btnSmartSearch.textContent = 'Search';
-  btnSmartSearch.setAttribute('aria-label', 'Search saved chats');
-  smartQueryRow.appendChild(smartInput); smartQueryRow.appendChild(btnSmartSearch);
-  smartView.appendChild(smartQueryRow);
+    const smartQueryRow = document.createElement('div'); smartQueryRow.className = 'cb-view-controls';
+    const smartInput = document.createElement('input'); smartInput.type = 'text'; smartInput.className = 'cb-select'; smartInput.id = 'cb-smart-query'; smartInput.placeholder = 'e.g. What did Gemini say about API rate limits?';
+    smartInput.setAttribute('aria-label', 'Smart query input');
+    const btnSmartSearch = document.createElement('button'); btnSmartSearch.className = 'cb-btn'; btnSmartSearch.id = 'btnSmartSearch'; btnSmartSearch.textContent = 'Search';
+    btnSmartSearch.setAttribute('aria-label', 'Search saved chats');
+    smartQueryRow.appendChild(smartInput); smartQueryRow.appendChild(btnSmartSearch);
+    smartView.appendChild(smartQueryRow);
 
-  const smartResults = document.createElement('div'); smartResults.id = 'cb-smart-results'; smartResults.className = 'cb-view-text'; smartResults.textContent = '(No results yet)';
-  smartView.appendChild(smartResults);
+    const smartResults = document.createElement('div'); smartResults.id = 'cb-smart-results'; smartResults.className = 'cb-view-text'; smartResults.textContent = '(No results yet)';
+    smartView.appendChild(smartResults);
 
-  const smartAskRow = document.createElement('div'); smartAskRow.className = 'cb-view-controls';
-  const btnSmartAsk = document.createElement('button'); btnSmartAsk.className = 'cb-btn cb-view-go'; btnSmartAsk.id = 'btnSmartAsk'; btnSmartAsk.textContent = 'Ask AI';
-  btnSmartAsk.setAttribute('aria-label', 'Ask AI about selected results');
-  smartAskRow.appendChild(btnSmartAsk);
-  const btnIndexAll = document.createElement('button'); btnIndexAll.className = 'cb-btn'; btnIndexAll.id = 'btnIndexAll'; btnIndexAll.textContent = 'Index all saved chats'; btnIndexAll.title = 'Create embeddings and index all saved chats (requires API key)';
-  btnIndexAll.setAttribute('aria-label', 'Index all saved chats');
-  smartAskRow.appendChild(btnIndexAll);
-  smartView.appendChild(smartAskRow);
+    const smartAskRow = document.createElement('div'); smartAskRow.className = 'cb-view-controls';
+    const btnSmartAsk = document.createElement('button'); btnSmartAsk.className = 'cb-btn cb-view-go'; btnSmartAsk.id = 'btnSmartAsk'; btnSmartAsk.textContent = 'Ask AI';
+    btnSmartAsk.setAttribute('aria-label', 'Ask AI about selected results');
+    smartAskRow.appendChild(btnSmartAsk);
+    const btnIndexAll = document.createElement('button'); btnIndexAll.className = 'cb-btn'; btnIndexAll.id = 'btnIndexAll'; btnIndexAll.textContent = 'Index all saved chats'; btnIndexAll.title = 'Create embeddings and index all saved chats (requires API key)';
+    btnIndexAll.setAttribute('aria-label', 'Index all saved chats');
+    smartAskRow.appendChild(btnIndexAll);
+    smartView.appendChild(smartAskRow);
 
-  const smartAnswer = document.createElement('div'); smartAnswer.id = 'cb-smart-answer'; smartAnswer.className = 'cb-view-result'; smartAnswer.textContent = '';
-  smartView.appendChild(smartAnswer);
-  const smartProvenance = document.createElement('div'); smartProvenance.id = 'cb-smart-provenance'; smartProvenance.style.fontSize = '12px'; smartProvenance.style.marginTop = '8px'; smartProvenance.style.color = 'rgba(200,200,200,0.9)'; smartProvenance.textContent = '';
-  smartView.appendChild(smartProvenance);
+    const smartAnswer = document.createElement('div'); smartAnswer.id = 'cb-smart-answer'; smartAnswer.className = 'cb-view-result'; smartAnswer.textContent = '';
+    smartView.appendChild(smartAnswer);
+    const smartProvenance = document.createElement('div'); smartProvenance.id = 'cb-smart-provenance'; smartProvenance.style.fontSize = '12px'; smartProvenance.style.marginTop = '8px'; smartProvenance.style.color = 'rgba(200,200,200,0.9)'; smartProvenance.textContent = '';
+    smartView.appendChild(smartProvenance);
 
-  // Connections panel removed - not needed for basic functionality
+    // Connections panel removed - not needed for basic functionality
 
-  panel.appendChild(smartView);
+    panel.appendChild(smartView);
 
-  // Agent Hub view (replaces Knowledge Graph) - Multi-agent system
-  const agentView = document.createElement('div'); agentView.className = 'cb-internal-view'; agentView.id = 'cb-agent-view'; agentView.setAttribute('data-cb-ignore','true');
-  const agentTop = document.createElement('div'); agentTop.className = 'cb-view-top';
-  const agentTitle = document.createElement('div'); agentTitle.className = 'cb-view-title'; agentTitle.textContent = '🤖 AI Agent Hub';
-  const btnCloseAgent = document.createElement('button'); btnCloseAgent.className = 'cb-view-close'; btnCloseAgent.textContent = '✕';
-  btnCloseAgent.setAttribute('aria-label','Close Agent Hub');
-  agentTop.appendChild(agentTitle); agentTop.appendChild(btnCloseAgent);
-  agentView.appendChild(agentTop);
+    // Agent Hub view (replaces Knowledge Graph) - Multi-agent system
+    const agentView = document.createElement('div'); agentView.className = 'cb-internal-view'; agentView.id = 'cb-agent-view'; agentView.setAttribute('data-cb-ignore', 'true');
+    const agentTop = document.createElement('div'); agentTop.className = 'cb-view-top';
+    const agentTitle = document.createElement('div'); agentTitle.className = 'cb-view-title'; agentTitle.textContent = '🤖 AI Agent Hub';
+    const btnCloseAgent = document.createElement('button'); btnCloseAgent.className = 'cb-view-close'; btnCloseAgent.textContent = '✕';
+    btnCloseAgent.setAttribute('aria-label', 'Close Agent Hub');
+    agentTop.appendChild(agentTitle); agentTop.appendChild(btnCloseAgent);
+    agentView.appendChild(agentTop);
 
-  const agentIntro = document.createElement('div'); agentIntro.className = 'cb-view-intro'; agentIntro.textContent = 'Advanced AI agents that work in the background to enhance your conversations across platforms.';
-  agentView.appendChild(agentIntro);
+    const agentIntro = document.createElement('div'); agentIntro.className = 'cb-view-intro'; agentIntro.textContent = 'Advanced AI agents that work in the background to enhance your conversations across platforms.';
+    agentView.appendChild(agentIntro);
 
-  // Agent content container (will be populated by renderAgentHub)
-  const agentContent = document.createElement('div'); agentContent.id = 'cb-agent-content'; agentContent.style.cssText = 'padding:12px 0;overflow-y:auto;max-height:calc(100vh - 250px);';
-  agentView.appendChild(agentContent);
+    // Agent content container (will be populated by renderAgentHub)
+    const agentContent = document.createElement('div'); agentContent.id = 'cb-agent-content'; agentContent.style.cssText = 'padding:12px 0;overflow-y:auto;max-height:calc(100vh - 250px);';
+    agentView.appendChild(agentContent);
 
-  panel.appendChild(agentView);
+    panel.appendChild(agentView);
 
-  // ============================================
-  // INSIGHTS / SMART WORKSPACE VIEW
-  // ============================================
-  const insightsView = document.createElement('div'); insightsView.className = 'cb-internal-view'; insightsView.id = 'cb-insights-view'; insightsView.setAttribute('data-cb-ignore','true');
-  const insightsTop = document.createElement('div'); insightsTop.className = 'cb-view-top';
-  const insightsTitle = document.createElement('div'); insightsTitle.className = 'cb-view-title'; insightsTitle.textContent = '🎯 Smart Workspace';
-  const btnCloseInsights = document.createElement('button'); btnCloseInsights.className = 'cb-view-close'; btnCloseInsights.textContent = '✕';
-  btnCloseInsights.setAttribute('aria-label','Close Smart Workspace view');
-  insightsTop.appendChild(insightsTitle); insightsTop.appendChild(btnCloseInsights);
-  insightsView.appendChild(insightsTop);
+    // ============================================
+    // INSIGHTS / SMART WORKSPACE VIEW
+    // ============================================
+    const insightsView = document.createElement('div'); insightsView.className = 'cb-internal-view'; insightsView.id = 'cb-insights-view'; insightsView.setAttribute('data-cb-ignore', 'true');
+    const insightsTop = document.createElement('div'); insightsTop.className = 'cb-view-top';
+    const insightsTitle = document.createElement('div'); insightsTitle.className = 'cb-view-title'; insightsTitle.textContent = '🎯 Smart Workspace';
+    const btnCloseInsights = document.createElement('button'); btnCloseInsights.className = 'cb-view-close'; btnCloseInsights.textContent = '✕';
+    btnCloseInsights.setAttribute('aria-label', 'Close Smart Workspace view');
+    insightsTop.appendChild(insightsTitle); insightsTop.appendChild(btnCloseInsights);
+    insightsView.appendChild(insightsTop);
 
-  const insightsIntro = document.createElement('div'); insightsIntro.className = 'cb-view-intro'; insightsIntro.textContent = 'Practical tools to help you work smarter: compare models, merge threads, extract content, and stay organized.';
-  insightsView.appendChild(insightsIntro);
+    const insightsIntro = document.createElement('div'); insightsIntro.className = 'cb-view-intro'; insightsIntro.textContent = 'Practical tools to help you work smarter: compare models, merge threads, extract content, and stay organized.';
+    insightsView.appendChild(insightsIntro);
 
-  const insightsContent = document.createElement('div'); insightsContent.id = 'cb-insights-content'; insightsContent.style.cssText = 'padding:12px 0;overflow-y:auto;max-height:calc(100vh - 250px);';
-  // Add default insights blocks
-  insightsContent.innerHTML = `
+    const insightsContent = document.createElement('div'); insightsContent.id = 'cb-insights-content'; insightsContent.style.cssText = 'padding:12px 0;overflow-y:auto;max-height:calc(100vh - 250px);';
+    // Add default insights blocks
+    insightsContent.innerHTML = `
     <div class="cb-insights-section">
       <div class="cb-insight-block">
         <div class="cb-insight-title">Compare Models</div>
@@ -1574,71 +1602,71 @@
       </div>
     </div>
   `;
-  insightsView.appendChild(insightsContent);
+    insightsView.appendChild(insightsContent);
 
-  panel.appendChild(insightsView);
+    panel.appendChild(insightsView);
 
-  // Gemini Nano input/output area
-  const geminiWrap = document.createElement('div'); geminiWrap.style.padding = '8px 18px'; geminiWrap.style.display = 'flex'; geminiWrap.style.flexDirection = 'column'; geminiWrap.style.gap = '8px';
-  // Insert preview above (textarea removed - preview is the read-only display)
-  geminiWrap.appendChild(preview);
-  // Note: removed editable textarea per UI simplification request.
-  panel.appendChild(geminiWrap);
+    // Gemini Nano input/output area
+    const geminiWrap = document.createElement('div'); geminiWrap.style.padding = '8px 18px'; geminiWrap.style.display = 'flex'; geminiWrap.style.flexDirection = 'column'; geminiWrap.style.gap = '8px';
+    // Insert preview above (textarea removed - preview is the read-only display)
+    geminiWrap.appendChild(preview);
+    // Note: removed editable textarea per UI simplification request.
+    panel.appendChild(geminiWrap);
 
-  const status = document.createElement('div'); status.className = 'cb-status'; status.textContent = 'Status: idle'; panel.appendChild(status);
+    const status = document.createElement('div'); status.className = 'cb-status'; status.textContent = 'Status: idle'; panel.appendChild(status);
 
-  // History section with clear button
-  // Settings Panel
-  const settingsPanel = document.createElement('div'); settingsPanel.className = 'cb-internal-view'; settingsPanel.id = 'cb-settings-panel'; settingsPanel.style.display = 'none';
-  settingsPanel.setAttribute('data-cb-ignore','true');
-  const settingsTop = document.createElement('div'); settingsTop.className = 'cb-view-top';
-  const settingsTitle = document.createElement('div'); settingsTitle.className = 'cb-view-title'; settingsTitle.textContent = '⚙️ Settings';
-  const btnCloseSettings = document.createElement('button'); btnCloseSettings.className = 'cb-view-close'; btnCloseSettings.textContent = '✕';
-  btnCloseSettings.setAttribute('aria-label','Close settings');
-  settingsTop.appendChild(settingsTitle); settingsTop.appendChild(btnCloseSettings);
-  settingsPanel.appendChild(settingsTop);
-  
-  // Settings content
-  const settingsContent = document.createElement('div'); settingsContent.style.cssText = 'padding: 16px 0; display: flex; flex-direction: column; gap: 16px;';
-  
-  // Theme setting
-  const themeSection = document.createElement('div'); themeSection.style.cssText = 'padding-bottom: 16px; border-bottom: 1px solid var(--cb-border);';
-  const themeLabel = document.createElement('div'); themeLabel.style.cssText = 'font-weight: 600; margin-bottom: 10px; color: var(--cb-white);'; themeLabel.textContent = '🎨 Theme';
-  const themeButtons = document.createElement('div'); themeButtons.style.cssText = 'display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;';
-  const btnDarkTheme = document.createElement('button'); btnDarkTheme.className = 'cb-btn'; btnDarkTheme.textContent = '🌙 Dark'; btnDarkTheme.dataset.theme = 'dark';
-  const btnLightTheme = document.createElement('button'); btnLightTheme.className = 'cb-btn'; btnLightTheme.textContent = '☀️ Light'; btnLightTheme.dataset.theme = 'light';
-  const btnSynthwaveTheme = document.createElement('button'); btnSynthwaveTheme.className = 'cb-btn'; btnSynthwaveTheme.textContent = '🌃 Synthwave'; btnSynthwaveTheme.dataset.theme = 'synthwave';
-  const btnAuroraTheme = document.createElement('button'); btnAuroraTheme.className = 'cb-btn'; btnAuroraTheme.textContent = '🌅 Aurora'; btnAuroraTheme.dataset.theme = 'aurora';
-  const btnNebulaTheme = document.createElement('button'); btnNebulaTheme.className = 'cb-btn'; btnNebulaTheme.textContent = '🌌 Nebula'; btnNebulaTheme.dataset.theme = 'nebula';
-  const btnRoseTheme = document.createElement('button'); btnRoseTheme.className = 'cb-btn'; btnRoseTheme.textContent = '🌸 Rose'; btnRoseTheme.dataset.theme = 'rose';
-  themeButtons.appendChild(btnDarkTheme); themeButtons.appendChild(btnLightTheme); themeButtons.appendChild(btnSynthwaveTheme);
-  themeButtons.appendChild(btnAuroraTheme); themeButtons.appendChild(btnNebulaTheme); themeButtons.appendChild(btnRoseTheme);
-  themeSection.appendChild(themeLabel); themeSection.appendChild(themeButtons);
-  settingsContent.appendChild(themeSection);
-  
-  settingsPanel.appendChild(settingsContent);
-  panel.appendChild(settingsPanel);
+    // History section with clear button
+    // Settings Panel
+    const settingsPanel = document.createElement('div'); settingsPanel.className = 'cb-internal-view'; settingsPanel.id = 'cb-settings-panel'; settingsPanel.style.display = 'none';
+    settingsPanel.setAttribute('data-cb-ignore', 'true');
+    const settingsTop = document.createElement('div'); settingsTop.className = 'cb-view-top';
+    const settingsTitle = document.createElement('div'); settingsTitle.className = 'cb-view-title'; settingsTitle.textContent = '⚙️ Settings';
+    const btnCloseSettings = document.createElement('button'); btnCloseSettings.className = 'cb-view-close'; btnCloseSettings.textContent = '✕';
+    btnCloseSettings.setAttribute('aria-label', 'Close settings');
+    settingsTop.appendChild(settingsTitle); settingsTop.appendChild(btnCloseSettings);
+    settingsPanel.appendChild(settingsTop);
 
-  const historyWrapper = document.createElement('div'); historyWrapper.className = 'cb-history-wrapper';
-  const historyHeader = document.createElement('div'); historyHeader.className = 'cb-history-header';
-  const historyTitle = document.createElement('div'); historyTitle.className = 'cb-history-title'; historyTitle.textContent = '📜 History';
-  const btnClearHistory = document.createElement('button'); btnClearHistory.className = 'cb-btn cb-btn-danger'; btnClearHistory.textContent = '×'; btnClearHistory.title = 'Clear all saved conversation history';
-  historyHeader.appendChild(historyTitle);
-  historyHeader.appendChild(btnClearHistory);
-  historyWrapper.appendChild(historyHeader);
-  const historyEl = document.createElement('div'); historyEl.className = 'cb-history'; historyEl.textContent = 'No sessions yet.';
-  historyWrapper.appendChild(historyEl);
-  panel.appendChild(historyWrapper);
+    // Settings content
+    const settingsContent = document.createElement('div'); settingsContent.style.cssText = 'padding: 16px 0; display: flex; flex-direction: column; gap: 16px;';
 
-  const footer = document.createElement('div'); footer.className = 'cb-footer'; panel.appendChild(footer);
+    // Theme setting
+    const themeSection = document.createElement('div'); themeSection.style.cssText = 'padding-bottom: 16px; border-bottom: 1px solid var(--cb-border);';
+    const themeLabel = document.createElement('div'); themeLabel.style.cssText = 'font-weight: 600; margin-bottom: 10px; color: var(--cb-white);'; themeLabel.textContent = '🎨 Theme';
+    const themeButtons = document.createElement('div'); themeButtons.style.cssText = 'display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;';
+    const btnDarkTheme = document.createElement('button'); btnDarkTheme.className = 'cb-btn'; btnDarkTheme.textContent = '🌙 Dark'; btnDarkTheme.dataset.theme = 'dark';
+    const btnLightTheme = document.createElement('button'); btnLightTheme.className = 'cb-btn'; btnLightTheme.textContent = '☀️ Light'; btnLightTheme.dataset.theme = 'light';
+    const btnSynthwaveTheme = document.createElement('button'); btnSynthwaveTheme.className = 'cb-btn'; btnSynthwaveTheme.textContent = '🌃 Synthwave'; btnSynthwaveTheme.dataset.theme = 'synthwave';
+    const btnAuroraTheme = document.createElement('button'); btnAuroraTheme.className = 'cb-btn'; btnAuroraTheme.textContent = '🌅 Aurora'; btnAuroraTheme.dataset.theme = 'aurora';
+    const btnNebulaTheme = document.createElement('button'); btnNebulaTheme.className = 'cb-btn'; btnNebulaTheme.textContent = '🌌 Nebula'; btnNebulaTheme.dataset.theme = 'nebula';
+    const btnRoseTheme = document.createElement('button'); btnRoseTheme.className = 'cb-btn'; btnRoseTheme.textContent = '🌸 Rose'; btnRoseTheme.dataset.theme = 'rose';
+    themeButtons.appendChild(btnDarkTheme); themeButtons.appendChild(btnLightTheme); themeButtons.appendChild(btnSynthwaveTheme);
+    themeButtons.appendChild(btnAuroraTheme); themeButtons.appendChild(btnNebulaTheme); themeButtons.appendChild(btnRoseTheme);
+    themeSection.appendChild(themeLabel); themeSection.appendChild(themeButtons);
+    settingsContent.appendChild(themeSection);
 
-  // Subtle suggestions container (This Might Help)
-  const subtleSuggest = document.createElement('div');
-  subtleSuggest.id = 'cb-subtle-suggestions';
-  subtleSuggest.setAttribute('data-cb-ignore','true');
-  subtleSuggest.style.cssText = 'margin-top:8px;padding:8px;border-top:1px dashed rgba(0,180,255,0.15);opacity:0.85;font-size:11px;color:var(--cb-subtext);display:none;';
-  subtleSuggest.innerHTML = '<div style="font-weight:600;opacity:0.8;margin-bottom:6px;">This might help</div><div id="cb-subtle-list" style="display:flex;flex-direction:column;gap:6px;"></div>';
-  panel.appendChild(subtleSuggest);
+    settingsPanel.appendChild(settingsContent);
+    panel.appendChild(settingsPanel);
+
+    const historyWrapper = document.createElement('div'); historyWrapper.className = 'cb-history-wrapper';
+    const historyHeader = document.createElement('div'); historyHeader.className = 'cb-history-header';
+    const historyTitle = document.createElement('div'); historyTitle.className = 'cb-history-title'; historyTitle.textContent = '📜 History';
+    const btnClearHistory = document.createElement('button'); btnClearHistory.className = 'cb-btn cb-btn-danger'; btnClearHistory.textContent = '×'; btnClearHistory.title = 'Clear all saved conversation history';
+    historyHeader.appendChild(historyTitle);
+    historyHeader.appendChild(btnClearHistory);
+    historyWrapper.appendChild(historyHeader);
+    const historyEl = document.createElement('div'); historyEl.className = 'cb-history'; historyEl.textContent = 'No sessions yet.';
+    historyWrapper.appendChild(historyEl);
+    panel.appendChild(historyWrapper);
+
+    const footer = document.createElement('div'); footer.className = 'cb-footer'; panel.appendChild(footer);
+
+    // Subtle suggestions container (This Might Help)
+    const subtleSuggest = document.createElement('div');
+    subtleSuggest.id = 'cb-subtle-suggestions';
+    subtleSuggest.setAttribute('data-cb-ignore', 'true');
+    subtleSuggest.style.cssText = 'margin-top:8px;padding:8px;border-top:1px dashed rgba(0,180,255,0.15);opacity:0.85;font-size:11px;color:var(--cb-subtext);display:none;';
+    subtleSuggest.innerHTML = '<div style="font-weight:600;opacity:0.8;margin-bottom:6px;">This might help</div><div id="cb-subtle-list" style="display:flex;flex-direction:column;gap:6px;"></div>';
+    panel.appendChild(subtleSuggest);
 
     function renderLastScan() { /* end-user UI hides debug */ }
 
@@ -1655,53 +1683,57 @@
         // Get a bit of current context
         const lastScan = (window.ChatBridge && window.ChatBridge.getLastScan && window.ChatBridge.getLastScan()) || {};
         const lastScanText = String(lastScan.text || '').slice(0, 400);
-        const host = window.location.hostname.replace(/^www\./,'');
+        const host = window.location.hostname.replace(/^www\./, '');
 
         // Pull recent conversations from background
         let convs = [];
-        try { convs = await getAllStoredConversations(); } catch(_){ /* ignore */ }
+        try { convs = await getAllStoredConversations(); } catch (_) { /* ignore */ }
 
         const items = [];
         if (convs && convs.length) {
           // Relevant old answer (same host)
-          const byHost = convs.find(c => (c.host||'').includes(host));
+          const byHost = convs.find(c => (c.host || '').includes(host));
           if (byHost && (byHost.title || byHost.text)) {
-            items.push({ label: 'Relevant old answer', text: (byHost.title || 'Conversation').slice(0,80), action: () => {
-              try { showOutputWithSendButton(String(byHost.summary||byHost.text||'').slice(0,1200), 'Revisit Answer'); } catch(_){}
-            }});
+            items.push({
+              label: 'Relevant old answer', text: (byHost.title || 'Conversation').slice(0, 80), action: () => {
+                try { showOutputWithSendButton(String(byHost.summary || byHost.text || '').slice(0, 1200), 'Revisit Answer'); } catch (_) { }
+              }
+            });
           }
 
           // Related topic (top tag)
           const tagCounts = {};
-          convs.slice(0,50).forEach(c => (c.tags||[]).forEach(t => { const k=(t||'').toLowerCase(); if(!k) return; tagCounts[k]=(tagCounts[k]||0)+1; }));
-          const topTag = Object.entries(tagCounts).sort((a,b)=>b[1]-a[1])[0]?.[0];
+          convs.slice(0, 50).forEach(c => (c.tags || []).forEach(t => { const k = (t || '').toLowerCase(); if (!k) return; tagCounts[k] = (tagCounts[k] || 0) + 1; }));
+          const topTag = Object.entries(tagCounts).sort((a, b) => b[1] - a[1])[0]?.[0];
           if (topTag) {
-            items.push({ label: 'Related topic', text: `#${topTag}`, action: async () => {
-              try {
-                const matches = convs.filter(c => (c.tags||[]).map(x=>String(x).toLowerCase()).includes(topTag)).slice(0,3);
-                const quick = matches.map((m,i)=>`${i+1}. ${(m.title||'Conversation').slice(0,60)}`).join('\n');
-                showOutputWithSendButton(`Top related items for ${topTag}:\n\n${quick||'(none found)'}`, 'Related Topic');
-              } catch(_){}
-            }});
+            items.push({
+              label: 'Related topic', text: `#${topTag}`, action: async () => {
+                try {
+                  const matches = convs.filter(c => (c.tags || []).map(x => String(x).toLowerCase()).includes(topTag)).slice(0, 3);
+                  const quick = matches.map((m, i) => `${i + 1}. ${(m.title || 'Conversation').slice(0, 60)}`).join('\n');
+                  showOutputWithSendButton(`Top related items for ${topTag}:\n\n${quick || '(none found)'}`, 'Related Topic');
+                } catch (_) { }
+              }
+            });
           }
 
           // Supporting material (open extract view)
-          items.push({ label: 'Supporting materials', text: 'Extract code blocks or media from recent chats', action: () => { try { showExtractView(); } catch(_){} }});
+          items.push({ label: 'Supporting materials', text: 'Extract code blocks or media from recent chats', action: () => { try { showExtractView(); } catch (_) { } } });
         }
 
-        if (!items.length) { container.style.display='none'; return; }
+        if (!items.length) { container.style.display = 'none'; return; }
 
-        items.slice(0,3).forEach(it => {
+        items.slice(0, 3).forEach(it => {
           const btn = document.createElement('button');
           btn.className = 'cb-btn'; btn.type = 'button';
           btn.style.cssText = 'text-align:left;padding:8px;background:rgba(16,24,43,0.35);border:1px solid rgba(0,180,255,0.15);font-size:11px;display:flex;gap:6px;align-items:center;';
           btn.innerHTML = `<span style="opacity:0.85;">•</span><span style="opacity:0.9;font-weight:600;">${it.label}:</span><span style="opacity:0.85;">${it.text}</span>`;
-          btn.addEventListener('click', () => { try { it.action(); } catch(_){} });
+          btn.addEventListener('click', () => { try { it.action(); } catch (_) { } });
           list.appendChild(btn);
         });
 
         container.style.display = 'block';
-      } catch(_){ /* quiet */ }
+      } catch (_) { /* quiet */ }
     }
 
     // Defer a bit to avoid UI jank
@@ -1722,7 +1754,7 @@
         if (!ariaLive) return;
         // Use a short delay to ensure assistive tech picks up changes
         ariaLive.textContent = '';
-        setTimeout(() => { try { ariaLive.textContent = String(msg || ''); } catch (e) {} }, 50);
+        setTimeout(() => { try { ariaLive.textContent = String(msg || ''); } catch (e) { } }, 50);
       } catch (e) { debugLog('announce failed', e); }
     }
 
@@ -1734,7 +1766,7 @@
         // create inside host shadow if possible, otherwise on document body
         const container = shadow || document.body;
         if (existing && existing.parentNode) existing.remove();
-        const banner = document.createElement('div'); banner.id = id; banner.setAttribute('role','alert'); banner.style.cssText = 'position:fixed;top:18px;right:18px;z-index:2147483647;padding:12px 14px;background:#9b2c2c;color:#fff;border-radius:10px;box-shadow:0 6px 20px rgba(0,0,0,0.4);font-weight:600;max-width:360px;';
+        const banner = document.createElement('div'); banner.id = id; banner.setAttribute('role', 'alert'); banner.style.cssText = 'position:fixed;top:18px;right:18px;z-index:2147483647;padding:12px 14px;background:#9b2c2c;color:#fff;border-radius:10px;box-shadow:0 6px 20px rgba(0,0,0,0.4);font-weight:600;max-width:360px;';
         try {
           const main = document.createElement('div'); main.style.fontWeight = '700'; main.textContent = message || 'An error occurred';
           const detail = document.createElement('div'); detail.style.fontSize = '12px'; detail.style.fontWeight = '400'; detail.style.marginTop = '8px'; detail.style.opacity = '0.95';
@@ -1745,7 +1777,7 @@
           banner.appendChild(main); banner.appendChild(detail);
         } catch (e) { banner.textContent = message || 'An error occurred'; }
         if (typeof retryCallback === 'function') {
-          const retryBtn = document.createElement('button'); retryBtn.className = 'cb-btn'; retryBtn.style.marginLeft = '10px'; retryBtn.textContent = 'Retry'; retryBtn.setAttribute('aria-label','Retry');
+          const retryBtn = document.createElement('button'); retryBtn.className = 'cb-btn'; retryBtn.style.marginLeft = '10px'; retryBtn.textContent = 'Retry'; retryBtn.setAttribute('aria-label', 'Retry');
           retryBtn.addEventListener('click', async (e) => { try { retryBtn.disabled = true; await retryCallback(); banner.remove(); } catch (err) { debugLog('retry failed', err); } });
           banner.appendChild(retryBtn);
         }
@@ -1756,23 +1788,23 @@
             try {
               rep.disabled = true; rep.textContent = 'Reporting…';
               const dbg = collectDebugInfo();
-              try { await navigator.clipboard.writeText(JSON.stringify(dbg, null, 2)); toast('Debug info copied to clipboard'); } catch(e) { debugLog('clipboard copy failed', e); }
-              try { chrome.runtime.sendMessage({ type: 'report_issue', payload: dbg }, (r) => { /* ack optional */ }); } catch(e) { debugLog('report send failed', e); }
+              try { await navigator.clipboard.writeText(JSON.stringify(dbg, null, 2)); toast('Debug info copied to clipboard'); } catch (e) { debugLog('clipboard copy failed', e); }
+              try { chrome.runtime.sendMessage({ type: 'report_issue', payload: dbg }, (r) => { /* ack optional */ }); } catch (e) { debugLog('report send failed', e); }
               rep.textContent = 'Reported';
-              setTimeout(()=>{ try{ if (rep && rep.parentNode) rep.parentNode.removeChild(rep); }catch(e){} }, 4000);
+              setTimeout(() => { try { if (rep && rep.parentNode) rep.parentNode.removeChild(rep); } catch (e) { } }, 4000);
             } catch (e) { debugLog('report handler failed', e); }
           });
           banner.appendChild(rep);
         } catch (e) { debugLog('add report btn failed', e); }
         try { container.appendChild(banner); } catch (e) { document.body.appendChild(banner); }
         announce(message, false);
-        setTimeout(() => { try { if (banner && banner.parentNode) banner.remove(); } catch (e) {} }, 8000);
+        setTimeout(() => { try { if (banner && banner.parentNode) banner.remove(); } catch (e) { } }, 8000);
       } catch (e) { debugLog('showError failed', e); }
     }
 
-      // UX helpers: skeleton loader, optimistic UI, animations, and backoff
-      try {
-        const ux = document.createElement('style'); ux.id = 'cb-ux-style'; ux.textContent = `
+    // UX helpers: skeleton loader, optimistic UI, animations, and backoff
+    try {
+      const ux = document.createElement('style'); ux.id = 'cb-ux-style'; ux.textContent = `
           /* Skeleton loaders */
           .cb-skeleton { background: linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.06) 37%, rgba(255,255,255,0.03) 63%); background-size: 400% 100%; animation: cb-skel-shimmer 1.6s linear infinite; border-radius:6px; pointer-events: none; }
           @keyframes cb-skel-shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
@@ -1785,75 +1817,75 @@
           @keyframes cb-pop { 0% { transform: scale(0.96); opacity:0.0; } 60% { transform: scale(1.02); opacity:1; } 100% { transform: scale(1); } }
           .cb-transition { transition: all 220ms cubic-bezier(0.2,0,0,1); }
         `; shadow.appendChild(ux);
-      } catch(e){ debugLog('append ux styles failed', e); }
+    } catch (e) { debugLog('append ux styles failed', e); }
 
-      function showSkeleton(el, height) {
-        try { if (!el) return; el.__cb_orig = el.innerHTML; el.classList.add('cb-skeleton'); if (height) el.style.minHeight = (height+'px'); }
-        catch(e){ debugLog('showSkeleton failed', e); }
-      }
-      function hideSkeleton(el) {
-        try { if (!el) return; el.classList.remove('cb-skeleton'); if (el.__cb_orig !== undefined) { el.innerHTML = el.__cb_orig; delete el.__cb_orig; } el.style.minHeight = ''; }
-        catch(e){ debugLog('hideSkeleton failed', e); }
-      }
+    function showSkeleton(el, height) {
+      try { if (!el) return; el.__cb_orig = el.innerHTML; el.classList.add('cb-skeleton'); if (height) el.style.minHeight = (height + 'px'); }
+      catch (e) { debugLog('showSkeleton failed', e); }
+    }
+    function hideSkeleton(el) {
+      try { if (!el) return; el.classList.remove('cb-skeleton'); if (el.__cb_orig !== undefined) { el.innerHTML = el.__cb_orig; delete el.__cb_orig; } el.style.minHeight = ''; }
+      catch (e) { debugLog('hideSkeleton failed', e); }
+    }
 
-      function animateEl(el, cls, duration = 400) {
+    function animateEl(el, cls, duration = 400) {
+      try {
+        if (!el) return;
+        el.classList.add(cls);
+        setTimeout(() => { try { el.classList.remove(cls); } catch (e) { } }, duration);
+      } catch (e) { debugLog('animateEl failed', e); }
+    }
+
+    // Exponential backoff wrapper for background messages / API calls
+    async function callBackgroundWithBackoff(message, maxRetries = 3, baseMs = 400) {
+      let attempt = 0;
+      while (attempt <= maxRetries) {
         try {
-          if (!el) return;
-          el.classList.add(cls);
-          setTimeout(() => { try { el.classList.remove(cls); } catch(e){} }, duration);
-        } catch(e) { debugLog('animateEl failed', e); }
-      }
-
-      // Exponential backoff wrapper for background messages / API calls
-      async function callBackgroundWithBackoff(message, maxRetries = 3, baseMs = 400) {
-        let attempt = 0;
-        while (attempt <= maxRetries) {
-          try {
-            const res = await new Promise((resolve, reject) => {
-              try { chrome.runtime.sendMessage(message, (r) => { if (chrome.runtime.lastError) return reject(new Error(chrome.runtime.lastError.message)); resolve(r); }); }
-              catch(e) { reject(e); }
-            });
-            // consider res.ok === false an error to retry
-            if (res && (res.ok === false)) throw new Error(res.error || 'background_error');
-            return res;
-          } catch (err) {
-            attempt++;
-            if (attempt > maxRetries) throw err;
-            const jitter = Math.random() * 0.5 + 0.75; // 0.75..1.25
-            const wait = Math.round(baseMs * Math.pow(2, attempt - 1) * jitter);
-            await new Promise(r => setTimeout(r, wait));
-          }
-        }
-      }
-
-      // Optimistic UI helper: run immediate UI change, then perform action, roll back or confirm
-      async function optimisticAction({applyOptimistic, confirmUI, rollbackUI, action, onError}){
-        try {
-          if (typeof applyOptimistic === 'function') applyOptimistic();
-          const res = await action();
-          if (typeof confirmUI === 'function') confirmUI(res);
+          const res = await new Promise((resolve, reject) => {
+            try { chrome.runtime.sendMessage(message, (r) => { if (chrome.runtime.lastError) return reject(new Error(chrome.runtime.lastError.message)); resolve(r); }); }
+            catch (e) { reject(e); }
+          });
+          // consider res.ok === false an error to retry
+          if (res && (res.ok === false)) throw new Error(res.error || 'background_error');
           return res;
         } catch (err) {
-          try { if (typeof rollbackUI === 'function') rollbackUI(err); } catch(e){}
-          if (typeof onError === 'function') onError(err);
-          throw err;
+          attempt++;
+          if (attempt > maxRetries) throw err;
+          const jitter = Math.random() * 0.5 + 0.75; // 0.75..1.25
+          const wait = Math.round(baseMs * Math.pow(2, attempt - 1) * jitter);
+          await new Promise(r => setTimeout(r, wait));
         }
       }
+    }
 
-      function collectDebugInfo() {
-        try {
-          const dbg = {
-            url: location.href,
-            ts: Date.now(),
-            ua: navigator.userAgent,
-            platform: navigator.platform,
-            lastScan: (window.ChatBridge && window.ChatBridge._lastScan) ? window.ChatBridge._lastScan : null,
-            localStorageSnapshot: {}
-          };
-          try { Object.keys(localStorage).filter(k => k && k.toLowerCase && k.toLowerCase().includes('chatbridge')).forEach(k => { dbg.localStorageSnapshot[k] = localStorage.getItem(k); }); } catch(e){}
-          return dbg;
-        } catch(e){ return { error: 'collect failed' }; }
+    // Optimistic UI helper: run immediate UI change, then perform action, roll back or confirm
+    async function optimisticAction({ applyOptimistic, confirmUI, rollbackUI, action, onError }) {
+      try {
+        if (typeof applyOptimistic === 'function') applyOptimistic();
+        const res = await action();
+        if (typeof confirmUI === 'function') confirmUI(res);
+        return res;
+      } catch (err) {
+        try { if (typeof rollbackUI === 'function') rollbackUI(err); } catch (e) { }
+        if (typeof onError === 'function') onError(err);
+        throw err;
       }
+    }
+
+    function collectDebugInfo() {
+      try {
+        const dbg = {
+          url: location.href,
+          ts: Date.now(),
+          ua: navigator.userAgent,
+          platform: navigator.platform,
+          lastScan: (window.ChatBridge && window.ChatBridge._lastScan) ? window.ChatBridge._lastScan : null,
+          localStorageSnapshot: {}
+        };
+        try { Object.keys(localStorage).filter(k => k && k.toLowerCase && k.toLowerCase().includes('chatbridge')).forEach(k => { dbg.localStorageSnapshot[k] = localStorage.getItem(k); }); } catch (e) { }
+        return dbg;
+      } catch (e) { return { error: 'collect failed' }; }
+    }
 
 
     // High-contrast / focus-visible support
@@ -1874,7 +1906,7 @@
     // interactions
     avatar.addEventListener('click', () => { host.style.display = 'block'; avatar.style.display = 'none'; });
     btnClose.addEventListener('click', () => { host.style.display = 'none'; avatar.style.display = 'flex'; });
-    
+
     // Settings button handler
     btnSettings.addEventListener('click', () => {
       try {
@@ -1886,7 +1918,7 @@
         }
       } catch (e) { debugLog('settings toggle failed', e); }
     });
-    
+
     // Close settings button
     btnCloseSettings.addEventListener('click', () => {
       try {
@@ -1895,9 +1927,9 @@
           settingsPanel.style.display = 'none';
           settingsPanel.classList.remove('cb-view-active');
         }
-      } catch (e) {}
+      } catch (e) { }
     });
-    
+
     // Theme switchers
     // Universal theme button handler for all 6 themes
     [btnDarkTheme, btnLightTheme, btnSynthwaveTheme, btnAuroraTheme, btnNebulaTheme, btnRoseTheme].forEach(btn => {
@@ -1907,15 +1939,15 @@
           const theme = btn.dataset.theme;
           // Remove all theme classes
           host.classList.remove('cb-theme-light', 'cb-theme-synthwave', 'cb-theme-aurora', 'cb-theme-nebula', 'cb-theme-rose');
-          
+
           // Add new theme class (except for dark which is default)
           if (theme !== 'dark') {
             host.classList.add(`cb-theme-${theme}`);
           }
-          
+
           // Save preference
           chrome.storage.local.set({ cb_theme: theme });
-          
+
           // Toast with emoji
           const emojis = { light: '☀️', dark: '🌙', synthwave: '🌃', aurora: '🌅', nebula: '🌌', rose: '🌸' };
           const names = { light: 'Light', dark: 'Dark', synthwave: 'Synthwave', aurora: 'Aurora Mist', nebula: 'Nebula Fog', rose: 'Rose Mist' };
@@ -1935,7 +1967,7 @@
             chrome.runtime.sendMessage({ type: 'migrate_conversations', payload: { conversations: arr } }, (res) => {
               try {
                 if (res && res.ok) {
-                  try { localStorage.removeItem(_k); toast('Migrated conversations to extension storage'); } catch(e){}
+                  try { localStorage.removeItem(_k); toast('Migrated conversations to extension storage'); } catch (e) { }
                 }
               } catch (e) { debugLog('migrate callback err', e); }
             });
@@ -1947,16 +1979,16 @@
     // If legacy localStorage doesn't exist but extension storage has conversations,
     // show a one-time notice so users still see the migration toast.
     try {
-      const legacy = (() => { try { return JSON.parse(localStorage.getItem('chatbridge:conversations') || '[]'); } catch(_) { return []; } })();
+      const legacy = (() => { try { return JSON.parse(localStorage.getItem('chatbridge:conversations') || '[]'); } catch (_) { return []; } })();
       if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-        chrome.storage.local.get(['chatbridge:conversations','cb_migration_notice_shown_v1'], (data) => {
+        chrome.storage.local.get(['chatbridge:conversations', 'cb_migration_notice_shown_v1'], (data) => {
           try {
             const alreadyShown = !!data.cb_migration_notice_shown_v1;
             const inExt = Array.isArray(data['chatbridge:conversations']) && data['chatbridge:conversations'].length > 0;
             const noLegacy = !Array.isArray(legacy) || legacy.length === 0;
             if (!alreadyShown && inExt && noLegacy) {
-              try { toast('Migrated conversations to extension storage'); } catch(_) {}
-              try { chrome.storage.local.set({ cb_migration_notice_shown_v1: true }); } catch(_) {}
+              try { toast('Migrated conversations to extension storage'); } catch (_) { }
+              try { chrome.storage.local.set({ cb_migration_notice_shown_v1: true }); } catch (_) { }
             }
           } catch (e) { /* ignore */ }
         });
@@ -1970,13 +2002,13 @@
         summView.classList.remove('cb-view-active');
         rewView.classList.remove('cb-view-active');
         transView.classList.remove('cb-view-active');
-        try { if (typeof smartView !== 'undefined' && smartView) smartView.classList.remove('cb-view-active'); } catch(_) {}
-        try { if (typeof graphView !== 'undefined' && graphView) graphView.classList.remove('cb-view-active'); } catch(_) {}
-        try { if (typeof insightsView !== 'undefined' && insightsView) insightsView.classList.remove('cb-view-active'); } catch(_) {}
-        try { if (typeof promptDesignerView !== 'undefined' && promptDesignerView) promptDesignerView.classList.remove('cb-view-active'); } catch(_) {}
-        try { if (typeof agentView !== 'undefined' && agentView) agentView.classList.remove('cb-view-active'); } catch(_) {}
-        try { if (typeof settingsPanel !== 'undefined' && settingsPanel) settingsPanel.classList.remove('cb-view-active'); } catch(_) {}
-      } catch (e) {}
+        try { if (typeof smartView !== 'undefined' && smartView) smartView.classList.remove('cb-view-active'); } catch (_) { }
+        try { if (typeof graphView !== 'undefined' && graphView) graphView.classList.remove('cb-view-active'); } catch (_) { }
+        try { if (typeof insightsView !== 'undefined' && insightsView) insightsView.classList.remove('cb-view-active'); } catch (_) { }
+        try { if (typeof promptDesignerView !== 'undefined' && promptDesignerView) promptDesignerView.classList.remove('cb-view-active'); } catch (_) { }
+        try { if (typeof agentView !== 'undefined' && agentView) agentView.classList.remove('cb-view-active'); } catch (_) { }
+        try { if (typeof settingsPanel !== 'undefined' && settingsPanel) settingsPanel.classList.remove('cb-view-active'); } catch (_) { }
+      } catch (e) { }
     }
 
     // Helper to load conversation text from lastScannedText or saved conversations
@@ -2384,8 +2416,8 @@
         let inCode = false, codeLang = '', buffer = [];
         for (const l of lines) {
           if (/^```/.test(l)) {
-            if (!inCode) { inCode = true; codeLang = l.replace(/```\s*/,'').trim(); buffer = []; }
-            else { inCode = false; if (buffer.length) codeBlocks.push(buffer.join('\n')); buffer = []; codeLang=''; }
+            if (!inCode) { inCode = true; codeLang = l.replace(/```\s*/, '').trim(); buffer = []; }
+            else { inCode = false; if (buffer.length) codeBlocks.push(buffer.join('\n')); buffer = []; codeLang = ''; }
             continue;
           }
           if (inCode) { buffer.push(l); }
@@ -2451,7 +2483,7 @@
           }
 
           // Commands inline with backticks
-          const inlineCmds = [...l.matchAll(/`([^`]+)`/g)].map(m=>m[1]);
+          const inlineCmds = [...l.matchAll(/`([^`]+)`/g)].map(m => m[1]);
           inlineCmds.forEach(c => {
             if (/^(npm|yarn|pnpm|pip|pip3|python|node|npx|git|docker|kubectl|az|aws|gcloud|make|bash|sh|pwsh|powershell|cd|mkdir|rm|mv|cp|curl|wget)\b/i.test(c.trim())) {
               out.commands.push(c.trim());
@@ -2460,21 +2492,21 @@
         }
 
         // De-duplicate and clip to one sentence
-        const dedupe = arr => Array.from(new Set(arr.map(s => s.replace(/\s+/g,' ').trim())));
+        const dedupe = arr => Array.from(new Set(arr.map(s => s.replace(/\s+/g, ' ').trim())));
         const oneSentence = s => {
-          const clipped = s.replace(/\s+/g,' ').trim();
+          const clipped = s.replace(/\s+/g, ' ').trim();
           const cut = clipped.split(/(?<=\.)\s+/)[0] || clipped;
-          return cut.length > 200 ? cut.slice(0,200) : cut;
+          return cut.length > 200 ? cut.slice(0, 200) : cut;
         };
 
-        out.tasks = dedupe(out.tasks).map(oneSentence).slice(0,12);
-        out.steps = dedupe(out.steps).map(oneSentence).slice(0,12);
-        out.todos = dedupe(out.todos).map(oneSentence).slice(0,12);
-        out.commands = dedupe(out.commands).map(s=>s.slice(0,200)).slice(0,12);
-        out.reminders = dedupe(out.reminders).map(oneSentence).slice(0,12);
+        out.tasks = dedupe(out.tasks).map(oneSentence).slice(0, 12);
+        out.steps = dedupe(out.steps).map(oneSentence).slice(0, 12);
+        out.todos = dedupe(out.todos).map(oneSentence).slice(0, 12);
+        out.commands = dedupe(out.commands).map(s => s.slice(0, 200)).slice(0, 12);
+        out.reminders = dedupe(out.reminders).map(oneSentence).slice(0, 12);
 
         return out;
-      } catch (e) { debugLog('extractActionPlanFromText error', e); return { tasks:[], steps:[], todos:[], commands:[], reminders:[] }; }
+      } catch (e) { debugLog('extractActionPlanFromText error', e); return { tasks: [], steps: [], todos: [], commands: [], reminders: [] }; }
     }
 
     function actionPlanToReadable(plan) {
@@ -2489,7 +2521,7 @@
         }
         if (plan.steps && plan.steps.length) {
           out += '— Steps\n';
-          plan.steps.forEach((s, i) => { out += `  ${i+1}. ${s}\n`; });
+          plan.steps.forEach((s, i) => { out += `  ${i + 1}. ${s}\n`; });
           out += '\n';
           count += plan.steps.length;
         }
@@ -2519,7 +2551,7 @@
     // ============================================
     // IMAGE VAULT - Store and display all images from conversation
     // ============================================
-    
+
     const IMAGE_VAULT_DB_NAME = 'chatbridge_image_vault';
     const IMAGE_VAULT_STORE_NAME = 'images';
     let imageVaultDB = null;
@@ -2527,16 +2559,16 @@
     // Initialize IndexedDB for Image Vault
     async function initImageVaultDB() {
       if (imageVaultDB) return imageVaultDB;
-      
+
       return new Promise((resolve, reject) => {
         const request = indexedDB.open(IMAGE_VAULT_DB_NAME, 1);
-        
+
         request.onerror = () => reject(request.error);
         request.onsuccess = () => {
           imageVaultDB = request.result;
           resolve(imageVaultDB);
         };
-        
+
         request.onupgradeneeded = (event) => {
           const db = event.target.result;
           if (!db.objectStoreNames.contains(IMAGE_VAULT_STORE_NAME)) {
@@ -2573,15 +2605,15 @@
     async function extractImagesFromMessages(messages) {
       const images = [];
       const seenHashes = new Set();
-      
+
       for (let i = 0; i < messages.length; i++) {
         const msg = messages[i];
         const role = msg.role || 'unknown';
         const text = msg.text || '';
         const el = msg.el;
-        
+
         const foundSrcs = new Set();
-        
+
         // 1. Extract from message element if available
         if (el) {
           const imgTags = el.querySelectorAll('img');
@@ -2592,33 +2624,33 @@
             }
           });
         }
-        
+
         // 2. Extract from markdown images ![](url)
         const markdownImages = text.matchAll(/!\[([^\]]*)\]\(([^)]+)\)/g);
         for (const match of markdownImages) {
           foundSrcs.add(match[2]);
         }
-        
+
         // 3. Extract from HTML img tags in text
         const htmlImages = text.matchAll(/<img[^>]+src=["']([^"']+)["']/gi);
         for (const match of htmlImages) {
           foundSrcs.add(match[1]);
         }
-        
+
         // 4. Extract base64 and data URLs
         const dataUrls = text.matchAll(/data:image\/[^;]+;base64,[A-Za-z0-9+\/=]+/g);
         for (const match of dataUrls) {
           foundSrcs.add(match[0]);
         }
-        
+
         // Process found sources
         for (const src of foundSrcs) {
           if (!src || src.length < 10) continue;
-          
+
           const hash = await hashImageSrc(src);
           if (seenHashes.has(hash)) continue;
           seenHashes.add(hash);
-          
+
           images.push({
             id: hash,
             src: src,
@@ -2629,7 +2661,7 @@
           });
         }
       }
-      
+
       return images;
     }
 
@@ -2639,7 +2671,7 @@
         const db = await initImageVaultDB();
         const tx = db.transaction([IMAGE_VAULT_STORE_NAME], 'readwrite');
         const store = tx.objectStore(IMAGE_VAULT_STORE_NAME);
-        
+
         for (const img of images) {
           try {
             await new Promise((resolve, reject) => {
@@ -2651,7 +2683,7 @@
             debugLog('Failed to save image:', e);
           }
         }
-        
+
         return true;
       } catch (e) {
         debugLog('saveImagesToVault error:', e);
@@ -2665,7 +2697,7 @@
         const db = await initImageVaultDB();
         const tx = db.transaction([IMAGE_VAULT_STORE_NAME], 'readonly');
         const store = tx.objectStore(IMAGE_VAULT_STORE_NAME);
-        
+
         return new Promise((resolve, reject) => {
           const request = store.getAll();
           request.onsuccess = () => resolve(request.result || []);
@@ -2683,7 +2715,7 @@
         const db = await initImageVaultDB();
         const tx = db.transaction([IMAGE_VAULT_STORE_NAME], 'readwrite');
         const store = tx.objectStore(IMAGE_VAULT_STORE_NAME);
-        
+
         return new Promise((resolve, reject) => {
           const request = store.clear();
           request.onsuccess = () => resolve(true);
@@ -2717,7 +2749,7 @@
       try {
         const librarySection = document.createElement('div');
         librarySection.style.cssText = 'margin:16px 12px;';
-        
+
         // Header with toggle
         const header = document.createElement('div');
         header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:12px;background:rgba(16,24,43,0.4);border:1px solid rgba(0,180,255,0.25);border-radius:8px 8px 0 0;cursor:pointer;';
@@ -2729,12 +2761,12 @@
           </div>
           <span id="cb-library-toggle" style="font-size:18px;transition:transform 0.2s;">▼</span>
         `;
-        
+
         // Content area (collapsible)
         const content = document.createElement('div');
         content.id = 'cb-library-content';
         content.style.cssText = 'display:none;padding:12px;background:rgba(16,24,43,0.4);border:1px solid rgba(0,180,255,0.25);border-top:none;border-radius:0 0 8px 8px;';
-        
+
         // Search bar
         const searchBar = document.createElement('div');
         searchBar.style.cssText = 'display:flex;gap:8px;margin-bottom:12px;';
@@ -2742,17 +2774,17 @@
           <input type="text" id="cb-library-search" class="cb-input" placeholder="Search conversations semantically..." style="flex:1;font-size:12px;"/>
           <button id="cb-library-search-btn" class="cb-btn cb-btn-primary" style="font-size:11px;padding:8px;">🔍 Search</button>
         `;
-        
+
         // Tag filter
         const tagFilter = document.createElement('div');
         tagFilter.style.cssText = 'display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;';
         tagFilter.id = 'cb-library-tags';
-        
+
         // Conversations list
         const convList = document.createElement('div');
         convList.id = 'cb-library-list';
         convList.style.cssText = 'display:flex;flex-direction:column;gap:8px;max-height:400px;overflow-y:auto;margin-bottom:12px;';
-        
+
         // Controls
         const controls = document.createElement('div');
         controls.style.cssText = 'display:flex;gap:8px;';
@@ -2760,7 +2792,7 @@
           <button id="cb-library-refresh" class="cb-btn cb-btn-primary" style="flex:1;font-size:11px;padding:8px;">🔄 Refresh</button>
           <button id="cb-library-index" class="cb-btn" style="font-size:11px;padding:8px;">⚡ Index All</button>
         `;
-        
+
         content.appendChild(searchBar);
         content.appendChild(tagFilter);
         content.appendChild(convList);
@@ -2768,7 +2800,7 @@
         librarySection.appendChild(header);
         librarySection.appendChild(content);
         container.appendChild(librarySection);
-        
+
         // Toggle handler
         let isExpanded = false;
         header.addEventListener('click', () => {
@@ -2777,7 +2809,7 @@
           document.getElementById('cb-library-toggle').style.transform = isExpanded ? 'rotate(180deg)' : 'rotate(0deg)';
           if (isExpanded) refreshLibrary();
         });
-        
+
         // Search handler
         document.getElementById('cb-library-search-btn').addEventListener('click', async () => {
           const query = document.getElementById('cb-library-search').value.trim();
@@ -2785,7 +2817,7 @@
             refreshLibrary();
             return;
           }
-          
+
           const btn = document.getElementById('cb-library-search-btn');
           addLoadingToButton(btn, 'Searching...');
           try {
@@ -2797,19 +2829,19 @@
             removeLoadingFromButton(btn, '🔍 Search');
           }
         });
-        
+
         // Enter key for search
         document.getElementById('cb-library-search').addEventListener('keypress', (e) => {
           if (e.key === 'Enter') {
             document.getElementById('cb-library-search-btn').click();
           }
         });
-        
+
         // Refresh handler
         document.getElementById('cb-library-refresh').addEventListener('click', () => {
           refreshLibrary();
         });
-        
+
         // Index all handler
         document.getElementById('cb-library-index').addEventListener('click', async () => {
           const btn = document.getElementById('cb-library-index');
@@ -2839,7 +2871,7 @@
             removeLoadingFromButton(btn, '⚡ Index All');
           }
         });
-        
+
         // Render library list
         async function refreshLibrary() {
           try {
@@ -2847,13 +2879,13 @@
             const list = document.getElementById('cb-library-list');
             const countEl = document.getElementById('cb-library-count');
             const tagsEl = document.getElementById('cb-library-tags');
-            
+
             if (!list) return;
-            
+
             countEl.textContent = convs.length.toString();
             list.innerHTML = '';
             tagsEl.innerHTML = '';
-            
+
             if (convs.length === 0) {
               list.innerHTML = `
                 <div class="cb-empty-state">
@@ -2864,13 +2896,13 @@
               `;
               return;
             }
-            
+
             // Collect all unique tags
             const allTags = new Set();
             convs.forEach(c => {
               if (c.topics) c.topics.forEach(t => allTags.add(t));
             });
-            
+
             // Render tag filter chips
             if (allTags.size > 0) {
               Array.from(allTags).slice(0, 8).forEach(tag => {
@@ -2885,22 +2917,22 @@
                 tagsEl.appendChild(chip);
               });
             }
-            
+
             // Sort by timestamp (newest first)
             const sorted = convs.sort((a, b) => (b.ts || 0) - (a.ts || 0));
-            
+
             // Render conversation cards
             sorted.slice(0, 20).forEach((conv, idx) => {
               const card = document.createElement('div');
               card.style.cssText = 'padding:10px;background:rgba(0,180,255,0.05);border:1px solid rgba(0,180,255,0.2);border-radius:6px;cursor:pointer;transition:all 0.2s;';
-              
+
               const msgCount = conv.messages?.length || conv.conversation?.length || 0;
               const platform = conv.platform || 'unknown';
               const timestamp = conv.ts ? new Date(conv.ts).toLocaleDateString() : 'Unknown';
               const topics = conv.topics ? conv.topics.slice(0, 3).map(t => `<span style="font-size:10px;background:rgba(0,180,255,0.2);padding:2px 6px;border-radius:10px;margin-right:4px;">#${t}</span>`).join('') : '';
               const preview = conv.messages?.[0]?.text?.slice(0, 80) || conv.conversation?.[0]?.text?.slice(0, 80) || 'No preview';
               const hasEmbedding = conv.embedding ? '⚡' : '';
-              
+
               card.innerHTML = `
                 <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:6px;">
                   <div style="font-size:12px;font-weight:600;color:var(--cb-white);">${platform} ${hasEmbedding}</div>
@@ -2912,7 +2944,7 @@
                   ${topics}
                 </div>
               `;
-              
+
               card.addEventListener('mouseenter', () => {
                 card.style.background = 'rgba(0,180,255,0.1)';
                 card.style.borderColor = 'rgba(0,180,255,0.4)';
@@ -2921,7 +2953,7 @@
                 card.style.background = 'rgba(0,180,255,0.05)';
                 card.style.borderColor = 'rgba(0,180,255,0.2)';
               });
-              
+
               card.addEventListener('click', () => {
                 // Load conversation into history view
                 try {
@@ -2935,32 +2967,32 @@
                   debugLog('Load conversation error:', e);
                 }
               });
-              
+
               list.appendChild(card);
             });
           } catch (e) {
             debugLog('refreshLibrary error:', e);
           }
         }
-        
+
         // Semantic search function
         async function searchLibrarySemanticly(query) {
           try {
             const convs = await loadConversationsAsync();
             const list = document.getElementById('cb-library-list');
-            
+
             if (!window.getEmbedding) {
               toast('Semantic search not available');
               return;
             }
-            
+
             // Get query embedding
             const queryEmb = await window.getEmbedding(query);
             if (!queryEmb || queryEmb.length === 0) {
               toast('Failed to process query');
               return;
             }
-            
+
             // Calculate similarities
             const results = [];
             for (const conv of convs) {
@@ -2971,10 +3003,10 @@
                 }
               }
             }
-            
+
             // Sort by similarity
             results.sort((a, b) => b.similarity - a.similarity);
-            
+
             // Render results
             list.innerHTML = '';
             if (results.length === 0) {
@@ -2987,18 +3019,18 @@
               `;
               return;
             }
-            
+
             results.slice(0, 10).forEach(({ conv, similarity }) => {
               const card = document.createElement('div');
               card.style.cssText = 'padding:10px;background:rgba(0,180,255,0.05);border:1px solid rgba(0,180,255,0.2);border-radius:6px;cursor:pointer;transition:all 0.2s;';
-              
+
               const msgCount = conv.messages?.length || conv.conversation?.length || 0;
               const platform = conv.platform || 'unknown';
               const timestamp = conv.ts ? new Date(conv.ts).toLocaleDateString() : 'Unknown';
               const topics = conv.topics ? conv.topics.slice(0, 3).map(t => `<span style="font-size:10px;background:rgba(0,180,255,0.2);padding:2px 6px;border-radius:10px;margin-right:4px;">#${t}</span>`).join('') : '';
               const preview = conv.messages?.[0]?.text?.slice(0, 80) || conv.conversation?.[0]?.text?.slice(0, 80) || 'No preview';
               const relevance = Math.round(similarity * 100);
-              
+
               card.innerHTML = `
                 <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:6px;">
                   <div style="font-size:12px;font-weight:600;color:var(--cb-white);">${platform} <span style="font-size:10px;color:#34d399;">${relevance}% match</span></div>
@@ -3010,7 +3042,7 @@
                   ${topics}
                 </div>
               `;
-              
+
               card.addEventListener('mouseenter', () => {
                 card.style.background = 'rgba(0,180,255,0.1)';
                 card.style.borderColor = 'rgba(0,180,255,0.4)';
@@ -3019,7 +3051,7 @@
                 card.style.background = 'rgba(0,180,255,0.05)';
                 card.style.borderColor = 'rgba(0,180,255,0.2)';
               });
-              
+
               card.addEventListener('click', () => {
                 try {
                   const chatSelect = shadow.getElementById('cb-chat-select');
@@ -3032,17 +3064,17 @@
                   debugLog('Load conversation error:', e);
                 }
               });
-              
+
               list.appendChild(card);
             });
-            
+
             toast(`Found ${results.length} relevant conversation(s)`);
           } catch (e) {
             debugLog('searchLibrarySemanticly error:', e);
             toast('Search failed');
           }
         }
-        
+
         // Cosine similarity helper
         function cosineSimilarity(a, b) {
           if (!a || !b || a.length !== b.length) return 0;
@@ -3056,7 +3088,7 @@
           }
           return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
         }
-        
+
       } catch (e) {
         debugLog('renderSmartLibraryWidget error:', e);
       }
@@ -3066,7 +3098,7 @@
       try {
         const vaultSection = document.createElement('div');
         vaultSection.style.cssText = 'margin:16px 12px;';
-        
+
         // Header with toggle
         const header = document.createElement('div');
         header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:12px;background:rgba(16,24,43,0.4);border:1px solid rgba(0,180,255,0.25);border-radius:8px 8px 0 0;cursor:pointer;';
@@ -3078,17 +3110,17 @@
           </div>
           <span id="cb-vault-toggle" style="font-size:18px;transition:transform 0.2s;">▼</span>
         `;
-        
+
         // Content area (collapsible)
         const content = document.createElement('div');
         content.id = 'cb-vault-content';
         content.style.cssText = 'display:none;padding:12px;background:rgba(16,24,43,0.4);border:1px solid rgba(0,180,255,0.25);border-top:none;border-radius:0 0 8px 8px;';
-        
+
         // Thumbnail grid
         const thumbGrid = document.createElement('div');
         thumbGrid.id = 'cb-vault-grid';
         thumbGrid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:8px;margin-bottom:12px;';
-        
+
         // Controls
         const controls = document.createElement('div');
         controls.style.cssText = 'display:flex;gap:8px;';
@@ -3096,13 +3128,13 @@
           <button id="cb-vault-scan" class="cb-btn cb-btn-primary" style="flex:1;font-size:11px;padding:8px;">🔍 Scan Images</button>
           <button id="cb-vault-clear" class="cb-btn" style="font-size:11px;padding:8px;">🗑️ Clear</button>
         `;
-        
+
         content.appendChild(thumbGrid);
         content.appendChild(controls);
         vaultSection.appendChild(header);
         vaultSection.appendChild(content);
         container.appendChild(vaultSection);
-        
+
         // Toggle handler
         let isExpanded = false;
         header.addEventListener('click', () => {
@@ -3110,7 +3142,7 @@
           content.style.display = isExpanded ? 'block' : 'none';
           document.getElementById('cb-vault-toggle').style.transform = isExpanded ? 'rotate(180deg)' : 'rotate(0deg)';
         });
-        
+
         // Scan images handler
         document.getElementById('cb-vault-scan').addEventListener('click', async () => {
           const btn = document.getElementById('cb-vault-scan');
@@ -3121,14 +3153,14 @@
               toast('No messages to scan');
               return;
             }
-            
+
             const images = await extractImagesFromMessages(msgs);
             if (images.length === 0) {
               toast('No images found in conversation');
               document.getElementById('cb-image-count').textContent = '0';
               return;
             }
-            
+
             await saveImagesToVault(images);
             await refreshImageVault();
             toast(`Found ${images.length} image(s)`);
@@ -3139,7 +3171,7 @@
             removeLoadingFromButton(btn, '🔍 Scan Images');
           }
         });
-        
+
         // Clear vault handler
         document.getElementById('cb-vault-clear').addEventListener('click', async () => {
           if (confirm('Clear all stored images?')) {
@@ -3148,10 +3180,10 @@
             toast('Image vault cleared');
           }
         });
-        
+
         // Initial load
         await refreshImageVault();
-        
+
       } catch (e) {
         debugLog('renderImageVaultWidget error:', e);
       }
@@ -3163,12 +3195,12 @@
         const images = await getImageVault();
         const grid = document.getElementById('cb-vault-grid');
         const countEl = document.getElementById('cb-image-count');
-        
+
         if (!grid) return;
-        
+
         countEl.textContent = images.length.toString();
         grid.innerHTML = '';
-        
+
         if (images.length === 0) {
           grid.innerHTML = `
             <div class="cb-empty-state" style="grid-column:1/-1;">
@@ -3179,23 +3211,23 @@
           `;
           return;
         }
-        
+
         // Group by role
         const userImages = images.filter(img => img.role === 'user');
         const assistantImages = images.filter(img => img.role === 'assistant');
-        
+
         const renderGroup = (imgs, label, icon) => {
           if (imgs.length === 0) return;
-          
+
           const groupLabel = document.createElement('div');
           groupLabel.style.cssText = 'grid-column:1/-1;font-size:11px;font-weight:600;color:rgba(255,255,255,0.6);margin-top:8px;display:flex;align-items:center;gap:6px;';
           groupLabel.innerHTML = `<span>${icon}</span><span>${label} (${imgs.length})</span>`;
           grid.appendChild(groupLabel);
-          
+
           imgs.slice(0, 6).forEach((img, idx) => {
             const thumb = document.createElement('div');
             thumb.style.cssText = 'position:relative;aspect-ratio:1;border-radius:6px;overflow:hidden;border:1px solid rgba(0,180,255,0.2);cursor:pointer;background:rgba(0,0,0,0.3);';
-            
+
             const imgEl = document.createElement('img');
             imgEl.src = img.src;
             imgEl.style.cssText = 'width:100%;height:100%;object-fit:cover;';
@@ -3203,7 +3235,7 @@
             imgEl.onerror = () => {
               thumb.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:24px;">🖼️</div>';
             };
-            
+
             // Hover overlay
             const overlay = document.createElement('div');
             overlay.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);display:none;align-items:center;justify-content:center;gap:8px;';
@@ -3211,13 +3243,13 @@
               <button class="cb-img-copy" title="Copy" style="background:rgba(255,255,255,0.2);border:none;border-radius:4px;padding:4px 6px;cursor:pointer;font-size:14px;">📋</button>
               <button class="cb-img-expand" title="Expand" style="background:rgba(255,255,255,0.2);border:none;border-radius:4px;padding:4px 6px;cursor:pointer;font-size:14px;">🔍</button>
             `;
-            
+
             thumb.appendChild(imgEl);
             thumb.appendChild(overlay);
-            
+
             thumb.addEventListener('mouseenter', () => overlay.style.display = 'flex');
             thumb.addEventListener('mouseleave', () => overlay.style.display = 'none');
-            
+
             // Copy handler
             overlay.querySelector('.cb-img-copy').addEventListener('click', async (e) => {
               e.stopPropagation();
@@ -3228,16 +3260,16 @@
                 toast('Copy failed');
               }
             });
-            
+
             // Expand handler
             overlay.querySelector('.cb-img-expand').addEventListener('click', (e) => {
               e.stopPropagation();
               showImageModal(img);
             });
-            
+
             grid.appendChild(thumb);
           });
-          
+
           // Show "View All" if more than 6 images
           if (imgs.length > 6) {
             const viewAll = document.createElement('button');
@@ -3248,10 +3280,10 @@
             grid.appendChild(viewAll);
           }
         };
-        
+
         renderGroup(userImages, 'User Uploads', '👤');
         renderGroup(assistantImages, 'AI Generated', '🤖');
-        
+
       } catch (e) {
         debugLog('refreshImageVault error:', e);
       }
@@ -3261,20 +3293,20 @@
     function showImageModal(imgData) {
       const modal = document.createElement('div');
       modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);display:flex;align-items:center;justify-content:center;z-index:999999;';
-      
+
       const img = document.createElement('img');
       img.src = imgData.src;
       img.style.cssText = 'max-width:90%;max-height:90%;border-radius:8px;box-shadow:0 20px 60px rgba(0,0,0,0.5);';
-      
+
       const closeBtn = document.createElement('button');
       closeBtn.textContent = '×';
       closeBtn.style.cssText = 'position:absolute;top:20px;right:20px;background:rgba(255,255,255,0.2);border:none;color:#fff;font-size:32px;width:50px;height:50px;border-radius:25px;cursor:pointer;';
       closeBtn.addEventListener('click', () => modal.remove());
-      
+
       modal.appendChild(img);
       modal.appendChild(closeBtn);
       modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
-      
+
       document.body.appendChild(modal);
     }
 
@@ -3282,14 +3314,14 @@
     function showAllImagesModal(images, title) {
       const modal = document.createElement('div');
       modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999999;padding:40px;';
-      
+
       const header = document.createElement('div');
       header.style.cssText = 'color:#fff;font-size:24px;font-weight:700;margin-bottom:20px;';
       header.textContent = title;
-      
+
       const grid = document.createElement('div');
       grid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:16px;max-width:1200px;max-height:70%;overflow-y:auto;padding:20px;background:rgba(16,24,43,0.8);border-radius:12px;';
-      
+
       images.forEach(imgData => {
         const thumb = document.createElement('img');
         thumb.src = imgData.src;
@@ -3301,18 +3333,18 @@
         });
         grid.appendChild(thumb);
       });
-      
+
       const closeBtn = document.createElement('button');
       closeBtn.textContent = 'Close';
       closeBtn.className = 'cb-btn cb-btn-primary';
       closeBtn.style.cssText = 'margin-top:20px;padding:12px 24px;';
       closeBtn.addEventListener('click', () => modal.remove());
-      
+
       modal.appendChild(header);
       modal.appendChild(grid);
       modal.appendChild(closeBtn);
       modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
-      
+
       document.body.appendChild(modal);
     }
 
@@ -3323,7 +3355,7 @@
       try {
         const themesSection = document.createElement('div');
         themesSection.style.cssText = 'margin:16px 12px;';
-        
+
         // Header
         const header = document.createElement('div');
         header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:12px;background:rgba(16,24,43,0.4);border:1px solid rgba(0,180,255,0.25);border-radius:8px 8px 0 0;cursor:pointer;';
@@ -3335,17 +3367,17 @@
           </div>
           <span id="cb-themes-toggle" style="font-size:18px;transition:transform 0.2s;">▼</span>
         `;
-        
+
         // Content area
         const content = document.createElement('div');
         content.id = 'cb-themes-content';
         content.style.cssText = 'display:none;padding:12px;background:rgba(16,24,43,0.4);border:1px solid rgba(0,180,255,0.25);border-top:none;border-radius:0 0 8px 8px;';
-        
+
         // Theme list
         const themeList = document.createElement('div');
         themeList.id = 'cb-themes-list';
         themeList.style.cssText = 'display:flex;flex-direction:column;gap:12px;margin-bottom:12px;';
-        
+
         // Time range selector
         const controls = document.createElement('div');
         controls.style.cssText = 'display:flex;gap:8px;margin-bottom:12px;';
@@ -3355,13 +3387,13 @@
           <button class="cb-themes-range cb-btn" data-range="month" style="flex:1;font-size:11px;padding:6px;">Month</button>
           <button class="cb-themes-range cb-btn" data-range="all" style="flex:1;font-size:11px;padding:6px;">All Time</button>
         `;
-        
+
         content.appendChild(controls);
         content.appendChild(themeList);
         themesSection.appendChild(header);
         themesSection.appendChild(content);
         container.appendChild(themesSection);
-        
+
         // Toggle handler
         let isExpanded = false;
         header.addEventListener('click', () => {
@@ -3372,7 +3404,7 @@
             refreshThemes('day');
           }
         });
-        
+
         // Range button handlers
         controls.querySelectorAll('.cb-themes-range').forEach(btn => {
           btn.addEventListener('click', () => {
@@ -3385,48 +3417,48 @@
             refreshThemes(btn.dataset.range);
           });
         });
-        
+
         // Refresh themes display
         async function refreshThemes(range) {
           try {
             themeList.innerHTML = '<div style="text-align:center;padding:20px;color:rgba(255,255,255,0.5);">Loading themes...</div>';
-            
+
             if (typeof window.RAGEngine === 'undefined' || typeof window.RAGEngine.getThemeEvolution !== 'function') {
               themeList.innerHTML = '<div style="text-align:center;padding:20px;color:rgba(255,255,255,0.5);">RAG Engine not available</div>';
               return;
             }
-            
+
             const evolution = await window.RAGEngine.getThemeEvolution({ bucket: range });
-            
+
             if (!evolution || !evolution.themes || evolution.themes.length === 0) {
               themeList.innerHTML = '<div class="cb-empty-state">No themes found yet. Start conversations to see patterns emerge!</div>';
               return;
             }
-            
+
             themeList.innerHTML = '';
-            
+
             evolution.themes.slice(0, 8).forEach(theme => {
               const themeCard = document.createElement('div');
               themeCard.style.cssText = 'padding:10px;background:rgba(10,15,28,0.5);border:1px solid rgba(0,180,255,0.2);border-radius:6px;';
-              
+
               const themeHeader = document.createElement('div');
               themeHeader.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;';
-              
+
               const themeName = document.createElement('div');
               themeName.style.cssText = 'font-weight:600;font-size:12px;color:#fff;';
               themeName.textContent = theme.name;
-              
+
               const themeCount = document.createElement('div');
               themeCount.style.cssText = 'font-size:11px;color:rgba(255,255,255,0.6);background:rgba(0,180,255,0.2);padding:2px 8px;border-radius:10px;';
               themeCount.textContent = `${theme.count} mentions`;
-              
+
               themeHeader.appendChild(themeName);
               themeHeader.appendChild(themeCount);
-              
+
               // Sparkline visualization
               const sparkline = document.createElement('div');
               sparkline.style.cssText = 'height:30px;display:flex;align-items:flex-end;gap:2px;margin-top:6px;';
-              
+
               if (theme.sparkline && theme.sparkline.length > 0) {
                 const max = Math.max(...theme.sparkline, 1);
                 theme.sparkline.forEach(val => {
@@ -3436,18 +3468,18 @@
                   sparkline.appendChild(bar);
                 });
               }
-              
+
               themeCard.appendChild(themeHeader);
               themeCard.appendChild(sparkline);
               themeList.appendChild(themeCard);
             });
-            
+
           } catch (e) {
             debugLog('refreshThemes error:', e);
             themeList.innerHTML = '<div style="text-align:center;padding:20px;color:rgba(255,99,71,0.8);">Failed to load themes</div>';
           }
         }
-        
+
       } catch (e) {
         debugLog('renderTrendingThemesWidget error:', e);
       }
@@ -3467,19 +3499,19 @@
         missingRequirements: [],
         pendingTasks: []
       };
-      
+
       // First user message often contains the goal
       const firstUser = messages.find(m => m.role === 'user');
       if (firstUser) {
         context.userGoal = firstUser.text.substring(0, 200);
       }
-      
+
       // Recent messages show progress
       const recentMsgs = messages.slice(-5);
       context.progressMade = recentMsgs
         .filter(m => m.role === 'assistant')
         .map(m => m.text.substring(0, 100));
-      
+
       // Look for questions and uncertainties
       messages.forEach(msg => {
         const text = msg.text;
@@ -3496,7 +3528,7 @@
           context.pendingTasks.push(text.substring(0, 150));
         }
       });
-      
+
       return context;
     }
 
@@ -3504,7 +3536,7 @@
     async function generateSmartPrompts(messages) {
       try {
         const context = extractConversationContext(messages);
-        
+
         // Build prompt for Gemini
         const conversationText = messages.map(m => `${m.role}: ${m.text}`).join('\n\n');
         const systemPrompt = `You are a thought partner helping a user continue their AI conversation productively.
@@ -3537,13 +3569,13 @@ Respond with JSON only:
     {"text": "...", "category": "creative", "sourceIndexes": [1, 6]}
   ]
 }`;
-        
+
         const result = await callGeminiAsync({
           action: 'custom',
           prompt: systemPrompt,
           temperature: 0.7
         });
-        
+
         if (result && result.ok && result.result) {
           try {
             // Try to parse JSON from result
@@ -3551,7 +3583,7 @@ Respond with JSON only:
             // Extract JSON if wrapped in markdown
             const jsonMatch = jsonStr.match(/```json\s*([\s\S]+?)```/) || jsonStr.match(/```\s*([\s\S]+?)```/);
             if (jsonMatch) jsonStr = jsonMatch[1];
-            
+
             const parsed = JSON.parse(jsonStr);
             if (parsed.questions && Array.isArray(parsed.questions)) {
               return parsed;
@@ -3560,10 +3592,10 @@ Respond with JSON only:
             debugLog('Failed to parse prompt designer JSON:', parseErr);
           }
         }
-        
+
         // Fallback to generic prompts
         return generateFallbackPrompts(context);
-        
+
       } catch (e) {
         debugLog('generateSmartPrompts error:', e);
         return generateFallbackPrompts({});
@@ -3588,11 +3620,11 @@ Respond with JSON only:
       try {
         container.innerHTML = '';
         container.style.cssText = 'padding:0;margin:0;';
-        
+
         // Main wrapper
         const wrapper = document.createElement('div');
         wrapper.style.cssText = 'background:rgba(15,23,42,0.6);border-radius:12px;overflow:hidden;border:1px solid rgba(96,165,250,0.2);';
-        
+
         // Action bar at top
         const actionBar = document.createElement('div');
         actionBar.style.cssText = 'padding:16px 20px;background:linear-gradient(135deg,rgba(59,130,246,0.12),rgba(147,51,234,0.12));border-bottom:1px solid rgba(96,165,250,0.15);display:flex;gap:10px;align-items:center;';
@@ -3608,15 +3640,15 @@ Respond with JSON only:
             📜
           </button>
         `;
-        
+
         // Prompts container
         const promptsContainer = document.createElement('div');
         promptsContainer.style.cssText = 'padding:20px;';
-        
+
         const promptsList = document.createElement('div');
         promptsList.id = 'cb-prompts-list';
         promptsList.style.cssText = 'display:grid;gap:12px;';
-        
+
         // Beautiful empty state
         promptsList.innerHTML = `
           <div style="text-align:center;padding:60px 20px;">
@@ -3631,17 +3663,17 @@ Respond with JSON only:
             </div>
           </div>
         `;
-        
+
         promptsContainer.appendChild(promptsList);
         wrapper.appendChild(actionBar);
         wrapper.appendChild(promptsContainer);
         container.appendChild(wrapper);
-        
+
         // Add hover effects
         const generateBtn = shadow.getElementById('cb-prompts-generate');
         const refreshBtn = shadow.getElementById('cb-prompts-refresh');
         const historyBtn = shadow.getElementById('cb-prompts-history');
-        
+
         if (generateBtn) {
           generateBtn.addEventListener('mouseenter', () => {
             generateBtn.style.transform = 'translateY(-1px)';
@@ -3652,7 +3684,7 @@ Respond with JSON only:
             generateBtn.style.boxShadow = '0 2px 8px rgba(59,130,246,0.3)';
           });
         }
-        
+
         [refreshBtn, historyBtn].forEach(btn => {
           if (btn) {
             btn.addEventListener('mouseenter', () => {
@@ -3665,24 +3697,24 @@ Respond with JSON only:
             });
           }
         });
-        
+
         // Generate prompts handler
         const generateHandler = async () => {
           const btn = shadow.getElementById('cb-prompts-generate') || shadow.getElementById('cb-prompts-refresh');
           if (!btn) return;
-          
+
           const originalHTML = btn.innerHTML;
           btn.innerHTML = '<span style="display:inline-block;animation:spin 1s linear infinite;">⚙️</span> Generating...';
           btn.disabled = true;
           btn.style.opacity = '0.7';
-          
+
           try {
             const msgs = await scanChat();
             if (!msgs || msgs.length === 0) {
               toast('⚠️ No messages to analyze');
               return;
             }
-            
+
             const prompts = await generateSmartPrompts(msgs);
             savePromptVersion(prompts);
             renderPrompts(prompts, msgs);
@@ -3696,21 +3728,21 @@ Respond with JSON only:
             btn.style.opacity = '1';
           }
         };
-        
+
         if (shadow.getElementById('cb-prompts-generate')) {
           shadow.getElementById('cb-prompts-generate').addEventListener('click', generateHandler);
         }
         if (shadow.getElementById('cb-prompts-refresh')) {
           shadow.getElementById('cb-prompts-refresh').addEventListener('click', generateHandler);
         }
-        
+
         // History button handler
         if (shadow.getElementById('cb-prompts-history')) {
           shadow.getElementById('cb-prompts-history').addEventListener('click', () => {
             showPromptHistory();
           });
         }
-        
+
         // Save prompt version to history
         function savePromptVersion(promptData) {
           try {
@@ -3727,17 +3759,17 @@ Respond with JSON only:
             debugLog('savePromptVersion error:', e);
           }
         }
-        
+
         // Show prompt history modal
         function showPromptHistory() {
           try {
             const history = JSON.parse(localStorage.getItem('chatbridge:prompt_history') || '[]');
-            
+
             if (history.length === 0) {
               toast('No prompt history yet');
               return;
             }
-            
+
             const modal = document.createElement('div');
             modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:999999;display:flex;align-items:center;justify-content:center;padding:20px;';
             modal.innerHTML = `
@@ -3749,17 +3781,17 @@ Respond with JSON only:
                 <div id="cb-history-list" style="display:flex;flex-direction:column;gap:12px;"></div>
               </div>
             `;
-            
+
             document.body.appendChild(modal);
-            
+
             const historyList = modal.querySelector('#cb-history-list');
             history.forEach((version, idx) => {
               const versionCard = document.createElement('div');
               versionCard.style.cssText = 'padding:12px;background:rgba(0,180,255,0.05);border:1px solid rgba(0,180,255,0.2);border-radius:8px;cursor:pointer;transition:all 0.2s;';
-              
+
               const timestamp = new Date(version.timestamp).toLocaleString();
               const promptCount = version.prompts?.questions?.length || 0;
-              
+
               versionCard.innerHTML = `
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
                   <div style="font-size:12px;font-weight:600;color:var(--cb-white);">Version ${history.length - idx}</div>
@@ -3768,44 +3800,44 @@ Respond with JSON only:
                 <div style="font-size:11px;color:var(--cb-subtext);margin-bottom:8px;">${promptCount} prompts generated</div>
                 <button class="cb-btn cb-btn-primary" style="width:100%;font-size:11px;padding:6px;">🔄 Restore This Version</button>
               `;
-              
+
               versionCard.addEventListener('mouseenter', () => {
                 versionCard.style.background = 'rgba(0,180,255,0.1)';
               });
               versionCard.addEventListener('mouseleave', () => {
                 versionCard.style.background = 'rgba(0,180,255,0.05)';
               });
-              
+
               versionCard.querySelector('button').addEventListener('click', () => {
                 renderPrompts(version.prompts, []);
                 modal.remove();
                 toast(`Restored version ${history.length - idx}`);
               });
-              
+
               historyList.appendChild(versionCard);
             });
-            
+
             modal.querySelector('#cb-history-close').addEventListener('click', () => {
               modal.remove();
             });
-            
+
             modal.addEventListener('click', (e) => {
               if (e.target === modal) modal.remove();
             });
-            
+
           } catch (e) {
             debugLog('showPromptHistory error:', e);
             toast('Failed to load history');
           }
         }
-        
+
         // Render prompts in list - Clean Modern Design
         function renderPrompts(promptData, messages) {
           const list = shadow.getElementById('cb-prompts-list');
           if (!list) return;
-          
+
           list.innerHTML = '';
-          
+
           if (!promptData || !promptData.questions || promptData.questions.length === 0) {
             list.innerHTML = `
               <div style="text-align:center;padding:40px 20px;">
@@ -3815,7 +3847,7 @@ Respond with JSON only:
             `;
             return;
           }
-          
+
           // Success header
           const header = document.createElement('div');
           header.style.cssText = 'margin-bottom:20px;padding:16px;background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);border-radius:10px;display:flex;align-items:center;justify-content:space-between;';
@@ -3830,7 +3862,7 @@ Respond with JSON only:
             <div style="font-size:11px;color:rgba(255,255,255,0.4);">${new Date().toLocaleTimeString()}</div>
           `;
           list.appendChild(header);
-          
+
           const categoryIcons = {
             clarification: '❓',
             improvement: '⚡',
@@ -3838,7 +3870,7 @@ Respond with JSON only:
             critical: '🧠',
             creative: '💡'
           };
-          
+
           const categoryColors = {
             clarification: '#3b82f6',
             improvement: '#22c55e',
@@ -3846,7 +3878,7 @@ Respond with JSON only:
             critical: '#f59e0b',
             creative: '#ec4899'
           };
-          
+
           const categoryBg = {
             clarification: 'rgba(59,130,246,0.1)',
             improvement: 'rgba(34,197,94,0.1)',
@@ -3854,12 +3886,12 @@ Respond with JSON only:
             critical: 'rgba(245,158,11,0.1)',
             creative: 'rgba(236,72,153,0.1)'
           };
-          
+
           promptData.questions.forEach((q, idx) => {
             const promptCard = document.createElement('div');
             const color = categoryColors[q.category] || '#3b82f6';
             const bg = categoryBg[q.category] || 'rgba(59,130,246,0.1)';
-            
+
             promptCard.style.cssText = `
               padding:18px;
               background:${bg};
@@ -3869,10 +3901,10 @@ Respond with JSON only:
               transition:all 0.2s ease;
               cursor:pointer;
             `;
-            
+
             const icon = categoryIcons[q.category] || '💬';
             const categoryLabel = q.category.charAt(0).toUpperCase() + q.category.slice(1);
-            
+
             promptCard.innerHTML = `
               <div style="display:flex;flex-direction:column;gap:14px;">
                 <div style="display:flex;align-items:center;justify-content:space-between;">
@@ -3893,7 +3925,7 @@ Respond with JSON only:
                 </div>
               </div>
             `;
-            
+
             // Hover effects
             promptCard.addEventListener('mouseenter', () => {
               promptCard.style.background = `${bg.replace('0.1', '0.15')}`;
@@ -3907,7 +3939,7 @@ Respond with JSON only:
               promptCard.style.transform = 'translateY(0)';
               promptCard.style.boxShadow = 'none';
             });
-            
+
             // Copy button hover
             const copyBtn = promptCard.querySelector('.cb-prompt-copy');
             copyBtn.addEventListener('mouseenter', () => {
@@ -3918,7 +3950,7 @@ Respond with JSON only:
               copyBtn.style.background = 'rgba(255,255,255,0.08)';
               copyBtn.style.transform = 'scale(1)';
             });
-            
+
             // Send button hover
             const sendBtn = promptCard.querySelector('.cb-prompt-send');
             sendBtn.addEventListener('mouseenter', () => {
@@ -3929,7 +3961,7 @@ Respond with JSON only:
               sendBtn.style.transform = 'scale(1)';
               sendBtn.style.boxShadow = `0 2px 8px ${color}33`;
             });
-            
+
             // Copy handler
             copyBtn.addEventListener('click', async (e) => {
               e.stopPropagation();
@@ -3942,7 +3974,7 @@ Respond with JSON only:
                 toast('❌ Copy failed');
               }
             });
-            
+
             // Send to chat handler
             sendBtn.addEventListener('click', async (e) => {
               e.stopPropagation();
@@ -3972,11 +4004,11 @@ Respond with JSON only:
                 toast('❌ Insert failed');
               }
             });
-            
+
             list.appendChild(promptCard);
           });
         }
-        
+
       } catch (e) {
         debugLog('renderPromptDesignerWidget error:', e);
       }
@@ -3987,19 +4019,19 @@ Respond with JSON only:
       try {
         const modal = document.createElement('div');
         modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:999999;display:flex;align-items:center;justify-content:center;padding:20px;';
-        
+
         const confidenceColors = {
           high: '#34d399',
           medium: '#f59e0b',
           low: '#f87171'
         };
-        
+
         const confidenceIcons = {
           high: '✅',
           medium: '⚠️',
           low: '❌'
         };
-        
+
         modal.innerHTML = `
           <div style="background:var(--cb-bg);padding:24px;border-radius:12px;max-width:700px;width:100%;max-height:80vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,0.4);border:1px solid var(--cb-border);">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
@@ -4012,15 +4044,15 @@ Respond with JSON only:
             <div id="cb-claims-list" style="display:flex;flex-direction:column;gap:12px;"></div>
           </div>
         `;
-        
+
         document.body.appendChild(modal);
-        
+
         const claimsList = modal.querySelector('#cb-claims-list');
         claims.forEach((claim, idx) => {
           const confidence = claim.confidence?.toLowerCase() || 'low';
           const color = confidenceColors[confidence] || '#f87171';
           const icon = confidenceIcons[confidence] || '❌';
-          
+
           const claimCard = document.createElement('div');
           claimCard.style.cssText = `padding:14px;background:rgba(0,180,255,0.05);border-left:3px solid ${color};border-radius:8px;`;
           claimCard.innerHTML = `
@@ -4037,15 +4069,15 @@ Respond with JSON only:
           `;
           claimsList.appendChild(claimCard);
         });
-        
+
         modal.querySelector('#cb-factcheck-close').addEventListener('click', () => {
           modal.remove();
         });
-        
+
         modal.addEventListener('click', (e) => {
           if (e.target === modal) modal.remove();
         });
-        
+
       } catch (e) {
         debugLog('showFactCheckModal error:', e);
       }
@@ -4064,34 +4096,34 @@ Respond with JSON only:
     // ============================================
     // DIAGRAM MAKER HELPERS
     // ============================================
-    
+
     // Helper: Extract conversation structure for diagram generation
     function extractConversationStructure(messages) {
       if (!messages || messages.length === 0) return null;
       const structure = { nodes: [], edges: [], topics: new Set() };
       let nodeId = 0;
-      
+
       messages.forEach((msg, idx) => {
         const role = msg.role === 'user' ? 'User' : 'AI';
         const snippet = msg.text.slice(0, 40).replace(/[\n\r]/g, ' ') + (msg.text.length > 40 ? '...' : '');
         structure.nodes.push({ id: `n${nodeId}`, label: `${role}: ${snippet}`, role: msg.role });
         if (idx > 0) {
-          structure.edges.push({ from: `n${nodeId-1}`, to: `n${nodeId}` });
+          structure.edges.push({ from: `n${nodeId - 1}`, to: `n${nodeId}` });
         }
         // Extract topics from text
         const words = msg.text.toLowerCase().match(/\b\w{4,}\b/g) || [];
         words.slice(0, 3).forEach(w => structure.topics.add(w));
         nodeId++;
       });
-      
+
       return structure;
     }
-    
+
     // Helper: Generate Mermaid diagram code
     function generateDiagramMermaid(messages, type = 'flowchart') {
       const structure = extractConversationStructure(messages);
       if (!structure) return null;
-      
+
       if (type === 'flowchart') {
         let mermaid = 'graph TD\n';
         structure.nodes.forEach(node => {
@@ -4118,18 +4150,18 @@ Respond with JSON only:
         });
         return mermaid;
       }
-      
+
       return null;
     }
-    
+
     // Helper: Render diagram preview in modal
     function renderDiagramPreview(mermaidCode) {
       const modal = document.createElement('div');
       modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);z-index:999999;display:flex;align-items:center;justify-content:center;padding:20px;';
-      
+
       const container = document.createElement('div');
       container.style.cssText = 'background:var(--cb-bg);padding:24px;border-radius:12px;max-width:800px;width:100%;max-height:90vh;overflow:auto;box-shadow:0 8px 32px rgba(0,0,0,0.4);border:1px solid var(--cb-border);';
-      
+
       container.innerHTML = `
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
           <h3 style="margin:0;color:var(--cb-white);font-size:16px;">📊 Conversation Diagram</h3>
@@ -4142,10 +4174,10 @@ Respond with JSON only:
         </div>
         <p style="margin:8px 0 0 0;color:var(--cb-subtext);font-size:11px;text-align:center;">💡 Paste into Mermaid Live Editor or GitHub markdown</p>
       `;
-      
+
       modal.appendChild(container);
       document.body.appendChild(modal);
-      
+
       container.querySelector('#cb-diagram-close').addEventListener('click', () => modal.remove());
       container.querySelector('#cb-diagram-copy').addEventListener('click', async () => {
         await navigator.clipboard.writeText(mermaidCode);
@@ -4157,20 +4189,20 @@ Respond with JSON only:
       });
       modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
     }
-    
+
     // ============================================
     // CONVERSATION CLEANUP HELPERS
     // ============================================
-    
+
     // Helper: Clean conversation messages
     function cleanConversation(messages) {
       if (!messages || messages.length === 0) return { cleaned: [], stats: {} };
-      
+
       const cleaned = [];
       const seen = new Set();
       let duplicates = 0;
       let emptyRemoved = 0;
-      
+
       messages.forEach((msg, idx) => {
         // Skip empty or meaningless messages
         const text = msg.text.trim();
@@ -4178,7 +4210,7 @@ Respond with JSON only:
           emptyRemoved++;
           return;
         }
-        
+
         // Check for duplicates
         const hash = `${msg.role}:${text.slice(0, 100)}`;
         if (seen.has(hash)) {
@@ -4186,22 +4218,22 @@ Respond with JSON only:
           return;
         }
         seen.add(hash);
-        
+
         // Normalize text
         let cleanedText = text
           .replace(/\n{3,}/g, '\n\n') // Collapse multiple newlines
           .replace(/  +/g, ' ') // Collapse multiple spaces
           .trim();
-        
+
         // Fix broken markdown lists
         cleanedText = cleanedText.replace(/^([\*\-])([^ ])/gm, '$1 $2');
-        
+
         // Fix code blocks
         cleanedText = cleanedText.replace(/```(\w+)\n/g, '```$1\n');
-        
+
         cleaned.push({ ...msg, text: cleanedText });
       });
-      
+
       const stats = {
         original: messages.length,
         cleaned: cleaned.length,
@@ -4209,21 +4241,21 @@ Respond with JSON only:
         emptyRemoved,
         saved: messages.length - cleaned.length
       };
-      
+
       return { cleaned, stats };
     }
-    
+
     // Helper: Show before/after cleanup preview
     function renderCleanupPreview(original, cleaned, stats) {
       const modal = document.createElement('div');
       modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);z-index:999999;display:flex;align-items:center;justify-content:center;padding:20px;';
-      
+
       const container = document.createElement('div');
       container.style.cssText = 'background:var(--cb-bg);padding:24px;border-radius:12px;max-width:900px;width:100%;max-height:90vh;overflow:auto;box-shadow:0 8px 32px rgba(0,0,0,0.4);border:1px solid var(--cb-border);';
-      
+
       const originalText = original.map(m => `${m.role}: ${m.text}`).join('\n\n');
       const cleanedText = cleaned.map(m => `${m.role}: ${m.text}`).join('\n\n');
-      
+
       container.innerHTML = `
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
           <h3 style="margin:0;color:var(--cb-white);font-size:16px;">🧹 Cleanup Results</h3>
@@ -4252,10 +4284,10 @@ Respond with JSON only:
           <button id="cb-cleanup-copy-json" class="cb-btn" style="flex:1;">📦 Copy as JSON</button>
         </div>
       `;
-      
+
       modal.appendChild(container);
       document.body.appendChild(modal);
-      
+
       container.querySelector('#cb-cleanup-close').addEventListener('click', () => modal.remove());
       container.querySelector('#cb-cleanup-copy-text').addEventListener('click', async () => {
         await navigator.clipboard.writeText(cleanedText);
@@ -4300,14 +4332,14 @@ Respond with JSON only:
           descEl.textContent = description;
           descEl.style.cssText = 'font-size:10px;color:var(--cb-subtext);opacity:0.8;line-height:1.4;';
           card.appendChild(iconEl); card.appendChild(titleEl); card.appendChild(subtitleEl); card.appendChild(descEl);
-          card.addEventListener('mouseenter', () => { card.style.transform='translateY(-3px)'; card.style.borderColor='rgba(0,180,255,0.5)'; card.style.background='linear-gradient(135deg,rgba(0,180,255,0.15) 0%,rgba(99,102,241,0.15) 100%)'; card.style.boxShadow='0 8px 24px rgba(0,180,255,0.25)'; });
-          card.addEventListener('mouseleave', () => { card.style.transform='translateY(0)'; card.style.borderColor='rgba(0,180,255,0.25)'; card.style.background='linear-gradient(135deg,rgba(0,180,255,0.08) 0%,rgba(99,102,241,0.08) 100%)'; card.style.boxShadow='none'; });
+          card.addEventListener('mouseenter', () => { card.style.transform = 'translateY(-3px)'; card.style.borderColor = 'rgba(0,180,255,0.5)'; card.style.background = 'linear-gradient(135deg,rgba(0,180,255,0.15) 0%,rgba(99,102,241,0.15) 100%)'; card.style.boxShadow = '0 8px 24px rgba(0,180,255,0.25)'; });
+          card.addEventListener('mouseleave', () => { card.style.transform = 'translateY(0)'; card.style.borderColor = 'rgba(0,180,255,0.25)'; card.style.background = 'linear-gradient(135deg,rgba(0,180,255,0.08) 0%,rgba(99,102,241,0.08) 100%)'; card.style.boxShadow = 'none'; });
           let isProcessing = false;
-          card.addEventListener('click', async () => { if(isProcessing) return; isProcessing=true; card.style.opacity='0.6'; card.style.pointerEvents='none'; try { await onClick(); } catch(err) { debugLog('Insight card error:',err); } finally { setTimeout(() => { isProcessing=false; card.style.opacity='1'; card.style.pointerEvents=''; }, 500); } });
+          card.addEventListener('click', async () => { if (isProcessing) return; isProcessing = true; card.style.opacity = '0.6'; card.style.pointerEvents = 'none'; try { await onClick(); } catch (err) { debugLog('Insight card error:', err); } finally { setTimeout(() => { isProcessing = false; card.style.opacity = '1'; card.style.pointerEvents = ''; }, 500); } });
           return card;
         }
 
-        const continueCard = createInsightCard('Continue With','Cross-model handoff','🔄','Continue this conversation on another AI platform', async () => {
+        const continueCard = createInsightCard('Continue With', 'Cross-model handoff', '🔄', 'Continue this conversation on another AI platform', async () => {
           const msgs = await scanChat();
           if (!msgs || msgs.length === 0) { toast('No conversation to continue'); return; }
           const modal = document.createElement('div');
@@ -4325,7 +4357,7 @@ Respond with JSON only:
               const url = getTargetModelUrl(target);
               if (url) {
                 try {
-                  chrome.runtime.sendMessage({ type: 'open_and_restore', payload: { url, text: summary } }, () => {});
+                  chrome.runtime.sendMessage({ type: 'open_and_restore', payload: { url, text: summary } }, () => { });
                   toast(`Opening ${target}...`);
                 } catch (e) {
                   window.open(url, '_blank');
@@ -4337,28 +4369,28 @@ Respond with JSON only:
             } catch (e) { toast('Continue failed'); } finally { goBtn.textContent = 'Continue'; }
           });
         });
-        const extractCard = createInsightCard('Extract Content','Export conversations','📋','Export as Markdown, JSON, or plain text', async () => {
+        const extractCard = createInsightCard('Extract Content', 'Export conversations', '📋', 'Export as Markdown, JSON, or plain text', async () => {
           const msgs = await scanChat();
           if (!msgs || msgs.length === 0) { toast('No conversation to export'); return; }
-          
+
           const modal = document.createElement('div');
           modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);z-index:999999;display:flex;align-items:center;justify-content:center;padding:20px;';
-          
+
           const container = document.createElement('div');
           container.style.cssText = 'background:var(--cb-bg);padding:24px;border-radius:12px;max-width:600px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,0.4);border:1px solid var(--cb-border);';
-          
+
           const md = msgs.map(m => `**${m.role}**: ${m.text}`).join('\n\n');
           const txt = msgs.map(m => `${m.role}: ${m.text}`).join('\n\n');
           const json = JSON.stringify(msgs, null, 2);
           const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Chat Export</title><style>body{font-family:system-ui;max-width:800px;margin:40px auto;padding:20px;}.msg{margin:20px 0;padding:15px;border-radius:8px;}.user{background:#e3f2fd;}.assistant{background:#f5f5f5;}.role{font-weight:bold;margin-bottom:8px;}</style></head><body>${msgs.map(m => `<div class="msg ${m.role}"><div class="role">${m.role}</div><div>${m.text.replace(/\n/g, '<br>')}</div></div>`).join('')}</body></html>`;
-          
+
           container.innerHTML = `
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
               <h3 style="margin:0;color:var(--cb-white);font-size:16px;">📋 Export Conversation</h3>
               <button id="cb-export-close" class="cb-btn" style="padding:4px 12px;">✕</button>
             </div>
             <div style="margin-bottom:16px;">
-              <div style="color:var(--cb-subtext);font-size:13px;margin-bottom:12px;">${msgs.length} messages • ${msgs.filter(m=>m.attachments?.length>0).length} with attachments</div>
+              <div style="color:var(--cb-subtext);font-size:13px;margin-bottom:12px;">${msgs.length} messages • ${msgs.filter(m => m.attachments?.length > 0).length} with attachments</div>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
               <button id="cb-export-md" class="cb-btn cb-btn-primary" style="padding:12px;">📝 Markdown</button>
@@ -4367,10 +4399,10 @@ Respond with JSON only:
               <button id="cb-export-html" class="cb-btn" style="padding:12px;">🌐 HTML</button>
             </div>
           `;
-          
+
           modal.appendChild(container);
           document.body.appendChild(modal);
-          
+
           container.querySelector('#cb-export-close').addEventListener('click', () => modal.remove());
           container.querySelector('#cb-export-md').addEventListener('click', async () => {
             await navigator.clipboard.writeText(md);
@@ -4400,16 +4432,16 @@ Respond with JSON only:
           });
           modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
         });
-        const diagramCard = createInsightCard('Diagram Maker','Turn conversations into flowcharts','📊','Generate flowcharts, mind maps, and sequence diagrams', async () => {
+        const diagramCard = createInsightCard('Diagram Maker', 'Turn conversations into flowcharts', '📊', 'Generate flowcharts, mind maps, and sequence diagrams', async () => {
           const msgs = await scanChat();
           if (!msgs || msgs.length === 0) { toast('No conversation to diagram'); return; }
           if (msgs.length > 30) { toast('⚠️ Large conversation - using first 30 messages'); msgs.splice(30); }
-          
+
           const typeModal = document.createElement('div');
           typeModal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:999999;display:flex;align-items:center;justify-content:center;';
           typeModal.innerHTML = `<div style="background:var(--cb-bg);padding:24px;border-radius:12px;max-width:400px;box-shadow:0 8px 32px rgba(0,0,0,0.4);border:1px solid var(--cb-border);"><h3 style="margin:0 0 16px 0;color:var(--cb-white);font-size:16px;">📊 Select Diagram Type</h3><select id="cb-diagram-type" class="cb-select" style="width:100%;margin-bottom:16px;"><option value="flowchart">Flowchart (conversation flow)</option><option value="sequence">Sequence Diagram (turn-by-turn)</option><option value="mindmap">Mind Map (key topics)</option></select><div style="display:flex;gap:8px;"><button id="cb-diagram-generate" class="cb-btn cb-btn-primary" style="flex:1;">Generate</button><button id="cb-diagram-cancel" class="cb-btn" style="flex:1;">Cancel</button></div></div>`;
           document.body.appendChild(typeModal);
-          
+
           typeModal.querySelector('#cb-diagram-cancel').addEventListener('click', () => typeModal.remove());
           typeModal.querySelector('#cb-diagram-generate').addEventListener('click', () => {
             const type = typeModal.querySelector('#cb-diagram-type').value;
@@ -4423,53 +4455,53 @@ Respond with JSON only:
             typeModal.remove();
           });
         });
-        const mediaCard = createInsightCard('Media Vault','Extract images & videos','🖼️','View all media attachments from conversation', async () => {
+        const mediaCard = createInsightCard('Media Vault', 'Extract images & videos', '🖼️', 'View all media attachments from conversation', async () => {
           const msgs = await scanChat();
           const allMedia = [];
-          for(const msg of msgs) {
-            if(msg.attachments && msg.attachments.length>0) {
-              allMedia.push(...msg.attachments.filter(a => a.type==='image'||a.type==='video'));
+          for (const msg of msgs) {
+            if (msg.attachments && msg.attachments.length > 0) {
+              allMedia.push(...msg.attachments.filter(a => a.type === 'image' || a.type === 'video'));
             }
           }
-          
-          if(allMedia.length===0) { toast('No media found in conversation'); return; }
-          
+
+          if (allMedia.length === 0) { toast('No media found in conversation'); return; }
+
           // Save to storage
           try {
             const existing = await StorageManager.get('chatbridge_media_vault') || [];
-            const newMedia = allMedia.map(m => ({...m, timestamp: Date.now(), platform: detectCurrentPlatform()}));
+            const newMedia = allMedia.map(m => ({ ...m, timestamp: Date.now(), platform: detectCurrentPlatform() }));
             const combined = [...newMedia, ...existing].slice(0, 100); // Keep last 100
             await StorageManager.set('chatbridge_media_vault', combined);
-          } catch(e) { console.warn('Failed to save media:', e); }
-          
+          } catch (e) { console.warn('Failed to save media:', e); }
+
           const modal = document.createElement('div');
           modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.95);z-index:999999;display:flex;align-items:center;justify-content:center;padding:20px;';
-          
+
           const container = document.createElement('div');
           container.style.cssText = 'background:var(--cb-bg);padding:24px;border-radius:12px;max-width:900px;width:100%;max-height:90vh;overflow:auto;box-shadow:0 8px 32px rgba(0,0,0,0.4);border:1px solid var(--cb-border);';
-          
-          const imageGrid = allMedia.filter(m => m.type === 'image').map(img => 
+
+          const imageGrid = allMedia.filter(m => m.type === 'image').map(img =>
             `<div style="position:relative;border-radius:8px;overflow:hidden;aspect-ratio:1;background:var(--cb-surface);">
               <img src="${img.url}" alt="${img.alt || ''}" style="width:100%;height:100%;object-fit:cover;cursor:pointer;" onclick="window.open('${img.url}', '_blank')">
               <div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,0.8));padding:8px;font-size:10px;color:white;">${img.name || 'image'}</div>
             </div>`
           ).join('');
-          
-          const videoGrid = allMedia.filter(m => m.type === 'video').map(vid => 
+
+          const videoGrid = allMedia.filter(m => m.type === 'video').map(vid =>
             `<div style="position:relative;border-radius:8px;overflow:hidden;background:var(--cb-surface);">
               <video src="${vid.url}" controls style="width:100%;border-radius:8px;"></video>
               <div style="padding:8px;font-size:11px;color:var(--cb-subtext);">${vid.name || 'video'}</div>
             </div>`
           ).join('');
-          
+
           container.innerHTML = `
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
               <h3 style="margin:0;color:var(--cb-white);font-size:16px;">🖼️ Media Vault</h3>
               <button id="cb-media-close" class="cb-btn" style="padding:4px 12px;">✕</button>
             </div>
             <div style="background:var(--cb-surface);padding:12px;border-radius:8px;margin-bottom:16px;display:flex;justify-content:space-around;text-align:center;">
-              <div><div style="color:var(--cb-white);font-size:20px;font-weight:bold;">${allMedia.filter(m=>m.type==='image').length}</div><div style="color:var(--cb-subtext);font-size:11px;">Images</div></div>
-              <div><div style="color:var(--cb-white);font-size:20px;font-weight:bold;">${allMedia.filter(m=>m.type==='video').length}</div><div style="color:var(--cb-subtext);font-size:11px;">Videos</div></div>
+              <div><div style="color:var(--cb-white);font-size:20px;font-weight:bold;">${allMedia.filter(m => m.type === 'image').length}</div><div style="color:var(--cb-subtext);font-size:11px;">Images</div></div>
+              <div><div style="color:var(--cb-white);font-size:20px;font-weight:bold;">${allMedia.filter(m => m.type === 'video').length}</div><div style="color:var(--cb-subtext);font-size:11px;">Videos</div></div>
               <div><div style="color:var(--cb-white);font-size:20px;font-weight:bold;">${allMedia.length}</div><div style="color:var(--cb-subtext);font-size:11px;">Total</div></div>
             </div>
             ${imageGrid ? `<h4 style="color:var(--cb-white);font-size:13px;margin:16px 0 8px 0;">Images</h4><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-bottom:16px;">${imageGrid}</div>` : ''}
@@ -4479,10 +4511,10 @@ Respond with JSON only:
               <button id="cb-media-clear" class="cb-btn" style="flex:1;">🗑️ Clear Vault</button>
             </div>
           `;
-          
+
           modal.appendChild(container);
           document.body.appendChild(modal);
-          
+
           container.querySelector('#cb-media-close').addEventListener('click', () => modal.remove());
           container.querySelector('#cb-media-export').addEventListener('click', async () => {
             const urls = allMedia.map(m => m.url).join('\n');
@@ -4494,14 +4526,14 @@ Respond with JSON only:
               await StorageManager.set('chatbridge_media_vault', []);
               toast('Media vault cleared!');
               modal.remove();
-            } catch(e) { toast('Failed to clear vault'); }
+            } catch (e) { toast('Failed to clear vault'); }
           });
           modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
         });
-        const mergeCard = createInsightCard('Merge Chats','Combine conversations','🔗','Merge multiple chat threads into unified timeline', async () => {
+        const mergeCard = createInsightCard('Merge Chats', 'Combine conversations', '🔗', 'Merge multiple chat threads into unified timeline', async () => {
           const currentMsgs = await scanChat();
           if (!currentMsgs || currentMsgs.length === 0) { toast('No current conversation to merge'); return; }
-          
+
           // Get saved conversations from storage
           const saved = await new Promise(resolve => {
             if (typeof StorageManager !== 'undefined') {
@@ -4510,27 +4542,27 @@ Respond with JSON only:
               resolve([]);
             }
           });
-          
+
           if (!saved || saved.length === 0) {
             toast('No saved conversations to merge. Scan other chats first.');
             return;
           }
-          
+
           const modal = document.createElement('div');
           modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);z-index:999999;display:flex;align-items:center;justify-content:center;padding:20px;';
-          
+
           const container = document.createElement('div');
           container.style.cssText = 'background:var(--cb-bg);padding:24px;border-radius:12px;max-width:700px;width:100%;max-height:90vh;overflow:auto;box-shadow:0 8px 32px rgba(0,0,0,0.4);border:1px solid var(--cb-border);';
-          
+
           let selectedIds = new Set();
-          
+
           const listHTML = saved.slice(0, 10).map((conv, idx) => {
             const preview = conv.messages?.slice(0, 2).map(m => m.text.slice(0, 50)).join(' • ') || 'No preview';
             const count = conv.messages?.length || 0;
             const date = new Date(conv.timestamp || Date.now()).toLocaleDateString();
             return `<div class="merge-item" data-idx="${idx}" style="background:var(--cb-surface);padding:12px;border-radius:8px;margin-bottom:8px;cursor:pointer;border:2px solid transparent;transition:all 0.2s;"><div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="color:var(--cb-white);font-weight:bold;">${conv.platform || 'Unknown'}</span><span style="color:var(--cb-subtext);font-size:11px;">${date}</span></div><div style="color:var(--cb-subtext);font-size:12px;margin-bottom:4px;">${count} messages</div><div style="color:var(--cb-subtext);font-size:11px;opacity:0.7;">${preview}...</div></div>`;
           }).join('');
-          
+
           container.innerHTML = `
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
               <h3 style="margin:0;color:var(--cb-white);font-size:16px;">🔗 Merge Conversations</h3>
@@ -4546,14 +4578,14 @@ Respond with JSON only:
             </div>
             <div id="merge-status" style="margin-top:8px;color:var(--cb-subtext);font-size:11px;text-align:center;"></div>
           `;
-          
+
           modal.appendChild(container);
           document.body.appendChild(modal);
-          
+
           const items = container.querySelectorAll('.merge-item');
           const mergeBtn = container.querySelector('#cb-merge-go');
           const statusEl = container.querySelector('#merge-status');
-          
+
           items.forEach(item => {
             item.addEventListener('click', () => {
               const idx = item.getAttribute('data-idx');
@@ -4570,41 +4602,41 @@ Respond with JSON only:
               statusEl.textContent = selectedIds.size > 0 ? `${selectedIds.size} selected` : '';
             });
           });
-          
+
           container.querySelector('#cb-merge-cancel').addEventListener('click', () => modal.remove());
           container.querySelector('#cb-merge-close').addEventListener('click', () => modal.remove());
-          
+
           container.querySelector('#cb-merge-go').addEventListener('click', async () => {
             const selectedConvs = Array.from(selectedIds).map(idx => saved[parseInt(idx)]);
             const allMessages = [...currentMsgs];
-            
+
             selectedConvs.forEach(conv => {
               if (conv.messages && Array.isArray(conv.messages)) {
-                allMessages.push(...conv.messages.map(m => ({...m, source: conv.platform})));
+                allMessages.push(...conv.messages.map(m => ({ ...m, source: conv.platform })));
               }
             });
-            
+
             // Sort by timestamp if available, otherwise keep order
             allMessages.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
-            
+
             const merged = allMessages.map(m => `**${m.role}** ${m.source ? `(${m.source})` : ''}: ${m.text}`).join('\n\n');
             await navigator.clipboard.writeText(merged);
             toast(`Merged ${allMessages.length} messages from ${selectedIds.size + 1} conversations!`);
             modal.remove();
           });
-          
+
           modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
         });
-        const cleanupCard = createInsightCard('Clean & Organize','Fix formatting and clean messy conversations','🧹','Remove duplicates, fix spacing, normalize markdown', async () => {
+        const cleanupCard = createInsightCard('Clean & Organize', 'Fix formatting and clean messy conversations', '🧹', 'Remove duplicates, fix spacing, normalize markdown', async () => {
           const msgs = await scanChat();
           if (!msgs || msgs.length === 0) { toast('No conversation to clean'); return; }
-          
+
           const { cleaned, stats } = cleanConversation(msgs);
           if (stats.saved === 0) {
             toast('✨ Conversation is already clean!');
           } else {
             renderCleanupPreview(msgs, cleaned, stats);
-            toast(`Removed ${stats.saved} redundant message${stats.saved>1?'s':''}`);
+            toast(`Removed ${stats.saved} redundant message${stats.saved > 1 ? 's' : ''}`);
           }
         });
 
@@ -4636,7 +4668,7 @@ Respond with JSON only:
             const insights = JSON.parse(lastInsights);
             const insightsSection = document.createElement('div');
             insightsSection.style.cssText = 'margin-bottom:16px;padding:0 12px;';
-            
+
             const insightsTitle = document.createElement('div');
             insightsTitle.style.cssText = 'font-weight:600;font-size:12px;margin-bottom:8px;color:var(--cb-subtext);display:flex;align-items:center;justify-content:space-between;';
             insightsTitle.innerHTML = `
@@ -4644,17 +4676,17 @@ Respond with JSON only:
               <button class="cb-btn" style="padding:2px 8px;font-size:10px;">Refresh</button>
             `;
             insightsSection.appendChild(insightsTitle);
-            
+
             const insightsContainer = document.createElement('div');
             insightsContainer.id = 'cb-ai-insights-container';
             insightsContainer.style.cssText = 'background:rgba(16,24,43,0.4);border:1px solid rgba(0,180,255,0.2);border-radius:8px;padding:12px;max-height:300px;overflow-y:auto;';
-            
+
             const summaryEngine = new window.AISummaryEngine();
             summaryEngine.renderInsights(insights, insightsContainer);
-            
+
             insightsSection.appendChild(insightsContainer);
             insightsContent.appendChild(insightsSection);
-            
+
             // Add refresh handler
             const refreshBtn = insightsTitle.querySelector('button');
             if (refreshBtn) {
@@ -4698,7 +4730,7 @@ Respond with JSON only:
                 const sum = await callGeminiAsync({ action: 'summarize', text: prompt, length: 'short', summaryType: 'paragraph' });
                 const tgt = autoSection.querySelector('#cb-auto-sum');
                 if (sum && sum.ok && tgt) {
-                  const txt = String(sum.result||'').trim();
+                  const txt = String(sum.result || '').trim();
                   const maxLen = 200;
                   if (txt.length > maxLen) {
                     const preview = txt.slice(0, maxLen) + '…';
@@ -4739,17 +4771,17 @@ Respond with JSON only:
           try {
             const convs = await loadConversationsAsync();
             if (!convs || convs.length < 2) { toast('Need at least 2 conversations'); return; }
-            
+
             // Find conversations with similar content
             const comparableGroups = findComparableConversations(convs);
             if (!comparableGroups.length) {
               toast('No similar conversations found to compare');
               return;
             }
-            
+
             // Show comparison UI
             showComparisonView(comparableGroups[0]);
-          } catch (e) { 
+          } catch (e) {
             toast('Compare failed');
             debugLog('Compare error', e);
           }
@@ -4760,10 +4792,10 @@ Respond with JSON only:
           try {
             const convs = await loadConversationsAsync();
             if (!convs || convs.length < 2) { toast('Need at least 2 conversations'); return; }
-            
+
             // Show merge UI
             showMergeView(convs);
-          } catch (e) { 
+          } catch (e) {
             toast('Merge failed');
             debugLog('Merge error', e);
           }
@@ -4784,10 +4816,10 @@ Respond with JSON only:
           addLoadingToButton(insightBtn, 'Analyzing...');
           try {
             const msgs = await scanChat();
-            if (!msgs || msgs.length === 0) { 
-              toast('No messages found in current chat'); 
-              removeLoadingFromButton(insightBtn, 'Insight Finder'); 
-              return; 
+            if (!msgs || msgs.length === 0) {
+              toast('No messages found in current chat');
+              removeLoadingFromButton(insightBtn, 'Insight Finder');
+              return;
             }
             const insights = extractInsights(msgs);
             const total = Object.values(insights).reduce((sum, arr) => sum + arr.length, 0);
@@ -4799,7 +4831,7 @@ Respond with JSON only:
             showInsightFinderModal(insights, msgs);
             toast(`Found ${total} insights`);
           } catch (e) {
-            toast('Analysis failed'); 
+            toast('Analysis failed');
             debugLog('Insight Finder error', e);
           } finally {
             removeLoadingFromButton(insightBtn, 'Insight Finder');
@@ -4816,7 +4848,7 @@ Respond with JSON only:
               removeLoadingFromButton(continueBtn, 'Continue on...');
               return;
             }
-            
+
             // Show model selector modal
             const modal = document.createElement('div');
             modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:999999;display:flex;align-items:center;justify-content:center;';
@@ -4836,23 +4868,23 @@ Respond with JSON only:
                 </div>
               </div>
             `;
-            
+
             document.body.appendChild(modal);
-            
+
             modal.querySelector('#cb-continue-cancel').addEventListener('click', () => {
               modal.remove();
             });
-            
+
             modal.querySelector('#cb-continue-go').addEventListener('click', async () => {
               const target = modal.querySelector('#cb-continue-target').value;
               const goBtn = modal.querySelector('#cb-continue-go');
               addLoadingToButton(goBtn, 'Processing...');
-              
+
               try {
                 // Generate context summary
                 const convText = msgs.map(m => `${m.role}: ${m.text}`).join('\\n\\n');
                 const prompt = `Summarize this conversation for continuing on ${target}. Include context, key points, and current state:\\n\\n${convText.slice(0, 8000)}`;
-                
+
                 const res = await callGeminiAsync({ action: 'summarize', text: prompt, length: 'medium', summaryType: 'transfer' });
                 let summary = '';
                 if (res && res.ok && res.result) {
@@ -4860,12 +4892,12 @@ Respond with JSON only:
                 } else {
                   summary = `[Continued from previous conversation]\\n\\n${convText.slice(0, 2000)}\\n\\n...\\n\\nPlease continue from where we left off.`;
                 }
-                
+
                 // Open target model with summary
                 const url = getTargetModelUrl(target);
                 if (url) {
                   try {
-                    chrome.runtime.sendMessage({ type: 'open_and_restore', payload: { url, text: summary } }, () => {});
+                    chrome.runtime.sendMessage({ type: 'open_and_restore', payload: { url, text: summary } }, () => { });
                     toast(`Opening ${target}...`);
                   } catch (e) {
                     window.open(url, '_blank');
@@ -4883,7 +4915,7 @@ Respond with JSON only:
                 removeLoadingFromButton(goBtn, 'Continue');
               }
             });
-            
+
           } catch (e) {
             toast('Continue failed');
             debugLog('Continue conversation error', e);
@@ -4897,7 +4929,7 @@ Respond with JSON only:
         actionsGrid.appendChild(extractBtn);
         actionsGrid.appendChild(insightBtn);
         actionsGrid.appendChild(continueBtn);
-        
+
         // 6. Fact-Check Mode (extract and verify claims)
         const factCheckBtn = createFeatureCard('Fact-Check', 'Extract and analyze factual claims from conversation', '✓', async () => {
           addLoadingToButton(factCheckBtn, 'Analyzing...');
@@ -4908,7 +4940,7 @@ Respond with JSON only:
               removeLoadingFromButton(factCheckBtn, 'Fact-Check');
               return;
             }
-            
+
             // Extract factual claims
             const convText = msgs.map(m => `${m.role}: ${m.text}`).join('\\n\\n');
             const prompt = `Analyze this conversation and extract factual claims that can be verified. For each claim, provide a confidence level (high/medium/low) based on how verifiable and specific it is.
@@ -4924,13 +4956,13 @@ Respond with JSON only:
 }`;
 
             const res = await callGeminiAsync({ action: 'custom', prompt, temperature: 0.3 });
-            
+
             if (res && res.ok && res.result) {
               try {
                 let jsonStr = res.result;
                 const jsonMatch = jsonStr.match(/```json\\s*([\\s\\S]+?)```/) || jsonStr.match(/```\\s*([\\s\\S]+?)```/);
                 if (jsonMatch) jsonStr = jsonMatch[1];
-                
+
                 const parsed = JSON.parse(jsonStr);
                 if (parsed.claims && Array.isArray(parsed.claims) && parsed.claims.length > 0) {
                   showFactCheckModal(parsed.claims);
@@ -4952,7 +4984,7 @@ Respond with JSON only:
             removeLoadingFromButton(factCheckBtn, 'Fact-Check');
           }
         });
-        
+
         actionsGrid.appendChild(factCheckBtn);
         insightsContent.appendChild(actionsGrid);
 
@@ -4974,22 +5006,22 @@ Respond with JSON only:
         // Output Preview Area
         const outputSection = document.createElement('div');
         outputSection.style.cssText = 'padding:0 12px;margin-bottom:16px;';
-        
+
         const outputLabel = document.createElement('div');
         outputLabel.style.cssText = 'font-weight:600;font-size:12px;margin-bottom:8px;color:var(--cb-subtext);';
         outputLabel.textContent = '📄 Output Preview';
         outputSection.appendChild(outputLabel);
-        
+
         const outputArea = document.createElement('div');
         outputArea.id = 'cb-insights-output';
         outputArea.className = 'cb-view-text';
         outputArea.style.cssText = 'min-height:120px;max-height:300px;overflow-y:auto;background:rgba(16,24,43,0.4);border:1px solid rgba(0,180,255,0.2);border-radius:8px;padding:12px;font-size:12px;line-height:1.5;white-space:pre-wrap;';
         outputArea.textContent = '(Results will appear here)';
         outputSection.appendChild(outputArea);
-        
+
         const outputControls = document.createElement('div');
         outputControls.style.cssText = 'display:flex;gap:8px;margin-top:8px;';
-        
+
         const btnSendToChat = document.createElement('button');
         btnSendToChat.className = 'cb-btn cb-btn-primary';
         btnSendToChat.textContent = '➤ Send to Chat';
@@ -5000,7 +5032,7 @@ Respond with JSON only:
             toast('No output to send');
             return;
           }
-          
+
           try {
             // Find the chat input using the adapter
             const adapter = Object.values(window.SiteAdapters || {}).find(a => a.detect && a.detect());
@@ -5030,7 +5062,7 @@ Respond with JSON only:
             toast('Failed to send to chat');
           }
         });
-        
+
         const btnCopyOutput = document.createElement('button');
         btnCopyOutput.className = 'cb-btn';
         btnCopyOutput.textContent = '📋 Copy';
@@ -5040,7 +5072,7 @@ Respond with JSON only:
             toast('No output to copy');
             return;
           }
-          
+
           try {
             await navigator.clipboard.writeText(outputText);
             toast('Copied to clipboard');
@@ -5048,7 +5080,7 @@ Respond with JSON only:
             toast('Copy failed');
           }
         });
-        
+
         const btnClearOutput = document.createElement('button');
         btnClearOutput.className = 'cb-btn';
         btnClearOutput.textContent = '✕ Clear';
@@ -5056,12 +5088,12 @@ Respond with JSON only:
           outputArea.textContent = '(Results will appear here)';
           toast('Output cleared');
         });
-        
+
         outputControls.appendChild(btnSendToChat);
         outputControls.appendChild(btnCopyOutput);
         outputControls.appendChild(btnClearOutput);
         outputSection.appendChild(outputControls);
-        
+
         insightsContent.appendChild(outputSection);
 
         // Smart Suggestions Section
@@ -5074,7 +5106,7 @@ Respond with JSON only:
         const suggestions = await generateSmartSuggestions();
         const suggestionsList = document.createElement('div');
         suggestionsList.style.cssText = 'display:flex;flex-direction:column;gap:8px;padding:0 12px;';
-        
+
         suggestions.forEach(sugg => {
           const suggCard = document.createElement('div');
           suggCard.style.cssText = 'padding:10px 12px;background:rgba(0,180,255,0.08);border-left:3px solid var(--cb-accent-primary);border-radius:8px;cursor:pointer;transition:all 0.2s;';
@@ -5084,9 +5116,9 @@ Respond with JSON only:
           suggCard.addEventListener('click', () => sugg.action());
           suggestionsList.appendChild(suggCard);
         });
-        
+
         insightsContent.appendChild(suggestionsList);
-        
+
         debugLog('Smart Workspace rendered successfully');
 
       } catch (e) {
@@ -5115,7 +5147,7 @@ Respond with JSON only:
         card.style.background = 'rgba(16,24,43,0.4)';
         card.style.transform = 'translateY(0)';
       });
-  card.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); try { onClick && onClick(e); } catch(_){} });
+      card.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); try { onClick && onClick(e); } catch (_) { } });
       return card;
     }
 
@@ -5123,35 +5155,35 @@ Respond with JSON only:
     function findComparableConversations(convs) {
       const groups = [];
       const processed = new Set();
-      
+
       for (let i = 0; i < convs.length; i++) {
         if (processed.has(i)) continue;
-        
+
         const conv1 = convs[i];
         const similar = [conv1];
         processed.add(i);
-        
+
         for (let j = i + 1; j < convs.length; j++) {
           if (processed.has(j)) continue;
-          
+
           const conv2 = convs[j];
-          
+
           // Check for topic overlap
           const topics1 = conv1.topics || [];
           const topics2 = conv2.topics || [];
           const overlap = topics1.filter(t => topics2.includes(t)).length;
-          
+
           if (overlap >= 2) {
             similar.push(conv2);
             processed.add(j);
           }
         }
-        
+
         if (similar.length >= 2) {
           groups.push(similar);
         }
       }
-      
+
       return groups;
     }
 
@@ -5159,32 +5191,32 @@ Respond with JSON only:
     function showComparisonView(conversations) {
       if (!insightsContent) return;
       insightsContent.innerHTML = '';
-      
+
       const header = document.createElement('div');
       header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding:0 12px;';
       header.innerHTML = `<div style="font-weight:700;font-size:14px;">Model Comparison</div><button class="cb-btn cb-view-close">← Back</button>`;
       header.querySelector('.cb-view-close').addEventListener('click', () => renderSmartWorkspace());
       insightsContent.appendChild(header);
-      
+
       conversations.forEach(conv => {
         const card = document.createElement('div');
         card.style.cssText = 'padding:12px;background:rgba(16,24,43,0.4);border-radius:8px;margin:0 12px 12px 12px;';
-        
+
         const model = conv.model || conv.platform || 'Unknown';
         const preview = conv.conversation[0]?.text.slice(0, 200) || '';
-        
+
         card.innerHTML = `
           <div style="font-weight:600;margin-bottom:8px;color:var(--cb-accent-primary);">${model}</div>
           <div style="font-size:12px;opacity:0.9;">${preview}...</div>
           <button class="cb-btn" style="margin-top:8px;padding:6px 10px;font-size:11px;">View Full</button>
         `;
-        
+
         card.querySelector('.cb-btn').addEventListener('click', () => {
           const output = conv.conversation.map(m => `${m.role}: ${m.text}`).join('\n\n');
           showOutputWithSendButton(output, `${model} - Full Conversation`);
           toast('Loaded conversation');
         });
-        
+
         insightsContent.appendChild(card);
       });
     }
@@ -5193,24 +5225,24 @@ Respond with JSON only:
     function showMergeView(convs) {
       if (!insightsContent) return;
       insightsContent.innerHTML = '';
-      
+
       const header = document.createElement('div');
       header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding:0 12px;';
       header.innerHTML = `<div style="font-weight:700;font-size:14px;">Merge Threads</div><button class="cb-btn cb-view-close">← Back</button>`;
       header.querySelector('.cb-view-close').addEventListener('click', () => renderSmartWorkspace());
       insightsContent.appendChild(header);
-      
+
       const intro = document.createElement('div');
       intro.style.cssText = 'font-size:12px;margin-bottom:12px;opacity:0.8;padding:0 12px;';
       intro.textContent = 'Select conversations to merge into a single coherent thread:';
       insightsContent.appendChild(intro);
-      
+
       const selected = new Set();
-      
+
       convs.slice(0, 10).forEach(conv => {
         const checkbox = document.createElement('label');
         checkbox.style.cssText = 'display:flex;align-items:center;gap:10px;padding:10px;background:rgba(16,24,43,0.3);border-radius:8px;margin:0 12px 8px 12px;cursor:pointer;';
-        
+
         const input = document.createElement('input');
         input.type = 'checkbox';
         input.value = conv.ts;
@@ -5218,7 +5250,7 @@ Respond with JSON only:
           if (input.checked) selected.add(conv.ts);
           else selected.delete(conv.ts);
         });
-        
+
         // Get one-liner preview from first message
         let preview = '';
         try {
@@ -5227,31 +5259,31 @@ Respond with JSON only:
             preview = (firstMsg.text || '').replace(/\n/g, ' ').trim();
             if (preview.length > 60) preview = preview.substring(0, 57) + '...';
           }
-        } catch (e) {}
-        
+        } catch (e) { }
+
         const chatName = preview || conv.name || 'Untitled Chat';
         const site = conv.platform || conv.host || (conv.url ? new URL(conv.url).hostname : 'Unknown');
         const count = conv.conversation?.length || 0;
-        
+
         checkbox.innerHTML = `<div style="flex:1;"><div style="font-weight:600;font-size:12px;margin-bottom:4px;">${chatName}</div><div style="font-size:11px;opacity:0.7;">📍 ${site} • 💬 ${count} messages</div></div>`;
         checkbox.prepend(input);
-        
+
         insightsContent.appendChild(checkbox);
       });
-      
+
       const mergeBtn = document.createElement('button');
       mergeBtn.className = 'cb-btn cb-btn-primary';
       mergeBtn.textContent = 'Merge Selected';
       mergeBtn.style.cssText = 'margin:12px;';
       mergeBtn.addEventListener('click', async () => {
         if (selected.size < 2) { toast('Select at least 2 conversations'); return; }
-        
+
         addLoadingToButton(mergeBtn, 'Merging...');
         try {
           const toMerge = convs.filter(c => selected.has(c.ts));
           const combined = toMerge.flatMap(c => c.conversation);
           const output = combined.map(m => `${m.role}: ${m.text}`).join('\n\n');
-          
+
           // Show output with Send to Chat button
           showOutputWithSendButton(output, 'Merged Conversation');
           toast('Merged conversations ready!');
@@ -5262,7 +5294,7 @@ Respond with JSON only:
           removeLoadingFromButton(mergeBtn, 'Merge Selected');
         }
       });
-      
+
       insightsContent.appendChild(mergeBtn);
     }
 
@@ -5270,13 +5302,13 @@ Respond with JSON only:
     function showExtractView() {
       if (!insightsContent) return;
       insightsContent.innerHTML = '';
-      
+
       const header = document.createElement('div');
       header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding:0 12px;';
       header.innerHTML = `<div style="font-weight:700;font-size:14px;">Extract Content</div><button class="cb-btn cb-view-close">← Back</button>`;
       header.querySelector('.cb-view-close').addEventListener('click', () => renderSmartWorkspace());
       insightsContent.appendChild(header);
-      
+
       const types = [
         { name: 'Code Blocks', icon: '💻', pattern: /```[\s\S]*?```/g },
         { name: 'Lists', icon: '📝', pattern: /^[\s]*[-*•]\s+.+$/gm },
@@ -5284,7 +5316,7 @@ Respond with JSON only:
         { name: 'URLs', icon: '🔗', pattern: /https?:\/\/[^\s]+/g },
         { name: 'Numbers/Data', icon: '🔣', pattern: /\b\d+(?:[.,]\d+)?\b/g }
       ];
-      
+
       types.forEach(type => {
         const btn = document.createElement('button');
         btn.className = 'cb-btn';
@@ -5306,13 +5338,13 @@ Respond with JSON only:
                 if (!k || seen.has(k)) return false; seen.add(k); return true;
               });
             }
-          } catch(_){}
-          
+          } catch (_) { }
+
           if (!matches.length) {
             toast(`No ${type.name.toLowerCase()} found`);
             return;
           }
-          
+
           const output = matches.join('\n\n');
           showOutputWithSendButton(output, `${type.icon} ${type.name} (${matches.length} found)`);
           toast(`Extracted ${matches.length} ${type.name.toLowerCase()}`);
@@ -5361,20 +5393,20 @@ Respond with JSON only:
     function showOutputWithSendButton(output, title) {
       if (!insightsContent) return;
       insightsContent.innerHTML = '';
-      
+
       const header = document.createElement('div');
       header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding:0 12px;';
       header.innerHTML = `<div style="font-weight:700;font-size:14px;">${title}</div><button class="cb-btn cb-view-close">← Back</button>`;
       header.querySelector('.cb-view-close').addEventListener('click', () => renderSmartWorkspace());
       insightsContent.appendChild(header);
-      
+
       // Output preview area
       const outputArea = document.createElement('div');
       outputArea.id = 'cb-insights-output';
       outputArea.style.cssText = 'background:rgba(6,20,32,0.6);border:1px solid rgba(0,180,255,0.3);border-radius:8px;padding:12px;margin:0 12px 12px 12px;max-height:300px;overflow-y:auto;font-size:12px;line-height:1.6;white-space:pre-wrap;color:rgba(255,255,255,0.9);';
       outputArea.textContent = output;
       insightsContent.appendChild(outputArea);
-      
+
       // Send to Chat button
       const sendBtn = document.createElement('button');
       sendBtn.className = 'cb-btn cb-btn-primary';
@@ -5390,7 +5422,7 @@ Respond with JSON only:
         }
       });
       insightsContent.appendChild(sendBtn);
-      
+
       // Scroll to show output
       setTimeout(() => {
         outputArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -5400,10 +5432,10 @@ Respond with JSON only:
     // Helper: Generate smart suggestions based on conversation history
     async function generateSmartSuggestions() {
       const suggestions = [];
-      
+
       try {
         const convs = await loadConversationsAsync();
-        
+
         // Suggestion 1: If many untagged conversations
         const untagged = convs.filter(c => !c.topics || !c.topics.length).length;
         if (untagged > 5) {
@@ -5420,7 +5452,7 @@ Respond with JSON only:
             }
           });
         }
-        
+
         // Suggestion 2: If conversations not indexed
         if (convs.length > 3) {
           suggestions.push({
@@ -5436,7 +5468,7 @@ Respond with JSON only:
             }
           });
         }
-        
+
         // Suggestion 3: If similar recent conversations
         const recent = convs.slice(0, 5);
         const hasSimilar = recent.length >= 2 && recent[0].topics?.some(t => recent[1].topics?.includes(t));
@@ -5455,11 +5487,11 @@ Respond with JSON only:
             }
           });
         }
-        
+
       } catch (e) {
         debugLog('generateSmartSuggestions error', e);
       }
-      
+
       // If no suggestions, add a default one
       if (suggestions.length === 0) {
         suggestions.push({
@@ -5468,7 +5500,7 @@ Respond with JSON only:
           action: () => toast('Click "Scan Chat" to save your first conversation')
         });
       }
-      
+
       return suggestions.slice(0, 3); // Max 3 suggestions
     }
 
@@ -5490,13 +5522,13 @@ Respond with JSON only:
         // MCP Connection Status Banner
         const mcpStatus = document.createElement('div');
         mcpStatus.style.cssText = 'margin:12px;padding:10px 14px;background:rgba(0,180,255,0.08);border:1px solid rgba(0,180,255,0.25);border-radius:10px;display:flex;align-items:center;gap:10px;font-size:13px;';
-        
+
         const statusIcon = document.createElement('span');
         statusIcon.style.cssText = 'font-size:18px;';
-        
+
         const statusText = document.createElement('div');
         statusText.style.cssText = 'flex:1;';
-        
+
         // Check MCPBridge availability
         if (typeof window.MCPBridge !== 'undefined') {
           try {
@@ -5517,7 +5549,7 @@ Respond with JSON only:
           statusIcon.textContent = '❌';
           statusText.innerHTML = `<b>MCP Not Available</b><br/><span style="font-size:11px;opacity:0.8;">mcpBridge.js not loaded</span>`;
         }
-        
+
         const testBtn = document.createElement('button');
         testBtn.className = 'cb-btn';
         testBtn.style.cssText = 'padding:6px 12px;font-size:11px;';
@@ -5536,7 +5568,7 @@ Respond with JSON only:
             toast('MCP test failed: ' + e.message);
           }
         });
-        
+
         mcpStatus.appendChild(statusIcon);
         mcpStatus.appendChild(statusText);
         mcpStatus.appendChild(testBtn);
@@ -5545,15 +5577,15 @@ Respond with JSON only:
         // Gemini Model Status Banner
         const geminiStatus = document.createElement('div');
         geminiStatus.style.cssText = 'margin:12px;padding:10px 14px;background:rgba(138,43,226,0.08);border:1px solid rgba(138,43,226,0.25);border-radius:10px;display:flex;align-items:center;gap:10px;font-size:13px;';
-        
+
         const geminiIcon = document.createElement('span');
         geminiIcon.style.cssText = 'font-size:18px;';
         geminiIcon.textContent = '✨';
-        
+
         const geminiText = document.createElement('div');
         geminiText.style.cssText = 'flex:1;';
         geminiText.innerHTML = `<b>Gemini AI</b><br/><span style="font-size:11px;opacity:0.8;">Auto-fallback: 2.5-pro → 2.0-flash → 2.5-flash → lite → exp</span>`;
-        
+
         geminiStatus.appendChild(geminiIcon);
         geminiStatus.appendChild(geminiText);
         agentContent.appendChild(geminiStatus);
@@ -5671,22 +5703,22 @@ Respond with JSON only:
         // Agent Output Area
         const outputSection = document.createElement('div');
         outputSection.style.cssText = 'padding:0 12px;margin-bottom:16px;';
-        
+
         const outputLabel = document.createElement('div');
         outputLabel.style.cssText = 'font-weight:600;font-size:12px;margin-bottom:8px;color:var(--cb-subtext);';
         outputLabel.textContent = '📊 Agent Output';
         outputSection.appendChild(outputLabel);
-        
+
         const outputArea = document.createElement('div');
         outputArea.id = 'cb-agent-output';
         outputArea.className = 'cb-view-text';
         outputArea.style.cssText = 'min-height:120px;max-height:400px;overflow-y:auto;background:rgba(16,24,43,0.4);border:1px solid rgba(0,180,255,0.2);border-radius:8px;padding:12px;font-size:12px;line-height:1.5;white-space:pre-wrap;';
         outputArea.textContent = '(Agent results will appear here)';
         outputSection.appendChild(outputArea);
-        
+
         const outputControls = document.createElement('div');
         outputControls.style.cssText = 'display:flex;gap:8px;margin-top:8px;';
-        
+
         const btnAgentToChat = document.createElement('button');
         btnAgentToChat.className = 'cb-btn cb-btn-primary';
         btnAgentToChat.textContent = '➤ Insert to Chat';
@@ -5697,7 +5729,7 @@ Respond with JSON only:
             toast('No output to insert');
             return;
           }
-          
+
           try {
             await restoreToChat(outputText, []);
             toast('Inserted to chat!');
@@ -5706,7 +5738,7 @@ Respond with JSON only:
             toast('Failed to insert');
           }
         });
-        
+
         const btnCopyAgentOutput = document.createElement('button');
         btnCopyAgentOutput.className = 'cb-btn';
         btnCopyAgentOutput.textContent = '📋 Copy';
@@ -5716,7 +5748,7 @@ Respond with JSON only:
             toast('No output to copy');
             return;
           }
-          
+
           try {
             await navigator.clipboard.writeText(outputText);
             toast('Copied to clipboard');
@@ -5724,12 +5756,12 @@ Respond with JSON only:
             toast('Copy failed');
           }
         });
-        
+
         outputControls.appendChild(btnAgentToChat);
         outputControls.appendChild(btnCopyAgentOutput);
         outputSection.appendChild(outputControls);
-        
-          agentContent.appendChild(outputSection);
+
+        agentContent.appendChild(outputSection);
 
         debugLog('Agent Hub rendered successfully');
 
@@ -5743,10 +5775,10 @@ Respond with JSON only:
 
     // Helper: Create agent card
     function createAgentCard(name, description, icon, details, onClick) {
-  const card = document.createElement('button');
-  card.className = 'cb-btn';
-  card.style.cssText = 'padding:14px 12px;text-align:left;height:auto;display:flex;flex-direction:column;gap:6px;background:rgba(16,24,43,0.4);border:1px solid rgba(0,180,255,0.2);transition:all 0.2s; position:relative; z-index:1;';
-  card.setAttribute('type','button');
+      const card = document.createElement('button');
+      card.className = 'cb-btn';
+      card.style.cssText = 'padding:14px 12px;text-align:left;height:auto;display:flex;flex-direction:column;gap:6px;background:rgba(16,24,43,0.4);border:1px solid rgba(0,180,255,0.2);transition:all 0.2s; position:relative; z-index:1;';
+      card.setAttribute('type', 'button');
       card.innerHTML = `
         <div style="font-size:24px;line-height:1;">${icon}</div>
         <div style="font-weight:700;font-size:13px;">${name}</div>
@@ -5775,7 +5807,7 @@ Respond with JSON only:
         isProcessing = true;
         card.style.opacity = '0.6';
         card.style.pointerEvents = 'none';
-        
+
         try {
           await onClick();
         } catch (err) {
@@ -5793,11 +5825,11 @@ Respond with JSON only:
 
     // Show Continuum Agent Interface (combines ALL relevant conversations using RAG)
     async function showContinuumAgent() {
-  const outputArea = (agentContent && agentContent.querySelector('#cb-agent-output')) || (shadow && shadow.getElementById && shadow.getElementById('cb-agent-output'));
+      const outputArea = (agentContent && agentContent.querySelector('#cb-agent-output')) || (shadow && shadow.getElementById && shadow.getElementById('cb-agent-output'));
       if (!outputArea) return;
-      
+
       outputArea.innerHTML = '<div style="text-align:center;padding:20px;"><div class="cb-spinner" style="display:inline-block;"></div><div style="margin-top:12px;">Analyzing context across platforms with RAG...</div></div>';
-      
+
       try {
         // Get all conversations (for fallback)
         const convs = await loadConversationsAsync();
@@ -5805,40 +5837,40 @@ Respond with JSON only:
           outputArea.textContent = '⚠️ No previous conversations found. Scan some chats first to enable Continuum.';
           return;
         }
-        
+
         // Get current platform
         const currentHost = location.hostname;
-        function hostFromConv(c){
+        function hostFromConv(c) {
           try {
             return (c.platform || (c.url && new URL(c.url).hostname) || '').toString() || '';
-          } catch(_) { return ''; }
+          } catch (_) { return ''; }
         }
-        
+
         // Get most recent conversation to build query context
-        const recentDifferent = (convs||[]).find(c => hostFromConv(c) && hostFromConv(c) !== currentHost);
-        const recentSame = (convs||[]).find(c => hostFromConv(c) && hostFromConv(c) === currentHost) || convs[0];
+        const recentDifferent = (convs || []).find(c => hostFromConv(c) && hostFromConv(c) !== currentHost);
+        const recentSame = (convs || []).find(c => hostFromConv(c) && hostFromConv(c) === currentHost) || convs[0];
         const seedConv = recentDifferent || recentSame;
         const seedTopics = seedConv.topics || [];
-        
+
         // Build query from recent messages and topics
         const recentMessages = seedConv.conversation || [];
         const queryText = [
           ...seedTopics,
           ...(recentMessages.slice(-3).map(m => m.text.slice(0, 200)))
         ].join(' ');
-        
+
         let relatedConvs = [];
         let usingRAG = false;
-        
+
         // Try RAG-powered semantic search first with enhanced relevance filtering
         if (typeof window.RAGEngine !== 'undefined') {
           try {
             debugLog('[Continuum] Using RAG to find related conversations');
             const ragResults = await window.RAGEngine.retrieve(queryText, 12); // Get more candidates for filtering
-            
+
             if (ragResults && ragResults.length > 0) {
               usingRAG = true;
-              
+
               // Enhanced filtering: only keep high-relevance results
               const RELEVANCE_THRESHOLD = 0.35; // Higher threshold = more selective
               const filteredResults = ragResults.filter(r => {
@@ -5847,12 +5879,12 @@ Respond with JSON only:
                 const isNoise = /^(hi|hello|thanks|thank you|ok|okay|yes|no|sure|got it)[\s\.\!]*$/i.test(text.trim());
                 const isGreeting = text.length < 50 && /greeting|introduction|welcome/i.test(text);
                 const hasContent = text.length > 100; // Require substantial content
-                
+
                 return r.score >= RELEVANCE_THRESHOLD && !isNoise && !isGreeting && hasContent;
               });
-              
+
               debugLog('[Continuum] RAG found', filteredResults.length, 'high-relevance conversations (filtered from', ragResults.length, ')');
-              
+
               // Map RAG results back to full conversation objects
               relatedConvs = filteredResults.slice(0, 8).map(r => {
                 const conv = convs.find(c => String(c.ts) === String(r.id));
@@ -5869,26 +5901,26 @@ Respond with JSON only:
             debugLog('[Continuum] RAG search failed, falling back to topic matching:', e);
           }
         }
-        
+
         // Fallback: topic-based matching if RAG not available or failed
         if (!usingRAG || relatedConvs.length === 0) {
           debugLog('[Continuum] Using topic-based fallback');
-          relatedConvs = (convs||[]).filter(c => {
+          relatedConvs = (convs || []).filter(c => {
             if (c === seedConv) return true;
             const cTopics = c.topics || [];
             return cTopics.some(t => seedTopics.includes(t));
           }).slice(0, 8);
         }
-        
+
         debugLog('[Continuum] Found', relatedConvs.length, 'related conversations on topics:', seedTopics, '(RAG:', usingRAG, ')');
-        
+
         // Build combined context focusing on continuity and decisions
         let combinedContext = '';
         relatedConvs.forEach((conv, idx) => {
           const host = hostFromConv(conv) || 'unknown';
-          const ago = Math.round((Date.now() - (conv.ts||Date.now())) / (1000 * 60 * 60));
+          const ago = Math.round((Date.now() - (conv.ts || Date.now())) / (1000 * 60 * 60));
           const msgs = conv.conversation || [];
-          
+
           // Extract decision points, questions, and substantive exchanges
           const substantiveMessages = msgs.filter(m => {
             const text = (m.text || '').toLowerCase();
@@ -5897,18 +5929,18 @@ Respond with JSON only:
             const isDecision = /decided|chose|selected|going with|will use|implemented/i.test(text);
             const isQuestion = text.includes('?') || /how|why|what|when|where|should|could|would/i.test(text);
             const isConstraint = /require|must|need|constraint|limitation|cannot/i.test(text);
-            
+
             return hasSubstance && (isDecision || isQuestion || isConstraint);
           });
-          
+
           // Use substantive messages if available, otherwise fall back to recent
           const relevantMsgs = substantiveMessages.length > 0 ? substantiveMessages.slice(-3) : msgs.slice(-3);
-          const snippet = relevantMsgs.map(m => `${m.role}: ${m.text.slice(0,250)}`).join('\n');
+          const snippet = relevantMsgs.map(m => `${m.role}: ${m.text.slice(0, 250)}`).join('\n');
           const ragScore = conv.ragScore ? ` [${(conv.ragScore * 100).toFixed(0)}% match]` : '';
-          
-          combinedContext += `\n---\nConv ${idx+1} (${host}, ${ago}h ago${ragScore}):\n${snippet}\n`;
+
+          combinedContext += `\n---\nConv ${idx + 1} (${host}, ${ago}h ago${ragScore}):\n${snippet}\n`;
         });
-        
+
         // Truncate if too long, but prioritize recent conversations
         if (combinedContext.length > 3500) {
           combinedContext = combinedContext.slice(0, 3500) + '\n\n...(context truncated - showing most relevant exchanges)';
@@ -5916,19 +5948,19 @@ Respond with JSON only:
 
         // Get detail level preference
         const detailLevel = await getDetailLevel();
-        
+
         const depthInstructions = {
           concise: '2-3 sentences with key insights only',
           detailed: '3-4 sentences with patterns, decisions, and unresolved questions',
           expert: '5-6 sentences with comprehensive analysis, edge cases, and technical context'
         };
-        
+
         const nextStepCount = {
           concise: '1',
           detailed: '2',
           expert: '3-4'
         };
-        
+
         const prompt = `You are Continuum, a context reconstruction agent. Rebuild the current conversation state from ${relatedConvs.length} conversations${usingRAG ? ' (RAG-powered semantic search)' : ''}.
 
 **INPUT CONVERSATIONS:**
@@ -5992,7 +6024,7 @@ Analyze the conversations and extract structured context in 6 categories. Output
 
         if (res && res.ok) {
           const rawOutput = res.result || '';
-          
+
           // Parse structured sections from AI output
           function extractSection(text, sectionName) {
             const pattern = '---' + sectionName + '---([\\s\\S]*?)(?=---|$)';
@@ -6001,7 +6033,7 @@ Analyze the conversations and extract structured context in 6 categories. Output
             if (!match) return [];
             return match[1].trim().split('\n').filter(line => line.trim().startsWith('•')).map(line => line.trim().substring(1).trim());
           }
-          
+
           const sections = {
             unifiedContext: extractSection(rawOutput, 'UNIFIED_CONTEXT'),
             activeGoals: extractSection(rawOutput, 'ACTIVE_GOALS'),
@@ -6010,12 +6042,12 @@ Analyze the conversations and extract structured context in 6 categories. Output
             keyDetails: extractSection(rawOutput, 'KEY_DETAILS'),
             nextActions: extractSection(rawOutput, 'NEXT_ACTIONS')
           };
-          
+
           // Build compact collapsible component
           const createComponent = (title, icon, items, color, defaultCollapsed = true) => {
             if (!items || items.length === 0) return '';
             const id = 'continuum-' + title.toLowerCase().replace(/\\s+/g, '-');
-            
+
             return `
               <div style="background:var(--cb-surface);border:1px solid var(--cb-border);border-radius:4px;margin-bottom:4px;overflow:hidden;">
                 <div id="${id}-header" style="display:flex;align-items:center;gap:6px;padding:6px 8px;cursor:pointer;user-select:none;border-left:2px solid ${color};transition:background 0.15s;" 
@@ -6037,7 +6069,7 @@ Analyze the conversations and extract structured context in 6 categories. Output
               </div>
             `;
           };
-          
+
           // Render beautiful structured UI
           outputArea.innerHTML = `
             <div style="display:flex;flex-direction:column;gap:0;max-height:calc(100vh - 160px);overflow-y:auto;padding-right:6px;">
@@ -6060,14 +6092,14 @@ Analyze the conversations and extract structured context in 6 categories. Output
                 <div style="font-size:8px;color:var(--cb-subtext);margin-top:6px;text-align:center;opacity:0.7;">📊 ${relatedConvs.length} conversations • ${new Set(relatedConvs.map(c => hostFromConv(c))).size} platforms${usingRAG ? ' • RAG' : ''}</div>
               </div>
             </div>`;
-          
+
           // Setup click handlers for dropdowns after rendering
           setTimeout(() => {
             ['context', 'goals', 'progress', 'unresolved', 'key-details', 'next-actions'].forEach(section => {
               const header = document.getElementById('continuum-' + section + '-header');
               const content = document.getElementById('continuum-' + section + '-content');
               const toggle = document.getElementById('continuum-' + section + '-toggle');
-              
+
               if (header && content && toggle) {
                 header.onclick = () => {
                   const isCollapsed = content.style.display === 'none';
@@ -6077,7 +6109,7 @@ Analyze the conversations and extract structured context in 6 categories. Output
               }
             });
           }, 100);
-          
+
           // Store context state
           continuumContextState = {
             unifiedContext: sections.unifiedContext,
@@ -6089,12 +6121,12 @@ Analyze the conversations and extract structured context in 6 categories. Output
             lastUpdate: Date.now(),
             messageHistory: []
           };
-          
+
           // Auto-scroll
           setTimeout(() => {
             outputArea.scrollIntoView({ behavior: 'smooth', block: 'start' });
           }, 100);
-          
+
           // Build context block helper
           const buildContextBlock = () => {
             let block = '[CONVERSATION STATE - Generated by Continuum]\\n\\n';
@@ -6118,34 +6150,34 @@ Analyze the conversations and extract structured context in 6 categories. Output
             }
             return block;
           };
-          
+
           // Button event listeners
           const btnCont = outputArea.querySelector('#continuum-continue');
           const btnRev = outputArea.querySelector('#continuum-review');
           const btnRefresh = outputArea.querySelector('#continuum-refresh');
           const btnCopy = outputArea.querySelector('#continuum-copy');
-          
+
           btnCont && btnCont.addEventListener('click', async () => {
-            try { 
-              await restoreToChat(`Please continue from where we left off. Here is the working state:\\n\\n${buildContextBlock()}`, []); 
-              toast('Context inserted to chat'); 
-            } catch(e){ toast('Insert failed'); }
+            try {
+              await restoreToChat(`Please continue from where we left off. Here is the working state:\\n\\n${buildContextBlock()}`, []);
+              toast('Context inserted to chat');
+            } catch (e) { toast('Insert failed'); }
           });
-          
+
           btnRev && btnRev.addEventListener('click', async () => {
-            try { 
-              await restoreToChat(`Before continuing, review this context and confirm your understanding:\\n\\n${buildContextBlock()}`, []); 
-              toast('Review request inserted'); 
-            } catch(e){ toast('Insert failed'); }
+            try {
+              await restoreToChat(`Before continuing, review this context and confirm your understanding:\\n\\n${buildContextBlock()}`, []);
+              toast('Review request inserted');
+            } catch (e) { toast('Insert failed'); }
           });
-          
+
           btnCopy && btnCopy.addEventListener('click', async () => {
-            try { 
+            try {
               await navigator.clipboard.writeText(buildContextBlock());
-              toast('Context copied to clipboard!'); 
-            } catch(e){ toast('Copy failed'); }
+              toast('Context copied to clipboard!');
+            } catch (e) { toast('Copy failed'); }
           });
-          
+
           btnRefresh && btnRefresh.addEventListener('click', async () => {
             showContinuumAgent(); // Re-run the whole analysis
           });
@@ -6162,18 +6194,18 @@ Analyze the conversations and extract structured context in 6 categories. Output
 
     // Show Memory Architect Interface (end-user actionable with RAG stats)
     async function showMemoryArchitect() {
-  const outputArea = (agentContent && agentContent.querySelector('#cb-agent-output')) || (shadow && shadow.getElementById && shadow.getElementById('cb-agent-output'));
+      const outputArea = (agentContent && agentContent.querySelector('#cb-agent-output')) || (shadow && shadow.getElementById && shadow.getElementById('cb-agent-output'));
       if (!outputArea) return;
-      
+
       outputArea.innerHTML = '<div style="text-align:center;padding:20px;"><div class="cb-spinner" style="display:inline-block;"></div><div style="margin-top:12px;">Building knowledge map with RAG...</div></div>';
-      
+
       try {
         const convs = await loadConversationsAsync();
         if (!convs || convs.length === 0) {
           outputArea.textContent = '⚠️ No conversations to organize. Scan some chats first.';
           return;
         }
-        
+
         // Get RAG stats if available
         let ragStats = null;
         if (typeof window.RAGEngine !== 'undefined') {
@@ -6184,15 +6216,15 @@ Analyze the conversations and extract structured context in 6 categories. Output
             debugLog('[Memory Architect] Failed to get RAG stats:', e);
           }
         }
-        
+
         // Analyze and categorize conversations
         const domainMap = {};
         const timeline = [];
-        
+
         for (const conv of convs.slice(0, 20)) { // Limit to recent 20
           const topics = conv.topics || [];
           const date = new Date(conv.ts).toLocaleDateString();
-          
+
           topics.forEach(topic => {
             if (!domainMap[topic]) domainMap[topic] = [];
             domainMap[topic].push({
@@ -6201,14 +6233,14 @@ Analyze the conversations and extract structured context in 6 categories. Output
               preview: (conv.conversation && conv.conversation[0] && conv.conversation[0].text.slice(0, 80)) || '...'
             });
           });
-          
+
           timeline.push({
             date,
             topics: topics.slice(0, 3),
             platform: conv.platform
           });
         }
-        
+
         // Phase 3: Get theme clusters
         let themeClusters = [];
         if (typeof window.MCPBridge !== 'undefined') {
@@ -6220,10 +6252,10 @@ Analyze the conversations and extract structured context in 6 categories. Output
             debugLog('[Memory Architect] Failed to get theme clusters:', e);
           }
         }
-        
+
         // Get detail level preference
         const detailLevel = await getDetailLevel();
-        
+
         // Build knowledge report (Phase 3: content-focused, adaptive depth)
         const domains = Object.keys(domainMap).sort((a, b) => domainMap[b].length - domainMap[a].length);
         let topDomain = domains[0] || 'General';
@@ -6234,7 +6266,7 @@ Analyze the conversations and extract structured context in 6 categories. Output
         }
         const total = convs.length;
         const range = `${timeline[timeline.length - 1]?.date || ''} - ${timeline[0]?.date || ''}`;
-        
+
         const maxClusters = { concise: 3, detailed: 5, expert: 8 }[detailLevel];
         const maxConvs = { concise: 3, detailed: 5, expert: 10 }[detailLevel];
         const contentLength = { concise: 80, detailed: 120, expert: 200 }[detailLevel];
@@ -6256,13 +6288,13 @@ Analyze the conversations and extract structured context in 6 categories. Output
             </div>
           </div>
         `;
-        
+
         // Header with simple stats
         outputHtml += `<div style="font-weight:700;font-size:14px;margin-bottom:4px;">💬 Your Recent Conversations (${total})</div>`;
         if (focusTheme) {
           outputHtml += `<div style="font-size:11px;opacity:0.8;margin-bottom:8px;">Focusing on: <strong>${focusTheme}</strong></div>`;
         }
-        
+
         // Show conversations as clickable cards
         convs.slice(0, maxConvs).forEach((conv, idx) => {
           const date = new Date(conv.ts).toLocaleDateString();
@@ -6271,7 +6303,7 @@ Analyze the conversations and extract structured context in 6 categories. Output
           const firstMsg = conv.conversation?.find(m => m.role === 'user');
           const content = firstMsg ? firstMsg.text.slice(0, contentLength) : 'No preview available';
           const topics = (conv.topics || []).slice(0, 3).join(', ') || 'General';
-          
+
           outputHtml += `
             <div style="background:rgba(16,24,43,0.5);border:1px solid rgba(0,180,255,0.2);border-radius:8px;padding:12px;">
               <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:8px;">
@@ -6286,11 +6318,11 @@ Analyze the conversations and extract structured context in 6 categories. Output
             </div>
           `;
         });
-        
+
         outputHtml += '</div>';
 
         outputArea.innerHTML = outputHtml;
-        
+
         // Add detail level toggle
         createDetailLevelToggle('memory-detail-container', async (newLevel) => {
           showMemoryArchitect();
@@ -6309,30 +6341,30 @@ Analyze the conversations and extract structured context in 6 categories. Output
 
         function compileContextForTopic(topic) {
           try {
-            const q = (topic||'').trim().toLowerCase();
+            const q = (topic || '').trim().toLowerCase();
             if (!q) return '';
             // Collect all messages across conversations that mention the topic
             const hits = [];
             convs.forEach(conv => {
               const ts = conv.ts || Date.now();
               const date = new Date(ts).toLocaleString();
-              (conv.conversation||[]).forEach((m, idx) => {
-                const t = (m.text||'');
+              (conv.conversation || []).forEach((m, idx) => {
+                const t = (m.text || '');
                 if (!t) return;
-                if ((conv.topics||[]).some(tp => String(tp).toLowerCase().includes(q)) || t.toLowerCase().includes(q)) {
+                if ((conv.topics || []).some(tp => String(tp).toLowerCase().includes(q)) || t.toLowerCase().includes(q)) {
                   hits.push({ ts, date, role: m.role, text: t.slice(0, 800), platform: conv.platform || 'unknown' });
                 }
               });
             });
             if (!hits.length) return '';
-            hits.sort((a,b)=> a.ts - b.ts);
+            hits.sort((a, b) => a.ts - b.ts);
             let out = `Project/Topic: ${topic}\nTotal mentions: ${hits.length}\n\n`;
-            hits.forEach((h,i)=>{
-              out += `#${i+1} • ${h.date} • ${h.platform} • ${h.role}\n${h.text}\n\n`;
+            hits.forEach((h, i) => {
+              out += `#${i + 1} • ${h.date} • ${h.platform} • ${h.role}\n${h.text}\n\n`;
             });
             out += '---\nContinue from here with the consolidated context above.';
             return out;
-          } catch(_) { return ''; }
+          } catch (_) { return ''; }
         }
 
         if (compileBtn && compiledBox && compiledBody && copyBtn && insertBtn) {
@@ -6345,13 +6377,13 @@ Analyze the conversations and extract structured context in 6 categories. Output
               } else {
                 compiledBody.textContent = '(No mentions found across your chats)'; compiledBox.style.display = 'block';
               }
-            } catch(_){}
+            } catch (_) { }
           });
-          copyBtn.addEventListener('click', async ()=>{
-            try { await navigator.clipboard.writeText(compiledBody.textContent||''); copyBtn.textContent='✓ Copied'; setTimeout(()=> copyBtn.textContent='📋 Copy Context', 2000); } catch(_){}
+          copyBtn.addEventListener('click', async () => {
+            try { await navigator.clipboard.writeText(compiledBody.textContent || ''); copyBtn.textContent = '✓ Copied'; setTimeout(() => copyBtn.textContent = '📋 Copy Context', 2000); } catch (_) { }
           });
-          insertBtn.addEventListener('click', async ()=>{
-            try { const t = compiledBody.textContent||''; if (window.ChatBridge && typeof window.ChatBridge.restoreToChat==='function') { await window.ChatBridge.restoreToChat(t, []); } insertBtn.textContent='✓ Inserted'; setTimeout(()=> insertBtn.textContent='➤ Insert to Chat', 2000); } catch(_){}
+          insertBtn.addEventListener('click', async () => {
+            try { const t = compiledBody.textContent || ''; if (window.ChatBridge && typeof window.ChatBridge.restoreToChat === 'function') { await window.ChatBridge.restoreToChat(t, []); } insertBtn.textContent = '✓ Inserted'; setTimeout(() => insertBtn.textContent = '➤ Insert to Chat', 2000); } catch (_) { }
           });
         }
 
@@ -6362,14 +6394,14 @@ Analyze the conversations and extract structured context in 6 categories. Output
             const idx = parseInt(btn.dataset.convIdx);
             const conv = convs[idx];
             if (!conv) return;
-            
+
             const firstMsg = conv.conversation?.find(m => m.role === 'user');
             const preview = firstMsg ? firstMsg.text.slice(0, 150) : '';
             const platform = conv.platform || 'unknown';
             const topics = (conv.topics || []).join(', ') || 'General';
-            
+
             const contextPrompt = `I want to continue from my previous conversation on ${platform} about: ${topics}.\n\nI was discussing: "${preview}..."\n\nCan you help me pick up where I left off and provide the next steps?`;
-            
+
             try {
               await restoreToChat(contextPrompt, []);
               toast('Context inserted!');
@@ -6381,7 +6413,7 @@ Analyze the conversations and extract structured context in 6 categories. Output
         });
 
         toast('Knowledge base indexed!');
-        
+
       } catch (e) {
         outputArea.textContent = `❌ Memory Architect error: ${e.message || 'Unknown error'}`;
         debugLog('Memory Architect error', e);
@@ -6392,7 +6424,7 @@ Analyze the conversations and extract structured context in 6 categories. Output
     async function showEchoSynth() {
       const outputArea = (agentContent && agentContent.querySelector('#cb-agent-output')) || (shadow && shadow.getElementById && shadow.getElementById('cb-agent-output'));
       if (!outputArea) return;
-      
+
       // Show input UI for EchoSynth
       outputArea.innerHTML = `
         <div id="echosynth-detail-container"></div>
@@ -6414,23 +6446,23 @@ Analyze the conversations and extract structured context in 6 categories. Output
         </div>
         <div id="echosynth-results" style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(0,180,255,0.2);display:none;"></div>
       `;
-      
+
       // Add detail level toggle
       createDetailLevelToggle('echosynth-detail-container', (level) => {
         debugLog('[EchoSynth] Detail level changed to:', level);
       });
-      
-  const promptInput = outputArea.querySelector('#echosynth-prompt');
-  const runBtn = outputArea.querySelector('#echosynth-run');
-  const cancelBtn = outputArea.querySelector('#echosynth-cancel');
-  const resultsDiv = outputArea.querySelector('#echosynth-results');
-  const toneBar = outputArea.querySelector('#echosynth-tone');
-  const toneButtons = toneBar.querySelectorAll('button[data-tone]');
-  const tonePreview = toneBar.querySelector('#tone-preview');
+
+      const promptInput = outputArea.querySelector('#echosynth-prompt');
+      const runBtn = outputArea.querySelector('#echosynth-run');
+      const cancelBtn = outputArea.querySelector('#echosynth-cancel');
+      const resultsDiv = outputArea.querySelector('#echosynth-results');
+      const toneBar = outputArea.querySelector('#echosynth-tone');
+      const toneButtons = toneBar.querySelectorAll('button[data-tone]');
+      const tonePreview = toneBar.querySelector('#tone-preview');
 
       // Tone detection heuristics
       const inferTone = (text) => {
-        const s = (text||'').toLowerCase();
+        const s = (text || '').toLowerCase();
         if (/(implement|api|bug|error|stack|code|optimiz|complexity|latency|schema)/.test(s)) return 'analytical';
         if (/(story|creative|metaphor|vision|inspire|narrative|analogy)/.test(s)) return 'narrative';
         if (/(plan|roadmap|steps|milestone|timeline|prioritize|OKR|bullet)/.test(s)) return 'structured';
@@ -6445,36 +6477,36 @@ Analyze the conversations and extract structured context in 6 categories. Output
           tonePreview.textContent = `Preview: ${selectedTone}`;
         });
       });
-      
+
       cancelBtn.addEventListener('click', () => {
         outputArea.textContent = '(Agent results will appear here)';
       });
-      
+
       runBtn.addEventListener('click', async () => {
         const userPrompt = promptInput.value.trim();
         if (!userPrompt) {
           toast('Enter a question first');
           return;
         }
-        
+
         runBtn.disabled = true;
         runBtn.textContent = 'Processing...';
         resultsDiv.style.display = 'block';
         resultsDiv.innerHTML = '<div style="text-align:center;padding:12px;"><div class="cb-spinner" style="display:inline-block;"></div><div style="margin-top:8px;font-size:12px;">Analyzing query...</div></div>';
-        
+
         try {
           // ═══ ENHANCEMENT 1: Sub-Question Decomposer ═══
           // Detect multi-part questions using lightweight rule-based logic
-          const hasMultiPart = /\band\b.*\?|\bor\b.*\?|,.*\?/.test(userPrompt) || 
-                               (userPrompt.match(/\?/g) || []).length > 1;
-          const subQuestions = hasMultiPart ? 
-            userPrompt.split(/\?/).filter(q => q.trim().length > 10).map(q => q.trim() + '?').slice(0, 3) : 
+          const hasMultiPart = /\band\b.*\?|\bor\b.*\?|,.*\?/.test(userPrompt) ||
+            (userPrompt.match(/\?/g) || []).length > 1;
+          const subQuestions = hasMultiPart ?
+            userPrompt.split(/\?/).filter(q => q.trim().length > 10).map(q => q.trim() + '?').slice(0, 3) :
             [userPrompt];
-          
+
           if (subQuestions.length > 1) {
             resultsDiv.innerHTML += `<div style="font-size:11px;opacity:0.7;">Detected ${subQuestions.length} sub-questions...</div>`;
           }
-          
+
           // ═══ ENHANCEMENT 2: Intent Clarifier ═══
           // Optional lightweight query clarification (<20 tokens)
           let clarifiedPrompt = userPrompt;
@@ -6487,9 +6519,9 @@ Analyze the conversations and extract structured context in 6 categories. Output
               debugLog('[EchoSynth] Intent clarified:', clarifiedPrompt);
             }
           }
-          
+
           resultsDiv.innerHTML = '<div style="text-align:center;padding:12px;"><div class="cb-spinner" style="display:inline-block;"></div><div style="margin-top:8px;font-size:12px;">Retrieving context via RAG, then querying AIs...</div></div>';
-          
+
           // Retrieve relevant context from past conversations using RAG
           let ragContext = '';
           let ragResultCount = 0;
@@ -6498,26 +6530,26 @@ Analyze the conversations and extract structured context in 6 categories. Output
               const ragResults = await window.RAGEngine.retrieve(clarifiedPrompt, 3);
               if (ragResults && ragResults.length > 0) {
                 ragResultCount = ragResults.length;
-                ragContext = '\n\n[Relevant context from past conversations:]\n' + 
-                  ragResults.map((r, i) => `${i+1}. ${r.text.slice(0, 200)}... (relevance: ${(r.score * 100).toFixed(0)}%)`).join('\n');
+                ragContext = '\n\n[Relevant context from past conversations:]\n' +
+                  ragResults.map((r, i) => `${i + 1}. ${r.text.slice(0, 200)}... (relevance: ${(r.score * 100).toFixed(0)}%)`).join('\n');
                 debugLog('[EchoSynth] Retrieved RAG context:', ragResults);
               }
             } catch (e) {
               debugLog('[EchoSynth] RAG retrieval failed:', e);
             }
           }
-          
+
           // Enhance prompt with RAG context if available
           const enhancedPrompt = ragContext ? clarifiedPrompt + ragContext : clarifiedPrompt;
           const tone = selectedTone === 'auto' ? inferTone(userPrompt) : selectedTone;
           tonePreview.textContent = `Preview: ${tone}`;
-          
+
           // Query both Gemini and ChatGPT in parallel for true multi-AI synthesis
           const geminiPromise = callGeminiAsync({ action: 'prompt', text: enhancedPrompt, length: 'medium' }).catch(e => ({ ok: false, error: e.message }));
           const openaiPromise = callOpenAIAsync({ text: enhancedPrompt }).catch(e => ({ ok: false, error: e.message }));
-          
+
           const [geminiRes, openaiRes] = await Promise.all([geminiPromise, openaiPromise]);
-          
+
           // ═══ ENHANCEMENT 3: Ramble Filter ═══
           // Clean up AI responses locally before synthesis
           const cleanResponse = (text) => {
@@ -6529,44 +6561,44 @@ Analyze the conversations and extract structured context in 6 categories. Output
               .replace(/(.+)\n\1/g, '$1') // Remove duplicate consecutive lines
               .slice(0, 8000); // Reasonable length limit
           };
-          
+
           // Collect successful responses with ramble filtering
           const responses = [];
           if (geminiRes && geminiRes.ok && geminiRes.result) {
             const modelName = geminiRes.model || 'Gemini';
             const cleaned = cleanResponse(geminiRes.result);
-            responses.push({ 
-              source: `${modelName.replace('gemini-', 'Gemini ')}`, 
+            responses.push({
+              source: `${modelName.replace('gemini-', 'Gemini ')}`,
               answer: cleaned,
-              raw: geminiRes.result 
+              raw: geminiRes.result
             });
           }
           if (openaiRes && openaiRes.ok && openaiRes.result) {
             const cleaned = cleanResponse(openaiRes.result);
-            responses.push({ 
-              source: 'ChatGPT (GPT-4o-mini)', 
+            responses.push({
+              source: 'ChatGPT (GPT-4o-mini)',
               answer: cleaned,
-              raw: openaiRes.result 
+              raw: openaiRes.result
             });
           }
-          
+
           if (responses.length === 0) {
             resultsDiv.innerHTML = `<div style="color:rgba(255,100,100,0.9);">❌ Both AI models failed to respond. Check API keys and try again.</div>`;
             return;
           }
-          
+
           // ═══ ENHANCEMENT 4: Referee Mode ═══
           // Compare AI responses locally without re-querying
           let refereeAnalysis = '';
           if (responses.length > 1) {
             const text1 = responses[0].answer.toLowerCase();
             const text2 = responses[1].answer.toLowerCase();
-            
+
             // Find shared claims (simple overlap detection)
             const sentences1 = text1.split(/[.!?]+/).map(s => s.trim()).filter(s => s.length > 30);
             const sentences2 = text2.split(/[.!?]+/).map(s => s.trim()).filter(s => s.length > 30);
-            
-            const agreements = sentences1.filter(s1 => 
+
+            const agreements = sentences1.filter(s1 =>
               sentences2.some(s2 => {
                 const words1 = s1.split(/\s+/).filter(w => w.length > 4);
                 const words2 = s2.split(/\s+/).filter(w => w.length > 4);
@@ -6574,25 +6606,27 @@ Analyze the conversations and extract structured context in 6 categories. Output
                 return overlap / Math.max(words1.length, words2.length) > 0.4;
               })
             );
-            
+
             // Detect contradictions (opposite sentiments on same topic)
             const contradictions = [];
-            const polarWords = { positive: ['yes', 'true', 'correct', 'better', 'should', 'recommended'], 
-                                 negative: ['no', 'false', 'incorrect', 'worse', 'shouldn\'t', 'not recommended'] };
-            
+            const polarWords = {
+              positive: ['yes', 'true', 'correct', 'better', 'should', 'recommended'],
+              negative: ['no', 'false', 'incorrect', 'worse', 'shouldn\'t', 'not recommended']
+            };
+
             sentences1.forEach(s1 => {
               sentences2.forEach(s2 => {
                 const hasPos1 = polarWords.positive.some(w => s1.includes(w));
                 const hasNeg1 = polarWords.negative.some(w => s1.includes(w));
                 const hasPos2 = polarWords.positive.some(w => s2.includes(w));
                 const hasNeg2 = polarWords.negative.some(w => s2.includes(w));
-                
+
                 if ((hasPos1 && hasNeg2) || (hasNeg1 && hasPos2)) {
                   contradictions.push({ sent1: s1.slice(0, 100), sent2: s2.slice(0, 100) });
                 }
               });
             });
-            
+
             refereeAnalysis = `
               <div style="margin:12px 0;padding:8px;background:rgba(138,43,226,0.08);border:1px solid rgba(138,43,226,0.25);border-radius:6px;font-size:11px;">
                 <b>🔍 Referee Analysis:</b><br/>
@@ -6602,11 +6636,11 @@ Analyze the conversations and extract structured context in 6 categories. Output
               </div>
             `;
           }
-          
+
           // Phase 3: Multi-stage generation pipeline
           const detailLevel = await getDetailLevel(); // Get from user preference
           let finalAnswer = '';
-          
+
           if (responses.length > 1) {
             // Stage 1: Create outline
             resultsDiv.innerHTML += '<div style="font-size:11px;opacity:0.7;margin-top:8px;">Stage 1/3: Outlining key points...</div>';
@@ -6618,19 +6652,19 @@ Gemini: ${responses[0].answer.slice(0, 500)}...
 ChatGPT: ${responses[1]?.answer?.slice(0, 500) || 'N/A'}...
 
 Outline (bullet points only):`;
-            
+
             const outlineRes = await callGeminiAsync({ action: 'prompt', text: outlinePrompt, length: 'short' });
             const outline = outlineRes?.result || '• Main points\n• Key insights\n• Conclusion';
-            
+
             // Stage 2: Expand with context
             resultsDiv.innerHTML += '<div style="font-size:11px;opacity:0.7;">Stage 2/3: Expanding with retrieved context...</div>';
-            
+
             const depthInstructions = {
               concise: 'brief and to-the-point (2-3 paragraphs maximum)',
               detailed: 'comprehensive with examples and explanations',
               expert: 'highly technical with implementation details, edge cases, and best practices'
             };
-            
+
             const toneInstructions = {
               analytical: `Technical Excellence Guidelines:
 - Lead with core concepts and definitions
@@ -6702,10 +6736,10 @@ ${responses[1]?.answer || 'Not available'}
 
 **Begin Your Synthesized Answer**:`;
 
-            
+
             const expandRes = await callGeminiAsync({ action: 'prompt', text: expandPrompt, length: 'comprehensive' });
             const expanded = expandRes?.result || responses.map(r => `**${r.source}:**\n${r.answer}`).join('\n\n---\n\n');
-            
+
             // Stage 3: Refine and structure
             resultsDiv.innerHTML += '<div style="font-size:11px;opacity:0.7;">Stage 3/3: Refining final output...</div>';
             const refinePrompt = `Polish this answer for clarity and structure. Maintain the ${tone} tone. Add section headings, ensure logical flow, and highlight key takeaways:
@@ -6713,10 +6747,10 @@ ${responses[1]?.answer || 'Not available'}
 ${expanded}
 
 Refined Answer (final, polished):`;
-            
+
             const refineRes = await callGeminiAsync({ action: 'prompt', text: refinePrompt, length: 'comprehensive' });
             finalAnswer = refineRes?.result || expanded;
-            
+
           } else {
             // Only one response - still apply multi-stage enhancement
             resultsDiv.innerHTML += '<div style="font-size:11px;opacity:0.7;">Enhancing single response...</div>';
@@ -6729,14 +6763,14 @@ Enhanced Answer:`;
             const enhanceRes = await callGeminiAsync({ action: 'prompt', text: enhancePrompt, length: 'comprehensive' });
             finalAnswer = enhanceRes?.result || responses[0].answer;
           }
-          
+
           // ═══ ENHANCEMENT 5: Follow-Up Suggestions ═══
           // Generate 1-3 follow-up suggestions locally (no AI calls)
           const generateFollowUps = (question, answer) => {
             const suggestions = [];
             const lowerQ = question.toLowerCase();
             const lowerA = answer.toLowerCase();
-            
+
             // Detect domain and suggest relevant follow-ups
             if (/\b(how|implement|build|create)\b/.test(lowerQ)) {
               if (lowerA.includes('error') || lowerA.includes('issue')) {
@@ -6754,18 +6788,18 @@ Enhanced Answer:`;
             } else if (/\b(why|reason)\b/.test(lowerQ)) {
               suggestions.push('What are alternative approaches?');
             }
-            
+
             return suggestions.slice(0, 3);
           };
-          
+
           const followUps = generateFollowUps(userPrompt, finalAnswer);
           const followUpHtml = followUps.length > 0 ? `
             <div style="margin-top:12px;padding:8px;background:rgba(0,180,255,0.05);border:1px solid rgba(0,180,255,0.2);border-radius:6px;">
               <div style="font-size:11px;font-weight:600;margin-bottom:6px;opacity:0.9;">💡 Suggested Follow-Ups:</div>
-              ${followUps.map((q, i) => `<button class="cb-btn cb-followup" data-question="${q}" style="display:block;width:100%;text-align:left;margin:4px 0;padding:6px 8px;font-size:11px;">${i+1}. ${q}</button>`).join('')}
+              ${followUps.map((q, i) => `<button class="cb-btn cb-followup" data-question="${q}" style="display:block;width:100%;text-align:left;margin:4px 0;padding:6px 8px;font-size:11px;">${i + 1}. ${q}</button>`).join('')}
             </div>
           ` : '';
-          
+
           resultsDiv.innerHTML = `
             ${refereeAnalysis}
             <div style="font-weight:700;margin-bottom:8px;color:var(--cb-accent-primary);">✨ Synthesized Answer ${ragResultCount > 0 ? '🔍 (RAG-Enhanced)' : ''}</div>
@@ -6775,7 +6809,7 @@ Enhanced Answer:`;
             </div>
             ${followUpHtml}
           `;
-          
+
           // Attach follow-up button handlers
           const followUpButtons = resultsDiv.querySelectorAll('.cb-followup');
           followUpButtons.forEach(btn => {
@@ -6784,7 +6818,7 @@ Enhanced Answer:`;
               toast('Follow-up loaded - click Run');
             });
           });
-          try { if (window.RAGEngine && window.RAGEngine.incrementMetric) window.RAGEngine.incrementMetric('totalSynthesisSessions', 1); } catch(_){}
+          try { if (window.RAGEngine && window.RAGEngine.incrementMetric) window.RAGEngine.incrementMetric('totalSynthesisSessions', 1); } catch (_) { }
           toast('Multi-AI synthesis complete!');
         } catch (e) {
           resultsDiv.innerHTML = `<div style="color:rgba(255,100,100,0.9);">❌ Error: ${e.message || 'Unknown error'}</div>`;
@@ -6798,9 +6832,9 @@ Enhanced Answer:`;
 
     // Show Quick Agent Interface (original simple agent, lightly polished UI)
     async function showQuickAgent() {
-  const outputArea = (agentContent && agentContent.querySelector('#cb-agent-output')) || (shadow && shadow.getElementById && shadow.getElementById('cb-agent-output'));
+      const outputArea = (agentContent && agentContent.querySelector('#cb-agent-output')) || (shadow && shadow.getElementById && shadow.getElementById('cb-agent-output'));
       if (!outputArea) return;
-      
+
       outputArea.innerHTML = `
         <div style="margin-bottom:12px;">
           <div style="font-weight:700;margin-bottom:4px;font-size:13px;">🎯 Quick Agent</div>
@@ -6818,24 +6852,24 @@ Enhanced Answer:`;
           <div style="font-weight:600;margin-bottom:8px;color:var(--cb-subtext);">Results</div>
         </div>
       `;
-      
-  const goalSelect = outputArea.querySelector('#quick-agent-goal');
-  const runBtn = outputArea.querySelector('#quick-agent-run');
-  const resultsDiv = outputArea.querySelector('#quick-agent-results');
-      
+
+      const goalSelect = outputArea.querySelector('#quick-agent-goal');
+      const runBtn = outputArea.querySelector('#quick-agent-run');
+      const resultsDiv = outputArea.querySelector('#quick-agent-results');
+
       runBtn.addEventListener('click', async () => {
         runBtn.disabled = true;
         runBtn.textContent = 'Analyzing...';
         resultsDiv.style.display = 'block';
         resultsDiv.innerHTML = '<div style="text-align:center;padding:12px;"><div class="cb-spinner" style="display:inline-block;"></div></div>';
-        
+
         try {
           const chatText = await getConversationText();
           if (!chatText || chatText.length < 10) {
             resultsDiv.innerHTML = '<div style="color:rgba(255,100,100,0.9);">⚠️ No conversation found. Start chatting first.</div>';
             return;
           }
-          
+
           const goal = goalSelect.value;
           const prompt = `You are a Quick Agent assistant. Based on the goal "${goal}", analyze this conversation and provide:
 
@@ -6849,7 +6883,7 @@ Conversation:
 ${chatText.slice(0, 3000)}`;
 
           const res = await callGeminiAsync({ action: 'prompt', text: prompt, length: 'medium' });
-          
+
           if (res && res.ok) {
             resultsDiv.innerHTML = `<div style="white-space:pre-wrap;line-height:1.6;">${res.result || 'Analysis complete'}</div>`;
             toast('Analysis complete!');
@@ -6870,7 +6904,7 @@ ${chatText.slice(0, 3000)}`;
     async function showThreadkeeperAgent() {
       const outputArea = (agentContent && agentContent.querySelector('#cb-agent-output')) || (shadow && shadow.getElementById && shadow.getElementById('cb-agent-output'));
       if (!outputArea) return;
-      
+
       outputArea.innerHTML = `
         <div style="margin-bottom:12px;">
           <div style="font-weight:700;margin-bottom:4px;font-size:13px;">🧵 Threadkeeper</div>
@@ -6888,16 +6922,16 @@ ${chatText.slice(0, 3000)}`;
           <div style="font-weight:600;margin-bottom:8px;color:var(--cb-subtext);">Thread Analysis</div>
         </div>
       `;
-      
+
       const scanBtn = outputArea.querySelector('#threadkeeper-scan');
       const resultsDiv = outputArea.querySelector('#threadkeeper-results');
-      
+
       scanBtn.addEventListener('click', async () => {
         scanBtn.disabled = true;
         scanBtn.textContent = 'Scanning threads...';
         resultsDiv.style.display = 'block';
         resultsDiv.innerHTML = '<div style="text-align:center;padding:12px;"><div class="cb-spinner" style="display:inline-block;"></div><div style="margin-top:8px;font-size:11px;">Analyzing conversation history...</div></div>';
-        
+
         try {
           // Get current conversation
           const currentChat = await getConversationText();
@@ -6905,10 +6939,10 @@ ${chatText.slice(0, 3000)}`;
             resultsDiv.innerHTML = '<div style="color:rgba(255,100,100,0.9);">⚠️ No current conversation found.</div>';
             return;
           }
-          
+
           // Get stored conversations from all platforms
           const allConvos = await getAllStoredConversations();
-          
+
           const prompt = `You are Threadkeeper, an autonomous conversation tracking agent.
 
 **Your Mission:** Analyze the current conversation and identify connections to past conversations.
@@ -6939,7 +6973,7 @@ Format output as:
 [specific context to inject into chat]`;
 
           const res = await callGeminiAsync({ action: 'prompt', text: prompt, length: 'long' });
-          
+
           if (res && res.ok && res.result) {
             // Render result
             resultsDiv.innerHTML = `<div class="cb-threadkeeper-result" style="white-space:pre-wrap;line-height:1.6;">${res.result}</div>`;
@@ -6977,7 +7011,7 @@ Format output as:
     async function showMultiAIPlannerAgent() {
       const outputArea = (agentContent && agentContent.querySelector('#cb-agent-output')) || (shadow && shadow.getElementById && shadow.getElementById('cb-agent-output'));
       if (!outputArea) return;
-      
+
       outputArea.innerHTML = `
         <div style="margin-bottom:12px;">
           <div style="font-weight:700;margin-bottom:4px;font-size:13px;">🎯 Multi-AI Planner</div>
@@ -7001,50 +7035,50 @@ Examples:
           <div style="font-weight:600;margin-bottom:8px;color:var(--cb-subtext);">Orchestrated Plan</div>
         </div>
       `;
-      
+
       const goalInput = outputArea.querySelector('#planner-goal');
       const createBtn = outputArea.querySelector('#planner-create');
       const resultsDiv = outputArea.querySelector('#planner-results');
-      
+
       createBtn.addEventListener('click', async () => {
         const goal = goalInput.value.trim();
         if (!goal) {
           toast('Please describe your goal');
           return;
         }
-        
+
         createBtn.disabled = true;
         createBtn.textContent = 'Planning with multiple AIs...';
         resultsDiv.style.display = 'block';
         resultsDiv.innerHTML = '<div style="text-align:center;padding:12px;"><div class="cb-spinner" style="display:inline-block;"></div><div style="margin-top:8px;font-size:11px;">Consulting Gemini, ChatGPT, Claude, and Copilot...</div></div>';
-        
+
         try {
           // Helper: Convert breakdown/refinement into concise, skimmable plan
           function postProcessPlanner(breakdownText, goalText, refinementText) {
             try {
-              const txt = String(breakdownText||'');
+              const txt = String(breakdownText || '');
               const steps = [];
               // Find step headings
               const re = /(\n|^)\s*(?:##+\s*)?Step\s*(\d+)\s*[:\-]\s*([^\n]+)\s*/gi;
               let m;
               const indices = [];
               while ((m = re.exec(txt)) !== null) {
-                indices.push({ idx: m.index, num: parseInt(m[2],10)||steps.length+1, title: (m[3]||'').trim() });
+                indices.push({ idx: m.index, num: parseInt(m[2], 10) || steps.length + 1, title: (m[3] || '').trim() });
               }
               // Build step blocks
-              for (let i=0;i<indices.length;i++) {
+              for (let i = 0; i < indices.length; i++) {
                 const start = indices[i].idx;
-                const end = i+1<indices.length ? indices[i+1].idx : txt.length;
+                const end = i + 1 < indices.length ? indices[i + 1].idx : txt.length;
                 const block = txt.slice(start, end);
                 const assignedMatch = block.match(/Assigned\s*to\s*:?\s*(?:\*\*|\*)?([^\n*]+)(?:\*\*|\*)?/i);
                 const taskMatch = block.match(/Task\s*:?\s*([^\n\r]+(?:\n(?!\s*\w+\s*:\s).+)*)/i);
                 const model = assignedMatch ? assignedMatch[1].trim() : '';
                 const taskRaw = taskMatch ? taskMatch[1].trim() : '';
                 const taskOne = (() => {
-                  const t = taskRaw.replace(/\s+/g,' ').trim();
+                  const t = taskRaw.replace(/\s+/g, ' ').trim();
                   // keep up to 2 short sentences or ~160 chars
                   const parts = t.split(/(?<=\.)\s+/).filter(Boolean);
-                  const clipped = parts.slice(0,2).join(' ');
+                  const clipped = parts.slice(0, 2).join(' ');
                   return (clipped || t).slice(0, 160);
                 })();
                 steps.push({ num: indices[i].num, title: indices[i].title, model, task: taskOne });
@@ -7052,7 +7086,7 @@ Examples:
 
               // Fallback: if no steps matched, create a single-line summary
               if (!steps.length) {
-                const one = (txt.split('\n').find(l=>/Assigned to|Task|Step/i.test(l))||txt).replace(/\s+/g,' ').trim().slice(0,180);
+                const one = (txt.split('\n').find(l => /Assigned to|Task|Step/i.test(l)) || txt).replace(/\s+/g, ' ').trim().slice(0, 180);
                 return `# ${goalText}\n\n- ${one}`;
               }
 
@@ -7060,29 +7094,29 @@ Examples:
               let flow = '';
               try {
                 const sec = /Integration\s*Plan[\s\S]*?\n+([^\n][^#\n]{0,160})/i.exec(txt);
-                if (sec && sec[1]) flow = sec[1].replace(/\s+/g,' ').trim();
-              } catch(_) {}
+                if (sec && sec[1]) flow = sec[1].replace(/\s+/g, ' ').trim();
+              } catch (_) { }
               if (!flow) {
-                const order = steps.map(s=>`S${s.num}`).join(' → ');
+                const order = steps.map(s => `S${s.num}`).join(' → ');
                 flow = `${order} → Final deliverable`;
               }
 
               // Compose concise plan
               const header = `# ${goalText}`;
               const lines = steps
-                .sort((a,b)=>a.num-b.num)
-                .slice(0,7)
-                .map(s => `- [${s.model||'Model'}] ${s.title || s.task}`);
+                .sort((a, b) => a.num - b.num)
+                .slice(0, 7)
+                .map(s => `- [${s.model || 'Model'}] ${s.title || s.task}`);
               // Ensure at least 5 items if available
               const concise = `${header}\n\n${lines.join('\n')}\n\nIntegration Flow: ${flow}`;
               return concise;
             } catch (e) {
-              return String(breakdownText||'');
+              return String(breakdownText || '');
             }
           }
           // Stage 1: Break down goal into steps
           resultsDiv.innerHTML += '<div style="font-size:11px;opacity:0.7;margin-top:8px;">Stage 1/3: Breaking down goal into steps...</div>';
-          
+
           const breakdownPrompt = `You are Multi-AI Planner, a project orchestration agent.
 
 **User Goal:**
@@ -7110,15 +7144,15 @@ ${goal}
 [How all steps combine into final deliverable]`;
 
           const breakdown = await callGeminiAsync({ action: 'prompt', text: breakdownPrompt, length: 'long' });
-          
+
           if (!breakdown || !breakdown.ok) {
             resultsDiv.innerHTML = `<div style="color:rgba(255,100,100,0.9);">❌ Planning failed: ${breakdown?.error || 'unknown error'}</div>`;
             return;
           }
-          
+
           // Stage 2: Execute parallel consultations (simulate multi-AI)
           resultsDiv.innerHTML += '<div style="font-size:11px;opacity:0.7;">Stage 2/3: Executing parallel AI consultations...</div>';
-          
+
           const refinementPrompt = `Based on this project breakdown, provide implementation guidance:
 
 ${breakdown.result}
@@ -7132,11 +7166,11 @@ ${breakdown.result}
 Keep it practical and actionable.`;
 
           const refinement = await callGeminiAsync({ action: 'prompt', text: refinementPrompt, length: 'long' });
-          
+
           // Stage 3: Final synthesis
           resultsDiv.innerHTML += '<div style="font-size:11px;opacity:0.7;">Stage 3/3: Synthesizing unified plan...</div>';
-          
-          const concisePlan = postProcessPlanner(String(breakdown.result||''), goal, String(refinement?.result||''));
+
+          const concisePlan = postProcessPlanner(String(breakdown.result || ''), goal, String(refinement?.result || ''));
           // Clear and render plan without inline handlers
           resultsDiv.innerHTML = '';
           const planDiv = document.createElement('div');
@@ -7148,22 +7182,22 @@ Keep it practical and actionable.`;
           copyBtn.className = 'cb-btn cb-btn-primary';
           copyBtn.style.cssText = 'flex:1;';
           copyBtn.textContent = '📋 Copy Plan';
-          copyBtn.addEventListener('click', async ()=>{
-            try { await navigator.clipboard.writeText(planDiv.textContent||''); copyBtn.textContent = '✓ Copied'; setTimeout(()=> copyBtn.textContent='📋 Copy Plan', 2000); } catch(_){}
+          copyBtn.addEventListener('click', async () => {
+            try { await navigator.clipboard.writeText(planDiv.textContent || ''); copyBtn.textContent = '✓ Copied'; setTimeout(() => copyBtn.textContent = '📋 Copy Plan', 2000); } catch (_) { }
           });
           const insertBtn = document.createElement('button');
           insertBtn.className = 'cb-btn';
           insertBtn.style.cssText = 'flex:1;';
           insertBtn.textContent = '➤ Insert to Chat';
-          insertBtn.addEventListener('click', async ()=>{
-            try { const text = planDiv.textContent || ''; if (window.ChatBridge && typeof window.ChatBridge.restoreToChat === 'function') { await window.ChatBridge.restoreToChat(text, []); } insertBtn.textContent = '✓ Inserted'; setTimeout(()=> insertBtn.textContent='➤ Insert to Chat', 2000); } catch(_){}
+          insertBtn.addEventListener('click', async () => {
+            try { const text = planDiv.textContent || ''; if (window.ChatBridge && typeof window.ChatBridge.restoreToChat === 'function') { await window.ChatBridge.restoreToChat(text, []); } insertBtn.textContent = '✓ Inserted'; setTimeout(() => insertBtn.textContent = '➤ Insert to Chat', 2000); } catch (_) { }
           });
           btnBar.appendChild(copyBtn);
           btnBar.appendChild(insertBtn);
           resultsDiv.appendChild(planDiv);
           resultsDiv.appendChild(btnBar);
           toast('Orchestrated plan ready!');
-          
+
         } catch (e) {
           resultsDiv.innerHTML = `<div style="color:rgba(255,100,100,0.9);">❌ Error: ${e.message || 'Unknown error'}</div>`;
           debugLog('Multi-AI Planner error', e);
@@ -7193,7 +7227,7 @@ Keep it practical and actionable.`;
       try {
         closeAllViews(); // Close other views first
         promptDesignerView.classList.add('cb-view-active');
-        
+
         // Render Prompt Designer widget inside the view
         const pdContent = shadow.getElementById('cb-pd-content');
         if (pdContent) {
@@ -7204,24 +7238,24 @@ Keep it practical and actionable.`;
     });
 
     btnClosePD.addEventListener('click', () => {
-      try { promptDesignerView.classList.remove('cb-view-active'); } catch (e) {}
+      try { promptDesignerView.classList.remove('cb-view-active'); } catch (e) { }
     });
 
     // Helper: per-view progress updater
-    function updateProgress(el, action, ev){
+    function updateProgress(el, action, ev) {
       try {
         if (!el) return;
-        const act = (action==='summarize') ? 'Summarizing' : (action==='rewrite') ? 'Rewriting' : (action==='translate') ? 'Translating' : 'Syncing';
+        const act = (action === 'summarize') ? 'Summarizing' : (action === 'rewrite') ? 'Rewriting' : (action === 'translate') ? 'Translating' : 'Syncing';
         let msg = '';
         if (!ev || !ev.phase) msg = act + '...';
         else if (ev.phase === 'preparing') msg = 'Analyzing input...';
-        else if (ev.phase === 'chunking') msg = 'Breaking into ' + (ev.total||'?') + ' parts...';
-        else if (ev.phase === 'chunk') msg = (act + ' part ' + (ev.index||'?') + '/' + (ev.total||'?') + '...');
+        else if (ev.phase === 'chunking') msg = 'Breaking into ' + (ev.total || '?') + ' parts...';
+        else if (ev.phase === 'chunk') msg = (act + ' part ' + (ev.index || '?') + '/' + (ev.total || '?') + '...');
         else if (ev.phase === 'merging') msg = 'Merging parts...';
         else if (ev.phase === 'done') msg = 'Finalizing...';
         else msg = act + '...';
         el.textContent = msg;
-      } catch(e){}
+      } catch (e) { }
     }
 
     // Normalize an array/string of topic tags to canonical stored form
@@ -7248,7 +7282,7 @@ Keep it practical and actionable.`;
         for (const t of cleaned) {
           if (!seen.has(t)) { seen.add(t); uniq.push(t); }
         }
-        return uniq.slice(0,6);
+        return uniq.slice(0, 6);
       } catch (e) { debugLog('normalizeTopics failed', e); return []; }
     }
 
@@ -7306,8 +7340,8 @@ Respond ONLY with a JSON object with keys: "strengths" (array of short strings) 
           });
         } catch (e) {
           // fallback: open window and rely on user to paste
-          try { window.open(url, '_blank'); } catch(_) {}
-          try { navigator.clipboard.writeText(text).then(()=>toast('Copied to clipboard. Paste into the new chat.')); } catch(_){ toast('Copied to clipboard.'); }
+          try { window.open(url, '_blank'); } catch (_) { }
+          try { navigator.clipboard.writeText(text).then(() => toast('Copied to clipboard. Paste into the new chat.')); } catch (_) { toast('Copied to clipboard.'); }
         }
       } catch (e) { toast('Continue failed'); }
     }
@@ -7318,11 +7352,11 @@ Respond ONLY with a JSON object with keys: "strengths" (array of short strings) 
         // Segment the conversation to identify topic shifts
         const segments = segmentConversation(conversation, 5, 0.5);
         debugLog('Conversation segmented into', segments.length, 'topics:', segments.map(s => s.topic));
-        
+
         // Build conversation text for analysis
         const convText = conversation.map(m => `${m.role}: ${m.text}`).join('\n\n');
         const snippet = convText.length > 3000 ? convText.slice(0, 3000) + '\n\n...(truncated)' : convText;
-        
+
         const prompt = `You are an expert knowledge analyst. Analyze this conversation excerpt and extract structured insights.
 
 Conversation:
@@ -7340,7 +7374,7 @@ Extract and return ONLY a JSON object (no commentary) with:
 Be concise. Focus on proper nouns, technical concepts, and actionable insights.`;
 
         const res = await callGeminiAsync({ action: 'prompt', text: prompt, length: 'short' });
-        
+
         if (res && res.ok && res.result) {
           try {
             // Extract JSON from response
@@ -7350,7 +7384,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
             if (jsonStart >= 0 && jsonEnd > jsonStart) {
               const jsonStr = txt.slice(jsonStart, jsonEnd + 1);
               const parsed = JSON.parse(jsonStr);
-              
+
               // Store knowledge with segmentation metadata
               const knowledge = {
                 id: conversationId,
@@ -7363,20 +7397,20 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
                 segments: segments.map(s => ({ topic: s.topic, keywords: s.keywords, confidence: s.confidence })),
                 segmentCount: segments.length
               };
-              
+
               // Check for contradictions before saving
               const contradictions = await detectContradictions(knowledge);
               if (contradictions.length > 0) {
                 knowledge.detectedContradictions = contradictions;
                 showContradictionAlert(contradictions);
               }
-              
+
               // Save to knowledge graph
               const graphKey = 'chatbridge:knowledge_graph';
               const graph = JSON.parse(localStorage.getItem(graphKey) || '[]');
               graph.push(knowledge);
               localStorage.setItem(graphKey, JSON.stringify(graph));
-              
+
               debugLog('Knowledge extracted with', segments.length, 'segments:', knowledge);
               return knowledge;
             }
@@ -7396,9 +7430,9 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       try {
         const graphKey = 'chatbridge:knowledge_graph';
         const graph = JSON.parse(localStorage.getItem(graphKey) || '[]');
-        
+
         if (!graph.length || (!currentEntities.length && !currentThemes.length)) return [];
-        
+
         // Score each past conversation by overlap with current context
         const scored = graph.map(kg => {
           let score = 0;
@@ -7406,7 +7440,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           let matchedThemes = 0;
           let entityDetails = [];
           let themeDetails = [];
-          
+
           // Entity overlap (higher weight) with exact and partial matching
           for (const e of currentEntities) {
             const eLower = e.toLowerCase();
@@ -7425,7 +7459,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
               }
             }
           }
-          
+
           // Theme overlap with fuzzy matching
           for (const t of currentThemes) {
             const tLower = t.toLowerCase();
@@ -7442,20 +7476,20 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
               }
             }
           }
-          
+
           // Recency bonus (decay over 30 days)
           const age = Date.now() - (kg.ts || 0);
           const daysSince = age / (1000 * 60 * 60 * 24);
           const recencyBonus = Math.max(0, (30 - daysSince) / 30) * 2;
           score += recencyBonus;
-          
+
           // Calculate confidence score (0-100)
           const maxPossibleScore = (currentEntities.length * 5) + (currentThemes.length * 4) + 2;
           const confidence = Math.min(100, Math.round((score / maxPossibleScore) * 100));
-          
-          return { 
-            ...kg, 
-            score, 
+
+          return {
+            ...kg,
+            score,
             confidence,
             matchedEntities,
             matchedThemes,
@@ -7465,10 +7499,10 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
             age: daysSince
           };
         }).filter(kg => kg.score > 0).sort((a, b) => b.score - a.score).slice(0, limit * 2); // Get more for filtering
-        
+
         // Filter by minimum confidence threshold (30%)
         const filtered = scored.filter(kg => kg.confidence >= 30).slice(0, limit);
-        
+
         return filtered;
       } catch (e) {
         debugLog('findRelatedConversations error', e);
@@ -7480,7 +7514,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
     function showContextSuggestion(relatedConvs) {
       try {
         if (!relatedConvs || !relatedConvs.length) return;
-        
+
         // Create notification element with multiple results
         const notification = document.createElement('div');
         notification.id = 'cb-context-notification';
@@ -7503,37 +7537,37 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           line-height: 1.5;
           animation: cb-slide-in 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         `;
-        
+
         const topRow = document.createElement('div');
         topRow.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;';
-        
+
         const title = document.createElement('div');
         title.style.cssText = 'font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px;';
         title.innerHTML = `<span>🔗</span><span>Related Conversations</span>`;
-        
-  const closeBtn = document.createElement('button');
-  closeBtn.textContent = '×';
-  closeBtn.setAttribute('aria-label', 'Close related conversations');
-  closeBtn.style.cssText = 'background:transparent;border:none;color:#0b0f17;font-size:22px;cursor:pointer;padding:0;line-height:1;opacity:0.6;transition:opacity 0.2s;';
-  closeBtn.addEventListener('mouseenter', () => closeBtn.style.opacity = '1');
-  closeBtn.addEventListener('mouseleave', () => closeBtn.style.opacity = '0.6');
-  closeBtn.addEventListener('click', () => notification.remove());
-        
+
+        const closeBtn = document.createElement('button');
+        closeBtn.textContent = '×';
+        closeBtn.setAttribute('aria-label', 'Close related conversations');
+        closeBtn.style.cssText = 'background:transparent;border:none;color:#0b0f17;font-size:22px;cursor:pointer;padding:0;line-height:1;opacity:0.6;transition:opacity 0.2s;';
+        closeBtn.addEventListener('mouseenter', () => closeBtn.style.opacity = '1');
+        closeBtn.addEventListener('mouseleave', () => closeBtn.style.opacity = '0.6');
+        closeBtn.addEventListener('click', () => notification.remove());
+
         topRow.appendChild(title);
         topRow.appendChild(closeBtn);
         notification.appendChild(topRow);
-        
+
         const intro = document.createElement('div');
         intro.style.cssText = 'margin-bottom:14px;font-size:12px;opacity:0.85;';
         intro.textContent = `Found ${relatedConvs.length} conversation${relatedConvs.length > 1 ? 's' : ''} with similar themes and topics:`;
         notification.appendChild(intro);
-        
+
         // Show up to 3 most relevant conversations
         relatedConvs.slice(0, 3).forEach((conv, idx) => {
           const card = document.createElement('div');
           card.style.cssText = 'background:rgba(11,15,23,0.15);padding:12px;border-radius:10px;margin-bottom:10px;border-left:3px solid rgba(11,15,23,0.4);transition:all 0.2s;cursor:pointer;';
-          card.setAttribute('role','button');
-          card.setAttribute('tabindex','0');
+          card.setAttribute('role', 'button');
+          card.setAttribute('tabindex', '0');
           card.addEventListener('mouseenter', () => {
             card.style.background = 'rgba(11,15,23,0.25)';
             card.style.transform = 'translateX(2px)';
@@ -7542,37 +7576,37 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
             card.style.background = 'rgba(11,15,23,0.15)';
             card.style.transform = 'translateX(0)';
           });
-          
+
           const cardHeader = document.createElement('div');
           cardHeader.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;';
-          
+
           const platform = document.createElement('div');
           platform.style.cssText = 'font-weight:600;font-size:12px;';
           const platformName = (conv.platform || 'Unknown').replace(/^https?:\/\//, '').replace(/\/$/, '');
           platform.textContent = platformName;
           // update aria-label now that platformName is known
-          try { card.setAttribute('aria-label', 'Open conversation ' + platformName); } catch(e) {}
-          
+          try { card.setAttribute('aria-label', 'Open conversation ' + platformName); } catch (e) { }
+
           const score = document.createElement('div');
           score.style.cssText = 'background:rgba(11,15,23,0.3);padding:4px 8px;border-radius:6px;font-size:11px;font-weight:600;display:flex;align-items:center;gap:4px;';
-          
+
           // Confidence indicator with color coding
           const confidence = conv.confidence || 0;
           const confidenceColor = confidence >= 70 ? '#10a37f' : confidence >= 50 ? '#ffa500' : '#888';
           const confidenceDot = `<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${confidenceColor};"></span>`;
           score.innerHTML = `${confidenceDot} ${confidence}% match`;
-          
+
           cardHeader.appendChild(platform);
           cardHeader.appendChild(score);
           card.appendChild(cardHeader);
-          
+
           if (conv.context) {
             const context = document.createElement('div');
             context.style.cssText = 'font-size:12px;margin-bottom:8px;opacity:0.9;line-height:1.4;';
             context.textContent = conv.context.slice(0, 100) + (conv.context.length > 100 ? '...' : '');
             card.appendChild(context);
           }
-          
+
           if (conv.entities && conv.entities.length > 0) {
             const entities = document.createElement('div');
             entities.style.cssText = 'display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px;';
@@ -7584,14 +7618,14 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
             });
             card.appendChild(entities);
           }
-          
+
           if (conv.themes && conv.themes.length > 0) {
             const themes = document.createElement('div');
             themes.style.cssText = 'font-size:10px;opacity:0.7;margin-top:6px;';
             themes.textContent = '💭 ' + conv.themes.slice(0, 3).join(' • ');
             card.appendChild(themes);
           }
-          
+
           // Show segment information if available
           if (conv.segments && conv.segments.length > 1) {
             const segInfo = document.createElement('div');
@@ -7599,21 +7633,21 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
             segInfo.innerHTML = `📊 ${conv.segments.length} topics: ${conv.segments.map(s => s.topic).join(', ')}`;
             card.appendChild(segInfo);
           }
-          
+
           // Show matched details on hover (tooltip-style)
           if (conv.entityDetails && conv.entityDetails.length > 0) {
             const matchDetails = document.createElement('div');
             matchDetails.style.cssText = 'display:none;font-size:10px;margin-top:6px;padding:6px;background:rgba(11,15,23,0.25);border-radius:4px;border-left:2px solid rgba(0,180,255,0.5);';
-            matchDetails.innerHTML = `<strong>Matches:</strong><br>` + 
-              `Entities: ${conv.matchedEntities} (${conv.entityDetails.slice(0,3).map(e => e.current).join(', ')})<br>` +
-              `Themes: ${conv.matchedThemes} (${conv.themeDetails.slice(0,3).map(t => t.current).join(', ')})`;
-            
+            matchDetails.innerHTML = `<strong>Matches:</strong><br>` +
+              `Entities: ${conv.matchedEntities} (${conv.entityDetails.slice(0, 3).map(e => e.current).join(', ')})<br>` +
+              `Themes: ${conv.matchedThemes} (${conv.themeDetails.slice(0, 3).map(t => t.current).join(', ')})`;
+
             card.addEventListener('mouseenter', () => { matchDetails.style.display = 'block'; });
             card.addEventListener('mouseleave', () => { matchDetails.style.display = 'none'; });
-            
+
             card.appendChild(matchDetails);
           }
-          
+
           const viewBtn = document.createElement('button');
           viewBtn.textContent = 'Open Conversation →';
           viewBtn.style.cssText = 'margin-top:10px;width:100%;background:#0b0f17;color:#e6cf9f;border:none;padding:8px 12px;border-radius:8px;cursor:pointer;font-weight:600;font-size:11px;font-family:inherit;transition:all 0.2s;';
@@ -7632,35 +7666,35 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
             openConversationById(conv.id);
             notification.remove();
           });
-          viewBtn.setAttribute('aria-label','Open conversation');
+          viewBtn.setAttribute('aria-label', 'Open conversation');
           // keyboard activation for card
-          card.addEventListener('keydown', (ev) => { try { if (ev.key === 'Enter' || ev.key === ' ' || ev.key === 'Spacebar') { ev.preventDefault(); openConversationById(conv.id); notification.remove(); } } catch(e){} });
-          
+          card.addEventListener('keydown', (ev) => { try { if (ev.key === 'Enter' || ev.key === ' ' || ev.key === 'Spacebar') { ev.preventDefault(); openConversationById(conv.id); notification.remove(); } } catch (e) { } });
+
           card.appendChild(viewBtn);
           card.addEventListener('click', () => {
             openConversationById(conv.id);
             notification.remove();
           });
-          
+
           notification.appendChild(card);
         });
-        
+
         if (relatedConvs.length > 3) {
           const moreInfo = document.createElement('div');
           moreInfo.style.cssText = 'text-align:center;font-size:11px;opacity:0.7;margin-top:8px;';
           moreInfo.textContent = `+ ${relatedConvs.length - 3} more related conversation${relatedConvs.length - 3 > 1 ? 's' : ''}`;
           notification.appendChild(moreInfo);
         }
-        
-  const dismissBtn = document.createElement('button');
-  dismissBtn.textContent = 'Dismiss';
-  dismissBtn.setAttribute('aria-label', 'Dismiss related conversations');
-  dismissBtn.style.cssText = 'width:100%;margin-top:12px;background:rgba(11,15,23,0.2);color:#0b0f17;border:none;padding:8px 12px;border-radius:8px;cursor:pointer;font-weight:500;font-size:12px;font-family:inherit;transition:all 0.2s;';
-  dismissBtn.addEventListener('mouseenter', () => dismissBtn.style.background = 'rgba(11,15,23,0.3)');
-  dismissBtn.addEventListener('mouseleave', () => dismissBtn.style.background = 'rgba(11,15,23,0.2)');
-  dismissBtn.addEventListener('click', () => notification.remove());
+
+        const dismissBtn = document.createElement('button');
+        dismissBtn.textContent = 'Dismiss';
+        dismissBtn.setAttribute('aria-label', 'Dismiss related conversations');
+        dismissBtn.style.cssText = 'width:100%;margin-top:12px;background:rgba(11,15,23,0.2);color:#0b0f17;border:none;padding:8px 12px;border-radius:8px;cursor:pointer;font-weight:500;font-size:12px;font-family:inherit;transition:all 0.2s;';
+        dismissBtn.addEventListener('mouseenter', () => dismissBtn.style.background = 'rgba(11,15,23,0.3)');
+        dismissBtn.addEventListener('mouseleave', () => dismissBtn.style.background = 'rgba(11,15,23,0.2)');
+        dismissBtn.addEventListener('click', () => notification.remove());
         notification.appendChild(dismissBtn);
-        
+
         // Add animation style if not exists
         if (!document.getElementById('cb-context-styles')) {
           const styleEl = document.createElement('style');
@@ -7677,18 +7711,18 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           `;
           document.head.appendChild(styleEl);
         }
-        
+
         // Remove existing notification if any
         const existing = document.getElementById('cb-context-notification');
         if (existing) existing.remove();
-        
+
         document.body.appendChild(notification);
-        
+
         // Auto-dismiss after 20 seconds
         setTimeout(() => {
-          try { if (notification.parentNode) notification.remove(); } catch (e) {}
+          try { if (notification.parentNode) notification.remove(); } catch (e) { }
         }, 20000);
-        
+
       } catch (e) {
         debugLog('showContextSuggestion error', e);
       }
@@ -7736,18 +7770,18 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         if (!messages || messages.length < windowSize) {
           return [{ start: 0, end: messages.length, topic: 'main', confidence: 100 }];
         }
-        
+
         const segments = [];
         const step = Math.max(1, Math.floor(windowSize * (1 - overlapRatio)));
-        
+
         for (let i = 0; i < messages.length; i += step) {
           const windowEnd = Math.min(i + windowSize, messages.length);
           const window = messages.slice(i, windowEnd);
-          
+
           // Extract keywords from window
           const windowText = window.map(m => m.text || '').join(' ');
           const keywords = extractKeywordsFromText(windowText, 8);
-          
+
           // Calculate topic shift score compared to previous segment
           let shiftScore = 0;
           if (segments.length > 0) {
@@ -7756,10 +7790,10 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
             const union = new Set([...keywords, ...prevSegment.keywords]).size;
             shiftScore = 1 - (overlap / union); // Jaccard distance
           }
-          
+
           // Topic change detected if shift > threshold
           const isNewTopic = shiftScore > 0.5;
-          
+
           if (isNewTopic || segments.length === 0) {
             segments.push({
               start: i,
@@ -7777,7 +7811,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
             segments[segments.length - 1].keywords = [...new Set([...segments[segments.length - 1].keywords, ...keywords])].slice(0, 10);
           }
         }
-        
+
         return segments;
       } catch (e) {
         debugLog('segmentConversation error', e);
@@ -7789,7 +7823,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
     function extractKeywordsFromText(text, limit = 8) {
       try {
         if (!text) return [];
-        const stopWords = new Set(['the','that','this','with','from','about','they','would','have','there','their','which','what','when','where','your','you','will','could','should','and','for','but','are','not','was','were','has','had','can','all','any','more','our','its','also','use','using','like','just','know','get','make','want','need','think','see','look','take','come','well','even','back','good','very','much','said','than','some','into','them','only','over','such','other','then','now','may','these','after','most']);
+        const stopWords = new Set(['the', 'that', 'this', 'with', 'from', 'about', 'they', 'would', 'have', 'there', 'their', 'which', 'what', 'when', 'where', 'your', 'you', 'will', 'could', 'should', 'and', 'for', 'but', 'are', 'not', 'was', 'were', 'has', 'had', 'can', 'all', 'any', 'more', 'our', 'its', 'also', 'use', 'using', 'like', 'just', 'know', 'get', 'make', 'want', 'need', 'think', 'see', 'look', 'take', 'come', 'well', 'even', 'back', 'good', 'very', 'much', 'said', 'than', 'some', 'into', 'them', 'only', 'over', 'such', 'other', 'then', 'now', 'may', 'these', 'after', 'most']);
         const words = String(text).toLowerCase().split(/[^\w]+/).filter(w => w.length > 3 && !stopWords.has(w));
         const freq = {};
         words.forEach(w => freq[w] = (freq[w] || 0) + 1);
@@ -7812,26 +7846,26 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
     function detectActiveContext(messages, windowSize = 8, minConfidence = 40) {
       try {
         if (!messages || messages.length < 3) return null;
-        
+
         // Use last N messages as active window
         const window = messages.slice(-windowSize);
         const windowText = window.map(m => m.text || '').join('\n');
-        
+
         // Extract entities and themes from active window
         const keywords = extractKeywordsFromText(windowText, 10);
         const entities = extractEntities(windowText);
         const themes = keywords.slice(0, 6);
-        
+
         // Calculate confidence based on keyword density and variety
         const uniqueWords = new Set(windowText.toLowerCase().split(/\W+/).filter(w => w.length > 3));
         const totalWords = windowText.split(/\W+/).filter(Boolean).length;
         const variety = uniqueWords.size / Math.max(1, totalWords);
         const density = keywords.length / Math.max(1, window.length);
-        
+
         const confidence = Math.round(Math.min(100, (variety * 50) + (density * 50)));
-        
+
         if (confidence < minConfidence) return null;
-        
+
         return {
           entities,
           themes,
@@ -7852,20 +7886,20 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       try {
         if (!text) return [];
         const entities = [];
-        
+
         // Capitalized words (potential proper nouns)
         const capitalizedWords = text.match(/\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b/g) || [];
-        const filtered = capitalizedWords.filter(w => 
-          !['The','This','That','These','Those','There','Then','When','Where','What','Which','Who','How'].includes(w)
+        const filtered = capitalizedWords.filter(w =>
+          !['The', 'This', 'That', 'These', 'Those', 'There', 'Then', 'When', 'Where', 'What', 'Which', 'Who', 'How'].includes(w)
         );
-        
+
         // Common tech/product patterns
         const techPatterns = text.match(/\b(?:API|SDK|CLI|UI|UX|AI|ML|HTTP|JSON|XML|SQL|NoSQL|REST|GraphQL|OAuth|JWT|CSS|HTML|JavaScript|Python|Java|React|Vue|Angular|Node|Express|Django|Flask)\b/gi) || [];
-        
+
         // Combine and dedupe
         const combined = [...filtered, ...techPatterns];
         const unique = [...new Set(combined.map(e => e.toLowerCase()))];
-        
+
         return unique.slice(0, 8);
       } catch (e) {
         return [];
@@ -7881,7 +7915,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         if (!relatedConvs || relatedConvs.length === 0) {
           const empty = document.createElement('div');
           empty.style.cssText = 'opacity:0.8;';
-          empty.textContent = 'No connections found yet.' + (activeContext && activeContext.keywords && activeContext.keywords.length ? ' Topics detected: ' + activeContext.keywords.slice(0,5).join(', ') : '');
+          empty.textContent = 'No connections found yet.' + (activeContext && activeContext.keywords && activeContext.keywords.length ? ' Topics detected: ' + activeContext.keywords.slice(0, 5).join(', ') : '');
           connectionsResult.appendChild(empty);
           return;
         }
@@ -7905,11 +7939,11 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           }
           if (conv.entities && conv.entities.length) {
             const chips = document.createElement('div'); chips.style.cssText = 'display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px;';
-            conv.entities.slice(0,5).forEach(e => { const tag = document.createElement('span'); tag.style.cssText = 'background:rgba(11,15,23,0.25);padding:3px 8px;border-radius:6px;font-size:10px;font-weight:500;'; tag.textContent = e; chips.appendChild(tag); });
+            conv.entities.slice(0, 5).forEach(e => { const tag = document.createElement('span'); tag.style.cssText = 'background:rgba(11,15,23,0.25);padding:3px 8px;border-radius:6px;font-size:10px;font-weight:500;'; tag.textContent = e; chips.appendChild(tag); });
             card.appendChild(chips);
           }
           const open = document.createElement('button'); open.className = 'cb-btn'; open.textContent = 'Open conversation'; open.style.marginTop = '6px';
-          open.addEventListener('click', () => { try { openConversationById(conv.id); } catch(_) {} });
+          open.addEventListener('click', () => { try { openConversationById(conv.id); } catch (_) { } });
           card.appendChild(open);
           connectionsResult.appendChild(card);
         });
@@ -7922,47 +7956,47 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         const kg = await loadKnowledgeGraph();
         if (!kg || kg.length === 0) {
           // Reflect inline in Connections panel as well as toast
-          try { if (connectionsResult) { connectionsResult.textContent = 'No saved conversations yet. Scan some chats first to build your knowledge graph!'; } } catch(_) {}
+          try { if (connectionsResult) { connectionsResult.textContent = 'No saved conversations yet. Scan some chats first to build your knowledge graph!'; } } catch (_) { }
           toast('No saved conversations yet. Scan some chats first to build your knowledge graph!');
           return;
         }
-        
+
         // Quick scan of visible messages to extract current context
         const msgs = await scanChat();
         if (!msgs || msgs.length < 2) {
-          try { if (connectionsResult) { connectionsResult.textContent = 'Not enough conversation context on this page. Try having a longer chat first.'; } } catch(_) {}
+          try { if (connectionsResult) { connectionsResult.textContent = 'Not enough conversation context on this page. Try having a longer chat first.'; } } catch (_) { }
           toast('Not enough conversation context on this page. Try having a longer chat first.');
           return;
         }
-        
+
         // Use sliding window for smarter context detection
         const activeContext = detectActiveContext(msgs, 8, 40);
-        
+
         if (!activeContext) {
-          try { if (connectionsResult) { connectionsResult.textContent = 'Could not detect clear context from current conversation.'; } } catch(_) {}
+          try { if (connectionsResult) { connectionsResult.textContent = 'Could not detect clear context from current conversation.'; } } catch (_) { }
           toast('Could not detect clear context from current conversation.');
           return;
         }
-        
+
         debugLog('Active context detected:', activeContext);
-        
+
         // Update inline panel status
-        try { if (connectionsResult) connectionsResult.textContent = 'Analyzing connections…'; } catch(_) {}
-        
+        try { if (connectionsResult) connectionsResult.textContent = 'Analyzing connections…'; } catch (_) { }
+
         // Find related conversations using detected entities and themes
         const related = await findRelatedConversations(activeContext.entities, activeContext.themes, 5);
-        
+
         if (related.length) {
-          try { renderConnectionsPanel(related, activeContext); } catch(_) {}
+          try { renderConnectionsPanel(related, activeContext); } catch (_) { }
           // Keep toast, but prefer inline panel over floating notification
           toast(`Found ${related.length} related conversation${related.length > 1 ? 's' : ''} (${activeContext.confidence}% confidence)`);
         } else {
           // Show helpful message inline when no connections found
-          try { renderConnectionsPanel([], activeContext); } catch(_) {}
+          try { renderConnectionsPanel([], activeContext); } catch (_) { }
         }
       } catch (e) {
         debugLog('detectAndSuggestContext error', e);
-        try { if (connectionsResult) { connectionsResult.textContent = 'Analysis failed. Please try again.'; } } catch(_) {}
+        try { if (connectionsResult) { connectionsResult.textContent = 'Analysis failed. Please try again.'; } } catch (_) { }
       }
     }
 
@@ -7988,40 +8022,40 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           line-height: 1.5;
           animation: cb-slide-in 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         `;
-        
+
         const topRow = document.createElement('div');
         topRow.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;';
-        
+
         const title = document.createElement('div');
         title.style.cssText = 'font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px;';
         title.innerHTML = `<span>🔍</span><span>No Connections Found</span>`;
-        
-  const closeBtn = document.createElement('button');
-  closeBtn.textContent = '×';
-  closeBtn.setAttribute('aria-label', 'Close notification');
-  closeBtn.style.cssText = 'background:transparent;border:none;color:#0b0f17;font-size:22px;cursor:pointer;padding:0;line-height:1;opacity:0.6;transition:opacity 0.2s;';
-  closeBtn.addEventListener('mouseenter', () => closeBtn.style.opacity = '1');
-  closeBtn.addEventListener('mouseleave', () => closeBtn.style.opacity = '0.6');
-  closeBtn.addEventListener('click', () => notification.remove());
-        
+
+        const closeBtn = document.createElement('button');
+        closeBtn.textContent = '×';
+        closeBtn.setAttribute('aria-label', 'Close notification');
+        closeBtn.style.cssText = 'background:transparent;border:none;color:#0b0f17;font-size:22px;cursor:pointer;padding:0;line-height:1;opacity:0.6;transition:opacity 0.2s;';
+        closeBtn.addEventListener('mouseenter', () => closeBtn.style.opacity = '1');
+        closeBtn.addEventListener('mouseleave', () => closeBtn.style.opacity = '0.6');
+        closeBtn.addEventListener('click', () => notification.remove());
+
         topRow.appendChild(title);
         topRow.appendChild(closeBtn);
         notification.appendChild(topRow);
-        
+
         const msg = document.createElement('div');
         msg.style.cssText = 'margin-bottom:12px;opacity:0.9;line-height:1.6;';
         msg.textContent = "This conversation doesn't share topics with your previous chats yet. Keep chatting and scanning to build connections!";
         notification.appendChild(msg);
-        
+
         if (keywords && keywords.length > 0) {
           const keywordsSection = document.createElement('div');
           keywordsSection.style.cssText = 'background:rgba(11,15,23,0.15);padding:10px;border-radius:8px;margin-bottom:12px;';
-          
+
           const keywordsTitle = document.createElement('div');
           keywordsTitle.style.cssText = 'font-size:11px;font-weight:600;margin-bottom:6px;opacity:0.8;';
           keywordsTitle.textContent = 'Current topics detected:';
           keywordsSection.appendChild(keywordsTitle);
-          
+
           const keywordsList = document.createElement('div');
           keywordsList.style.cssText = 'display:flex;flex-wrap:wrap;gap:4px;';
           keywords.slice(0, 5).forEach(kw => {
@@ -8033,12 +8067,12 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           keywordsSection.appendChild(keywordsList);
           notification.appendChild(keywordsSection);
         }
-        
+
         const tip = document.createElement('div');
         tip.style.cssText = 'font-size:12px;opacity:0.75;font-style:italic;padding:10px;background:rgba(11,15,23,0.1);border-radius:8px;';
         tip.innerHTML = '💡 <strong>Tip:</strong> Scan more conversations about related topics to discover connections.';
         notification.appendChild(tip);
-        
+
         const dismissBtn = document.createElement('button');
         dismissBtn.textContent = 'Got it';
         dismissBtn.setAttribute('aria-label', 'Acknowledge message');
@@ -8053,18 +8087,18 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         });
         dismissBtn.addEventListener('click', () => notification.remove());
         notification.appendChild(dismissBtn);
-        
+
         // Remove existing notification if any
         const existing = document.getElementById('cb-context-notification');
         if (existing) existing.remove();
-        
+
         document.body.appendChild(notification);
-        
+
         // Auto-dismiss after 12 seconds
         setTimeout(() => {
-          try { if (notification.parentNode) notification.remove(); } catch (e) {}
+          try { if (notification.parentNode) notification.remove(); } catch (e) { }
         }, 12000);
-        
+
       } catch (e) {
         debugLog('showNoConnectionsMessage error', e);
       }
@@ -8072,21 +8106,21 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
 
     // Scan button handler: scan, normalize, save, and optionally auto-summarize
     btnScan.addEventListener('click', async () => {
-      addLoadingToButton(btnScan, 'Scanning'); 
-      status.textContent = 'Status: scanning...'; 
+      addLoadingToButton(btnScan, 'Scanning');
+      status.textContent = 'Status: scanning...';
       announce('Scanning conversation now');
-      
+
       try {
         const msgs = await scanChat();
-        
+
         // persist lastScannedText for clipboard and Sync view
-        try { 
-          if (Array.isArray(msgs) && msgs.length) { 
-            lastScannedText = msgs.map(m => `${m.role}: ${m.text}`).join('\n\n'); 
-          } 
-        } catch (e) {}
-        
-        if (!msgs || !msgs.length) { 
+        try {
+          if (Array.isArray(msgs) && msgs.length) {
+            lastScannedText = msgs.map(m => `${m.role}: ${m.text}`).join('\n\n');
+          }
+        } catch (e) { }
+
+        if (!msgs || !msgs.length) {
           // Check if there were errors during scan
           let errorMsg = 'No messages found in current chat';
           try {
@@ -8102,21 +8136,21 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
                 errors: window.ChatBridge._lastScan.errors
               });
             }
-          } catch (e) {}
-          
-          status.textContent = 'Status: no messages'; 
+          } catch (e) { }
+
+          status.textContent = 'Status: no messages';
           toast(errorMsg);
           announce('Scan completed: no messages found');
         } else {
           const final = normalizeMessages(msgs);
           const currentModel = detectCurrentModel();
           const conv = { platform: location.hostname, url: location.href, ts: Date.now(), model: currentModel, conversation: final };
-          
+
           // ensure lastScannedText updated when saving
-          try { 
-            lastScannedText = final.map(m => `${m.role}: ${m.text}`).join('\n\n'); 
-          } catch (e) {}
-          
+          try {
+            lastScannedText = final.map(m => `${m.role}: ${m.text}`).join('\n\n');
+          } catch (e) { }
+
           // Use the async saveConversation function directly
           try {
             await saveConversation(conv);
@@ -8133,12 +8167,12 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           // DISABLED: All heavy operations moved to background to keep scan instant
           // Users can manually trigger these from the Insights tab if needed
         }
-      } catch (e) { 
+      } catch (e) {
         console.error('[ChatBridge] Scan error:', e);
-        status.textContent = 'Status: error'; 
-        toast('Scan failed: ' + (e && e.message)); 
-        showError('Scan failed: ' + (e && e.message), async () => { try { btnScan.click(); } catch(_) {} }); 
-        announce('Scan failed'); 
+        status.textContent = 'Status: error';
+        toast('Scan failed: ' + (e && e.message));
+        showError('Scan failed: ' + (e && e.message), async () => { try { btnScan.click(); } catch (_) { } });
+        announce('Scan failed');
       } finally {
         // CRITICAL: Always remove loading state, even if errors occurred
         try {
@@ -8152,7 +8186,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
               btnScan.classList.remove('cb-loading');
               btnScan.textContent = 'Scan Chat';
             }
-          } catch (_) {}
+          } catch (_) { }
         }
       }
     });
@@ -8161,7 +8195,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
     btnClipboard.addEventListener('click', async () => {
       try {
         let txt = '';
-        
+
         // Priority 1: Check if any internal view is active and has output
         if (summView.classList.contains('cb-view-active') && summSourceText && summSourceText.textContent && summSourceText.textContent !== '(no conversation found)' && summSourceText.textContent !== '(no result)') {
           txt = summSourceText.textContent;
@@ -8172,27 +8206,27 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         } else if (syncView.classList.contains('cb-view-active') && syncSourceText && syncSourceText.textContent && syncSourceText.textContent !== '(no conversation found)' && syncSourceText.textContent !== '(no result)') {
           txt = syncSourceText.textContent;
         }
-        
+
         // Priority 2: Check preview area for recent auto-summary or restored content
         if (!txt && preview && preview.textContent && preview.textContent !== 'Preview: (none)' && !preview.textContent.startsWith('Preview:')) {
           txt = preview.textContent;
         }
-        
+
         // Priority 3: Fallback to last scanned text
         if (!txt) {
           txt = lastScannedText || '';
         }
-        
+
         if (!txt) { toast('Nothing to copy'); return; }
         await navigator.clipboard.writeText(txt);
         toast('Copied to clipboard');
       } catch (e) {
-        try { 
+        try {
           // Last resort: try lastScannedText
-          await navigator.clipboard.writeText(lastScannedText || ''); 
-          toast('Copied to clipboard (fallback)'); 
-        } catch(err){ 
-          toast('Copy failed'); 
+          await navigator.clipboard.writeText(lastScannedText || '');
+          toast('Copied to clipboard (fallback)');
+        } catch (err) {
+          toast('Copy failed');
         }
       }
     });
@@ -8216,12 +8250,12 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
             await new Promise(res => window.clearConversations(() => res()));
           } else {
             // Fallback: clear BOTH storage locations
-            try { localStorage.removeItem('chatbridge:conversations'); } catch (_) {}
-            try { 
+            try { localStorage.removeItem('chatbridge:conversations'); } catch (_) { }
+            try {
               if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
                 chrome.storage.local.remove(['chatbridge:conversations']);
               }
-            } catch (_) {}
+            } catch (_) { }
           }
         }
         toast('History cleared');
@@ -8238,7 +8272,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         };
         refreshHistory();
         // Clear the preview/last-scanned text
-        try { preview.textContent = 'Preview: (none)'; } catch (e) {}
+        try { preview.textContent = 'Preview: (none)'; } catch (e) { }
         lastScannedText = '';
       } catch (e) {
         toast('Clear failed: ' + (e && e.message));
@@ -8288,9 +8322,9 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       try {
         const kg = await loadKnowledgeGraph();
         const convs = await loadConversationsAsync();
-        
+
         debugLog('[renderKnowledgeGraph] Starting render - kg entries:', kg.length, 'convs:', convs.length);
-        
+
         if (!kg.length) {
           graphStats.innerHTML = '<div style="text-align:center;padding:20px;"><div style="font-size:48px;opacity:0.3;">📊</div><div style="margin-top:12px;opacity:0.7;">No knowledge graph data yet</div><div style="font-size:12px;margin-top:8px;opacity:0.5;">Scan some chats to build your graph!</div></div>';
           // Clear canvas to show empty state
@@ -8305,7 +8339,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           } catch (e) { debugLog('Canvas empty state render failed', e); }
           return Promise.resolve();
         }
-        
+
         // Build graph data structure
         const nodes = kg.map(k => {
           const conv = convs.find(c => c.id === k.id);
@@ -8326,7 +8360,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
             messageCount: msgCount
           };
         });
-        
+
         // Build edges based on shared entities/themes
         const edges = [];
         for (let i = 0; i < nodes.length; i++) {
@@ -8336,7 +8370,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
             const sharedEntities = n1.entities.filter(e => n2.entities.includes(e)).length;
             const sharedThemes = n1.themes.filter(t => n2.themes.includes(t)).length;
             const strength = sharedEntities * 3 + sharedThemes * 2;
-            
+
             if (strength > 0) {
               edges.push({
                 source: i,
@@ -8349,7 +8383,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
             }
           }
         }
-        
+
         // Update stats with rich information
         const totalStrength = edges.reduce((sum, e) => sum + e.strength, 0);
         const avgConnections = edges.length > 0 ? (totalStrength / edges.length).toFixed(1) : 0;
@@ -8360,13 +8394,13 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
             <div><div style="font-size:20px;font-weight:700;color:#e6cf9f;">${avgConnections}</div><div style="opacity:0.7;">Avg Strength</div></div>
           </div>
         `;
-        
+
         // Canvas setup
         const canvas = graphCanvas;
         const ctx = canvas.getContext('2d');
         const width = canvas.width;
         const height = canvas.height;
-        
+
         // Platform colors
         const platformColors = {
           'chatgpt.com': '#10a37f',
@@ -8381,7 +8415,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           'perplexity': '#6366f1',
           'unknown': '#6b7280'
         };
-        
+
         // Interaction state
         let hoveredNode = null;
         let selectedNode = null;
@@ -8389,17 +8423,17 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         let dragNode = null;
         let panOffset = { x: 0, y: 0 };
         let zoom = 1;
-        
+
         // Force simulation with completion tracking
         let animationFrames = 0;
         const maxFrames = 120;
         let simulationComplete = false;
-        
+
         // Expose promise that resolves when simulation finishes
         const simulationPromise = new Promise(resolve => {
           window.__cbGraphSimulationResolve = resolve;
         });
-        
+
         function applyForces() {
           // Repulsion between nodes
           for (let i = 0; i < nodes.length; i++) {
@@ -8410,14 +8444,14 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
               const dy = n2.y - n1.y;
               const dist = Math.sqrt(dx * dx + dy * dy) || 1;
               const force = 800 / (dist * dist);
-              
+
               n1.vx -= (dx / dist) * force;
               n1.vy -= (dy / dist) * force;
               n2.vx += (dx / dist) * force;
               n2.vy += (dy / dist) * force;
             }
           }
-          
+
           // Attraction along edges
           edges.forEach(e => {
             const n1 = nodes[e.source];
@@ -8427,13 +8461,13 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
             const dist = Math.sqrt(dx * dx + dy * dy) || 1;
             const targetDist = 100 - (e.strength * 5);
             const force = (dist - targetDist) * 0.015 * e.strength;
-            
+
             n1.vx += (dx / dist) * force;
             n1.vy += (dy / dist) * force;
             n2.vx -= (dx / dist) * force;
             n2.vy -= (dy / dist) * force;
           });
-          
+
           // Center gravity
           const centerX = width / 2;
           const centerY = height / 2;
@@ -8443,7 +8477,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
             n.vx += dx * 0.002;
             n.vy += dy * 0.002;
           });
-          
+
           // Apply velocities with damping
           nodes.forEach(n => {
             if (n !== dragNode) {
@@ -8451,31 +8485,31 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
               n.vy *= 0.85;
               n.x += n.vx;
               n.y += n.vy;
-              
+
               // Boundary constraints
               n.x = Math.max(n.size + 5, Math.min(width - n.size - 5, n.x));
               n.y = Math.max(n.size + 5, Math.min(height - n.size - 5, n.y));
             }
           });
         }
-        
+
         function render() {
           // Clear canvas
           ctx.fillStyle = '#0b0f17';
           ctx.fillRect(0, 0, width, height);
-          
+
           // DEBUG on first frame
           if (animationFrames === 0) {
             debugLog('First render frame - canvas:', canvas.width, 'x', canvas.height, 'nodes:', nodes.length, 'edges:', edges.length);
           }
-          
+
           // Draw edges
           edges.forEach(e => {
             const n1 = nodes[e.source];
             const n2 = nodes[e.target];
             const isConnectedToHover = hoveredNode && (n1 === hoveredNode || n2 === hoveredNode);
             const alpha = isConnectedToHover ? Math.min(e.strength / 8, 0.7) : Math.min(e.strength / 12, 0.3);
-            
+
             ctx.strokeStyle = `rgba(230, 207, 159, ${alpha})`;
             ctx.lineWidth = isConnectedToHover ? e.width * 1.5 : e.width;
             ctx.beginPath();
@@ -8483,14 +8517,14 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
             ctx.lineTo(n2.x, n2.y);
             ctx.stroke();
           });
-          
+
           // Draw nodes
           nodes.forEach(n => {
             const isHovered = n === hoveredNode;
             const isSelected = n === selectedNode;
             const platformKey = n.platform.toLowerCase().replace(/^https?:\/\//, '').replace(/\/$/, '');
             const color = platformColors[platformKey] || platformColors.unknown;
-            
+
             // Glow effect for hovered/selected nodes
             if (isHovered || isSelected) {
               ctx.fillStyle = color;
@@ -8500,18 +8534,18 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
               ctx.fill();
               ctx.globalAlpha = 1;
             }
-            
+
             // Node circle
             ctx.fillStyle = color;
             ctx.beginPath();
             ctx.arc(n.x, n.y, n.size, 0, Math.PI * 2);
             ctx.fill();
-            
+
             // Node border
             ctx.strokeStyle = isHovered || isSelected ? '#ffe7b3' : 'rgba(255, 255, 255, 0.4)';
             ctx.lineWidth = isHovered || isSelected ? 2.5 : 1.5;
             ctx.stroke();
-            
+
             // Message count indicator (small text inside large nodes)
             if (n.size > 10 && n.messageCount > 0) {
               ctx.fillStyle = '#ffffff';
@@ -8521,7 +8555,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
               ctx.fillText(n.messageCount, n.x, n.y);
             }
           });
-          
+
           // Continue simulation
           if (animationFrames < maxFrames && !isDragging) {
             applyForces();
@@ -8540,45 +8574,45 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
             }
           }
         }
-        
+
         // Tooltip helper
         function showTooltip(node, x, y) {
           if (!node) {
             graphTooltip.style.display = 'none';
             return;
           }
-          
+
           const date = new Date(node.timestamp).toLocaleDateString();
           const platformName = node.platform.replace(/^https?:\/\//, '').replace(/\/$/, '');
           const modelName = node.model || 'Unknown';
-          
+
           let html = `<div style="font-weight:700;margin-bottom:6px;color:#ffe7b3;">${platformName}</div>`;
           html += `<div style="font-size:11px;opacity:0.8;margin-bottom:4px;">Model: ${modelName}</div>`;
           html += `<div style="font-size:11px;opacity:0.8;margin-bottom:4px;">Messages: ${node.messageCount}</div>`;
           html += `<div style="font-size:11px;opacity:0.8;margin-bottom:6px;">Date: ${date}</div>`;
-          
+
           if (node.context) {
             html += `<div style="font-size:11px;margin-top:6px;padding-top:6px;border-top:1px solid rgba(230,207,159,0.2);">${node.context.slice(0, 80)}${node.context.length > 80 ? '...' : ''}</div>`;
           }
-          
+
           if (node.entities && node.entities.length > 0) {
             html += `<div style="font-size:10px;margin-top:6px;opacity:0.7;">🏷️ ${node.entities.slice(0, 3).join(', ')}</div>`;
           }
-          
+
           html += `<div style="font-size:10px;margin-top:8px;opacity:0.6;font-style:italic;">Click to open conversation</div>`;
-          
+
           graphTooltip.innerHTML = html;
           graphTooltip.style.display = 'block';
           graphTooltip.style.left = (x + 15) + 'px';
           graphTooltip.style.top = (y - 10) + 'px';
         }
-        
+
         // Mouse interaction handlers
         canvas.addEventListener('mousemove', (e) => {
           const rect = canvas.getBoundingClientRect();
           const x = ((e.clientX - rect.left) * canvas.width) / rect.width;
           const y = ((e.clientY - rect.top) * canvas.height) / rect.height;
-          
+
           if (isDragging && dragNode) {
             dragNode.x = x;
             dragNode.y = y;
@@ -8587,7 +8621,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
             render();
             return;
           }
-          
+
           // Find hovered node
           const oldHovered = hoveredNode;
           hoveredNode = nodes.find(n => {
@@ -8595,7 +8629,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
             const dy = n.y - y;
             return Math.sqrt(dx * dx + dy * dy) <= n.size;
           });
-          
+
           if (hoveredNode !== oldHovered) {
             canvas.style.cursor = hoveredNode ? 'pointer' : 'grab';
             if (hoveredNode) {
@@ -8608,24 +8642,24 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
             showTooltip(hoveredNode, e.clientX - rect.left, e.clientY - rect.top);
           }
         });
-        
+
         canvas.addEventListener('mousedown', (e) => {
           const rect = canvas.getBoundingClientRect();
           const x = ((e.clientX - rect.left) * canvas.width) / rect.width;
           const y = ((e.clientY - rect.top) * canvas.height) / rect.height;
-          
+
           dragNode = nodes.find(n => {
             const dx = n.x - x;
             const dy = n.y - y;
             return Math.sqrt(dx * dx + dy * dy) <= n.size;
           });
-          
+
           if (dragNode) {
             isDragging = true;
             canvas.style.cursor = 'grabbing';
           }
         });
-        
+
         canvas.addEventListener('mouseup', (e) => {
           if (isDragging && dragNode) {
             isDragging = false;
@@ -8633,7 +8667,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
             canvas.style.cursor = hoveredNode ? 'pointer' : 'grab';
           }
         });
-        
+
         canvas.addEventListener('mouseleave', () => {
           hoveredNode = null;
           showTooltip(null);
@@ -8644,20 +8678,20 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           canvas.style.cursor = 'grab';
           render();
         });
-        
+
         canvas.addEventListener('click', (e) => {
           if (isDragging) return;
-          
+
           const rect = canvas.getBoundingClientRect();
           const x = ((e.clientX - rect.left) * canvas.width) / rect.width;
           const y = ((e.clientY - rect.top) * canvas.height) / rect.height;
-          
+
           const clicked = nodes.find(n => {
             const dx = n.x - x;
             const dy = n.y - y;
             return Math.sqrt(dx * dx + dy * dy) <= n.size;
           });
-          
+
           if (clicked) {
             openConversationById(clicked.id);
             graphView.classList.remove('cb-view-active');
@@ -8687,7 +8721,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
             }
           } catch (err) { debugLog('canvas keydown', err); }
         });
-        
+
         // DEBUG: Force immediate render to show something
         try {
           ctx.fillStyle = '#0b0f17';
@@ -8696,13 +8730,13 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         } catch (e) {
           debugLog('Canvas initial clear failed', e);
         }
-        
+
         // Start rendering loop
         render();
-        
+
         // Return promise that resolves when simulation completes
         return simulationPromise;
-        
+
       } catch (e) {
         debugLog('renderKnowledgeGraph error', e);
         graphStats.innerHTML = '<div style="color:#ff6b6b;text-align:center;">❌ Error rendering graph. Try refreshing.</div>';
@@ -8726,22 +8760,22 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       try {
         const kg = await loadKnowledgeGraph();
         if (!kg.length) return [];
-        
+
         const contradictions = [];
-        
+
         // Compare new conclusions against past conclusions for same entities/themes
         for (const oldK of kg) {
           // Check entity overlap
-          const sharedEntities = (newKnowledge.entities || []).filter(e => 
+          const sharedEntities = (newKnowledge.entities || []).filter(e =>
             (oldK.entities || []).includes(e)
           );
-          
+
           if (sharedEntities.length === 0) continue; // No overlap
-          
+
           // Check for conflicting conclusions
           const oldConclusions = (oldK.conclusions || []).map(c => c.toLowerCase());
           const newConclusions = (newKnowledge.conclusions || []).map(c => c.toLowerCase());
-          
+
           for (const newC of newConclusions) {
             for (const oldC of oldConclusions) {
               // Simple contradiction detection: opposite words
@@ -8756,10 +8790,10 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
                 ['secure', 'insecure'],
                 ['safe', 'unsafe']
               ];
-              
+
               for (const [word1, word2] of contradictoryPairs) {
                 if ((newC.includes(word1) && oldC.includes(word2)) ||
-                    (newC.includes(word2) && oldC.includes(word1))) {
+                  (newC.includes(word2) && oldC.includes(word1))) {
                   contradictions.push({
                     entity: sharedEntities[0],
                     oldConclusion: oldC,
@@ -8773,7 +8807,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
             }
           }
         }
-        
+
         return contradictions;
       } catch (e) {
         debugLog('detectContradictions error', e);
@@ -8784,7 +8818,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
     // Show contradiction alert
     function showContradictionAlert(contradictions) {
       if (!contradictions.length) return;
-      
+
       try {
         const alert = document.createElement('div');
         alert.id = 'cb-contradiction-alert';
@@ -8802,20 +8836,20 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           animation: cb-slide-in 0.3s ease-out;
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
         `;
-        
+
         const title = document.createElement('div');
         title.textContent = '⚠️ Potential Contradiction Detected';
         title.style.cssText = 'font-weight: 600; font-size: 14px; margin-bottom: 8px;';
         alert.appendChild(title);
-        
+
         const message = document.createElement('div');
         message.textContent = `Found ${contradictions.length} conflicting conclusion${contradictions.length > 1 ? 's' : ''} about ${contradictions[0].entity}`;
         message.style.cssText = 'font-size: 13px; margin-bottom: 12px; opacity: 0.95;';
         alert.appendChild(message);
-        
+
         const btnRow = document.createElement('div');
         btnRow.style.cssText = 'display:flex;gap:8px;';
-        
+
         const viewBtn = document.createElement('button');
         viewBtn.textContent = 'Review';
         viewBtn.style.cssText = 'flex:1;background:rgba(255,255,255,0.2);color:white;border:none;padding:8px 12px;border-radius:8px;cursor:pointer;font-weight:500;font-size:12px;font-family:inherit;';
@@ -8825,27 +8859,27 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           toast('Check console for contradiction details');
           alert.remove();
         });
-        
+
         const dismissBtn = document.createElement('button');
         dismissBtn.textContent = 'Dismiss';
         dismissBtn.style.cssText = 'flex:1;background:rgba(0,0,0,0.2);color:white;border:none;padding:8px 12px;border-radius:8px;cursor:pointer;font-weight:500;font-size:12px;font-family:inherit;';
         dismissBtn.addEventListener('click', () => alert.remove());
-        
+
         btnRow.appendChild(viewBtn);
         btnRow.appendChild(dismissBtn);
         alert.appendChild(btnRow);
-        
+
         // Remove existing alert if any
         const existing = document.getElementById('cb-contradiction-alert');
         if (existing) existing.remove();
-        
+
         document.body.appendChild(alert);
-        
+
         // Auto-dismiss after 20 seconds
         setTimeout(() => {
-          try { if (alert.parentNode) alert.remove(); } catch (e) {}
+          try { if (alert.parentNode) alert.remove(); } catch (e) { }
         }, 20000);
-        
+
       } catch (e) {
         debugLog('showContradictionAlert error', e);
       }
@@ -8857,31 +8891,31 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         const kg = await loadKnowledgeGraph();
         const startNode = kg.find(k => k.id === conversationId);
         if (!startNode) return [];
-        
+
         const visited = new Set([conversationId]);
         const paths = [];
-        
+
         function findPaths(currentId, currentPath, hops) {
           if (hops >= maxHops) return;
-          
+
           const current = kg.find(k => k.id === currentId);
           if (!current) return;
-          
+
           // Find related nodes
           for (const node of kg) {
             if (visited.has(node.id)) continue;
-            
+
             // Calculate connection strength
-            const sharedEntities = (current.entities || []).filter(e => 
+            const sharedEntities = (current.entities || []).filter(e =>
               (node.entities || []).includes(e)
             );
-            const sharedThemes = (current.themes || []).filter(t => 
+            const sharedThemes = (current.themes || []).filter(t =>
               (node.themes || []).includes(t)
             );
-            
+
             if (sharedEntities.length + sharedThemes.length > 0) {
               const newPath = [...currentPath, node.id];
-              
+
               // Record path if it's at least 2 hops
               if (newPath.length >= 2) {
                 paths.push({
@@ -8891,7 +8925,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
                   strength: sharedEntities.length * 3 + sharedThemes.length * 2
                 });
               }
-              
+
               // Continue exploring
               visited.add(node.id);
               findPaths(node.id, newPath, hops + 1);
@@ -8899,12 +8933,12 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
             }
           }
         }
-        
+
         findPaths(conversationId, [], 0);
-        
+
         // Sort by strength and return top 5
         return paths.sort((a, b) => b.strength - a.strength).slice(0, 5);
-        
+
       } catch (e) {
         debugLog('discoverMultiHopConnections error', e);
         return [];
@@ -8918,7 +8952,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         if (adapter && typeof adapter.getFileInput === 'function') {
           const ai = adapter.getFileInput(); if (ai) return ai;
         }
-      } catch (e) {}
+      } catch (e) { }
       try {
         const fileInputs = Array.from(document.querySelectorAll('input[type="file"]'));
         // prefer visible ones
@@ -8926,7 +8960,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           try {
             const cs = window.getComputedStyle(fi);
             if (cs.display !== 'none' && cs.visibility !== 'hidden') return fi;
-          } catch (e) {}
+          } catch (e) { }
         }
         // else return first if any
         return fileInputs[0] || null;
@@ -8938,9 +8972,9 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       const result = { uploaded: 0, failed: [] };
       const atts = Array.isArray(attachments) ? attachments.filter(a => a && a.url) : [];
       if (!atts.length) return result;
-      
+
       restoreLog('Attempting to attach', atts.length, 'files');
-      
+
       let fileInput = findFileInputNearComposer();
       if (!fileInput) {
         // Fallback: try clipboard for the first image
@@ -8952,11 +8986,11 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
             const res = await new Promise((resolve) => {
               chrome.runtime.sendMessage({ type: 'fetch_blob', url: img.url }, resolve);
             });
-            
+
             if (!res || !res.ok) {
               throw new Error(res?.error || 'Fetch failed');
             }
-            
+
             // Convert base64 data URL back to blob
             const response = await fetch(res.data);
             const blob = await response.blob();
@@ -8974,12 +9008,12 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         restoreLog('No file input found and no images to attach');
         return result;
       }
-      
+
       try {
         const dt = new DataTransfer();
         const multiple = !!fileInput.multiple;
         let count = 0;
-        
+
         for (const a of atts) {
           try {
             restoreLog('Fetching attachment:', a.url);
@@ -8987,14 +9021,14 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
             const res = await new Promise((resolve) => {
               chrome.runtime.sendMessage({ type: 'fetch_blob', url: a.url }, resolve);
             });
-            
-            if (!res || !res.ok) { 
+
+            if (!res || !res.ok) {
               restoreLog('Fetch failed:', res?.error);
-              result.failed.push({ url: a.url, error: res?.error || 'fetch_failed' }); 
-              if (!multiple) break; 
-              continue; 
+              result.failed.push({ url: a.url, error: res?.error || 'fetch_failed' });
+              if (!multiple) break;
+              continue;
             }
-            
+
             // Convert base64 data URL back to blob
             const response = await fetch(res.data);
             const blob = await response.blob();
@@ -9003,7 +9037,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
             dt.items.add(file);
             count++;
             restoreLog('Successfully added file:', name);
-            
+
             if (!multiple) break;
           } catch (e) {
             restoreLog('Attachment fetch error:', e);
@@ -9011,22 +9045,22 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
             if (!multiple) break;
           }
         }
-        
+
         if (count > 0) {
           fileInput.files = dt.files;
-          try { fileInput.dispatchEvent(new Event('change', { bubbles: true })); } catch(e) {}
-          try { fileInput.dispatchEvent(new Event('input', { bubbles: true })); } catch(e) {}
+          try { fileInput.dispatchEvent(new Event('change', { bubbles: true })); } catch (e) { }
+          try { fileInput.dispatchEvent(new Event('input', { bubbles: true })); } catch (e) { }
           result.uploaded = count;
-          toast('Attached ' + count + ' file' + (count>1?'s':'') + ' to chat');
+          toast('Attached ' + count + ' file' + (count > 1 ? 's' : '') + ' to chat');
           restoreLog('Successfully attached', count, 'files');
         } else if (result.failed.length > 0) {
           toast('Could not attach files. Check console for details.');
         }
       } catch (e) {
         restoreLog('attachFilesToChat error:', e);
-        try { console.error('[ChatBridge attachFiles] error', e); } catch(_) {}
+        try { console.error('[ChatBridge attachFiles] error', e); } catch (_) { }
       }
-      
+
       return result;
     }
 
@@ -9041,12 +9075,12 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
             const visible = cs.display !== 'none' && cs.visibility !== 'hidden' && cs.opacity !== '0' && el.offsetWidth > 0 && el.offsetHeight > 0;
             if (!visible) continue;
             // Skip obvious search bars/nav inputs by heuristics
-            const attrs = ((el.getAttribute('aria-label')||'') + ' ' + (el.getAttribute('placeholder')||'')).toLowerCase();
+            const attrs = ((el.getAttribute('aria-label') || '') + ' ' + (el.getAttribute('placeholder') || '')).toLowerCase();
             if (/search|find|filter|nav|menu/.test(attrs)) continue;
             return el;
-          } catch (_) {}
+          } catch (_) { }
         }
-      } catch (_) {}
+      } catch (_) { }
       return null;
     }
 
@@ -9060,7 +9094,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         } catch (e) { lastErr = e; }
         await new Promise(r => setTimeout(r, pollMs));
       }
-      if (lastErr) { try { console.warn('[ChatBridge] waitForComposer error:', lastErr); } catch(_){} }
+      if (lastErr) { try { console.warn('[ChatBridge] waitForComposer error:', lastErr); } catch (_) { } }
       return null;
     }
 
@@ -9099,7 +9133,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         if (!input) {
           input = findVisibleInputCandidate();
         }
-        
+
         if (!input) {
           restoreLog('Waiting for composer...');
           input = await waitForComposer(10000, 300); // Reduced timeout to 10s
@@ -9107,7 +9141,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
 
         if (!input) {
           restoreLog('ERROR: No input found');
-          try { await navigator.clipboard.writeText(cleanText); toast('Copied to clipboard'); } catch(e) {}
+          try { await navigator.clipboard.writeText(cleanText); toast('Copied to clipboard'); } catch (e) { }
           return false;
         }
 
@@ -9117,28 +9151,28 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         if (input.isContentEditable) {
           // For contenteditable (ChatGPT, Claude, etc.)
           input.focus();
-          
+
           // Clear existing content quickly
           input.textContent = '';
-          
+
           // Insert text node
           const textNode = document.createTextNode(cleanText);
           input.appendChild(textNode);
-          
+
           // Trigger essential events only (reduced from multiple)
           input.dispatchEvent(new Event('input', { bubbles: true }));
           input.dispatchEvent(new Event('change', { bubbles: true }));
-          
+
           restoreLog('Inserted to contenteditable');
         } else {
           // For textarea/input
           input.focus();
           input.value = cleanText;
-          
+
           // Trigger essential events
           input.dispatchEvent(new Event('input', { bubbles: true }));
           input.dispatchEvent(new Event('change', { bubbles: true }));
-          
+
           restoreLog('Inserted to textarea/input');
         }
 
@@ -9150,11 +9184,11 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
             restoreLog('Attachment error:', e);
           });
         }
-        
+
         return true;
       } catch (e) {
         restoreLog('ERROR in restoreToChat:', e);
-        try { await navigator.clipboard.writeText(text); toast('Copied to clipboard'); } catch(_) {}
+        try { await navigator.clipboard.writeText(text); toast('Copied to clipboard'); } catch (_) { }
         return false;
       }
     }
@@ -9162,7 +9196,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
     // Store reference to restoreToChat function so early listener can use it
     restoreToChatFunction = restoreToChat;
     restoreLog('restoreToChat function is now ready, processing queued messages:', pendingRestoreMessages.length);
-    
+
     // Process any queued messages asynchronously
     if (pendingRestoreMessages.length > 0) {
       setTimeout(async () => {
@@ -9188,7 +9222,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         if (el) return el;
         el = document.createElement('div');
         el.id = 'cb-restore-status';
-        el.setAttribute('data-cb-ignore','true');
+        el.setAttribute('data-cb-ignore', 'true');
         el.style.position = 'fixed';
         el.style.bottom = '80px';
         el.style.right = '26px';
@@ -9205,8 +9239,8 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         el.style.letterSpacing = '0.2px';
         el.style.backdropFilter = 'blur(6px)';
         el.style.display = 'none';
-        el.setAttribute('role','status');
-        el.setAttribute('aria-live','polite');
+        el.setAttribute('role', 'status');
+        el.setAttribute('aria-live', 'polite');
         document.body.appendChild(el);
         return el;
       } catch (e) { return null; }
@@ -9218,7 +9252,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         if (!el) return;
         el.textContent = `⚡ ${message}`;
         el.style.display = 'block';
-      } catch (e) {}
+      } catch (e) { }
     }
 
     function hideRestoreStatus(success = true) {
@@ -9227,11 +9261,11 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         if (!el) return;
         if (success) {
           el.textContent = '✅ Restored';
-          setTimeout(() => { try { el.remove(); } catch(_){} }, 1400);
+          setTimeout(() => { try { el.remove(); } catch (_) { } }, 1400);
         } else {
           el.remove();
         }
-      } catch (e) {}
+      } catch (e) { }
     }
 
     btnRestore.addEventListener('click', async () => {
@@ -9249,11 +9283,11 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           } else { sel = arr[0]; }
         } catch (_) { sel = arr[0]; }
         if (!sel || !sel.conversation || !sel.conversation.length) { toast('No messages in selected conversation'); return; }
-        
+
         // Auto-summarize if 10+ messages to preserve context without overwhelming the chat
         let formatted = '';
         const msgCount = sel.conversation.length;
-        
+
         if (msgCount >= 10 && (!sel.summary || sel.summary.trim().length === 0)) {
           // Auto-summarize for better context preservation with persistent status
           updateRestoreStatus(`Preparing autosummary for ${msgCount} messages...`);
@@ -9293,7 +9327,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
                   else if (ev.phase === 'chunk') updateRestoreStatus(`Summarizing chunk ${ev.index || '?'} of ${ev.total || '?'}...`);
                   else if (ev.phase === 'merging') updateRestoreStatus('Merging summaries into transfer-ready format...');
                   else if (ev.phase === 'done') updateRestoreStatus('Summary ready. Restoring to chat...');
-                } catch (_) {}
+                } catch (_) { }
               }
             };
             const summary = await hierarchicalSummarize(fullText, opts);
@@ -9321,8 +9355,8 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           for (const m of sel.conversation) {
             if (Array.isArray(m.attachments) && m.attachments.length) allAtts.push(...m.attachments);
           }
-        } catch (e) {}
-        
+        } catch (e) { }
+
         // Use the restoreToChat function which has all the proper logic
         updateRestoreStatus('Restoring into the chat composer...');
         const success = await restoreToChat(formatted, allAtts);
@@ -9341,15 +9375,15 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
                   try {
                     const response = await fetch(res.data);
                     const blob = await response.blob();
-                    const item = new ClipboardItem({ [res.type||'image/png']: blob });
+                    const item = new ClipboardItem({ [res.type || 'image/png']: blob });
                     await navigator.clipboard.write([item]);
                     toast('Image copied too');
-                  } catch(e) {}
+                  } catch (e) { }
                 }
               });
             }
-            } catch (_) {}
-          }
+          } catch (_) { }
+        }
       } catch (e) { toast('Restore failed'); }
     });
 
@@ -9363,7 +9397,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
      * - Normalize formatting
      * Preserves meaning and core content.
      */
-    
+
     const META_PATTERNS = [
       /^(As an AI (language model|assistant)|I'm (an AI|a language model)|I don't have personal|I cannot (actually|physically)|I must (remind you|clarify|note)|It's important to note|Please note|I should mention|I want to (emphasize|clarify|note)|Let me (clarify|explain)|To be clear)[^.!?]*[.!?]\s*/gim,
       /\b(I('m| am) not able to|I (can't|cannot) (provide|give|offer) personal|as (a|an) AI,? I)[^.!?]*[.!?]\s*/gi,
@@ -9393,18 +9427,18 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
     function rambleFilter(rawOutput) {
       try {
         if (!rawOutput || typeof rawOutput !== 'string') return rawOutput;
-        
+
         let text = rawOutput.trim();
         const originalLength = text.length;
-        
+
         // Skip for very short outputs
         if (text.length < 100) return text;
-        
+
         // Step 1: Remove AI meta-text and disclaimers
         for (const pattern of META_PATTERNS) {
           text = text.replace(pattern, '');
         }
-        
+
         // Step 2: Remove verbose intros (first 200 chars only)
         const intro = text.slice(0, 200);
         let cleanIntro = intro;
@@ -9414,25 +9448,25 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         if (cleanIntro !== intro) {
           text = cleanIntro + text.slice(200);
         }
-        
+
         // Step 3: Remove verbose outros
         for (const pattern of VERBOSE_OUTROS) {
           text = text.replace(pattern, '');
         }
-        
+
         // Step 4: Remove filler transitions
         for (const pattern of FILLER_TRANSITIONS) {
           text = text.replace(pattern, '');
         }
-        
+
         // Step 5: Deduplicate repeated sentences
         const lines = text.split('\n');
         const uniqueLines = [];
         const seenNormalized = new Set();
-        
+
         for (const line of lines) {
           const trimmed = line.trim();
-          
+
           // Keep empty lines for structure
           if (!trimmed) {
             // Avoid consecutive empty lines
@@ -9441,24 +9475,24 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
             }
             continue;
           }
-          
+
           // Normalize for comparison (remove punctuation, lowercase)
           const normalized = trimmed.toLowerCase()
             .replace(/[^a-z0-9\s]/g, '')
             .replace(/\s+/g, ' ')
             .trim();
-          
+
           // Skip if we've seen this exact content
           if (normalized.length > 15 && seenNormalized.has(normalized)) {
             continue;
           }
-          
+
           seenNormalized.add(normalized);
           uniqueLines.push(trimmed);
         }
-        
+
         text = uniqueLines.join('\n');
-        
+
         // Step 6: Normalize bullet points and spacing
         text = text
           // Normalize bullet markers
@@ -9472,30 +9506,30 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           .replace(/\s+([,.!?;:])/g, '$1')
           // Remove trailing spaces
           .replace(/[ \t]+$/gm, '');
-        
+
         // Step 7: Shorten redundant sentence starters
         text = text
           .replace(/^It is important to note that\s+/gim, '')
           .replace(/^It('s| is) worth mentioning that\s+/gim, '')
           .replace(/^You (should|might|may) want to\s+/gim, '')
           .replace(/^One thing to (consider|remember|keep in mind) is that\s+/gim, '');
-        
+
         // Step 8: Clean up conversational hedging within sentences
         text = text
           .replace(/\s+might want to consider\s+/gi, ' ')
           .replace(/\s+you may want to\s+/gi, ' ')
           .replace(/\s+it would be (a good idea|advisable|wise) to\s+/gi, ' ')
           .replace(/\s+I would (recommend|suggest) that you\s+/gi, ' ');
-        
+
         // Final cleanup
         text = text.trim();
-        
+
         const reduction = originalLength > 0 ? Math.round((1 - text.length / originalLength) * 100) : 0;
-        
+
         if (reduction > 5 && window.ChatBridge && window.ChatBridge._debug) {
           console.log(`[Ramble Filter] Cleaned ${reduction}% (${originalLength} → ${text.length} chars)`);
         }
-        
+
         return text;
       } catch (e) {
         console.error('[Ramble Filter] Failed:', e);
@@ -9511,7 +9545,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
      * - Detect and structure multiple questions
      * - Preserve essential context and original meaning
      */
-    
+
     const FILLER_PHRASES = [
       /\b(um|uh|like|you know|I mean|basically|actually|literally|obviously|honestly|just|really|very|quite|perhaps|maybe|kind of|sort of)\b/gi,
       /\b(I was wondering if|I'd like to know|could you please|would you mind|if you could|I want to|I need to|can you|please)\b/gi,
@@ -9527,13 +9561,13 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
     function optimizePrompt(rawText) {
       try {
         if (!rawText || typeof rawText !== 'string') return rawText;
-        
+
         let text = rawText.trim();
         const originalLength = text.length;
-        
+
         // Skip optimization for very short prompts
         if (text.length < 80) return text;
-        
+
         // Step 1: Remove filler phrases
         for (const pattern of FILLER_PHRASES) {
           text = text.replace(pattern, '');
@@ -9541,47 +9575,47 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         for (const pattern of REDUNDANT_PATTERNS) {
           text = text.replace(pattern, '');
         }
-        
+
         // Step 2: Normalize whitespace
         text = text.replace(/\s+/g, ' ').trim();
-        
+
         // Step 3: Detect and deduplicate repeated sentences
         const sentences = text.split(/([.!?]+\s+)/).filter(s => s.trim());
         const uniqueSentences = [];
         const seenHashes = new Set();
-        
+
         for (let i = 0; i < sentences.length; i++) {
           const sent = sentences[i].trim();
           if (!sent || /^[.!?,;:\s]+$/.test(sent)) {
             if (uniqueSentences.length > 0) uniqueSentences[uniqueSentences.length - 1] += sent;
             continue;
           }
-          
+
           // Hash sentence (normalize case/punctuation for comparison)
           const normalized = sent.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
           const hash = normalized.slice(0, 50); // Use first 50 chars as hash
-          
+
           if (!seenHashes.has(hash)) {
             seenHashes.add(hash);
             uniqueSentences.push(sent);
           }
         }
-        
+
         text = uniqueSentences.join(' ');
-        
+
         // Step 4: Detect multiple questions and structure them
         const questions = text.match(/[^.!?]*\?/g);
         if (questions && questions.length > 2) {
           // Extract questions
           const cleanQuestions = questions.map(q => q.trim()).filter(q => q.length > 5);
-          
+
           // Extract non-question context
           let context = text;
           for (const q of questions) {
             context = context.replace(q, '');
           }
           context = context.replace(/[.!?]+\s*/g, '. ').trim();
-          
+
           // Rebuild: context first, then structured questions
           if (context.length > 10) {
             text = context + '\n\nQuestions:\n' + cleanQuestions.map((q, i) => `${i + 1}. ${q}`).join('\n');
@@ -9589,19 +9623,19 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
             text = 'Questions:\n' + cleanQuestions.map((q, i) => `${i + 1}. ${q}`).join('\n');
           }
         }
-        
+
         // Step 5: Collapse paragraphs into bullets (if long-form text)
         if (text.length > 400 && !text.includes('\n') && !text.startsWith('Questions:')) {
           const parts = text.split(/\.\s+/).filter(p => p.trim().length > 10);
-          
+
           if (parts.length > 3) {
             // Group related sentences (simple heuristic: topic word overlap)
             const bullets = [];
             let currentBullet = '';
-            
+
             for (let i = 0; i < parts.length; i++) {
               const part = parts[i].trim();
-              
+
               if (currentBullet.length === 0) {
                 currentBullet = part;
               } else if (currentBullet.length + part.length < 120) {
@@ -9613,28 +9647,28 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
                 currentBullet = part;
               }
             }
-            
+
             if (currentBullet) bullets.push(currentBullet);
-            
+
             // Only use bullets if we actually reduce complexity
             if (bullets.length >= 2 && bullets.length < parts.length) {
               text = bullets.map(b => '• ' + b + (b.endsWith('.') ? '' : '.')).join('\n');
             }
           }
         }
-        
+
         // Step 6: Final cleanup
         text = text.replace(/\s+([,.!?;:])/g, '$1'); // Fix spacing before punctuation
         text = text.replace(/([.!?])\s*([.!?])+/g, '$1'); // Remove duplicate punctuation
         text = text.replace(/\n{3,}/g, '\n\n'); // Max 2 newlines
         text = text.trim();
-        
+
         const compressed = originalLength > 0 ? Math.round((1 - text.length / originalLength) * 100) : 0;
-        
+
         if (compressed > 5 && window.ChatBridge && window.ChatBridge._debug) {
           console.log(`[Prompt Optimizer] Compressed ${compressed}% (${originalLength} → ${text.length} chars)`);
         }
-        
+
         return text;
       } catch (e) {
         console.error('[Prompt Optimizer] Failed:', e);
@@ -9647,60 +9681,60 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
     const _CB_TOKEN_CACHE_MAX = 50;
     const _CB_TOKEN_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
-    function _normalize(str){ return String(str||'').replace(/\s+/g,' ').trim(); }
-    function _hashKey(s){ let h=0; for (let i=0;i<s.length;i++){ h=((h<<5)-h)+s.charCodeAt(i); h|=0; } return h.toString(36); }
-    function _isSimplePrompt(t){
-      const txt=_normalize(t); if (txt.length>=200) return false;
-      const q = (txt.match(/[?]/g)||[]).length; const commas=(txt.match(/[,;:]/g)||[]).length; const bullets=(txt.match(/[-*•]/g)||[]).length;
-      return (q+commas+bullets) <= 2; // low structural complexity
+    function _normalize(str) { return String(str || '').replace(/\s+/g, ' ').trim(); }
+    function _hashKey(s) { let h = 0; for (let i = 0; i < s.length; i++) { h = ((h << 5) - h) + s.charCodeAt(i); h |= 0; } return h.toString(36); }
+    function _isSimplePrompt(t) {
+      const txt = _normalize(t); if (txt.length >= 200) return false;
+      const q = (txt.match(/[?]/g) || []).length; const commas = (txt.match(/[,;:]/g) || []).length; const bullets = (txt.match(/[-*•]/g) || []).length;
+      return (q + commas + bullets) <= 2; // low structural complexity
     }
-    function _localSummary(t){
+    function _localSummary(t) {
       const txt = _normalize(t);
-      const sentences = txt.split(/[.!?]\s+/).filter(s=>s && s.length>3).slice(0,4);
-      if (!sentences.length) return txt.slice(0,180);
-      return '\u2022 ' + sentences.map(s=>s.trim()).join('\n\u2022 ');
+      const sentences = txt.split(/[.!?]\s+/).filter(s => s && s.length > 3).slice(0, 4);
+      if (!sentences.length) return txt.slice(0, 180);
+      return '\u2022 ' + sentences.map(s => s.trim()).join('\n\u2022 ');
     }
-    function _topicCount(t){
-      const words = String(t||'').toLowerCase().split(/[^a-z0-9_]+/).filter(w=>w.length>=5);
-      const stop=new Set(['about','which','there','their','would','could','should','these','those','think','using','thing','things','after','before','where','while','doing','being','having','from','with','without','between','under','above','again']);
-      const freq={}; words.forEach(w=>{ if(!stop.has(w)) freq[w]=(freq[w]||0)+1; });
-      const keys=Object.keys(freq).filter(k=>freq[k]>=2);
+    function _topicCount(t) {
+      const words = String(t || '').toLowerCase().split(/[^a-z0-9_]+/).filter(w => w.length >= 5);
+      const stop = new Set(['about', 'which', 'there', 'their', 'would', 'could', 'should', 'these', 'those', 'think', 'using', 'thing', 'things', 'after', 'before', 'where', 'while', 'doing', 'being', 'having', 'from', 'with', 'without', 'between', 'under', 'above', 'again']);
+      const freq = {}; words.forEach(w => { if (!stop.has(w)) freq[w] = (freq[w] || 0) + 1; });
+      const keys = Object.keys(freq).filter(k => freq[k] >= 2);
       return Math.max(1, Math.min(5, keys.length));
     }
-    function _stripRAGContextIfSparse(text){
+    function _stripRAGContextIfSparse(text) {
       try {
-        const rc = (window.RAGEngine && typeof window.RAGEngine._lastRetrievedCount==='number') ? window.RAGEngine._lastRetrievedCount : null;
+        const rc = (window.RAGEngine && typeof window.RAGEngine._lastRetrievedCount === 'number') ? window.RAGEngine._lastRetrievedCount : null;
         if (rc !== null && rc < 2 && /\[Relevant context from past conversations:\]/.test(text)) {
-          return text.replace(/\n\n\[Relevant context from past conversations:\][\s\S]*$/,'');
+          return text.replace(/\n\n\[Relevant context from past conversations:\][\s\S]*$/, '');
         }
-      } catch(_){}
+      } catch (_) { }
       return text;
     }
-    function _tryCacheGet(key){
-      const e=_CB_TOKEN_CACHE.get(key); if(!e) return null; if ((Date.now()-e.ts)>_CB_TOKEN_CACHE_TTL_MS) { _CB_TOKEN_CACHE.delete(key); return null; } return e.res;
+    function _tryCacheGet(key) {
+      const e = _CB_TOKEN_CACHE.get(key); if (!e) return null; if ((Date.now() - e.ts) > _CB_TOKEN_CACHE_TTL_MS) { _CB_TOKEN_CACHE.delete(key); return null; } return e.res;
     }
-    function _cachePut(key,res){
-      _CB_TOKEN_CACHE.set(key,{ ts: Date.now(), res });
-      if (_CB_TOKEN_CACHE.size>_CB_TOKEN_CACHE_MAX){ const first=_CB_TOKEN_CACHE.keys().next().value; _CB_TOKEN_CACHE.delete(first); }
+    function _cachePut(key, res) {
+      _CB_TOKEN_CACHE.set(key, { ts: Date.now(), res });
+      if (_CB_TOKEN_CACHE.size > _CB_TOKEN_CACHE_MAX) { const first = _CB_TOKEN_CACHE.keys().next().value; _CB_TOKEN_CACHE.delete(first); }
     }
 
-    async function tokenGovernor(payload, provider){
+    async function tokenGovernor(payload, provider) {
       try {
         const action = payload && payload.action ? String(payload.action) : 'prompt';
         let text = payload && payload.text ? String(payload.text) : '';
-        
+
         // Apply prompt optimization FIRST (before any other processing)
         const originalText = text;
         text = optimizePrompt(text);
-        
+
         // Update payload with optimized text
         if (text !== originalText && payload) {
           payload = Object.assign({}, payload, { text });
         }
-        
+
         const normalized = _normalize(text);
         const len = normalized.length;
-        const key = provider + '|' + action + '|' + _hashKey(normalized) + '|' + (payload.length||'');
+        const key = provider + '|' + action + '|' + _hashKey(normalized) + '|' + (payload.length || '');
 
         // RAG sparse context strip
         if (text && /\[Relevant context from past conversations:\]/.test(text)) {
@@ -9723,7 +9757,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         // Sub-question decomposition skip (heuristic on instruction text)
         if (/\b(sub[- ]?question|decompose|break\s+into\s+(steps|questions)|outline)/i.test(normalized)) {
           if (_topicCount(text) <= 1) {
-            const one = 'Step 1: ' + (text.replace(/"/g,'').slice(0,80) || 'Single-focus task');
+            const one = 'Step 1: ' + (text.replace(/"/g, '').slice(0, 80) || 'Single-focus task');
             const res = { ok: true, result: one, model: 'local-fast' };
             _cachePut(key, res);
             return { intercepted: true, res };
@@ -9731,7 +9765,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         }
 
         return { intercepted: false, payload, cacheKey: key };
-      } catch(_) {
+      } catch (_) {
         return { intercepted: false, payload, cacheKey: null };
       }
     }
@@ -9778,7 +9812,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
     async function hierarchicalSummarize(text, options) {
       options = options || {};
       const onProgress = typeof options.onProgress === 'function' ? options.onProgress : null;
-      try { onProgress && onProgress({ phase: 'preparing' }); } catch(e){}
+      try { onProgress && onProgress({ phase: 'preparing' }); } catch (e) { }
       const chunkSize = options.chunkSize || 12000; // characters per chunk (~12k)
       const maxParallel = options.maxParallel || 3; // number of parallel chunk summaries
       const mergePrompt = options.mergePrompt || 'Merge the following chunk summaries into a single coherent summary preserving salient points and context.';
@@ -9786,7 +9820,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       // Small inputs: direct summarize call
       if (text.length <= chunkSize) {
         const res = await callGeminiAsync({ action: 'summarize', text, length: options.length || 'medium', summaryType: options.summaryType || 'paragraph' });
-        if (res && res.ok) { try { onProgress && onProgress({ phase: 'done' }); } catch(e){}; return res.result; }
+        if (res && res.ok) { try { onProgress && onProgress({ phase: 'done' }); } catch (e) { }; return res.result; }
         throw new Error(res && res.error ? res.error : 'summarize-failed');
       }
       // Split text into chunks on paragraph boundaries to avoid cutting sentences
@@ -9798,7 +9832,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         else { cur = cur ? (cur + '\n\n' + p) : p; }
       }
       if (cur) chunks.push(cur);
-      try { onProgress && onProgress({ phase: 'chunking', total: chunks.length }); } catch(e){}
+      try { onProgress && onProgress({ phase: 'chunking', total: chunks.length }); } catch (e) { }
 
       // Summarize chunks in parallel batches to limit concurrent calls
       const summaries = [];
@@ -9817,7 +9851,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         } catch (e) { debugLog('hierarchicalSummarize: chunk primary threw', e); }
 
         // brief wait then retry once
-        try { await sleep(250); } catch(e){}
+        try { await sleep(250); } catch (e) { }
         try {
           const b = await callGeminiAsync({ action: 'summarize', text: chunkText, length: chunkLen, summaryType });
           if (b && b.ok) return b.result;
@@ -9842,7 +9876,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         const batchChunks = chunks.slice(i, i + maxParallel);
         const batch = batchChunks.map((c, idx) => {
           const globalIndex = i + idx + 1;
-          try { onProgress && onProgress({ phase: 'chunk', index: globalIndex, total: chunks.length }); } catch(e){}
+          try { onProgress && onProgress({ phase: 'chunk', index: globalIndex, total: chunks.length }); } catch (e) { }
           return summarizeChunk(c);
         });
         const results = await Promise.all(batch);
@@ -9850,18 +9884,18 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       }
 
       // Merge chunk summaries
-      const mergeInput = summaries.map((s, idx) => `Chunk ${idx+1}:\n${s}`).join('\n\n');
+      const mergeInput = summaries.map((s, idx) => `Chunk ${idx + 1}:\n${s}`).join('\n\n');
       // Primary merge attempt
       try {
-        try { onProgress && onProgress({ phase: 'merging' }); } catch(e){}
-  let mergeRes = await callGeminiAsync({ action: 'summarize', text: mergeInput, length: options.length || 'medium', summaryType: options.summaryType || 'paragraph', prompt: mergePrompt });
-  if (mergeRes && mergeRes.ok) { try { onProgress && onProgress({ phase: 'done' }); } catch(e){}; return mergeRes.result; }
+        try { onProgress && onProgress({ phase: 'merging' }); } catch (e) { }
+        let mergeRes = await callGeminiAsync({ action: 'summarize', text: mergeInput, length: options.length || 'medium', summaryType: options.summaryType || 'paragraph', prompt: mergePrompt });
+        if (mergeRes && mergeRes.ok) { try { onProgress && onProgress({ phase: 'done' }); } catch (e) { }; return mergeRes.result; }
         debugLog('hierarchicalSummarize: primary merge failed', mergeRes);
 
         // Retry once with the same payload (some transient backend issues recover on retry)
         try {
           const retryRes = await callGeminiAsync({ action: 'summarize', text: mergeInput, length: options.length || 'medium', summaryType: options.summaryType || 'paragraph', prompt: mergePrompt });
-          if (retryRes && retryRes.ok) { try { onProgress && onProgress({ phase: 'done' }); } catch(e){}; return retryRes.result; }
+          if (retryRes && retryRes.ok) { try { onProgress && onProgress({ phase: 'done' }); } catch (e) { }; return retryRes.result; }
           debugLog('hierarchicalSummarize: retry merge failed', retryRes);
         } catch (retryErr) {
           debugLog('hierarchicalSummarize: retry merge threw', retryErr);
@@ -9871,7 +9905,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         try {
           const fallbackPrompt = 'Produce a single coherent, concise summary from the following chunk summaries. Preserve the key points and overall context.';
           const fallbackRes = await callGeminiAsync({ action: 'summarize', text: mergeInput, length: options.length || 'medium', summaryType: options.summaryType || 'paragraph', prompt: fallbackPrompt });
-          if (fallbackRes && fallbackRes.ok) { try { onProgress && onProgress({ phase: 'done' }); } catch(e){}; return fallbackRes.result; }
+          if (fallbackRes && fallbackRes.ok) { try { onProgress && onProgress({ phase: 'done' }); } catch (e) { }; return fallbackRes.result; }
           debugLog('hierarchicalSummarize: fallback summarize failed', fallbackRes);
         } catch (fbErr) {
           debugLog('hierarchicalSummarize: fallback summarize threw', fbErr);
@@ -9882,16 +9916,16 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       }
 
       // Last resort: return concatenated chunk summaries so the caller still gets useful information
-  try { onProgress && onProgress({ phase: 'done' }); } catch(e){}
-  debugLog('hierarchicalSummarize: returning concatenated chunk summaries as last resort');
+      try { onProgress && onProgress({ phase: 'done' }); } catch (e) { }
+      debugLog('hierarchicalSummarize: returning concatenated chunk summaries as last resort');
       return summaries.join('\n\n');
     }
-    
+
     // Generic hierarchical processor for other actions (prompt/rewrite/translate)
     async function hierarchicalProcess(text, action, options) {
       options = options || {};
       const onProgress = typeof options.onProgress === 'function' ? options.onProgress : null;
-      try { onProgress && onProgress({ phase: 'preparing' }); } catch(e){}
+      try { onProgress && onProgress({ phase: 'preparing' }); } catch (e) { }
       const chunkSize = options.chunkSize || 12000;
       const maxParallel = options.maxParallel || 3;
       const mergePrompt = options.mergePrompt || `Combine the following pieces into a single coherent output that preserves context, style, and important details.`;
@@ -9899,7 +9933,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       if (!text || typeof text !== 'string') return '';
       if (text.length <= chunkSize) {
         const res = await callGeminiAsync(Object.assign({ action, text }, perChunkExtra));
-        if (res && res.ok) { try { onProgress && onProgress({ phase: 'done' }); } catch(e){}; return res.result; }
+        if (res && res.ok) { try { onProgress && onProgress({ phase: 'done' }); } catch (e) { }; return res.result; }
         throw new Error(res && res.error ? res.error : `${action}-failed`);
       }
       const paragraphs = text.split(/\n\s*\n/);
@@ -9909,15 +9943,15 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         if ((cur + '\n\n' + p).length > chunkSize && cur) { chunks.push(cur); cur = p; }
         else { cur = cur ? (cur + '\n\n' + p) : p; }
       }
-  if (cur) chunks.push(cur);
-  try { onProgress && onProgress({ phase: 'chunking', total: chunks.length }); } catch(e){}
+      if (cur) chunks.push(cur);
+      try { onProgress && onProgress({ phase: 'chunking', total: chunks.length }); } catch (e) { }
 
       const outputs = [];
       for (let i = 0; i < chunks.length; i += maxParallel) {
         const slice = chunks.slice(i, i + maxParallel);
         const batch = slice.map((c, idx) => {
           const globalIndex = i + idx + 1;
-          try { onProgress && onProgress({ phase: 'chunk', index: globalIndex, total: chunks.length }); } catch(e){}
+          try { onProgress && onProgress({ phase: 'chunk', index: globalIndex, total: chunks.length }); } catch (e) { }
           return callGeminiAsync(Object.assign({ action, text: c }, perChunkExtra)).then(r => (r && r.ok) ? r.result : ('[chunk-failed]'))
         });
         const results = await Promise.all(batch);
@@ -9925,10 +9959,10 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       }
 
       // If merge explicitly disabled, just concatenate chunk outputs
-  if (options.merge === false) { try { onProgress && onProgress({ phase: 'done' }); } catch(e){}; return outputs.join('\n\n'); }
+      if (options.merge === false) { try { onProgress && onProgress({ phase: 'done' }); } catch (e) { }; return outputs.join('\n\n'); }
 
       // Otherwise, merge outputs via a final prompt call (use 'prompt' action for merge)
-      const mergeInput = outputs.map((s, idx) => `Part ${idx+1}:\n${s}`).join('\n\n');
+      const mergeInput = outputs.map((s, idx) => `Part ${idx + 1}:\n${s}`).join('\n\n');
       const mergeText = mergePrompt + '\n\n' + mergeInput;
       // If syncing tone, forward source/target metadata and ask backend to perform tone transfer
       if (action === 'syncTone') {
@@ -9936,17 +9970,17 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         const src = options.sourceModel || 'SourceModel';
         const tgt = options.targetModel || 'TargetModel';
         const tonePrompt = `You are an expert prompt engineer. Rewrite the following conversation parts so that the complete conversation is optimally structured for ${tgt} to understand and produce the best responses. Optimize prompts for clarity, context, and ${tgt}'s communication style. Preserve all factual content and user intent. The original was optimized for ${src}.\n\n${mergeInput}`;
-        try { onProgress && onProgress({ phase: 'merging' }); } catch(e){}
+        try { onProgress && onProgress({ phase: 'merging' }); } catch (e) { }
         const mergeRes = await callGeminiAsync({ action: 'syncTone', text: tonePrompt, length: options.length || 'medium', sourceModel: src, targetModel: tgt });
-        if (mergeRes && mergeRes.ok) { try { onProgress && onProgress({ phase: 'done' }); } catch(e){}; return mergeRes.result; }
+        if (mergeRes && mergeRes.ok) { try { onProgress && onProgress({ phase: 'done' }); } catch (e) { }; return mergeRes.result; }
         throw new Error('syncTone-merge-failed');
       }
-      try { onProgress && onProgress({ phase: 'merging' }); } catch(e){}
+      try { onProgress && onProgress({ phase: 'merging' }); } catch (e) { }
       const mergeRes = await callGeminiAsync({ action: 'prompt', text: mergeText, length: options.length || 'medium' });
-      if (mergeRes && mergeRes.ok) { try { onProgress && onProgress({ phase: 'done' }); } catch(e){}; return mergeRes.result; }
+      if (mergeRes && mergeRes.ok) { try { onProgress && onProgress({ phase: 'done' }); } catch (e) { }; return mergeRes.result; }
       throw new Error('merge-failed');
     }
-    
+
     // Unified Rewrite API
     // Selects template via background templates and handles chunk/merge.
     async function rewriteText(mode, text, options = {}) {
@@ -9972,24 +10006,24 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         summResult.textContent = '';
         summView.classList.add('cb-view-active');
         // Auto-pick a sensible default summary type (user can still change)
-        try { if (inputText && summTypeSelect) { summTypeSelect.value = pickAdaptiveSummaryType(inputText); } } catch(_){ }
+        try { if (inputText && summTypeSelect) { summTypeSelect.value = pickAdaptiveSummaryType(inputText); } } catch (_) { }
       } catch (e) { toast('Failed to open Summarize'); debugLog('open summ view', e); }
     });
 
     btnCloseSumm.addEventListener('click', () => {
-      try { summView.classList.remove('cb-view-active'); } catch (e) {}
+      try { summView.classList.remove('cb-view-active'); } catch (e) { }
     });
 
     btnGoSumm.addEventListener('click', async () => {
       try {
-  btnGoSumm.disabled = true; addLoadingToButton(btnGoSumm, 'Summarizing'); summResult.textContent = ''; btnInsertSumm.style.display = 'none';
+        btnGoSumm.disabled = true; addLoadingToButton(btnGoSumm, 'Summarizing'); summResult.textContent = ''; btnInsertSumm.style.display = 'none';
         summProg.style.display = 'inline'; updateProgress(summProg, 'summarize', { phase: 'preparing' });
         const chatText = (summSourceText && summSourceText.textContent) ? summSourceText.textContent : '';
-  if (!chatText || chatText.trim().length < 10) { toast('No conversation to summarize'); btnGoSumm.disabled = false; btnGoSumm.textContent = 'Summarize'; return; }
+        if (!chatText || chatText.trim().length < 10) { toast('No conversation to summarize'); btnGoSumm.disabled = false; btnGoSumm.textContent = 'Summarize'; return; }
 
         const length = (summLengthSelect && summLengthSelect.value) || 'medium';
         const summaryType = (summTypeSelect && summTypeSelect.value) || 'paragraph';
-        const opts = { chunkSize: 14000, maxParallel: 3, length, summaryType, onProgress: (ev)=>updateProgress(summProg, 'summarize', ev) };
+        const opts = { chunkSize: 14000, maxParallel: 3, length, summaryType, onProgress: (ev) => updateProgress(summProg, 'summarize', ev) };
         const result = await hierarchicalSummarize(chatText, opts);
 
         // Update text area with result and show Insert button
@@ -9997,12 +10031,12 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         summResult.textContent = '✅ Summary completed! The text area above now shows the summarized version.';
         btnInsertSumm.style.display = 'inline-block';
         summProg.style.display = 'none';
-  // No duplicate output in preview; go straight to history below
+        // No duplicate output in preview; go straight to history below
         toast('Summarize completed');
       } catch (err) {
         toast('Summarize failed: ' + (err && err.message ? err.message : err));
         debugLog('hierarchicalSummarize error', err);
-  } finally { removeLoadingFromButton(btnGoSumm, 'Summarize'); }
+      } finally { removeLoadingFromButton(btnGoSumm, 'Summarize'); }
     });
 
     // Insert buttons: inject current text area content into the page chat input
@@ -10021,13 +10055,13 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
     // Multi-select state for Rewrite view
     let _rewMultiMode = false; // toggles multi-select mode in Rewrite view
     const _cbSelectedReplyIds = new Set();
-    
+
     // NEW: State for chat message selection
     let _selectedMessages = new Set();
     let _allChatMessages = [];
     let _rewFilter = 'all'; // all, user, assistant
 
-    function _hashStr(s){ let h=0; for(let i=0;i<s.length;i++){ h=((h<<5)-h)+s.charCodeAt(i); h|=0; } return h.toString(36); }
+    function _hashStr(s) { let h = 0; for (let i = 0; i < s.length; i++) { h = ((h << 5) - h) + s.charCodeAt(i); h |= 0; } return h.toString(36); }
 
     function _generatePreview(text) {
       if (!text || text.length === 0) return '(empty)';
@@ -10044,10 +10078,10 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
     async function loadAssistantReplies() {
       try {
         const msgs = await scanChat();
-        let candidates = (msgs || []).filter(m => (m && m.text && m.text.trim().length>0));
+        let candidates = (msgs || []).filter(m => (m && m.text && m.text.trim().length > 0));
         if (_rewFilter === 'assistant') candidates = candidates.filter(m => m.role === 'assistant');
         else if (_rewFilter === 'user') candidates = candidates.filter(m => m.role === 'user');
-        
+
         // Auto-summarize if combined message count > 20
         if (msgs && msgs.length > 20) {
           try {
@@ -10058,12 +10092,12 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
             }
           } catch (e) { debugLog('auto-summarize error', e); }
         }
-        
+
         // newest first
         candidates.reverse();
-        _cbRepliesData = candidates.map((m, i) => ({ 
-          id: `r-${i}-${_hashStr(m.text.slice(0,64))}`, 
-          text: m.text, 
+        _cbRepliesData = candidates.map((m, i) => ({
+          id: `r-${i}-${_hashStr(m.text.slice(0, 64))}`,
+          text: m.text,
           preview: _generatePreview(m.text),
           idx: i,
           role: m.role || 'assistant'
@@ -10083,16 +10117,16 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         if (!list) return;
         while (list.firstChild) list.removeChild(list.firstChild);
         if (!_cbRepliesData.length) {
-          const empty = document.createElement('div'); empty.style.cssText='font-size:12px;color:var(--cb-subtext)'; empty.textContent='No assistant replies found.'; list.appendChild(empty); return;
+          const empty = document.createElement('div'); empty.style.cssText = 'font-size:12px;color:var(--cb-subtext)'; empty.textContent = 'No assistant replies found.'; list.appendChild(empty); return;
         }
         for (const r of _cbRepliesData) {
-          const bubble = document.createElement('div'); bubble.className='cb-reply'; bubble.dataset.id = r.id;
+          const bubble = document.createElement('div'); bubble.className = 'cb-reply'; bubble.dataset.id = r.id;
           if (_cbSelectedReplyId === r.id || _cbSelectedReplyIds.has(r.id)) bubble.classList.add('cb-selected');
-          const previewEl = document.createElement('div'); previewEl.className='cb-reply-preview'; previewEl.textContent = r.preview;
+          const previewEl = document.createElement('div'); previewEl.className = 'cb-reply-preview'; previewEl.textContent = r.preview;
           bubble.appendChild(previewEl);
-          const meta = document.createElement('div'); meta.className='cb-reply-meta'; meta.textContent = `${r.role === 'user' ? 'User' : 'AI'} • ${r.text.length} chars`;
+          const meta = document.createElement('div'); meta.className = 'cb-reply-meta'; meta.textContent = `${r.role === 'user' ? 'User' : 'AI'} • ${r.text.length} chars`;
           bubble.appendChild(meta);
-          bubble.addEventListener('click', ()=>{
+          bubble.addEventListener('click', () => {
             if (_rewMultiMode) {
               if (_cbSelectedReplyIds.has(r.id)) _cbSelectedReplyIds.delete(r.id); else _cbSelectedReplyIds.add(r.id);
               // clear single-select id in multi mode
@@ -10108,7 +10142,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           });
           list.appendChild(bubble);
         }
-      } catch(e){ debugLog('renderReplies error', e); }
+      } catch (e) { debugLog('renderReplies error', e); }
     }
 
     function updateRewSourceFromSelection() {
@@ -10117,7 +10151,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         const selected = _cbRepliesData.filter(r => _cbSelectedReplyIds.has(r.id));
         const text = selected.map(r => r.text).join('\n\n');
         rewSourceText.textContent = text || '(no selection)';
-      } catch(e){}
+      } catch (e) { }
     }
 
     function showEditor(reply) {
@@ -10129,8 +10163,8 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         textarea.value = reply.text;
         editor.classList.add('cb-active');
         if (repliesList) repliesList.classList.add('cb-editor-open');
-        setTimeout(() => { try { textarea.focus(); textarea.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch(e){} }, 100);
-      } catch(e){ debugLog('showEditor error', e); }
+        setTimeout(() => { try { textarea.focus(); textarea.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch (e) { } }, 100);
+      } catch (e) { debugLog('showEditor error', e); }
     }
 
     function hideEditor() {
@@ -10139,7 +10173,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         const repliesList = rewView.querySelector('#cb-replies-list');
         if (editor) editor.classList.remove('cb-active');
         if (repliesList) repliesList.classList.remove('cb-editor-open');
-      } catch(e){}
+      } catch (e) { }
     }
 
     btnRewrite.addEventListener('click', async () => {
@@ -10154,34 +10188,34 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       } catch (e) { toast('Failed to open Rewrite'); debugLog('open rew view', e); }
     });
 
-      // Controls: Multi-select toggle
-      try {
-        rewMultiBtn.addEventListener('click', () => {
-          _rewMultiMode = !_rewMultiMode;
-          try { if (_rewMultiMode) rewMultiBtn.classList.add('cb-active'); else rewMultiBtn.classList.remove('cb-active'); } catch(e){}
-          if (_rewMultiMode) {
-            _cbSelectedReplyId = null;
-            _cbSelectedReplyIds.clear();
-            hideEditor();
-            renderReplies();
-            updateRewSourceFromSelection();
-          }
-        });
-      } catch(e){}
+    // Controls: Multi-select toggle
+    try {
+      rewMultiBtn.addEventListener('click', () => {
+        _rewMultiMode = !_rewMultiMode;
+        try { if (_rewMultiMode) rewMultiBtn.classList.add('cb-active'); else rewMultiBtn.classList.remove('cb-active'); } catch (e) { }
+        if (_rewMultiMode) {
+          _cbSelectedReplyId = null;
+          _cbSelectedReplyIds.clear();
+          hideEditor();
+          renderReplies();
+          updateRewSourceFromSelection();
+        }
+      });
+    } catch (e) { }
 
-      // Controls: Filter cycling (All -> Assistant -> User)
-      try {
-        rewFilterBtn.addEventListener('click', async () => {
-          if (_rewFilter === 'all') _rewFilter = 'assistant';
-          else if (_rewFilter === 'assistant') _rewFilter = 'user';
-          else _rewFilter = 'all';
-          rewFilterBtn.textContent = 'Filter: ' + (_rewFilter === 'all' ? 'All' : (_rewFilter === 'assistant' ? 'Assistant' : 'User'));
-          await loadAssistantReplies();
-        });
-      } catch(e){}
+    // Controls: Filter cycling (All -> Assistant -> User)
+    try {
+      rewFilterBtn.addEventListener('click', async () => {
+        if (_rewFilter === 'all') _rewFilter = 'assistant';
+        else if (_rewFilter === 'assistant') _rewFilter = 'user';
+        else _rewFilter = 'all';
+        rewFilterBtn.textContent = 'Filter: ' + (_rewFilter === 'all' ? 'All' : (_rewFilter === 'assistant' ? 'Assistant' : 'User'));
+        await loadAssistantReplies();
+      });
+    } catch (e) { }
 
     btnCloseRew.addEventListener('click', () => {
-      try { rewView.classList.remove('cb-view-active'); _cbSelectedReplyId = null; hideEditor(); } catch (e) {}
+      try { rewView.classList.remove('cb-view-active'); _cbSelectedReplyId = null; hideEditor(); } catch (e) { }
     })
 
     // Editor rewrite button
@@ -10237,23 +10271,23 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
               navigator.clipboard.writeText(editorTextarea.value);
               toast('Copied');
             }
-          } catch(e) { toast('Copy failed'); }
+          } catch (e) { toast('Copy failed'); }
         });
       }
-    } catch(e) { debugLog('editor buttons setup error', e); }
+    } catch (e) { debugLog('editor buttons setup error', e); }
 
     btnGoRew.addEventListener('click', async () => {
       try {
-  btnGoRew.disabled = true; addLoadingToButton(btnGoRew, 'Rewriting'); rewResult.textContent = ''; btnInsertRew.style.display = 'none';
+        btnGoRew.disabled = true; addLoadingToButton(btnGoRew, 'Rewriting'); rewResult.textContent = ''; btnInsertRew.style.display = 'none';
         rewProg.style.display = 'inline'; updateProgress(rewProg, 'rewrite', { phase: 'preparing' });
         const chatText = (rewSourceText && rewSourceText.textContent) ? rewSourceText.textContent : '';
         const style = (rewStyleSelect && rewStyleSelect.value) || 'normal';
         const styleHint = (typeof styleHintInput !== 'undefined' && styleHintInput && styleHintInput.value) ? styleHintInput.value : '';
         const targetModel = (rewTargetSelect && rewTargetSelect.value && rewTargetSelect.value !== 'None') ? rewTargetSelect.value : null;
-        
+
         // Fallback to whole conversation rewrite (legacy behavior)
         if (!chatText || chatText.trim().length < 10) { toast('No conversation to rewrite'); btnGoRew.disabled = false; btnGoRew.textContent = 'Rewrite'; return; }
-        
+
         let result = '';
         // If target model is selected, use syncTone logic
         if (targetModel) {
@@ -10263,16 +10297,16 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           }
           if (!result) {
             try {
-              result = await hierarchicalProcess(chatText, 'syncTone', { chunkSize: 14000, maxParallel: 3, length: 'medium', sourceModel: 'unknown', targetModel: targetModel, onProgress: (ev)=>updateProgress(rewProg, 'rewrite', ev) });
+              result = await hierarchicalProcess(chatText, 'syncTone', { chunkSize: 14000, maxParallel: 3, length: 'medium', sourceModel: 'unknown', targetModel: targetModel, onProgress: (ev) => updateProgress(rewProg, 'rewrite', ev) });
             } catch (e) { debugLog('hierarchicalProcess syncTone error', e); throw e; }
           }
         } else {
           // Standard rewrite
-          result = await rewriteText(style, chatText, { styleHint, chunkSize: 14000, maxParallel: 3, length: 'medium', onProgress: (ev)=>updateProgress(rewProg, 'rewrite', ev) });
+          result = await rewriteText(style, chatText, { styleHint, chunkSize: 14000, maxParallel: 3, length: 'medium', onProgress: (ev) => updateProgress(rewProg, 'rewrite', ev) });
         }
-        
+
         rewSourceText.textContent = result || '(no result)';
-        rewResult.textContent = targetModel 
+        rewResult.textContent = targetModel
           ? `✅ Conversation adapted for ${targetModel}! The text area above shows the optimized version.`
           : '✅ Rewrite completed! The text area above now shows the rewritten version.';
         btnInsertRew.style.display = 'inline-block';
@@ -10281,7 +10315,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       } catch (err) {
         toast('Rewrite failed: ' + (err && err.message ? err.message : err));
         debugLog('hierarchicalProcess rewrite error', err);
-  } finally { removeLoadingFromButton(btnGoRew, 'Rewrite'); }
+      } finally { removeLoadingFromButton(btnGoRew, 'Rewrite'); }
     });
 
     btnInsertRew.addEventListener('click', () => {
@@ -10301,7 +10335,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
     });
 
     btnCloseTrans.addEventListener('click', () => {
-      try { transView.classList.remove('cb-view-active'); } catch (e) {}
+      try { transView.classList.remove('cb-view-active'); } catch (e) { }
     });
 
     btnGoTrans.addEventListener('click', async () => {
@@ -10310,7 +10344,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         const targetLanguage = transLangSelect.value || 'en';
         const radios = Array.from(transView.querySelectorAll('input[name="cb-trans-mode"]'));
         console.log('[ChatBridge] Found radios:', radios.length);
-        const selectedMode = radios.find(r=>r && r.checked);
+        const selectedMode = radios.find(r => r && r.checked);
         const mode = selectedMode ? selectedMode.value : 'all';
         console.log('[ChatBridge] Translation mode:', mode);
         const shortenEl = transView.querySelector('#cb-trans-shorten');
@@ -10374,10 +10408,10 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       try {
         closeAllViews();
         // Reset visible state immediately for perceived snappiness
-        try { smartResults.textContent = '(No results yet)'; } catch(_) {}
-        try { smartAnswer.textContent = ''; } catch(_) {}
-        try { smartInput.value = ''; } catch(_) {}
-        try { smartView.classList.add('cb-view-active'); } catch(_) {}
+        try { smartResults.textContent = '(No results yet)'; } catch (_) { }
+        try { smartAnswer.textContent = ''; } catch (_) { }
+        try { smartInput.value = ''; } catch (_) { }
+        try { smartView.classList.add('cb-view-active'); } catch (_) { }
 
         // Defer heavy work to keep first-click instant
         setTimeout(async () => {
@@ -10386,27 +10420,27 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
             try {
               const convs = await loadConversationsAsync();
               // hosts
-              try { while (hostSelect.firstChild) hostSelect.removeChild(hostSelect.firstChild); const ho = document.createElement('option'); ho.value = ''; ho.textContent = 'All hosts'; hostSelect.appendChild(ho); } catch (e) {}
-              const hosts = Array.from(new Set((convs||[]).map(c => { try { return (c.platform || (c.url && new URL(c.url).hostname) || location.hostname).toString(); } catch(_) { return location.hostname; } }))).slice(0,50);
-              hosts.forEach(h => { const o = document.createElement('option'); o.value = h; o.textContent = h.length > 24 ? (h.slice(0,20) + '…') : h; hostSelect.appendChild(o); });
+              try { while (hostSelect.firstChild) hostSelect.removeChild(hostSelect.firstChild); const ho = document.createElement('option'); ho.value = ''; ho.textContent = 'All hosts'; hostSelect.appendChild(ho); } catch (e) { }
+              const hosts = Array.from(new Set((convs || []).map(c => { try { return (c.platform || (c.url && new URL(c.url).hostname) || location.hostname).toString(); } catch (_) { return location.hostname; } }))).slice(0, 50);
+              hosts.forEach(h => { const o = document.createElement('option'); o.value = h; o.textContent = h.length > 24 ? (h.slice(0, 20) + '…') : h; hostSelect.appendChild(o); });
               // tags
-              try { while (tagSelect.firstChild) tagSelect.removeChild(tagSelect.firstChild); const to = document.createElement('option'); to.value = ''; to.textContent = 'All tags'; tagSelect.appendChild(to); } catch (e) {}
+              try { while (tagSelect.firstChild) tagSelect.removeChild(tagSelect.firstChild); const to = document.createElement('option'); to.value = ''; to.textContent = 'All tags'; tagSelect.appendChild(to); } catch (e) { }
               // normalize existing tags when populating filters (handles older saved convs)
-              const rawTags = [].concat(...(convs||[]).map(c => (c.topics||[])));
+              const rawTags = [].concat(...(convs || []).map(c => (c.topics || [])));
               const normTags = [];
               const seenTag = new Set();
               rawTags.forEach(tt => {
                 try {
-                  const tnorm = String(tt||'').toLowerCase().replace(/["'()\.]/g, '').replace(/\s+/g, ' ').trim();
+                  const tnorm = String(tt || '').toLowerCase().replace(/["'()\.]/g, '').replace(/\s+/g, ' ').trim();
                   if (tnorm && !seenTag.has(tnorm)) { seenTag.add(tnorm); normTags.push(tnorm); }
-                } catch(_) {}
+                } catch (_) { }
               });
-              const tags = normTags.slice(0,100);
-              tags.forEach(t => { const o = document.createElement('option'); o.value = t; const disp = String(t).split(/[_\-\s]+/).map(w=>w.charAt(0).toUpperCase()+w.slice(1)).join(' '); o.textContent = disp; tagSelect.appendChild(o); });
+              const tags = normTags.slice(0, 100);
+              tags.forEach(t => { const o = document.createElement('option'); o.value = t; const disp = String(t).split(/[_\-\s]+/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '); o.textContent = disp; tagSelect.appendChild(o); });
             } catch (e) { debugLog('populate filters failed', e); }
 
             // populate smart suggestions (chips) and placeholder
-            try { await populateSmartSuggestions(); } catch(e) { debugLog('populateSmartSuggestions failed', e); }
+            try { await populateSmartSuggestions(); } catch (e) { debugLog('populateSmartSuggestions failed', e); }
           } catch (e) {
             debugLog('open smart view (deferred work) failed', e);
           } finally {
@@ -10420,7 +10454,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       }
     });
 
-    btnCloseSmart.addEventListener('click', () => { try { smartView.classList.remove('cb-view-active'); } catch (e) {} });
+    btnCloseSmart.addEventListener('click', () => { try { smartView.classList.remove('cb-view-active'); } catch (e) { } });
 
     // Simple in-memory cache and batched storage writes for responsiveness
     const __cbConvCache = { data: [], ts: 0 };
@@ -10432,7 +10466,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         const timer = setTimeout(() => {
           try {
             if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-              chrome.storage.local.set({ [key]: value }, () => {});
+              chrome.storage.local.set({ [key]: value }, () => { });
             } else {
               localStorage.setItem(key, JSON.stringify(value));
             }
@@ -10444,10 +10478,10 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
 
     // Phase 3: Detail Level Preference Management
     let cachedDetailLevel = null;
-    
+
     async function getDetailLevel() {
       if (cachedDetailLevel) return cachedDetailLevel;
-      
+
       return new Promise((resolve) => {
         try {
           chrome.storage.local.get(['cb_detail_level'], (result) => {
@@ -10461,15 +10495,15 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         }
       });
     }
-    
+
     async function setDetailLevel(level) {
       if (!['concise', 'detailed', 'expert'].includes(level)) {
         debugLog('[DetailLevel] Invalid level:', level);
         return false;
       }
-      
+
       cachedDetailLevel = level;
-      
+
       return new Promise((resolve) => {
         try {
           chrome.storage.local.set({ cb_detail_level: level }, () => {
@@ -10482,11 +10516,11 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         }
       });
     }
-    
+
     function createDetailLevelToggle(containerId, onChangeCallback) {
       const container = document.getElementById(containerId);
       if (!container) return;
-      
+
       const toggleHTML = `
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:8px;background:rgba(0,180,255,0.1);border-radius:6px;">
           <span style="font-size:11px;font-weight:600;opacity:0.9;">Detail Level:</span>
@@ -10497,9 +10531,9 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           </div>
         </div>
       `;
-      
+
       container.insertAdjacentHTML('afterbegin', toggleHTML);
-      
+
       // Set initial state
       getDetailLevel().then(level => {
         container.querySelectorAll('.cb-detail-btn').forEach(btn => {
@@ -10507,19 +10541,19 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           btn.style.fontWeight = btn.dataset.level === level ? '700' : '400';
         });
       });
-      
+
       // Add click handlers
       container.querySelectorAll('.cb-detail-btn').forEach(btn => {
         btn.addEventListener('click', async () => {
           const level = btn.dataset.level;
           await setDetailLevel(level);
-          
+
           // Update UI
           container.querySelectorAll('.cb-detail-btn').forEach(b => {
             b.style.background = b === btn ? 'rgba(0,180,255,0.4)' : 'transparent';
             b.style.fontWeight = b === btn ? '700' : '400';
           });
-          
+
           // Callback
           if (onChangeCallback) onChangeCallback(level);
         });
@@ -10534,7 +10568,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           if (Array.isArray(__cbConvCache.data) && __cbConvCache.ts && (Date.now() - __cbConvCache.ts) < 1000) {
             return res(__cbConvCache.data);
           }
-        } catch (_) {}
+        } catch (_) { }
         // Try background handler first
         try {
           chrome.runtime.sendMessage({ type: 'get_conversations', payload: {} }, (r) => {
@@ -10559,17 +10593,17 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
                       if (!m.has(id)) m.set(id, c);
                       else {
                         const prev = m.get(id);
-                        const better = (Array.isArray(c.conversation) && c.conversation.length >= (prev.conversation?.length||0)) ? c : prev;
+                        const better = (Array.isArray(c.conversation) && c.conversation.length >= (prev.conversation?.length || 0)) ? c : prev;
                         m.set(id, better);
                       }
                     }
-                    const merged = Array.from(m.values()).sort((a,b) => (b.ts||0) - (a.ts||0));
-                    try { __cbConvCache.data = merged; __cbConvCache.ts = Date.now(); } catch(_){}
+                    const merged = Array.from(m.values()).sort((a, b) => (b.ts || 0) - (a.ts || 0));
+                    try { __cbConvCache.data = merged; __cbConvCache.ts = Date.now(); } catch (_) { }
                     res(merged);
                   } catch (e) { res(r.conversations); }
                 });
               } else {
-                try { __cbConvCache.data = r.conversations; __cbConvCache.ts = Date.now(); } catch(_){}
+                try { __cbConvCache.data = r.conversations; __cbConvCache.ts = Date.now(); } catch (_) { }
                 res(r.conversations);
               }
             } else {
@@ -10590,24 +10624,24 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
                 const arr = Array.isArray(data['chatbridge:conversations']) ? data['chatbridge:conversations'] : [];
                 if (arr.length > 0) {
                   // Sort newest first
-                  const sorted = arr.slice().sort((a,b) => (b.ts||0) - (a.ts||0));
-                  try { __cbConvCache.data = sorted; __cbConvCache.ts = Date.now(); } catch(_){}
+                  const sorted = arr.slice().sort((a, b) => (b.ts || 0) - (a.ts || 0));
+                  try { __cbConvCache.data = sorted; __cbConvCache.ts = Date.now(); } catch (_) { }
                   res(sorted);
                 } else {
                   // Final fallback to localStorage
                   try {
                     const local = JSON.parse(localStorage.getItem('chatbridge:conversations') || '[]');
-                    const sorted = (Array.isArray(local) ? local : []).slice().sort((a,b) => (b.ts||0) - (a.ts||0));
-                    try { __cbConvCache.data = sorted; __cbConvCache.ts = Date.now(); } catch(_){}
+                    const sorted = (Array.isArray(local) ? local : []).slice().sort((a, b) => (b.ts || 0) - (a.ts || 0));
+                    try { __cbConvCache.data = sorted; __cbConvCache.ts = Date.now(); } catch (_) { }
                     res(sorted);
                   } catch (e) { res([]); }
                 }
               });
             } else {
               // Final fallback if chrome APIs not available
-              const arr = JSON.parse(localStorage.getItem('chatbridge:conversations') || '[]'); 
-              const sorted = (Array.isArray(arr) ? arr : []).slice().sort((a,b) => (b.ts||0) - (a.ts||0));
-              try { __cbConvCache.data = sorted; __cbConvCache.ts = Date.now(); } catch(_){}
+              const arr = JSON.parse(localStorage.getItem('chatbridge:conversations') || '[]');
+              const sorted = (Array.isArray(arr) ? arr : []).slice().sort((a, b) => (b.ts || 0) - (a.ts || 0));
+              try { __cbConvCache.data = sorted; __cbConvCache.ts = Date.now(); } catch (_) { }
               res(sorted);
             }
           } catch (e) { res([]); }
@@ -10620,10 +10654,10 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       return new Promise(res => {
         try {
           chrome.runtime.sendMessage({ type: 'vector_query', payload: { query: qstr, topK: topK || 8 } }, (r) => {
-            if (chrome.runtime.lastError) return res({ ok:false, error: chrome.runtime.lastError.message });
-            return res(r || { ok:false });
+            if (chrome.runtime.lastError) return res({ ok: false, error: chrome.runtime.lastError.message });
+            return res(r || { ok: false });
           });
-        } catch (e) { return res({ ok:false, error: e && e.message }); }
+        } catch (e) { return res({ ok: false, error: e && e.message }); }
       });
     }
 
@@ -10631,70 +10665,70 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
     function buildKeywordsFromText(text, limit = 5) {
       try {
         if (!text) return [];
-        
+
         // Expanded stop words to filter out common verbs, auxiliaries, and non-topic words
         const stop = new Set([
-          'the','that','this','with','from','about','they','would','have','there','their','which','what','when','where','your','you','will','could','should','and','for','but','are','not','was','were','has','had','can','all','any','more','our','its','also','use','using','like','just','know','get','make','want','need','think','see','look','take','come','well','even','back','good','very','much','said','than','some','into','them','only','over','such','other','then','now','may','these','after','most','been','find','here','give','many','does','done','being','because','going','really','actually','probably','definitely','maybe','perhaps','seems','something','anything','everything','nothing','someone','anyone','everyone','nobody','want','need','create','makes','trying','asked','looking','getting','working','having'
+          'the', 'that', 'this', 'with', 'from', 'about', 'they', 'would', 'have', 'there', 'their', 'which', 'what', 'when', 'where', 'your', 'you', 'will', 'could', 'should', 'and', 'for', 'but', 'are', 'not', 'was', 'were', 'has', 'had', 'can', 'all', 'any', 'more', 'our', 'its', 'also', 'use', 'using', 'like', 'just', 'know', 'get', 'make', 'want', 'need', 'think', 'see', 'look', 'take', 'come', 'well', 'even', 'back', 'good', 'very', 'much', 'said', 'than', 'some', 'into', 'them', 'only', 'over', 'such', 'other', 'then', 'now', 'may', 'these', 'after', 'most', 'been', 'find', 'here', 'give', 'many', 'does', 'done', 'being', 'because', 'going', 'really', 'actually', 'probably', 'definitely', 'maybe', 'perhaps', 'seems', 'something', 'anything', 'everything', 'nothing', 'someone', 'anyone', 'everyone', 'nobody', 'want', 'need', 'create', 'makes', 'trying', 'asked', 'looking', 'getting', 'working', 'having'
         ]);
-        
+
         // Extract meaningful phrases (2-3 word combinations) and single words
         const phrases = [];
         const words = String(text).split(/[^\w\s]+/);
-        
+
         // Look for 2-3 word technical phrases
         for (let i = 0; i < words.length - 1; i++) {
           const w1 = words[i].toLowerCase();
           const w2 = words[i + 1].toLowerCase();
-          
+
           // Skip if either word is a stop word or too short
           if (w1.length <= 2 || w2.length <= 2 || stop.has(w1) || stop.has(w2)) continue;
-          
+
           // Create phrase
           const phrase = words[i] + ' ' + words[i + 1];
           const phraseLower = phrase.toLowerCase();
-          
+
           // Only keep if it looks like a topic (at least one word capitalized or technical pattern)
           if (/[A-Z]/.test(phrase) || /\d/.test(phrase)) {
             phrases.push(phrase);
           }
         }
-        
+
         // Extract single words with scoring
         const scores = {};
-        
+
         words.forEach((orig, idx) => {
           const lower = orig.toLowerCase();
           if (lower.length <= 3 || stop.has(lower)) return;
-          
+
           let score = 0;
-          
+
           // Bonus for capitalized words (proper nouns, technical terms)
           if (/^[A-Z]/.test(orig) && idx > 0) score += 5;
-          
+
           // Bonus for technical patterns (camelCase, acronyms, compound words)
           if (/[A-Z]{2,}/.test(orig)) score += 8; // Acronyms like API, JSON, SQL
           if (/[a-z][A-Z]/.test(orig)) score += 6; // camelCase like useState, MongoDB
           if (orig.includes('_') || orig.includes('-')) score += 4; // snake_case or kebab-case
-          
+
           // Bonus for technical/domain words
           if (/^(function|method|class|interface|component|service|controller|model|schema|database|server|client|endpoint|route|middleware|handler|provider|repository|factory|builder|adapter|decorator|strategy)$/i.test(lower)) score += 7;
-          
+
           // Bonus for common technical suffixes
           if (/(?:tion|ness|ment|ence|ance|ity|er|or|ist|ism)$/.test(lower)) score += 2;
-          
+
           // Base frequency score
           scores[lower] = (scores[lower] || 0) + 1 + score;
         });
-        
+
         // Sort by score and take top results
         const topWords = Object.entries(scores)
-          .sort((a,b) => b[1] - a[1])
+          .sort((a, b) => b[1] - a[1])
           .slice(0, limit * 2)
           .map(k => k[0]);
-        
+
         // Combine phrases and words, prioritizing phrases
         const combined = [...new Set([...phrases.slice(0, 3), ...topWords])];
-        
+
         // Capitalize and filter
         const topics = combined
           .map(k => k.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '))
@@ -10707,11 +10741,11 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
             return true;
           })
           .slice(0, limit);
-        
+
         return topics;
-      } catch (e) { 
+      } catch (e) {
         console.error('buildKeywordsFromText error:', e);
-        return []; 
+        return [];
       }
     }
 
@@ -10721,10 +10755,10 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         try {
           if (!text || !chrome || !chrome.runtime || !chrome.runtime.sendMessage) return res({ ok: false, error: 'no-runtime' });
           chrome.runtime.sendMessage({ type: 'embed_suggest', payload: { text: text, topK: topK } }, (r) => {
-            if (chrome.runtime.lastError) return res({ ok:false, error: chrome.runtime.lastError.message });
-            return res(r || { ok:false });
+            if (chrome.runtime.lastError) return res({ ok: false, error: chrome.runtime.lastError.message });
+            return res(r || { ok: false });
           });
-        } catch (e) { return res({ ok:false, error: e && e.message }); }
+        } catch (e) { return res({ ok: false, error: e && e.message }); }
       });
     }
 
@@ -10749,9 +10783,9 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       }
       try {
         // clear existing
-        try { while (smartSuggestRow.firstChild) smartSuggestRow.removeChild(smartSuggestRow.firstChild); } catch(e){}
+        try { while (smartSuggestRow.firstChild) smartSuggestRow.removeChild(smartSuggestRow.firstChild); } catch (e) { }
         let suggestions = [];
-        
+
         // Priority 1: Use saved topics from recent conversations (most relevant)
         try {
           const convs = await loadConversationsAsync();
@@ -10763,7 +10797,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
                 allTopics.push(...c.topics);
               }
             });
-            
+
             // Count frequency and pick top topics
             if (allTopics.length > 0) {
               const freq = {};
@@ -10772,20 +10806,20 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
                 freq[normalized] = (freq[normalized] || 0) + 1;
               });
               suggestions = Object.entries(freq)
-                .sort((a,b) => b[1] - a[1])
+                .sort((a, b) => b[1] - a[1])
                 .slice(0, 6)
                 .map(([topic, count]) => ({ text: topic.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '), confidence: Math.min(90, 50 + (count * 10)) }));
             }
           }
-        } catch(e) { debugLog('load saved topics failed', e); }
-        
+        } catch (e) { debugLog('load saved topics failed', e); }
+
         // Priority 2: Try embedding-based suggestions via background (if no saved topics)
         if ((!suggestions || suggestions.length === 0) && lastScannedText && lastScannedText.length) {
           try {
             const resp = await requestEmbeddingSuggestions(lastScannedText, 6);
             if (resp && resp.ok && Array.isArray(resp.suggestions) && resp.suggestions.length) {
               // Normalize: accept either strings or { phrase, confidence }
-              suggestions = resp.suggestions.slice(0,6).map(s => {
+              suggestions = resp.suggestions.slice(0, 6).map(s => {
                 if (typeof s === 'string') return { text: s, confidence: undefined };
                 if (s && typeof s === 'object') {
                   const text = s.text || s.phrase || '';
@@ -10795,27 +10829,27 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
                 return null;
               }).filter(Boolean);
             }
-          } catch(e) { debugLog('embed suggest failed', e); }
+          } catch (e) { debugLog('embed suggest failed', e); }
         }
 
         // Priority 3: Extract topics from last scanned text (fallback)
         if (!suggestions || suggestions.length === 0) {
-          try { 
+          try {
             if (lastScannedText && lastScannedText.length) {
               suggestions = buildKeywordsFromText(lastScannedText, 6).map(t => ({ text: t, confidence: 55 }));
             }
-          } catch(e){}
+          } catch (e) { }
         }
-        
+
         // Priority 4: Aggregate topics from recent conversation text (last resort)
         if (!suggestions || suggestions.length === 0) {
           try {
             const convs = await loadConversationsAsync();
-            const sample = (convs || []).slice(-8).map(c => (c.conversation||[]).map(m=>m.text).join(' ')).join('\n');
+            const sample = (convs || []).slice(-8).map(c => (c.conversation || []).map(m => m.text).join(' ')).join('\n');
             suggestions = buildKeywordsFromText(sample, 6).map(t => ({ text: t, confidence: 50 }));
-          } catch(e) { suggestions = []; }
+          } catch (e) { suggestions = []; }
         }
-        
+
         // Normalize to objects { text, confidence } if still strings
         if (suggestions && typeof suggestions[0] === 'string') {
           suggestions = suggestions.map(s => ({ text: String(s), confidence: undefined }));
@@ -10842,7 +10876,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
             return true;
           })
           .slice(0, 6);
-        
+
         if (!suggestions || suggestions.length === 0) {
           // default helpful prompts (topic-like)
           suggestions = [
@@ -10870,15 +10904,15 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           } else {
             chip.textContent = label;
           }
-          chip.setAttribute('role','button');
-          chip.setAttribute('tabindex','0');
+          chip.setAttribute('role', 'button');
+          chip.setAttribute('tabindex', '0');
           chip.setAttribute('aria-label', 'Suggestion: ' + txt + (typeof s.confidence === 'number' ? `, confidence ${s.confidence} percent` : ''));
-          chip.addEventListener('click', () => { try { smartInput.value = txt; smartInput.focus(); announce('Suggestion chosen: ' + txt); } catch(e){} });
-          chip.addEventListener('keydown', (ev) => { try { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); smartInput.value = txt; smartInput.focus(); announce('Suggestion chosen: ' + txt); } } catch(e){} });
+          chip.addEventListener('click', () => { try { smartInput.value = txt; smartInput.focus(); announce('Suggestion chosen: ' + txt); } catch (e) { } });
+          chip.addEventListener('keydown', (ev) => { try { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); smartInput.value = txt; smartInput.focus(); announce('Suggestion chosen: ' + txt); } } catch (e) { } });
           smartSuggestRow.appendChild(chip);
         });
         // set placeholder to first suggestion
-        try { if (suggestions && suggestions.length) smartInput.placeholder = (suggestions[0].text || String(suggestions[0])) + ' (click a suggestion)'; } catch(e){}
+        try { if (suggestions && suggestions.length) smartInput.placeholder = (suggestions[0].text || String(suggestions[0])) + ' (click a suggestion)'; } catch (e) { }
       } catch (e) { debugLog('populateSmartSuggestions error', e); }
     }
 
@@ -10908,7 +10942,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         const title = document.title.toLowerCase();
         const metaOg = document.querySelector('meta[property="og:site_name"]');
         const metaName = metaOg ? metaOg.getAttribute('content') : '';
-        
+
         // Claude detection
         if (host.includes('claude.ai') || host.includes('anthropic.com') || title.includes('claude') || metaName.toLowerCase().includes('claude')) {
           return 'Claude';
@@ -10927,7 +10961,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           try {
             const modelSelector = document.querySelector('[data-testid="model-selector"]') || document.querySelector('.ModelSelector_modelName');
             if (modelSelector) return 'Poe:' + modelSelector.textContent.trim();
-          } catch (e) {}
+          } catch (e) { }
           return 'Poe';
         }
         // Copilot/Bing detection
@@ -10942,7 +10976,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         if (host.includes('perplexity.ai')) {
           return 'Perplexity';
         }
-        
+
         // Fallback to hostname-based
         return prettyModelName(host);
       } catch (e) {
@@ -10961,7 +10995,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       if (p.includes('mistral')) return 'Mistral';
       if (p.includes('perplexity')) return 'Perplexity';
       if (p.includes('bing') || p.includes('copilot')) return 'Copilot/Bing';
-      return (platform.length > 20) ? platform.slice(0,20) + '…' : platform;
+      return (platform.length > 20) ? platform.slice(0, 20) + '…' : platform;
     }
 
     // Helper: open a conversation by ID in Smart Results answer area
@@ -10979,7 +11013,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         // Scroll Smart Results into view
         try {
           smartAnswer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        } catch (e) {}
+        } catch (e) { }
       } catch (e) {
         debugLog('openConversationById error', e);
         toast('Failed to open conversation');
@@ -11003,7 +11037,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           const openBtn = document.createElement('button'); openBtn.className = 'cb-btn cb-open-btn'; openBtn.textContent = 'Open';
           openBtn.addEventListener('click', () => { smartAnswer.textContent = r.snippetFull || '(no text)'; });
           const copyBtn = document.createElement('button'); copyBtn.className = 'cb-btn cb-copy-btn'; copyBtn.textContent = 'Copy';
-          copyBtn.addEventListener('click', () => { try { navigator.clipboard.writeText(r.snippetFull || ''); toast('Copied'); } catch(_) { toast('Copy failed'); } });
+          copyBtn.addEventListener('click', () => { try { navigator.clipboard.writeText(r.snippetFull || ''); toast('Copied'); } catch (_) { toast('Copy failed'); } });
           right.appendChild(openBtn); right.appendChild(copyBtn);
           hdr.appendChild(left); hdr.appendChild(right);
           row.appendChild(hdr);
@@ -11013,10 +11047,10 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           try {
             if (r.topics && Array.isArray(r.topics) && r.topics.length) {
               const tagRow = document.createElement('div'); tagRow.className = 'cb-tag-row';
-              r.topics.slice(0,6).forEach(t => { const chip = document.createElement('div'); chip.className = 'cb-tag-chip'; const disp = String(t).split(/[_\-\s]+/).map(w=>w.charAt(0).toUpperCase()+w.slice(1)).join(' '); chip.textContent = disp; tagRow.appendChild(chip); });
+              r.topics.slice(0, 6).forEach(t => { const chip = document.createElement('div'); chip.className = 'cb-tag-chip'; const disp = String(t).split(/[_\-\s]+/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '); chip.textContent = disp; tagRow.appendChild(chip); });
               row.appendChild(tagRow);
             }
-          } catch (e) {}
+          } catch (e) { }
           smartResults.appendChild(row);
         });
       } catch (e) { debugLog('renderSmartResults', e); smartResults.textContent = '(render error)'; }
@@ -11033,16 +11067,16 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       try {
         const q = (smartInput && smartInput.value) ? smartInput.value.trim() : '';
         if (!q) { toast('Type a search query'); return; }
-  smartResults.textContent = 'Searching...'; smartAnswer.textContent = ''; announce('Searching saved chats');
+        smartResults.textContent = 'Searching...'; smartAnswer.textContent = ''; announce('Searching saved chats');
         // First try semantic vector query via background
         async function vectorQueryAsync(qstr, topK) {
           return new Promise(res => {
             try {
               chrome.runtime.sendMessage({ type: 'vector_query', payload: { query: qstr, topK: topK || 6 } }, (r) => {
-                if (chrome.runtime.lastError) return res({ ok:false, error: chrome.runtime.lastError.message });
-                return res(r || { ok:false });
+                if (chrome.runtime.lastError) return res({ ok: false, error: chrome.runtime.lastError.message });
+                return res(r || { ok: false });
               });
-            } catch (e) { return res({ ok:false, error: e && e.message }); }
+            } catch (e) { return res({ ok: false, error: e && e.message }); }
           });
         }
 
@@ -11056,15 +11090,15 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
             const mapped = vres.results.map(r => {
               const id = String(r.id || '');
               const conv = (convs || []).find(c => String(c.ts) === id);
-              const host = (conv && (conv.platform || conv.url)) ? (conv.platform || new URL(conv.url||location.href).hostname) : (r.metadata && (r.metadata.platform || (r.metadata.url && new URL(r.metadata.url).hostname))) || location.hostname;
+              const host = (conv && (conv.platform || conv.url)) ? (conv.platform || new URL(conv.url || location.href).hostname) : (r.metadata && (r.metadata.platform || (r.metadata.url && new URL(r.metadata.url).hostname))) || location.hostname;
               const date = conv ? new Date(conv.ts) : (r.metadata && r.metadata.ts ? new Date(r.metadata.ts) : new Date());
               const time = date.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-              const full = conv ? ((conv.conversation||[]).map(m => `${m.role}: ${m.text}`).join('\n\n')) : (r.metadata && r.metadata.snippet) || '';
-              const snippet = full.length > 400 ? full.slice(0,400) + '…' : full;
-              const count = conv ? (conv.conversation||[]).length : (r.metadata && r.metadata.count) || 0;
+              const full = conv ? ((conv.conversation || []).map(m => `${m.role}: ${m.text}`).join('\n\n')) : (r.metadata && r.metadata.snippet) || '';
+              const snippet = full.length > 400 ? full.slice(0, 400) + '…' : full;
+              const count = conv ? (conv.conversation || []).length : (r.metadata && r.metadata.count) || 0;
               const topics = conv && Array.isArray(conv.topics) ? conv.topics : (r.metadata && r.metadata.topics ? r.metadata.topics : []);
               return { host, time, snippet, snippetFull: full, count, score: r.score, id, topics };
-            }).slice(0,12);
+            }).slice(0, 12);
             // apply filters from UI
             try {
               const selHost = (hostSelect && hostSelect.value) ? hostSelect.value : '';
@@ -11073,18 +11107,18 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
               const now = Date.now();
               const filtered = mapped.filter(it => {
                 if (selHost && it.host && it.host !== selHost) return false;
-                if (selTag && (!it.topics || !it.topics.some(t=>t.toLowerCase() === selTag.toLowerCase()))) return false;
+                if (selTag && (!it.topics || !it.topics.some(t => t.toLowerCase() === selTag.toLowerCase()))) return false;
                 if (selDate && selDate !== 'All time') {
                   const days = selDate === 'Last 7 days' ? 7 : (selDate === 'Last 30 days' ? 30 : 0);
                   if (days > 0) {
-                    const convTs = (convs || []).find(c=>String(c.ts)===String(it.id));
+                    const convTs = (convs || []).find(c => String(c.ts) === String(it.id));
                     const ts = convTs && convTs.ts ? Number(convTs.ts) : 0;
                     if (!ts) return false;
                     if ((now - ts) > days * 24 * 3600 * 1000) return false;
                   }
                 }
                 return true;
-              }).slice(0,12);
+              }).slice(0, 12);
               renderSmartResults(filtered);
               announce('Search complete');
             } catch (e) { renderSmartResults(mapped); announce('Search complete'); }
@@ -11093,8 +11127,8 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
             vectorFailed = true;
             vectorError = vres.error || 'unknown error';
           }
-        } catch (e) { 
-          debugLog('vector query failed', e); 
+        } catch (e) {
+          debugLog('vector query failed', e);
           vectorFailed = true;
           vectorError = e.message || 'exception';
         }
@@ -11105,14 +11139,14 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         } else if (vectorFailed) {
           toast('⚠️ AI search failed. Using basic keyword search...');
         }
-        
+
         const convs = await loadConversationsAsync();
         if (!convs || convs.length === 0) {
           smartResults.textContent = '(No saved conversations yet. Scan and save some chats first!)';
           announce('No saved conversations found');
           return;
         }
-        
+
         const ql = q.toLowerCase();
         const scored = (Array.isArray(convs) ? convs : []).map(s => {
           const host = (s.platform || s.url || '').toString();
@@ -11120,10 +11154,10 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           const time = date.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
           const full = (s.conversation || []).map(m => `${m.role}: ${m.text}`).join('\n\n');
           const count = (s.conversation || []).length || 0;
-          const score = (full.toLowerCase().split(ql).length - 1) + ((host||'').toLowerCase().includes(ql) ? 1 : 0);
-          const snippet = full.length > 400 ? full.slice(0,400) + '…' : full;
+          const score = (full.toLowerCase().split(ql).length - 1) + ((host || '').toLowerCase().includes(ql) ? 1 : 0);
+          const snippet = full.length > 400 ? full.slice(0, 400) + '…' : full;
           return { s, score, host, time, snippet, snippetFull: full, count };
-        }).filter(x => x.score > 0).sort((a,b) => b.score - a.score).slice(0,12);
+        }).filter(x => x.score > 0).sort((a, b) => b.score - a.score).slice(0, 12);
         // map and apply filters
         const mapped = scored.map(r => ({ id: String(r.s && r.s.ts), host: r.host || new URL(r.s && r.s.url || location.href).hostname, time: r.time, snippet: r.snippet, snippetFull: r.snippetFull, count: r.count, topics: r.s && r.s.topics ? r.s.topics : [] }));
         try {
@@ -11133,19 +11167,19 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           const now = Date.now();
           const filtered = mapped.filter(it => {
             if (selHost && it.host && it.host !== selHost) return false;
-            if (selTag && (!it.topics || !it.topics.some(t=>t.toLowerCase() === selTag.toLowerCase()))) return false;
+            if (selTag && (!it.topics || !it.topics.some(t => t.toLowerCase() === selTag.toLowerCase()))) return false;
             if (selDate && selDate !== 'All time') {
               const days = selDate === 'Last 7 days' ? 7 : (selDate === 'Last 30 days' ? 30 : 0);
               if (days > 0) {
-                const convObj = (convs || []).find(c=>String(c.ts)===String(it.id));
+                const convObj = (convs || []).find(c => String(c.ts) === String(it.id));
                 const ts = convObj && convObj.ts ? Number(convObj.ts) : 0;
                 if (!ts) return false;
                 if ((now - ts) > days * 24 * 3600 * 1000) return false;
               }
             }
             return true;
-          }).slice(0,12);
-          
+          }).slice(0, 12);
+
           if (filtered.length === 0 && mapped.length > 0) {
             toast('No results match your filters. Showing all results.');
             renderSmartResults(mapped);
@@ -11161,9 +11195,9 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       try {
         const q = (smartInput && smartInput.value) ? smartInput.value.trim() : '';
         if (!q) { toast('Type a question to ask'); return; }
-        
+
         btnSmartAsk.disabled = true; addLoadingToButton(btnSmartAsk, 'Searching chats…'); smartAnswer.textContent = ''; announce('Searching saved chats for relevant info');
-        
+
         // First, search saved chats for relevant context
         let searchResults = [];
         try {
@@ -11174,9 +11208,9 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         } catch (searchErr) {
           debugLog('Vector search failed', searchErr);
         }
-        
+
         addLoadingToButton(btnSmartAsk, 'Asking AI…');
-        
+
         // Build context from search results
         let ctx = '';
         if (searchResults.length > 0) {
@@ -11191,10 +11225,10 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
                 if ((ctx + '\n\n' + snippet).length > 13000) break;
                 ctx += '\n\n--- Conversation excerpt ' + (i + 1) + ' ---\n\n' + snippet;
               }
-            } catch (e) {}
+            } catch (e) { }
           }
         }
-        
+
         // If context found, use it; otherwise answer directly with AI
         let prompt = '';
         if (ctx.trim().length > 100) {
@@ -11203,7 +11237,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           prompt = `Answer this question clearly and concisely: ${q}`;
           smartAnswer.textContent = '(No relevant saved chats found. Using AI knowledge directly.)\n\n';
         }
-        
+
         const res = await callGeminiAsync({ action: 'prompt', text: prompt, length: 'short' });
         if (res && res.ok) {
           const answerText = res.result || '(no answer)';
@@ -11227,14 +11261,14 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
                   const platformRaw = conv && conv.platform ? conv.platform : (meta && (meta.platform || meta.url) ? (meta.platform || meta.url) : 'unknown');
                   const ts = conv && conv.ts ? Number(conv.ts) : (meta && meta.ts ? Number(meta.ts) : 0);
                   const model = explicitModel || prettyModelName(platformRaw);
-                  const snippet = conv && conv.conversation ? conv.conversation.slice(0,2).map(m=>`${m.role}: ${(m.text||'').slice(0,120)}`).join('\n') : '(no snippet)';
+                  const snippet = conv && conv.conversation ? conv.conversation.slice(0, 2).map(m => `${m.role}: ${(m.text || '').slice(0, 120)}`).join('\n') : '(no snippet)';
                   const entry = { model, ts: ts || 0, rawPlatform: platformRaw, id, snippet };
                   contribs.push(entry);
                   contribsWithDetails.push(entry);
                 } catch (e) { debugLog('provenance map entry error', e); }
               }
               // sort by ts ascending and dedupe by model keeping first occurrence
-              contribs.sort((a,b) => (a.ts||0) - (b.ts||0));
+              contribs.sort((a, b) => (a.ts || 0) - (b.ts || 0));
               const seen = new Set();
               const uniq = [];
               for (const c of contribs) {
@@ -11242,13 +11276,13 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
               }
               if (uniq.length) {
                 // build human-friendly sentence with clickable model names
-                function fmtDate(ts) { try { if (!ts) return 'an earlier date'; const d = new Date(Number(ts)); return d.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }); } catch(e){return 'an earlier date'; } }
-                
+                function fmtDate(ts) { try { if (!ts) return 'an earlier date'; const d = new Date(Number(ts)); return d.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }); } catch (e) { return 'an earlier date'; } }
+
                 // Create sentence container
                 const sentenceEl = document.createElement('span');
                 sentenceEl.style.color = 'rgba(200,200,200,0.9)';
                 sentenceEl.style.fontSize = '12px';
-                
+
                 if (uniq.length === 1) {
                   sentenceEl.innerHTML = 'This solution was suggested by ';
                   const link = document.createElement('a');
@@ -11291,8 +11325,8 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
                   sentenceEl.appendChild(document.createTextNode(` on ${fmtDate(uniq[1].ts)}.`));
                 } else {
                   const first = uniq[0];
-                  const last = uniq[uniq.length-1];
-                  const middle = uniq.slice(1, uniq.length-1);
+                  const last = uniq[uniq.length - 1];
+                  const middle = uniq.slice(1, uniq.length - 1);
                   sentenceEl.innerHTML = 'This solution was first suggested by ';
                   const link1 = document.createElement('a');
                   link1.href = '#';
@@ -11305,7 +11339,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
                     openConversationById(first.id);
                   });
                   sentenceEl.appendChild(link1);
-                  sentenceEl.appendChild(document.createTextNode(` on ${fmtDate(first.ts)}, refined by ${middle.map(m=>m.model).join(', ')} on subsequent dates, and verified by `));
+                  sentenceEl.appendChild(document.createTextNode(` on ${fmtDate(first.ts)}, refined by ${middle.map(m => m.model).join(', ')} on subsequent dates, and verified by `));
                   const link2 = document.createElement('a');
                   link2.href = '#';
                   link2.textContent = last.model;
@@ -11319,9 +11353,9 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
                   sentenceEl.appendChild(link2);
                   sentenceEl.appendChild(document.createTextNode(` on ${fmtDate(last.ts)}.`));
                 }
-                
+
                 smartProvenance.appendChild(sentenceEl);
-                
+
                 // Add Details toggle
                 if (contribsWithDetails.length > 1) {
                   const detailsToggle = document.createElement('a');
@@ -11332,7 +11366,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
                   detailsToggle.style.marginLeft = '8px';
                   detailsToggle.style.cursor = 'pointer';
                   detailsToggle.style.textDecoration = 'none';
-                  
+
                   const detailsContainer = document.createElement('div');
                   detailsContainer.style.display = 'none';
                   detailsContainer.style.marginTop = '12px';
@@ -11342,7 +11376,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
                   detailsContainer.style.fontSize = '11px';
                   detailsContainer.style.maxHeight = '300px';
                   detailsContainer.style.overflowY = 'auto';
-                  
+
                   let isExpanded = false;
                   detailsToggle.addEventListener('click', (e) => {
                     e.preventDefault();
@@ -11350,19 +11384,19 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
                     detailsContainer.style.display = isExpanded ? 'block' : 'none';
                     detailsToggle.textContent = isExpanded ? ' [Hide details]' : ' [Show details]';
                   });
-                  
+
                   // Populate details container
                   contribsWithDetails.forEach((contrib, idx) => {
                     const detailRow = document.createElement('div');
                     detailRow.style.marginBottom = '10px';
                     detailRow.style.paddingBottom = '10px';
                     detailRow.style.borderBottom = idx < contribsWithDetails.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none';
-                    
+
                     const detailHeader = document.createElement('div');
                     detailHeader.style.fontWeight = '600';
                     detailHeader.style.marginBottom = '4px';
                     detailHeader.style.color = 'var(--cb-champagne)';
-                    
+
                     const modelLink = document.createElement('a');
                     modelLink.href = '#';
                     modelLink.textContent = contrib.model;
@@ -11372,22 +11406,22 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
                       e.preventDefault();
                       openConversationById(contrib.id);
                     });
-                    
+
                     detailHeader.appendChild(modelLink);
                     detailHeader.appendChild(document.createTextNode(` • ${fmtDate(contrib.ts)} • ${contrib.rawPlatform}`));
-                    
+
                     const detailSnippet = document.createElement('div');
                     detailSnippet.style.color = 'rgba(200,200,200,0.8)';
                     detailSnippet.style.fontSize = '11px';
                     detailSnippet.style.marginTop = '4px';
                     detailSnippet.style.whiteSpace = 'pre-wrap';
                     detailSnippet.textContent = contrib.snippet + '…';
-                    
+
                     detailRow.appendChild(detailHeader);
                     detailRow.appendChild(detailSnippet);
                     detailsContainer.appendChild(detailRow);
                   });
-                  
+
                   smartProvenance.appendChild(detailsToggle);
                   smartProvenance.appendChild(detailsContainer);
                 }
@@ -11398,7 +11432,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           smartAnswer.textContent = 'AI query failed: ' + (res && res.error ? res.error : 'unknown');
         }
       } catch (e) { debugLog('smart ask error', e); smartAnswer.textContent = '(ask failed)'; }
-  finally { removeLoadingFromButton(btnSmartAsk, 'Ask AI'); }
+      finally { removeLoadingFromButton(btnSmartAsk, 'Ask AI'); }
     });
 
     // Index all saved conversations via background bulk index
@@ -11410,15 +11444,15 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       try {
         await optimisticAction({
           applyOptimistic: () => { smartAnswer.textContent = 'Indexing started…'; smartAnswer.classList.add('cb-fade-in'); },
-          confirmUI: (res) => { try { smartAnswer.textContent = `Indexed ${res.indexed || 0} conversations.`; smartAnswer.classList.add('cb-scale-pop'); announce('Indexing complete'); } catch(e){} },
-          rollbackUI: (err) => { try { smartAnswer.textContent = 'Index failed: ' + (err && err.message ? err.message : 'unknown'); } catch(e){} },
+          confirmUI: (res) => { try { smartAnswer.textContent = `Indexed ${res.indexed || 0} conversations.`; smartAnswer.classList.add('cb-scale-pop'); announce('Indexing complete'); } catch (e) { } },
+          rollbackUI: (err) => { try { smartAnswer.textContent = 'Index failed: ' + (err && err.message ? err.message : 'unknown'); } catch (e) { } },
           action: async () => {
             // call background with exponential backoff
             const res = await callBackgroundWithBackoff({ type: 'vector_index_all' }, 3, 500);
             return res;
           },
           onError: (err) => {
-            showError('Index all failed: ' + (err && err.message ? err.message : 'unknown'), async () => { try { btnIndexAll.click(); } catch(e){} });
+            showError('Index all failed: ' + (err && err.message ? err.message : 'unknown'), async () => { try { btnIndexAll.click(); } catch (e) { } });
           }
         });
       } catch (e) {
@@ -11432,15 +11466,15 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       loadConversationsAsync().then(list => {
         const arr = Array.isArray(list) ? list : [];
         if (!arr.length) {
-            historyEl.textContent = 'History: (none)';
-            preview.textContent = 'Preview: (none)';
+          historyEl.textContent = 'History: (none)';
+          preview.textContent = 'Preview: (none)';
           // reset dropdown to a single disabled option
           try {
             const prev = chatSelect.value;
             while (chatSelect.firstChild) chatSelect.removeChild(chatSelect.firstChild);
             const o = document.createElement('option'); o.value = ''; o.textContent = 'No saved chats'; chatSelect.appendChild(o);
             chatSelect.value = '';
-          } catch (e) {}
+          } catch (e) { }
           return;
         }
         // History: virtual list when large; compact text when small
@@ -11466,21 +11500,21 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
               for (let i = start; i < end; i++) {
                 const s = arr[i];
                 let host = s.platform || 'chat';
-                try { host = new URL(s.url||location.href).hostname; } catch (_) {}
+                try { host = new URL(s.url || location.href).hostname; } catch (_) { }
                 if (host.length > 18) host = host.slice(0, 16) + '…';
                 const date = new Date(s.ts);
                 const timeStr = date.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-                const count = (s.conversation||[]).length;
+                const count = (s.conversation || []).length;
                 const row = document.createElement('div');
-                row.style.cssText = `position:absolute;left:0;right:0;top:${i*ITEM_H}px;height:${ITEM_H-4}px;display:flex;align-items:center;gap:8px;padding:6px 10px;border-bottom:1px solid rgba(230,207,159,0.08);cursor:pointer;`;
-                row.setAttribute('role','button');
+                row.style.cssText = `position:absolute;left:0;right:0;top:${i * ITEM_H}px;height:${ITEM_H - 4}px;display:flex;align-items:center;gap:8px;padding:6px 10px;border-bottom:1px solid rgba(230,207,159,0.08);cursor:pointer;`;
+                row.setAttribute('role', 'button');
                 row.setAttribute('aria-label', `Open ${host} with ${count} messages from ${timeStr}`);
                 const dot = document.createElement('span');
                 dot.style.cssText = 'display:inline-block;width:6px;height:6px;border-radius:50%;background:rgba(230,207,159,0.6)';
                 row.appendChild(dot);
                 const txt = document.createElement('div');
                 txt.style.cssText = 'flex:1 1 auto;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:0.92';
-                
+
                 // Get first message as preview (one-liner)
                 let preview = '';
                 try {
@@ -11489,8 +11523,8 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
                     preview = (firstMsg.text || '').replace(/\n/g, ' ').trim();
                     if (preview.length > 40) preview = preview.substring(0, 37) + '...';
                   }
-                } catch (e) {}
-                
+                } catch (e) { }
+
                 txt.textContent = preview || `${count} messages • ${timeStr}`;
                 row.appendChild(txt);
                 const openBtn = document.createElement('button');
@@ -11498,30 +11532,30 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
                 openBtn.style.cssText = 'padding:4px 8px;font-size:11px;border-radius:8px;';
                 openBtn.textContent = 'Open';
                 row.appendChild(openBtn);
-                const open = () => { try { chatSelect.value = String(s.ts); chatSelect.dispatchEvent(new Event('change')); announce('Selected conversation ' + timeStr); } catch(e){} };
+                const open = () => { try { chatSelect.value = String(s.ts); chatSelect.dispatchEvent(new Event('change')); announce('Selected conversation ' + timeStr); } catch (e) { } };
                 row.addEventListener('click', open);
-                openBtn.addEventListener('click', (ev)=>{ ev.stopPropagation(); open(); });
+                openBtn.addEventListener('click', (ev) => { ev.stopPropagation(); open(); });
                 full.appendChild(row);
               }
             };
-            try { historyEl.__virtRender = render; historyEl.__virtItems = arr; } catch(_){}
-            historyEl.removeEventListener('scroll', historyEl.__virtScroll || (()=>{}), { passive: true });
+            try { historyEl.__virtRender = render; historyEl.__virtItems = arr; } catch (_) { }
+            historyEl.removeEventListener('scroll', historyEl.__virtScroll || (() => { }), { passive: true });
             historyEl.__virtScroll = () => render();
             // Mark scroll listener as passive to avoid main-thread blocking warnings
             historyEl.addEventListener('scroll', historyEl.__virtScroll, { passive: true });
             render();
           } else {
-            historyEl.textContent = arr.slice(0,6).map(s => {
+            historyEl.textContent = arr.slice(0, 6).map(s => {
               let host = s.platform || 'chat';
-              try { host = new URL(s.url||location.href).hostname; } catch (_) {}
+              try { host = new URL(s.url || location.href).hostname; } catch (_) { }
               const date = new Date(s.ts);
               const timeStr = date.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-              return `${host} • ${(s.conversation||[]).length} msgs • ${timeStr}`;
+              return `${host} • ${(s.conversation || []).length} msgs • ${timeStr}`;
             }).join('\n\n');
           }
         } catch (e) { /* noop */ }
         // Default preview from first conversation
-        preview.textContent = 'Preview: ' + (arr[0] && arr[0].conversation && arr[0].conversation[0] ? arr[0].conversation[0].text.slice(0,200) : '(none)');
+        preview.textContent = 'Preview: ' + (arr[0] && arr[0].conversation && arr[0].conversation[0] ? arr[0].conversation[0].text.slice(0, 200) : '(none)');
 
         // Populate chat dropdown and always select the most recent (newly saved)
         try {
@@ -11531,12 +11565,12 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           validChats.forEach(s => {
             const o = document.createElement('option');
             o.value = String(s.ts);
-            const count = (s.conversation||[]).length;
+            const count = (s.conversation || []).length;
             let host = s.platform || 'chat';
-            try { host = new URL(s.url||location.href).hostname; } catch (_) {}
+            try { host = new URL(s.url || location.href).hostname; } catch (_) { }
             // Truncate hostname if too long
             if (host.length > 15) host = host.substring(0, 12) + '...';
-            
+
             // Get first message as preview (one-liner)
             let preview = '';
             try {
@@ -11545,16 +11579,16 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
                 preview = (firstMsg.text || '').replace(/\n/g, ' ').trim();
                 if (preview.length > 50) preview = preview.substring(0, 47) + '...';
               }
-            } catch (e) {}
-            
+            } catch (e) { }
+
             o.textContent = preview || `${count} messages`;
             chatSelect.appendChild(o);
           });
           // Always select the most recent (first in list, which is newest by timestamp)
           chatSelect.selectedIndex = 0;
           // Ensure preview reflects selection immediately
-          try { chatSelect.dispatchEvent(new Event('change')); } catch (e) {}
-        } catch (e) {}
+          try { chatSelect.dispatchEvent(new Event('change')); } catch (e) { }
+        } catch (e) { }
       });
     }
 
@@ -11567,68 +11601,68 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           const idx = arr.findIndex(v => String(v.ts) === chatSelect.value);
           const sel = idx >= 0 ? arr[idx] : arr[0];
           if (!sel) { preview.textContent = 'Preview: (none)'; return; }
-          const text = sel.conversation && sel.conversation[0] ? sel.conversation[0].text.slice(0,200) : '(none)';
+          const text = sel.conversation && sel.conversation[0] ? sel.conversation[0].text.slice(0, 200) : '(none)';
           preview.textContent = 'Preview: ' + text;
-        } catch (e) {}
+        } catch (e) { }
       });
-    } catch (e) {}
+    } catch (e) { }
 
     // load persisted model/prompt from chrome.storage.local with localStorage fallback
     try {
       if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-        chrome.storage.local.get(['cb_model','cb_system'], (res) => {
-          try { if (res && res.cb_model) modelSelect.value = res.cb_model; if (res && res.cb_system) sysPrompt.value = res.cb_system; } catch(e) {}
+        chrome.storage.local.get(['cb_model', 'cb_system'], (res) => {
+          try { if (res && res.cb_model) modelSelect.value = res.cb_model; if (res && res.cb_system) sysPrompt.value = res.cb_system; } catch (e) { }
         });
       } else {
         const savedModel = localStorage.getItem('cb_model'); if (savedModel) modelSelect.value = savedModel;
         const savedSys = localStorage.getItem('cb_system'); if (savedSys) sysPrompt.value = savedSys;
       }
-    } catch (e) {}
+    } catch (e) { }
 
     modelSelect.addEventListener('change', () => {
       try {
         if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) chrome.storage.local.set({ cb_model: modelSelect.value });
         else localStorage.setItem('cb_model', modelSelect.value);
-      } catch (e) {}
+      } catch (e) { }
     });
 
     sysPrompt.addEventListener('change', () => {
       try {
         if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) chrome.storage.local.set({ cb_system: sysPrompt.value });
         else localStorage.setItem('cb_system', sysPrompt.value);
-      } catch (e) {}
+      } catch (e) { }
     });
 
-    function toast(msg) { 
-      try { 
+    function toast(msg) {
+      try {
         const t = document.createElement('div');
-        t.setAttribute('data-cb-ignore','true');
+        t.setAttribute('data-cb-ignore', 'true');
         t.textContent = msg;
-        t.style.position='fixed';
-        t.style.bottom='18px';
-        t.style.left='18px';
-        t.style.background='rgba(10,15,28,0.9)';
-        t.style.color='#E6E9F0';
-        t.style.padding='8px 12px';
-        t.style.borderRadius='10px';
-        t.style.zIndex='2147483647';
-        t.style.border='1px solid rgba(0,180,255,0.25)';
-        t.style.boxShadow='0 0 12px rgba(0,180,255,0.25)';
-        t.style.letterSpacing='0.5px';
-        t.style.fontFamily="'Bebas Neue', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial";
-        t.setAttribute('role','status');
-        t.setAttribute('aria-live','polite');
+        t.style.position = 'fixed';
+        t.style.bottom = '18px';
+        t.style.left = '18px';
+        t.style.background = 'rgba(10,15,28,0.9)';
+        t.style.color = '#E6E9F0';
+        t.style.padding = '8px 12px';
+        t.style.borderRadius = '10px';
+        t.style.zIndex = '2147483647';
+        t.style.border = '1px solid rgba(0,180,255,0.25)';
+        t.style.boxShadow = '0 0 12px rgba(0,180,255,0.25)';
+        t.style.letterSpacing = '0.5px';
+        t.style.fontFamily = "'Bebas Neue', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial";
+        t.setAttribute('role', 'status');
+        t.setAttribute('aria-live', 'polite');
         document.body.appendChild(t); announce(msg);
-        setTimeout(()=>{ try { t.remove(); } catch(e){} },2400);
-      } catch (e) { try { alert(msg); } catch(_) {} } 
+        setTimeout(() => { try { t.remove(); } catch (e) { } }, 2400);
+      } catch (e) { try { alert(msg); } catch (_) { } }
     }
 
     refreshHistory();
-    try { 
-      window.ChatBridge = window.ChatBridge || {}; 
-      window.ChatBridge._renderLastScan = renderLastScan; 
-      window.ChatBridge.refreshHistory = refreshHistory; 
-    } catch (e) {}
+    try {
+      window.ChatBridge = window.ChatBridge || {};
+      window.ChatBridge._renderLastScan = renderLastScan;
+      window.ChatBridge.refreshHistory = refreshHistory;
+    } catch (e) { }
 
     // Initialize Smart Context Injection
     try {
@@ -11671,20 +11705,20 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       return window.ChatBridge?._lastScanResult || [];
     }
     lastScanTimestamp = now;
-    
+
     debugLog('[Scan] Starting scan...');
     try {
       debugLog('=== SCAN START ===');
       const pick = (typeof window.pickAdapter === 'function') ? window.pickAdapter : null;
       const adapter = pick ? pick() : null;
       debugLog('adapter detected:', adapter ? adapter.id : 'none');
-      
+
       // prefer container near the input/composer when available to avoid picking sidebars
       let container = null;
       try {
         const inputEl = (adapter && typeof adapter.getInput === 'function') ? adapter.getInput() : (document.querySelector('textarea, [contenteditable="true"], input[type=text]'));
         debugLog('input element found:', !!inputEl, inputEl ? inputEl.tagName : 'none');
-        
+
         if (inputEl) {
           try {
             if (typeof window.findChatContainerNearby === 'function') {
@@ -11694,7 +11728,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
               // fallback: climb parents searching for an element with multiple message-like children
               let p = inputEl.parentElement; let found = null; let depth = 0;
               while (p && depth < 10 && !found) {
-                try { 
+                try {
                   const cnt = (p.querySelectorAll && p.querySelectorAll('p, .message, .chat-line, .message-text, .markdown, .prose, .result, .chat-bubble').length) || 0;
                   // Require container to be reasonably wide (not a narrow sidebar)
                   const rect = p.getBoundingClientRect();
@@ -11705,16 +11739,16 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
               container = found || null;
               debugLog('container from parent climb:', !!container, 'depth:', depth);
             }
-          } catch (e) { 
+          } catch (e) {
             debugLog('container detection error:', e);
-            container = null; 
+            container = null;
           }
         }
-      } catch (e) { 
+      } catch (e) {
         debugLog('input/container detection error:', e);
-        container = null; 
+        container = null;
       }
-      
+
       // Fallback chain with error handling
       if (!container) {
         try {
@@ -11724,12 +11758,12 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           debugLog('adapter.scrollContainer error:', e);
         }
       }
-      
+
       if (!container) {
         container = document.querySelector('main') || document.body;
         debugLog('container fallback to main/body:', container.tagName);
       }
-      
+
       // Final validation - if chosen container is too narrow, try main or body
       try {
         const rect = container.getBoundingClientRect();
@@ -11741,28 +11775,28 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       } catch (e) {
         debugLog('container width check error:', e);
       }
-      
-      debugLog('chosen container', { 
-        adapter: adapter && adapter.id, 
-        container: container && (container.tagName + (container.id ? '#'+container.id : '') + ' ' + (container.className||'').toString().split(' ').slice(0,2).join(' ')),
+
+      debugLog('chosen container', {
+        adapter: adapter && adapter.id,
+        container: container && (container.tagName + (container.id ? '#' + container.id : '') + ' ' + (container.className || '').toString().split(' ').slice(0, 2).join(' ')),
         width: container && Math.round(container.getBoundingClientRect().width) + 'px'
       });
-      
-      try { 
-        window.ChatBridge = window.ChatBridge || {}; 
-        window.ChatBridge._lastScan = { 
-          chosenContainer: container && (container.tagName + (container.id ? '#'+container.id : '') + (container.className ? '.' + (container.className||'').toString().split(' ').filter(c=>c).slice(0,2).join('.') : '')),
-          adapterId: (adapter && adapter.id) || null, 
-          timestamp: Date.now(), 
-          nodesConsidered: 0, 
+
+      try {
+        window.ChatBridge = window.ChatBridge || {};
+        window.ChatBridge._lastScan = {
+          chosenContainer: container && (container.tagName + (container.id ? '#' + container.id : '') + (container.className ? '.' + (container.className || '').toString().split(' ').filter(c => c).slice(0, 2).join('.') : '')),
+          adapterId: (adapter && adapter.id) || null,
+          timestamp: Date.now(),
+          nodesConsidered: 0,
           containerEl: container,
           containerWidth: container && Math.round(container.getBoundingClientRect().width),
           errors: []
-        }; 
+        };
       } catch (e) {
         debugLog('_lastScan init error:', e);
       }
-      
+
       // Scroll and wait for stability with error handling
       try {
         await scrollContainerToTop(container);
@@ -11774,9 +11808,9 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           if (window.ChatBridge && window.ChatBridge._lastScan) {
             window.ChatBridge._lastScan.errors.push('scroll_failed: ' + (e.message || String(e)));
           }
-        } catch (_) {}
+        } catch (_) { }
       }
-      
+
       try {
         await waitForDomStability(container);
         debugLog('DOM stable');
@@ -11787,13 +11821,13 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           if (window.ChatBridge && window.ChatBridge._lastScan) {
             window.ChatBridge._lastScan.errors.push('stability_timeout: ' + (e.message || String(e)));
           }
-        } catch (_) {}
+        } catch (_) { }
       }
-      
+
       let raw = [];
-      
+
       // Try adapter.getMessages with error handling
-      try { 
+      try {
         if (adapter && typeof adapter.getMessages === 'function') {
           raw = adapter.getMessages() || [];
           debugLog('adapter.getMessages returned:', raw.length, 'messages');
@@ -11806,44 +11840,44 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
                     const atts = extractAttachmentsFromElement(m.el);
                     if (atts && atts.length) m.attachments = atts;
                   }
-                } catch (e) {}
+                } catch (e) { }
               }
             }
           } catch (e) { debugLog('attachment enrichment error (adapter):', e); }
         }
-      } catch (e) { 
+      } catch (e) {
         debugLog('adapter.getMessages error:', e);
         try {
           if (window.ChatBridge && window.ChatBridge._lastScan) {
             window.ChatBridge._lastScan.errors.push('adapter_failed: ' + (e.message || String(e)));
           }
-        } catch (_) {}
+        } catch (_) { }
       }
-      
+
       // Try AdapterGeneric fallback
       if ((!raw || !raw.length) && typeof window.AdapterGeneric !== 'undefined' && typeof window.AdapterGeneric.getMessages === 'function') {
-        try { 
+        try {
           raw = window.AdapterGeneric.getMessages() || [];
           debugLog('AdapterGeneric.getMessages returned:', raw.length, 'messages');
-        } catch (e) { 
+        } catch (e) {
           debugLog('AdapterGeneric failed:', e);
           try {
             if (window.ChatBridge && window.ChatBridge._lastScan) {
               window.ChatBridge._lastScan.errors.push('generic_adapter_failed: ' + (e.message || String(e)));
             }
-          } catch (_) {}
+          } catch (_) { }
         }
       }
-      
+
       // Last resort: manual node extraction
       if (!raw || !raw.length) {
         debugLog('falling back to manual node extraction');
-        const sel = '.message, .chat-line, .message-text, .markdown, .prose, p, li, div'; 
+        const sel = '.message, .chat-line, .message-text, .markdown, .prose, p, li, div';
         let nodes = [];
-        try { 
+        try {
           nodes = Array.from((container || document).querySelectorAll(sel));
           debugLog('querySelectorAll found:', nodes.length, 'nodes');
-        } catch (e) { 
+        } catch (e) {
           debugLog('querySelectorAll error, trying fallback selectors:', e);
           try {
             nodes = Array.from(document.querySelectorAll('p,div,li'));
@@ -11853,7 +11887,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
             nodes = [];
           }
         }
-        
+
         try {
           nodes = nodes.filter(n => n && n.innerText && n.closest && !n.closest('[data-cb-ignore], #cb-host'));
           debugLog('after filtering ignored:', nodes.length, 'nodes');
@@ -11863,118 +11897,118 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           debugLog('node filtering error:', e);
           // Keep unfiltered nodes if filtering fails
         }
-  try { if (window.ChatBridge && window.ChatBridge._lastScan) window.ChatBridge._lastScan.nodesConsidered = nodes.length; } catch (e) {}
-  // optionally highlight nodes for debug
-  try { if (CB_HIGHLIGHT_ENABLED || DEBUG) highlightNodesByElements(nodes); } catch (e) { debugLog('highlight error:', e); }
-  
-  try {
-    raw = nodes.map(n => ({ 
-      text: extractTextWithFormatting(n), 
-      role: inferRoleFromNode(n), 
-      el: n, 
-      attachments: extractAttachmentsFromElement(n) 
-    }));
-    debugLog('mapped to', raw.length, 'raw messages');
-  } catch (e) {
-    debugLog('node mapping error:', e);
-    raw = [];
-  }
+        try { if (window.ChatBridge && window.ChatBridge._lastScan) window.ChatBridge._lastScan.nodesConsidered = nodes.length; } catch (e) { }
+        // optionally highlight nodes for debug
+        try { if (CB_HIGHLIGHT_ENABLED || DEBUG) highlightNodesByElements(nodes); } catch (e) { debugLog('highlight error:', e); }
+
+        try {
+          raw = nodes.map(n => ({
+            text: extractTextWithFormatting(n),
+            role: inferRoleFromNode(n),
+            el: n,
+            attachments: extractAttachmentsFromElement(n)
+          }));
+          debugLog('mapped to', raw.length, 'raw messages');
+        } catch (e) {
+          debugLog('node mapping error:', e);
+          raw = [];
+        }
       }
-    
-    debugLog('raw messages before normalization:', raw.length);
-    try { if (window.ChatBridge && window.ChatBridge._lastScan) { window.ChatBridge._lastScan.messageCount = (raw && raw.length) || 0; } } catch (e) {}
-    try { if (window.ChatBridge && typeof window.ChatBridge._renderLastScan === 'function') window.ChatBridge._renderLastScan(); } catch (e) {}
-    
-    const normalized = normalizeMessages(raw || []);
-    debugLog('=== SCAN COMPLETE ===', normalized.length, 'messages');
-    
-    // Cache the result for debouncing
-    try {
-      window.ChatBridge = window.ChatBridge || {};
-      window.ChatBridge._lastScanResult = normalized;
-    } catch (e) {}
 
-    // Persist last scanned messages and attachments into debug object for downstream tools (e.g., media extract)
-    try {
-      if (window.ChatBridge && window.ChatBridge._lastScan) {
-        window.ChatBridge._lastScan.messages = normalized;
-        const atts = [];
-        try { normalized.forEach(m => { if (Array.isArray(m.attachments)) atts.push(...m.attachments); }); } catch(_){}
-        window.ChatBridge._lastScan.attachments = atts;
-      }
-    } catch(_) {}
+      debugLog('raw messages before normalization:', raw.length);
+      try { if (window.ChatBridge && window.ChatBridge._lastScan) { window.ChatBridge._lastScan.messageCount = (raw && raw.length) || 0; } } catch (e) { }
+      try { if (window.ChatBridge && typeof window.ChatBridge._renderLastScan === 'function') window.ChatBridge._renderLastScan(); } catch (e) { }
 
-    // Only save if we have messages
-    if (normalized.length === 0) {
-      debugLog('[Scan] No messages to save, skipping');
-      return normalized;
-    }
+      const normalized = normalizeMessages(raw || []);
+      debugLog('=== SCAN COMPLETE ===', normalized.length, 'messages');
 
-    // Fire-and-forget: Save and index in background (don't block scan completion)
-    const convObj = {
-      ts: Date.now(),
-      id: String(Date.now()),
-      platform: (function(){ try { return new URL(location.href).hostname; } catch(_) { return location.hostname || 'unknown'; } })(),
-      url: location.href,
-      conversation: normalized,
-    };
-    
-    // Return scan results immediately
-    debugLog('[Scan] Returning', normalized.length, 'messages (save/index running in background)');
-    
-    // All async operations happen in background
-    (async () => {
+      // Cache the result for debouncing
       try {
-        await saveConversation(convObj);
-      
-        // Auto-index into RAG (async, don't wait)
-        if (normalized.length >= 3 && typeof window.RAGEngine !== 'undefined' && typeof window.RAGEngine.indexConversation === 'function') {
-          // Index each message separately to preserve structure
-          for (let i = 0; i < normalized.length; i++) {
-            const msg = normalized[i];
-            const msgId = `${convObj.id}_msg_${i}`;
-            const msgText = `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.text}`;
-            
-            // Don't await - fire and forget
-            window.RAGEngine.indexConversation(msgText, {
-              platform: convObj.platform,
-              url: convObj.url,
-              timestamp: convObj.ts,
-              messageIndex: i,
-              messageRole: msg.role,
-              conversationId: convObj.id
-            }, msgId).catch(e => debugLog('[Auto-Index] Message', i, 'failed:', e));
-          }
-          debugLog('[Auto-Index] Queued', normalized.length, 'messages for indexing');
-        }
-      
-        // Auto-summarize (async, only for longer conversations)
-        if (normalized.length > 15) {
-          const summaryPrompt = `Summarize the following chat in this format:\n\n[Summary]\n- Main points\n- Key actions\n- Decisions\n- Next steps\n\nChat:\n${normalized.map(m => (m.role === 'user' ? 'User: ' : 'Assistant: ') + m.text).join('\n')}`;
-          callGeminiAsync({ action: 'prompt', text: summaryPrompt, length: 'medium' }).then(res => {
-            if (res && res.ok && res.result) {
-              convObj.summary = res.result.trim();
-              saveConversation(convObj).catch(e => debugLog('summary save failed', e));
-            }
-          }).catch(e => debugLog('auto-summarize failed', e));
-        }
-      } catch (e) { 
-        debugLog('background tasks failed', e); 
-      }
-    })();
+        window.ChatBridge = window.ChatBridge || {};
+        window.ChatBridge._lastScanResult = normalized;
+      } catch (e) { }
 
-    // Log any errors that occurred
-    try {
-      if (window.ChatBridge && window.ChatBridge._lastScan && window.ChatBridge._lastScan.errors && window.ChatBridge._lastScan.errors.length) {
-        debugLog('Scan completed with errors:', window.ChatBridge._lastScan.errors);
+      // Persist last scanned messages and attachments into debug object for downstream tools (e.g., media extract)
+      try {
+        if (window.ChatBridge && window.ChatBridge._lastScan) {
+          window.ChatBridge._lastScan.messages = normalized;
+          const atts = [];
+          try { normalized.forEach(m => { if (Array.isArray(m.attachments)) atts.push(...m.attachments); }); } catch (_) { }
+          window.ChatBridge._lastScan.attachments = atts;
+        }
+      } catch (_) { }
+
+      // Only save if we have messages
+      if (normalized.length === 0) {
+        debugLog('[Scan] No messages to save, skipping');
+        return normalized;
       }
-    } catch (e) {}
-    
-    return normalized;
-    } catch (e) { 
+
+      // Fire-and-forget: Save and index in background (don't block scan completion)
+      const convObj = {
+        ts: Date.now(),
+        id: String(Date.now()),
+        platform: (function () { try { return new URL(location.href).hostname; } catch (_) { return location.hostname || 'unknown'; } })(),
+        url: location.href,
+        conversation: normalized,
+      };
+
+      // Return scan results immediately
+      debugLog('[Scan] Returning', normalized.length, 'messages (save/index running in background)');
+
+      // All async operations happen in background
+      (async () => {
+        try {
+          await saveConversation(convObj);
+
+          // Auto-index into RAG (async, don't wait)
+          if (normalized.length >= 3 && typeof window.RAGEngine !== 'undefined' && typeof window.RAGEngine.indexConversation === 'function') {
+            // Index each message separately to preserve structure
+            for (let i = 0; i < normalized.length; i++) {
+              const msg = normalized[i];
+              const msgId = `${convObj.id}_msg_${i}`;
+              const msgText = `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.text}`;
+
+              // Don't await - fire and forget
+              window.RAGEngine.indexConversation(msgText, {
+                platform: convObj.platform,
+                url: convObj.url,
+                timestamp: convObj.ts,
+                messageIndex: i,
+                messageRole: msg.role,
+                conversationId: convObj.id
+              }, msgId).catch(e => debugLog('[Auto-Index] Message', i, 'failed:', e));
+            }
+            debugLog('[Auto-Index] Queued', normalized.length, 'messages for indexing');
+          }
+
+          // Auto-summarize (async, only for longer conversations)
+          if (normalized.length > 15) {
+            const summaryPrompt = `Summarize the following chat in this format:\n\n[Summary]\n- Main points\n- Key actions\n- Decisions\n- Next steps\n\nChat:\n${normalized.map(m => (m.role === 'user' ? 'User: ' : 'Assistant: ') + m.text).join('\n')}`;
+            callGeminiAsync({ action: 'prompt', text: summaryPrompt, length: 'medium' }).then(res => {
+              if (res && res.ok && res.result) {
+                convObj.summary = res.result.trim();
+                saveConversation(convObj).catch(e => debugLog('summary save failed', e));
+              }
+            }).catch(e => debugLog('auto-summarize failed', e));
+          }
+        } catch (e) {
+          debugLog('background tasks failed', e);
+        }
+      })();
+
+      // Log any errors that occurred
+      try {
+        if (window.ChatBridge && window.ChatBridge._lastScan && window.ChatBridge._lastScan.errors && window.ChatBridge._lastScan.errors.length) {
+          debugLog('Scan completed with errors:', window.ChatBridge._lastScan.errors);
+        }
+      } catch (e) { }
+
+      return normalized;
+    } catch (e) {
       debugLog('=== SCAN FAILED ===', e);
       console.error('[ChatBridge] Fatal scan error:', e);
-      
+
       // Store error for debugging
       try {
         if (window.ChatBridge && window.ChatBridge._lastScan) {
@@ -11982,9 +12016,9 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           window.ChatBridge._lastScan.errors = window.ChatBridge._lastScan.errors || [];
           window.ChatBridge._lastScan.errors.push('fatal: ' + (e.message || String(e)));
         }
-      } catch (_) {}
-      
-      return []; 
+      } catch (_) { }
+
+      return [];
     }
   }
 
@@ -11996,10 +12030,10 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           // Check for sensitive data
           const fullText = (conv && conv.conversation) ? conv.conversation.map(m => m.text || '').join('\n') : '';
           const findings = window.ChatBridgeSecurity.detectSensitiveData(fullText);
-          
+
           if (findings && findings.length > 0) {
             console.warn('[ChatBridge Security] Sensitive data detected in conversation:', findings);
-            
+
             // Auto-sanitize the conversation
             if (Array.isArray(conv.conversation)) {
               conv.conversation = conv.conversation.map(msg => ({
@@ -12007,7 +12041,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
                 text: window.ChatBridgeSecurity.sanitize(msg.text || '', { preserve: 3 })
               }));
             }
-            
+
             // Log security event
             window.ChatBridgeSecurity.logSecurityEvent({
               type: 'sensitive_data_detected',
@@ -12019,7 +12053,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           console.warn('[ChatBridge Security] Sanitization check failed:', e);
         }
       }
-      
+
       // persist to BOTH localStorage (page-local) AND chrome.storage.local (extension-wide)
       const key = 'chatbridge:conversations';
 
@@ -12032,12 +12066,12 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           const arr = Array.isArray(data) ? data : (Array.isArray(data) ? data : (Array.isArray(data) ? data : []));
           top = (Array.isArray(arr) && arr[0]) ? arr[0] : null;
         } else {
-          try { const arr = JSON.parse(localStorage.getItem(key) || '[]'); top = (Array.isArray(arr) && arr[0]) ? arr[0] : null; } catch(_) { top = null; }
+          try { const arr = JSON.parse(localStorage.getItem(key) || '[]'); top = (Array.isArray(arr) && arr[0]) ? arr[0] : null; } catch (_) { top = null; }
         }
 
         if (top) {
-          const lastA = (conv && Array.isArray(conv.conversation) && conv.conversation.length) ? String(conv.conversation[conv.conversation.length-1].text||'').trim().slice(0,300) : '';
-          const lastB = (top && Array.isArray(top.conversation) && top.conversation.length) ? String(top.conversation[top.conversation.length-1].text||'').trim().slice(0,300) : '';
+          const lastA = (conv && Array.isArray(conv.conversation) && conv.conversation.length) ? String(conv.conversation[conv.conversation.length - 1].text || '').trim().slice(0, 300) : '';
+          const lastB = (top && Array.isArray(top.conversation) && top.conversation.length) ? String(top.conversation[top.conversation.length - 1].text || '').trim().slice(0, 300) : '';
           const samePlatform = String(top.platform || '').toLowerCase() === String(conv.platform || '').toLowerCase();
           const timeDiff = Math.abs((conv.ts || Date.now()) - (top.ts || 0));
           if (samePlatform && lastA && lastB && lastA === lastB && timeDiff < 60 * 1000) {
@@ -12091,16 +12125,16 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
             const res = await callGeminiAsync({ action: 'prompt', text: prompt, length: 'short' });
             let geminiTopics = [];
             if (res && res.ok && res.result) {
-              geminiTopics = (res.result || '').split(/[,\n]+/).map(t => t.trim()).filter(Boolean).slice(0,6);
+              geminiTopics = (res.result || '').split(/[,\n]+/).map(t => t.trim()).filter(Boolean).slice(0, 6);
             }
 
             // Local heuristic topics (multi-word phrases + technical terms)
             let localTopics = [];
-            try { localTopics = buildKeywordsFromText(full, 6) || []; } catch(_) { localTopics = []; }
+            try { localTopics = buildKeywordsFromText(full, 6) || []; } catch (_) { localTopics = []; }
 
             // Normalize both sets and merge
-            function normTopic(t){
-              return String(t||'').toLowerCase()
+            function normTopic(t) {
+              return String(t || '').toLowerCase()
                 .replace(/["'()\.]/g, '')
                 .replace(/\s+/g, ' ')
                 .trim();
@@ -12113,7 +12147,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
             });
 
             // Cap to 6 and assign
-            if (merged.length) conv.topics = merged.slice(0,6);
+            if (merged.length) conv.topics = merged.slice(0, 6);
           } catch (e) { debugLog('topic extraction failed', e); }
 
           // update stored conversation with topics in BOTH storage locations
@@ -12122,7 +12156,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
             const cur2 = JSON.parse(localStorage.getItem(key) || '[]');
             const idx = cur2.findIndex(c => String(c.ts) === String(conv.ts));
             if (idx >= 0) { cur2[idx] = conv; localStorage.setItem(key, JSON.stringify(cur2)); }
-            
+
             // Update chrome.storage.local
             if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
               chrome.storage.local.get([key], (data) => {
@@ -12142,11 +12176,11 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           } catch (e) {
             debugLog('[RAG] Index check failed', e);
           }
-          
+
           // Also send to background to index (legacy vector_index handler)
           try {
             chrome.runtime.sendMessage({ type: 'vector_index', payload: { id: String(conv.ts), text: full, metadata: { platform: conv.platform || location.hostname, url: conv.url || location.href, ts: conv.ts, topics: conv.topics || [] } } }, (res) => {
-              try { if (res && res.ok) debugLog('vector index ok', conv.ts); else debugLog('vector index failed', res); } catch(_) {}
+              try { if (res && res.ok) debugLog('vector index ok', conv.ts); else debugLog('vector index failed', res); } catch (_) { }
             });
           } catch (e) { debugLog('vector_index send failed', e); }
         } catch (e) { debugLog('post-save async tasks failed', e); }
@@ -12160,27 +12194,27 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
   window.ChatBridge = window.ChatBridge || {};
   window.ChatBridge.scanChat = scanChat;
   window.ChatBridge.saveConversation = saveConversation;
-  window.ChatBridge.highlightScan = function(enable) { try { CB_HIGHLIGHT_ENABLED = !!enable; if (!CB_HIGHLIGHT_ENABLED) clearHighlights(); else ensureHighlightStyles(); return CB_HIGHLIGHT_ENABLED; } catch (e) { return false; } };
-  window.ChatBridge.enableDebug = function() { 
-    try { 
-      window.__CHATBRIDGE_DEBUG = true; 
-      console.log('[ChatBridge] Debug mode enabled. Reload the page for full effect.'); 
-      return true; 
-    } catch (e) { return false; } 
+  window.ChatBridge.highlightScan = function (enable) { try { CB_HIGHLIGHT_ENABLED = !!enable; if (!CB_HIGHLIGHT_ENABLED) clearHighlights(); else ensureHighlightStyles(); return CB_HIGHLIGHT_ENABLED; } catch (e) { return false; } };
+  window.ChatBridge.enableDebug = function () {
+    try {
+      window.__CHATBRIDGE_DEBUG = true;
+      console.log('[ChatBridge] Debug mode enabled. Reload the page for full effect.');
+      return true;
+    } catch (e) { return false; }
   };
-  window.ChatBridge.disableDebug = function() { 
-    try { 
-      window.__CHATBRIDGE_DEBUG = false; 
-      console.log('[ChatBridge] Debug mode disabled. Reload the page for full effect.'); 
-      return true; 
-    } catch (e) { return false; } 
+  window.ChatBridge.disableDebug = function () {
+    try {
+      window.__CHATBRIDGE_DEBUG = false;
+      console.log('[ChatBridge] Debug mode disabled. Reload the page for full effect.');
+      return true;
+    } catch (e) { return false; }
   };
-  window.ChatBridge.getLastScan = function() { 
-    try { 
-      return window.ChatBridge._lastScan || null; 
-    } catch (e) { return null; } 
+  window.ChatBridge.getLastScan = function () {
+    try {
+      return window.ChatBridge._lastScan || null;
+    } catch (e) { return null; }
   };
-  window.ChatBridge.getImageVault = async function() {
+  window.ChatBridge.getImageVault = async function () {
     try {
       return await getImageVault();
     } catch (e) {
@@ -12188,11 +12222,11 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       return [];
     }
   };
-  
+
   // End-to-end validation: save → dropdown refresh → restore
   // Usage: ChatBridge.testE2E({ text?: string })
   // Returns a Promise<{ savedOk, topOk, restoreOk, details }>
-  window.ChatBridge.testE2E = async function(opts) {
+  window.ChatBridge.testE2E = async function (opts) {
     const details = [];
     try {
       const before = await loadConversationsAsync();
@@ -12203,7 +12237,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       const conv = {
         ts: now,
         id: String(now),
-        platform: (function(){ try { return new URL(location.href).hostname; } catch(_) { return location.hostname || 'unknown'; } })(),
+        platform: (function () { try { return new URL(location.href).hostname; } catch (_) { return location.hostname || 'unknown'; } })(),
         url: location.href,
         conversation: [
           { role: 'user', text: (opts && opts.text) || 'E2E sanity check: user message ' + now },
@@ -12217,7 +12251,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       await new Promise(r => setTimeout(r, 120));
 
       // Refresh dropdown UI if available
-      try { if (typeof window.ChatBridge.refreshHistory === 'function') window.ChatBridge.refreshHistory(); } catch(_){}
+      try { if (typeof window.ChatBridge.refreshHistory === 'function') window.ChatBridge.refreshHistory(); } catch (_) { }
       await new Promise(r => setTimeout(r, 60));
 
       const after = await loadConversationsAsync();
@@ -12242,11 +12276,11 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       return { savedOk: false, topOk: false, restoreOk: false, details };
     }
   };
-  
+
   // Debug helper to check storage
-  window.ChatBridge.checkStorage = function() {
+  window.ChatBridge.checkStorage = function () {
     console.log('🔍 Checking storage locations...');
-    
+
     // Check localStorage
     try {
       const local = JSON.parse(localStorage.getItem('chatbridge:conversations') || '[]');
@@ -12261,7 +12295,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
     } catch (e) {
       console.error('localStorage error:', e);
     }
-    
+
     // Check chrome.storage.local
     if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
       chrome.storage.local.get(['chatbridge:conversations'], (data) => {
@@ -12274,7 +12308,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
             timestamp: new Date(c.ts).toLocaleString()
           })));
         }
-        
+
         // Check for mismatch
         try {
           const local = JSON.parse(localStorage.getItem('chatbridge:conversations') || '[]');
@@ -12284,12 +12318,12 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           } else {
             console.log('✅ Storage locations in sync');
           }
-        } catch (e) {}
+        } catch (e) { }
       });
     } else {
       console.log('chrome.storage.local: Not available');
     }
-    
+
     // Check background handler
     if (typeof chrome !== 'undefined' && chrome.runtime) {
       chrome.runtime.sendMessage({ type: 'get_conversations' }, (r) => {
@@ -12308,9 +12342,9 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       });
     }
   };
-  
+
   // Advanced intelligence helpers
-  window.ChatBridge.analyzeContext = async function() {
+  window.ChatBridge.analyzeContext = async function () {
     try {
       const msgs = await scanChat();
       if (!msgs || !msgs.length) {
@@ -12322,7 +12356,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       console.log('📊 Conversation Analysis:');
       console.log('Messages:', msgs.length);
       console.log('Segments:', segments.length);
-      console.table(segments.map(s => ({ topic: s.topic, messages: s.messageCount, confidence: s.confidence + '%', keywords: s.keywords.slice(0,3).join(', ') })));
+      console.table(segments.map(s => ({ topic: s.topic, messages: s.messageCount, confidence: s.confidence + '%', keywords: s.keywords.slice(0, 3).join(', ') })));
       console.log('Active Context:', context);
       return { messages: msgs, segments, context };
     } catch (e) {
@@ -12330,8 +12364,8 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       return null;
     }
   };
-  
-  window.ChatBridge.showSegments = async function() {
+
+  window.ChatBridge.showSegments = async function () {
     try {
       const msgs = await scanChat();
       if (!msgs || !msgs.length) {
@@ -12359,15 +12393,15 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
   // bootstrap UI and auto-scan
   // CLOUDFLARE FIX: Wait for page to be fully loaded before injecting UI
   function initChatBridge() {
-    try { 
-      const ui = injectUI(); 
-      
+    try {
+      const ui = injectUI();
+
       // Initialize MCP Bridge to enable agent-to-agent communication
       if (typeof window.MCPBridge !== 'undefined') {
         try {
           window.MCPBridge.init();
           _cbMCPInitialized = true;
-          
+
           // Register ChatBridge-specific resources
           window.MCPBridge.registerResource('/chatbridge/scan', async (params) => {
             try {
@@ -12383,7 +12417,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
               return { ok: false, error: e.message };
             }
           });
-          
+
           window.MCPBridge.registerResource('/chatbridge/restore', async (params) => {
             try {
               const text = params.text || '';
@@ -12394,7 +12428,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
               return { ok: false, error: e.message };
             }
           });
-          
+
           window.MCPBridge.registerResource('/chatbridge/status', async (params) => {
             return {
               ok: true,
@@ -12405,136 +12439,136 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
               timestamp: Date.now()
             };
           });
-          
+
           console.log('[ChatBridge] MCP initialized with', window.MCPBridge.getStats().registeredResources.length, 'resources:', window.MCPBridge.getStats().registeredResources);
         } catch (e) {
           console.warn('[ChatBridge] MCP init failed:', e);
         }
       }
-    
-    // Keyboard command handlers
-    if (ui && ui.avatar && ui.panel) {
-      chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-        if (!msg || !msg.type) return;
-        
-        try {
-          if (msg.type === 'keyboard_command') {
-            const command = msg.command;
-            
-            if (command === 'quick-scan') {
-              // Ctrl+Shift+S: Open sidebar and trigger scan
-              if (ui.panel.style.display === 'none') {
-                ui.avatar.click(); // Open sidebar
-              }
-              setTimeout(() => {
-                const shadow = ui.panel.getRootNode();
-                const btnScan = shadow.querySelector('#btnScan');
-                if (btnScan) btnScan.click();
-              }, 100);
-              sendResponse({ ok: true });
-            } 
-            else if (command === 'toggle-sidebar') {
-              // Ctrl+Shift+H: Toggle sidebar visibility
-              ui.avatar.click();
-              sendResponse({ ok: true });
-            }
-            else if (command === 'insight-finder') {
-              // Ctrl+Shift+F: Open Insight Finder modal
-              (async () => {
-                try {
-                  const msgs = await scanChat();
-                  if (!msgs || msgs.length === 0) {
-                    toast('No messages found in current chat');
-                    sendResponse({ ok: false });
-                    return;
-                  }
-                  const insights = extractInsights(msgs);
-                  const total = Object.values(insights).reduce((sum, arr) => sum + arr.length, 0);
-                  if (total === 0) {
-                    toast('No insights found in this conversation');
-                    sendResponse({ ok: false });
-                    return;
-                  }
-                  showInsightFinderModal(insights, msgs);
-                  toast(`Found ${total} insights`);
-                  sendResponse({ ok: true });
-                } catch (e) {
-                  debugLog('Insight Finder keyboard error', e);
-                  sendResponse({ ok: false });
-                }
-              })();
-              return true; // Will respond asynchronously
-            } 
-            else if (command === 'close-view') {
-              // Escape: Close internal views or sidebar
-              const shadow = ui.panel.getRootNode();
-              const openView = shadow.querySelector('.cb-internal-view.cb-view-active');
-              if (openView) {
-                // Close internal view
-                const closeBtn = openView.querySelector('.cb-view-close');
-                if (closeBtn) closeBtn.click();
-              } else if (ui.panel.style.display !== 'none') {
-                // Close sidebar
-                ui.avatar.click();
-              }
-              sendResponse({ ok: true });
-            } 
-            else if (command === 'insert-to-chat') {
-              // Ctrl+Enter: Insert conversation to chat input
-              const shadow = ui.panel.getRootNode();
-              const insertBtns = Array.from(shadow.querySelectorAll('[id^="btnInsert"]'));
-              const visibleBtn = insertBtns.find(btn => {
-                const view = btn.closest('.cb-internal-view');
-                return view && view.classList.contains('cb-view-active');
-              });
-              
-              if (visibleBtn) {
-                visibleBtn.click();
-                sendResponse({ ok: true });
-              } else {
-                // No insert button visible - show toast
-                try {
-                  const t = document.createElement('div');
-                  t.setAttribute('data-cb-ignore','true');
-                  t.textContent = 'No insert action available';
-                  t.style.cssText = 'position:fixed;bottom:18px;left:18px;background:rgba(6,20,32,0.9);color:#dff1ff;padding:8px 10px;border-radius:8px;z-index:2147483647;';
-                  document.body.appendChild(t);
-                  setTimeout(()=>t.remove(),2400);
-                } catch (e) {}
-                sendResponse({ ok: false, error: 'no_insert_button' });
-              }
-            }
-          }
-        } catch (e) {
-          debugLog('keyboard command error', e);
-          sendResponse({ ok: false, error: String(e) });
-        }
-      });
-      // Note: restore_to_chat listener is registered earlier at the top level
-      // to ensure it's ready when the tab opens
 
-      // Cross-Context Memory: Auto-detect context and suggest connections after page loads
-      setTimeout(async () => {
-        try {
-          // Wait for conversation to load, then check for connections
-          await new Promise(r => setTimeout(r, 3000)); // 3s delay for chat to render
-          const graphKey = 'chatbridge:knowledge_graph';
-          const graph = JSON.parse(localStorage.getItem(graphKey) || '[]');
-          
-          // Only auto-suggest if we have a knowledge graph with at least 3 entries
-          if (graph.length >= 3) {
-            await detectAndSuggestContext();
+      // Keyboard command handlers
+      if (ui && ui.avatar && ui.panel) {
+        chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+          if (!msg || !msg.type) return;
+
+          try {
+            if (msg.type === 'keyboard_command') {
+              const command = msg.command;
+
+              if (command === 'quick-scan') {
+                // Ctrl+Shift+S: Open sidebar and trigger scan
+                if (ui.panel.style.display === 'none') {
+                  ui.avatar.click(); // Open sidebar
+                }
+                setTimeout(() => {
+                  const shadow = ui.panel.getRootNode();
+                  const btnScan = shadow.querySelector('#btnScan');
+                  if (btnScan) btnScan.click();
+                }, 100);
+                sendResponse({ ok: true });
+              }
+              else if (command === 'toggle-sidebar') {
+                // Ctrl+Shift+H: Toggle sidebar visibility
+                ui.avatar.click();
+                sendResponse({ ok: true });
+              }
+              else if (command === 'insight-finder') {
+                // Ctrl+Shift+F: Open Insight Finder modal
+                (async () => {
+                  try {
+                    const msgs = await scanChat();
+                    if (!msgs || msgs.length === 0) {
+                      toast('No messages found in current chat');
+                      sendResponse({ ok: false });
+                      return;
+                    }
+                    const insights = extractInsights(msgs);
+                    const total = Object.values(insights).reduce((sum, arr) => sum + arr.length, 0);
+                    if (total === 0) {
+                      toast('No insights found in this conversation');
+                      sendResponse({ ok: false });
+                      return;
+                    }
+                    showInsightFinderModal(insights, msgs);
+                    toast(`Found ${total} insights`);
+                    sendResponse({ ok: true });
+                  } catch (e) {
+                    debugLog('Insight Finder keyboard error', e);
+                    sendResponse({ ok: false });
+                  }
+                })();
+                return true; // Will respond asynchronously
+              }
+              else if (command === 'close-view') {
+                // Escape: Close internal views or sidebar
+                const shadow = ui.panel.getRootNode();
+                const openView = shadow.querySelector('.cb-internal-view.cb-view-active');
+                if (openView) {
+                  // Close internal view
+                  const closeBtn = openView.querySelector('.cb-view-close');
+                  if (closeBtn) closeBtn.click();
+                } else if (ui.panel.style.display !== 'none') {
+                  // Close sidebar
+                  ui.avatar.click();
+                }
+                sendResponse({ ok: true });
+              }
+              else if (command === 'insert-to-chat') {
+                // Ctrl+Enter: Insert conversation to chat input
+                const shadow = ui.panel.getRootNode();
+                const insertBtns = Array.from(shadow.querySelectorAll('[id^="btnInsert"]'));
+                const visibleBtn = insertBtns.find(btn => {
+                  const view = btn.closest('.cb-internal-view');
+                  return view && view.classList.contains('cb-view-active');
+                });
+
+                if (visibleBtn) {
+                  visibleBtn.click();
+                  sendResponse({ ok: true });
+                } else {
+                  // No insert button visible - show toast
+                  try {
+                    const t = document.createElement('div');
+                    t.setAttribute('data-cb-ignore', 'true');
+                    t.textContent = 'No insert action available';
+                    t.style.cssText = 'position:fixed;bottom:18px;left:18px;background:rgba(6,20,32,0.9);color:#dff1ff;padding:8px 10px;border-radius:8px;z-index:2147483647;';
+                    document.body.appendChild(t);
+                    setTimeout(() => t.remove(), 2400);
+                  } catch (e) { }
+                  sendResponse({ ok: false, error: 'no_insert_button' });
+                }
+              }
+            }
+          } catch (e) {
+            debugLog('keyboard command error', e);
+            sendResponse({ ok: false, error: String(e) });
           }
-        } catch (e) {
-          debugLog('Auto context detection error', e);
-        }
-      }, 1000);
-    }
-    
-    setTimeout(async ()=>{ const msgs = await scanChat(); if (msgs && msgs.length) { await saveConversation({ platform: location.hostname, url: location.href, ts: Date.now(), conversation: msgs }); debugLog('auto-saved', msgs.length); } }, 450); 
-  } catch (e) { debugLog('boot error', e); }
+        });
+        // Note: restore_to_chat listener is registered earlier at the top level
+        // to ensure it's ready when the tab opens
+
+        // Cross-Context Memory: Auto-detect context and suggest connections after page loads
+        setTimeout(async () => {
+          try {
+            // Wait for conversation to load, then check for connections
+            await new Promise(r => setTimeout(r, 3000)); // 3s delay for chat to render
+            const graphKey = 'chatbridge:knowledge_graph';
+            const graph = JSON.parse(localStorage.getItem(graphKey) || '[]');
+
+            // Only auto-suggest if we have a knowledge graph with at least 3 entries
+            if (graph.length >= 3) {
+              await detectAndSuggestContext();
+            }
+          } catch (e) {
+            debugLog('Auto context detection error', e);
+          }
+        }, 1000);
+      }
+
+      setTimeout(async () => { const msgs = await scanChat(); if (msgs && msgs.length) { await saveConversation({ platform: location.hostname, url: location.href, ts: Date.now(), conversation: msgs }); debugLog('auto-saved', msgs.length); } }, 450);
+    } catch (e) { debugLog('boot error', e); }
   }
-  
+
   // CLOUDFLARE FIX: Defer initialization until page is fully loaded
   if (document.readyState === 'complete') {
     initChatBridge();

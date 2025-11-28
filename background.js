@@ -67,7 +67,7 @@ const REWRITE_TEMPLATES = {
   professional: ({ text }) => `Rewrite the following text in a polished, professional tone suitable for workplace communication. Keep it respectful, clear, and accurate.\n\n${text}`,
   simple: ({ text }) => `Rewrite the following text in simple, easy-to-read language. Reduce complexity while preserving important details and meaning.\n\n${text}`,
   friendly: ({ text }) => `Rewrite the following text in a friendly, warm tone while remaining clear and respectful. Keep the original meaning intact.\n\n${text}`,
-  customStyle: ({ text, styleHint = '' }) => `Rewrite the following text in this personalized style: "${(styleHint || '').slice(0,160)}". Maintain original meaning and facts. Do not use detector-evasion tricks or academic-integrity violations.\n\n${text}`
+  customStyle: ({ text, styleHint = '' }) => `Rewrite the following text in this personalized style: "${(styleHint || '').slice(0, 160)}". Maintain original meaning and facts. Do not use detector-evasion tricks or academic-integrity violations.\n\n${text}`
 };
 
 // Get next available model, skipping those with too many failures
@@ -105,7 +105,7 @@ function markModelSuccess(model) {
 
 chrome.runtime.onInstalled.addListener(() => {
   console.log("ChatBridge installed/updated");
-  
+
   // Initialize MCP Bridge in background
   try {
     if (typeof window.MCPBridge !== 'undefined') {
@@ -120,7 +120,7 @@ chrome.runtime.onInstalled.addListener(() => {
 // Migration endpoint: content script can send stored conversations to background for persistent storage
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (!msg || !msg.type) return;
-  
+
   // CLOUDFLARE FIX: Proxy fetch requests through background to avoid triggering security
   if (msg.type === 'fetch_blob') {
     (async () => {
@@ -130,24 +130,24 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           sendResponse({ ok: false, error: 'No URL provided' });
           return;
         }
-        
+
         // Fetch through background script (has broader permissions and doesn't trigger Cloudflare)
-        const res = await fetch(url, { 
+        const res = await fetch(url, {
           mode: 'cors',
           credentials: 'omit', // Don't send cookies to avoid CORS issues
           cache: 'default'
         });
-        
+
         if (!res.ok) {
           sendResponse({ ok: false, error: `HTTP ${res.status}` });
           return;
         }
-        
+
         const blob = await res.blob();
         const reader = new FileReader();
         reader.onloadend = () => {
-          sendResponse({ 
-            ok: true, 
+          sendResponse({
+            ok: true,
             data: reader.result, // base64 data URL
             type: blob.type,
             size: blob.size
@@ -163,7 +163,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     })();
     return true; // Keep channel open for async response
   }
-  
+
   if (msg.type === 'migrate_conversations') {
     (async () => {
       try {
@@ -177,16 +177,16 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             if (ok) count++;
           } catch (e) { /* continue */ }
         }
-        sendResponse({ ok:true, migrated: count });
-      } catch (e) { sendResponse({ ok:false, error: e && e.message }); }
+        sendResponse({ ok: true, migrated: count });
+      } catch (e) { sendResponse({ ok: false, error: e && e.message }); }
     })();
     return true;
   }
 
   if (msg.type === 'report_issue') {
     // simple logging; background can forward to a server if configured
-    try { console.warn('REPORT_ISSUE', msg.payload || {}); } catch(e){}
-    sendResponse({ ok:true });
+    try { console.warn('REPORT_ISSUE', msg.payload || {}); } catch (e) { }
+    sendResponse({ ok: true });
     return true;
   }
 });
@@ -230,7 +230,7 @@ if (chrome.idle && chrome.idle.onStateChanged) {
         precomputeEmbeddingsIdle(3); // Reduced batch from 4 to 3
       }
       // When state === 'active' or 'locked', do nothing to save CPU
-    } catch (e) {}
+    } catch (e) { }
   });
 }
 
@@ -240,15 +240,15 @@ try {
   if (chrome.alarms) {
     chrome.alarms.create('chatbridge_precompute', { periodInMinutes: 60 }); // Increased from 30 to 60
     chrome.alarms.onAlarm.addListener((alarm) => {
-      try { if (alarm && alarm.name === 'chatbridge_precompute') precomputeEmbeddingsIdle(2); } catch (e) {}
+      try { if (alarm && alarm.name === 'chatbridge_precompute') precomputeEmbeddingsIdle(2); } catch (e) { }
     });
   }
-} catch (e) {}
+} catch (e) { }
 
 // clean cache periodically
 // OPTIMIZATION: Reduce cache cleanup frequency to lower background CPU usage
 // Changed from every 10 minutes to every 30 minutes
-try { setInterval(() => { cacheCleanExpired(); }, 1000 * 60 * 30); } catch(e) {} // Increased from 10 to 30
+try { setInterval(() => { cacheCleanExpired(); }, 1000 * 60 * 30); } catch (e) { } // Increased from 10 to 30
 // Simple IndexedDB vector store (fallback to in-memory on failure)
 const V_DB_NAME = 'chatbridge_vectors_v1';
 const V_STORE = 'vectors';
@@ -269,7 +269,7 @@ function openVectorDB() {
       const req = indexedDB.open(V_DB_NAME, 1);
       req.onupgradeneeded = (ev) => {
         const db = ev.target.result;
-        try { db.createObjectStore(V_STORE, { keyPath: 'id' }); } catch (e) {}
+        try { db.createObjectStore(V_STORE, { keyPath: 'id' }); } catch (e) { }
       };
       req.onsuccess = (ev) => { idb = ev.target.result; resolve(idb); };
       req.onerror = (ev) => { console.warn('IndexedDB open failed', ev); resolve(null); };
@@ -282,7 +282,7 @@ function openCacheDB() {
     try {
       const req = indexedDB.open(C_DB_NAME, 1);
       req.onupgradeneeded = (ev) => {
-        try { ev.target.result.createObjectStore(C_STORE, { keyPath: 'id' }); } catch (e) {}
+        try { ev.target.result.createObjectStore(C_STORE, { keyPath: 'id' }); } catch (e) { }
       };
       req.onsuccess = (ev) => { cacheDb = ev.target.result; resolve(cacheDb); };
       req.onerror = () => { cacheDb = null; resolve(null); };
@@ -295,7 +295,7 @@ function openConvoDB() {
     try {
       const req = indexedDB.open(CONV_DB_NAME, 1);
       req.onupgradeneeded = (ev) => {
-        try { ev.target.result.createObjectStore(CONV_STORE, { keyPath: 'id' }); } catch (e) {}
+        try { ev.target.result.createObjectStore(CONV_STORE, { keyPath: 'id' }); } catch (e) { }
       };
       req.onsuccess = (ev) => { convDb = ev.target.result; resolve(convDb); };
       req.onerror = () => { convDb = null; resolve(null); };
@@ -387,7 +387,7 @@ async function cacheCleanExpired() {
       if (!cur) return;
       const rec = cur.value;
       if (rec && rec.ts && rec.ttl && (Date.now() - rec.ts) > rec.ttl) {
-        try { cur.delete(); } catch (e) {}
+        try { cur.delete(); } catch (e) { }
       }
       cur.continue();
     };
@@ -426,7 +426,7 @@ async function convoAll() {
 function cosine(a, b) {
   if (!a || !b || a.length !== b.length) return 0;
   let dot = 0, na = 0, nb = 0;
-  for (let i=0;i<a.length;i++) { dot += a[i]*b[i]; na += a[i]*a[i]; nb += b[i]*b[i]; }
+  for (let i = 0; i < a.length; i++) { dot += a[i] * b[i]; na += a[i] * a[i]; nb += b[i] * b[i]; }
   if (na === 0 || nb === 0) return 0; return dot / (Math.sqrt(na) * Math.sqrt(nb));
 }
 
@@ -527,15 +527,15 @@ try {
             __cbOpenAIKeyCache.ts = Date.now();
           }
         }
-      } catch (_) {}
+      } catch (_) { }
     });
   }
-} catch (_) {}
+} catch (_) { }
 
 // --- Config, Logger, Errors, Rate Limiter (lightweight, non-invasive) ------
 /** @typedef {{ ratePerSec: number, maxBurst: number }} TokenBucketConfig */
 
-const Config = (function(){
+const Config = (function () {
   const DEFAULTS = { ratePerSec: 1, maxBurst: 5, debug: false };
   let cache = { value: DEFAULTS, ts: 0 };
   async function _load() {
@@ -548,60 +548,64 @@ const Config = (function(){
   }
   return {
     /** @returns {Promise<typeof DEFAULTS>} */
-    async getAll(force=false){ if (!force && (Date.now()-cache.ts)<60_000) return cache.value; return _load(); },
+    async getAll(force = false) { if (!force && (Date.now() - cache.ts) < 60_000) return cache.value; return _load(); },
     /** @returns {Promise<any>} */
-    async get(key){ const c = await this.getAll(); return c[key]; },
+    async get(key) { const c = await this.getAll(); return c[key]; },
     /** @param {Partial<typeof DEFAULTS>} partial */
-    async set(partial){ try { const cur = await this.getAll(true); const next = Object.assign({}, cur, partial||{}); await new Promise(r=>chrome.storage.local.set({ chatbridge_config: next }, r)); cache={value:next,ts:Date.now()}; } catch(_){} }
+    async set(partial) { try { const cur = await this.getAll(true); const next = Object.assign({}, cur, partial || {}); await new Promise(r => chrome.storage.local.set({ chatbridge_config: next }, r)); cache = { value: next, ts: Date.now() }; } catch (_) { } }
   };
 })();
 
-const Logger = (function(){
+const Logger = (function () {
   let debugEnabled = false;
-  (async ()=>{ try { debugEnabled = !!(await Config.get('debug')); } catch(_){} })();
+  (async () => { try { debugEnabled = !!(await Config.get('debug')); } catch (_) { } })();
   try {
     if (chrome.storage && chrome.storage.onChanged) {
-      chrome.storage.onChanged.addListener((changes, area)=>{
-        try { if (area==='local' && changes && changes.chatbridge_config) {
-          const v = changes.chatbridge_config.newValue||{}; debugEnabled = !!v.debug;
-        } } catch(_){}
+      chrome.storage.onChanged.addListener((changes, area) => {
+        try {
+          if (area === 'local' && changes && changes.chatbridge_config) {
+            const v = changes.chatbridge_config.newValue || {}; debugEnabled = !!v.debug;
+          }
+        } catch (_) { }
       });
     }
-  } catch(_){}
-  function log(method, args){ try { console[method].apply(console, ['[ChatBridge]', ...args]); } catch(_){} }
+  } catch (_) { }
+  function log(method, args) { try { console[method].apply(console, ['[ChatBridge]', ...args]); } catch (_) { } }
   return {
-    debug: (...a)=>{ if (debugEnabled) log('debug', a); },
-    info: (...a)=>log('log', a),
-    warn: (...a)=>log('warn', a),
-    error: (...a)=>log('error', a)
+    debug: (...a) => { if (debugEnabled) log('debug', a); },
+    info: (...a) => log('log', a),
+    warn: (...a) => log('warn', a),
+    error: (...a) => log('error', a)
   };
 })();
 
-function makeError(code, message, extra){ return Object.assign({ ok:false, error: String(code||'error'), message: String(message||'') }, extra||{}); }
+function makeError(code, message, extra) { return Object.assign({ ok: false, error: String(code || 'error'), message: String(message || '') }, extra || {}); }
 
-function createTokenBucket(cfg){
+function createTokenBucket(cfg) {
   const rate = Math.max(0.1, Number(cfg && cfg.ratePerSec || 1));
   const burst = Math.max(1, Number(cfg && cfg.maxBurst || 5));
   let tokens = burst; let last = Date.now();
   return {
-    try(){ const now=Date.now(); const delta=(now-last)/1000; last=now; tokens = Math.min(burst, tokens + delta*rate); if (tokens>=1){ tokens-=1; return true;} return false; },
-    peek(){ return tokens; }
+    try() { const now = Date.now(); const delta = (now - last) / 1000; last = now; tokens = Math.min(burst, tokens + delta * rate); if (tokens >= 1) { tokens -= 1; return true; } return false; },
+    peek() { return tokens; }
   };
 }
 
 let RateLimiter = createTokenBucket({ ratePerSec: 1, maxBurst: 5 });
-(async ()=>{
-  try { const ratePerSec = await Config.get('ratePerSec'); const maxBurst = await Config.get('maxBurst'); RateLimiter = createTokenBucket({ ratePerSec, maxBurst }); } catch(_){}
+(async () => {
+  try { const ratePerSec = await Config.get('ratePerSec'); const maxBurst = await Config.get('maxBurst'); RateLimiter = createTokenBucket({ ratePerSec, maxBurst }); } catch (_) { }
 })();
 try {
   if (chrome.storage && chrome.storage.onChanged) {
-    chrome.storage.onChanged.addListener((changes, area)=>{
-      try { if (area==='local' && changes && changes.chatbridge_config) {
-        const v = changes.chatbridge_config.newValue || {}; RateLimiter = createTokenBucket({ ratePerSec: Number(v.ratePerSec)||1, maxBurst: Number(v.maxBurst)||5 });
-      } } catch(_){}
+    chrome.storage.onChanged.addListener((changes, area) => {
+      try {
+        if (area === 'local' && changes && changes.chatbridge_config) {
+          const v = changes.chatbridge_config.newValue || {}; RateLimiter = createTokenBucket({ ratePerSec: Number(v.ratePerSec) || 1, maxBurst: Number(v.maxBurst) || 5 });
+        }
+      } catch (_) { }
     });
   }
-} catch(_){}
+} catch (_) { }
 
 // Route embedding computation to content script (local transformers.js)
 async function getLocalEmbeddingViaContent(text) {
@@ -676,14 +680,14 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         const id = String(payload.id || payload.ts || Date.now());
         const text = payload.text || '';
         const metadata = payload.metadata || {};
-        if (!text) return sendResponse({ ok:false, error:'no_text' });
+        if (!text) return sendResponse({ ok: false, error: 'no_text' });
         // Try to get embedding from payload first
         let embedding = payload.embedding || null;
         if (!embedding) {
           // try OpenAI embeddings
           embedding = await fetchEmbeddingOpenAI(text);
         }
-        if (!embedding) return sendResponse({ ok:false, error:'no_embedding' });
+        if (!embedding) return sendResponse({ ok: false, error: 'no_embedding' });
         const obj = { id, vector: embedding, metadata: metadata, ts: Date.now() };
         const ok = await idbPut(obj);
         return sendResponse({ ok: !!ok });
@@ -695,15 +699,15 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       (async () => {
         const q = (msg.payload && msg.payload.query) ? msg.payload.query : '';
         const topK = (msg.payload && msg.payload.topK) ? Math.max(1, msg.payload.topK) : 6;
-        if (!q) return sendResponse({ ok:false, error:'no_query' });
+        if (!q) return sendResponse({ ok: false, error: 'no_query' });
         // get embedding for query
         const qemb = await fetchEmbeddingOpenAI(q);
-        if (!qemb) return sendResponse({ ok:false, error:'no_embedding' });
+        if (!qemb) return sendResponse({ ok: false, error: 'no_embedding' });
         const all = await idbAll();
         const scored = all.map(it => ({ id: it.id, score: cosine(qemb, it.vector || []), metadata: it.metadata || {} }));
-        scored.sort((a,b) => b.score - a.score);
+        scored.sort((a, b) => b.score - a.score);
         const top = scored.slice(0, topK);
-        return sendResponse({ ok:true, results: top });
+        return sendResponse({ ok: true, results: top });
       })();
       return true;
     }
@@ -735,8 +739,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
               indexed++;
             } catch (e) { /* continue on per-item error */ }
           }
-          return sendResponse({ ok:true, indexed });
-        } catch (e) { return sendResponse({ ok:false, error: e && e.message }); }
+          return sendResponse({ ok: true, indexed });
+        } catch (e) { return sendResponse({ ok: false, error: e && e.message }); }
       })();
       return true;
     }
@@ -793,11 +797,11 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           const id = String(c.id || c.ts || Date.now());
           const ts = Number(c.ts || c.metadata && c.metadata.ts || Date.now());
           return Object.assign({ id, ts }, c);
-        }).sort((a,b) => (b.ts||0) - (a.ts||0));
+        }).sort((a, b) => (b.ts || 0) - (a.ts || 0));
         const slice = (limit && limit > 0) ? norm.slice(offset, offset + limit) : (offset ? norm.slice(offset) : norm);
         sendResponse({ ok: true, conversations: slice, total: norm.length });
       } catch (e) {
-        sendResponse({ ok:false, error: e && e.message });
+        sendResponse({ ok: false, error: e && e.message });
       }
     })();
     return true;
@@ -820,9 +824,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           });
         }
         // Clear mirror
-        try { chrome.storage.local.set({ 'chatbridge:conversations': [] }, () => {}); } catch (e) {}
+        try { chrome.storage.local.set({ 'chatbridge:conversations': [] }, () => { }); } catch (e) { }
         sendResponse({ ok: true });
-      } catch (e) { sendResponse({ ok:false, error: e && e.message }); }
+      } catch (e) { sendResponse({ ok: false, error: e && e.message }); }
     })();
     return true;
   }
@@ -864,7 +868,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     sendResponse({ ok: true });
     return true;
   }
-  if (msg && msg.type === 'ping') return sendResponse({ ok:true });
+  if (msg && msg.type === 'ping') return sendResponse({ ok: true });
 
   // Built-in self-test (non-invasive unit checks) for quick validation via message
   if (msg && msg.type === 'self_test') {
@@ -873,21 +877,21 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       try {
         // hashString deterministic
         const h1 = hashString('abc'); const h2 = hashString('abc'); const h3 = hashString('abcd');
-        details.push({ test: 'hashString deterministic', pass: h1===h2 && h1!==h3 });
+        details.push({ test: 'hashString deterministic', pass: h1 === h2 && h1 !== h3 });
         // cosine basics
-        const c1 = cosine([1,0],[1,0]); const c2 = cosine([1,0],[0,1]);
-        details.push({ test: 'cosine basics', pass: Math.abs(c1-1)<1e-9 && Math.abs(c2-0)<1e-9 });
+        const c1 = cosine([1, 0], [1, 0]); const c2 = cosine([1, 0], [0, 1]);
+        details.push({ test: 'cosine basics', pass: Math.abs(c1 - 1) < 1e-9 && Math.abs(c2 - 0) < 1e-9 });
         // rate limiter
         const rl = createTokenBucket({ ratePerSec: 100, maxBurst: 2 });
         const p = [rl.try(), rl.try(), rl.try()].map(Boolean); // 3rd likely false immediately
-        details.push({ test: 'rate limiter burst', pass: p[0]===true && p[1]===true && p[2]===false });
+        details.push({ test: 'rate limiter burst', pass: p[0] === true && p[1] === true && p[2] === false });
         // config read
         const cfg = await Config.getAll();
-        details.push({ test: 'config defaults', pass: typeof cfg.ratePerSec==='number' && typeof cfg.maxBurst==='number' });
+        details.push({ test: 'config defaults', pass: typeof cfg.ratePerSec === 'number' && typeof cfg.maxBurst === 'number' });
         const allPass = details.every(d => d.pass);
         return sendResponse({ ok: allPass, details });
       } catch (e) {
-        return sendResponse({ ok:false, error: 'self_test_failed', message: (e&&e.message)||String(e), details });
+        return sendResponse({ ok: false, error: 'self_test_failed', message: (e && e.message) || String(e), details });
       }
     })();
     return true;
@@ -900,30 +904,30 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         const payload = msg.payload || {};
         const text = (payload.text || '').trim();
         const topK = Math.max(1, payload.topK || 6);
-        if (!text) return sendResponse({ ok:false, error: 'no_text' });
+        if (!text) return sendResponse({ ok: false, error: 'no_text' });
 
         // Try to get a query embedding first
         const qemb = await fetchEmbeddingOpenAI(text);
 
         // Fallback simple keyword extractor if no embedding available
         function extractLocalPhrases(src, maxPhrases = 80) {
-          const s = (src || '').toLowerCase().replace(/["'`/\\()\[\]{}<>]/g,' ');
+          const s = (src || '').toLowerCase().replace(/["'`/\\()\[\]{}<>]/g, ' ');
           const words = s.split(/[^a-z0-9]+/).filter(Boolean);
-          const stop = new Set(['the','and','for','with','that','this','from','your','you','have','are','was','but','not','what','when','where','which','like','they','their','will','can','all','any','one','use','uses']);
+          const stop = new Set(['the', 'and', 'for', 'with', 'that', 'this', 'from', 'your', 'you', 'have', 'are', 'was', 'but', 'not', 'what', 'when', 'where', 'which', 'like', 'they', 'their', 'will', 'can', 'all', 'any', 'one', 'use', 'uses']);
           const grams = new Map();
           // prefer 2..4 grams
-          for (let n=2;n<=4;n++) {
-            for (let i=0;i+ n <= words.length;i++) {
-              const g = words.slice(i,i+n).filter(w => !stop.has(w)).join(' ');
+          for (let n = 2; n <= 4; n++) {
+            for (let i = 0; i + n <= words.length; i++) {
+              const g = words.slice(i, i + n).filter(w => !stop.has(w)).join(' ');
               if (!g || g.length < 3) continue;
-              grams.set(g, (grams.get(g)||0)+1);
-              if (grams.size > maxPhrases*3) break;
+              grams.set(g, (grams.get(g) || 0) + 1);
+              if (grams.size > maxPhrases * 3) break;
             }
           }
           // rank by frequency then length
-          const arr = Array.from(grams.entries()).map(([k,v])=>({phrase:k,count:v,words:k.split(' ').length}));
-          arr.sort((a,b)=> (b.count - a.count) || (b.words - a.words));
-          return arr.slice(0, maxPhrases).map(x=>x.phrase);
+          const arr = Array.from(grams.entries()).map(([k, v]) => ({ phrase: k, count: v, words: k.split(' ').length }));
+          arr.sort((a, b) => (b.count - a.count) || (b.words - a.words));
+          return arr.slice(0, maxPhrases).map(x => x.phrase);
         }
 
         // If no embedding available, fallback to local extraction from latest conversations
@@ -931,17 +935,17 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           // load conversations
           const data = await new Promise(r => chrome.storage.local.get(['chatbridge:conversations'], d => r(d['chatbridge:conversations'])));
           const convs = Array.isArray(data) ? data : [];
-          const joined = (convs.slice(0,10).map(c => (c.conversation||[]).map(m=>m.text).join(' ')).join('\n\n')) || text;
-          const phrases = extractLocalPhrases(joined, topK*6).slice(0, topK*2);
+          const joined = (convs.slice(0, 10).map(c => (c.conversation || []).map(m => m.text).join(' ')).join('\n\n')) || text;
+          const phrases = extractLocalPhrases(joined, topK * 6).slice(0, topK * 2);
           // Provide basic confidence (frequency-based) when embeddings are unavailable
-          const mapped = phrases.slice(0, topK).map((p, idx) => ({ phrase: p, confidence: Math.max(30, 80 - idx*10) }));
-          return sendResponse({ ok:true, suggestions: mapped });
+          const mapped = phrases.slice(0, topK).map((p, idx) => ({ phrase: p, confidence: Math.max(30, 80 - idx * 10) }));
+          return sendResponse({ ok: true, suggestions: mapped });
         }
 
         // We have an embedding: find top similar indexed items
         const allVec = await idbAll();
         const scored = allVec.map(it => ({ id: it.id, score: cosine(qemb, it.vector || []), metadata: it.metadata || {}, text: '' }));
-        scored.sort((a,b)=>b.score - a.score);
+        scored.sort((a, b) => b.score - a.score);
         const topDocs = scored.slice(0, Math.min(12, scored.length));
 
         // Load stored conversations to extract candidate phrases
@@ -952,7 +956,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         const convMap = new Map();
         for (const c of convs) {
           const id = String(c.ts || c.id || Date.now());
-          const body = (c.conversation||[]).map(m => m.text || '').join(' ');
+          const body = (c.conversation || []).map(m => m.text || '').join(' ');
           convMap.set(id, body);
         }
 
@@ -960,16 +964,16 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         const candidateCounts = new Map();
         function addCandidatesFromText(t) {
           if (!t || typeof t !== 'string') return;
-          const s = t.toLowerCase().replace(/["'`/\\()\[\]{}<>]/g,' ');
+          const s = t.toLowerCase().replace(/["'`/\\()\[\]{}<>]/g, ' ');
           const words = s.split(/[^a-z0-9]+/).filter(Boolean);
-          const stop = new Set(['the','and','for','with','that','this','from','your','you','you','have','are','was','but','not','what','when','where','which','like','they','their','will','can','all','any','one','use','uses','about','there','been']);
-          for (let n=2;n<=4;n++) {
-            for (let i=0;i + n <= words.length;i++) {
-              const arr = words.slice(i,i+n);
+          const stop = new Set(['the', 'and', 'for', 'with', 'that', 'this', 'from', 'your', 'you', 'you', 'have', 'are', 'was', 'but', 'not', 'what', 'when', 'where', 'which', 'like', 'they', 'their', 'will', 'can', 'all', 'any', 'one', 'use', 'uses', 'about', 'there', 'been']);
+          for (let n = 2; n <= 4; n++) {
+            for (let i = 0; i + n <= words.length; i++) {
+              const arr = words.slice(i, i + n);
               if (arr.some(w => stop.has(w))) continue;
               const phrase = arr.join(' ');
               if (phrase.length < 4) continue;
-              candidateCounts.set(phrase, (candidateCounts.get(phrase)||0) + 1);
+              candidateCounts.set(phrase, (candidateCounts.get(phrase) || 0) + 1);
               if (candidateCounts.size > 300) break;
             }
             if (candidateCounts.size > 300) break;
@@ -986,9 +990,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         if (candidateCounts.size === 0) addCandidatesFromText(text);
 
         // Convert candidates to array and keep top N by count
-        const candidates = Array.from(candidateCounts.entries()).map(([p,c])=>({ phrase: p, count: c, words: p.split(' ').length }));
-        candidates.sort((a,b)=> (b.count - a.count) || (b.words - a.words));
-        const topCandidates = candidates.slice(0, 120).map(c=>c.phrase);
+        const candidates = Array.from(candidateCounts.entries()).map(([p, c]) => ({ phrase: p, count: c, words: p.split(' ').length }));
+        candidates.sort((a, b) => (b.count - a.count) || (b.words - a.words));
+        const topCandidates = candidates.slice(0, 120).map(c => c.phrase);
 
         // Request embeddings for candidate phrases in batches to compute semantic similarity
         async function fetchEmbeddingBatch(texts) {
@@ -1040,13 +1044,13 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
         // If we have no embeddings at all (no cache + API failed), fallback to local ranking
         if (!phraseEmbs.length) {
-          const simple = topCandidates.slice(0, topK*3).slice(0, topK).map((p, idx) => ({ phrase: p, confidence: Math.max(30, 70 - idx*8) }));
-          return sendResponse({ ok:true, suggestions: simple });
+          const simple = topCandidates.slice(0, topK * 3).slice(0, topK).map((p, idx) => ({ phrase: p, confidence: Math.max(30, 70 - idx * 8) }));
+          return sendResponse({ ok: true, suggestions: simple });
         }
 
         // compute similarity and combined score
-        const maxCount = Math.max(...candidates.map(c=>c.count), 1);
-        const candidateMap = new Map(candidates.map(c=>[c.phrase, c]));
+        const maxCount = Math.max(...candidates.map(c => c.count), 1);
+        const candidateMap = new Map(candidates.map(c => [c.phrase, c]));
         const scoredP = phraseEmbs.map(pe => {
           const sem = cosine(qemb, pe.emb || []);
           const meta = candidateMap.get(pe.phrase) || { count: 1, words: pe.phrase.split(' ').length };
@@ -1056,11 +1060,11 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           const score = (0.72 * (sem || 0)) + (0.24 * freqScore) + (0.04 * multiBoost);
           return { phrase: pe.phrase, score, sem: sem || 0, freq: meta.count, words: meta.words };
         });
-        scoredP.sort((a,b)=> b.score - a.score);
+        scoredP.sort((a, b) => b.score - a.score);
         const uniques = [];
         const seen = new Set();
         for (const s of scoredP) {
-          const p = s.phrase.replace(/\s+/g,' ').trim();
+          const p = s.phrase.replace(/\s+/g, ' ').trim();
           if (!p || seen.has(p)) continue;
           // prefer multi-word phrases and length reasonable
           if (p.split(' ').length === 1) continue; // skip unigrams
@@ -1076,7 +1080,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           const more = topCandidates
             .filter(p => !seen.has(p) && p.split(' ').length > 1)
             .slice(0, topK - uniques.length)
-            .map((p, idx) => ({ phrase: p, confidence: Math.max(30, 60 - idx*10) }));
+            .map((p, idx) => ({ phrase: p, confidence: Math.max(30, 60 - idx * 10) }));
           uniques.push(...more);
         }
 
@@ -1085,9 +1089,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           .filter(u => (typeof u.confidence === 'number' ? u.confidence >= 30 : true))
           .slice(0, topK);
 
-        return sendResponse({ ok:true, suggestions: final });
+        return sendResponse({ ok: true, suggestions: final });
       } catch (e) {
-        return sendResponse({ ok:false, error: 'embed_suggest_error', message: (e && e.message) || String(e) });
+        return sendResponse({ ok: false, error: 'embed_suggest_error', message: (e && e.message) || String(e) });
       }
     })();
     return true;
@@ -1099,10 +1103,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     const url = payload.url;
     const text = payload.text || '';
     const attachments = payload.attachments || [];
-    if (!url || !text) { sendResponse && sendResponse({ ok:false, error:'missing_params' }); return true; }
+    if (!url || !text) { sendResponse && sendResponse({ ok: false, error: 'missing_params' }); return true; }
     try {
       chrome.tabs.create({ url }, (tab) => {
-        if (!tab || !tab.id) { sendResponse && sendResponse({ ok:false, error:'tab_create_failed' }); return; }
+        if (!tab || !tab.id) { sendResponse && sendResponse({ ok: false, error: 'tab_create_failed' }); return; }
         const tabId = tab.id;
         let attempts = 0;
         const maxAttempts = 30; // ~15s total (increased from 6s)
@@ -1112,7 +1116,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             attempts++;
             if (attempts > maxAttempts) {
               clearInterval(interval);
-              sendResponse && sendResponse({ ok:false, error:'restore_timeout' });
+              sendResponse && sendResponse({ ok: false, error: 'restore_timeout' });
               return;
             }
             try {
@@ -1120,7 +1124,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
               chrome.tabs.get(tabId, (tabInfo) => {
                 if (chrome.runtime.lastError || !tabInfo) {
                   clearInterval(interval);
-                  sendResponse && sendResponse({ ok:false, error:'tab_not_found' });
+                  sendResponse && sendResponse({ ok: false, error: 'tab_not_found' });
                   return;
                 }
                 chrome.tabs.sendMessage(tabId, { type: 'restore_to_chat', payload: { text, attachments } }, (res) => {
@@ -1130,7 +1134,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
                   }
                   // got a response – success
                   clearInterval(interval);
-                  sendResponse && sendResponse({ ok:true });
+                  sendResponse && sendResponse({ ok: true });
                 });
               });
             } catch (e) {
@@ -1140,7 +1144,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         }, 1000); // Wait 1 second before starting to send messages
       });
     } catch (e) {
-      sendResponse && sendResponse({ ok:false, error: e && e.message });
+      sendResponse && sendResponse({ ok: false, error: e && e.message });
     }
     return true; // async
   }
@@ -1150,7 +1154,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
   // Background handler for calling OpenAI (safe place to keep API keys)
   if (msg && msg.type === 'call_openai') {
-    if (!limiterTry()) return sendResponse({ ok:false, error: 'rate_limited' });
+    if (!limiterTry()) return sendResponse({ ok: false, error: 'rate_limited' });
 
     (async () => {
       try {
@@ -1158,7 +1162,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         const key = payload.apiKey || (await new Promise(r => chrome.storage.local.get(['chatbridge_api_key'], d => r(d.chatbridge_api_key))));
         const model = payload.model || 'gpt-4o-mini';
         const timeoutMs = (typeof payload.timeout === 'number') ? payload.timeout : 25000;
-        if (!key) return sendResponse({ ok:false, error: 'no_api_key' });
+        if (!key) return sendResponse({ ok: false, error: 'no_api_key' });
 
         // Cache lookup (5 minute TTL)
         try {
@@ -1183,32 +1187,32 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
               signal: controller.signal
             });
             clearTimeout(to);
-            const json = await (async ()=>{ const t = await res.text(); try { return JSON.parse(t); } catch(e){ return { raw: t }; } })();
+            const json = await (async () => { const t = await res.text(); try { return JSON.parse(t); } catch (e) { return { raw: t }; } })();
             if (!res.ok) {
               lastErr = { status: res.status, body: json };
               // retry on 5xx
               if (res.status >= 500 && attempt < maxAttempts) { await new Promise(r => setTimeout(r, 300 * attempt)); continue; }
-              return sendResponse({ ok:false, error: 'http_error', status: res.status, body: json });
+              return sendResponse({ ok: false, error: 'http_error', status: res.status, body: json });
             }
             // extract assistant text safely
             const assistant = (json && json.choices && json.choices[0] && json.choices[0].message && json.choices[0].message.content) || '';
             // cache successful response (5min TTL)
             try {
               const cacheKey = hashString(stableStringify({ type: 'call_openai', model: model, messages: payload.messages || [] }));
-              await cachePut({ id: cacheKey, ts: Date.now(), ttl: 1000 * 60 * 5, response: { ok:true, assistant } });
+              await cachePut({ id: cacheKey, ts: Date.now(), ttl: 1000 * 60 * 5, response: { ok: true, assistant } });
               cacheCleanExpired();
             } catch (e) { /* ignore cache write errors */ }
-            return sendResponse({ ok:true, assistant: assistant });
+            return sendResponse({ ok: true, assistant: assistant });
           } catch (e) {
             lastErr = e;
-            if (e && e.name === 'AbortError') return sendResponse({ ok:false, error: 'timeout' });
+            if (e && e.name === 'AbortError') return sendResponse({ ok: false, error: 'timeout' });
             // transient network error -> backoff and retry
             if (attempt < maxAttempts) await new Promise(r => setTimeout(r, 200 * attempt));
           }
         }
-        return sendResponse({ ok:false, error: 'failed', detail: lastErr });
+        return sendResponse({ ok: false, error: 'failed', detail: lastErr });
       } catch (e) {
-        return sendResponse({ ok:false, error: 'fetch_error', message: (e && e.message) || String(e) });
+        return sendResponse({ ok: false, error: 'fetch_error', message: (e && e.message) || String(e) });
       }
     })();
     // indicate we'll respond asynchronously
@@ -1217,19 +1221,19 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
   // OpenAI API handler for EchoSynth multi-AI synthesis
   if (msg && msg.type === 'call_openai') {
-    if (!limiterTry()) return sendResponse({ ok:false, error: 'rate_limited' });
+    if (!limiterTry()) return sendResponse({ ok: false, error: 'rate_limited' });
     (async () => {
       try {
         const OPENAI_API_KEY = await getOpenAIApiKey();
         if (!OPENAI_API_KEY) {
-          return sendResponse({ ok:false, error: 'no_api_key', message: 'OpenAI API key not configured.' });
+          return sendResponse({ ok: false, error: 'no_api_key', message: 'OpenAI API key not configured.' });
         }
         const payload = msg.payload || {};
         const promptText = payload.text || payload.prompt || '';
-        
+
         // Check cache first
         try {
-          const cacheKey = hashString(stableStringify({ type:'call_openai', prompt: promptText }));
+          const cacheKey = hashString(stableStringify({ type: 'call_openai', prompt: promptText }));
           const rec = await cacheGet(cacheKey);
           if (rec && rec.ts && rec.ttl && (Date.now() - rec.ts) < rec.ttl && rec.response) {
             return sendResponse(rec.response);
@@ -1243,7 +1247,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           temperature: 0.7,
           max_tokens: 2000
         };
-        
+
         const res = await fetch(endpoint, {
           method: 'POST',
           headers: {
@@ -1252,38 +1256,38 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           },
           body: JSON.stringify(body)
         });
-        
+
         let json;
         try {
           const text = await res.text();
           json = text ? JSON.parse(text) : {};
         } catch (e) {
           console.error('[OpenAI API] Failed to parse response as JSON:', e);
-          return sendResponse({ ok:false, error: 'openai_parse_error', message: 'Invalid JSON response', status: res.status });
+          return sendResponse({ ok: false, error: 'openai_parse_error', message: 'Invalid JSON response', status: res.status });
         }
-        
+
         if (!res.ok) {
           console.error('[OpenAI API Error]', res.status, json);
-          return sendResponse({ ok:false, error: 'openai_http_error', status: res.status, body: json });
+          return sendResponse({ ok: false, error: 'openai_http_error', status: res.status, body: json });
         }
-        
+
         if (!json.choices || !Array.isArray(json.choices) || json.choices.length === 0) {
           console.error('[OpenAI API] No choices in response:', json);
-          return sendResponse({ ok:false, error: 'openai_parse_error', message: 'No choices in response', body: json });
+          return sendResponse({ ok: false, error: 'openai_parse_error', message: 'No choices in response', body: json });
         }
-        
+
         const result = json.choices[0].message?.content || '';
-        
+
         // Cache successful result (5min TTL)
         try {
-          const cacheKey = hashString(stableStringify({ type:'call_openai', prompt: promptText }));
-          await cachePut({ id: cacheKey, ts: Date.now(), ttl: 1000 * 60 * 5, response: { ok:true, result } });
+          const cacheKey = hashString(stableStringify({ type: 'call_openai', prompt: promptText }));
+          await cachePut({ id: cacheKey, ts: Date.now(), ttl: 1000 * 60 * 5, response: { ok: true, result } });
           cacheCleanExpired();
         } catch (e) { /* ignore */ }
-        
-        return sendResponse({ ok:true, result });
+
+        return sendResponse({ ok: true, result });
       } catch (e) {
-        return sendResponse({ ok:false, error: 'openai_fetch_error', message: (e && e.message) || String(e) });
+        return sendResponse({ ok: false, error: 'openai_fetch_error', message: (e && e.message) || String(e) });
       }
     })();
     return true;
@@ -1294,28 +1298,28 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     // Check rate limit before processing
     const rateCheck = checkRateLimit(rateLimiters.gemini);
     if (!rateCheck.allowed) {
-      return sendResponse({ 
-        ok: false, 
-        error: 'rate_limited', 
+      return sendResponse({
+        ok: false,
+        error: 'rate_limited',
         message: `Rate limit exceeded. Try again in ${rateCheck.retryAfter} seconds.`,
         retryAfter: rateCheck.retryAfter
       });
     }
-    
-    if (!limiterTry()) return sendResponse({ ok:false, error: 'rate_limited' });
+
+    if (!limiterTry()) return sendResponse({ ok: false, error: 'rate_limited' });
     (async () => {
       try {
         // Record the request
         recordRequest(rateLimiters.gemini);
-        
+
         let geminiApiKey = await getGeminiApiKey();
         if (!geminiApiKey) {
-          return sendResponse({ ok:false, error: 'no_api_key', message: 'Gemini API key not configured. Open ChatBridge Options to set it.' });
+          return sendResponse({ ok: false, error: 'no_api_key', message: 'Gemini API key not configured. Open ChatBridge Options to set it.' });
         }
         const payload = msg.payload || {};
         let promptText = '';
         let systemInstruction = ''; // Add system instruction for better outputs
-        
+
         if (payload.action === 'prompt') {
           systemInstruction = 'You are an expert conversation analyst. Provide insightful, actionable analysis focusing on key patterns, decisions, and next steps.';
           promptText = `Analyze this conversation and provide helpful insights or suggestions:\n\n${payload.text}`;
@@ -1422,7 +1426,7 @@ Rewritten conversation (optimized for ${tgt}):`;
         }
         // Before making network call, check cache for this prompt
         try {
-          const cacheKey = hashString(stableStringify({ type:'call_gemini', action: payload.action || 'unknown', prompt: promptText, length: payload.length || '', summaryType: payload.summaryType || '' }));
+          const cacheKey = hashString(stableStringify({ type: 'call_gemini', action: payload.action || 'unknown', prompt: promptText, length: payload.length || '', summaryType: payload.summaryType || '' }));
           const rec = await cacheGet(cacheKey);
           if (rec && rec.ts && rec.ttl && (Date.now() - rec.ts) < rec.ttl && rec.response) {
             return sendResponse(rec.response);
@@ -1430,13 +1434,13 @@ Rewritten conversation (optimized for ${tgt}):`;
         } catch (e) { /* ignore */ }
         geminiApiKey = await getGeminiApiKey();
         if (!geminiApiKey) {
-          return sendResponse({ ok:false, error: 'no_api_key', message: 'Gemini API key not configured.' });
+          return sendResponse({ ok: false, error: 'no_api_key', message: 'Gemini API key not configured.' });
         }
-        
+
         // Try models with fallback
         let lastError = null;
         const maxRetries = GEMINI_MODEL_PRIORITY.length;
-        
+
         for (let attempt = 0; attempt < maxRetries; attempt++) {
           const currentModel = getNextAvailableModel();
           const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${currentModel}:generateContent?key=${geminiApiKey}`;
@@ -1452,9 +1456,9 @@ Rewritten conversation (optimized for ${tgt}):`;
           };
           // Remove undefined fields
           if (!systemInstruction) delete body.systemInstruction;
-          
+
           console.log(`[Gemini] Attempt ${attempt + 1}/${maxRetries} using model: ${currentModel}`);
-          
+
           let res;
           try {
             res = await fetch(endpoint, {
@@ -1468,7 +1472,7 @@ Rewritten conversation (optimized for ${tgt}):`;
             lastError = { model: currentModel, error: fetchError };
             continue; // Try next model
           }
-        
+
           // Parse JSON response - handle both success and error responses
           let json;
           try {
@@ -1480,7 +1484,7 @@ Rewritten conversation (optimized for ${tgt}):`;
             lastError = { model: currentModel, error: e, status: res.status };
             continue; // Try next model
           }
-          
+
           // Check if HTTP request was successful
           if (!res.ok) {
             const errorInfo = {
@@ -1490,28 +1494,28 @@ Rewritten conversation (optimized for ${tgt}):`;
               500: 'Gemini API server error',
               503: 'Gemini API unavailable'
             }[res.status] || 'Unknown error';
-            
+
             console.error(`[Gemini API Error] HTTP ${res.status} for ${currentModel}:`, json);
             console.error(`[Gemini API Error] ${errorInfo}`);
-            
+
             // Rate limit (429) or server errors - try next model
             if (res.status === 429 || res.status >= 500) {
               markModelFailed(currentModel, res.status);
               lastError = { model: currentModel, status: res.status, body: json };
               continue; // Try next model
             }
-            
+
             // Auth errors (400, 403) - don't retry, return immediately
-            return sendResponse({ 
-              ok: false, 
-              error: 'gemini_http_error', 
-              status: res.status, 
-              body: json, 
+            return sendResponse({
+              ok: false,
+              error: 'gemini_http_error',
+              status: res.status,
+              body: json,
               message: json.error?.message || errorInfo,
               model: currentModel
             });
           }
-        
+
           // Validate response structure
           if (!json.candidates || !Array.isArray(json.candidates) || json.candidates.length === 0) {
             console.error(`[Gemini API] No candidates in response for ${currentModel}:`, json);
@@ -1519,7 +1523,7 @@ Rewritten conversation (optimized for ${tgt}):`;
             lastError = { model: currentModel, error: 'no_candidates', body: json };
             continue; // Try next model
           }
-          
+
           const candidate = json.candidates[0];
           if (!candidate || !candidate.content || !candidate.content.parts || !Array.isArray(candidate.content.parts) || candidate.content.parts.length === 0) {
             console.error(`[Gemini API] Invalid candidate structure for ${currentModel}:`, candidate);
@@ -1527,54 +1531,152 @@ Rewritten conversation (optimized for ${tgt}):`;
             lastError = { model: currentModel, error: 'invalid_structure', body: json };
             continue; // Try next model
           }
-          
+
           // Check for finish reason (might be blocked, stopped, etc.)
           if (candidate.finishReason && candidate.finishReason !== 'STOP') {
             console.warn(`[Gemini API] Unexpected finish reason for ${currentModel}:`, candidate.finishReason);
             // Still try to extract text if available
           }
-          
+
           const result = candidate.content.parts[0].text || '';
-          
+
           // Success! Mark model as working
           markModelSuccess(currentModel);
           console.log(`[Gemini] ✓ Success with model: ${currentModel}`);
-          
+
           // Cache successful result (5min TTL)
           try {
-            const cacheKey = hashString(stableStringify({ type:'call_gemini', action: payload.action || 'unknown', prompt: promptText, length: payload.length || '', summaryType: payload.summaryType || '' }));
-            await cachePut({ id: cacheKey, ts: Date.now(), ttl: 1000 * 60 * 5, response: { ok:true, result, model: currentModel } });
+            const cacheKey = hashString(stableStringify({ type: 'call_gemini', action: payload.action || 'unknown', prompt: promptText, length: payload.length || '', summaryType: payload.summaryType || '' }));
+            await cachePut({ id: cacheKey, ts: Date.now(), ttl: 1000 * 60 * 5, response: { ok: true, result, model: currentModel } });
             cacheCleanExpired();
           } catch (e) { /* ignore */ }
-          
-          return sendResponse({ ok:true, result, model: currentModel });
+
+          return sendResponse({ ok: true, result, model: currentModel });
         }
-        
+
         // All models failed, return last error
         console.error('[Gemini] All models failed, last error:', lastError);
-        return sendResponse({ 
-          ok: false, 
-          error: 'all_models_failed', 
+        return sendResponse({
+          ok: false,
+          error: 'all_models_failed',
           message: 'All Gemini models exhausted. Please try again later.',
-          lastError 
+          lastError
         });
       } catch (e) {
-        return sendResponse({ ok:false, error: 'gemini_fetch_error', message: (e && e.message) || String(e) });
+        return sendResponse({ ok: false, error: 'gemini_fetch_error', message: (e && e.message) || String(e) });
       }
+    })();
+    return true;
+  }
+
+  // --- Translation Handlers --------------------------------------------------
+  if (msg && msg.type === 'translate_text') {
+    if (!limiterTry()) return sendResponse({ ok: false, error: 'rate_limited' });
+    (async () => {
+      try {
+        let geminiApiKey = await getGeminiApiKey();
+        if (!geminiApiKey) return sendResponse({ ok: false, error: 'no_api_key', message: 'Gemini API key not configured.' });
+
+        const promptText = msg.prompt || msg.text;
+        // System instruction is already implicit in the prompt built by translator.js, but adding a high-level one helps
+        const systemInstruction = 'You are a professional translator. Output ONLY the translation.';
+
+        let lastError = null;
+        const maxRetries = GEMINI_MODEL_PRIORITY.length;
+
+        for (let attempt = 0; attempt < maxRetries; attempt++) {
+          const currentModel = getNextAvailableModel();
+          const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${currentModel}:generateContent?key=${geminiApiKey}`;
+          const body = {
+            systemInstruction: { parts: [{ text: systemInstruction }] },
+            contents: [{ parts: [{ text: promptText }] }],
+            generationConfig: { temperature: 0.3, topP: 0.95, topK: 40, maxOutputTokens: 8192 }
+          };
+
+          try {
+            const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+            const text = await res.text();
+            let json = {};
+            try { json = text ? JSON.parse(text) : {}; } catch (e) { markModelFailed(currentModel, 'parse_error'); lastError = e; continue; }
+
+            if (!res.ok) { markModelFailed(currentModel, res.status); lastError = { status: res.status, body: json }; continue; }
+
+            if (!json.candidates || !json.candidates[0] || !json.candidates[0].content || !json.candidates[0].content.parts || !json.candidates[0].content.parts[0]) {
+              markModelFailed(currentModel, 'no_candidates'); lastError = 'no_candidates'; continue;
+            }
+
+            const result = json.candidates[0].content.parts[0].text || '';
+            markModelSuccess(currentModel);
+            return sendResponse({ ok: true, translated: result, model: currentModel });
+
+          } catch (e) {
+            markModelFailed(currentModel, 'fetch_error'); lastError = e;
+          }
+        }
+        return sendResponse({ ok: false, error: 'all_models_failed', lastError });
+      } catch (e) { return sendResponse({ ok: false, error: e.message }); }
+    })();
+    return true;
+  }
+
+  if (msg && msg.type === 'summarize_for_translation') {
+    if (!limiterTry()) return sendResponse({ ok: false, error: 'rate_limited' });
+    (async () => {
+      try {
+        let geminiApiKey = await getGeminiApiKey();
+        if (!geminiApiKey) return sendResponse({ ok: false, error: 'no_api_key', message: 'Gemini API key not configured.' });
+
+        const promptText = msg.prompt || msg.text;
+        const systemInstruction = 'You are an expert summarizer.';
+
+        let lastError = null;
+        const maxRetries = GEMINI_MODEL_PRIORITY.length;
+
+        for (let attempt = 0; attempt < maxRetries; attempt++) {
+          const currentModel = getNextAvailableModel();
+          const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${currentModel}:generateContent?key=${geminiApiKey}`;
+          const body = {
+            systemInstruction: { parts: [{ text: systemInstruction }] },
+            contents: [{ parts: [{ text: promptText }] }],
+            generationConfig: { temperature: 0.3, topP: 0.95, topK: 40, maxOutputTokens: 8192 }
+          };
+
+          try {
+            const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+            const text = await res.text();
+            let json = {};
+            try { json = text ? JSON.parse(text) : {}; } catch (e) { markModelFailed(currentModel, 'parse_error'); lastError = e; continue; }
+
+            if (!res.ok) { markModelFailed(currentModel, res.status); lastError = { status: res.status, body: json }; continue; }
+
+            if (!json.candidates || !json.candidates[0] || !json.candidates[0].content || !json.candidates[0].content.parts || !json.candidates[0].content.parts[0]) {
+              markModelFailed(currentModel, 'no_candidates'); lastError = 'no_candidates'; continue;
+            }
+
+            const result = json.candidates[0].content.parts[0].text || '';
+            markModelSuccess(currentModel);
+            return sendResponse({ ok: true, summary: result, model: currentModel });
+
+          } catch (e) {
+            markModelFailed(currentModel, 'fetch_error'); lastError = e;
+          }
+        }
+        return sendResponse({ ok: false, error: 'all_models_failed', lastError });
+      } catch (e) { return sendResponse({ ok: false, error: e.message }); }
     })();
     return true;
   }
 
   // --- Rewriter Handlers --------------------------------------------------
   if (msg && (msg.type === 'rewrite_text' || msg.type === 'extract_meaning' || msg.type === 'structure_document' || msg.type === 'apply_style_document' || msg.type === 'chat_to_document')) {
-    if (!limiterTry()) return sendResponse({ ok:false, error: 'rate_limited' });
+    if (!limiterTry()) return sendResponse({ ok: false, error: 'rate_limited' });
     (async () => {
       try {
         let geminiApiKey = await getGeminiApiKey();
-        if (!geminiApiKey) return sendResponse({ ok:false, error: 'no_api_key', message: 'Gemini API key not configured.' });
+        if (!geminiApiKey) return sendResponse({ ok: false, error: 'no_api_key', message: 'Gemini API key not configured.' });
 
         // Local helper to call Gemini with model fallback
-        async function geminiGenerate(systemInstruction, promptText){
+        async function geminiGenerate(systemInstruction, promptText) {
           let lastError = null;
           for (let attempt = 0; attempt < GEMINI_MODEL_PRIORITY.length; attempt++) {
             const currentModel = getNextAvailableModel();
@@ -1586,20 +1688,20 @@ Rewritten conversation (optimized for ${tgt}):`;
             };
             if (!systemInstruction) delete body.systemInstruction;
             try {
-              const res = await fetch(endpoint, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+              const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
               const text = await res.text();
               let json = {};
-              try { json = text ? JSON.parse(text) : {}; } catch(e){ markModelFailed(currentModel, 'parse_error'); lastError = e; continue; }
+              try { json = text ? JSON.parse(text) : {}; } catch (e) { markModelFailed(currentModel, 'parse_error'); lastError = e; continue; }
               if (!res.ok) { markModelFailed(currentModel, res.status); lastError = { status: res.status, body: json }; continue; }
               if (!json.candidates || !json.candidates[0] || !json.candidates[0].content || !json.candidates[0].content.parts || !json.candidates[0].content.parts[0]) {
                 markModelFailed(currentModel, 'no_candidates'); lastError = 'no_candidates'; continue;
               }
               const out = json.candidates[0].content.parts[0].text || '';
               markModelSuccess(currentModel);
-              return { ok:true, text: out, model: currentModel };
+              return { ok: true, text: out, model: currentModel };
             } catch (e) { markModelFailed(currentModel, 'fetch_error'); lastError = e; continue; }
           }
-          return { ok:false, error:'all_models_failed', detail: lastError };
+          return { ok: false, error: 'all_models_failed', detail: lastError };
         }
 
         const type = msg.type;
@@ -1611,66 +1713,66 @@ Rewritten conversation (optimized for ${tgt}):`;
           const prompt = builder({ text: msg.text || '', styleHint });
           const r = await geminiGenerate(systemInstruction, prompt);
           if (!r.ok) return sendResponse(r);
-          return sendResponse({ ok:true, result: r.text, model: r.model });
+          return sendResponse({ ok: true, result: r.text, model: r.model });
         }
         if (type === 'extract_meaning') {
           const systemInstruction = 'You are a conversation analyst. Extract only the key ideas, decisions, explanations, insights, and instructions from the chat. Remove greetings, tangents, mistakes, contradictions, and noise. Output a succinct “meaning draft” without role attributions.';
-          const src = Array.isArray(msg.content) ? msg.content.map(m=>`${m.role||'assistant'}: ${m.text||''}`).join('\n\n') : String(msg.content||'');
+          const src = Array.isArray(msg.content) ? msg.content.map(m => `${m.role || 'assistant'}: ${m.text || ''}`).join('\n\n') : String(msg.content || '');
           const prompt = `Conversation:\n\n${src}\n\nMeaning Draft (key ideas, decisions, explanations, insights, instructions only):`;
           const r = await geminiGenerate(systemInstruction, prompt);
           if (!r.ok) return sendResponse(r);
-          return sendResponse({ ok:true, result: r.text, model: r.model });
+          return sendResponse({ ok: true, result: r.text, model: r.model });
         }
         if (type === 'structure_document') {
           const systemInstruction = 'You are a technical editor. Convert the meaning draft into a coherent, human-friendly document with section headings, bullet points, definitions, steps/processes, and summaries of reasoning. No “user said/assistant said”. Produce clean Markdown.';
-          const prompt = `Meaning Draft:\n\n${msg.draft||''}\n\nStructured Document (Markdown):`;
+          const prompt = `Meaning Draft:\n\n${msg.draft || ''}\n\nStructured Document (Markdown):`;
           const r = await geminiGenerate(systemInstruction, prompt);
           if (!r.ok) return sendResponse(r);
-          return sendResponse({ ok:true, result: r.text, model: r.model });
+          return sendResponse({ ok: true, result: r.text, model: r.model });
         }
         if (type === 'apply_style_document') {
           const style = msg.style || 'professional';
           const styleHint = msg.styleHint || '';
           const systemInstruction = 'You are a style enforcer. Rewrite the structured document to match the requested style. Maintain markdown structure and never modify fenced code blocks.';
-          const styleGuide = (style === 'customStyle') ? `Personalized style: "${String(styleHint).slice(0,160)}".` : `Style preset: ${style}.`;
-          const prompt = `${styleGuide}\n\nStructured Document (Markdown):\n\n${msg.doc||''}\n\nStyled Document (same markdown, style applied):`;
+          const styleGuide = (style === 'customStyle') ? `Personalized style: "${String(styleHint).slice(0, 160)}".` : `Style preset: ${style}.`;
+          const prompt = `${styleGuide}\n\nStructured Document (Markdown):\n\n${msg.doc || ''}\n\nStyled Document (same markdown, style applied):`;
           const r = await geminiGenerate(systemInstruction, prompt);
           if (!r.ok) return sendResponse(r);
-          return sendResponse({ ok:true, result: r.text, model: r.model });
+          return sendResponse({ ok: true, result: r.text, model: r.model });
         }
         if (type === 'chat_to_document') {
           const style = msg.style || 'professional';
           const styleHint = msg.styleHint || '';
           // Orchestrate: extract → structure → style
-          const meaning = await (async()=>{
+          const meaning = await (async () => {
             const systemInstruction = 'You are a conversation analyst. Extract only the key ideas, decisions, explanations, insights, and instructions from the chat. Remove greetings, tangents, mistakes, contradictions, and noise. Output a succinct “meaning draft” without role attributions.';
-            const src = Array.isArray(msg.content) ? msg.content.map(m=>`${m.role||'assistant'}: ${m.text||''}`).join('\n\n') : String(msg.content||'');
+            const src = Array.isArray(msg.content) ? msg.content.map(m => `${m.role || 'assistant'}: ${m.text || ''}`).join('\n\n') : String(msg.content || '');
             const prompt = `Conversation:\n\n${src}\n\nMeaning Draft (key ideas, decisions, explanations, insights, instructions only):`;
             const r = await geminiGenerate(systemInstruction, prompt);
-            if (!r.ok) throw new Error(r.error||'extract_failed');
+            if (!r.ok) throw new Error(r.error || 'extract_failed');
             return r.text;
           })();
-          const structured = await (async()=>{
+          const structured = await (async () => {
             const systemInstruction = 'You are a technical editor. Convert the meaning draft into a coherent, human-friendly document with section headings, bullet points, definitions, steps/processes, and summaries of reasoning. No “user said/assistant said”. Produce clean Markdown.';
             const prompt = `Meaning Draft:\n\n${meaning}\n\nStructured Document (Markdown):`;
             const r = await geminiGenerate(systemInstruction, prompt);
-            if (!r.ok) throw new Error(r.error||'structure_failed');
+            if (!r.ok) throw new Error(r.error || 'structure_failed');
             return r.text;
           })();
-          const styled = await (async()=>{
+          const styled = await (async () => {
             const systemInstruction = 'You are a style enforcer. Rewrite the structured document to match the requested style. Maintain markdown structure and never modify fenced code blocks.';
-            const styleGuide = (style === 'customStyle') ? `Personalized style: "${String(styleHint).slice(0,160)}".` : `Style preset: ${style}.`;
+            const styleGuide = (style === 'customStyle') ? `Personalized style: "${String(styleHint).slice(0, 160)}".` : `Style preset: ${style}.`;
             const prompt = `${styleGuide}\n\nStructured Document (Markdown):\n\n${structured}\n\nStyled Document (same markdown, style applied):`;
             const r = await geminiGenerate(systemInstruction, prompt);
-            if (!r.ok) throw new Error(r.error||'style_failed');
+            if (!r.ok) throw new Error(r.error || 'style_failed');
             return r.text;
           })();
-          return sendResponse({ ok:true, result: styled });
+          return sendResponse({ ok: true, result: styled });
         }
 
-        return sendResponse({ ok:false, error: 'unknown_rewriter_type' });
+        return sendResponse({ ok: false, error: 'unknown_rewriter_type' });
       } catch (e) {
-        return sendResponse({ ok:false, error: 'rewriter_error', message: (e && e.message) || String(e) });
+        return sendResponse({ ok: false, error: 'rewriter_error', message: (e && e.message) || String(e) });
       }
     })();
     return true;
@@ -1678,20 +1780,20 @@ Rewritten conversation (optimized for ${tgt}):`;
 
   // Image generation via Gemini (optional - if API supports model)
   if (msg && msg.type === 'generate_image') {
-    if (!limiterTry()) return sendResponse({ ok:false, error: 'rate_limited' });
+    if (!limiterTry()) return sendResponse({ ok: false, error: 'rate_limited' });
     (async () => {
       try {
         const GEMINI_API_KEY = await getGeminiApiKey();
         if (!GEMINI_API_KEY) {
-          return sendResponse({ ok:false, error: 'no_api_key', message: 'Gemini API key not configured. Open ChatBridge Options to set it.' });
+          return sendResponse({ ok: false, error: 'no_api_key', message: 'Gemini API key not configured. Open ChatBridge Options to set it.' });
         }
         const payload = msg.payload || {};
         const model = payload.model || 'imagen-3.0-generate-001';
         const prompt = payload.prompt || '';
-        
+
         // Imagen 3 API endpoint for Google Generative AI
         const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
-        
+
         const body = {
           contents: [{
             parts: [{
@@ -1705,20 +1807,20 @@ Rewritten conversation (optimized for ${tgt}):`;
             maxOutputTokens: 2048
           }
         };
-        
+
         const res = await fetch(`${endpoint}?key=${GEMINI_API_KEY}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(body)
         });
-        
+
         const json = await res.json();
         console.log('[ChatBridge BG] Imagen response:', json);
-        
+
         if (!res.ok) {
-          return sendResponse({ ok:false, error: 'image_http_error', status: res.status, body: json });
+          return sendResponse({ ok: false, error: 'image_http_error', status: res.status, body: json });
         }
-        
+
         // Parse image from response - Imagen returns base64 in inlineData
         let b64 = null;
         try {
@@ -1735,16 +1837,16 @@ Rewritten conversation (optimized for ${tgt}):`;
           console.error('[ChatBridge BG] Parse image failed:', e);
           b64 = null;
         }
-        
+
         if (!b64) {
           // Fallback: return empty/error so content script uses canvas
-          return sendResponse({ ok:false, error: 'no_image_in_response', body: json });
+          return sendResponse({ ok: false, error: 'no_image_in_response', body: json });
         }
-        
-        return sendResponse({ ok:true, imageBase64: b64 });
+
+        return sendResponse({ ok: true, imageBase64: b64 });
       } catch (e) {
         console.error('[ChatBridge BG] Image generation error:', e);
-        return sendResponse({ ok:false, error: 'image_fetch_error', message: (e && e.message) || String(e) });
+        return sendResponse({ ok: false, error: 'image_fetch_error', message: (e && e.message) || String(e) });
       }
     })();
     return true;
