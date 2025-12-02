@@ -1067,7 +1067,8 @@
   @keyframes cb-success { 0% { transform: scale(0.8); opacity: 0; } 50% { transform: scale(1.1); } 100% { transform: scale(1); opacity: 1; } }
   @keyframes cb-shimmer { 0% { background-position: -200% center; } 100% { background-position: 200% center; } }
   @keyframes cb-fade-in { from { opacity: 0; } to { opacity: 1; } }
-  @keyframes cb-slide-up { from { transform: translateY(10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  @keyframes cb-slide-up { from { transform: translateY(10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }\r
+  @keyframes cb-pulse-glow { 0%, 100% { box-shadow: 0 4px 12px rgba(0, 180, 255, 0.3), 0 0 20px rgba(96, 165, 250, 0.2); } 50% { box-shadow: 0 4px 20px rgba(0, 180, 255, 0.5), 0 0 32px rgba(96, 165, 250, 0.35); } }
     `;
     shadow.appendChild(style);
     // Apply saved theme preference - DEFAULT TO DARK
@@ -1168,19 +1169,55 @@
 
     panel.appendChild(resizeHandle);
 
-    // Header: Title and subtitle
+    // Header: Title and subtitle with CB badge
     const header = document.createElement('div'); header.className = 'cb-header';
-    const title = document.createElement('div'); title.className = 'cb-title'; title.textContent = 'ChatBridge'; title.style.fontSize = '22px';
-    const subtitle = document.createElement('div'); subtitle.className = 'cb-subtitle'; subtitle.textContent = 'Effortlessly continue conversations across models';
+
+    // CB Monogram Badge
+    const badge = document.createElement('div');
+    badge.className = 'cb-badge';
+    badge.textContent = 'CB';
+    badge.style.cssText = 'display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 10px; background: linear-gradient(135deg, var(--cb-accent-primary), var(--cb-accent-secondary)); color: #ffffff; font-weight: 800; font-size: 14px; letter-spacing: -0.5px; box-shadow: 0 4px 12px rgba(0, 180, 255, 0.3); margin-right: 12px;';
+
+    const titleRow = document.createElement('div');
+    titleRow.style.cssText = 'display: flex; align-items: center; gap: 0;';
+
+    const title = document.createElement('div');
+    title.className = 'cb-title';
+    title.textContent = 'ChatBridge';
+    title.style.fontSize = '22px';
+
+    titleRow.appendChild(badge);
+    titleRow.appendChild(title);
+
+    const subtitle = document.createElement('div');
+    subtitle.className = 'cb-subtitle';
+    subtitle.textContent = 'Bridge AI conversations seamlessly';
+
     const left = document.createElement('div');
-    left.style.display = 'flex'; left.style.flexDirection = 'column'; left.style.gap = '6px'; left.style.alignItems = 'flex-start';
-    left.appendChild(title); left.appendChild(subtitle);
-    const controls = document.createElement('div'); controls.style.display = 'flex'; controls.style.alignItems = 'flex-start'; controls.style.gap = '8px';
-    const btnSettings = document.createElement('button'); btnSettings.className = 'cb-btn'; btnSettings.textContent = '⚙️'; btnSettings.title = 'Settings';
+    left.style.display = 'flex';
+    left.style.flexDirection = 'column';
+    left.style.gap = '6px';
+    left.style.alignItems = 'flex-start';
+    left.appendChild(title);
+    left.appendChild(subtitle);
+
+    const controls = document.createElement('div');
+    controls.style.display = 'flex';
+    controls.style.alignItems = 'flex-start';
+    controls.style.gap = '8px';
+
+    const btnSettings = document.createElement('button');
+    btnSettings.className = 'cb-btn';
+    btnSettings.textContent = '⚙️';
+    btnSettings.title = 'Settings';
     btnSettings.style.cssText = 'padding: 6px 10px; font-size: 16px;';
     btnSettings.setAttribute('aria-label', 'Open settings');
-    const btnClose = document.createElement('button'); btnClose.className = 'cb-close'; btnClose.textContent = '✕';
+
+    const btnClose = document.createElement('button');
+    btnClose.className = 'cb-close';
+    btnClose.textContent = '✕';
     btnClose.setAttribute('aria-label', 'Close panel');
+
     controls.appendChild(btnSettings);
     controls.appendChild(btnClose);
     header.appendChild(left);
@@ -1193,7 +1230,12 @@
     // Create a neat grid for secondary actions (luxury layout)
     const actionsGrid = document.createElement('div'); actionsGrid.className = 'cb-actions-grid';
 
-    const btnScan = document.createElement('button'); btnScan.className = 'cb-btn cb-btn-primary cb-scan-wide'; btnScan.textContent = 'Scan Chat'; btnScan.title = 'Capture this conversation - Save it for later, search across it, or continue on another AI'; btnScan.id = 'btnScan';
+    const btnScan = document.createElement('button');
+    btnScan.className = 'cb-btn cb-btn-primary cb-scan-wide';
+    btnScan.innerHTML = '🔍 Scan Chat';
+    btnScan.title = 'Capture this conversation - Save it for later, search across it, or continue on another AI [Shortcut: S]';
+    btnScan.id = 'btnScan';
+    btnScan.style.cssText = 'animation: cb-pulse-glow 2s ease-in-out infinite;';
     const btnRestore = document.createElement('button'); btnRestore.className = 'cb-btn'; btnRestore.textContent = 'Restore'; btnRestore.title = 'Continue where you left off - Pick any saved chat and paste it into this AI'; btnRestore.setAttribute('aria-label', 'Restore conversation');
     const btnClipboard = document.createElement('button'); btnClipboard.className = 'cb-btn'; btnClipboard.textContent = 'Copy'; btnClipboard.title = 'Quick export - Copy this conversation to share or save externally'; btnClipboard.setAttribute('aria-label', 'Copy conversation to clipboard');
     const btnSmartQuery = document.createElement('button'); btnSmartQuery.className = 'cb-btn'; btnSmartQuery.textContent = 'Query'; btnSmartQuery.title = 'Ask questions across ALL your saved chats - Natural language search powered by AI'; btnSmartQuery.setAttribute('aria-label', 'Open Smart Query');
@@ -1254,15 +1296,20 @@
 
     const pdTop = document.createElement('div');
     pdTop.className = 'cb-view-top';
+    pdTop.style.cssText = 'display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--cb-border);';
 
     const pdTitle = document.createElement('div');
     pdTitle.className = 'cb-view-title';
-    pdTitle.innerHTML = '<span style="font-size:20px;margin-right:8px;">✨</span>Smart Prompts';
+    pdTitle.style.cssText = 'font-size: 20px; font-weight: 700; color: var(--cb-white); display: flex; align-items: center; gap: 10px;';
+    pdTitle.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" fill="url(#gradient)" stroke="var(--cb-accent-primary)" stroke-width="1.5"/><defs><linearGradient id="gradient" x1="2" y1="2" x2="22" y2="21" gradientUnits="userSpaceOnUse"><stop stop-color="var(--cb-accent-primary)"/><stop offset="1" stop-color="var(--cb-accent-secondary)"/></linearGradient></defs></svg><span>Smart Prompts</span>';
 
     const btnClosePD = document.createElement('button');
     btnClosePD.className = 'cb-view-close';
     btnClosePD.textContent = '✕';
+    btnClosePD.style.cssText = 'background: transparent; border: none; color: var(--cb-subtext); cursor: pointer; font-size: 20px; padding: 4px 8px; border-radius: 6px; transition: all 0.2s ease; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;';
     btnClosePD.setAttribute('aria-label', 'Close Prompt Designer view');
+    btnClosePD.addEventListener('mouseenter', () => { btnClosePD.style.background = 'rgba(255, 255, 255, 0.05)'; btnClosePD.style.color = 'var(--cb-white)'; });
+    btnClosePD.addEventListener('mouseleave', () => { btnClosePD.style.background = 'transparent'; btnClosePD.style.color = 'var(--cb-subtext)'; });
 
     pdTop.appendChild(pdTitle);
     pdTop.appendChild(btnClosePD);
@@ -1270,13 +1317,25 @@
 
     const pdIntro = document.createElement('div');
     pdIntro.className = 'cb-view-intro';
-    pdIntro.innerHTML = '<strong>AI-powered prompt suggestions</strong> to help you get more from your conversations.<br><span style="font-size:12px;opacity:0.8;">Generated prompts are tailored to your chat context and conversation flow.</span>';
+    pdIntro.style.cssText = 'font-size: 13px; line-height: 1.6; color: var(--cb-subtext); margin-bottom: 20px; padding: 14px 16px; background: linear-gradient(135deg, rgba(96, 165, 250, 0.08), rgba(167, 139, 250, 0.08)); border: 1px solid rgba(96, 165, 250, 0.15); border-radius: 10px; backdrop-filter: blur(8px);';
+    pdIntro.innerHTML = '<div style="font-weight: 600; color: var(--cb-white); margin-bottom: 6px; font-size: 14px;">AI-Powered Suggestions</div>Get smart, tailored prompt suggestions based on your conversation context and flow.';
     promptDesignerView.appendChild(pdIntro);
 
     // Prompt Designer content container
     const pdContent = document.createElement('div');
     pdContent.id = 'cb-pd-content';
-    pdContent.style.cssText = 'margin:0;padding:0;';
+    pdContent.style.cssText = 'margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px;';
+
+    // Inject styles for dynamic content
+    const pdStyle = document.createElement('style');
+    pdStyle.textContent = `
+      #cb-pd-content .cb-btn { width: 100%; text-align: left; margin-bottom: 8px; padding: 12px; background: var(--cb-bg3); border: 1px solid var(--cb-border); border-radius: 8px; transition: all 0.2s ease; }
+      #cb-pd-content .cb-btn:hover { background: var(--cb-accent-primary-dim); border-color: var(--cb-accent-primary); transform: translateX(2px); }
+      #cb-pd-content .cb-prompt-card { background: rgba(255,255,255,0.03); border: 1px solid var(--cb-border); border-radius: 10px; padding: 16px; margin-bottom: 12px; }
+      #cb-pd-content .cb-prompt-title { font-weight: 600; color: var(--cb-white); margin-bottom: 8px; font-size: 14px; }
+      #cb-pd-content .cb-prompt-text { color: var(--cb-subtext); font-size: 13px; line-height: 1.5; }
+    `;
+    promptDesignerView.appendChild(pdStyle);
     promptDesignerView.appendChild(pdContent);
 
     // Append to panel
@@ -1329,18 +1388,53 @@
     const summResult = document.createElement('div'); summResult.className = 'cb-view-result'; summResult.id = 'cb-summ-result'; summResult.textContent = '';
     summView.appendChild(summResult);
 
-    // Rewrite view
+    // Rewrite view - Sleek Modern Redesign
     const rewView = document.createElement('div'); rewView.className = 'cb-internal-view'; rewView.id = 'cb-rew-view'; rewView.setAttribute('data-cb-ignore', 'true');
-    const rewTop = document.createElement('div'); rewTop.className = 'cb-view-top';
-    const rewTitle = document.createElement('div'); rewTitle.className = 'cb-view-title'; rewTitle.textContent = 'Rewrite';
-    const btnCloseRew = document.createElement('button'); btnCloseRew.className = 'cb-view-close'; btnCloseRew.textContent = '✕';
+
+    const rewTop = document.createElement('div');
+    rewTop.className = 'cb-view-top';
+    rewTop.style.cssText = 'display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--cb-border);';
+
+    const rewTitle = document.createElement('div');
+    rewTitle.className = 'cb-view-title';
+    rewTitle.style.cssText = 'font-size: 20px; font-weight: 700; color: var(--cb-white); display: flex; align-items: center; gap: 10px;';
+    rewTitle.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M14.06 9.02l.92.92L5.92 19H5v-.92l9.06-9.06M17.66 3c-.25 0-.51.1-.7.29l-1.83 1.83 3.75 3.75 1.83-1.83c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.2-.2-.45-.29-.71-.29zm-3.6 3.19L3 17.25V21h3.75L17.81 9.94l-3.75-3.75z" fill="url(#gradient2)" stroke="var(--cb-accent-primary)" stroke-width="0.5"/><defs><linearGradient id="gradient2" x1="3" y1="3" x2="21" y2="21" gradientUnits="userSpaceOnUse"><stop stop-color="var(--cb-accent-primary)"/><stop offset="1" stop-color="var(--cb-accent-secondary)"/></linearGradient></defs></svg><span>Rewrite</span>';
+
+    const btnCloseRew = document.createElement('button');
+    btnCloseRew.className = 'cb-view-close';
+    btnCloseRew.textContent = '✕';
+    btnCloseRew.style.cssText = 'background: transparent; border: none; color: var(--cb-subtext); cursor: pointer; font-size: 20px; padding: 4px 8px; border-radius: 6px; transition: all 0.2s ease; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;';
     btnCloseRew.setAttribute('aria-label', 'Close Rewrite view');
-    rewTop.appendChild(rewTitle); rewTop.appendChild(btnCloseRew);
+    btnCloseRew.addEventListener('mouseenter', () => { btnCloseRew.style.background = 'rgba(255, 255, 255, 0.05)'; btnCloseRew.style.color = 'var(--cb-white)'; });
+    btnCloseRew.addEventListener('mouseleave', () => { btnCloseRew.style.background = 'transparent'; btnCloseRew.style.color = 'var(--cb-subtext)'; });
+
+    rewTop.appendChild(rewTitle);
+    rewTop.appendChild(btnCloseRew);
     rewView.appendChild(rewTop);
-    const rewIntro = document.createElement('div'); rewIntro.className = 'cb-view-intro'; rewIntro.textContent = 'Polish and refine your conversation. Select style, choose messages, and adapt for different AI models.';
+
+    const rewIntro = document.createElement('div');
+    rewIntro.className = 'cb-view-intro';
+    rewIntro.style.cssText = 'font-size: 13px; line-height: 1.6; color: var(--cb-subtext); margin-bottom: 20px; padding: 14px 16px; background: linear-gradient(135deg, rgba(96, 165, 250, 0.08), rgba(167, 139, 250, 0.08)); border: 1px solid rgba(96, 165, 250, 0.15); border-radius: 10px; backdrop-filter: blur(8px);';
+    rewIntro.innerHTML = '<div style="font-weight: 600; color: var(--cb-white); margin-bottom: 6px; font-size: 14px;">Polish & Refine</div>Transform your conversation with style options, select specific messages, and adapt content for different AI models.';
     rewView.appendChild(rewIntro);
-    const rewStyleLabel = document.createElement('label'); rewStyleLabel.className = 'cb-label'; rewStyleLabel.textContent = 'Style:';
-    const rewStyleSelect = document.createElement('select'); rewStyleSelect.className = 'cb-select'; rewStyleSelect.id = 'cb-rew-style';
+    const rewControls = document.createElement('div');
+    rewControls.className = 'cb-view-controls';
+    rewControls.style.cssText = 'display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;';
+
+    const styleGroup = document.createElement('div');
+    styleGroup.style.cssText = 'display: flex; flex-direction: column; gap: 8px;';
+    const rewStyleLabel = document.createElement('label');
+    rewStyleLabel.className = 'cb-label';
+    rewStyleLabel.textContent = 'Style';
+    rewStyleLabel.style.cssText = 'font-size: 12px; font-weight: 600; color: var(--cb-subtext); text-transform: uppercase; letter-spacing: 0.5px;';
+
+    const rewStyleSelect = document.createElement('select');
+    rewStyleSelect.className = 'cb-select';
+    rewStyleSelect.id = 'cb-rew-style';
+    rewStyleSelect.style.cssText = 'width: 100%; background: var(--cb-bg3); border: 1px solid var(--cb-border); color: var(--cb-white); padding: 10px 12px; border-radius: 8px; font-size: 14px; outline: none; transition: all 0.2s ease; cursor: pointer;';
+    rewStyleSelect.addEventListener('focus', () => rewStyleSelect.style.borderColor = 'var(--cb-accent-primary)');
+    rewStyleSelect.addEventListener('blur', () => rewStyleSelect.style.borderColor = 'var(--cb-border)');
+
     // Organized dropdown with groups
     const groupBasic = document.createElement('optgroup'); groupBasic.label = 'Basic';
     ;['normal', 'concise', 'direct', 'detailed', 'academic'].forEach(v => { const o = document.createElement('option'); o.value = v; o.textContent = v.charAt(0).toUpperCase() + v.slice(1); groupBasic.appendChild(o); });
@@ -1353,25 +1447,60 @@
     rewStyleSelect.appendChild(groupPersonal);
     rewStyleSelect.value = 'normal';
 
-    // Target model selector (from Sync Tone)
-    const rewTargetLabel = document.createElement('label'); rewTargetLabel.className = 'cb-label'; rewTargetLabel.textContent = 'Target Model (optional):';
-    rewTargetLabel.style.marginTop = '12px';
-    const rewTargetSelect = document.createElement('select'); rewTargetSelect.className = 'cb-select'; rewTargetSelect.id = 'cb-rew-target-select';
+    styleGroup.appendChild(rewStyleLabel);
+    styleGroup.appendChild(rewStyleSelect);
+    rewControls.appendChild(styleGroup);
+    rewStyleSelect.value = 'normal';
+
+    const targetGroup = document.createElement('div');
+    targetGroup.style.cssText = 'display: flex; flex-direction: column; gap: 8px;';
+
+    const rewTargetLabel = document.createElement('label');
+    rewTargetLabel.className = 'cb-label';
+    rewTargetLabel.textContent = 'Target Model';
+    rewTargetLabel.style.cssText = 'font-size: 12px; font-weight: 600; color: var(--cb-subtext); text-transform: uppercase; letter-spacing: 0.5px;';
+
+    const rewTargetSelect = document.createElement('select');
+    rewTargetSelect.className = 'cb-select';
+    rewTargetSelect.id = 'cb-rew-target-select';
+    rewTargetSelect.style.cssText = 'width: 100%; background: var(--cb-bg3); border: 1px solid var(--cb-border); color: var(--cb-white); padding: 10px 12px; border-radius: 8px; font-size: 14px; outline: none; transition: all 0.2s ease; cursor: pointer;';
+    rewTargetSelect.addEventListener('focus', () => rewTargetSelect.style.borderColor = 'var(--cb-accent-primary)');
+    rewTargetSelect.addEventListener('blur', () => rewTargetSelect.style.borderColor = 'var(--cb-border)');
+
     const targetModels = ['None', 'Claude', 'ChatGPT', 'Gemini', 'OpenAI', 'Llama', 'Bing', 'Anthropic', 'Cohere', 'HuggingFace', 'Custom'];
     targetModels.forEach(m => { const o = document.createElement('option'); o.value = m; o.textContent = m; rewTargetSelect.appendChild(o); });
     rewTargetSelect.value = 'None';
 
-    const rewControls = document.createElement('div'); rewControls.className = 'cb-view-controls';
-    rewControls.style.marginBottom = '20px';
-    rewControls.appendChild(rewStyleLabel); rewControls.appendChild(rewStyleSelect);
-    rewControls.appendChild(rewTargetLabel); rewControls.appendChild(rewTargetSelect);
-    // Style hint (only for Personalized Style)
-    const styleHintWrap = document.createElement('div'); styleHintWrap.className = 'cb-style-hint-wrap'; styleHintWrap.style.display = 'none';
-    const styleHintLabel = document.createElement('label'); styleHintLabel.className = 'cb-label'; styleHintLabel.textContent = 'Style hint (optional):';
-    const styleHintInput = document.createElement('input'); styleHintInput.className = 'cb-input'; styleHintInput.type = 'text'; styleHintInput.id = 'cb-rew-style-hint'; styleHintInput.placeholder = 'e.g., “Calm, minimalist, technical product docs”';
-    styleHintWrap.appendChild(styleHintLabel); styleHintWrap.appendChild(styleHintInput);
-    rewControls.appendChild(styleHintWrap);
+    targetGroup.appendChild(rewTargetLabel);
+    targetGroup.appendChild(rewTargetSelect);
+    rewControls.appendChild(targetGroup);
+
     rewView.appendChild(rewControls);
+
+    // Style hint (only for Personalized Style)
+    const styleHintWrap = document.createElement('div');
+    styleHintWrap.className = 'cb-style-hint-wrap';
+    styleHintWrap.style.cssText = 'display: none; margin-bottom: 20px;';
+
+    const styleHintLabel = document.createElement('label');
+    styleHintLabel.className = 'cb-label';
+    styleHintLabel.textContent = 'Style Hint (Optional)';
+    styleHintLabel.style.cssText = 'font-size: 12px; font-weight: 600; color: var(--cb-subtext); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 8px;';
+
+    const styleHintInput = document.createElement('input');
+    styleHintInput.className = 'cb-input';
+    styleHintInput.type = 'text';
+    styleHintInput.id = 'cb-rew-style-hint';
+    styleHintInput.placeholder = 'e.g., “Calm, minimalist, technical product docs”';
+    styleHintInput.style.cssText = 'width: 100%; background: var(--cb-bg3); border: 1px solid var(--cb-border); color: var(--cb-white); padding: 10px 12px; border-radius: 8px; font-size: 14px; outline: none; transition: all 0.2s ease;';
+    styleHintInput.addEventListener('focus', () => styleHintInput.style.borderColor = 'var(--cb-accent-primary)');
+    styleHintInput.addEventListener('blur', () => styleHintInput.style.borderColor = 'var(--cb-border)');
+
+    styleHintWrap.appendChild(styleHintLabel);
+    styleHintWrap.appendChild(styleHintInput);
+    rewControls.appendChild(styleHintWrap);
+    rewControls.appendChild(styleHintWrap);
+    // rewControls already appended to rewView earlier
     // Replies list (assistant only - compact preview mode)
     const rewRepliesWrap = document.createElement('div'); rewRepliesWrap.className = 'cb-replies-wrap';
     const rewRepliesHeader = document.createElement('div'); rewRepliesHeader.className = 'cb-replies-header';
@@ -1410,10 +1539,24 @@
     styleHintInput.addEventListener('input', () => { try { localStorage.setItem('chatbridge:pref:rewStyleHint', styleHintInput.value); } catch (e) { } });
     const rewSourceText = document.createElement('div'); rewSourceText.className = 'cb-view-text'; rewSourceText.id = 'cb-rew-source-text'; rewSourceText.setAttribute('contenteditable', 'false'); rewSourceText.textContent = '';
     rewView.appendChild(rewSourceText);
-    const btnGoRew = document.createElement('button'); btnGoRew.className = 'cb-btn cb-view-go'; btnGoRew.textContent = 'Rewrite';
+    const btnGoRew = document.createElement('button');
+    btnGoRew.className = 'cb-btn cb-view-go';
+    btnGoRew.textContent = 'Rewrite';
+    btnGoRew.style.cssText = 'width: 100%; margin-top: 16px; background: linear-gradient(135deg, var(--cb-accent-primary), var(--cb-accent-secondary)); border: none; padding: 12px; font-weight: 600; font-size: 14px; letter-spacing: 0.5px; box-shadow: 0 4px 12px rgba(96, 165, 250, 0.3);';
+    btnGoRew.onmouseenter = () => btnGoRew.style.filter = 'brightness(1.1) translateY(-1px)';
+    btnGoRew.onmouseleave = () => btnGoRew.style.filter = 'brightness(1) translateY(0)';
+
     rewView.appendChild(btnGoRew);
+
     const rewProg = document.createElement('span'); rewProg.className = 'cb-progress'; rewProg.style.display = 'none'; rewView.appendChild(rewProg);
-    const btnInsertRew = document.createElement('button'); btnInsertRew.className = 'cb-btn cb-view-go'; btnInsertRew.textContent = 'Insert to Chat'; btnInsertRew.style.display = 'none';
+
+    const btnInsertRew = document.createElement('button');
+    btnInsertRew.className = 'cb-btn cb-view-go';
+    btnInsertRew.textContent = 'Insert to Chat';
+    btnInsertRew.style.cssText = 'width: 100%; margin-top: 12px; display: none; background: var(--cb-bg3); border: 1px solid var(--cb-border); color: var(--cb-white); padding: 12px; font-weight: 600;';
+    btnInsertRew.onmouseenter = () => { btnInsertRew.style.background = 'rgba(255, 255, 255, 0.1)'; btnInsertRew.style.borderColor = 'var(--cb-white)'; };
+    btnInsertRew.onmouseleave = () => { btnInsertRew.style.background = 'var(--cb-bg3)'; btnInsertRew.style.borderColor = 'var(--cb-border)'; };
+
     rewView.appendChild(btnInsertRew);
     const rewResult = document.createElement('div'); rewResult.className = 'cb-view-result'; rewResult.id = 'cb-rew-result'; rewResult.textContent = '';
     rewView.appendChild(rewResult);
@@ -3619,41 +3762,48 @@ Respond with JSON only:
     async function renderPromptDesignerWidget(container) {
       try {
         container.innerHTML = '';
-        container.style.cssText = 'padding:0;margin:0;';
-
-        // Main wrapper
-        const wrapper = document.createElement('div');
-        wrapper.style.cssText = 'background:rgba(15,23,42,0.6);border-radius:12px;overflow:hidden;border:1px solid rgba(96,165,250,0.2);';
+        container.style.cssText = 'padding: 0; margin: 0; display: flex; flex-direction: column; gap: 16px;';
 
         // Action bar at top
         const actionBar = document.createElement('div');
-        actionBar.style.cssText = 'padding:16px 20px;background:linear-gradient(135deg,rgba(59,130,246,0.12),rgba(147,51,234,0.12));border-bottom:1px solid rgba(96,165,250,0.15);display:flex;gap:10px;align-items:center;';
-        actionBar.innerHTML = `
-          <button id="cb-prompts-generate" class="cb-btn cb-btn-primary" style="flex:1;font-size:14px;font-weight:600;padding:12px 20px;background:linear-gradient(135deg,#3b82f6,#8b5cf6);border:none;border-radius:8px;box-shadow:0 2px 8px rgba(59,130,246,0.3);transition:all 0.2s;">
-            <span style="font-size:16px;margin-right:6px;">✨</span>
-            Generate Smart Prompts
-          </button>
-          <button id="cb-prompts-refresh" class="cb-btn" style="padding:12px 16px;font-size:13px;background:rgba(96,165,250,0.1);border:1px solid rgba(96,165,250,0.3);border-radius:8px;transition:all 0.2s;">
-            🔄
-          </button>
-          <button id="cb-prompts-history" class="cb-btn" style="padding:12px 16px;font-size:13px;background:rgba(96,165,250,0.1);border:1px solid rgba(96,165,250,0.3);border-radius:8px;transition:all 0.2s;">
-            📜
-          </button>
-        `;
+        actionBar.className = 'cb-view-controls';
+        actionBar.style.cssText = 'display: grid; grid-template-columns: 1fr auto auto; gap: 8px; margin-bottom: 4px;';
+
+        const btnGenerate = document.createElement('button');
+        btnGenerate.id = 'cb-prompts-generate';
+        btnGenerate.className = 'cb-btn cb-btn-primary';
+        btnGenerate.style.cssText = 'background: linear-gradient(135deg, var(--cb-accent-primary), var(--cb-accent-secondary)); border: none; padding: 10px 16px; font-weight: 600; font-size: 13px; letter-spacing: 0.3px; box-shadow: 0 4px 12px rgba(96, 165, 250, 0.25); display: flex; align-items: center; justify-content: center; gap: 8px;';
+        btnGenerate.innerHTML = '<span style="font-size: 16px;">✨</span> Generate Ideas';
+
+        const btnRefresh = document.createElement('button');
+        btnRefresh.id = 'cb-prompts-refresh';
+        btnRefresh.className = 'cb-btn';
+        btnRefresh.title = 'Refresh Context';
+        btnRefresh.style.cssText = 'width: 40px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 16px; background: var(--cb-bg3); border: 1px solid var(--cb-border);';
+        btnRefresh.innerHTML = '🔄';
+
+        const btnHistory = document.createElement('button');
+        btnHistory.id = 'cb-prompts-history';
+        btnHistory.className = 'cb-btn';
+        btnHistory.title = 'History';
+        btnHistory.style.cssText = 'width: 40px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 16px; background: var(--cb-bg3); border: 1px solid var(--cb-border);';
+        btnHistory.innerHTML = '📜';
+
+        actionBar.appendChild(btnGenerate);
+        actionBar.appendChild(btnRefresh);
+        actionBar.appendChild(btnHistory);
+        container.appendChild(actionBar);
 
         // Prompts container
-        const promptsContainer = document.createElement('div');
-        promptsContainer.style.cssText = 'padding:20px;';
-
         const promptsList = document.createElement('div');
         promptsList.id = 'cb-prompts-list';
-        promptsList.style.cssText = 'display:grid;gap:12px;';
+        promptsList.style.cssText = 'display: flex; flex-direction: column; gap: 12px;';
 
         // Beautiful empty state
         promptsList.innerHTML = `
-          <div style="text-align:center;padding:60px 20px;">
-            <div style="font-size:64px;margin-bottom:20px;opacity:0.7;line-height:1;">🎯</div>
-            <h3 style="margin:0 0 12px;font-size:18px;font-weight:700;color:#fff;">Ready to Generate</h3>
+          <div style="text-align: center; padding: 40px 20px; background: rgba(255,255,255,0.02); border-radius: 12px; border: 1px dashed var(--cb-border);">
+            <div style="font-size: 48px; margin-bottom: 16px; opacity: 0.8; filter: drop-shadow(0 0 10px rgba(96,165,250,0.3));">🎯</div>
+            <h3 style="margin: 0 0 8px; font-size: 16px; font-weight: 600; color: var(--cb-white);">Ready to Generate</h3>
             <p style="margin:0 0 24px;font-size:14px;color:rgba(255,255,255,0.6);max-width:320px;margin-left:auto;margin-right:auto;line-height:1.6;">
               Click the button above to analyze your conversation and get AI-powered prompt suggestions.
             </p>
