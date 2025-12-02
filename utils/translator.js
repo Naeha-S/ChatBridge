@@ -342,15 +342,23 @@ ${text}
 Concise summary:`;
 
     try {
-      // Use background script to call AI model
-      const response = await chrome.runtime.sendMessage({
-        type: 'summarize_for_translation',
-        text: text,
-        domain: domain,
-        prompt: prompt
+      // Use background script to call AI model with Promise wrapper
+      const response = await new Promise((resolve, reject) => {
+        chrome.runtime.sendMessage({
+          type: 'summarize_for_translation',
+          text: text,
+          domain: domain,
+          prompt: prompt
+        }, (response) => {
+          if (chrome.runtime.lastError) {
+            reject(new Error(chrome.runtime.lastError.message));
+          } else {
+            resolve(response);
+          }
+        });
       });
 
-      if (response && response.summary) {
+      if (response && response.ok && response.summary) {
         Logger.debug('[Translator] Summarized for translation', { 
           original: text.length, 
           summary: response.summary.length 
@@ -381,30 +389,19 @@ Concise summary:`;
     const languageName = SUPPORTED_LANGUAGES[targetLanguage] || targetLanguage;
     
     const domainInstructions = {
-      [DOMAINS.TECHNICAL]: 'Maintain technical terminology accuracy. Use standard technical terms in the target language.',
-      [DOMAINS.ACADEMIC]: 'Preserve formal academic tone. Use scholarly language conventions.',
-      [DOMAINS.INSTRUCTIONAL]: 'Keep instructions clear and actionable. Maintain step-by-step structure.',
-      [DOMAINS.CODE_RELATED]: 'Never translate code. Translate only comments and surrounding text.',
-      [DOMAINS.CONVERSATIONAL]: 'Use natural, conversational tone. Adapt idioms culturally.'
+      [DOMAINS.TECHNICAL]: 'Maintain technical terminology accuracy.',
+      [DOMAINS.ACADEMIC]: 'Preserve formal academic tone.',
+      [DOMAINS.INSTRUCTIONAL]: 'Keep instructions clear and actionable.',
+      [DOMAINS.CODE_RELATED]: 'Never translate code.',
+      [DOMAINS.CONVERSATIONAL]: 'Use natural, conversational tone.'
     };
 
-    return `Translate the following ${domain} text to ${languageName}.
+    return `Translate to ${languageName}. Rules: Semantic fidelity, ${domainInstructions[domain]} Keep markdown/code unchanged.
 
-Translation rules:
-1. Prioritize semantic fidelity over literal word-for-word translation
-2. Adapt idioms and expressions to culturally natural equivalents in ${languageName}
-3. Preserve the author's original tone and style
-4. Use natural phrasing - avoid robotic or awkward translations
-5. ${domainInstructions[domain]}
-6. Maintain all markdown formatting, code blocks, and structure
-7. Do NOT translate content inside code fences (\`\`\`) or inline code (\`)
-8. Keep emojis, symbols, and special characters unchanged
-9. Preserve paragraph breaks and formatting
-
-Text to translate:
 ${text}
 
-Translated text in ${languageName}:`;
+Translated ${languageName}:`;
+
   }
 
   /**
@@ -423,16 +420,24 @@ Translated text in ${languageName}:`;
     const prompt = buildTranslationPrompt(cleaned, targetLanguage, domain);
 
     try {
-      // Use background script to call AI model
-      const response = await chrome.runtime.sendMessage({
-        type: 'translate_text',
-        text: cleaned,
-        targetLanguage: targetLanguage,
-        domain: domain,
-        prompt: prompt
+      // Use background script to call AI model with Promise wrapper
+      const response = await new Promise((resolve, reject) => {
+        chrome.runtime.sendMessage({
+          type: 'translate_text',
+          text: cleaned,
+          targetLanguage: targetLanguage,
+          domain: domain,
+          prompt: prompt
+        }, (response) => {
+          if (chrome.runtime.lastError) {
+            reject(new Error(chrome.runtime.lastError.message));
+          } else {
+            resolve(response);
+          }
+        });
       });
 
-      if (response && response.translated) {
+      if (response && response.ok && response.translated) {
         Logger.debug('[Translator] Translation complete', { 
           targetLanguage,
           domain,
@@ -442,13 +447,13 @@ Translated text in ${languageName}:`;
         // Restore code blocks
         const restored = restoreCodeBlocks(response.translated, placeholders);
         return restored;
+      } else {
+        throw new Error(response?.error || 'Translation failed - no valid response');
       }
     } catch (error) {
       Logger.error('[Translator] Translation failed', error);
       throw error;
     }
-
-    throw new Error('Translation failed - no response from model');
   }
 
   // ========================================

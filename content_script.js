@@ -97,10 +97,11 @@
 
   // avoid const redeclaration causing SyntaxError in some injection scenarios
   var CB_MAX_MESSAGES = (typeof window !== 'undefined' && window.__CHATBRIDGE && window.__CHATBRIDGE.MAX_MESSAGES) ? window.__CHATBRIDGE.MAX_MESSAGES : 200;
-  const DOM_STABLE_MS = 50; // Ultra-fast scan - minimal wait
-  const DOM_STABLE_TIMEOUT_MS = 500; // Reduced timeout for faster completion
-  const SCROLL_MAX_STEPS = 5; // Fewer steps but faster
-  const SCROLL_STEP_PAUSE_MS = 20; // Minimal pause for ultra-fast scrolling
+  const DOM_STABLE_MS = 30; // Ultra-fast scan - minimal wait
+  const DOM_STABLE_TIMEOUT_MS = 300; // Reduced timeout for faster completion
+  const SCROLL_MAX_STEPS = 3; // Fewer steps for speed
+  const SCROLL_STEP_PAUSE_MS = 10; // Minimal pause for ultra-fast scrolling
+  const SKIP_SCROLL_ON_SCAN = true; // Skip scrolling - most modern chats don't need it
   const DEBUG = !!(typeof window !== 'undefined' && window.__CHATBRIDGE_DEBUG === true);
 
   function debugLog(...args) { if (!DEBUG) return; try { console.debug('[ChatBridge]', ...args); } catch (e) { } }
@@ -1325,6 +1326,63 @@
     const pdContent = document.createElement('div');
     pdContent.id = 'cb-pd-content';
     pdContent.style.cssText = 'margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px;';
+
+    // Add Generate Ideas button
+    const btnGenerateIdeas = document.createElement('button');
+    btnGenerateIdeas.className = 'cb-btn cb-btn-primary';
+    btnGenerateIdeas.textContent = '✨ Generate Ideas';
+    btnGenerateIdeas.style.cssText = 'margin-bottom: 16px; padding: 12px; font-weight: 600;';
+    btnGenerateIdeas.addEventListener('click', async () => {
+      try {
+        btnGenerateIdeas.disabled = true;
+        btnGenerateIdeas.textContent = '⏳ Generating...';
+        
+        const lastScan = window.ChatBridge?.getLastScan?.();
+        if (!lastScan || !lastScan.messages || lastScan.messages.length === 0) {
+          toast('No conversation found. Please scan first.');
+          btnGenerateIdeas.disabled = false;
+          btnGenerateIdeas.textContent = '✨ Generate Ideas';
+          return;
+        }
+
+        const contextText = lastScan.messages.slice(-5).map(m => `${m.role}: ${m.text}`).join('\\n');
+        const prompt = `Based on this conversation context, suggest 5 smart follow-up prompts that would be valuable next steps:\\n\\n${contextText}\\n\\nProvide 5 prompts in this format:\\n1. [Brief Title] - [Prompt text]\\n2. [Brief Title] - [Prompt text]\\netc.`;
+        
+        const response = await callGeminiAsync({ action: 'prompt', text: prompt, length: 'short' });
+        
+        if (response && response.ok && response.result) {
+          pdContent.innerHTML = '<div style="color:var(--cb-subtext);font-size:12px;margin-bottom:12px;">💡 AI-Generated Suggestions:</div>';
+          
+          const suggestions = response.result.split('\\n').filter(line => line.match(/^\\d+\\./));
+          suggestions.forEach(sug => {
+            const card = document.createElement('div');
+            card.className = 'cb-prompt-card';
+            card.style.cssText = 'background:rgba(255,255,255,0.03);border:1px solid var(--cb-border);border-radius:10px;padding:14px;margin-bottom:10px;cursor:pointer;transition:all 0.2s;';
+            card.innerHTML = `<div style="color:var(--cb-white);font-size:13px;line-height:1.5;">${sug.replace(/^\\d+\\.\\s*/, '')}</div>`;
+            card.addEventListener('mouseenter', () => { card.style.background = 'rgba(96,165,250,0.1)'; card.style.borderColor = 'var(--cb-accent-primary)'; });
+            card.addEventListener('mouseleave', () => { card.style.background = 'rgba(255,255,255,0.03)'; card.style.borderColor = 'var(--cb-border)'; });
+            card.addEventListener('click', async () => {
+              const text = sug.replace(/^\\d+\\.\\s*\\[.*?\\]\\s*-\\s*/, '').trim();
+              await navigator.clipboard.writeText(text);
+              toast('Prompt copied to clipboard!');
+            });
+            pdContent.appendChild(card);
+          });
+          
+          toast('Ideas generated!');
+        } else {
+          throw new Error('Failed to generate ideas');
+        }
+      } catch (err) {
+        console.error('[Prompt Designer] Generate error:', err);
+        toast('Failed to generate ideas: ' + (err.message || err));
+        pdContent.innerHTML = '<div style="color:var(--cb-error);padding:12px;text-align:center;">Failed to generate ideas. Please try again.</div>';
+      } finally {
+        btnGenerateIdeas.disabled = false;
+        btnGenerateIdeas.textContent = '✨ Generate Ideas';
+      }
+    });
+    promptDesignerView.appendChild(btnGenerateIdeas);
 
     // Inject styles for dynamic content
     const pdStyle = document.createElement('style');
@@ -11947,26 +12005,29 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         debugLog('_lastScan init error:', e);
       }
 
-      // Scroll and wait for stability with error handling
-      try {
-        await scrollContainerToTop(container);
-        debugLog('scroll complete');
-      } catch (e) {
-        debugLog('scroll error:', e);
-        // Continue anyway - scroll failure shouldn't block scan
+      // Scroll only if needed (skip for speed on modern AI chats)
+      if (!SKIP_SCROLL_ON_SCAN) {
         try {
-          if (window.ChatBridge && window.ChatBridge._lastScan) {
-            window.ChatBridge._lastScan.errors.push('scroll_failed: ' + (e.message || String(e)));
-          }
-        } catch (_) { }
+          await scrollContainerToTop(container);
+          debugLog('scroll complete');
+        } catch (e) {
+          debugLog('scroll error:', e);
+          try {
+            if (window.ChatBridge && window.ChatBridge._lastScan) {
+              window.ChatBridge._lastScan.errors.push('scroll_failed: ' + (e.message || String(e)));
+            }
+          } catch (_) { }
+        }
+      } else {
+        debugLog('scroll skipped for speed');
       }
 
+      // Quick stability check (very brief)
       try {
         await waitForDomStability(container);
         debugLog('DOM stable');
       } catch (e) {
         debugLog('DOM stability wait error:', e);
-        // Continue anyway - stability timeout shouldn't block scan
         try {
           if (window.ChatBridge && window.ChatBridge._lastScan) {
             window.ChatBridge._lastScan.errors.push('stability_timeout: ' + (e.message || String(e)));
@@ -12119,15 +12180,15 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
               const msgId = `${convObj.id}_msg_${i}`;
               const msgText = `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.text}`;
 
-              // Don't await - fire and forget
-              window.RAGEngine.indexConversation(msgText, {
+              // Don't await - fire and forget (correct parameter order: id, text, metadata)
+              window.RAGEngine.indexConversation(msgId, msgText, {
                 platform: convObj.platform,
                 url: convObj.url,
                 timestamp: convObj.ts,
                 messageIndex: i,
                 messageRole: msg.role,
                 conversationId: convObj.id
-              }, msgId).catch(e => debugLog('[Auto-Index] Message', i, 'failed:', e));
+              }).catch(e => debugLog('[Auto-Index] Message', i, 'failed:', e));
             }
             debugLog('[Auto-Index] Queued', normalized.length, 'messages for indexing');
           }
