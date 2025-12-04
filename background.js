@@ -1576,11 +1576,7 @@ Rewritten conversation (optimized for ${tgt}):`;
       try {
         let geminiApiKey = await getGeminiApiKey();
         if (!geminiApiKey) return sendResponse({ ok: false, error: 'no_api_key', message: 'Gemini API key not configured.' });
-
-        const promptText = msg.prompt || msg.text;
-        // System instruction is already implicit in the prompt built by translator.js, but adding a high-level one helps
-        const systemInstruction = 'You are a professional translator. Output ONLY the translation.';
-
+  const promptText = msg.prompt || msg.text;
         let lastError = null;
         const maxRetries = GEMINI_MODEL_PRIORITY.length;
 
@@ -1588,9 +1584,8 @@ Rewritten conversation (optimized for ${tgt}):`;
           const currentModel = getNextAvailableModel();
           const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${currentModel}:generateContent?key=${geminiApiKey}`;
           const body = {
-            systemInstruction: { parts: [{ text: systemInstruction }] },
             contents: [{ parts: [{ text: promptText }] }],
-            generationConfig: { temperature: 0.3, topP: 0.95, topK: 40, maxOutputTokens: 8192 }
+            generationConfig: { temperature: 0.2, topP: 0.9, topK: 20, maxOutputTokens: 4096 }
           };
 
           try {
@@ -1625,10 +1620,7 @@ Rewritten conversation (optimized for ${tgt}):`;
       try {
         let geminiApiKey = await getGeminiApiKey();
         if (!geminiApiKey) return sendResponse({ ok: false, error: 'no_api_key', message: 'Gemini API key not configured.' });
-
-        const promptText = msg.prompt || msg.text;
-        const systemInstruction = 'You are an expert summarizer.';
-
+  const promptText = msg.prompt || msg.text;
         let lastError = null;
         const maxRetries = GEMINI_MODEL_PRIORITY.length;
 
@@ -1636,9 +1628,8 @@ Rewritten conversation (optimized for ${tgt}):`;
           const currentModel = getNextAvailableModel();
           const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${currentModel}:generateContent?key=${geminiApiKey}`;
           const body = {
-            systemInstruction: { parts: [{ text: systemInstruction }] },
             contents: [{ parts: [{ text: promptText }] }],
-            generationConfig: { temperature: 0.3, topP: 0.95, topK: 40, maxOutputTokens: 8192 }
+            generationConfig: { temperature: 0.3, topP: 0.9, topK: 20, maxOutputTokens: 2048 }
           };
 
           try {

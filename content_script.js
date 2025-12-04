@@ -1276,14 +1276,6 @@
     actions.appendChild(actionsGrid);
     panel.appendChild(actions);
 
-    // Toolbar with Chat dropdown
-    const toolbar = document.createElement('div'); toolbar.className = 'cb-toolbar';
-    const lab = document.createElement('div'); lab.className = 'cb-label'; lab.textContent = 'Select Chat';
-    const chatSelect = document.createElement('select'); chatSelect.className = 'cb-select'; chatSelect.id = 'cb-chat-select';
-    chatSelect.setAttribute('aria-label', 'Select saved chat');
-    toolbar.appendChild(lab); toolbar.appendChild(chatSelect);
-    panel.appendChild(toolbar);
-
     // Toolbar preview (moved above the Gemini textarea)
     const preview = document.createElement('div'); preview.className = 'cb-preview'; preview.textContent = 'Preview: (none)';
 
@@ -1655,7 +1647,7 @@
     transShortenRow.appendChild(transShortenLabel); transShortenRow.appendChild(transShortenToggle); transOptions.appendChild(transShortenRow); transView.appendChild(transOptions);
     const transActionRow = document.createElement('div'); transActionRow.style.cssText = 'display:flex;align-items:center;gap:12px;margin:14px 0;';
     const btnGoTrans = document.createElement('button'); btnGoTrans.className = 'cb-btn cb-btn-primary'; btnGoTrans.textContent = 'Translate'; btnGoTrans.style.cssText = 'padding:10px 20px;';
-    const transProg = document.createElement('span'); transProg.style.cssText = 'display:none;font-size:0.9em;color:var(--cb-subtext);'; transProg.textContent = '⏳ Translating...';
+    const transProg = document.createElement('span'); transProg.style.cssText = 'display:none;font-size:0.9em;color:#7aa2ff;align-items:center;'; transProg.innerHTML = '<span class="cb-spinner"></span><span class="cb-translating">Translating...</span>';
     transActionRow.appendChild(btnGoTrans); transActionRow.appendChild(transProg); transView.appendChild(transActionRow);
     const transResult = document.createElement('div'); transResult.className = 'cb-view-result'; transResult.id = 'cb-trans-result'; transResult.style.cssText = 'margin-top:14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:14px;max-height:400px;overflow-y:auto;white-space:pre-wrap;line-height:1.6;display:none;';
     transView.appendChild(transResult);
@@ -3158,12 +3150,9 @@
               card.addEventListener('click', () => {
                 // Load conversation into history view
                 try {
-                  const chatSelect = shadow.getElementById('cb-chat-select');
-                  if (chatSelect) {
-                    chatSelect.value = conv.id || idx.toString();
-                    chatSelect.dispatchEvent(new Event('change'));
-                    toast('Conversation loaded');
-                  }
+                  // Navigate to history view
+                  showView('history');
+                  toast('Viewing conversation history');
                 } catch (e) {
                   debugLog('Load conversation error:', e);
                 }
@@ -9481,18 +9470,10 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         // Always load from the unified loader (merges background DB + chrome mirror)
         const list = await loadConversationsAsync();
         const arr = Array.isArray(list) ? list : [];
-        if (!arr.length) { toast('No saved conversations'); return; }
-        // Use selected chat from dropdown if available (fallback to first)
-        let sel = null;
-        try {
-          if (chatSelect && chatSelect.value) {
-            const i = arr.findIndex(v => String(v.ts) === chatSelect.value || String(v.id) === chatSelect.value);
-            sel = i >= 0 ? arr[i] : arr[0];
-          } else { sel = arr[0]; }
-        } catch (_) { sel = arr[0]; }
-        if (!sel || !sel.conversation || !sel.conversation.length) { toast('No messages in selected conversation'); return; }
-
-        // Auto-summarize if 10+ messages to preserve context without overwhelming the chat
+          if (!arr.length) { toast('No saved conversations'); return; }
+          // Use most recent conversation
+          const sel = arr[0];
+          if (!sel || !sel.conversation || !sel.conversation.length) { toast('No messages in selected conversation'); return; }        // Auto-summarize if 10+ messages to preserve context without overwhelming the chat
         let formatted = '';
         const msgCount = sel.conversation.length;
 
@@ -11676,13 +11657,6 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         if (!arr.length) {
           historyEl.textContent = 'History: (none)';
           preview.textContent = 'Preview: (none)';
-          // reset dropdown to a single disabled option
-          try {
-            const prev = chatSelect.value;
-            while (chatSelect.firstChild) chatSelect.removeChild(chatSelect.firstChild);
-            const o = document.createElement('option'); o.value = ''; o.textContent = 'No saved chats'; chatSelect.appendChild(o);
-            chatSelect.value = '';
-          } catch (e) { }
           return;
         }
         // History: virtual list when large; compact text when small
@@ -11740,7 +11714,14 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
                 openBtn.style.cssText = 'padding:4px 8px;font-size:11px;border-radius:8px;';
                 openBtn.textContent = 'Open';
                 row.appendChild(openBtn);
-                const open = () => { try { chatSelect.value = String(s.ts); chatSelect.dispatchEvent(new Event('change')); announce('Selected conversation ' + timeStr); } catch (e) { } };
+                const open = () => { 
+                  try { 
+                    // Show preview directly
+                    const convText = (s.conversation || []).map(m => `${m.role === 'user' ? 'You' : 'AI'}: ${m.text}`).join('\n\n');
+                    preview.textContent = 'Preview:\n' + (convText.slice(0, 500) || '(empty)');
+                    announce('Viewing conversation from ' + timeStr); 
+                  } catch (e) { } 
+                };
                 row.addEventListener('click', open);
                 openBtn.addEventListener('click', (ev) => { ev.stopPropagation(); open(); });
                 full.appendChild(row);
@@ -11763,57 +11744,17 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           }
         } catch (e) { /* noop */ }
         // Default preview from first conversation
-        preview.textContent = 'Preview: ' + (arr[0] && arr[0].conversation && arr[0].conversation[0] ? arr[0].conversation[0].text.slice(0, 200) : '(none)');
-
-        // Populate chat dropdown and always select the most recent (newly saved)
-        try {
-          while (chatSelect.firstChild) chatSelect.removeChild(chatSelect.firstChild);
-          // Filter out chats with 0 messages
-          const validChats = arr.filter(s => s.conversation && s.conversation.length > 0);
-          validChats.forEach(s => {
-            const o = document.createElement('option');
-            o.value = String(s.ts);
-            const count = (s.conversation || []).length;
-            let host = s.platform || 'chat';
-            try { host = new URL(s.url || location.href).hostname; } catch (_) { }
-            // Truncate hostname if too long
-            if (host.length > 15) host = host.substring(0, 12) + '...';
-
-            // Get first message as preview (one-liner)
-            let preview = '';
-            try {
-              if (s.conversation && s.conversation.length > 0) {
-                const firstMsg = s.conversation[0];
-                preview = (firstMsg.text || '').replace(/\n/g, ' ').trim();
-                if (preview.length > 50) preview = preview.substring(0, 47) + '...';
-              }
-            } catch (e) { }
-
-            o.textContent = preview || `${count} messages`;
-            chatSelect.appendChild(o);
-          });
-          // Always select the most recent (first in list, which is newest by timestamp)
-          chatSelect.selectedIndex = 0;
-          // Ensure preview reflects selection immediately
-          try { chatSelect.dispatchEvent(new Event('change')); } catch (e) { }
-        } catch (e) { }
+        const firstConv = arr[0];
+        if (firstConv && firstConv.conversation && firstConv.conversation.length > 0) {
+          const convText = firstConv.conversation.map(m => `${m.role === 'user' ? 'You' : 'AI'}: ${m.text}`).join('\n\n');
+          preview.textContent = 'Preview:\n' + (convText.slice(0, 500) || '(empty)');
+        } else {
+          preview.textContent = 'Preview: (none)';
+        }
       });
     }
 
-    // Update preview when selecting a chat (use shadow DOM element reference)
-    try {
-      chatSelect.addEventListener('change', async () => {
-        try {
-          const list = await loadConversationsAsync();
-          const arr = Array.isArray(list) ? list : [];
-          const idx = arr.findIndex(v => String(v.ts) === chatSelect.value);
-          const sel = idx >= 0 ? arr[idx] : arr[0];
-          if (!sel) { preview.textContent = 'Preview: (none)'; return; }
-          const text = sel.conversation && sel.conversation[0] ? sel.conversation[0].text.slice(0, 200) : '(none)';
-          preview.textContent = 'Preview: ' + text;
-        } catch (e) { }
-      });
-    } catch (e) { }
+    // chatSelect removed - preview is now updated directly when clicking history items
 
     // load persisted model/prompt from chrome.storage.local with localStorage fallback
     try {

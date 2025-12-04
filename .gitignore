@@ -4,13 +4,11 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
-lerna-debug.log*
 
 # Build output
 *.log
 dist/
 build/
-.parcel-cache/
 out/
 
 # IDEs
@@ -18,32 +16,17 @@ out/
 !.vscode/extensions.json
 !.vscode/settings.json
 .idea/
-*.sublime-project
-*.sublime-workspace
+*.sublime-*
 .vs/
 *.code-workspace
 
 # OS files
 .DS_Store
-.DS_Store?
 ._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
 Thumbs.db
 desktop.ini
 *.swp
-*.swo
 *~
-
-# Test results
-/test-results/
-/playwright-report/
-/playwright/.cache/
-/coverage/
-/.nyc_output/
-junit.xml
-test-output/
 
 # Chrome extension artifacts
 *.crx
@@ -52,30 +35,14 @@ test-output/
 web-ext-artifacts/
 
 # Environment & Secrets
-.env
-.env.*
+.env*
 !.env.example
-.env.local
-.env.production
-.env.development
 secrets.json
 api-keys.json
-config/secrets/
 *.key
 *.secret
-background.js.backup
 *_WITH_KEY.js
 *-api-key*.js
-
-# Prevent accidental commits of API keys
-**/GEMINI_KEY*
-**/API_KEY*
-*.credentials.json
-
-# TypeScript
-*.tsbuildinfo
-tsconfig.tsbuildinfo
-*.d.ts.map
 
 # Backup files
 *.bak
@@ -83,97 +50,36 @@ tsconfig.tsbuildinfo
 *.backup
 *_backup.*
 *.old
-*~
 
-# Documentation (temporary/generated)
-docs/_build/
-site/
-.docusaurus/
-
-# Development/debug documentation (moved to /documentation folder)
+# Development documentation
 *_PROGRESS.md
 *_ANALYSIS.md
 *_FIX.md
 *_SUMMARY.md
 IMPLEMENTATION_*.md
 DEBUGGING_*.md
-*_ENHANCEMENTS.md
-*_TROUBLESHOOTING.md
 
-# Backup and temporary files
-README_OLD.md
-*.md.bak
-
-# Local storage & user data
-chatbridge:conversations
-chatbridge:knowledge_graph
+# User data & storage
+chatbridge:*
 localStorage.json
 indexedDB/
 chrome-storage/
-# Smart Workspace widget data
 image-vault/
 prompt-designer/
-cb-image-vault*
-cb-prompt-designer*
-# Exported data files
-chatbridge-export-*.json
-knowledge-graph-export-*.json
-conversations-export-*.json
-*.export.json
-# User-generated backups
-*_backup_*.json
-backup_conversations_*.json
+*-export-*.json
 backup_*.json
-# Debug logs
 debug_*.log
-*.debug.log
-error_*.log
 
 # Temporary files
 .temp/
 .cache/
 .tmp/
 
-# Lock files (uncomment if you want to ignore)
-# package-lock.json
-# yarn.lock
-# pnpm-lock.yaml
-
-# macOS
-.AppleDouble
-.LSOverride
-
-# Windows
-[Dd]esktop.ini
-$RECYCLE.BIN/
-*.cab
-*.msi
-*.msix
-*.msm
-*.msp
-*.lnk
-
-# Linux
-.directory
-.Trash-*
-
-# Ignore AI model files if downloaded locally
+# AI model files (if downloaded locally)
 *.onnx
 *.bin
-*.safetensors
 models/
 weights/
-vendor/
-onnx/
 !vendor/.keep
 !onnx/.keep
 
-# Ignore generated screenshots/exports
-screenshots/
-exports/
-output/
-# IndexedDB browser artifacts
-*.indexeddb.leveldb/
-*.sqlite
-*.ldb
-*.sqlite3
