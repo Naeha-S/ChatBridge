@@ -4801,7 +4801,7 @@ Respond with JSON only:
     }
 
     // ============================================
-    // SIMPLIFIED INSIGHTS HUB (Card-Based Layout)
+    // INSIGHTS HUB - ALL INLINE (NO MODALS)
     // ============================================
     async function renderInsightsHub() {
       try {
@@ -4811,339 +4811,314 @@ Respond with JSON only:
           return;
         }
         insightsContent.innerHTML = '';
-        debugLog('Rendering Insights Hub...');
+        debugLog('Rendering Insights Hub (inline)...');
 
-        const insightsGrid = document.createElement('div');
-        insightsGrid.style.cssText = 'display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px;padding:0 12px;position:relative;z-index:0;';
+        // Stats section
+        const convs = await loadConversationsAsync();
+        const totalConvs = convs.length;
+        const totalMsgs = convs.reduce((sum, c) => sum + (c.conversation?.length || c.messages?.length || 0), 0);
+        const platforms = [...new Set(convs.map(c => c.platform || 'Unknown'))];
 
-        function createInsightCard(title, subtitle, icon, description, onClick) {
+        const statsSection = document.createElement('div');
+        statsSection.style.cssText = 'display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:0 8px;margin-bottom:16px;';
+        statsSection.innerHTML = `
+          <div style="background:linear-gradient(135deg,rgba(0,180,255,0.1),rgba(140,30,255,0.1));border:1px solid rgba(0,180,255,0.2);border-radius:8px;padding:10px;text-align:center;">
+            <div style="font-size:20px;font-weight:700;color:var(--cb-white);">${totalConvs}</div>
+            <div style="font-size:9px;color:var(--cb-subtext);text-transform:uppercase;">Chats</div>
+          </div>
+          <div style="background:linear-gradient(135deg,rgba(0,180,255,0.1),rgba(140,30,255,0.1));border:1px solid rgba(0,180,255,0.2);border-radius:8px;padding:10px;text-align:center;">
+            <div style="font-size:20px;font-weight:700;color:var(--cb-white);">${totalMsgs}</div>
+            <div style="font-size:9px;color:var(--cb-subtext);text-transform:uppercase;">Messages</div>
+          </div>
+          <div style="background:linear-gradient(135deg,rgba(0,180,255,0.1),rgba(140,30,255,0.1));border:1px solid rgba(0,180,255,0.2);border-radius:8px;padding:10px;text-align:center;">
+            <div style="font-size:20px;font-weight:700;color:var(--cb-white);">${platforms.length}</div>
+            <div style="font-size:9px;color:var(--cb-subtext);text-transform:uppercase;">Platforms</div>
+          </div>
+          <div style="background:linear-gradient(135deg,rgba(0,180,255,0.1),rgba(140,30,255,0.1));border:1px solid rgba(0,180,255,0.2);border-radius:8px;padding:10px;text-align:center;">
+            <div style="font-size:20px;font-weight:700;color:var(--cb-white);">${Math.round(totalMsgs / Math.max(1, totalConvs))}</div>
+            <div style="font-size:9px;color:var(--cb-subtext);text-transform:uppercase;">Avg/Chat</div>
+          </div>
+        `;
+        insightsContent.appendChild(statsSection);
+
+        // Tools label
+        const toolsLabel = document.createElement('div');
+        toolsLabel.style.cssText = 'font-size:11px;font-weight:600;color:var(--cb-accent-primary);margin:8px 8px 12px;text-transform:uppercase;letter-spacing:0.5px;';
+        toolsLabel.textContent = 'Workspace Tools';
+        insightsContent.appendChild(toolsLabel);
+
+        // Content area for inline tool results
+        const toolResultArea = document.createElement('div');
+        toolResultArea.id = 'cb-insights-tool-result';
+        toolResultArea.style.cssText = 'display:none;margin:0 8px 12px;background:rgba(0,0,0,0.2);border:1px solid var(--cb-border);border-radius:8px;padding:12px;max-height:300px;overflow-y:auto;';
+        insightsContent.appendChild(toolResultArea);
+
+        // Helper to show inline result
+        function showToolResult(html, title = '') {
+          toolResultArea.innerHTML = `
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+              <span style="font-weight:600;font-size:13px;color:var(--cb-white);">${title}</span>
+              <button id="cb-tool-result-close" style="background:none;border:none;color:var(--cb-subtext);cursor:pointer;font-size:16px;">✕</button>
+            </div>
+            <div id="cb-tool-result-content">${html}</div>
+          `;
+          toolResultArea.style.display = 'block';
+          toolResultArea.querySelector('#cb-tool-result-close').addEventListener('click', () => {
+            toolResultArea.style.display = 'none';
+          });
+        }
+
+        // Tool cards grid
+        const toolsGrid = document.createElement('div');
+        toolsGrid.style.cssText = 'display:grid;grid-template-columns:repeat(2,1fr);gap:8px;padding:0 8px;';
+
+        // Helper to create tool card
+        function createToolCard(icon, title, desc) {
           const card = document.createElement('div');
-          card.style.cssText = 'background:linear-gradient(135deg,rgba(0,180,255,0.08) 0%,rgba(99,102,241,0.08) 100%);border:1px solid rgba(0,180,255,0.25);border-radius:10px;padding:14px;cursor:pointer;transition:all 0.3s cubic-bezier(0.4,0,0.2,1);position:relative;overflow:hidden;';
-          const iconEl = document.createElement('div');
-          iconEl.textContent = icon;
-          iconEl.style.cssText = 'font-size:32px;margin-bottom:8px;filter:drop-shadow(0 2px 8px rgba(0,180,255,0.4));';
-          const titleEl = document.createElement('div');
-          titleEl.textContent = title;
-          titleEl.style.cssText = 'font-weight:700;font-size:13px;color:var(--cb-white);margin-bottom:2px;';
-          const subtitleEl = document.createElement('div');
-          subtitleEl.textContent = subtitle;
-          subtitleEl.style.cssText = 'font-size:10px;color:var(--cb-subtext);margin-bottom:8px;';
-          const descEl = document.createElement('div');
-          descEl.textContent = description;
-          descEl.style.cssText = 'font-size:10px;color:var(--cb-subtext);opacity:0.8;line-height:1.4;';
-          card.appendChild(iconEl); card.appendChild(titleEl); card.appendChild(subtitleEl); card.appendChild(descEl);
-          card.addEventListener('mouseenter', () => { card.style.transform = 'translateY(-3px)'; card.style.borderColor = 'rgba(0,180,255,0.5)'; card.style.background = 'linear-gradient(135deg,rgba(0,180,255,0.15) 0%,rgba(99,102,241,0.15) 100%)'; card.style.boxShadow = '0 8px 24px rgba(0,180,255,0.25)'; });
-          card.addEventListener('mouseleave', () => { card.style.transform = 'translateY(0)'; card.style.borderColor = 'rgba(0,180,255,0.25)'; card.style.background = 'linear-gradient(135deg,rgba(0,180,255,0.08) 0%,rgba(99,102,241,0.08) 100%)'; card.style.boxShadow = 'none'; });
-          let isProcessing = false;
-          card.addEventListener('click', async () => { if (isProcessing) return; isProcessing = true; card.style.opacity = '0.6'; card.style.pointerEvents = 'none'; try { await onClick(); } catch (err) { debugLog('Insight card error:', err); } finally { setTimeout(() => { isProcessing = false; card.style.opacity = '1'; card.style.pointerEvents = ''; }, 500); } });
+          card.style.cssText = 'background:rgba(255,255,255,0.03);border:1px solid var(--cb-border);border-radius:8px;padding:12px;cursor:pointer;transition:all 0.2s;';
+          card.innerHTML = `
+            <div style="font-size:24px;margin-bottom:6px;">${icon}</div>
+            <div style="font-size:12px;font-weight:600;color:var(--cb-white);margin-bottom:4px;">${title}</div>
+            <div style="font-size:10px;color:var(--cb-subtext);line-height:1.4;">${desc}</div>
+          `;
+          card.addEventListener('mouseenter', () => { card.style.background = 'rgba(0,180,255,0.1)'; card.style.borderColor = 'rgba(0,180,255,0.4)'; });
+          card.addEventListener('mouseleave', () => { card.style.background = 'rgba(255,255,255,0.03)'; card.style.borderColor = 'var(--cb-border)'; });
           return card;
         }
 
-        const continueCard = createInsightCard('Continue With', 'Cross-model handoff', '🔄', 'Continue this conversation on another AI platform', async () => {
-          const msgs = await scanChat();
-          if (!msgs || msgs.length === 0) { toast('No conversation to continue'); return; }
-          const modal = document.createElement('div');
-          modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:999999;display:flex;align-items:center;justify-content:center;';
-          modal.innerHTML = `<div style="background:var(--cb-bg);padding:24px;border-radius:12px;max-width:400px;box-shadow:0 8px 32px rgba(0,0,0,0.4);border:1px solid var(--cb-border);"><h3 style="margin:0 0 16px 0;color:var(--cb-white);font-size:16px;">Continue on Different Model</h3><p style="margin:0 0 16px 0;color:var(--cb-subtext);font-size:13px;line-height:1.4;">Select a model to continue this conversation. The conversation will be transferred and opened in a new tab.</p><select id="cb-continue-target" class="cb-select" style="width:100%;margin-bottom:16px;"><option value="Claude">Claude (Anthropic)</option><option value="ChatGPT">ChatGPT (OpenAI)</option><option value="Gemini">Gemini (Google)</option><option value="Copilot">Copilot (Microsoft)</option></select><div style="display:flex;gap:8px;"><button id="cb-continue-go" class="cb-btn cb-btn-primary" style="flex:1;">Continue</button><button id="cb-continue-cancel" class="cb-btn" style="flex:1;">Cancel</button></div></div>`;
-          document.body.appendChild(modal);
-          modal.querySelector('#cb-continue-cancel').addEventListener('click', () => { modal.remove(); });
-          modal.querySelector('#cb-continue-go').addEventListener('click', async () => {
-            const target = modal.querySelector('#cb-continue-target').value;
-            const goBtn = modal.querySelector('#cb-continue-go');
-            goBtn.textContent = 'Processing...';
-            try {
-              const convText = msgs.map(m => `${m.role}: ${m.text}`).join('\n\n');
-              const summary = `[Continued from previous conversation]\n\n${convText.slice(0, 4000)}\n\nPlease continue from where we left off.`;
-              const url = getTargetModelUrl(target);
-              if (url) {
-                try {
-                  chrome.runtime.sendMessage({ type: 'open_and_restore', payload: { url, text: summary } }, () => { });
-                  toast(`Opening ${target}...`);
-                } catch (e) {
-                  window.open(url, '_blank');
-                  await navigator.clipboard.writeText(summary);
-                  toast('Tab opened. Summary copied to clipboard.');
-                }
-                modal.remove();
-              } else { toast('Model not supported'); }
-            } catch (e) { toast('Continue failed'); } finally { goBtn.textContent = 'Continue'; }
-          });
-        });
-        const extractCard = createInsightCard('Extract Content', 'Export conversations', '📋', 'Export as Markdown, JSON, or plain text', async () => {
-          const msgs = await scanChat();
-          if (!msgs || msgs.length === 0) { toast('No conversation to export'); return; }
-
-          const modal = document.createElement('div');
-          modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);z-index:999999;display:flex;align-items:center;justify-content:center;padding:20px;';
-
-          const container = document.createElement('div');
-          container.style.cssText = 'background:var(--cb-bg);padding:24px;border-radius:12px;max-width:600px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,0.4);border:1px solid var(--cb-border);';
-
-          const md = msgs.map(m => `**${m.role}**: ${m.text}`).join('\n\n');
-          const txt = msgs.map(m => `${m.role}: ${m.text}`).join('\n\n');
-          const json = JSON.stringify(msgs, null, 2);
-          const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Chat Export</title><style>body{font-family:system-ui;max-width:800px;margin:40px auto;padding:20px;}.msg{margin:20px 0;padding:15px;border-radius:8px;}.user{background:#e3f2fd;}.assistant{background:#f5f5f5;}.role{font-weight:bold;margin-bottom:8px;}</style></head><body>${msgs.map(m => `<div class="msg ${m.role}"><div class="role">${m.role}</div><div>${m.text.replace(/\n/g, '<br>')}</div></div>`).join('')}</body></html>`;
-
-          container.innerHTML = `
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-              <h3 style="margin:0;color:var(--cb-white);font-size:16px;">📋 Export Conversation</h3>
-              <button id="cb-export-close" class="cb-btn" style="padding:4px 12px;">✕</button>
-            </div>
-            <div style="margin-bottom:16px;">
-              <div style="color:var(--cb-subtext);font-size:13px;margin-bottom:12px;">${msgs.length} messages • ${msgs.filter(m => m.attachments?.length > 0).length} with attachments</div>
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-              <button id="cb-export-md" class="cb-btn cb-btn-primary" style="padding:12px;">📝 Markdown</button>
-              <button id="cb-export-txt" class="cb-btn" style="padding:12px;">📄 Plain Text</button>
-              <button id="cb-export-json" class="cb-btn" style="padding:12px;">📦 JSON</button>
-              <button id="cb-export-html" class="cb-btn" style="padding:12px;">🌐 HTML</button>
-            </div>
-          `;
-
-          modal.appendChild(container);
-          document.body.appendChild(modal);
-
-          container.querySelector('#cb-export-close').addEventListener('click', () => modal.remove());
-          container.querySelector('#cb-export-md').addEventListener('click', async () => {
-            await navigator.clipboard.writeText(md);
-            toast('Markdown copied to clipboard!');
-            modal.remove();
-          });
-          container.querySelector('#cb-export-txt').addEventListener('click', async () => {
-            await navigator.clipboard.writeText(txt);
-            toast('Plain text copied to clipboard!');
-            modal.remove();
-          });
-          container.querySelector('#cb-export-json').addEventListener('click', async () => {
-            await navigator.clipboard.writeText(json);
-            toast('JSON copied to clipboard!');
-            modal.remove();
-          });
-          container.querySelector('#cb-export-html').addEventListener('click', async () => {
-            const blob = new Blob([html], { type: 'text/html' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `chat-export-${Date.now()}.html`;
-            a.click();
-            URL.revokeObjectURL(url);
-            toast('HTML file downloaded!');
-            modal.remove();
-          });
-          modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
-        });
-        const diagramCard = createInsightCard('Diagram Maker', 'Turn conversations into flowcharts', '📊', 'Generate flowcharts, mind maps, and sequence diagrams', async () => {
-          const msgs = await scanChat();
-          if (!msgs || msgs.length === 0) { toast('No conversation to diagram'); return; }
-          if (msgs.length > 30) { toast('⚠️ Large conversation - using first 30 messages'); msgs.splice(30); }
-
-          const typeModal = document.createElement('div');
-          typeModal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:999999;display:flex;align-items:center;justify-content:center;';
-          typeModal.innerHTML = `<div style="background:var(--cb-bg);padding:24px;border-radius:12px;max-width:400px;box-shadow:0 8px 32px rgba(0,0,0,0.4);border:1px solid var(--cb-border);"><h3 style="margin:0 0 16px 0;color:var(--cb-white);font-size:16px;">📊 Select Diagram Type</h3><select id="cb-diagram-type" class="cb-select" style="width:100%;margin-bottom:16px;"><option value="flowchart">Flowchart (conversation flow)</option><option value="sequence">Sequence Diagram (turn-by-turn)</option><option value="mindmap">Mind Map (key topics)</option></select><div style="display:flex;gap:8px;"><button id="cb-diagram-generate" class="cb-btn cb-btn-primary" style="flex:1;">Generate</button><button id="cb-diagram-cancel" class="cb-btn" style="flex:1;">Cancel</button></div></div>`;
-          document.body.appendChild(typeModal);
-
-          typeModal.querySelector('#cb-diagram-cancel').addEventListener('click', () => typeModal.remove());
-          typeModal.querySelector('#cb-diagram-generate').addEventListener('click', () => {
-            const type = typeModal.querySelector('#cb-diagram-type').value;
-            const mermaid = generateDiagramMermaid(msgs, type);
-            if (mermaid) {
-              renderDiagramPreview(mermaid);
-              toast('Diagram generated!');
-            } else {
-              toast('Failed to generate diagram');
-            }
-            typeModal.remove();
-          });
-        });
-        const mediaCard = createInsightCard('Media Vault', 'Extract images & videos', '🖼️', 'View all media attachments from conversation', async () => {
+        // 1. Media Vault
+        const mediaCard = createToolCard('🖼️', 'Media Vault', 'View images from conversation');
+        mediaCard.addEventListener('click', async () => {
           const msgs = await scanChat();
           const allMedia = [];
-          for (const msg of msgs) {
+          for (const msg of (msgs || [])) {
             if (msg.attachments && msg.attachments.length > 0) {
               allMedia.push(...msg.attachments.filter(a => a.type === 'image' || a.type === 'video'));
             }
           }
 
-          if (allMedia.length === 0) { toast('No media found in conversation'); return; }
-
-          // Save to storage
-          try {
-            const existing = await StorageManager.get('chatbridge_media_vault') || [];
-            const newMedia = allMedia.map(m => ({ ...m, timestamp: Date.now(), platform: detectCurrentPlatform() }));
-            const combined = [...newMedia, ...existing].slice(0, 100); // Keep last 100
-            await StorageManager.set('chatbridge_media_vault', combined);
-          } catch (e) { console.warn('Failed to save media:', e); }
-
-          const modal = document.createElement('div');
-          modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.95);z-index:999999;display:flex;align-items:center;justify-content:center;padding:20px;';
-
-          const container = document.createElement('div');
-          container.style.cssText = 'background:var(--cb-bg);padding:24px;border-radius:12px;max-width:900px;width:100%;max-height:90vh;overflow:auto;box-shadow:0 8px 32px rgba(0,0,0,0.4);border:1px solid var(--cb-border);';
-
-          const imageGrid = allMedia.filter(m => m.type === 'image').map(img =>
-            `<div style="position:relative;border-radius:8px;overflow:hidden;aspect-ratio:1;background:var(--cb-surface);">
-              <img src="${img.url}" alt="${img.alt || ''}" style="width:100%;height:100%;object-fit:cover;cursor:pointer;" onclick="window.open('${img.url}', '_blank')">
-              <div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,0.8));padding:8px;font-size:10px;color:white;">${img.name || 'image'}</div>
-            </div>`
-          ).join('');
-
-          const videoGrid = allMedia.filter(m => m.type === 'video').map(vid =>
-            `<div style="position:relative;border-radius:8px;overflow:hidden;background:var(--cb-surface);">
-              <video src="${vid.url}" controls style="width:100%;border-radius:8px;"></video>
-              <div style="padding:8px;font-size:11px;color:var(--cb-subtext);">${vid.name || 'video'}</div>
-            </div>`
-          ).join('');
-
-          container.innerHTML = `
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-              <h3 style="margin:0;color:var(--cb-white);font-size:16px;">🖼️ Media Vault</h3>
-              <button id="cb-media-close" class="cb-btn" style="padding:4px 12px;">✕</button>
-            </div>
-            <div style="background:var(--cb-surface);padding:12px;border-radius:8px;margin-bottom:16px;display:flex;justify-content:space-around;text-align:center;">
-              <div><div style="color:var(--cb-white);font-size:20px;font-weight:bold;">${allMedia.filter(m => m.type === 'image').length}</div><div style="color:var(--cb-subtext);font-size:11px;">Images</div></div>
-              <div><div style="color:var(--cb-white);font-size:20px;font-weight:bold;">${allMedia.filter(m => m.type === 'video').length}</div><div style="color:var(--cb-subtext);font-size:11px;">Videos</div></div>
-              <div><div style="color:var(--cb-white);font-size:20px;font-weight:bold;">${allMedia.length}</div><div style="color:var(--cb-subtext);font-size:11px;">Total</div></div>
-            </div>
-            ${imageGrid ? `<h4 style="color:var(--cb-white);font-size:13px;margin:16px 0 8px 0;">Images</h4><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-bottom:16px;">${imageGrid}</div>` : ''}
-            ${videoGrid ? `<h4 style="color:var(--cb-white);font-size:13px;margin:16px 0 8px 0;">Videos</h4><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px;">${videoGrid}</div>` : ''}
-            <div style="margin-top:16px;display:flex;gap:8px;">
-              <button id="cb-media-export" class="cb-btn cb-btn-primary" style="flex:1;">📋 Copy URLs</button>
-              <button id="cb-media-clear" class="cb-btn" style="flex:1;">🗑️ Clear Vault</button>
-            </div>
-          `;
-
-          modal.appendChild(container);
-          document.body.appendChild(modal);
-
-          container.querySelector('#cb-media-close').addEventListener('click', () => modal.remove());
-          container.querySelector('#cb-media-export').addEventListener('click', async () => {
-            const urls = allMedia.map(m => m.url).join('\n');
-            await navigator.clipboard.writeText(urls);
-            toast('Media URLs copied!');
-          });
-          container.querySelector('#cb-media-clear').addEventListener('click', async () => {
-            try {
-              await StorageManager.set('chatbridge_media_vault', []);
-              toast('Media vault cleared!');
-              modal.remove();
-            } catch (e) { toast('Failed to clear vault'); }
-          });
-          modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
-        });
-        const mergeCard = createInsightCard('Merge Chats', 'Combine conversations', '🔗', 'Merge multiple chat threads into unified timeline', async () => {
-          const currentMsgs = await scanChat();
-          if (!currentMsgs || currentMsgs.length === 0) { toast('No current conversation to merge'); return; }
-
-          // Get saved conversations from storage
-          const saved = await new Promise(resolve => {
-            if (typeof StorageManager !== 'undefined') {
-              StorageManager.getConversations().then(resolve).catch(() => resolve([]));
-            } else {
-              resolve([]);
-            }
-          });
-
-          if (!saved || saved.length === 0) {
-            toast('No saved conversations to merge. Scan other chats first.');
+          if (allMedia.length === 0) {
+            showToolResult('<div style="text-align:center;padding:20px;color:var(--cb-subtext);">No media found in this conversation.<br><br>Scan a chat with images first.</div>', '🖼️ Media Vault');
             return;
           }
 
-          const modal = document.createElement('div');
-          modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);z-index:999999;display:flex;align-items:center;justify-content:center;padding:20px;';
+          const imageGrid = allMedia.filter(m => m.type === 'image').map(img =>
+            `<div style="border-radius:6px;overflow:hidden;background:var(--cb-bg);border:1px solid var(--cb-border);">
+              <img src="${img.url}" alt="" style="width:100%;height:80px;object-fit:cover;cursor:pointer;" onclick="window.open('${img.url}', '_blank')">
+              <div style="padding:4px;font-size:9px;color:var(--cb-subtext);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${img.name || 'image'}</div>
+            </div>`
+          ).join('');
 
-          const container = document.createElement('div');
-          container.style.cssText = 'background:var(--cb-bg);padding:24px;border-radius:12px;max-width:700px;width:100%;max-height:90vh;overflow:auto;box-shadow:0 8px 32px rgba(0,0,0,0.4);border:1px solid var(--cb-border);';
+          showToolResult(`
+            <div style="margin-bottom:10px;font-size:12px;color:var(--cb-subtext);">${allMedia.length} media items found</div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">${imageGrid}</div>
+            <button id="cb-media-copy-urls" style="margin-top:12px;width:100%;padding:8px;background:rgba(0,180,255,0.2);border:1px solid rgba(0,180,255,0.4);border-radius:6px;color:var(--cb-white);cursor:pointer;">📋 Copy All URLs</button>
+          `, '🖼️ Media Vault');
 
-          let selectedIds = new Set();
-
-          const listHTML = saved.slice(0, 10).map((conv, idx) => {
-            const preview = conv.messages?.slice(0, 2).map(m => m.text.slice(0, 50)).join(' • ') || 'No preview';
-            const count = conv.messages?.length || 0;
-            const date = new Date(conv.timestamp || Date.now()).toLocaleDateString();
-            return `<div class="merge-item" data-idx="${idx}" style="background:var(--cb-surface);padding:12px;border-radius:8px;margin-bottom:8px;cursor:pointer;border:2px solid transparent;transition:all 0.2s;"><div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="color:var(--cb-white);font-weight:bold;">${conv.platform || 'Unknown'}</span><span style="color:var(--cb-subtext);font-size:11px;">${date}</span></div><div style="color:var(--cb-subtext);font-size:12px;margin-bottom:4px;">${count} messages</div><div style="color:var(--cb-subtext);font-size:11px;opacity:0.7;">${preview}...</div></div>`;
-          }).join('');
-
-          container.innerHTML = `
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-              <h3 style="margin:0;color:var(--cb-white);font-size:16px;">🔗 Merge Conversations</h3>
-              <button id="cb-merge-close" class="cb-btn" style="padding:4px 12px;">✕</button>
-            </div>
-            <div style="margin-bottom:16px;">
-              <div style="color:var(--cb-subtext);font-size:13px;margin-bottom:12px;">Current: ${currentMsgs.length} messages • Select conversations to merge:</div>
-              <div id="merge-list" style="max-height:400px;overflow:auto;">${listHTML}</div>
-            </div>
-            <div style="display:flex;gap:8px;">
-              <button id="cb-merge-go" class="cb-btn cb-btn-primary" style="flex:1;" disabled>Merge Selected</button>
-              <button id="cb-merge-cancel" class="cb-btn" style="flex:1;">Cancel</button>
-            </div>
-            <div id="merge-status" style="margin-top:8px;color:var(--cb-subtext);font-size:11px;text-align:center;"></div>
-          `;
-
-          modal.appendChild(container);
-          document.body.appendChild(modal);
-
-          const items = container.querySelectorAll('.merge-item');
-          const mergeBtn = container.querySelector('#cb-merge-go');
-          const statusEl = container.querySelector('#merge-status');
-
-          items.forEach(item => {
-            item.addEventListener('click', () => {
-              const idx = item.getAttribute('data-idx');
-              if (selectedIds.has(idx)) {
-                selectedIds.delete(idx);
-                item.style.borderColor = 'transparent';
-                item.style.background = 'var(--cb-surface)';
-              } else {
-                selectedIds.add(idx);
-                item.style.borderColor = 'rgba(0,180,255,0.5)';
-                item.style.background = 'rgba(0,180,255,0.1)';
-              }
-              mergeBtn.disabled = selectedIds.size === 0;
-              statusEl.textContent = selectedIds.size > 0 ? `${selectedIds.size} selected` : '';
+          const copyBtn = toolResultArea.querySelector('#cb-media-copy-urls');
+          if (copyBtn) {
+            copyBtn.addEventListener('click', async () => {
+              const urls = allMedia.map(m => m.url).join('\n');
+              await navigator.clipboard.writeText(urls);
+              toast('URLs copied!');
             });
-          });
-
-          container.querySelector('#cb-merge-cancel').addEventListener('click', () => modal.remove());
-          container.querySelector('#cb-merge-close').addEventListener('click', () => modal.remove());
-
-          container.querySelector('#cb-merge-go').addEventListener('click', async () => {
-            const selectedConvs = Array.from(selectedIds).map(idx => saved[parseInt(idx)]);
-            const allMessages = [...currentMsgs];
-
-            selectedConvs.forEach(conv => {
-              if (conv.messages && Array.isArray(conv.messages)) {
-                allMessages.push(...conv.messages.map(m => ({ ...m, source: conv.platform })));
-              }
-            });
-
-            // Sort by timestamp if available, otherwise keep order
-            allMessages.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
-
-            const merged = allMessages.map(m => `**${m.role}** ${m.source ? `(${m.source})` : ''}: ${m.text}`).join('\n\n');
-            await navigator.clipboard.writeText(merged);
-            toast(`Merged ${allMessages.length} messages from ${selectedIds.size + 1} conversations!`);
-            modal.remove();
-          });
-
-          modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
-        });
-        const cleanupCard = createInsightCard('Clean & Organize', 'Fix formatting and clean messy conversations', '🧹', 'Remove duplicates, fix spacing, normalize markdown', async () => {
-          const msgs = await scanChat();
-          if (!msgs || msgs.length === 0) { toast('No conversation to clean'); return; }
-
-          const { cleaned, stats } = cleanConversation(msgs);
-          if (stats.saved === 0) {
-            toast('✨ Conversation is already clean!');
-          } else {
-            renderCleanupPreview(msgs, cleaned, stats);
-            toast(`Removed ${stats.saved} redundant message${stats.saved > 1 ? 's' : ''}`);
           }
         });
+        toolsGrid.appendChild(mediaCard);
 
-        [continueCard, extractCard, diagramCard, mediaCard, mergeCard, cleanupCard].forEach(card => insightsGrid.appendChild(card));
-        insightsContent.appendChild(insightsGrid);
+        // 2. Merge Chats
+        const mergeCard = createToolCard('🔗', 'Merge Chats', 'Combine saved conversations');
+        mergeCard.addEventListener('click', async () => {
+          const saved = await loadConversationsAsync();
+          if (!saved || saved.length === 0) {
+            showToolResult('<div style="text-align:center;padding:20px;color:var(--cb-subtext);">No saved conversations to merge.<br><br>Scan and save some chats first.</div>', '🔗 Merge Chats');
+            return;
+          }
 
-        debugLog('[Insights Hub] Render complete');
+          const listHTML = saved.slice(0, 8).map((conv, idx) => {
+            const count = conv.conversation?.length || conv.messages?.length || 0;
+            const date = new Date(conv.ts || Date.now()).toLocaleDateString();
+            return `<label style="display:flex;align-items:center;gap:8px;padding:8px;background:var(--cb-bg);border:1px solid var(--cb-border);border-radius:6px;cursor:pointer;margin-bottom:6px;">
+              <input type="checkbox" class="merge-check" data-idx="${idx}" style="cursor:pointer;">
+              <div style="flex:1;overflow:hidden;">
+                <div style="font-size:11px;color:var(--cb-white);font-weight:500;">${conv.platform || 'Unknown'} - ${count} msgs</div>
+                <div style="font-size:9px;color:var(--cb-subtext);">${date}</div>
+              </div>
+            </label>`;
+          }).join('');
+
+          showToolResult(`
+            <div style="margin-bottom:10px;font-size:11px;color:var(--cb-subtext);">Select conversations to merge:</div>
+            <div style="max-height:200px;overflow-y:auto;">${listHTML}</div>
+            <button id="cb-merge-go" style="margin-top:12px;width:100%;padding:8px;background:rgba(0,180,255,0.2);border:1px solid rgba(0,180,255,0.4);border-radius:6px;color:var(--cb-white);cursor:pointer;">🔗 Merge Selected</button>
+          `, '🔗 Merge Chats');
+
+          const mergeBtn = toolResultArea.querySelector('#cb-merge-go');
+          if (mergeBtn) {
+            mergeBtn.addEventListener('click', async () => {
+              const checks = toolResultArea.querySelectorAll('.merge-check:checked');
+              if (checks.length === 0) { toast('Select at least one conversation'); return; }
+
+              const allMessages = [];
+              checks.forEach(chk => {
+                const idx = parseInt(chk.dataset.idx);
+                const conv = saved[idx];
+                const msgs = conv.conversation || conv.messages || [];
+                allMessages.push(...msgs.map(m => ({ ...m, source: conv.platform })));
+              });
+
+              const merged = allMessages.map(m => `${m.role}: ${m.text}`).join('\n\n');
+              await navigator.clipboard.writeText(merged);
+              toast(`Merged ${allMessages.length} messages copied!`);
+              toolResultArea.style.display = 'none';
+            });
+          }
+        });
+        toolsGrid.appendChild(mergeCard);
+
+        // 3. Clean & Organize
+        const cleanCard = createToolCard('🧹', 'Clean & Organize', 'Remove duplicates, fix formatting');
+        cleanCard.addEventListener('click', async () => {
+          const msgs = await scanChat();
+          if (!msgs || msgs.length === 0) {
+            showToolResult('<div style="text-align:center;padding:20px;color:var(--cb-subtext);">No conversation to clean.<br><br>Scan a chat first.</div>', '🧹 Clean & Organize');
+            return;
+          }
+
+          const { cleaned, stats } = cleanConversation(msgs);
+
+          showToolResult(`
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;">
+              <div style="text-align:center;padding:8px;background:var(--cb-bg);border-radius:6px;">
+                <div style="font-size:18px;font-weight:700;color:var(--cb-white);">${stats.original}</div>
+                <div style="font-size:9px;color:var(--cb-subtext);">Original</div>
+              </div>
+              <div style="text-align:center;padding:8px;background:var(--cb-bg);border-radius:6px;">
+                <div style="font-size:18px;font-weight:700;color:#66ff66;">${stats.cleaned}</div>
+                <div style="font-size:9px;color:var(--cb-subtext);">Cleaned</div>
+              </div>
+              <div style="text-align:center;padding:8px;background:var(--cb-bg);border-radius:6px;">
+                <div style="font-size:18px;font-weight:700;color:#ff6666;">${stats.saved}</div>
+                <div style="font-size:9px;color:var(--cb-subtext);">Removed</div>
+              </div>
+            </div>
+            <div style="font-size:11px;color:var(--cb-subtext);margin-bottom:8px;">
+              ${stats.duplicates} duplicates • ${stats.emptyRemoved} empty messages removed
+            </div>
+            <button id="cb-clean-copy" style="width:100%;padding:8px;background:rgba(0,180,255,0.2);border:1px solid rgba(0,180,255,0.4);border-radius:6px;color:var(--cb-white);cursor:pointer;">📋 Copy Cleaned Version</button>
+          `, '🧹 Clean & Organize');
+
+          const copyBtn = toolResultArea.querySelector('#cb-clean-copy');
+          if (copyBtn) {
+            copyBtn.addEventListener('click', async () => {
+              const text = cleaned.map(m => `${m.role}: ${m.text}`).join('\n\n');
+              await navigator.clipboard.writeText(text);
+              toast('Cleaned conversation copied!');
+            });
+          }
+        });
+        toolsGrid.appendChild(cleanCard);
+
+        // 4. Export All
+        const exportCard = createToolCard('📥', 'Export All', 'Download all saved chats');
+        exportCard.addEventListener('click', async () => {
+          const convs = await loadConversationsAsync();
+          if (!convs || convs.length === 0) {
+            toast('No conversations to export');
+            return;
+          }
+          const data = JSON.stringify(convs, null, 2);
+          const blob = new Blob([data], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `chatbridge-export-${new Date().toISOString().slice(0, 10)}.json`;
+          a.click();
+          URL.revokeObjectURL(url);
+          toast(`Exported ${convs.length} conversations`);
+        });
+        toolsGrid.appendChild(exportCard);
+
+        // 5. Extract Content
+        const extractCard = createToolCard('📋', 'Extract Content', 'Get code, links, action items');
+        extractCard.addEventListener('click', async () => {
+          const chatText = await getConversationText();
+          if (!chatText || chatText.length < 20) {
+            showToolResult('<div style="text-align:center;padding:20px;color:var(--cb-subtext);">No conversation found.<br><br>Scan a chat first.</div>', '📋 Extract Content');
+            return;
+          }
+
+          showToolResult('<div style="text-align:center;padding:20px;"><div class="cb-spinner"></div><div style="margin-top:8px;color:var(--cb-subtext);">Extracting...</div></div>', '📋 Extract Content');
+
+          try {
+            const result = await callGeminiAsync({
+              action: 'prompt',
+              text: `Extract key content from this conversation in a concise format:
+- Action Items (tasks/todos)
+- Code Snippets (if any)
+- Key Decisions
+- Important Links
+
+Conversation:
+${chatText.slice(0, 6000)}`
+            });
+
+            if (result && result.ok && result.result) {
+              const content = toolResultArea.querySelector('#cb-tool-result-content');
+              content.innerHTML = `
+                <div style="white-space:pre-wrap;font-size:11px;line-height:1.5;color:var(--cb-subtext);">${result.result}</div>
+                <button id="cb-extract-copy" style="margin-top:12px;width:100%;padding:8px;background:rgba(0,180,255,0.2);border:1px solid rgba(0,180,255,0.4);border-radius:6px;color:var(--cb-white);cursor:pointer;">📋 Copy</button>
+              `;
+              const copyBtn = content.querySelector('#cb-extract-copy');
+              if (copyBtn) {
+                copyBtn.addEventListener('click', async () => {
+                  await navigator.clipboard.writeText(result.result);
+                  toast('Copied!');
+                });
+              }
+            }
+          } catch (e) { toast('Extraction failed'); }
+        });
+        toolsGrid.appendChild(extractCard);
+
+        // 6. Continue With
+        const continueCard = createToolCard('🔄', 'Continue With', 'Open chat in another AI');
+        continueCard.addEventListener('click', async () => {
+          const msgs = await scanChat();
+          if (!msgs || msgs.length === 0) {
+            toast('No conversation to continue');
+            return;
+          }
+
+          showToolResult(`
+            <div style="margin-bottom:10px;font-size:11px;color:var(--cb-subtext);">Select target AI:</div>
+            <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;">
+              <button class="cb-continue-btn" data-target="ChatGPT" style="padding:10px;background:var(--cb-bg);border:1px solid var(--cb-border);border-radius:6px;color:var(--cb-white);cursor:pointer;">ChatGPT</button>
+              <button class="cb-continue-btn" data-target="Claude" style="padding:10px;background:var(--cb-bg);border:1px solid var(--cb-border);border-radius:6px;color:var(--cb-white);cursor:pointer;">Claude</button>
+              <button class="cb-continue-btn" data-target="Gemini" style="padding:10px;background:var(--cb-bg);border:1px solid var(--cb-border);border-radius:6px;color:var(--cb-white);cursor:pointer;">Gemini</button>
+              <button class="cb-continue-btn" data-target="Copilot" style="padding:10px;background:var(--cb-bg);border:1px solid var(--cb-border);border-radius:6px;color:var(--cb-white);cursor:pointer;">Copilot</button>
+            </div>
+          `, '🔄 Continue With');
+
+          toolResultArea.querySelectorAll('.cb-continue-btn').forEach(btn => {
+            btn.addEventListener('click', async () => {
+              const target = btn.dataset.target;
+              const convText = msgs.map(m => `${m.role}: ${m.text}`).join('\n\n');
+              const summary = `[Continued from previous conversation]\n\n${convText.slice(0, 4000)}\n\nPlease continue from where we left off.`;
+              const url = getTargetModelUrl(target);
+              if (url) {
+                await navigator.clipboard.writeText(summary);
+                window.open(url, '_blank');
+                toast(`Opening ${target}. Context copied!`);
+                toolResultArea.style.display = 'none';
+              }
+            });
+          });
+        });
+        toolsGrid.appendChild(continueCard);
+
+        insightsContent.appendChild(toolsGrid);
+        debugLog('[Insights Hub] Render complete (inline)');
       } catch (e) {
         debugLog('[Insights Hub] Render error:', e);
         toast('Failed to render Insights Hub');
@@ -11400,177 +11375,9 @@ ${chatText.slice(0, 12000)}`;
 
     btnCloseAgent.addEventListener('click', () => { try { agentView.classList.remove('cb-view-active'); } catch (e) { } });
 
-    // ============================================
-    // INSIGHTS: Smart Workspace Tools
-    // ============================================
-    btnInsights.addEventListener('click', async () => {
-      try {
-        closeAllViews();
-        insightsView.classList.add('cb-view-active');
-
-        const content = insightsView.querySelector('#cb-insights-content');
-        if (!content) return;
-
-        // Load conversations for stats
-        const convs = await loadConversationsAsync();
-        const totalConvs = convs.length;
-        const totalMsgs = convs.reduce((sum, c) => sum + (c.conversation?.length || 0), 0);
-        const platforms = [...new Set(convs.map(c => c.platform || 'Unknown'))];
-
-        // Render insights dashboard
-        content.innerHTML = `
-          <style>
-            .cb-insights-card { background:rgba(255,255,255,0.03); border:1px solid var(--cb-border); border-radius:10px; padding:16px; margin-bottom:12px; transition:all 0.2s; cursor:pointer; }
-            .cb-insights-card:hover { background:rgba(255,255,255,0.06); border-color:rgba(0,180,255,0.4); }
-            .cb-insights-card-title { font-size:15px; font-weight:600; color:var(--cb-white); margin-bottom:6px; display:flex; align-items:center; gap:8px; }
-            .cb-insights-card-desc { font-size:12px; color:var(--cb-subtext); line-height:1.5; }
-            .cb-stats-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; margin-bottom:20px; }
-            .cb-stat-box { background:linear-gradient(135deg,rgba(0,180,255,0.1),rgba(140,30,255,0.1)); border:1px solid rgba(0,180,255,0.2); border-radius:10px; padding:16px; text-align:center; }
-            .cb-stat-value { font-size:28px; font-weight:700; color:var(--cb-white); }
-            .cb-stat-label { font-size:11px; color:var(--cb-subtext); text-transform:uppercase; letter-spacing:0.5px; margin-top:4px; }
-          </style>
-          
-          <div class="cb-stats-grid">
-            <div class="cb-stat-box">
-              <div class="cb-stat-value">${totalConvs}</div>
-              <div class="cb-stat-label">Saved Chats</div>
-            </div>
-            <div class="cb-stat-box">
-              <div class="cb-stat-value">${totalMsgs}</div>
-              <div class="cb-stat-label">Total Messages</div>
-            </div>
-            <div class="cb-stat-box">
-              <div class="cb-stat-value">${platforms.length}</div>
-              <div class="cb-stat-label">Platforms</div>
-            </div>
-            <div class="cb-stat-box">
-              <div class="cb-stat-value">${Math.round(totalMsgs / Math.max(1, totalConvs))}</div>
-              <div class="cb-stat-label">Avg Messages</div>
-            </div>
-          </div>
-          
-          <div style="font-size:12px;font-weight:600;color:var(--cb-accent-primary);margin-bottom:12px;text-transform:uppercase;letter-spacing:0.5px;">Workspace Tools</div>
-          
-          <div class="cb-insights-card" id="cb-tool-extract">
-            <div class="cb-insights-card-title">📋 Extract Key Content</div>
-            <div class="cb-insights-card-desc">Extract code snippets, links, action items, and key decisions from your current conversation.</div>
-          </div>
-          
-          <div class="cb-insights-card" id="cb-tool-compare">
-            <div class="cb-insights-card-title">⚖️ Compare Responses</div>
-            <div class="cb-insights-card-desc">Compare how different AI models responded to similar prompts. Find strengths and differences.</div>
-          </div>
-          
-          <div class="cb-insights-card" id="cb-tool-merge">
-            <div class="cb-insights-card-title">🔗 Merge Conversations</div>
-            <div class="cb-insights-card-desc">Combine multiple related conversations into a single comprehensive thread.</div>
-          </div>
-          
-          <div class="cb-insights-card" id="cb-tool-export">
-            <div class="cb-insights-card-title">📥 Export All Data</div>
-            <div class="cb-insights-card-desc">Download all your saved conversations as a JSON file for backup or external use.</div>
-          </div>
-        `;
-
-        // Extract handler
-        const extractCard = content.querySelector('#cb-tool-extract');
-        if (extractCard) {
-          extractCard.addEventListener('click', async () => {
-            const chatText = await getConversationText();
-            if (!chatText || chatText.length < 20) {
-              toast('No conversation found. Scan first.');
-              return;
-            }
-
-            toast('Extracting content...');
-            try {
-              const extractPrompt = `Extract and categorize key content from this conversation. Output in this format:
-
-## 📝 Action Items
-- [list any tasks, todos, or action items]
-
-## 💻 Code Snippets
-[list any code with language markers]
-
-## 🔗 Links & References
-- [list any URLs or references mentioned]
-
-## 💡 Key Decisions
-- [list any decisions made or conclusions reached]
-
-## ❓ Unanswered Questions
-- [list any open questions]
-
-Conversation:
-${chatText.slice(0, 10000)}`;
-
-              const result = await callGeminiAsync({ action: 'prompt', text: extractPrompt });
-              if (result && result.ok && result.result) {
-                const modal = document.createElement('div');
-                modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);z-index:999999;display:flex;align-items:center;justify-content:center;padding:40px;';
-                modal.innerHTML = `
-                  <div style="background:var(--cb-bg);border:1px solid var(--cb-border);border-radius:12px;max-width:700px;width:100%;max-height:80vh;overflow:auto;padding:24px;">
-                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
-                      <h3 style="margin:0;font-size:18px;color:var(--cb-white);">📋 Extracted Content</h3>
-                      <div style="display:flex;gap:8px;">
-                        <button class="cb-btn" id="cb-copy-extract" style="padding:6px 12px;">📋 Copy</button>
-                        <button class="cb-btn" style="padding:4px 12px;" onclick="this.closest('div[style*=fixed]').remove()">✕</button>
-                      </div>
-                    </div>
-                    <div style="white-space:pre-wrap;font-size:14px;line-height:1.7;color:var(--cb-subtext);" id="cb-extract-content">${result.result}</div>
-                  </div>
-                `;
-                const copyBtn = modal.querySelector('#cb-copy-extract');
-                if (copyBtn) {
-                  copyBtn.addEventListener('click', () => {
-                    navigator.clipboard.writeText(result.result).then(() => toast('Copied!')).catch(() => { });
-                  });
-                }
-                modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
-                document.body.appendChild(modal);
-              }
-            } catch (e) { toast('Extraction failed'); debugLog('extract error', e); }
-          });
-        }
-
-        // Export handler
-        const exportCard = content.querySelector('#cb-tool-export');
-        if (exportCard) {
-          exportCard.addEventListener('click', async () => {
-            try {
-              const convs = await loadConversationsAsync();
-              const data = JSON.stringify(convs, null, 2);
-              const blob = new Blob([data], { type: 'application/json' });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement('a');
-              a.href = url;
-              a.download = `chatbridge-export-${new Date().toISOString().slice(0, 10)}.json`;
-              a.click();
-              URL.revokeObjectURL(url);
-              toast(`Exported ${convs.length} conversations`);
-            } catch (e) { toast('Export failed'); debugLog('export error', e); }
-          });
-        }
-
-        // Compare handler (placeholder)
-        const compareCard = content.querySelector('#cb-tool-compare');
-        if (compareCard) {
-          compareCard.addEventListener('click', () => {
-            toast('Compare: Coming soon! Save responses from different AI platforms first.');
-          });
-        }
-
-        // Merge handler (placeholder)
-        const mergeCard = content.querySelector('#cb-tool-merge');
-        if (mergeCard) {
-          mergeCard.addEventListener('click', () => {
-            toast('Merge: Coming soon! Select multiple conversations from History first.');
-          });
-        }
-      } catch (e) { toast('Failed to open Insights'); debugLog('open insights view', e); }
-    });
-
+    // Insights close handler (main handler is at renderInsightsHub)
     btnCloseInsights.addEventListener('click', () => { try { insightsView.classList.remove('cb-view-active'); } catch (e) { } });
+
 
     // Simple in-memory cache and batched storage writes for responsiveness
     const __cbConvCache = { data: [], ts: 0 };
