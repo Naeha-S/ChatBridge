@@ -5003,11 +5003,33 @@ Respond with JSON only:
         `;
         insightsContent.appendChild(statsSection);
 
-        // Tools label
-        const toolsLabel = document.createElement('div');
-        toolsLabel.style.cssText = 'font-size:11px;font-weight:600;color:var(--cb-accent-primary);margin:8px 8px 12px;text-transform:uppercase;letter-spacing:0.5px;';
-        toolsLabel.textContent = 'Workspace Tools';
-        insightsContent.appendChild(toolsLabel);
+        // Tools label with refresh button
+        const toolsHeader = document.createElement('div');
+        toolsHeader.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:0 8px;margin-bottom:12px;';
+        toolsHeader.innerHTML = `
+          <div style="font-size:11px;font-weight:600;color:var(--cb-accent-primary);text-transform:uppercase;letter-spacing:0.5px;">Workspace Tools</div>
+          <button id="cb-insights-refresh" style="background:rgba(0,180,255,0.1);border:1px solid rgba(0,180,255,0.3);border-radius:6px;padding:4px 10px;font-size:10px;color:var(--cb-white);cursor:pointer;">🔄 Refresh</button>
+        `;
+        insightsContent.appendChild(toolsHeader);
+
+        // Refresh button handler - clears cache and re-renders
+        const refreshBtn = toolsHeader.querySelector('#cb-insights-refresh');
+        if (refreshBtn) {
+          refreshBtn.addEventListener('click', async () => {
+            try {
+              refreshBtn.textContent = '⏳ Loading...';
+              refreshBtn.disabled = true;
+              // Clear cache to force fresh load
+              __cbConvCache.data = [];
+              __cbConvCache.ts = 0;
+              await renderInsightsHub();
+              toast('✓ Refreshed');
+            } catch (e) {
+              toast('Refresh failed');
+              debugLog('Insights refresh error', e);
+            }
+          });
+        }
 
         // Content area for inline tool results
         const toolResultArea = document.createElement('div');
