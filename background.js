@@ -874,10 +874,15 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         try {
           chrome.storage.local.get(['chatbridge:conversations'], data => {
             try {
-              const arr = Array.isArray(data['chatbridge:conversations']) ? data['chatbridge:conversations'] : [];
+              let arr = Array.isArray(data['chatbridge:conversations']) ? data['chatbridge:conversations'] : [];
               // Put newest first
               arr.unshift(obj);
-              // Keep a reasonable cap (optional) — here we keep full list but could trim
+              // MEMORY OPTIMIZATION: Keep max 50 conversations
+              const MAX_CONVERSATIONS = 50;
+              if (arr.length > MAX_CONVERSATIONS) {
+                arr = arr.slice(0, MAX_CONVERSATIONS);
+                console.log(`[ChatBridge] Trimmed conversations to ${MAX_CONVERSATIONS} (was ${arr.length})`);
+              }
               chrome.storage.local.set({ 'chatbridge:conversations': arr });
             } catch (e) { /* ignore mirror errors */ }
           });

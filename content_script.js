@@ -6598,7 +6598,7 @@ Analyze the conversations and extract structured context in 6 categories. Output
 • User is working on a project
 • [Current approach or direction]`;
 
-        const res = await callGeminiAsync({ action: 'prompt', text: prompt, length: 'short' });
+        const res = await callLlamaAsync({ action: 'prompt', text: prompt });
 
         if (res && res.ok) {
           const rawOutput = res.result || '';
@@ -7091,7 +7091,7 @@ Analyze the conversations and extract structured context in 6 categories. Output
           if (userPrompt.length > 100 || /\b(basically|kind of|like|sort of)\b/i.test(userPrompt)) {
             resultsDiv.innerHTML = '<div style="text-align:center;padding:12px;"><div class="cb-spinner" style="display:inline-block;"></div><div style="margin-top:8px;font-size:12px;">Clarifying intent...</div></div>';
             const clarifyPrompt = `Rewrite as clear instruction (<15 words): "${userPrompt.slice(0, 200)}"`;
-            const clarifyRes = await callGeminiAsync({ action: 'prompt', text: clarifyPrompt, length: 'short' });
+            const clarifyRes = await callLlamaAsync({ action: 'prompt', text: clarifyPrompt });
             if (clarifyRes?.ok && clarifyRes.result && clarifyRes.result.length < userPrompt.length) {
               clarifiedPrompt = clarifyRes.result.trim().replace(/^["']|["']$/g, '');
               debugLog('[EchoSynth] Intent clarified:', clarifiedPrompt);
@@ -7123,10 +7123,10 @@ Analyze the conversations and extract structured context in 6 categories. Output
           tonePreview.textContent = `Preview: ${tone}`;
 
           // Query both Gemini and ChatGPT in parallel for true multi-AI synthesis
-          const geminiPromise = callGeminiAsync({ action: 'prompt', text: enhancedPrompt, length: 'medium' }).catch(e => ({ ok: false, error: e.message }));
+          const llamaPromise = callLlamaAsync({ action: 'prompt', text: enhancedPrompt }).catch(e => ({ ok: false, error: e.message }));
           const openaiPromise = callOpenAIAsync({ text: enhancedPrompt }).catch(e => ({ ok: false, error: e.message }));
 
-          const [geminiRes, openaiRes] = await Promise.all([geminiPromise, openaiPromise]);
+          const [llamaRes, openaiRes] = await Promise.all([llamaPromise, openaiPromise]);
 
           // ═══ ENHANCEMENT 3: Ramble Filter ═══
           // Clean up AI responses locally before synthesis
@@ -7142,13 +7142,13 @@ Analyze the conversations and extract structured context in 6 categories. Output
 
           // Collect successful responses with ramble filtering
           const responses = [];
-          if (geminiRes && geminiRes.ok && geminiRes.result) {
-            const modelName = geminiRes.model || 'Gemini';
-            const cleaned = cleanResponse(geminiRes.result);
+          if (llamaRes && llamaRes.ok && llamaRes.result) {
+            const modelName = 'Llama 3.1';
+            const cleaned = cleanResponse(llamaRes.result);
             responses.push({
-              source: `${modelName.replace('gemini-', 'Gemini ')}`,
+              source: modelName,
               answer: cleaned,
-              raw: geminiRes.result
+              raw: llamaRes.result
             });
           }
           if (openaiRes && openaiRes.ok && openaiRes.result) {
@@ -7231,7 +7231,7 @@ ChatGPT: ${responses[1]?.answer?.slice(0, 500) || 'N/A'}...
 
 Outline (bullet points only):`;
 
-            const outlineRes = await callGeminiAsync({ action: 'prompt', text: outlinePrompt, length: 'short' });
+            const outlineRes = await callLlamaAsync({ action: 'prompt', text: outlinePrompt });
             const outline = outlineRes?.result || '• Main points\n• Key insights\n• Conclusion';
 
             // Stage 2: Expand with context
@@ -7315,7 +7315,7 @@ ${responses[1]?.answer || 'Not available'}
 **Begin Your Synthesized Answer**:`;
 
 
-            const expandRes = await callGeminiAsync({ action: 'prompt', text: expandPrompt, length: 'comprehensive' });
+            const expandRes = await callLlamaAsync({ action: 'prompt', text: expandPrompt });
             const expanded = expandRes?.result || responses.map(r => `**${r.source}:**\n${r.answer}`).join('\n\n---\n\n');
 
             // Stage 3: Refine and structure
@@ -7326,7 +7326,7 @@ ${expanded}
 
 Refined Answer (final, polished):`;
 
-            const refineRes = await callGeminiAsync({ action: 'prompt', text: refinePrompt, length: 'comprehensive' });
+            const refineRes = await callLlamaAsync({ action: 'prompt', text: refinePrompt });
             finalAnswer = refineRes?.result || expanded;
 
           } else {
@@ -7338,7 +7338,7 @@ Original: ${responses[0].answer}
 RAG Context: ${ragContext}
 
 Enhanced Answer:`;
-            const enhanceRes = await callGeminiAsync({ action: 'prompt', text: enhancePrompt, length: 'comprehensive' });
+            const enhanceRes = await callLlamaAsync({ action: 'prompt', text: enhancePrompt });
             finalAnswer = enhanceRes?.result || responses[0].answer;
           }
 
@@ -7460,7 +7460,7 @@ Keep it concise and actionable. Use Markdown formatting.
 Conversation:
 ${chatText.slice(0, 3000)}`;
 
-          const res = await callGeminiAsync({ action: 'prompt', text: prompt, length: 'medium' });
+          const res = await callLlamaAsync({ action: 'prompt', text: prompt });
 
           if (res && res.ok) {
             resultsDiv.innerHTML = `<div style="white-space:pre-wrap;line-height:1.6;">${res.result || 'Analysis complete'}</div>`;
@@ -7550,7 +7550,7 @@ Format output as:
 ## 📝 Recommended Action
 [specific context to inject into chat]`;
 
-          const res = await callGeminiAsync({ action: 'prompt', text: prompt, length: 'long' });
+          const res = await callLlamaAsync({ action: 'prompt', text: prompt });
 
           if (res && res.ok && res.result) {
             // Render result
