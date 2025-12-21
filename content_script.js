@@ -6156,76 +6156,17 @@ Respond with JSON only:
         agentContent.innerHTML = '';
         debugLog('Rendering Agent Hub...');
 
-        // MCP Connection Status Banner
-        const mcpStatus = document.createElement('div');
-        mcpStatus.style.cssText = 'margin:12px;padding:10px 14px;background:rgba(0,180,255,0.08);border:1px solid rgba(0,180,255,0.25);border-radius:10px;display:flex;align-items:center;gap:10px;font-size:13px;';
-
-        const statusIcon = document.createElement('span');
-        statusIcon.style.cssText = 'font-size:18px;';
-
-        const statusText = document.createElement('div');
-        statusText.style.cssText = 'flex:1;';
-
-        // Check MCPBridge availability
-        if (typeof window.MCPBridge !== 'undefined') {
-          try {
-            const stats = window.MCPBridge.getStats();
-            const resourceCount = stats.registeredResources.length;
-            if (resourceCount > 0) {
-              statusIcon.textContent = '✅';
-              statusText.innerHTML = `<b>MCP Connected</b><br/><span style="font-size:11px;opacity:0.8;">${resourceCount} resources: ${stats.registeredResources.join(', ')}</span>`;
-            } else {
-              statusIcon.textContent = '⚠️';
-              statusText.innerHTML = `<b>MCP Initialized</b><br/><span style="font-size:11px;opacity:0.8;">No resources registered yet</span>`;
-            }
-          } catch (e) {
-            statusIcon.textContent = '⚠️';
-            statusText.innerHTML = `<b>MCP Loaded</b><br/><span style="font-size:11px;opacity:0.8;">Status check failed</span>`;
-          }
-        } else {
-          statusIcon.textContent = '❌';
-          statusText.innerHTML = `<b>MCP Not Available</b><br/><span style="font-size:11px;opacity:0.8;">mcpBridge.js not loaded</span>`;
-        }
-
-        const testBtn = document.createElement('button');
-        testBtn.className = 'cb-btn';
-        testBtn.style.cssText = 'padding:6px 12px;font-size:11px;';
-        testBtn.textContent = 'Test';
-        testBtn.addEventListener('click', async () => {
-          try {
-            if (typeof window.MCPBridge === 'undefined') {
-              toast('MCP Bridge not available');
-              return;
-            }
-            const stats = window.MCPBridge.getStats();
-            console.log('[MCP Test] Stats:', stats);
-            toast(`MCP: ${stats.registeredResources.length} resources`);
-          } catch (e) {
-            console.error('[MCP Test] Error:', e);
-            toast('MCP test failed: ' + e.message);
-          }
-        });
-
-        mcpStatus.appendChild(statusIcon);
-        mcpStatus.appendChild(statusText);
-        mcpStatus.appendChild(testBtn);
-        agentContent.appendChild(mcpStatus);
-
-        // Gemini Model Status Banner
-        const geminiStatus = document.createElement('div');
-        geminiStatus.style.cssText = 'margin:12px;padding:10px 14px;background:rgba(138,43,226,0.08);border:1px solid rgba(138,43,226,0.25);border-radius:10px;display:flex;align-items:center;gap:10px;font-size:13px;';
-
-        const geminiIcon = document.createElement('span');
-        geminiIcon.style.cssText = 'font-size:18px;';
-        geminiIcon.textContent = '✨';
-
-        const geminiText = document.createElement('div');
-        geminiText.style.cssText = 'flex:1;';
-        geminiText.innerHTML = `<b>Gemini AI</b><br/><span style="font-size:11px;opacity:0.8;">Auto-fallback: 2.5-pro → 2.0-flash → 2.5-flash → lite → exp</span>`;
-
-        geminiStatus.appendChild(geminiIcon);
-        geminiStatus.appendChild(geminiText);
-        agentContent.appendChild(geminiStatus);
+        // AI Status Header (simplified)
+        const aiStatus = document.createElement('div');
+        aiStatus.style.cssText = 'margin:12px;padding:14px 16px;background:linear-gradient(135deg,rgba(138,43,226,0.1),rgba(0,180,255,0.1));border:1px solid rgba(138,43,226,0.25);border-radius:12px;display:flex;align-items:center;gap:12px;';
+        aiStatus.innerHTML = `
+          <span style="font-size:24px;">🤖</span>
+          <div style="flex:1;">
+            <div style="font-weight:600;color:var(--cb-white);font-size:14px;">AI Agent Hub</div>
+            <div style="font-size:11px;color:var(--cb-subtext);margin-top:2px;">Powered by Gemini • Analyze, organize, and enhance your conversations</div>
+          </div>
+        `;
+        agentContent.appendChild(aiStatus);
 
         // Agent Cards Grid
         const agentsGrid = document.createElement('div');
