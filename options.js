@@ -88,3 +88,20 @@ btnSaveTheme.addEventListener('click', () => {
     alert('Theme saved.');
   });
 });
+
+// --- Luxury Mode toggle ---
+const luxuryToggle = document.getElementById('luxury-mode-toggle');
+const btnSaveLuxury = document.getElementById('btn-save-luxury');
+
+// Load saved value
+try {
+  const saved = localStorage.getItem('chatbridge:luxury_mode');
+  luxuryToggle.checked = saved === 'true';
+} catch (e) {}
+
+btnSaveLuxury.addEventListener('click', () => {
+  try {
+    localStorage.setItem('chatbridge:luxury_mode', String(luxuryToggle.checked));
+    alert('Luxury Mode ' + (luxuryToggle.checked ? 'enabled!' : 'disabled.'));
+  } catch (e) { alert('Failed to save.'); }
+});

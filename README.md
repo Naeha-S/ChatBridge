@@ -94,6 +94,44 @@ Works across 10 major AI platforms:
 * Discovers indirect links (A→B→C) between ideas
 * Depth-first search with path scoring
 
+### 💡 Insight Finder (NEW)
+
+* **Semantic spotlight** for key chat elements
+* Client-side extraction (100-300ms, no AI calls)
+* Categories:
+  - **Comparisons** ⚖️ — "vs", "better than", "difference between"
+  - **Contradictions** ⚠️ — "however", "but", "incorrect", conflicts
+  - **Requirements** ✓ — "must", "should", "need to", imperatives
+  - **Todos** 📋 — checkboxes, action items, task markers
+  - **Deprecated** 🗑️ — "obsolete", "no longer", "replaced by"
+* **Inspector-style UI**: Click snippets to scroll to source message
+* **Keyboard shortcut**: `Ctrl+Shift+F` (Windows/Linux) or `Cmd+Shift+F` (macOS)
+
+### 🖼️ Image Vault (NEW)
+
+* **Visual memory tool** - Never lose track of images in conversations
+* Automatically detects and stores:
+  - User uploads
+  - AI-generated images
+  - Markdown images, base64, data URLs
+* **Smart deduplication** - Hash-based to prevent duplicates
+* **Persistent storage** - IndexedDB keeps images across sessions
+* **Quick actions**: Copy URL, expand full-size, jump to message
+* **Privacy-first** - 100% local storage, no cloud sync
+
+### ✨ Prompt Designer (NEW)
+
+* **AI-powered next-step generator** - Never get stuck wondering what to ask
+* Analyzes conversation context to suggest 5 grounded prompts:
+  - ❓ **Clarification** - Ask about ambiguities
+  - ⚡ **Improvement** - Suggest enhancements
+  - 🔭 **Expansion** - Explore related areas
+  - 🧠 **Critical Thinking** - Challenge assumptions
+  - 💡 **Creative Alternative** - Propose different approaches
+* **One-click actions**: Copy or send directly to chat
+* **Intelligent fallback** - Works even without API key
+* **No hallucinations** - Grounded in actual conversation content
+
 ### 🔧 Smart Query
 
 * Semantic search across all chat histories
@@ -140,16 +178,35 @@ cd ChatBridge
 ## 📖 How to Use
 
 1. **Scan a Conversation**
-   Open any AI platform → click ⚡ → “Scan Chat”
+   Open any AI platform → click ⚡ → "Scan Chat"
 
 2. **Transform with AI Tools**
    Use **Sync Tone**, **Summarize**, **Rewrite**, or **Translate**
 
-3. **Explore Connections**
+3. **Find Key Insights** ⚡NEW
+   Press `Ctrl+Shift+F` or click "Insight Finder" in Smart Workspace
+   - Instantly extract comparisons, requirements, todos, and more
+   - Click snippets to jump to source messages
+   - No AI calls, 100% client-side and fast
+
+4. **Explore Connections**
    View **Connections**, **Graph**, or run a **Smart Query**
 
-4. **Restore Conversations**
-   Choose saved conversation → click “Restore” → auto-paste into chat
+5. **Restore Conversations**
+   Choose saved conversation → click "Restore" → auto-paste into chat
+
+---
+
+## ⌨️ Keyboard Shortcuts
+
+| Shortcut | Action | Description |
+|----------|--------|-------------|
+| `Ctrl+Shift+S` | Quick Scan | Open sidebar and scan current chat |
+| `Ctrl+Shift+H` | Toggle Sidebar | Show/hide ChatBridge panel |
+| `Ctrl+Shift+F` | **Insight Finder** ⚡NEW | Open semantic spotlight tool |
+| `Ctrl+Shift+I` | Insert to Chat | Paste processed text into chat input |
+
+*(Replace `Ctrl` with `Cmd` on macOS)*
 
 ---
 
@@ -222,18 +279,16 @@ Default = 1 request/sec; add personal Gemini key for more.
 
 ---
 
-## 📚 Documentation
+## 📚 Documentation Index
 
-**Getting Started:**
-- [Quick Start Guide](documentation/QUICK_START.md) - Installation and basic usage
-- [Features Overview](documentation/FEATURES.md) - Complete feature list and use cases
-- [Troubleshooting](documentation/TROUBLESHOOTING.md) - Common issues and solutions
-
-**Technical:**
-- [Architecture](documentation/ARCHITECTURE.md) - System design and data flow
-- [API Reference](documentation/API_REFERENCE.md) - Complete API documentation
-- [Developer Guide](documentation/DEVELOPER_GUIDE.md) - Extension development guide
-- [Security & Privacy](documentation/SECURITY.md) - Security model and best practices
+- Agentic features: Agentic_Features.md
+- ONNX: ONNX_OVERVIEW.md
+- UI/UX: UI_UX_Guide.md
+- API Reference: documentation/API_REFERENCE.md
+- Architecture: documentation/ARCHITECTURE.md
+- Quick Start: documentation/QUICK_START.md
+- Security: documentation/SECURITY.md
+- Troubleshooting: documentation/TROUBLESHOOTING.md
 
 ---
 

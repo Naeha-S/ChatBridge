@@ -4,7 +4,10 @@
   "version": "0.2.0",
   "description": "Manually scan your visible AI chat session and paste it into another AI chat. Local-only by default.",
   "permissions": ["storage", "activeTab", "scripting", "clipboardWrite", "prompt"],
-  "host_permissions": ["*://*/*"],
+  "host_permissions": [
+    "https://generativelanguage.googleapis.com/*",
+    "https://api.openai.com/*"
+  ],
   "trial_tokens": [
     "A0+TzJqk1JecJ3NCv256jrsJPr5BJVRZXEeXI/XQrwkRP7NH8QFo+JaL+ptsnb6FeHJcyI+TetN2reqjZv1ZYAQAAACPeyJvcmlnaW4iOiJjaHJvbWUtZXh0ZW5zaW9uOi8vb21qZGNla2dqamFnbm5hYWdjZmxvZGZqbWltcGJwanAiLCJmZWF0dXJlIjoiQUlQcm9tcHRBUElNdWx0aW1vZGFsSW5wdXQiLCJleHBpcnkiOjE3NzQzMTA0MDAsImlzVGhpcmRQYXJ0eSI6dHJ1ZX0="
   ],
@@ -38,7 +41,26 @@
     "*://www.bing.com/*",
     "*://meta.ai/*"
   ],
-      "js": ["adapters.js", "storage.js", "ragEngine.js", "mcpBridge.js", "content_script.js"],
+      "js": [
+        "utils/constants.js",
+        "utils/logger.js",
+        "utils/validation.js",
+        "utils/domUtils.js",
+        "utils/textUtils.js",
+        "utils/messageUtils.js",
+        "utils/translator.js",
+        "utils/rewriter.js",
+        "translatePanel.js",
+        "security.js",
+        "adapters.js",
+        "storage.js",
+        "embeddings.js",
+        "ragEngine.js",
+        "mcpBridge.js",
+        "smartFeatures.js",
+        "luxuryMode.js",
+        "content_script.js"
+      ],
       "css": ["styles.css"],
       "run_at": "document_end",
       "all_frames": false
@@ -51,6 +73,15 @@
   "web_accessible_resources": [
     {
       "resources": ["iconic.jpeg"],
+      "matches": ["<all_urls>"]
+    },
+    {
+      "resources": [
+        "vendor/*",
+        "models/*",
+        "onnx/*",
+        "onnx/**/*.wasm"
+      ],
       "matches": ["<all_urls>"]
     }
   ],
@@ -75,6 +106,13 @@
         "mac": "Command+Shift+I"
       },
       "description": "Insert processed text to chat"
+    },
+    "insight-finder": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+F",
+        "mac": "Command+Shift+F"
+      },
+      "description": "Open Insight Finder (semantic spotlight)"
     }
   }
 }

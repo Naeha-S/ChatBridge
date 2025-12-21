@@ -174,8 +174,26 @@ async function deleteEmbedding(id) {
  * @returns {Array<string>} Array of text chunks
  */
 function semanticChunk(text, chunkSize = 1200, overlap = 200) {
-  if (!text || text.length < chunkSize) {
-    return [text]; // Return whole text if too small
+  // Validate input
+  if (!text) {
+    console.warn('[RAG Chunking] No text provided');
+    return [];
+  }
+  
+  if (typeof text !== 'string') {
+    console.error('[RAG Chunking] Invalid input - expected string, got:', typeof text);
+    return [];
+  }
+  
+  if (text.length === 0) {
+    console.warn('[RAG Chunking] Empty text provided');
+    return [];
+  }
+  
+  // Return whole text if too small to chunk
+  if (text.length < chunkSize) {
+    console.log(`[RAG Chunking] Text too small (${text.length} chars), returning as single chunk`);
+    return [text];
   }
   
   const chunks = [];
@@ -202,7 +220,7 @@ function semanticChunk(text, chunkSize = 1200, overlap = 200) {
   }
   
   console.log(`[RAG Chunking] Split text (${text.length} chars) into ${chunks.length} chunks`);
-  return chunks;
+  return chunks.length > 0 ? chunks : [text]; // Fallback to single chunk if split failed
 }
 
 /**
@@ -243,116 +261,44 @@ function calculateAdaptiveWeight(metadata, queryText = '') {
 }
 
 // =============================================================================
-// Transformers.js Integration (Local Embeddings)
+// Local Embeddings via transformers.js (ChatBridgeEmbeddings)
 // =============================================================================
 
-let embeddingPipeline = null;
-let pipelineLoading = false;
-
 /**
- * Initialize the transformers.js embedding pipeline
- * Model: all-MiniLM-L6-v2 (384-dim embeddings, ~23MB)
- * Runs entirely in the browser via ONNX Runtime
- * 
- * NOTE: CDN loading disabled due to connection issues.
- * Using lightweight local TF-IDF based embedding instead.
+ * Initialize local embedding model (preload to reduce first-use latency)
  */
 async function initEmbeddingPipeline() {
-  // Skip CDN loading - use local fallback instead
-  console.log('[RAG] Using local TF-IDF based embedding (transformers.js CDN unavailable)');
-  return null;
+  try {
+    if (window.ChatBridgeEmbeddings && typeof window.ChatBridgeEmbeddings.preloadModel === 'function') {
+      await window.ChatBridgeEmbeddings.preloadModel();
+      console.log('[RAG] Local embedding model preloaded');
+    } else {
+      console.warn('[RAG] ChatBridgeEmbeddings not found; embeddings will load on first use');
+    }
+  } catch (e) {
+    console.warn('[RAG] Embedding preload failed:', e);
+  }
+  return null; // keep API stable
 }
 
 /**
- * Generate embedding for a text string
- * Uses local TF-IDF based approach as fallback when transformers.js is unavailable
- * @param {string} text - Input text
- * @returns {Promise<Float32Array|null>} Embedding vector or null if failed
+ * Generate embedding using local transformers.js pipeline
+ * @param {string} text
+ * @returns {Promise<Float32Array|null>}
  */
 async function generateEmbedding(text) {
   try {
-    if (!text || typeof text !== 'string' || text.trim().length === 0) {
-      console.warn('[RAG] Empty text provided for embedding');
-      return null;
+    if (!text || typeof text !== 'string' || !text.trim()) return null;
+    if (window.ChatBridgeEmbeddings && typeof window.ChatBridgeEmbeddings.getEmbedding === 'function') {
+      const emb = await window.ChatBridgeEmbeddings.getEmbedding(text);
+      return emb instanceof Float32Array ? emb : new Float32Array(emb || []);
     }
-    
-    // Truncate very long texts
-    const truncated = text.slice(0, 4000);
-    
-    const pipeline = await initEmbeddingPipeline();
-    if (!pipeline) {
-      // Use local TF-IDF based embedding as fallback
-      return generateLocalEmbedding(truncated);
-    }
-    
-    // Generate embedding (if transformers.js loads in future)
-    const output = await pipeline(truncated, {
-      pooling: 'mean',
-      normalize: true
-    });
-    
-    const embedding = new Float32Array(output.data);
-    console.log('[RAG] Generated embedding, dim:', embedding.length);
-    return embedding;
+    console.warn('[RAG] ChatBridgeEmbeddings.getEmbedding unavailable');
+    return null;
   } catch (e) {
-    console.error('[RAG] generateEmbedding failed:', e);
-    // Fallback to local embedding
-    return generateLocalEmbedding(text);
+    console.error('[RAG] generateEmbedding error:', e);
+    return null;
   }
-}
-
-/**
- * Generate a simple local embedding using TF-IDF inspired approach
- * Creates a 128-dimensional vector based on term frequencies and keywords
- * @param {string} text - Input text
- * @returns {Float32Array} 128-dim embedding vector
- */
-function generateLocalEmbedding(text) {
-  const dim = 128;
-  const embedding = new Float32Array(dim);
-  
-  // Normalize text
-  const normalized = text.toLowerCase().replace(/[^\w\s]/g, ' ');
-  const words = normalized.split(/\s+/).filter(w => w.length > 2);
-  
-  // Common stop words to filter out
-  const stopWords = new Set(['the', 'and', 'for', 'with', 'this', 'that', 'from', 'are', 'was', 'were', 'been', 'have', 'has']);
-  const filtered = words.filter(w => !stopWords.has(w));
-  
-  // Create term frequency map
-  const termFreq = {};
-  for (const word of filtered) {
-    termFreq[word] = (termFreq[word] || 0) + 1;
-  }
-  
-  // Hash words into embedding dimensions
-  for (const [word, freq] of Object.entries(termFreq)) {
-    // Simple hash function to map word to dimension
-    let hash = 0;
-    for (let i = 0; i < word.length; i++) {
-      hash = ((hash << 5) - hash) + word.charCodeAt(i);
-      hash = hash & hash; // Convert to 32-bit integer
-    }
-    
-    const idx = Math.abs(hash) % dim;
-    const weight = Math.log(1 + freq); // TF component
-    embedding[idx] += weight;
-  }
-  
-  // L2 normalization
-  let norm = 0;
-  for (let i = 0; i < dim; i++) {
-    norm += embedding[i] * embedding[i];
-  }
-  norm = Math.sqrt(norm);
-  
-  if (norm > 0) {
-    for (let i = 0; i < dim; i++) {
-      embedding[i] /= norm;
-    }
-  }
-  
-  return embedding;
 }
 
 // =============================================================================
@@ -366,24 +312,14 @@ function generateLocalEmbedding(text) {
  * @returns {number} Similarity score (0 to 1, higher = more similar)
  */
 function cosineSimilarity(a, b) {
-  if (!a || !b || a.length !== b.length) {
-    console.warn('[RAG] Invalid vectors for similarity:', a?.length, b?.length);
-    return 0;
-  }
-  
-  let dotProduct = 0;
-  let normA = 0;
-  let normB = 0;
-  
-  for (let i = 0; i < a.length; i++) {
-    dotProduct += a[i] * b[i];
-    normA += a[i] * a[i];
-    normB += b[i] * b[i];
-  }
-  
-  if (normA === 0 || normB === 0) return 0;
-  
-  return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
+  try {
+    if (window.ChatBridgeEmbeddings && typeof window.ChatBridgeEmbeddings.cosineSimilarity === 'function') {
+      return window.ChatBridgeEmbeddings.cosineSimilarity(a, b);
+    }
+  } catch {}
+  if (!a || !b || a.length !== b.length) return 0;
+  let dot=0, na=0, nb=0; for (let i=0;i<a.length;i++){ dot+=a[i]*b[i]; na+=a[i]*a[i]; nb+=b[i]*b[i]; }
+  const denom = Math.sqrt(na)*Math.sqrt(nb); return denom? (dot/denom):0;
 }
 
 /**
@@ -491,6 +427,7 @@ async function retrieve(queryText, topK = 3, filters = {}) {
     contextPackages.sort((a, b) => b.score - a.score);
     const topResults = contextPackages.slice(0, topK);
     
+    try { if (window && window.RAGEngine) window.RAGEngine._lastRetrievedCount = topResults.length; } catch {}
     console.log('[RAG] Top', topK, 'context packages:', topResults.map(r => ({
       id: r.id,
       score: r.score.toFixed(3),
@@ -578,12 +515,38 @@ async function indexConversation(id, text, metadata) {
       return true;
     }
     
+    // Validate and convert text to string if needed
+    let conversationText = text;
+    if (Array.isArray(text)) {
+      console.log('[RAG] Converting array input to formatted text string');
+      conversationText = text.map((m, idx) => {
+        const role = m.role === 'user' ? 'User' : 'Assistant';
+        const msgText = m.text || m.content || '';
+        return `${role}: ${msgText}`;
+      }).join('\n\n');
+    } else if (typeof text !== 'string') {
+      console.error('[RAG] Invalid text input type:', typeof text, 'expected string or array');
+      return false;
+    }
+    
+    // Validate we have actual content
+    if (!conversationText || conversationText.trim().length === 0) {
+      console.warn('[RAG] Empty conversation text, skipping indexing');
+      return false;
+    }
+    
+    console.log(`[RAG] Processing conversation text (${conversationText.length} chars)`);
+    
     // Phase 3: Split into semantic chunks
-    const chunks = semanticChunk(text);
+    const chunks = semanticChunk(conversationText);
+    if (!chunks || chunks.length === 0) {
+      console.warn('[RAG] Failed to create chunks, skipping');
+      return false;
+    }
     console.log(`[RAG] Split conversation ${id} into ${chunks.length} chunks`);
     
-    // Calculate adaptive weight
-    const weight = calculateAdaptiveWeight(metadata, text);
+    // Calculate adaptive weight using the converted text string
+    const weight = calculateAdaptiveWeight(metadata, conversationText);
     
     // Index each chunk separately
     let successCount = 0;
