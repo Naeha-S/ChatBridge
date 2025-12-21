@@ -1961,6 +1961,85 @@
     themeSection.appendChild(themeLabel); themeSection.appendChild(themeButtons);
     settingsContent.appendChild(themeSection);
 
+    // ============================================
+    // API Keys Section
+    // ============================================
+    const apiSection = document.createElement('div'); apiSection.style.cssText = 'padding-bottom: 16px; border-bottom: 1px solid var(--cb-border);';
+    const apiLabel = document.createElement('div'); apiLabel.style.cssText = 'font-weight: 600; margin-bottom: 10px; color: var(--cb-white);'; apiLabel.textContent = '🔑 API Keys';
+    apiSection.appendChild(apiLabel);
+
+    // Gemini API Key
+    const geminiKeyWrap = document.createElement('div'); geminiKeyWrap.style.cssText = 'margin-bottom: 10px;';
+    const geminiKeyLabel = document.createElement('div'); geminiKeyLabel.style.cssText = 'font-size: 11px; color: var(--cb-subtext); margin-bottom: 4px;'; geminiKeyLabel.textContent = 'Gemini API Key';
+    const geminiKeyRow = document.createElement('div'); geminiKeyRow.style.cssText = 'display: flex; gap: 6px;';
+    const geminiKeyInput = document.createElement('input'); geminiKeyInput.type = 'password'; geminiKeyInput.id = 'cb-gemini-key'; geminiKeyInput.placeholder = 'Enter Gemini API key...';
+    geminiKeyInput.style.cssText = 'flex: 1; background: var(--cb-bg); border: 1px solid var(--cb-border); color: var(--cb-white); padding: 8px; border-radius: 6px; font-size: 11px;';
+    const geminiKeyToggle = document.createElement('button'); geminiKeyToggle.className = 'cb-btn'; geminiKeyToggle.textContent = '👁'; geminiKeyToggle.title = 'Show/hide';
+    geminiKeyToggle.style.cssText = 'padding: 6px 10px;';
+    geminiKeyRow.appendChild(geminiKeyInput); geminiKeyRow.appendChild(geminiKeyToggle);
+    geminiKeyWrap.appendChild(geminiKeyLabel); geminiKeyWrap.appendChild(geminiKeyRow);
+    apiSection.appendChild(geminiKeyWrap);
+
+    // Hugging Face API Key
+    const hfKeyWrap = document.createElement('div'); hfKeyWrap.style.cssText = 'margin-bottom: 10px;';
+    const hfKeyLabel = document.createElement('div'); hfKeyLabel.style.cssText = 'font-size: 11px; color: var(--cb-subtext); margin-bottom: 4px;'; hfKeyLabel.textContent = 'Hugging Face Token';
+    const hfKeyRow = document.createElement('div'); hfKeyRow.style.cssText = 'display: flex; gap: 6px;';
+    const hfKeyInput = document.createElement('input'); hfKeyInput.type = 'password'; hfKeyInput.id = 'cb-hf-key'; hfKeyInput.placeholder = 'Enter HF token...';
+    hfKeyInput.style.cssText = 'flex: 1; background: var(--cb-bg); border: 1px solid var(--cb-border); color: var(--cb-white); padding: 8px; border-radius: 6px; font-size: 11px;';
+    const hfKeyToggle = document.createElement('button'); hfKeyToggle.className = 'cb-btn'; hfKeyToggle.textContent = '👁'; hfKeyToggle.title = 'Show/hide';
+    hfKeyToggle.style.cssText = 'padding: 6px 10px;';
+    hfKeyRow.appendChild(hfKeyInput); hfKeyRow.appendChild(hfKeyToggle);
+    hfKeyWrap.appendChild(hfKeyLabel); hfKeyWrap.appendChild(hfKeyRow);
+    apiSection.appendChild(hfKeyWrap);
+
+    // Save keys button
+    const saveKeysBtn = document.createElement('button'); saveKeysBtn.className = 'cb-btn cb-btn-primary'; saveKeysBtn.textContent = '💾 Save Keys';
+    saveKeysBtn.style.cssText = 'width: 100%; padding: 8px;';
+    apiSection.appendChild(saveKeysBtn);
+    settingsContent.appendChild(apiSection);
+
+    // ============================================
+    // Detail Level Section
+    // ============================================
+    const detailSection = document.createElement('div'); detailSection.style.cssText = 'padding-bottom: 16px; border-bottom: 1px solid var(--cb-border);';
+    const detailLabel = document.createElement('div'); detailLabel.style.cssText = 'font-weight: 600; margin-bottom: 10px; color: var(--cb-white);'; detailLabel.textContent = '📊 Response Detail Level';
+    const detailButtons = document.createElement('div'); detailButtons.style.cssText = 'display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;';
+    const btnConcise = document.createElement('button'); btnConcise.className = 'cb-btn'; btnConcise.textContent = '⚡ Concise'; btnConcise.dataset.level = 'concise'; btnConcise.id = 'cb-detail-concise';
+    const btnDetailed = document.createElement('button'); btnDetailed.className = 'cb-btn'; btnDetailed.textContent = '📝 Detailed'; btnDetailed.dataset.level = 'detailed'; btnDetailed.id = 'cb-detail-detailed';
+    const btnExpert = document.createElement('button'); btnExpert.className = 'cb-btn'; btnExpert.textContent = '🎓 Expert'; btnExpert.dataset.level = 'expert'; btnExpert.id = 'cb-detail-expert';
+    detailButtons.appendChild(btnConcise); detailButtons.appendChild(btnDetailed); detailButtons.appendChild(btnExpert);
+    detailSection.appendChild(detailLabel); detailSection.appendChild(detailButtons);
+    settingsContent.appendChild(detailSection);
+
+    // ============================================
+    // Keyboard Shortcuts Section
+    // ============================================
+    const shortcutsSection = document.createElement('div'); shortcutsSection.style.cssText = 'padding-bottom: 16px; border-bottom: 1px solid var(--cb-border);';
+    const shortcutsLabel = document.createElement('div'); shortcutsLabel.style.cssText = 'font-weight: 600; margin-bottom: 10px; color: var(--cb-white);'; shortcutsLabel.textContent = '⌨️ Keyboard Shortcuts';
+    const shortcutsList = document.createElement('div'); shortcutsList.style.cssText = 'display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 11px;';
+    shortcutsList.innerHTML = `
+      <div style="display:flex;justify-content:space-between;padding:4px 8px;background:var(--cb-bg);border-radius:4px;"><span>Scan Chat</span><kbd style="background:var(--cb-border);padding:2px 6px;border-radius:3px;">S</kbd></div>
+      <div style="display:flex;justify-content:space-between;padding:4px 8px;background:var(--cb-bg);border-radius:4px;"><span>Restore</span><kbd style="background:var(--cb-border);padding:2px 6px;border-radius:3px;">R</kbd></div>
+      <div style="display:flex;justify-content:space-between;padding:4px 8px;background:var(--cb-bg);border-radius:4px;"><span>Copy</span><kbd style="background:var(--cb-border);padding:2px 6px;border-radius:3px;">C</kbd></div>
+      <div style="display:flex;justify-content:space-between;padding:4px 8px;background:var(--cb-bg);border-radius:4px;"><span>Close</span><kbd style="background:var(--cb-border);padding:2px 6px;border-radius:3px;">Esc</kbd></div>
+    `;
+    shortcutsSection.appendChild(shortcutsLabel); shortcutsSection.appendChild(shortcutsList);
+    settingsContent.appendChild(shortcutsSection);
+
+    // ============================================
+    // About Section
+    // ============================================
+    const aboutSection = document.createElement('div'); aboutSection.style.cssText = 'text-align: center; padding-top: 8px;';
+    aboutSection.innerHTML = `
+      <div style="font-size: 18px; margin-bottom: 6px;">🌉 ChatBridge</div>
+      <div style="font-size: 11px; color: var(--cb-subtext); margin-bottom: 8px;">Version 1.0.0 • Your AI conversation companion</div>
+      <div style="display: flex; justify-content: center; gap: 12px;">
+        <a href="https://github.com/Naeha-S/ChatBridge" target="_blank" style="color: var(--cb-accent-primary); font-size: 11px; text-decoration: none;">📦 GitHub</a>
+        <a href="mailto:feedback@chatbridge.dev" style="color: var(--cb-accent-primary); font-size: 11px; text-decoration: none;">💬 Feedback</a>
+      </div>
+    `;
+    settingsContent.appendChild(aboutSection);
+
     settingsPanel.appendChild(settingsContent);
     panel.appendChild(settingsPanel);
 
@@ -2449,6 +2528,89 @@
           const names = { light: 'Light', dark: 'Dark', synthwave: 'Synthwave', aurora: 'Aurora Mist', nebula: 'Nebula Fog', rose: 'Rose Mist' };
           toast(`${emojis[theme] || '🎨'} ${names[theme] || theme} theme enabled`);
         } catch (e) { debugLog('theme switch failed', e); }
+      });
+    });
+
+    // ============================================
+    // API Key Handlers
+    // ============================================
+    // Show/hide Gemini key toggle
+    geminiKeyToggle.addEventListener('click', () => {
+      geminiKeyInput.type = geminiKeyInput.type === 'password' ? 'text' : 'password';
+      geminiKeyToggle.textContent = geminiKeyInput.type === 'password' ? '👁' : '🙈';
+    });
+
+    // Show/hide HF key toggle
+    hfKeyToggle.addEventListener('click', () => {
+      hfKeyInput.type = hfKeyInput.type === 'password' ? 'text' : 'password';
+      hfKeyToggle.textContent = hfKeyInput.type === 'password' ? '👁' : '🙈';
+    });
+
+    // Save keys handler
+    saveKeysBtn.addEventListener('click', async () => {
+      try {
+        const geminiKey = geminiKeyInput.value.trim();
+        const hfKey = hfKeyInput.value.trim();
+
+        // Save to chrome storage
+        await new Promise((resolve, reject) => {
+          chrome.storage.local.set({
+            chatbridge_gemini_key: geminiKey,
+            chatbridge_hf_key: hfKey
+          }, () => {
+            if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
+            else resolve();
+          });
+        });
+
+        toast('✓ API keys saved');
+        saveKeysBtn.textContent = '✅ Saved!';
+        setTimeout(() => { saveKeysBtn.textContent = '💾 Save Keys'; }, 2000);
+      } catch (e) {
+        toast('Failed to save keys');
+        debugLog('save keys error', e);
+      }
+    });
+
+    // Load saved keys when settings opens
+    btnSettings.addEventListener('click', async () => {
+      try {
+        chrome.storage.local.get(['chatbridge_gemini_key', 'chatbridge_hf_key', 'cb_detail_level'], (result) => {
+          if (result.chatbridge_gemini_key) geminiKeyInput.value = result.chatbridge_gemini_key;
+          if (result.chatbridge_hf_key) hfKeyInput.value = result.chatbridge_hf_key;
+
+          // Highlight current detail level
+          const level = result.cb_detail_level || 'concise';
+          [btnConcise, btnDetailed, btnExpert].forEach(btn => {
+            btn.style.background = btn.dataset.level === level ? 'var(--cb-accent-primary)' : '';
+            btn.style.color = btn.dataset.level === level ? '#fff' : '';
+          });
+        });
+      } catch (e) { debugLog('load settings failed', e); }
+    });
+
+    // ============================================
+    // Detail Level Handlers
+    // ============================================
+    [btnConcise, btnDetailed, btnExpert].forEach(btn => {
+      if (!btn) return;
+      btn.addEventListener('click', () => {
+        try {
+          const level = btn.dataset.level;
+
+          // Update visual state
+          [btnConcise, btnDetailed, btnExpert].forEach(b => {
+            b.style.background = b === btn ? 'var(--cb-accent-primary)' : '';
+            b.style.color = b === btn ? '#fff' : '';
+          });
+
+          // Save preference
+          chrome.storage.local.set({ cb_detail_level: level });
+
+          // Toast
+          const labels = { concise: '⚡ Concise', detailed: '📝 Detailed', expert: '🎓 Expert' };
+          toast(`${labels[level]} mode enabled`);
+        } catch (e) { debugLog('detail level switch failed', e); }
       });
     });
 
