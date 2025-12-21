@@ -1752,7 +1752,7 @@
     const transGearBtn = document.createElement('button'); transGearBtn.textContent = '⚙️'; transGearBtn.title = 'Options'; transGearBtn.style.cssText = 'background:none;border:none;font-size:1.3em;cursor:pointer;padding:4px 8px;border-radius:4px;transition:background 0.2s;';
     transGearBtn.onmouseenter = () => transGearBtn.style.background = 'rgba(255,255,255,0.1)'; transGearBtn.onmouseleave = () => transGearBtn.style.background = 'none';
     transLangRow.appendChild(transLangLabel); transLangRow.appendChild(transLangSelect); transLangRow.appendChild(transGearBtn); transView.appendChild(transLangRow);
-    const transOptions = document.createElement('div'); transOptions.id = 'cb-trans-options'; transOptions.style.cssText = 'display:none;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:14px;margin:0 0 14px 0;';
+    const transOptions = document.createElement('div'); transOptions.id = 'cb-trans-options'; transOptions.style.cssText = 'display:block;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:14px;margin:0 0 14px 0;';
     const transModeGroup = document.createElement('div'); transModeGroup.style.cssText = 'margin-bottom:14px;';
     const transModeLabel = document.createElement('div'); transModeLabel.textContent = 'Selective translation:'; transModeLabel.style.cssText = 'font-size:0.9em;font-weight:600;color:#e0e0e0;margin-bottom:8px;'; transModeGroup.appendChild(transModeLabel);
     const transRadioGroup = document.createElement('div'); transRadioGroup.className = 'cb-radio-group'; transRadioGroup.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;';
@@ -10987,12 +10987,15 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         }
 
         rewSourceText.textContent = result || '(no result)';
-        rewResult.textContent = targetModel
-          ? `✅ Conversation adapted for ${targetModel}! The text area above shows the optimized version.`
-          : '✅ Rewrite completed! The text area above now shows the rewritten version.';
+        rewResult.textContent = '✅ Rewrite completed and inserted!';
         btnInsertRew.style.display = 'inline-block';
         rewProg.style.display = 'none';
-        toast(targetModel ? `Adapted for ${targetModel}` : 'Rewrite completed');
+        // Auto-insert into chat
+        if (result && result.length > 10) {
+          try { await restoreToChat(result); toast('✓ Rewritten and inserted'); } catch (e) { toast('Rewrite done - click Insert to add to chat'); }
+        } else {
+          toast(targetModel ? `Adapted for ${targetModel}` : 'Rewrite completed');
+        }
       } catch (err) {
         toast('Rewrite failed: ' + (err && err.message ? err.message : err));
         debugLog('hierarchicalProcess rewrite error', err);
@@ -11059,58 +11062,63 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           content = lastScan.messages;
         }
 
-        // Validate translator is loaded - with retry logic
-        debugLog('[Translation] Checking for translator module...');
-        let translator = window.ChatBridgeTranslator;
-        let retries = 0;
-        while (!translator && retries < 3) {
-          await new Promise(resolve => setTimeout(resolve, 100));
-          translator = window.ChatBridgeTranslator;
-          retries++;
-          debugLog(`[Translation] Retry ${retries}: translator =`, typeof translator);
+        // Filter content based on mode
+        let textToTranslate = '';
+        if (mode === 'user') {
+          textToTranslate = content.filter(m => m.role === 'user').map(m => m.text).join('\n\n');
+        } else if (mode === 'ai') {
+          textToTranslate = content.filter(m => m.role !== 'user').map(m => m.text).join('\n\n');
+        } else if (mode === 'last') {
+          textToTranslate = content[content.length - 1]?.text || '';
+        } else {
+          textToTranslate = content.map(m => `${m.role === 'user' ? 'User' : 'AI'}: ${m.text}`).join('\n\n');
         }
 
-        if (typeof translator === 'undefined') {
-          console.error('[Translation] Module not loaded after retries');
-          console.error('[Translation] Available globals:', Object.keys(window).filter(k => k.includes('ChatBridge')));
-          toast('Translation module not loaded. Please reload the page.');
-          debugLog('ChatBridgeTranslator not found. Available:', Object.keys(window).filter(k => k.includes('ChatBridge')));
+        if (!textToTranslate || textToTranslate.length < 5) {
+          toast('No content to translate');
           btnGoTrans.disabled = false;
           transProg.style.display = 'none';
           return;
         }
 
-        // Perform translation
-        const result = await translator.translateContent({
-          targetLanguage,
-          mode,
-          shorten,
-          content
+        // Get language name
+        const langNames = { en: 'English', es: 'Spanish', fr: 'French', de: 'German', it: 'Italian', pt: 'Portuguese', ru: 'Russian', ja: 'Japanese', ko: 'Korean', zh: 'Chinese', ar: 'Arabic', hi: 'Hindi', nl: 'Dutch', pl: 'Polish', tr: 'Turkish', vi: 'Vietnamese', th: 'Thai', sv: 'Swedish', da: 'Danish', fi: 'Finnish', no: 'Norwegian', cs: 'Czech', hu: 'Hungarian', ro: 'Romanian', el: 'Greek', he: 'Hebrew', id: 'Indonesian', ms: 'Malay', uk: 'Ukrainian', bg: 'Bulgarian', ta: 'Tamil' };
+        const langName = langNames[targetLanguage] || targetLanguage;
+
+        // FAST: Use Llama directly for quick translation
+        debugLog('[Translation] Using fast Llama translation...');
+        const llamaResult = await callLlamaAsync({
+          action: 'translate',
+          text: textToTranslate.slice(0, 8000), // Limit for speed
+          targetLang: langName
         });
 
-        if (!result || !result.translated) {
-          toast('Translation failed');
-          btnGoTrans.disabled = false;
+        if (llamaResult && llamaResult.ok && llamaResult.result) {
+          transResult.textContent = llamaResult.result;
+          transResult.style.display = 'block';
+          btnInsertTrans.style.display = 'inline-block';
           transProg.style.display = 'none';
-          return;
-        }
-
-        // Format and display result
-        let displayText = '';
-        if (Array.isArray(result.translated)) {
-          displayText = result.translated.map(msg => {
-            const roleIcon = msg.role === 'user' ? '👤 User' : '🤖 AI';
-            return `${roleIcon}:\n${msg.text}`;
-          }).join('\n\n━━━━━━━━━━━━━━━━━━━━\n\n');
+          toast('✓ Translation complete');
         } else {
-          displayText = result.translated;
-        }
+          // Fallback to Gemini if Llama fails
+          debugLog('[Translation] Llama failed, trying Gemini...');
+          const geminiResult = await callGeminiAsync({
+            action: 'translate',
+            text: textToTranslate.slice(0, 8000),
+            targetLang: langName
+          });
 
-        transResult.textContent = displayText;
-        transResult.style.display = 'block';
-        btnInsertTrans.style.display = 'inline-block';
-        transProg.style.display = 'none';
-        toast('✓ Translation complete');
+          if (geminiResult && geminiResult.ok && geminiResult.result) {
+            transResult.textContent = geminiResult.result;
+            transResult.style.display = 'block';
+            btnInsertTrans.style.display = 'inline-block';
+            transProg.style.display = 'none';
+            toast('✓ Translation complete');
+          } else {
+            toast('Translation failed: ' + (geminiResult?.error || 'Unknown error'));
+            transProg.style.display = 'none';
+          }
+        }
 
       } catch (err) {
         toast('Translation failed: ' + (err && err.message ? err.message : String(err)));
@@ -11185,6 +11193,384 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
     });
 
     btnCloseSmart.addEventListener('click', () => { try { smartView.classList.remove('cb-view-active'); } catch (e) { } });
+
+    // ============================================
+    // AGENT HUB: AI Analysis & Smart Actions
+    // ============================================
+    btnKnowledgeGraph.addEventListener('click', async () => {
+      try {
+        closeAllViews();
+        agentView.classList.add('cb-view-active');
+
+        // Get the content container
+        const content = agentView.querySelector('#cb-agent-content');
+        if (!content) return;
+
+        // Show loading state
+        content.innerHTML = `
+          <div style="text-align:center;padding:40px 20px;">
+            <div class="cb-spinner" style="margin:0 auto 16px;"></div>
+            <p style="color:var(--cb-subtext);font-size:14px;">Analyzing conversation...</p>
+          </div>
+        `;
+
+        // Get conversation text
+        const chatText = await getConversationText();
+        if (!chatText || chatText.length < 20) {
+          content.innerHTML = `
+            <div style="text-align:center;padding:40px 20px;">
+              <div style="font-size:48px;margin-bottom:16px;">💬</div>
+              <p style="color:var(--cb-white);font-size:16px;font-weight:600;margin-bottom:8px;">No Conversation Found</p>
+              <p style="color:var(--cb-subtext);font-size:13px;">Click "Scan Chat" first to capture the current conversation.</p>
+            </div>
+          `;
+          return;
+        }
+
+        // Analyze with AI
+        try {
+          const analysisPrompt = `Analyze this conversation and provide actionable insights in JSON format:
+{
+  "summary": "1-2 sentence summary of what this conversation is about",
+  "topics": ["topic1", "topic2", "topic3"],
+  "sentiment": "positive/neutral/negative/mixed",
+  "suggestedActions": [
+    {"action": "Clear action item or follow-up", "priority": "high/medium/low"},
+    {"action": "Another suggested action", "priority": "high/medium/low"}
+  ],
+  "keyInsights": ["key insight 1", "key insight 2"],
+  "questionsToAsk": ["suggested follow-up question 1", "suggested follow-up question 2"]
+}
+
+Conversation:
+${chatText.slice(0, 8000)}
+
+Output ONLY valid JSON:`;
+
+          const result = await callGeminiAsync({ action: 'custom', prompt: analysisPrompt, temperature: 0.3 });
+
+          let analysis = null;
+          if (result && result.ok && result.result) {
+            try {
+              // Extract JSON from response
+              const jsonMatch = result.result.match(/\{[\s\S]*\}/);
+              if (jsonMatch) {
+                analysis = JSON.parse(jsonMatch[0]);
+              }
+            } catch (e) { debugLog('Agent JSON parse error', e); }
+          }
+
+          if (analysis) {
+            // Render analysis results
+            const topicsHtml = (analysis.topics || []).map(t =>
+              `<span style="display:inline-block;padding:4px 10px;background:rgba(0,180,255,0.15);border:1px solid rgba(0,180,255,0.3);border-radius:12px;font-size:12px;margin:4px 4px 4px 0;">${t}</span>`
+            ).join('');
+
+            const actionsHtml = (analysis.suggestedActions || []).map(a => `
+              <div class="cb-action-item" style="padding:12px;background:rgba(255,255,255,0.03);border:1px solid var(--cb-border);border-radius:8px;margin-bottom:8px;cursor:pointer;transition:all 0.2s;" data-action="${encodeURIComponent(a.action)}">
+                <div style="display:flex;align-items:center;justify-content:space-between;">
+                  <span style="font-size:13px;color:var(--cb-white);">${a.action}</span>
+                  <span style="font-size:10px;padding:2px 6px;background:${a.priority === 'high' ? 'rgba(255,100,100,0.2)' : a.priority === 'medium' ? 'rgba(255,200,100,0.2)' : 'rgba(100,255,100,0.2)'};border-radius:4px;color:${a.priority === 'high' ? '#ff6666' : a.priority === 'medium' ? '#ffcc66' : '#66ff66'};">${a.priority}</span>
+                </div>
+              </div>
+            `).join('');
+
+            const questionsHtml = (analysis.questionsToAsk || []).map(q => `
+              <div class="cb-question-chip" style="padding:10px 14px;background:linear-gradient(135deg,rgba(140,30,255,0.1),rgba(0,180,255,0.1));border:1px solid rgba(140,30,255,0.25);border-radius:8px;margin-bottom:8px;cursor:pointer;transition:all 0.2s;font-size:13px;color:var(--cb-white);" data-question="${encodeURIComponent(q)}">
+                💡 ${q}
+              </div>
+            `).join('');
+
+            const insightsHtml = (analysis.keyInsights || []).map(i =>
+              `<li style="margin-bottom:6px;color:var(--cb-subtext);font-size:13px;">${i}</li>`
+            ).join('');
+
+            content.innerHTML = `
+              <div style="margin-bottom:20px;">
+                <div style="font-size:12px;font-weight:600;color:var(--cb-accent-primary);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px;">Summary</div>
+                <p style="margin:0;font-size:14px;line-height:1.6;color:var(--cb-white);">${analysis.summary || 'No summary available'}</p>
+              </div>
+              
+              <div style="margin-bottom:20px;">
+                <div style="font-size:12px;font-weight:600;color:var(--cb-accent-primary);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px;">Topics</div>
+                <div>${topicsHtml || '<span style="color:var(--cb-subtext);">No topics detected</span>'}</div>
+              </div>
+              
+              <div style="margin-bottom:20px;">
+                <div style="font-size:12px;font-weight:600;color:var(--cb-accent-primary);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px;">Suggested Next Steps</div>
+                ${actionsHtml || '<p style="color:var(--cb-subtext);font-size:13px;">No actions suggested</p>'}
+              </div>
+              
+              <div style="margin-bottom:20px;">
+                <div style="font-size:12px;font-weight:600;color:var(--cb-accent-primary);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px;">Follow-up Questions</div>
+                ${questionsHtml || '<p style="color:var(--cb-subtext);font-size:13px;">No follow-up questions</p>'}
+              </div>
+              
+              ${insightsHtml ? `
+              <div style="margin-bottom:20px;">
+                <div style="font-size:12px;font-weight:600;color:var(--cb-accent-primary);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px;">Key Insights</div>
+                <ul style="margin:0;padding-left:20px;">${insightsHtml}</ul>
+              </div>
+              ` : ''}
+              
+              <div style="padding-top:16px;border-top:1px solid var(--cb-border);">
+                <button class="cb-btn cb-btn-primary" id="cb-agent-deep-analysis" style="width:100%;padding:12px;">🔬 Deep Analysis</button>
+              </div>
+            `;
+
+            // Add click handlers for actions
+            content.querySelectorAll('.cb-action-item').forEach(el => {
+              el.addEventListener('click', () => {
+                const action = decodeURIComponent(el.dataset.action || '');
+                if (action) {
+                  navigator.clipboard.writeText(action).then(() => toast('Action copied!')).catch(() => { });
+                }
+              });
+              el.addEventListener('mouseenter', () => { el.style.background = 'rgba(255,255,255,0.08)'; el.style.borderColor = 'rgba(0,180,255,0.4)'; });
+              el.addEventListener('mouseleave', () => { el.style.background = 'rgba(255,255,255,0.03)'; el.style.borderColor = 'var(--cb-border)'; });
+            });
+
+            // Add click handlers for questions
+            content.querySelectorAll('.cb-question-chip').forEach(el => {
+              el.addEventListener('click', async () => {
+                const question = decodeURIComponent(el.dataset.question || '');
+                if (question) {
+                  await restoreToChat(question);
+                  toast('Question added to chat!');
+                }
+              });
+              el.addEventListener('mouseenter', () => { el.style.transform = 'translateX(4px)'; el.style.borderColor = 'rgba(140,30,255,0.5)'; });
+              el.addEventListener('mouseleave', () => { el.style.transform = 'translateX(0)'; el.style.borderColor = 'rgba(140,30,255,0.25)'; });
+            });
+
+            // Deep analysis button
+            const deepBtn = content.querySelector('#cb-agent-deep-analysis');
+            if (deepBtn) {
+              deepBtn.addEventListener('click', async () => {
+                deepBtn.disabled = true;
+                deepBtn.textContent = '⏳ Analyzing...';
+                try {
+                  const deepPrompt = `Provide a comprehensive analysis of this conversation including:
+1. Main objectives and whether they were achieved
+2. Key decisions or conclusions reached
+3. Areas of agreement and disagreement
+4. Potential next steps or action items
+5. Unanswered questions or concerns
+6. Overall effectiveness of the conversation
+
+Conversation:
+${chatText.slice(0, 12000)}`;
+
+                  const deepResult = await callGeminiAsync({ action: 'prompt', text: deepPrompt, temperature: 0.4 });
+                  if (deepResult && deepResult.ok && deepResult.result) {
+                    const modal = document.createElement('div');
+                    modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);z-index:999999;display:flex;align-items:center;justify-content:center;padding:40px;';
+                    modal.innerHTML = `
+                      <div style="background:var(--cb-bg);border:1px solid var(--cb-border);border-radius:12px;max-width:700px;width:100%;max-height:80vh;overflow:auto;padding:24px;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+                          <h3 style="margin:0;font-size:18px;color:var(--cb-white);">🔬 Deep Analysis</h3>
+                          <button class="cb-btn" style="padding:4px 12px;" onclick="this.closest('div[style*=fixed]').remove()">✕</button>
+                        </div>
+                        <div style="white-space:pre-wrap;font-size:14px;line-height:1.7;color:var(--cb-subtext);">${deepResult.result}</div>
+                      </div>
+                    `;
+                    modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+                    document.body.appendChild(modal);
+                  }
+                } catch (e) { toast('Analysis failed'); }
+                deepBtn.disabled = false;
+                deepBtn.textContent = '🔬 Deep Analysis';
+              });
+            }
+          } else {
+            content.innerHTML = `
+              <div style="text-align:center;padding:40px 20px;">
+                <div style="font-size:48px;margin-bottom:16px;">⚠️</div>
+                <p style="color:var(--cb-white);font-size:16px;font-weight:600;margin-bottom:8px;">Analysis Failed</p>
+                <p style="color:var(--cb-subtext);font-size:13px;">Could not analyze the conversation. Please try again.</p>
+              </div>
+            `;
+          }
+        } catch (e) {
+          debugLog('Agent analysis error', e);
+          content.innerHTML = `<div style="text-align:center;padding:40px;color:var(--cb-subtext);">Analysis failed. Please try again.</div>`;
+        }
+      } catch (e) { toast('Failed to open Agent Hub'); debugLog('open agent view', e); }
+    });
+
+    btnCloseAgent.addEventListener('click', () => { try { agentView.classList.remove('cb-view-active'); } catch (e) { } });
+
+    // ============================================
+    // INSIGHTS: Smart Workspace Tools
+    // ============================================
+    btnInsights.addEventListener('click', async () => {
+      try {
+        closeAllViews();
+        insightsView.classList.add('cb-view-active');
+
+        const content = insightsView.querySelector('#cb-insights-content');
+        if (!content) return;
+
+        // Load conversations for stats
+        const convs = await loadConversationsAsync();
+        const totalConvs = convs.length;
+        const totalMsgs = convs.reduce((sum, c) => sum + (c.conversation?.length || 0), 0);
+        const platforms = [...new Set(convs.map(c => c.platform || 'Unknown'))];
+
+        // Render insights dashboard
+        content.innerHTML = `
+          <style>
+            .cb-insights-card { background:rgba(255,255,255,0.03); border:1px solid var(--cb-border); border-radius:10px; padding:16px; margin-bottom:12px; transition:all 0.2s; cursor:pointer; }
+            .cb-insights-card:hover { background:rgba(255,255,255,0.06); border-color:rgba(0,180,255,0.4); }
+            .cb-insights-card-title { font-size:15px; font-weight:600; color:var(--cb-white); margin-bottom:6px; display:flex; align-items:center; gap:8px; }
+            .cb-insights-card-desc { font-size:12px; color:var(--cb-subtext); line-height:1.5; }
+            .cb-stats-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; margin-bottom:20px; }
+            .cb-stat-box { background:linear-gradient(135deg,rgba(0,180,255,0.1),rgba(140,30,255,0.1)); border:1px solid rgba(0,180,255,0.2); border-radius:10px; padding:16px; text-align:center; }
+            .cb-stat-value { font-size:28px; font-weight:700; color:var(--cb-white); }
+            .cb-stat-label { font-size:11px; color:var(--cb-subtext); text-transform:uppercase; letter-spacing:0.5px; margin-top:4px; }
+          </style>
+          
+          <div class="cb-stats-grid">
+            <div class="cb-stat-box">
+              <div class="cb-stat-value">${totalConvs}</div>
+              <div class="cb-stat-label">Saved Chats</div>
+            </div>
+            <div class="cb-stat-box">
+              <div class="cb-stat-value">${totalMsgs}</div>
+              <div class="cb-stat-label">Total Messages</div>
+            </div>
+            <div class="cb-stat-box">
+              <div class="cb-stat-value">${platforms.length}</div>
+              <div class="cb-stat-label">Platforms</div>
+            </div>
+            <div class="cb-stat-box">
+              <div class="cb-stat-value">${Math.round(totalMsgs / Math.max(1, totalConvs))}</div>
+              <div class="cb-stat-label">Avg Messages</div>
+            </div>
+          </div>
+          
+          <div style="font-size:12px;font-weight:600;color:var(--cb-accent-primary);margin-bottom:12px;text-transform:uppercase;letter-spacing:0.5px;">Workspace Tools</div>
+          
+          <div class="cb-insights-card" id="cb-tool-extract">
+            <div class="cb-insights-card-title">📋 Extract Key Content</div>
+            <div class="cb-insights-card-desc">Extract code snippets, links, action items, and key decisions from your current conversation.</div>
+          </div>
+          
+          <div class="cb-insights-card" id="cb-tool-compare">
+            <div class="cb-insights-card-title">⚖️ Compare Responses</div>
+            <div class="cb-insights-card-desc">Compare how different AI models responded to similar prompts. Find strengths and differences.</div>
+          </div>
+          
+          <div class="cb-insights-card" id="cb-tool-merge">
+            <div class="cb-insights-card-title">🔗 Merge Conversations</div>
+            <div class="cb-insights-card-desc">Combine multiple related conversations into a single comprehensive thread.</div>
+          </div>
+          
+          <div class="cb-insights-card" id="cb-tool-export">
+            <div class="cb-insights-card-title">📥 Export All Data</div>
+            <div class="cb-insights-card-desc">Download all your saved conversations as a JSON file for backup or external use.</div>
+          </div>
+        `;
+
+        // Extract handler
+        const extractCard = content.querySelector('#cb-tool-extract');
+        if (extractCard) {
+          extractCard.addEventListener('click', async () => {
+            const chatText = await getConversationText();
+            if (!chatText || chatText.length < 20) {
+              toast('No conversation found. Scan first.');
+              return;
+            }
+
+            toast('Extracting content...');
+            try {
+              const extractPrompt = `Extract and categorize key content from this conversation. Output in this format:
+
+## 📝 Action Items
+- [list any tasks, todos, or action items]
+
+## 💻 Code Snippets
+[list any code with language markers]
+
+## 🔗 Links & References
+- [list any URLs or references mentioned]
+
+## 💡 Key Decisions
+- [list any decisions made or conclusions reached]
+
+## ❓ Unanswered Questions
+- [list any open questions]
+
+Conversation:
+${chatText.slice(0, 10000)}`;
+
+              const result = await callGeminiAsync({ action: 'prompt', text: extractPrompt });
+              if (result && result.ok && result.result) {
+                const modal = document.createElement('div');
+                modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);z-index:999999;display:flex;align-items:center;justify-content:center;padding:40px;';
+                modal.innerHTML = `
+                  <div style="background:var(--cb-bg);border:1px solid var(--cb-border);border-radius:12px;max-width:700px;width:100%;max-height:80vh;overflow:auto;padding:24px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+                      <h3 style="margin:0;font-size:18px;color:var(--cb-white);">📋 Extracted Content</h3>
+                      <div style="display:flex;gap:8px;">
+                        <button class="cb-btn" id="cb-copy-extract" style="padding:6px 12px;">📋 Copy</button>
+                        <button class="cb-btn" style="padding:4px 12px;" onclick="this.closest('div[style*=fixed]').remove()">✕</button>
+                      </div>
+                    </div>
+                    <div style="white-space:pre-wrap;font-size:14px;line-height:1.7;color:var(--cb-subtext);" id="cb-extract-content">${result.result}</div>
+                  </div>
+                `;
+                const copyBtn = modal.querySelector('#cb-copy-extract');
+                if (copyBtn) {
+                  copyBtn.addEventListener('click', () => {
+                    navigator.clipboard.writeText(result.result).then(() => toast('Copied!')).catch(() => { });
+                  });
+                }
+                modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+                document.body.appendChild(modal);
+              }
+            } catch (e) { toast('Extraction failed'); debugLog('extract error', e); }
+          });
+        }
+
+        // Export handler
+        const exportCard = content.querySelector('#cb-tool-export');
+        if (exportCard) {
+          exportCard.addEventListener('click', async () => {
+            try {
+              const convs = await loadConversationsAsync();
+              const data = JSON.stringify(convs, null, 2);
+              const blob = new Blob([data], { type: 'application/json' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `chatbridge-export-${new Date().toISOString().slice(0, 10)}.json`;
+              a.click();
+              URL.revokeObjectURL(url);
+              toast(`Exported ${convs.length} conversations`);
+            } catch (e) { toast('Export failed'); debugLog('export error', e); }
+          });
+        }
+
+        // Compare handler (placeholder)
+        const compareCard = content.querySelector('#cb-tool-compare');
+        if (compareCard) {
+          compareCard.addEventListener('click', () => {
+            toast('Compare: Coming soon! Save responses from different AI platforms first.');
+          });
+        }
+
+        // Merge handler (placeholder)
+        const mergeCard = content.querySelector('#cb-tool-merge');
+        if (mergeCard) {
+          mergeCard.addEventListener('click', () => {
+            toast('Merge: Coming soon! Select multiple conversations from History first.');
+          });
+        }
+      } catch (e) { toast('Failed to open Insights'); debugLog('open insights view', e); }
+    });
+
+    btnCloseInsights.addEventListener('click', () => { try { insightsView.classList.remove('cb-view-active'); } catch (e) { } });
 
     // Simple in-memory cache and batched storage writes for responsiveness
     const __cbConvCache = { data: [], ts: 0 };
