@@ -515,7 +515,7 @@ async function getOpenAIApiKey(opts) {
 
 // HuggingFace API key getter with cache (for Llama rewrite/translate)
 const __cbHuggingFaceKeyCache = { value: null, ts: 0 };
-const DEV_HARDCODED_HF_KEY = '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'; // User's HuggingFace API key
+const DEV_HARDCODED_HF_KEY = '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'; // User's HuggingFace API key
 
 async function getHuggingFaceApiKey(opts) {
   const force = !!(opts && opts.force);
