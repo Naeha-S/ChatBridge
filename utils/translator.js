@@ -4,8 +4,12 @@
  * semantic shortening, formatting preservation, and typography normalization.
  */
 
+console.log('[Translator] Starting module initialization...');
+
 (() => {
   'use strict';
+
+  console.log('[Translator] IIFE starting');
 
   const Logger = window.ChatBridgeLogger || console;
   const Constants = window.ChatBridgeConstants || {};
@@ -326,29 +330,17 @@
   async function summarizeForTranslation(text, domain) {
     if (!text) return '';
 
-    const prompt = `Summarize the following ${domain} text concisely while preserving:
-- Key intent and purpose
-- Important facts and data
-- Actionable information
-- Technical terms (do not simplify)
-- Overall meaning
-- Markdown headings and structure
-
-Keep it brief but complete. Output ONLY the summary with no preamble.
-
-Text:
-${text}
-
-Concise summary:`;
-
     try {
-      // Use background script to call AI model with Promise wrapper
+      // Use background script to call Gemini with the correct message format
       const response = await new Promise((resolve, reject) => {
         chrome.runtime.sendMessage({
-          type: 'summarize_for_translation',
-          text: text,
-          domain: domain,
-          prompt: prompt
+          type: 'call_gemini',
+          payload: {
+            action: 'summarize',
+            text: text,
+            length: 'short',
+            summaryType: 'paragraph'
+          }
         }, (response) => {
           if (chrome.runtime.lastError) {
             reject(new Error(chrome.runtime.lastError.message));
@@ -358,12 +350,12 @@ Concise summary:`;
         });
       });
 
-      if (response && response.ok && response.summary) {
-        Logger.debug('[Translator] Summarized for translation', { 
-          original: text.length, 
-          summary: response.summary.length 
+      if (response && response.ok && response.result) {
+        Logger.debug('[Translator] Summarized for translation', {
+          original: text.length,
+          summary: response.result.length
         });
-        return response.summary;
+        return response.result;
       }
     } catch (error) {
       Logger.error('[Translator] Summarization failed', error);
@@ -387,21 +379,7 @@ Concise summary:`;
    */
   function buildTranslationPrompt(text, targetLanguage, domain) {
     const languageName = SUPPORTED_LANGUAGES[targetLanguage] || targetLanguage;
-    
-    const domainInstructions = {
-      [DOMAINS.TECHNICAL]: 'Maintain technical terminology accuracy.',
-      [DOMAINS.ACADEMIC]: 'Preserve formal academic tone.',
-      [DOMAINS.INSTRUCTIONAL]: 'Keep instructions clear and actionable.',
-      [DOMAINS.CODE_RELATED]: 'Never translate code.',
-      [DOMAINS.CONVERSATIONAL]: 'Use natural, conversational tone.'
-    };
-
-    return `Translate to ${languageName}. Rules: Semantic fidelity, ${domainInstructions[domain]} Keep markdown/code unchanged.
-
-${text}
-
-Translated ${languageName}:`;
-
+    return `Translate to ${languageName}. Output ONLY the translation.\n\n${text}`;
   }
 
   /**
@@ -413,21 +391,55 @@ Translated ${languageName}:`;
    */
   async function translateText(text, targetLanguage, domain) {
     if (!text) return '';
-    
+
     // Extract and preserve code blocks
     const { cleaned, placeholders } = extractCodeBlocks(text);
 
-    const prompt = buildTranslationPrompt(cleaned, targetLanguage, domain);
+    const languageName = SUPPORTED_LANGUAGES[targetLanguage] || targetLanguage;
+    // Try Llama first (faster for short texts)
+    if (cleaned && cleaned.length < 8000) {
+      try {
+        const llamaResponse = await new Promise((resolve, reject) => {
+          chrome.runtime.sendMessage({
+            type: 'call_llama',
+            payload: {
+              action: 'translate',
+              text: cleaned,
+              targetLang: languageName
+            }
+          }, (response) => {
+            if (chrome.runtime.lastError) {
+              reject(new Error(chrome.runtime.lastError.message));
+            } else {
+              resolve(response);
+            }
+          });
+        });
 
+        if (llamaResponse && llamaResponse.ok && llamaResponse.result) {
+          Logger.debug('[Translator] Translation complete via Llama', {
+            targetLanguage,
+            domain,
+            length: llamaResponse.result.length
+          });
+          const restored = restoreCodeBlocks(llamaResponse.result, placeholders);
+          return restored;
+        }
+      } catch (llamaError) {
+        Logger.warn('[Translator] Llama failed, falling back to Gemini', llamaError);
+      }
+    }
+
+    // Fallback to Gemini
     try {
-      // Use background script to call AI model with Promise wrapper
       const response = await new Promise((resolve, reject) => {
         chrome.runtime.sendMessage({
-          type: 'translate_text',
-          text: cleaned,
-          targetLanguage: targetLanguage,
-          domain: domain,
-          prompt: prompt
+          type: 'call_gemini',
+          payload: {
+            action: 'translate',
+            text: cleaned,
+            targetLang: languageName
+          }
         }, (response) => {
           if (chrome.runtime.lastError) {
             reject(new Error(chrome.runtime.lastError.message));
@@ -437,18 +449,18 @@ Translated ${languageName}:`;
         });
       });
 
-      if (response && response.ok && response.translated) {
-        Logger.debug('[Translator] Translation complete', { 
+      if (response && response.ok && response.result) {
+        Logger.debug('[Translator] Translation complete via Gemini', {
           targetLanguage,
           domain,
-          length: response.translated.length 
+          length: response.result.length
         });
-        
+
         // Restore code blocks
-        const restored = restoreCodeBlocks(response.translated, placeholders);
+        const restored = restoreCodeBlocks(response.result, placeholders);
         return restored;
       } else {
-        throw new Error(response?.error || 'Translation failed - no valid response');
+        throw new Error(response?.error || response?.message || 'Translation failed - no valid response');
       }
     } catch (error) {
       Logger.error('[Translator] Translation failed', error);
@@ -571,7 +583,7 @@ Translated ${languageName}:`;
 
     // Process each filtered message
     const translated = [];
-    
+
     for (const message of filteredMessages) {
       try {
         // Step 1: Clean text
@@ -629,7 +641,14 @@ Translated ${languageName}:`;
   };
 
   // Export to global scope
+  console.log('[Translator] About to export module...');
   window.ChatBridgeTranslator = Translator;
-  Logger.info('[Translator] Module initialized');
-
+  window.ChatBridgeTranslatorReady = true;
+  console.log('[Translator] Module exported:', typeof window.ChatBridgeTranslator, window.ChatBridgeTranslatorReady);
+  if (typeof window.ChatBridgeLogger !== 'undefined') {
+    window.ChatBridgeLogger.info('[Translator] Module initialized and exported');
+  } else {
+    console.log('[Translator] Module initialized and exported');
+  }
 })();
+console.log('[Translator] IIFE completed, window.ChatBridgeTranslator =', typeof window.ChatBridgeTranslator);

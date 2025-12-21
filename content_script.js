@@ -97,10 +97,10 @@
 
   // avoid const redeclaration causing SyntaxError in some injection scenarios
   var CB_MAX_MESSAGES = (typeof window !== 'undefined' && window.__CHATBRIDGE && window.__CHATBRIDGE.MAX_MESSAGES) ? window.__CHATBRIDGE.MAX_MESSAGES : 200;
-  const DOM_STABLE_MS = 30; // Ultra-fast scan - minimal wait
-  const DOM_STABLE_TIMEOUT_MS = 300; // Reduced timeout for faster completion
-  const SCROLL_MAX_STEPS = 3; // Fewer steps for speed
-  const SCROLL_STEP_PAUSE_MS = 10; // Minimal pause for ultra-fast scrolling
+  const DOM_STABLE_MS = 10; // Ultra-fast scan - near-instant
+  const DOM_STABLE_TIMEOUT_MS = 100; // Quick timeout for snappy response
+  const SCROLL_MAX_STEPS = 2; // Minimal steps for speed
+  const SCROLL_STEP_PAUSE_MS = 5; // Near-instant scrolling
   const SKIP_SCROLL_ON_SCAN = true; // Skip scrolling - most modern chats don't need it
   const DEBUG = !!(typeof window !== 'undefined' && window.__CHATBRIDGE_DEBUG === true);
 
@@ -750,6 +750,41 @@
     // store last scanned text so Clipboard and textarea can access it
     let lastScannedText = '';
 
+    // Initialize ChatBridge.getLastScan() early so all sections can access it
+    try {
+      window.ChatBridge = window.ChatBridge || {};
+      window.ChatBridge._lastScanData = null;
+      window.ChatBridge.getLastScan = function () {
+        return window.ChatBridge._lastScanData || null;
+      };
+    } catch (e) { }
+
+    // Universal helper to get conversation text for any section
+    async function getConversationText() {
+      try {
+        // Priority 1: Use stored scan data
+        const lastScan = window.ChatBridge && window.ChatBridge.getLastScan ? window.ChatBridge.getLastScan() : null;
+        if (lastScan && lastScan.text && lastScan.text.length > 10) {
+          return lastScan.text;
+        }
+        // Priority 2: Use lastScannedText variable
+        if (lastScannedText && lastScannedText.length > 10) {
+          return lastScannedText;
+        }
+        // Priority 3: Re-scan the page
+        const msgs = await scanChat();
+        if (msgs && msgs.length > 0) {
+          const text = msgs.map(m => `${m.role}: ${m.text}`).join('\n\n');
+          lastScannedText = text;
+          return text;
+        }
+        return '';
+      } catch (e) {
+        debugLog('getConversationText error:', e);
+        return lastScannedText || '';
+      }
+    }
+
     // Continuum context state (global)
     let continuumContextState = {
       unifiedContext: [],
@@ -1036,27 +1071,28 @@
   .cb-dots .dot:nth-child(2) { animation-delay: .18s; }
   .cb-dots .dot:nth-child(3) { animation-delay: .36s; }
   /* Reply list for assistant messages - compact preview mode */
-  .cb-replies-wrap { margin-top: 8px; }
-  .cb-replies-header { display:flex; align-items:center; justify-content:space-between; padding:6px 0 8px 0; }
-  .cb-replies-title { font-size:12px; color:var(--cb-subtext); font-weight:700; letter-spacing:-0.01em; text-transform: uppercase; }
-  .cb-replies { padding: var(--cb-space-md); max-height: 260px; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; gap: var(--cb-space-sm); background: var(--cb-bg); border: 1px solid var(--cb-border); border-radius: var(--cb-radius-md); transition: padding-bottom 0.3s ease; }
+  .cb-replies-wrap { margin-top: 12px; }
+  .cb-replies-header { display:flex; align-items:center; justify-content:space-between; padding:8px 0 12px 0; border-bottom: 2px solid rgba(0, 180, 255, 0.12); }
+  .cb-replies-title { font-size:14px; color:var(--cb-white); font-weight:700; letter-spacing:0.02em; text-transform: uppercase; background: linear-gradient(135deg, var(--cb-accent-primary), var(--cb-accent-secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .cb-replies { padding: 16px; max-height: 300px; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; gap: 12px; background: linear-gradient(180deg, rgba(10,15,28,0.4), rgba(16,24,43,0.3)); border: 1px solid rgba(0,180,255,0.15); border-radius: 12px; transition: padding-bottom 0.3s ease; box-shadow: inset 0 2px 8px rgba(0,0,0,0.2); }
   .cb-replies.cb-editor-open { padding-bottom: 220px; } /* Prevent overlap when editor is visible */
   .cb-replies::-webkit-scrollbar { width: 8px; }
-  .cb-replies::-webkit-scrollbar-track { background: var(--cb-bg3); border-radius: 10px; }
-  .cb-replies::-webkit-scrollbar-thumb { background: linear-gradient(180deg, var(--cb-accent-primary), var(--cb-accent-secondary)); border-radius: 10px; border: 2px solid var(--cb-bg3); }
-  .cb-reply { background: var(--cb-bg2); border: 1px solid var(--cb-border); border-radius: 10px; padding: 10px 12px; font-size: 13px; line-height: 1.4; cursor: pointer; transition: all 0.2s ease; position:relative; min-height: 48px; max-height: 56px; overflow: hidden; }
-  .cb-reply:hover { border-color: var(--cb-accent-primary); box-shadow: 0 4px 12px rgba(0, 180, 255, 0.12); transform: translateY(-1px); }
-  .cb-reply.cb-selected { border-color: var(--cb-accent-primary); background: rgba(14,165,233,0.08); box-shadow: 0 6px 18px rgba(14,165,233,0.18); }
-  .cb-reply-preview { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; color: var(--cb-white); font-size: 12px; line-height: 1.4; white-space: normal; word-break: break-word; }
-  .cb-reply-meta { font-size: 10px; color: var(--cb-subtext); margin-top: 4px; opacity: 0.7; }
+  .cb-replies::-webkit-scrollbar-track { background: rgba(16,24,43,0.4); border-radius: 10px; }
+  .cb-replies::-webkit-scrollbar-thumb { background: linear-gradient(180deg, var(--cb-accent-primary), var(--cb-accent-secondary)); border-radius: 10px; border: 2px solid rgba(10,15,28,0.4); }
+  .cb-reply { background: linear-gradient(135deg, rgba(16,24,43,0.9), rgba(10,15,28,0.85)); border: 1px solid rgba(0,180,255,0.2); border-radius: 12px; padding: 14px 16px; font-size: 13px; line-height: 1.5; cursor: pointer; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); position:relative; min-height: 56px; max-height: 68px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+  .cb-reply:hover { border-color: rgba(0,180,255,0.6); box-shadow: 0 6px 20px rgba(0, 180, 255, 0.25), 0 0 24px rgba(96, 165, 250, 0.15); transform: translateY(-2px) scale(1.01); background: linear-gradient(135deg, rgba(20,28,50,0.95), rgba(12,18,32,0.9)); }
+  .cb-reply.cb-selected { border-color: var(--cb-accent-primary); background: linear-gradient(135deg, rgba(14,165,233,0.18), rgba(96,165,250,0.12)); box-shadow: 0 8px 24px rgba(14,165,233,0.35), inset 0 1px 0 rgba(255,255,255,0.08); border-width: 2px; }
+  .cb-reply-preview { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; color: var(--cb-white); font-size: 13px; line-height: 1.5; white-space: normal; word-break: break-word; font-weight: 500; }
+  .cb-reply-meta { font-size: 11px; color: rgba(160,167,181,0.8); margin-top: 6px; opacity: 0.85; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
   /* Rewrite editor section (shown when a reply is selected) */
-  .cb-rewrite-editor { display: none; margin-top: var(--cb-space-lg); padding: var(--cb-space-lg); background: var(--cb-bg2); border: 1px solid var(--cb-border); border-radius: var(--cb-radius-md); animation: slideIn 0.25s ease-out; }
+  .cb-rewrite-editor { display: none; margin-top: 16px; padding: 18px; background: linear-gradient(135deg, rgba(16,24,43,0.95), rgba(10,15,28,0.9)); border: 1px solid rgba(0,180,255,0.25); border-radius: 12px; animation: slideIn 0.3s ease-out; box-shadow: 0 4px 16px rgba(0,0,0,0.25); }
   .cb-rewrite-editor.cb-active { display: block; }
-  .cb-editor-label { font-size: var(--cb-text-xs); color: var(--cb-subtext); font-weight: 600; margin-bottom: var(--cb-space-sm); text-transform: uppercase; letter-spacing: 0.5px; }
-  .cb-editor-textarea { width: 100%; min-height: 160px; max-height: 240px; resize: vertical; background: var(--cb-bg); color: var(--cb-white); border: 1px solid var(--cb-border); padding: var(--cb-space-md); border-radius: var(--cb-radius-sm); font-family: inherit; font-size: var(--cb-text-sm); line-height: 1.6; overflow-y: auto; transition: all 0.2s ease; }
-  .cb-editor-textarea:focus { border-color: var(--cb-accent-primary); box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.12); outline: none; }
-  .cb-editor-actions { display: flex; gap: var(--cb-space-sm); margin-top: var(--cb-space-md); flex-wrap: wrap; }
-  .cb-editor-actions > .cb-btn { flex: 1 1 auto; min-width: 80px; }
+  .cb-editor-label { font-size: 12px; color: var(--cb-white); font-weight: 700; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.8px; background: linear-gradient(135deg, var(--cb-accent-primary), var(--cb-accent-secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .cb-editor-textarea { width: 100%; min-height: 160px; max-height: 240px; resize: vertical; background: rgba(10,15,28,0.6); color: var(--cb-white); border: 1px solid rgba(0,180,255,0.2); padding: 14px; border-radius: 10px; font-family: inherit; font-size: 13px; line-height: 1.7; overflow-y: auto; transition: all 0.25s ease; box-shadow: inset 0 2px 6px rgba(0,0,0,0.2); }
+  .cb-editor-textarea:focus { border-color: var(--cb-accent-primary); box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.18), inset 0 2px 6px rgba(0,0,0,0.2); outline: none; }
+  .cb-editor-actions { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+  .cb-editor-actions > .cb-btn { flex: 1 1 auto; min-width: 90px; padding: 10px 16px; font-weight: 600; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+  .cb-editor-actions > .cb-btn:hover { box-shadow: 0 4px 14px rgba(0,180,255,0.3); transform: translateY(-1px); }
   .cb-style-hint-wrap { margin-top: 10px; }
   .cb-input { width: 100%; background: var(--cb-bg); color: var(--cb-white); border: 1px solid var(--cb-border); padding: 8px 10px; border-radius: 8px; font-size: 13px; font-family: inherit; transition: all 0.2s ease; }
   .cb-input:focus { border-color: var(--cb-accent-primary); box-shadow: 0 0 0 3px rgba(0, 180, 255, 0.12); outline: none; }
@@ -1328,7 +1364,7 @@
       try {
         btnGenerateIdeas.disabled = true;
         btnGenerateIdeas.textContent = '⏳ Generating...';
-        
+
         const lastScan = window.ChatBridge?.getLastScan?.();
         if (!lastScan || !lastScan.messages || lastScan.messages.length === 0) {
           toast('No conversation found. Please scan first.');
@@ -1339,12 +1375,12 @@
 
         const contextText = lastScan.messages.slice(-5).map(m => `${m.role}: ${m.text}`).join('\\n');
         const prompt = `Based on this conversation context, suggest 5 smart follow-up prompts that would be valuable next steps:\\n\\n${contextText}\\n\\nProvide 5 prompts in this format:\\n1. [Brief Title] - [Prompt text]\\n2. [Brief Title] - [Prompt text]\\netc.`;
-        
+
         const response = await callGeminiAsync({ action: 'prompt', text: prompt, length: 'short' });
-        
+
         if (response && response.ok && response.result) {
           pdContent.innerHTML = '<div style="color:var(--cb-subtext);font-size:12px;margin-bottom:12px;">💡 AI-Generated Suggestions:</div>';
-          
+
           const suggestions = response.result.split('\\n').filter(line => line.match(/^\\d+\\./));
           suggestions.forEach(sug => {
             const card = document.createElement('div');
@@ -1360,7 +1396,7 @@
             });
             pdContent.appendChild(card);
           });
-          
+
           toast('Ideas generated!');
         } else {
           throw new Error('Failed to generate ideas');
@@ -1394,20 +1430,35 @@
     // Summarize view
     const summView = document.createElement('div'); summView.className = 'cb-internal-view'; summView.id = 'cb-summ-view'; summView.setAttribute('data-cb-ignore', 'true');
     const summTop = document.createElement('div'); summTop.className = 'cb-view-top';
-    const summTitle = document.createElement('div'); summTitle.className = 'cb-view-title'; summTitle.textContent = 'Summarize';
+    const summTitle = document.createElement('div'); summTitle.className = 'cb-view-title'; summTitle.textContent = '📝 Summarize';
     const btnCloseSumm = document.createElement('button'); btnCloseSumm.className = 'cb-view-close'; btnCloseSumm.textContent = '✕';
     btnCloseSumm.setAttribute('aria-label', 'Close Summarize view');
     summTop.appendChild(summTitle); summTop.appendChild(btnCloseSumm);
     summView.appendChild(summTop);
-    const summIntro = document.createElement('div'); summIntro.className = 'cb-view-intro'; summIntro.textContent = 'Extract the key insights from long conversations. Perfect for quick reviews, sharing highlights, or creating meeting notes.';
+    const summIntro = document.createElement('div'); summIntro.className = 'cb-view-intro';
+    summIntro.style.cssText = 'font-size: 13px; line-height: 1.6; color: var(--cb-subtext); margin-bottom: 16px; padding: 12px 14px; background: linear-gradient(135deg, rgba(96, 165, 250, 0.08), rgba(167, 139, 250, 0.08)); border: 1px solid rgba(96, 165, 250, 0.15); border-radius: 10px;';
+    summIntro.innerHTML = '<div style="font-weight: 600; color: var(--cb-white); margin-bottom: 4px;">Extract Key Insights</div>Perfect for quick reviews, sharing highlights, or creating meeting notes.';
     summView.appendChild(summIntro);
+
+    // Stats display (word count, char count, estimated time)
+    const summStats = document.createElement('div');
+    summStats.id = 'cb-summ-stats';
+    summStats.style.cssText = 'font-size: 11px; color: var(--cb-subtext); padding: 8px 12px; background: rgba(0,0,0,0.2); border-radius: 6px; margin-bottom: 12px; display: flex; gap: 16px; flex-wrap: wrap;';
+    summStats.innerHTML = '<span>📊 Words: --</span><span>📝 Chars: --</span><span>⏱️ Est. time: --</span>';
+    summView.appendChild(summStats);
+
     const summControls = document.createElement('div'); summControls.className = 'cb-view-controls';
+    summControls.style.cssText = 'display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;';
     const summLengthLabel = document.createElement('label'); summLengthLabel.className = 'cb-label'; summLengthLabel.textContent = 'Length:';
+    summLengthLabel.style.cssText = 'font-size: 11px; font-weight: 600; color: var(--cb-subtext); text-transform: uppercase; letter-spacing: 0.5px;';
     const summLengthSelect = document.createElement('select'); summLengthSelect.className = 'cb-select'; summLengthSelect.id = 'cb-summ-length';
+    summLengthSelect.style.cssText = 'width: 100%; background: var(--cb-bg3); border: 1px solid var(--cb-border); color: var(--cb-white); padding: 8px 10px; border-radius: 6px; font-size: 13px;';
     ['concise', 'short', 'medium', 'comprehensive', 'detailed'].forEach(v => { const o = document.createElement('option'); o.value = v; o.textContent = v.charAt(0).toUpperCase() + v.slice(1); summLengthSelect.appendChild(o); });
     summLengthSelect.value = 'medium';
     const summTypeLabel = document.createElement('label'); summTypeLabel.className = 'cb-label'; summTypeLabel.textContent = 'Style:';
+    summTypeLabel.style.cssText = 'font-size: 11px; font-weight: 600; color: var(--cb-subtext); text-transform: uppercase; letter-spacing: 0.5px;';
     const summTypeSelect = document.createElement('select'); summTypeSelect.className = 'cb-select'; summTypeSelect.id = 'cb-summ-type';
+    summTypeSelect.style.cssText = 'width: 100%; background: var(--cb-bg3); border: 1px solid var(--cb-border); color: var(--cb-white); padding: 8px 10px; border-radius: 6px; font-size: 13px;';
     // Include a specialized AI-to-AI transfer style optimized for cross-model handoff
     const summTypes = ['paragraph', 'bullet', 'detailed', 'executive', 'technical', 'transfer'];
     summTypes.forEach(v => {
@@ -1417,8 +1468,14 @@
       summTypeSelect.appendChild(o);
     });
     summTypeSelect.value = 'paragraph';
-    summControls.appendChild(summLengthLabel); summControls.appendChild(summLengthSelect); summControls.appendChild(summTypeLabel); summControls.appendChild(summTypeSelect);
+
+    const lengthGroup = document.createElement('div'); lengthGroup.style.cssText = 'display: flex; flex-direction: column; gap: 6px;';
+    lengthGroup.appendChild(summLengthLabel); lengthGroup.appendChild(summLengthSelect);
+    const typeGroup = document.createElement('div'); typeGroup.style.cssText = 'display: flex; flex-direction: column; gap: 6px;';
+    typeGroup.appendChild(summTypeLabel); typeGroup.appendChild(summTypeSelect);
+    summControls.appendChild(lengthGroup); summControls.appendChild(typeGroup);
     summView.appendChild(summControls);
+
     // Restore saved summary preferences
     try {
       const savedLen = localStorage.getItem('chatbridge:pref:summLength');
@@ -1429,14 +1486,46 @@
     summLengthSelect.addEventListener('change', () => { try { localStorage.setItem('chatbridge:pref:summLength', summLengthSelect.value); } catch (e) { } });
     summTypeSelect.addEventListener('change', () => { try { localStorage.setItem('chatbridge:pref:summType', summTypeSelect.value); } catch (e) { } });
     const summSourceText = document.createElement('div'); summSourceText.className = 'cb-view-text'; summSourceText.id = 'cb-summ-source-text'; summSourceText.setAttribute('contenteditable', 'false'); summSourceText.textContent = '';
+    summSourceText.style.cssText = 'max-height: 200px; overflow-y: auto; padding: 12px; background: rgba(0,0,0,0.15); border-radius: 8px; border: 1px solid var(--cb-border); font-size: 12px; line-height: 1.5; margin-bottom: 12px;';
     summView.appendChild(summSourceText);
-    const btnGoSumm = document.createElement('button'); btnGoSumm.className = 'cb-btn cb-view-go'; btnGoSumm.textContent = 'Summarize';
-    summView.appendChild(btnGoSumm);
+
+    // Button row
+    const summBtnRow = document.createElement('div'); summBtnRow.style.cssText = 'display: flex; gap: 8px; margin-bottom: 12px;';
+    const btnGoSumm = document.createElement('button'); btnGoSumm.className = 'cb-btn cb-btn-primary cb-view-go'; btnGoSumm.textContent = '✨ Summarize';
+    btnGoSumm.style.cssText = 'flex: 1; padding: 10px 16px; font-weight: 600;';
+    const btnCopySumm = document.createElement('button'); btnCopySumm.className = 'cb-btn'; btnCopySumm.textContent = '📋 Copy';
+    btnCopySumm.style.cssText = 'padding: 10px 16px;';
+    summBtnRow.appendChild(btnGoSumm); summBtnRow.appendChild(btnCopySumm);
+    summView.appendChild(summBtnRow);
+
     const summProg = document.createElement('span'); summProg.className = 'cb-progress'; summProg.style.display = 'none'; summView.appendChild(summProg);
-    const btnInsertSumm = document.createElement('button'); btnInsertSumm.className = 'cb-btn cb-view-go'; btnInsertSumm.textContent = 'Insert to Chat'; btnInsertSumm.style.display = 'none';
+    const btnInsertSumm = document.createElement('button'); btnInsertSumm.className = 'cb-btn cb-view-go'; btnInsertSumm.textContent = '⬆️ Insert to Chat'; btnInsertSumm.style.display = 'none';
     summView.appendChild(btnInsertSumm);
     const summResult = document.createElement('div'); summResult.className = 'cb-view-result'; summResult.id = 'cb-summ-result'; summResult.textContent = '';
+    summResult.style.cssText = 'font-size: 12px; color: var(--cb-subtext); padding: 8px 0;';
     summView.appendChild(summResult);
+
+    // Helper to update stats display
+    function updateSummStats(text) {
+      try {
+        const statsEl = summView.querySelector('#cb-summ-stats');
+        if (!statsEl) return;
+        const words = text ? text.trim().split(/\s+/).filter(w => w.length > 0).length : 0;
+        const chars = text ? text.length : 0;
+        const estSeconds = Math.max(2, Math.ceil(chars / 1500)); // ~1500 chars/sec processing
+        statsEl.innerHTML = `<span>📊 Words: ${words.toLocaleString()}</span><span>📝 Chars: ${chars.toLocaleString()}</span><span>⏱️ Est. time: ~${estSeconds}s</span>`;
+      } catch (e) { }
+    }
+
+    // Copy button handler
+    btnCopySumm.addEventListener('click', async () => {
+      try {
+        const text = summSourceText.textContent || '';
+        if (!text || text === '(no result)') { toast('Nothing to copy'); return; }
+        await navigator.clipboard.writeText(text);
+        toast(`Copied ${text.length.toLocaleString()} chars`);
+      } catch (e) { toast('Copy failed'); }
+    });
 
     // Rewrite view - Sleek Modern Redesign
     const rewView = document.createElement('div'); rewView.className = 'cb-internal-view'; rewView.id = 'cb-rew-view'; rewView.setAttribute('data-cb-ignore', 'true');
@@ -1558,6 +1647,7 @@
     const rewReplyControls = document.createElement('div'); rewReplyControls.style.cssText = 'display:flex;align-items:center;gap:var(--cb-space-sm);flex-wrap:wrap;';
     const rewMultiBtn = document.createElement('button'); rewMultiBtn.className = 'cb-btn cb-btn-secondary'; rewMultiBtn.style.cssText = 'padding:6px 12px;font-size:11px;'; rewMultiBtn.textContent = 'Multi'; rewMultiBtn.title = 'Toggle multi-select mode';
     const rewFilterBtn = document.createElement('button'); rewFilterBtn.className = 'cb-btn cb-btn-secondary'; rewFilterBtn.style.cssText = 'padding:6px 12px;font-size:11px;'; rewFilterBtn.textContent = 'All'; rewFilterBtn.title = 'Filter replies (All / Assistant / User)';
+    // Remove selected message preview - only show selection controls
     rewReplyControls.appendChild(rewMultiBtn); rewReplyControls.appendChild(rewFilterBtn);
     rewRepliesHeader.appendChild(rewRepliesTitle); rewRepliesHeader.appendChild(rewReplyControls);
     const rewReplies = document.createElement('div'); rewReplies.className = 'cb-replies'; rewReplies.id = 'cb-replies-list';
@@ -1591,7 +1681,7 @@
     rewView.appendChild(rewSourceText);
     const btnGoRew = document.createElement('button');
     btnGoRew.className = 'cb-btn cb-view-go';
-    btnGoRew.textContent = 'Rewrite';
+    btnGoRew.textContent = '✨ Rewrite';
     btnGoRew.style.cssText = 'width: 100%; margin-top: 16px; background: linear-gradient(135deg, var(--cb-accent-primary), var(--cb-accent-secondary)); border: none; padding: 12px; font-weight: 600; font-size: 14px; letter-spacing: 0.5px; box-shadow: 0 4px 12px rgba(96, 165, 250, 0.3);';
     btnGoRew.onmouseenter = () => btnGoRew.style.filter = 'brightness(1.1) translateY(-1px)';
     btnGoRew.onmouseleave = () => btnGoRew.style.filter = 'brightness(1) translateY(0)';
@@ -1602,7 +1692,7 @@
 
     const btnInsertRew = document.createElement('button');
     btnInsertRew.className = 'cb-btn cb-view-go';
-    btnInsertRew.textContent = 'Insert to Chat';
+    btnInsertRew.textContent = '⬆️ Insert to Chat';
     btnInsertRew.style.cssText = 'width: 100%; margin-top: 12px; display: none; background: var(--cb-bg3); border: 1px solid var(--cb-border); color: var(--cb-white); padding: 12px; font-weight: 600;';
     btnInsertRew.onmouseenter = () => { btnInsertRew.style.background = 'rgba(255, 255, 255, 0.1)'; btnInsertRew.style.borderColor = 'var(--cb-white)'; };
     btnInsertRew.onmouseleave = () => { btnInsertRew.style.background = 'var(--cb-bg3)'; btnInsertRew.style.borderColor = 'var(--cb-border)'; };
@@ -1615,11 +1705,45 @@
     // Translate view - NEW SIMPLIFIED UI
     const transView = document.createElement('div'); transView.className = 'cb-internal-view'; transView.id = 'cb-trans-view'; transView.setAttribute('data-cb-ignore', 'true');
     const transTop = document.createElement('div'); transTop.className = 'cb-view-top';
-    const transTitle = document.createElement('div'); transTitle.className = 'cb-view-title'; transTitle.textContent = 'Translate';
+    const transTitle = document.createElement('div'); transTitle.className = 'cb-view-title'; transTitle.textContent = '🌐 Translate';
     const btnCloseTrans = document.createElement('button'); btnCloseTrans.className = 'cb-view-close'; btnCloseTrans.textContent = '✕';
     btnCloseTrans.setAttribute('aria-label', 'Close Translate view');
     transTop.appendChild(transTitle); transTop.appendChild(btnCloseTrans);
     transView.appendChild(transTop);
+
+    // Intro with helpful tips
+    const transIntro = document.createElement('div');
+    transIntro.style.cssText = 'font-size: 12px; color: var(--cb-subtext); margin-bottom: 14px; line-height: 1.5;';
+    transIntro.innerHTML = 'Translate your conversation to another language. <strong>Technical terms and code</strong> are preserved.';
+    transView.appendChild(transIntro);
+
+    // Quick language chips
+    const transQuickRow = document.createElement('div');
+    transQuickRow.style.cssText = 'display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px;';
+    const quickLangs = [
+      { code: 'es', label: '🇪🇸 Spanish' },
+      { code: 'fr', label: '🇫🇷 French' },
+      { code: 'de', label: '🇩🇪 German' },
+      { code: 'ja', label: '🇯🇵 Japanese' },
+      { code: 'zh', label: '🇨🇳 Chinese' },
+      { code: 'hi', label: '🇮🇳 Hindi' },
+      { code: 'pt', label: '🇧🇷 Portuguese' },
+      { code: 'ar', label: '🇸🇦 Arabic' }
+    ];
+    quickLangs.forEach(lang => {
+      const chip = document.createElement('button');
+      chip.className = 'cb-btn';
+      chip.textContent = lang.label;
+      chip.style.cssText = 'padding: 5px 10px; font-size: 11px; background: rgba(0,180,255,0.1); border: 1px solid rgba(0,180,255,0.3);';
+      chip.addEventListener('click', () => {
+        transLangSelect.value = lang.code;
+        try { localStorage.setItem('chatbridge:pref:transLang', lang.code); } catch (e) { }
+        toast(`Language: ${lang.label.split(' ')[1]}`);
+      });
+      transQuickRow.appendChild(chip);
+    });
+    transView.appendChild(transQuickRow);
+
     const transLangRow = document.createElement('div'); transLangRow.style.cssText = 'display:flex;align-items:center;gap:10px;margin:16px 0;';
     const transLangLabel = document.createElement('label'); transLangLabel.textContent = 'Output language:'; transLangLabel.style.cssText = 'font-size:0.95em;font-weight:500;color:#e0e0e0;min-width:120px;';
     const transLangSelect = document.createElement('select'); transLangSelect.className = 'cb-select'; transLangSelect.id = 'cb-trans-lang'; transLangSelect.style.cssText = 'flex:1;padding:8px 12px;border-radius:6px;';
@@ -1847,9 +1971,188 @@
     historyHeader.appendChild(historyTitle);
     historyHeader.appendChild(btnClearHistory);
     historyWrapper.appendChild(historyHeader);
+
+    // Search filter input
+    const historySearchWrap = document.createElement('div');
+    historySearchWrap.style.cssText = 'padding: 8px 0; display: flex; gap: 6px;';
+    const historySearchInput = document.createElement('input');
+    historySearchInput.type = 'text';
+    historySearchInput.placeholder = '🔍 Search history...';
+    historySearchInput.className = 'cb-input';
+    historySearchInput.id = 'cb-history-search';
+    historySearchInput.style.cssText = 'flex: 1; background: var(--cb-bg3); border: 1px solid var(--cb-border); color: var(--cb-white); padding: 8px 12px; border-radius: 6px; font-size: 12px; outline: none;';
+    historySearchInput.addEventListener('focus', () => historySearchInput.style.borderColor = 'var(--cb-accent-primary)');
+    historySearchInput.addEventListener('blur', () => historySearchInput.style.borderColor = 'var(--cb-border)');
+    historySearchWrap.appendChild(historySearchInput);
+    historyWrapper.appendChild(historySearchWrap);
+
     const historyEl = document.createElement('div'); historyEl.className = 'cb-history'; historyEl.textContent = 'No sessions yet.';
     historyWrapper.appendChild(historyEl);
     panel.appendChild(historyWrapper);
+
+    // Relative time helper
+    function relativeTime(timestamp) {
+      const now = Date.now();
+      const diff = now - timestamp;
+      const minutes = Math.floor(diff / 60000);
+      const hours = Math.floor(diff / 3600000);
+      const days = Math.floor(diff / 86400000);
+
+      if (minutes < 1) return 'just now';
+      if (minutes < 60) return `${minutes}m ago`;
+      if (hours < 24) return `${hours}h ago`;
+      if (days === 1) return 'yesterday';
+      if (days < 7) return `${days}d ago`;
+      if (days < 30) return `${Math.floor(days / 7)}w ago`;
+      return new Date(timestamp).toLocaleDateString();
+    }
+
+    // Date group helper
+    function getDateGroup(timestamp) {
+      const now = new Date();
+      const date = new Date(timestamp);
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const yesterday = new Date(today - 86400000);
+      const weekAgo = new Date(today - 7 * 86400000);
+
+      if (date >= today) return 'Today';
+      if (date >= yesterday) return 'Yesterday';
+      if (date >= weekAgo) return 'This Week';
+      return 'Older';
+    }
+
+    // Enhanced refresh history with search, grouping, and relative times
+    async function refreshHistory(filterText = '') {
+      try {
+        const convs = await loadConversationsAsync();
+        historyEl.innerHTML = '';
+
+        if (!convs || !convs.length) {
+          historyEl.innerHTML = '<div style="text-align:center;padding:20px;opacity:0.7;">No saved conversations yet.<br/><span style="font-size:11px;">Click "Scan Chat" to save your first conversation!</span></div>';
+          return;
+        }
+
+        // Sort by timestamp (newest first)
+        const sorted = convs.sort((a, b) => (b.ts || 0) - (a.ts || 0));
+
+        // Filter if search text provided
+        const filter = (filterText || '').toLowerCase().trim();
+        const filtered = filter ? sorted.filter(c => {
+          const platform = (c.platform || '').toLowerCase();
+          const model = (c.model || '').toLowerCase();
+          const text = (c.conversation || []).map(m => m.text || '').join(' ').toLowerCase();
+          return platform.includes(filter) || model.includes(filter) || text.includes(filter);
+        }) : sorted;
+
+        if (filtered.length === 0) {
+          historyEl.innerHTML = `<div style="text-align:center;padding:20px;opacity:0.7;">No results for "${filterText}"</div>`;
+          return;
+        }
+
+        // Group by date
+        const groups = { 'Today': [], 'Yesterday': [], 'This Week': [], 'Older': [] };
+        filtered.forEach(c => {
+          const group = getDateGroup(c.ts || Date.now());
+          groups[group].push(c);
+        });
+
+        // Render groups
+        Object.entries(groups).forEach(([groupName, convList]) => {
+          if (convList.length === 0) return;
+
+          // Group header
+          const groupHeader = document.createElement('div');
+          groupHeader.style.cssText = 'font-size: 10px; font-weight: 600; color: var(--cb-subtext); text-transform: uppercase; letter-spacing: 0.5px; padding: 10px 0 6px; border-bottom: 1px solid var(--cb-border); margin-bottom: 6px;';
+          groupHeader.textContent = `${groupName} (${convList.length})`;
+          historyEl.appendChild(groupHeader);
+
+          // Render conversations in group
+          convList.forEach((conv, idx) => {
+            const row = document.createElement('div');
+            row.className = 'cb-history-row';
+            row.style.cssText = 'padding: 10px; margin-bottom: 6px; background: rgba(0, 180, 255, 0.05); border: 1px solid rgba(0, 180, 255, 0.15); border-radius: 8px; cursor: pointer; transition: all 0.2s;';
+
+            const userMsgs = (conv.conversation || []).filter(m => m.role === 'user').length;
+            const aiMsgs = (conv.conversation || []).filter(m => m.role === 'assistant').length;
+            const totalMsgs = userMsgs + aiMsgs;
+            const preview = (conv.conversation && conv.conversation[0]) ? conv.conversation[0].text.slice(0, 80) : 'No preview';
+            const platform = conv.platform || 'unknown';
+            const model = conv.model || '';
+            const time = relativeTime(conv.ts || Date.now());
+
+            row.innerHTML = `
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                <div style="font-size: 12px; font-weight: 600; color: var(--cb-white);">${platform}${model ? ' · ' + model : ''}</div>
+                <div style="font-size: 10px; color: var(--cb-subtext);">${time}</div>
+              </div>
+              <div style="font-size: 11px; color: var(--cb-subtext); line-height: 1.4; margin-bottom: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${preview}...</div>
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div style="font-size: 10px; color: var(--cb-subtext);">${totalMsgs} msgs (${userMsgs} user, ${aiMsgs} AI)</div>
+                <div style="display: flex; gap: 4px;">
+                  <button class="cb-btn cb-history-open" style="padding: 4px 8px; font-size: 10px;">Open</button>
+                  <button class="cb-btn cb-btn-danger cb-history-delete" style="padding: 4px 8px; font-size: 10px;">×</button>
+                </div>
+              </div>
+            `;
+
+            // Hover effects
+            row.addEventListener('mouseenter', () => {
+              row.style.background = 'rgba(0, 180, 255, 0.1)';
+              row.style.borderColor = 'rgba(0, 180, 255, 0.3)';
+            });
+            row.addEventListener('mouseleave', () => {
+              row.style.background = 'rgba(0, 180, 255, 0.05)';
+              row.style.borderColor = 'rgba(0, 180, 255, 0.15)';
+            });
+
+            // Open button
+            const openBtn = row.querySelector('.cb-history-open');
+            if (openBtn) {
+              openBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                try {
+                  window.ChatBridge.selectedConversation = conv;
+                  const text = (conv.conversation || []).map(m => `${m.role}: ${m.text}`).join('\n\n');
+                  lastScannedText = text;
+                  preview.textContent = `Preview: "${(conv.conversation?.[0]?.text || '').slice(0, 100)}..."`;
+                  toast(`Loaded: ${totalMsgs} messages`);
+                } catch (err) { debugLog('open history error', err); }
+              });
+            }
+
+            // Delete button
+            const deleteBtn = row.querySelector('.cb-history-delete');
+            if (deleteBtn) {
+              deleteBtn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                if (!confirm('Delete this conversation?')) return;
+                try {
+                  await new Promise(resolve => {
+                    chrome.runtime.sendMessage({ type: 'delete_conversation', payload: { id: String(conv.ts) } }, resolve);
+                  });
+                  toast('Deleted');
+                  refreshHistory(filter);
+                } catch (err) { debugLog('delete error', err); toast('Delete failed'); }
+              });
+            }
+
+            historyEl.appendChild(row);
+          });
+        });
+      } catch (e) {
+        debugLog('refreshHistory error', e);
+        historyEl.innerHTML = '<div style="padding:12px;opacity:0.7;">Failed to load history</div>';
+      }
+    }
+
+    // Search input handler
+    let historySearchTimeout = null;
+    historySearchInput.addEventListener('input', () => {
+      clearTimeout(historySearchTimeout);
+      historySearchTimeout = setTimeout(() => {
+        refreshHistory(historySearchInput.value);
+      }, 300);
+    });
 
     const footer = document.createElement('div'); footer.className = 'cb-footer'; panel.appendChild(footer);
 
@@ -8301,14 +8604,20 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       }
     }
 
-    // Scan button handler: scan, normalize, save, and optionally auto-summarize
+    // Scan button handler: scan first, then save, then background tasks (RAG/MCP)
     btnScan.addEventListener('click', async () => {
+      const scanStartTime = Date.now();
       addLoadingToButton(btnScan, 'Scanning');
       status.textContent = 'Status: scanning...';
+      preview.textContent = 'Preview: Scanning messages...';
       announce('Scanning conversation now');
 
       try {
+        // STEP 1: Pure scan - extract messages only (fast)
+        status.textContent = 'Status: extracting messages...';
         const msgs = await scanChat();
+        const scanDuration = Date.now() - scanStartTime;
+        debugLog(`[Scan] Extraction completed in ${scanDuration}ms`);
 
         // persist lastScannedText for clipboard and Sync view
         try {
@@ -8336,33 +8645,132 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           } catch (e) { }
 
           status.textContent = 'Status: no messages';
+          preview.textContent = 'Preview: No messages found. Try scrolling to load more chat history.';
           toast(errorMsg);
           announce('Scan completed: no messages found');
         } else {
+          status.textContent = 'Status: processing...';
           const final = normalizeMessages(msgs);
           const currentModel = detectCurrentModel();
-          const conv = { platform: location.hostname, url: location.href, ts: Date.now(), model: currentModel, conversation: final };
+
+          // Count user vs AI messages for better feedback
+          const userMsgs = final.filter(m => m.role === 'user').length;
+          const aiMsgs = final.filter(m => m.role === 'assistant').length;
+
+          const conv = {
+            platform: location.hostname,
+            url: location.href,
+            ts: Date.now(),
+            id: String(Date.now()),
+            model: currentModel,
+            conversation: final
+          };
 
           // ensure lastScannedText updated when saving
           try {
             lastScannedText = final.map(m => `${m.role}: ${m.text}`).join('\n\n');
           } catch (e) { }
 
-          // Use the async saveConversation function directly
+          // CRITICAL: Store scan result in central location for ALL sections to access
+          try {
+            window.ChatBridge = window.ChatBridge || {};
+            window.ChatBridge._lastScanData = {
+              messages: final,
+              text: lastScannedText,
+              conversation: conv,
+              timestamp: Date.now(),
+              platform: conv.platform,
+              model: currentModel
+            };
+            // Define getLastScan function if not exists
+            if (typeof window.ChatBridge.getLastScan !== 'function') {
+              window.ChatBridge.getLastScan = function () {
+                return window.ChatBridge._lastScanData || null;
+              };
+            }
+            debugLog('[Scan] Stored in ChatBridge.getLastScan() - messages:', final.length);
+          } catch (e) {
+            debugLog('[Scan] Failed to store in ChatBridge:', e);
+          }
+
+          // STEP 2: Save conversation (quick - local storage)
+          status.textContent = 'Status: saving...';
           try {
             await saveConversation(conv);
-            toast('Saved ' + final.length + ' messages');
-            status.textContent = `Status: saved ${final.length}`;
+            const totalDuration = Date.now() - scanStartTime;
+
+            // Show success with detailed count
+            const successMsg = `✓ Saved ${final.length} messages (${userMsgs} user, ${aiMsgs} AI) in ${totalDuration}ms`;
+            toast(successMsg);
+            status.textContent = `Status: ${final.length} msgs saved`;
+
+            // Show preview of first message
+            const firstUser = final.find(m => m.role === 'user');
+            const previewText = firstUser ? firstUser.text.slice(0, 150) : (final[0]?.text || '').slice(0, 150);
+            preview.textContent = `Preview: "${previewText}${previewText.length >= 150 ? '...' : ''}"`;
+
+            // Auto-select this conversation for other features
+            try {
+              window.ChatBridge.selectedConversation = conv;
+            } catch (e) { }
+
             refreshHistory();
             announce('Scan complete, conversation saved');
           } catch (saveError) {
             debugLog('Save failed', saveError);
             toast('Save failed: ' + (saveError.message || 'unknown error'));
             status.textContent = `Status: save failed`;
+            preview.textContent = 'Preview: Save failed - ' + (saveError.message || 'unknown error');
           }
 
-          // DISABLED: All heavy operations moved to background to keep scan instant
-          // Users can manually trigger these from the Insights tab if needed
+          // STEP 3: Background tasks AFTER scan+save complete (non-blocking)
+          // Use setTimeout to ensure UI update happens first
+          setTimeout(() => {
+            (async () => {
+              try {
+                // RAG indexing (only if 3+ messages)
+                if (final.length >= 3 && typeof window.RAGEngine !== 'undefined' && typeof window.RAGEngine.indexConversation === 'function') {
+                  debugLog('[Background] Starting RAG indexing...');
+                  for (let i = 0; i < final.length; i++) {
+                    const msg = final[i];
+                    const msgId = `${conv.id}_msg_${i}`;
+                    const msgText = `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.text}`;
+                    try {
+                      await window.RAGEngine.indexConversation(msgId, msgText, {
+                        platform: conv.platform,
+                        url: conv.url,
+                        timestamp: conv.ts,
+                        messageIndex: i,
+                        messageRole: msg.role,
+                        conversationId: conv.id
+                      });
+                    } catch (e) {
+                      debugLog('[RAG] Message', i, 'indexing failed:', e);
+                    }
+                  }
+                  debugLog('[Background] RAG indexing complete for', final.length, 'messages');
+                }
+
+                // Auto-summarize for longer conversations (15+ messages)
+                if (final.length > 15) {
+                  debugLog('[Background] Starting auto-summarize...');
+                  const summaryPrompt = `Summarize this chat concisely:\n\n${final.slice(0, 30).map(m => `${m.role}: ${m.text.slice(0, 200)}`).join('\n')}`;
+                  try {
+                    const res = await callGeminiAsync({ action: 'prompt', text: summaryPrompt, length: 'short' });
+                    if (res && res.ok && res.result) {
+                      conv.summary = res.result.trim();
+                      await saveConversation(conv);
+                      debugLog('[Background] Auto-summary saved');
+                    }
+                  } catch (e) {
+                    debugLog('[Background] Auto-summarize failed:', e);
+                  }
+                }
+              } catch (e) {
+                debugLog('[Background] Background tasks error:', e);
+              }
+            })();
+          }, 50); // Small delay to let UI update first
         }
       } catch (e) {
         console.error('[ChatBridge] Scan error:', e);
@@ -8373,7 +8781,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       } finally {
         // CRITICAL: Always remove loading state, even if errors occurred
         try {
-          removeLoadingFromButton(btnScan, 'Scan Chat');
+          removeLoadingFromButton(btnScan, '🔍 Scan Chat');
         } catch (e) {
           console.error('[ChatBridge] Failed to remove loading from scan button:', e);
           // Fallback: manually reset button
@@ -8381,7 +8789,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
             if (btnScan) {
               btnScan.disabled = false;
               btnScan.classList.remove('cb-loading');
-              btnScan.textContent = 'Scan Chat';
+              btnScan.innerHTML = '🔍 Scan Chat';
             }
           } catch (_) { }
         }
@@ -9467,16 +9875,43 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
 
     btnRestore.addEventListener('click', async () => {
       try {
-        // Always load from the unified loader (merges background DB + chrome mirror)
-        const list = await loadConversationsAsync();
-        const arr = Array.isArray(list) ? list : [];
+        // Priority 1: Use selected conversation from history (if user clicked "Open" previously)
+        let sel = null;
+        try {
+          if (window.ChatBridge && window.ChatBridge.selectedConversation &&
+            window.ChatBridge.selectedConversation.conversation &&
+            window.ChatBridge.selectedConversation.conversation.length > 0) {
+            sel = window.ChatBridge.selectedConversation;
+            debugLog('[Restore] Using selected conversation from history');
+          }
+        } catch (e) { }
+
+        // Priority 2: Load from saved conversations
+        if (!sel) {
+          const list = await loadConversationsAsync();
+          const arr = Array.isArray(list) ? list : [];
           if (!arr.length) { toast('No saved conversations'); return; }
           // Use most recent conversation
-          const sel = arr[0];
-          if (!sel || !sel.conversation || !sel.conversation.length) { toast('No messages in selected conversation'); return; }        // Auto-summarize if 10+ messages to preserve context without overwhelming the chat
-        let formatted = '';
-        const msgCount = sel.conversation.length;
+          sel = arr[0];
+        }
 
+        if (!sel || !sel.conversation || !sel.conversation.length) {
+          toast('No messages in selected conversation');
+          return;
+        }
+
+        // Count messages for user feedback
+        const userMsgs = sel.conversation.filter(m => m.role === 'user').length;
+        const aiMsgs = sel.conversation.filter(m => m.role === 'assistant').length;
+        const msgCount = sel.conversation.length;
+        const platform = sel.platform || 'unknown';
+        const model = sel.model || '';
+
+        // Show toast with what's being restored (no confirmation needed)
+        toast(`Restoring ${msgCount} msgs from ${platform}${model ? ' (' + model + ')' : ''}...`);
+
+        // Auto-summarize if 10+ messages to preserve context without overwhelming the chat
+        let formatted = '';
         if (msgCount >= 10 && (!sel.summary || sel.summary.trim().length === 0)) {
           // Auto-summarize for better context preservation with persistent status
           updateRestoreStatus(`Preparing autosummary for ${msgCount} messages...`);
@@ -9997,6 +10432,22 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       });
     }
 
+    // Llama API wrapper (for rewrite/translate using HuggingFace Llama 3.1)
+    function callLlamaAsync(originalPayload) {
+      return new Promise(async (resolve) => {
+        try {
+          chrome.runtime.sendMessage({ type: 'call_llama', payload: originalPayload }, res => {
+            const out = res || { ok: false, error: 'no-response' };
+            // Apply ramble filter to successful responses
+            if (out && out.ok && out.result && typeof out.result === 'string') {
+              out.result = rambleFilter(out.result);
+            }
+            resolve(out);
+          });
+        } catch (e) { resolve({ ok: false, error: e && e.message }); }
+      });
+    }
+
     // Hierarchical summarization: chunk long text, summarize chunks in parallel, then merge
     async function hierarchicalSummarize(text, options) {
       options = options || {};
@@ -10170,12 +10621,33 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       throw new Error('merge-failed');
     }
 
-    // Unified Rewrite API
     // Selects template via background templates and handles chunk/merge.
+    // Uses Llama (HuggingFace) as primary, Gemini as fallback
     async function rewriteText(mode, text, options = {}) {
       const styleKey = mode || 'normal';
       const styleHint = options.style || options.styleHint || '';
       const onProgress = typeof options.onProgress === 'function' ? options.onProgress : null;
+
+      // Try Llama first (faster for short texts)
+      if (text && text.length < 8000) {
+        try {
+          if (onProgress) onProgress({ phase: 'preparing' });
+          const llamaRes = await callLlamaAsync({
+            action: 'rewrite',
+            text: text,
+            rewriteStyle: styleKey,
+            styleHint: styleHint
+          });
+          if (llamaRes && llamaRes.ok && llamaRes.result) {
+            if (onProgress) onProgress({ phase: 'done' });
+            return llamaRes.result;
+          }
+        } catch (e) {
+          debugLog('[Rewrite] Llama failed, falling back to Gemini', e);
+        }
+      }
+
+      // Fallback to Gemini hierarchical processing (for long texts or if Llama fails)
       const opts = {
         chunkSize: options.chunkSize || 14000,
         maxParallel: options.maxParallel || 3,
@@ -10208,7 +10680,12 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         btnGoSumm.disabled = true; addLoadingToButton(btnGoSumm, 'Summarizing'); summResult.textContent = ''; btnInsertSumm.style.display = 'none';
         summProg.style.display = 'inline'; updateProgress(summProg, 'summarize', { phase: 'preparing' });
         const chatText = (summSourceText && summSourceText.textContent) ? summSourceText.textContent : '';
-        if (!chatText || chatText.trim().length < 10) { toast('No conversation to summarize'); btnGoSumm.disabled = false; btnGoSumm.textContent = 'Summarize'; return; }
+        if (!chatText || chatText.trim().length < 10) { toast('No conversation to summarize'); btnGoSumm.disabled = false; btnGoSumm.textContent = '✨ Summarize'; return; }
+
+        // Calculate original stats
+        const origWords = chatText.trim().split(/\s+/).filter(w => w.length > 0).length;
+        const origChars = chatText.length;
+        updateSummStats(chatText);
 
         const length = (summLengthSelect && summLengthSelect.value) || 'medium';
         const summaryType = (summTypeSelect && summTypeSelect.value) || 'paragraph';
@@ -10217,15 +10694,21 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
 
         // Update text area with result and show Insert button
         summSourceText.textContent = result || '(no result)';
-        summResult.textContent = '✅ Summary completed! The text area above now shows the summarized version.';
+
+        // Calculate result stats and show comparison
+        const resultWords = result ? result.trim().split(/\s+/).filter(w => w.length > 0).length : 0;
+        const resultChars = result ? result.length : 0;
+        const reduction = origWords > 0 ? Math.round((1 - resultWords / origWords) * 100) : 0;
+
+        updateSummStats(result);
+        summResult.textContent = `✅ Reduced from ${origWords.toLocaleString()} → ${resultWords.toLocaleString()} words (${reduction}% smaller)`;
         btnInsertSumm.style.display = 'inline-block';
         summProg.style.display = 'none';
-        // No duplicate output in preview; go straight to history below
-        toast('Summarize completed');
+        toast(`Summarized: ${reduction}% reduction`);
       } catch (err) {
         toast('Summarize failed: ' + (err && err.message ? err.message : err));
         debugLog('hierarchicalSummarize error', err);
-      } finally { removeLoadingFromButton(btnGoSumm, 'Summarize'); }
+      } finally { removeLoadingFromButton(btnGoSumm, '✨ Summarize'); }
     });
 
     // Insert buttons: inject current text area content into the page chat input
@@ -10368,13 +10851,22 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
     btnRewrite.addEventListener('click', async () => {
       closeAllViews();
       try {
-        const inputText = await getConversationText();
-        rewSourceText.textContent = inputText || '(no conversation found)';
+        // Get text to rewrite from last scan
+        const lastScan = window.ChatBridge.getLastScan();
+        const textToRewrite = (lastScan && lastScan.messages) ? lastScan.messages.map(m => m.text).join('\n') : '';
+
+        if (!textToRewrite) {
+          toast('No conversation to rewrite. Please scan first.');
+          return;
+        }
+
+        rewSourceText.textContent = textToRewrite.slice(0, 100) + '...';
         rewResult.textContent = '';
         rewView.classList.add('cb-view-active');
+
         // Load replies on open
         await loadAssistantReplies();
-      } catch (e) { toast('Failed to open Rewrite'); debugLog('open rew view', e); }
+      } catch (e) { toast('Failed to open Rewrite: ' + (e.message || e)); }
     });
 
     // Controls: Multi-select toggle
@@ -10529,35 +11021,81 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
 
     btnGoTrans.addEventListener('click', async () => {
       try {
-        btnGoTrans.disabled = true; transProg.style.display = 'inline'; transResult.style.display = 'none'; transResult.textContent = ''; btnInsertTrans.style.display = 'none';
+        // UI setup
+        btnGoTrans.disabled = true;
+        transProg.style.display = 'inline-flex';
+        transResult.style.display = 'none';
+        transResult.textContent = '';
+        btnInsertTrans.style.display = 'none';
+
+        // Get parameters
         const targetLanguage = transLangSelect.value || 'en';
         const radios = Array.from(transView.querySelectorAll('input[name="cb-trans-mode"]'));
-        console.log('[ChatBridge] Found radios:', radios.length);
         const selectedMode = radios.find(r => r && r.checked);
         const mode = selectedMode ? selectedMode.value : 'all';
-        console.log('[ChatBridge] Translation mode:', mode);
         const shortenEl = transView.querySelector('#cb-trans-shorten');
-        console.log('[ChatBridge] Shorten element:', shortenEl);
         const shorten = !!(shortenEl && shortenEl.checked);
-        console.log('[ChatBridge] Shorten:', shorten);
+
+        // Get content to translate
         let content;
+        const lastScan = window.ChatBridge.getLastScan();
+
         if (mode === 'last') {
-          const lastScan = window.ChatBridge.getLastScan();
-          if (!lastScan || !lastScan.messages || lastScan.messages.length === 0) { toast('No messages found'); btnGoTrans.disabled = false; transProg.style.display = 'none'; return; }
+          if (!lastScan || !lastScan.messages || lastScan.messages.length === 0) {
+            toast('No messages found. Please scan first.');
+            btnGoTrans.disabled = false;
+            transProg.style.display = 'none';
+            return;
+          }
           const lastMsg = lastScan.messages[lastScan.messages.length - 1];
           content = [{ role: lastMsg.role || 'assistant', text: lastMsg.text || '' }];
         } else {
-          const lastScan = window.ChatBridge.getLastScan();
           if (!lastScan || !lastScan.messages || lastScan.messages.length === 0) {
-            const chatText = await getConversationText();
-            content = chatText || '';
-          } else {
-            content = lastScan.messages;
+            toast('No messages found. Please scan first.');
+            btnGoTrans.disabled = false;
+            transProg.style.display = 'none';
+            return;
           }
+          content = lastScan.messages;
         }
-        if (typeof window.ChatBridgeTranslator === 'undefined') { toast('Translation module not loaded'); btnGoTrans.disabled = false; transProg.style.display = 'none'; return; }
-        const result = await window.ChatBridgeTranslator.translateContent({ targetLanguage, mode, shorten, content });
-        if (!result || !result.translated) { toast('Translation failed: no result'); btnGoTrans.disabled = false; transProg.style.display = 'none'; return; }
+
+        // Validate translator is loaded - with retry logic
+        debugLog('[Translation] Checking for translator module...');
+        let translator = window.ChatBridgeTranslator;
+        let retries = 0;
+        while (!translator && retries < 3) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+          translator = window.ChatBridgeTranslator;
+          retries++;
+          debugLog(`[Translation] Retry ${retries}: translator =`, typeof translator);
+        }
+
+        if (typeof translator === 'undefined') {
+          console.error('[Translation] Module not loaded after retries');
+          console.error('[Translation] Available globals:', Object.keys(window).filter(k => k.includes('ChatBridge')));
+          toast('Translation module not loaded. Please reload the page.');
+          debugLog('ChatBridgeTranslator not found. Available:', Object.keys(window).filter(k => k.includes('ChatBridge')));
+          btnGoTrans.disabled = false;
+          transProg.style.display = 'none';
+          return;
+        }
+
+        // Perform translation
+        const result = await translator.translateContent({
+          targetLanguage,
+          mode,
+          shorten,
+          content
+        });
+
+        if (!result || !result.translated) {
+          toast('Translation failed');
+          btnGoTrans.disabled = false;
+          transProg.style.display = 'none';
+          return;
+        }
+
+        // Format and display result
         let displayText = '';
         if (Array.isArray(result.translated)) {
           displayText = result.translated.map(msg => {
@@ -10567,18 +11105,21 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         } else {
           displayText = result.translated;
         }
+
         transResult.textContent = displayText;
         transResult.style.display = 'block';
         btnInsertTrans.style.display = 'inline-block';
         transProg.style.display = 'none';
-        toast('Translation completed');
-      } catch (err) {
-        toast('Translation failed: ' + (err && err.message ? err.message : err));
-        console.error('[ChatBridge] Translation error:', err);
-        transProg.style.display = 'none';
-      } finally { btnGoTrans.disabled = false; }
-    });
+        toast('✓ Translation complete');
 
+      } catch (err) {
+        toast('Translation failed: ' + (err && err.message ? err.message : String(err)));
+        debugLog('[Translation error]', err);
+        transProg.style.display = 'none';
+      } finally {
+        btnGoTrans.disabled = false;
+      }
+    });
     btnInsertTrans.addEventListener('click', async () => {
       try {
         const text = transResult.textContent || '';
@@ -11697,33 +12238,62 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
                 const txt = document.createElement('div');
                 txt.style.cssText = 'flex:1 1 auto;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:0.92';
 
-                // Get first message as preview (one-liner)
+                // Get first message as preview (5-6 words max)
                 let preview = '';
                 try {
                   if (s.conversation && s.conversation.length > 0) {
                     const firstMsg = s.conversation[0];
-                    preview = (firstMsg.text || '').replace(/\n/g, ' ').trim();
-                    if (preview.length > 40) preview = preview.substring(0, 37) + '...';
+                    preview = (firstMsg.text || '').replace(/\n/g, ' ').trim().split(' ').slice(0, 6).join(' ');
+                    if (preview.length > 0) preview += '...';
                   }
                 } catch (e) { }
 
-                txt.textContent = preview || `${count} messages • ${timeStr}`;
+                txt.textContent = preview || `${count} messages  ${timeStr}`;
                 row.appendChild(txt);
+                // Open button
                 const openBtn = document.createElement('button');
                 openBtn.className = 'cb-btn';
-                openBtn.style.cssText = 'padding:4px 8px;font-size:11px;border-radius:8px;';
+                openBtn.style.cssText = 'padding:4px 8px;font-size:11px;border-radius:8px;margin-left:8px;';
                 openBtn.textContent = 'Open';
                 row.appendChild(openBtn);
-                const open = () => { 
-                  try { 
-                    // Show preview directly
-                    const convText = (s.conversation || []).map(m => `${m.role === 'user' ? 'You' : 'AI'}: ${m.text}`).join('\n\n');
-                    preview.textContent = 'Preview:\n' + (convText.slice(0, 500) || '(empty)');
-                    announce('Viewing conversation from ' + timeStr); 
-                  } catch (e) { } 
+                // Delete button
+                const delBtn = document.createElement('button');
+                delBtn.className = 'cb-btn';
+                delBtn.style.cssText = 'padding:4px 8px;font-size:11px;border-radius:8px;margin-left:4px;background:#ff4d4f;color:#fff;';
+                delBtn.textContent = 'Delete';
+                row.appendChild(delBtn);
+                // Open handler
+                const open = () => {
+                  try {
+                    // Show only first 5-6 words of first message
+                    const firstMsg = (s.conversation && s.conversation[0]) ? s.conversation[0].text : '';
+                    const words = firstMsg.split(' ').slice(0, 6).join(' ');
+                    preview.textContent = 'Preview: ' + (words || '(empty)');
+                    announce('Viewing conversation from ' + timeStr);
+                  } catch (e) { }
                 };
                 row.addEventListener('click', open);
                 openBtn.addEventListener('click', (ev) => { ev.stopPropagation(); open(); });
+                // Delete handler
+                delBtn.addEventListener('click', (ev) => {
+                  ev.stopPropagation();
+                  if (confirm('Delete this conversation?')) {
+                    // Remove from storage and refresh
+                    try {
+                      const convs = (window.ChatBridge.getConversations && window.ChatBridge.getConversations()) || [];
+                      const idx = convs.findIndex(c => c.ts === s.ts);
+                      if (idx >= 0) {
+                        convs.splice(idx, 1);
+                        if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+                          chrome.storage.local.set({ cb_conversations: convs }, () => window.ChatBridge.refreshHistory());
+                        } else {
+                          localStorage.setItem('cb_conversations', JSON.stringify(convs));
+                          window.ChatBridge.refreshHistory();
+                        }
+                      }
+                    } catch (e) { toast('Delete failed'); }
+                  }
+                });
                 full.appendChild(row);
               }
             };
@@ -11743,11 +12313,12 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
             }).join('\n\n');
           }
         } catch (e) { /* noop */ }
-        // Default preview from first conversation
+        // Default preview from first conversation (only 5-6 words)
         const firstConv = arr[0];
         if (firstConv && firstConv.conversation && firstConv.conversation.length > 0) {
-          const convText = firstConv.conversation.map(m => `${m.role === 'user' ? 'You' : 'AI'}: ${m.text}`).join('\n\n');
-          preview.textContent = 'Preview:\n' + (convText.slice(0, 500) || '(empty)');
+          const firstMsg = firstConv.conversation[0].text || '';
+          const words = firstMsg.split(' ').slice(0, 6).join(' ');
+          preview.textContent = 'Preview: ' + (words || '(empty)');
         } else {
           preview.textContent = 'Preview: (none)';
         }
@@ -11844,7 +12415,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
   // Debounce mechanism for scan operations
   let scanDebounceTimer = null;
   let lastScanTimestamp = 0;
-  const SCAN_DEBOUNCE_MS = 1000; // Wait 1 second between scans
+  const SCAN_DEBOUNCE_MS = 300; // Quick debounce - prevents accidental double-clicks only
 
   async function scanChat() {
     // Debounce rapid scan calls
@@ -12080,6 +12651,19 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         window.ChatBridge._lastScanResult = normalized;
       } catch (e) { }
 
+      // CRITICAL: Also update the central _lastScanData store for all sections
+      try {
+        if (normalized.length > 0) {
+          const textContent = normalized.map(m => `${m.role}: ${m.text}`).join('\n\n');
+          window.ChatBridge._lastScanData = window.ChatBridge._lastScanData || {};
+          window.ChatBridge._lastScanData.messages = normalized;
+          window.ChatBridge._lastScanData.text = textContent;
+          window.ChatBridge._lastScanData.timestamp = Date.now();
+          window.ChatBridge._lastScanData.platform = location.hostname;
+          debugLog('[Scan] Updated _lastScanData with', normalized.length, 'messages');
+        }
+      } catch (e) { debugLog('[Scan] Failed to update _lastScanData:', e); }
+
       // Persist last scanned messages and attachments into debug object for downstream tools (e.g., media extract)
       try {
         if (window.ChatBridge && window.ChatBridge._lastScan) {
@@ -12090,64 +12674,8 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         }
       } catch (_) { }
 
-      // Only save if we have messages
-      if (normalized.length === 0) {
-        debugLog('[Scan] No messages to save, skipping');
-        return normalized;
-      }
-
-      // Fire-and-forget: Save and index in background (don't block scan completion)
-      const convObj = {
-        ts: Date.now(),
-        id: String(Date.now()),
-        platform: (function () { try { return new URL(location.href).hostname; } catch (_) { return location.hostname || 'unknown'; } })(),
-        url: location.href,
-        conversation: normalized,
-      };
-
-      // Return scan results immediately
-      debugLog('[Scan] Returning', normalized.length, 'messages (save/index running in background)');
-
-      // All async operations happen in background
-      (async () => {
-        try {
-          await saveConversation(convObj);
-
-          // Auto-index into RAG (async, don't wait)
-          if (normalized.length >= 3 && typeof window.RAGEngine !== 'undefined' && typeof window.RAGEngine.indexConversation === 'function') {
-            // Index each message separately to preserve structure
-            for (let i = 0; i < normalized.length; i++) {
-              const msg = normalized[i];
-              const msgId = `${convObj.id}_msg_${i}`;
-              const msgText = `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.text}`;
-
-              // Don't await - fire and forget (correct parameter order: id, text, metadata)
-              window.RAGEngine.indexConversation(msgId, msgText, {
-                platform: convObj.platform,
-                url: convObj.url,
-                timestamp: convObj.ts,
-                messageIndex: i,
-                messageRole: msg.role,
-                conversationId: convObj.id
-              }).catch(e => debugLog('[Auto-Index] Message', i, 'failed:', e));
-            }
-            debugLog('[Auto-Index] Queued', normalized.length, 'messages for indexing');
-          }
-
-          // Auto-summarize (async, only for longer conversations)
-          if (normalized.length > 15) {
-            const summaryPrompt = `Summarize the following chat in this format:\n\n[Summary]\n- Main points\n- Key actions\n- Decisions\n- Next steps\n\nChat:\n${normalized.map(m => (m.role === 'user' ? 'User: ' : 'Assistant: ') + m.text).join('\n')}`;
-            callGeminiAsync({ action: 'prompt', text: summaryPrompt, length: 'medium' }).then(res => {
-              if (res && res.ok && res.result) {
-                convObj.summary = res.result.trim();
-                saveConversation(convObj).catch(e => debugLog('summary save failed', e));
-              }
-            }).catch(e => debugLog('auto-summarize failed', e));
-          }
-        } catch (e) {
-          debugLog('background tasks failed', e);
-        }
-      })();
+      // Log any errors that occurred during scan
+      debugLog('[Scan] Returning', normalized.length, 'messages');
 
       // Log any errors that occurred
       try {

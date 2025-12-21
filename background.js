@@ -57,17 +57,17 @@ const MAX_MODEL_FAILURES = 3; // Switch models after 3 consecutive failures
 // Centralized rewrite templates map
 // Safe, meaning-preserving prompts. No detector evasion or academic-integrity bypass.
 const REWRITE_TEMPLATES = {
-  normal: ({ text }) => `Rewrite this text to be clearer and more professional while preserving meaning and intent. Avoid changing facts or adding new claims.\n\n${text}`,
-  concise: ({ text }) => `Rewrite the following text to be concise and to-the-point. Remove redundancy and filler. Preserve meaning and essential context.\n\n${text}`,
-  direct: ({ text }) => `Rewrite the following text to be direct and straightforward. Use active voice and clear wording, keeping the original meaning unchanged.\n\n${text}`,
-  detailed: ({ text }) => `Rewrite the following text to be more detailed and comprehensive. Clarify ambiguities, add structure, and preserve factual content.\n\n${text}`,
-  academic: ({ text }) => `Rewrite the following text in a formal, academic tone. Use precise terminology and structured paragraphs. Do not fabricate sources or citations. Preserve meaning.\n\n${text}`,
-  humanized: ({ text, styleHint }) => `Rewrite the text in a Humanized Paraphrased style. Goals:\n- Natural, conversational voice (never robotic)\n- Smooth, deliberate transitions between ideas\n- Varied sentence lengths and cadence; avoid repetitive phrasing\n- Preserve meaning, facts, and nuance exactly (no additions)\n- Keep markdown intact; do not alter fenced/inline code, formulas, identifiers, or URLs\n- Keep length roughly similar; do not compress or expand unnaturally\n\nText to rewrite:\n\n${text}`,
-  creative: ({ text }) => `Rewrite the following text with light stylistic flair and engaging phrasing, without changing meaning, claims, or facts. Keep it tasteful and clear.\n\n${text}`,
-  professional: ({ text }) => `Rewrite the following text in a polished, professional tone suitable for workplace communication. Keep it respectful, clear, and accurate.\n\n${text}`,
-  simple: ({ text }) => `Rewrite the following text in simple, easy-to-read language. Reduce complexity while preserving important details and meaning.\n\n${text}`,
-  friendly: ({ text }) => `Rewrite the following text in a friendly, warm tone while remaining clear and respectful. Keep the original meaning intact.\n\n${text}`,
-  customStyle: ({ text, styleHint = '' }) => `Rewrite the following text in this personalized style: "${(styleHint || '').slice(0, 160)}". Maintain original meaning and facts. Do not use detector-evasion tricks or academic-integrity violations.\n\n${text}`
+  normal: ({ text }) => `Rewrite this text to be clearer and more professional while preserving meaning and intent. Avoid changing facts or adding new claims. Output ONLY the rewritten text. Do not add summaries, headers, introductions, or explanations.\n\n${text}`,
+  concise: ({ text }) => `Rewrite the following text to be concise and to-the-point. Remove redundancy and filler. Preserve meaning and essential context. Output ONLY the rewritten text. Do not add summaries, headers, or extra commentary.\n\n${text}`,
+  direct: ({ text }) => `Rewrite the following text to be direct and straightforward. Use active voice and clear wording, keeping the original meaning unchanged. Output ONLY the rewritten text. No summaries, no headers.\n\n${text}`,
+  detailed: ({ text }) => `Rewrite the following text to be more detailed and comprehensive. Clarify ambiguities, add structure, and preserve factual content. Output ONLY the rewritten text with added detail. No summaries or headers.\n\n${text}`,
+  academic: ({ text }) => `Rewrite the following text in a formal, academic tone. Use precise terminology and structured paragraphs. Do not fabricate sources or citations. Preserve meaning. Output ONLY the rewritten text. No summaries.\n\n${text}`,
+  humanized: ({ text, styleHint }) => `Rewrite the text in a Humanized Paraphrased style. Goals:\n- Natural, conversational voice (never robotic)\n- Smooth, deliberate transitions between ideas\n- Varied sentence lengths and cadence; avoid repetitive phrasing\n- Preserve meaning, facts, and nuance exactly (no additions)\n- Keep markdown intact; do not alter fenced/inline code, formulas, identifiers, or URLs\n- Keep length roughly similar; do not compress or expand unnaturally\nOutput ONLY the rewritten text. No summaries, no headers, no explanations.\n\nText to rewrite:\n\n${text}`,
+  creative: ({ text }) => `Rewrite the following text with light stylistic flair and engaging phrasing, without changing meaning, claims, or facts. Keep it tasteful and clear. Output ONLY the rewritten text. No summaries or headers.\n\n${text}`,
+  professional: ({ text }) => `Rewrite the following text in a polished, professional tone suitable for workplace communication. Keep it respectful, clear, and accurate. Output ONLY the rewritten text. No summaries.\n\n${text}`,
+  simple: ({ text }) => `Rewrite the following text in simple, easy-to-read language. Reduce complexity while preserving important details and meaning. Output ONLY the rewritten text. No headers or summaries.\n\n${text}`,
+  friendly: ({ text }) => `Rewrite the following text in a friendly, warm tone while remaining clear and respectful. Keep the original meaning intact. Output ONLY the rewritten text. No summaries or headers.\n\n${text}`,
+  customStyle: ({ text, styleHint = '' }) => `Rewrite the following text in this personalized style: "${(styleHint || '').slice(0, 160)}". Maintain original meaning and facts. Do not use detector-evasion tricks or academic-integrity violations. Output ONLY the rewritten text. No summaries or headers.\n\n${text}`
 };
 
 // Get next available model, skipping those with too many failures
@@ -513,6 +513,33 @@ async function getOpenAIApiKey(opts) {
   }
 }
 
+// HuggingFace API key getter with cache (for Llama rewrite/translate)
+const __cbHuggingFaceKeyCache = { value: null, ts: 0 };
+const DEV_HARDCODED_HF_KEY = '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'; // User's HuggingFace API key
+
+async function getHuggingFaceApiKey(opts) {
+  const force = !!(opts && opts.force);
+  const now = Date.now();
+  if (!force && __cbHuggingFaceKeyCache.value && (now - __cbHuggingFaceKeyCache.ts) < 60_000) {
+    return __cbHuggingFaceKeyCache.value;
+  }
+  try {
+    let key = await new Promise(r => chrome.storage.local.get(['chatbridge_hf_key'], d => r(d && d.chatbridge_hf_key)));
+    // Fallback to hardcoded key if nothing found in storage
+    if (!key && DEV_HARDCODED_HF_KEY) key = DEV_HARDCODED_HF_KEY;
+    __cbHuggingFaceKeyCache.value = key || null;
+    __cbHuggingFaceKeyCache.ts = now;
+    return __cbHuggingFaceKeyCache.value;
+  } catch (_) {
+    if (DEV_HARDCODED_HF_KEY) {
+      __cbHuggingFaceKeyCache.value = DEV_HARDCODED_HF_KEY;
+      __cbHuggingFaceKeyCache.ts = now;
+      return DEV_HARDCODED_HF_KEY;
+    }
+    return null;
+  }
+}
+
 // Keep cache fresh when the key changes in Options
 try {
   if (chrome.storage && chrome.storage.onChanged) {
@@ -525,6 +552,10 @@ try {
           if (changes && changes.chatbridge_openai_key) {
             __cbOpenAIKeyCache.value = changes.chatbridge_openai_key.newValue || null;
             __cbOpenAIKeyCache.ts = Date.now();
+          }
+          if (changes && changes.chatbridge_hf_key) {
+            __cbHuggingFaceKeyCache.value = changes.chatbridge_hf_key.newValue || null;
+            __cbHuggingFaceKeyCache.ts = Date.now();
           }
         }
       } catch (_) { }
@@ -1569,14 +1600,103 @@ Rewritten conversation (optimized for ${tgt}):`;
     return true;
   }
 
-  // --- Translation Handlers --------------------------------------------------
+  // HuggingFace Llama 3.1 API handler (for rewrite/translate)
+  if (msg && msg.type === 'call_llama') {
+    if (!limiterTry()) return sendResponse({ ok: false, error: 'rate_limited' });
+    (async () => {
+      try {
+        const HF_API_KEY = await getHuggingFaceApiKey();
+        if (!HF_API_KEY) {
+          return sendResponse({ ok: false, error: 'no_api_key', message: 'HuggingFace API key not configured.' });
+        }
+
+        const payload = msg.payload || {};
+        const action = payload.action || 'rewrite';
+        let promptText = '';
+
+        // Build prompt based on action
+        if (action === 'rewrite') {
+          const styleKey = payload.rewriteStyle || 'normal';
+          const styleHint = payload.styleHint || '';
+          const styleInstructions = {
+            normal: 'Rewrite this text to be clearer and more professional while preserving meaning.',
+            concise: 'Rewrite to be concise and to-the-point. Remove redundancy.',
+            direct: 'Rewrite to be direct and straightforward. Use active voice.',
+            detailed: 'Rewrite to be more detailed and comprehensive.',
+            academic: 'Rewrite in a formal, academic tone.',
+            humanized: 'Rewrite in a natural, conversational voice.',
+            creative: 'Rewrite with light stylistic flair and engaging phrasing.',
+            professional: 'Rewrite in a polished, professional tone.',
+            simple: 'Rewrite in simple, easy-to-read language.',
+            friendly: 'Rewrite in a friendly, warm tone.'
+          };
+          const instruction = styleInstructions[styleKey] || styleInstructions.normal;
+          promptText = `${instruction}${styleHint ? ` Style hint: ${styleHint}` : ''} Output ONLY the rewritten text with no explanations.\n\n${payload.text}`;
+        } else if (action === 'translate') {
+          const targetLang = payload.targetLang || 'English';
+          promptText = `Translate the following text to ${targetLang}. Output ONLY the translated text with no explanations.\n\n${payload.text}`;
+        } else {
+          promptText = payload.text || '';
+        }
+
+        // Call HuggingFace router API
+        const endpoint = 'https://router.huggingface.co/v1/chat/completions';
+        const body = {
+          model: 'meta-llama/Llama-3.1-8B-Instruct:novita',
+          messages: [{ role: 'user', content: promptText }],
+          temperature: 0.7,
+          max_tokens: 4096
+        };
+
+        console.log(`[Llama] Calling HuggingFace router for ${action}...`);
+
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${HF_API_KEY}`
+          },
+          body: JSON.stringify(body)
+        });
+
+        let json;
+        try {
+          const text = await res.text();
+          json = text ? JSON.parse(text) : {};
+        } catch (e) {
+          console.error('[Llama API] Failed to parse response:', e);
+          return sendResponse({ ok: false, error: 'llama_parse_error', message: 'Invalid JSON response' });
+        }
+
+        if (!res.ok) {
+          console.error('[Llama API Error]', res.status, json);
+          return sendResponse({ ok: false, error: 'llama_http_error', status: res.status, body: json });
+        }
+
+        if (!json.choices || !Array.isArray(json.choices) || json.choices.length === 0) {
+          console.error('[Llama API] No choices in response:', json);
+          return sendResponse({ ok: false, error: 'llama_no_choices', message: 'No response from model' });
+        }
+
+        const result = json.choices[0].message?.content || '';
+        console.log(`[Llama] ✓ Success for ${action}: ${result.length} chars`);
+
+        return sendResponse({ ok: true, result, model: 'llama-3.1-8b' });
+      } catch (e) {
+        console.error('[Llama API] Error:', e);
+        return sendResponse({ ok: false, error: 'llama_fetch_error', message: (e && e.message) || String(e) });
+      }
+    })();
+    return true;
+  }
+
   if (msg && msg.type === 'translate_text') {
     if (!limiterTry()) return sendResponse({ ok: false, error: 'rate_limited' });
     (async () => {
       try {
         let geminiApiKey = await getGeminiApiKey();
         if (!geminiApiKey) return sendResponse({ ok: false, error: 'no_api_key', message: 'Gemini API key not configured.' });
-  const promptText = msg.prompt || msg.text;
+        const promptText = msg.prompt || msg.text;
         let lastError = null;
         const maxRetries = GEMINI_MODEL_PRIORITY.length;
 
@@ -1620,7 +1740,7 @@ Rewritten conversation (optimized for ${tgt}):`;
       try {
         let geminiApiKey = await getGeminiApiKey();
         if (!geminiApiKey) return sendResponse({ ok: false, error: 'no_api_key', message: 'Gemini API key not configured.' });
-  const promptText = msg.prompt || msg.text;
+        const promptText = msg.prompt || msg.text;
         let lastError = null;
         const maxRetries = GEMINI_MODEL_PRIORITY.length;
 
@@ -1700,11 +1820,22 @@ Rewritten conversation (optimized for ${tgt}):`;
           const styleKey = msg.style || 'normal';
           const styleHint = msg.styleHint || '';
           const builder = REWRITE_TEMPLATES[styleKey] || REWRITE_TEMPLATES.normal;
-          const systemInstruction = 'You are a professional writing assistant. Rewrite text to match the requested style while preserving all important information and intent. Never alter or invent code blocks.';
+          const systemInstruction = 'You are a professional writing assistant. Rewrite text to match the requested style while preserving all important information and intent. Never alter or invent code blocks. Output ONLY the rewritten text with no summaries, headers, or meta-commentary.';
           const prompt = builder({ text: msg.text || '', styleHint });
           const r = await geminiGenerate(systemInstruction, prompt);
           if (!r.ok) return sendResponse(r);
-          return sendResponse({ ok: true, result: r.text, model: r.model });
+
+          // Post-process to remove any summary headers that may have been added
+          let result = r.text || '';
+          // Remove lines that are clearly headers/summaries
+          result = result
+            .replace(/^#{1,6}\s+Summary[^]*?\n\n/gim, '') // Remove markdown headers like "# Summary"
+            .replace(/^##\s+(Summary|Key Points|Rewritten Text)[^]*?\n\n/gim, '')
+            .replace(/^(Summary|Key Points|Rewritten Output|Here's the rewrite)[\s:]*\n\n/gim, '')
+            .replace(/^(Here's|Here is|Below is) (your|the) (rewritten|rephrased) (text|version)[:\s]*\n\n/gim, '')
+            .trim();
+
+          return sendResponse({ ok: true, result: result, model: r.model });
         }
         if (type === 'extract_meaning') {
           const systemInstruction = 'You are a conversation analyst. Extract only the key ideas, decisions, explanations, insights, and instructions from the chat. Remove greetings, tangents, mistakes, contradictions, and noise. Output a succinct “meaning draft” without role attributions.';

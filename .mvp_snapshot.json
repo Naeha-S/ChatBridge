@@ -1,6 +1,0 @@
-{
-  "mvp_label": "MVP at conversational checkpoint",
-  "commit": "368bb45c53ac65409913548772844fded8145d23",
-  "date": "2025-10-21T00:00:00Z",
-  "notes": "State after adding hierarchical chunked processing for summarize/prompt/rewrite/translate and UI tweaks. Use restore_mvp.ps1 to reset workspace to this commit." 
-}
