@@ -43,6 +43,102 @@
 
   console.log('[ChatBridge] Injecting on approved site:', window.location.hostname);
 
+  // AUTO-INSERT: Check if we arrived from "Continue With" and should auto-insert context
+  (async function checkContinueWithAutoInsert() {
+    try {
+      // Wait for page to be fully loaded
+      await new Promise(r => setTimeout(r, 2000));
+
+      // Check for stored continue context
+      let continueData = null;
+
+      // Try chrome.storage first (cross-tab)
+      try {
+        if (chrome.storage && chrome.storage.local) {
+          continueData = await new Promise(resolve => {
+            chrome.storage.local.get(['chatbridge:continue_context'], (data) => {
+              resolve(data['chatbridge:continue_context'] || null);
+            });
+          });
+        }
+      } catch (e) { }
+
+      // Fallback to localStorage
+      if (!continueData) {
+        try {
+          const stored = localStorage.getItem('chatbridge:continue_context');
+          if (stored) {
+            continueData = JSON.parse(stored);
+          }
+        } catch (e) { }
+      }
+
+      // If no context or too old (>5 minutes), skip
+      if (!continueData || !continueData.text || !continueData.timestamp) return;
+      if (Date.now() - continueData.timestamp > 5 * 60 * 1000) {
+        // Clear old context
+        localStorage.removeItem('chatbridge:continue_context');
+        try { chrome.storage.local.remove(['chatbridge:continue_context']); } catch (e) { }
+        return;
+      }
+
+      console.log('[ChatBridge] Found continue context, attempting auto-insert...');
+
+      // Wait a bit more for the input to be ready
+      await new Promise(r => setTimeout(r, 1500));
+
+      // Find the chat input
+      const selectors = [
+        'textarea[data-id="root"]', // ChatGPT
+        'textarea#prompt-textarea', // ChatGPT
+        'div[contenteditable="true"]', // Claude, Gemini
+        'textarea', // Generic
+        '[role="textbox"]', // Copilot
+        'input[type="text"]' // Fallback
+      ];
+
+      let input = null;
+      for (const sel of selectors) {
+        input = document.querySelector(sel);
+        if (input) break;
+      }
+
+      if (input) {
+        // Insert the context
+        if (input.isContentEditable || input.contentEditable === 'true') {
+          input.focus();
+          input.textContent = continueData.text;
+          input.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true }));
+        } else {
+          input.focus();
+          input.value = continueData.text;
+          input.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+
+        // Clear the stored context (one-time use)
+        localStorage.removeItem('chatbridge:continue_context');
+        try { chrome.storage.local.remove(['chatbridge:continue_context']); } catch (e) { }
+
+        console.log('[ChatBridge] Auto-inserted continue context!');
+
+        // Show a subtle notification
+        const notif = document.createElement('div');
+        notif.style.cssText = 'position:fixed;top:20px;right:20px;background:linear-gradient(135deg,rgba(16,163,127,0.95),rgba(0,100,80,0.95));color:white;padding:12px 20px;border-radius:10px;font-size:13px;z-index:999999;box-shadow:0 4px 20px rgba(0,0,0,0.3);animation:slideIn 0.3s ease;';
+        notif.innerHTML = '✨ <strong>ChatBridge</strong>: Conversation context inserted!';
+        document.body.appendChild(notif);
+
+        // Add slide animation
+        const style = document.createElement('style');
+        style.textContent = '@keyframes slideIn { from { transform: translateX(100px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }';
+        document.head.appendChild(style);
+
+        setTimeout(() => notif.remove(), 4000);
+      }
+    } catch (e) {
+      console.warn('[ChatBridge] Continue auto-insert error:', e);
+    }
+  })();
+
   // CLOUDFLARE FIX: Defer UI injection until page is fully loaded to avoid triggering security checks
   let _pageFullyLoaded = document.readyState === 'complete';
   if (!_pageFullyLoaded) {
@@ -3287,27 +3383,40 @@
           });
         });
 
-        // Extract dates
-        const dateRegex = /(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}|\d{4}[\/\-]\d{1,2}[\/\-]\d{1,2}|(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+\d{1,2}(?:,?\s+\d{4})?|\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?(?:,?\s+\d{4})?)/gi;
+        // Extract dates - MORE STRICT to avoid false positives like "11 marks"
+        // Only match: DD/MM/YYYY, YYYY-MM-DD, Month DD YYYY, DD Month YYYY
+        const dateRegex = /(\d{1,2}[\\/\\-]\d{1,2}[\\/\\-]\d{2,4}|\d{4}[\\/\\-]\d{1,2}[\\/\\-]\d{1,2}|(?:January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\\.?\s+\d{1,2}(?:st|nd|rd|th)?(?:,?\s+\d{4})?|\d{1,2}(?:st|nd|rd|th)?\s+(?:January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\.?(?:,?\s+\d{4})?)/gi;
         const dates = text.match(dateRegex) || [];
-        dates.forEach(date => extracted.dates.push({ value: date, msgIndex: i, role }));
+        // Filter out obvious false positives
+        const validDates = dates.filter(d => {
+          const lower = d.toLowerCase();
+          // Must contain a month name or proper date format with separators
+          const hasMonth = /jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec/i.test(d);
+          const hasSeparator = /[\\/\\-]/.test(d);
+          return hasMonth || hasSeparator;
+        });
+        validDates.forEach(date => extracted.dates.push({ value: date.trim(), msgIndex: i, role }));
 
-        // Extract lists (bullet points, numbered lists)
-        const listItems = [];
+        // Extract lists (bullet points, numbered lists) - more permissive
         lines.forEach(line => {
-          const listMatch = line.match(/^(?:\s*[-*•→]\s+|\s*\d+[.)]\s+|\s*[a-z][.)]\s+)(.+)/i);
-          if (listMatch && listMatch[1] && listMatch[1].length > 5) {
-            listItems.push(listMatch[1].trim());
+          // Match bullet points (-, *, •, →) or numbered lists (1. 2) a) etc)
+          const listMatch = line.match(/^(?:\s*[-*•→▪▸]\s+|\s*\d+[.)]\s+|\s*[a-z][.)]\s+)(.+)/i);
+          if (listMatch && listMatch[1] && listMatch[1].length > 3) {
+            // Check if we already have a list being built for this pattern
+            const existingList = extracted.lists.find(l => l.msgIndex === i);
+            if (existingList) {
+              existingList.items.push(listMatch[1].trim());
+              existingList.count = existingList.items.length;
+            } else {
+              extracted.lists.push({
+                items: [listMatch[1].trim()],
+                count: 1,
+                msgIndex: i,
+                role
+              });
+            }
           }
         });
-        if (listItems.length > 0) {
-          extracted.lists.push({
-            items: listItems,
-            count: listItems.length,
-            msgIndex: i,
-            role
-          });
-        }
 
         // Extract code blocks
         const codeBlockRegex = /```(\w*)\n?([\s\S]*?)```/g;
@@ -6497,10 +6606,10 @@ Respond with JSON only:
 
           if (categories.length === 0) {
             showToolResult(`
-              <div style="text-align:center;padding:30px;color:var(--cb-subtext);">
-                <div style="font-size:28px;margin-bottom:12px;">🔍</div>
-                <div style="font-weight:500;color:var(--cb-white);margin-bottom:6px;">No Extractable Content</div>
-                <div style="font-size:11px;opacity:0.7;">This chat doesn't contain links, numbers, code blocks, or lists.</div>
+              <div style="text-align:center;padding:20px;color:var(--cb-subtext);">
+                <div style="font-size:24px;margin-bottom:8px;">🔍</div>
+                <div style="font-weight:500;color:var(--cb-white);margin-bottom:4px;font-size:12px;">No Extractable Content</div>
+                <div style="font-size:10px;opacity:0.7;">No links, numbers, code, or lists found.</div>
               </div>
             `, '📋 Extract Content');
             return;
@@ -6509,24 +6618,24 @@ Respond with JSON only:
           // Calculate totals
           const totalItems = categories.reduce((sum, c) => sum + c.count, 0);
 
-          // Build beautiful category cards
-          const categoryCardsHTML = categories.map((c, i) => `
-            <div class="cb-extract-cat" data-key="${c.key}" style="flex:1;min-width:80px;padding:10px 8px;background:${c.gradient};border:1px solid ${c.color}33;border-radius:10px;cursor:pointer;text-align:center;transition:all 0.2s ease;${i === 0 ? 'transform:scale(1.02);box-shadow:0 0 12px ' + c.color + '30;' : ''}">
-              <div style="font-size:18px;margin-bottom:4px;">${c.icon}</div>
-              <div style="font-size:9px;color:${c.color};font-weight:600;text-transform:uppercase;letter-spacing:0.3px;">${c.label}</div>
-              <div style="font-size:16px;font-weight:700;color:var(--cb-white);margin-top:2px;">${c.count}</div>
+          // Build category pills with labels
+          const categoryPillsHTML = categories.map((c, i) => `
+            <div class="cb-extract-cat" data-key="${c.key}" style="display:flex;align-items:center;gap:5px;padding:6px 10px;background:${i === 0 ? c.gradient : 'rgba(255,255,255,0.03)'};border:1px solid ${i === 0 ? c.color + '40' : 'rgba(255,255,255,0.08)'};border-radius:8px;cursor:pointer;transition:all 0.15s;${i === 0 ? 'box-shadow:0 0 10px ' + c.color + '20;' : ''}">
+              <span style="font-size:13px;">${c.icon}</span>
+              <span style="font-size:10px;color:var(--cb-white);opacity:0.9;">${c.label}</span>
+              <span style="font-size:10px;color:${c.color};font-weight:600;">${c.count}</span>
             </div>
           `).join('');
 
           showToolResult(`
-            <div style="margin-bottom:14px;">
+            <div style="margin-bottom:12px;">
               <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-                <span style="font-size:11px;color:var(--cb-subtext);">Found <span style="color:var(--cb-white);font-weight:600;">${totalItems}</span> items in <span style="color:var(--cb-white);font-weight:600;">${categories.length}</span> categories</span>
-                <span id="cb-extract-copy-all" style="font-size:10px;color:#60a5fa;cursor:pointer;opacity:0.8;">📋 Copy All</span>
+                <span style="font-size:11px;color:var(--cb-subtext);">Found <span style="color:var(--cb-white);font-weight:600;">${totalItems}</span> items</span>
+                <span id="cb-extract-copy-all" style="font-size:10px;color:#60a5fa;cursor:pointer;padding:4px 8px;background:rgba(96,165,250,0.1);border-radius:6px;">📋 Copy All</span>
               </div>
-              <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;scrollbar-width:thin;scrollbar-color:rgba(100,100,100,0.3) transparent;">${categoryCardsHTML}</div>
+              <div style="display:flex;flex-wrap:wrap;gap:6px;">${categoryPillsHTML}</div>
             </div>
-            <div id="cb-extract-items" style="max-height:220px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(100,100,100,0.4) transparent;padding:2px;"></div>
+            <div id="cb-extract-items" style="max-height:200px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(100,100,100,0.4) transparent;"></div>
           `, '📋 Extracted Content');
 
           const itemsContainer = toolResultArea.querySelector('#cb-extract-items');
@@ -6545,84 +6654,84 @@ Respond with JSON only:
               if (key === 'urls') {
                 const domain = item.domain || new URL(item.value).hostname.replace('www.', '');
                 content = `
-                  <div style="display:flex;align-items:center;gap:8px;">
-                    <div style="width:24px;height:24px;background:linear-gradient(135deg,${config.color}40,${config.color}20);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;">🌐</div>
+                  <div style="display:flex;align-items:center;gap:8px;overflow:hidden;">
+                    <span style="font-size:13px;">🔗</span>
                     <div style="flex:1;overflow:hidden;">
                       <div style="font-size:11px;color:${config.color};font-weight:500;">${domain}</div>
-                      <div style="font-size:9px;color:var(--cb-subtext);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${item.value}</div>
+                      <div style="font-size:10px;color:var(--cb-subtext);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${item.value}</div>
                     </div>
                   </div>`;
                 copyValue = item.value;
               } else if (key === 'numbers') {
                 content = `
-                  <div style="display:flex;align-items:center;gap:10px;">
-                    <div style="font-size:16px;font-weight:700;color:${config.color};min-width:60px;">${item.value}</div>
-                    <div style="font-size:10px;color:var(--cb-subtext);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${item.context || ''}</div>
+                  <div style="display:flex;align-items:center;gap:10px;overflow:hidden;">
+                    <span style="font-size:15px;font-weight:700;color:${config.color};">${item.value}</span>
+                    <span style="font-size:10px;color:var(--cb-subtext);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">${(item.context || '').substring(0, 50)}</span>
                   </div>`;
                 copyValue = item.value;
               } else if (key === 'lists') {
                 const previewItems = item.items.slice(0, 3);
                 content = `
                   <div>
-                    <div style="font-size:10px;color:${config.color};font-weight:500;margin-bottom:6px;">${item.count} items</div>
+                    <div style="font-size:10px;color:${config.color};font-weight:500;margin-bottom:5px;">📝 ${item.count} items</div>
                     <div style="padding-left:8px;border-left:2px solid ${config.color}40;">
-                      ${previewItems.map((li, i) => `<div style="font-size:10px;color:var(--cb-subtext);margin-bottom:3px;display:flex;gap:6px;"><span style="color:${config.color};opacity:0.6;">${i + 1}.</span> ${li.substring(0, 50)}${li.length > 50 ? '...' : ''}</div>`).join('')}
-                      ${item.items.length > 3 ? `<div style="font-size:9px;color:var(--cb-subtext);opacity:0.6;margin-top:4px;">+${item.items.length - 3} more...</div>` : ''}
+                      ${previewItems.map((li, i) => `<div style="font-size:10px;color:var(--cb-subtext);margin-bottom:3px;line-height:1.3;">${li.substring(0, 55)}${li.length > 55 ? '...' : ''}</div>`).join('')}
+                      ${item.items.length > 3 ? `<div style="font-size:9px;color:var(--cb-subtext);opacity:0.6;margin-top:2px;">+${item.items.length - 3} more...</div>` : ''}
                     </div>
                   </div>`;
                 copyValue = item.items.map((li, i) => `${i + 1}. ${li}`).join('\n');
                 extraStyles = 'white-space:normal;';
               } else if (key === 'codeBlocks') {
-                const preview = (item.code || '').substring(0, 100).replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                const preview = (item.code || '').substring(0, 80).replace(/</g, '&lt;').replace(/>/g, '&gt;');
                 content = `
                   <div>
-                    <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+                    <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px;">
                       <span style="background:${config.color}30;color:${config.color};font-size:9px;padding:2px 6px;border-radius:4px;font-weight:600;">${item.language || 'code'}</span>
                       <span style="font-size:9px;color:var(--cb-subtext);">${(item.code || '').split('\n').length} lines</span>
                     </div>
-                    <pre style="font-size:9px;color:var(--cb-subtext);background:rgba(0,0,0,0.3);padding:8px;border-radius:6px;margin:0;overflow:hidden;white-space:pre-wrap;word-break:break-all;max-height:60px;font-family:ui-monospace,monospace;">${preview}${item.code?.length > 100 ? '...' : ''}</pre>
+                    <pre style="font-size:9px;color:var(--cb-subtext);background:rgba(0,0,0,0.25);padding:6px;border-radius:5px;margin:0;overflow:hidden;white-space:pre-wrap;max-height:50px;font-family:ui-monospace,monospace;">${preview}...</pre>
                   </div>`;
                 copyValue = item.code;
                 extraStyles = 'white-space:normal;';
               } else if (key === 'commands') {
                 content = `
-                  <div style="display:flex;align-items:center;gap:8px;">
-                    <div style="font-size:12px;">⚡</div>
-                    <code style="flex:1;background:rgba(0,0,0,0.4);padding:6px 10px;border-radius:6px;font-size:10px;color:${config.color};font-family:ui-monospace,monospace;">${item.value}</code>
+                  <div style="display:flex;align-items:center;gap:6px;">
+                    <span style="font-size:12px;">⚡</span>
+                    <code style="flex:1;background:rgba(0,0,0,0.3);padding:5px 8px;border-radius:5px;font-size:10px;color:${config.color};font-family:ui-monospace,monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${item.value}</code>
                   </div>`;
                 copyValue = item.value;
               } else if (key === 'emails') {
                 content = `
-                  <div style="display:flex;align-items:center;gap:8px;">
-                    <div style="font-size:14px;">✉️</div>
+                  <div style="display:flex;align-items:center;gap:6px;">
+                    <span style="font-size:12px;">✉️</span>
                     <span style="color:${config.color};font-size:11px;">${item.value}</span>
                   </div>`;
                 copyValue = item.value;
               } else if (key === 'dates') {
                 content = `
-                  <div style="display:flex;align-items:center;gap:8px;">
-                    <div style="width:24px;height:24px;background:${config.color}20;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;">${config.icon}</div>
-                    <span style="color:${config.color};font-size:12px;font-weight:500;">${item.value}</span>
+                  <div style="display:flex;align-items:center;gap:6px;">
+                    <span style="font-size:12px;">📅</span>
+                    <span style="color:${config.color};font-size:11px;font-weight:500;">${item.value}</span>
                   </div>`;
                 copyValue = item.value;
               } else if (key === 'tables') {
                 content = `
                   <div>
-                    <div style="font-size:10px;color:${config.color};font-weight:500;margin-bottom:4px;">${item.rows} rows</div>
+                    <div style="font-size:10px;color:${config.color};font-weight:500;margin-bottom:4px;">📊 ${item.rows} rows</div>
                     <div style="font-size:9px;color:var(--cb-subtext);background:rgba(0,0,0,0.2);padding:6px;border-radius:4px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">${item.preview || 'Table data'}</div>
                   </div>`;
                 copyValue = item.content || '';
               }
 
               html += `
-                <div class="cb-extract-item" data-copy="${encodeURIComponent(copyValue)}" style="padding:12px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);border-radius:10px;margin-bottom:8px;cursor:pointer;transition:all 0.2s ease;${extraStyles}" onmouseenter="this.style.background='rgba(255,255,255,0.06)';this.style.borderColor='${config.color}40';this.style.transform='translateX(2px)'" onmouseleave="this.style.background='rgba(255,255,255,0.02)';this.style.borderColor='rgba(255,255,255,0.04)';this.style.transform='translateX(0)'">
+                <div class="cb-extract-item" data-copy="${encodeURIComponent(copyValue)}" style="padding:10px 12px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:8px;margin-bottom:8px;cursor:pointer;transition:all 0.15s;${extraStyles}" onmouseenter="this.style.background='rgba(255,255,255,0.05)';this.style.borderColor='${config.color}35'" onmouseleave="this.style.background='rgba(255,255,255,0.02)';this.style.borderColor='rgba(255,255,255,0.06)'">
                   ${content}
                 </div>`;
             });
 
             itemsContainer.innerHTML = html || `
-              <div style="text-align:center;padding:30px;color:var(--cb-subtext);">
-                <div style="font-size:24px;margin-bottom:8px;opacity:0.5;">📭</div>
+              <div style="text-align:center;padding:25px;color:var(--cb-subtext);">
+                <div style="font-size:22px;margin-bottom:8px;opacity:0.5;">📭</div>
                 <div style="font-size:11px;">No items in this category</div>
               </div>`;
 
@@ -6684,7 +6793,7 @@ Respond with JSON only:
         });
         toolsGrid.appendChild(extractCard);
 
-        // 6. Continue With
+        // 6. Continue With - ALL 10 PLATFORMS + AUTO-INSERT
         const continueCard = createToolCard('🔄', 'Continue With', 'Open chat in another AI');
         continueCard.addEventListener('click', async () => {
           const msgs = await scanChat();
@@ -6693,27 +6802,127 @@ Respond with JSON only:
             return;
           }
 
+          // All 10 supported platforms with URLs and icons
+          const platforms = [
+            { id: 'chatgpt', name: 'ChatGPT', icon: '🤖', url: 'https://chatgpt.com/', color: '#10a37f' },
+            { id: 'claude', name: 'Claude', icon: '🧠', url: 'https://claude.ai/', color: '#cc785c' },
+            { id: 'gemini', name: 'Gemini', icon: '✨', url: 'https://gemini.google.com/', color: '#4285f4' },
+            { id: 'copilot', name: 'Copilot', icon: '🔷', url: 'https://copilot.microsoft.com/', color: '#0078d4' },
+            { id: 'perplexity', name: 'Perplexity', icon: '🔍', url: 'https://www.perplexity.ai/', color: '#1fb8cd' },
+            { id: 'mistral', name: 'Mistral', icon: '🌀', url: 'https://chat.mistral.ai/', color: '#ff6b35' },
+            { id: 'deepseek', name: 'DeepSeek', icon: '🌊', url: 'https://deepseek.ai/', color: '#0066cc' },
+            { id: 'poe', name: 'Poe', icon: '💬', url: 'https://poe.com/', color: '#5a4fcf' },
+            { id: 'grok', name: 'Grok', icon: '⚡', url: 'https://x.ai/', color: '#1da1f2' },
+            { id: 'meta', name: 'Meta AI', icon: '🔵', url: 'https://meta.ai/', color: '#0668e1' }
+          ];
+
+          // Build platform grid
+          const platformsHTML = platforms.map(p => `
+            <button class="cb-continue-btn" data-id="${p.id}" data-url="${p.url}" style="display:flex;align-items:center;gap:6px;padding:8px 10px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:var(--cb-white);cursor:pointer;transition:all 0.15s;font-size:11px;" onmouseenter="this.style.background='${p.color}20';this.style.borderColor='${p.color}50'" onmouseleave="this.style.background='rgba(255,255,255,0.02)';this.style.borderColor='rgba(255,255,255,0.08)'">
+              <span style="font-size:14px;">${p.icon}</span>
+              <span>${p.name}</span>
+            </button>
+          `).join('');
+
           showToolResult(`
-            <div style="margin-bottom:10px;font-size:11px;color:var(--cb-subtext);">Select target AI:</div>
-            <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;">
-              <button class="cb-continue-btn" data-target="ChatGPT" style="padding:10px;background:var(--cb-bg);border:1px solid var(--cb-border);border-radius:6px;color:var(--cb-white);cursor:pointer;">ChatGPT</button>
-              <button class="cb-continue-btn" data-target="Claude" style="padding:10px;background:var(--cb-bg);border:1px solid var(--cb-border);border-radius:6px;color:var(--cb-white);cursor:pointer;">Claude</button>
-              <button class="cb-continue-btn" data-target="Gemini" style="padding:10px;background:var(--cb-bg);border:1px solid var(--cb-border);border-radius:6px;color:var(--cb-white);cursor:pointer;">Gemini</button>
-              <button class="cb-continue-btn" data-target="Copilot" style="padding:10px;background:var(--cb-bg);border:1px solid var(--cb-border);border-radius:6px;color:var(--cb-white);cursor:pointer;">Copilot</button>
+            <div style="margin-bottom:10px;">
+              <div style="font-size:11px;color:var(--cb-subtext);margin-bottom:8px;">
+                ${msgs.length} messages will be ${msgs.length > 20 ? '<span style="color:#f59e0b;">summarized</span>' : 'transferred'}
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px;max-height:220px;overflow-y:auto;scrollbar-width:thin;">
+              ${platformsHTML}
+            </div>
+            <div style="margin-top:10px;font-size:9px;color:var(--cb-subtext);text-align:center;">
+              Context will be auto-inserted when you open the target AI
             </div>
           `, '🔄 Continue With');
 
           toolResultArea.querySelectorAll('.cb-continue-btn').forEach(btn => {
             btn.addEventListener('click', async () => {
-              const target = btn.dataset.target;
-              const convText = msgs.map(m => `${m.role}: ${m.text}`).join('\n\n');
-              const summary = `[Continued from previous conversation]\n\n${convText.slice(0, 4000)}\n\nPlease continue from where we left off.`;
-              const url = getTargetModelUrl(target);
-              if (url) {
-                await navigator.clipboard.writeText(summary);
-                window.open(url, '_blank');
-                toast(`Opening ${target}. Context copied!`);
+              const targetUrl = btn.dataset.url;
+              const targetId = btn.dataset.id;
+
+              btn.innerHTML = '<span style="font-size:11px;">⏳ Preparing...</span>';
+              btn.disabled = true;
+
+              try {
+                let contextText = '';
+
+                // If more than 20 messages, summarize
+                if (msgs.length > 20) {
+                  toast('Summarizing conversation...');
+
+                  // Try to summarize using AI
+                  try {
+                    const fullConv = msgs.map(m => `${m.role}: ${m.text}`).join('\n\n');
+
+                    // Use Gemini for summarization
+                    const summaryResult = await new Promise((resolve) => {
+                      chrome.runtime.sendMessage({
+                        type: 'gemini_request',
+                        payload: {
+                          prompt: `Summarize this conversation into key points and context. Keep it under 1500 characters. Focus on the main topics discussed, any decisions made, and pending questions:\n\n${fullConv.substring(0, 8000)}`,
+                          mode: 'summarize'
+                        }
+                      }, (response) => {
+                        if (response && response.ok && response.text) {
+                          resolve(response.text);
+                        } else {
+                          // Fallback: just take first and last few messages
+                          const firstMsgs = msgs.slice(0, 5).map(m => `${m.role}: ${m.text}`).join('\n\n');
+                          const lastMsgs = msgs.slice(-5).map(m => `${m.role}: ${m.text}`).join('\n\n');
+                          resolve(`[Conversation Summary - ${msgs.length} messages]\n\n--- Start ---\n${firstMsgs}\n\n--- [${msgs.length - 10} messages omitted] ---\n\n--- Recent ---\n${lastMsgs}`);
+                        }
+                      });
+                    });
+
+                    contextText = `[Continued from a previous ${msgs.length}-message conversation]\n\n${summaryResult}\n\nPlease continue from where we left off.`;
+                  } catch (e) {
+                    // Fallback if summarization fails
+                    const firstMsgs = msgs.slice(0, 5).map(m => `${m.role}: ${m.text}`).join('\n\n');
+                    const lastMsgs = msgs.slice(-5).map(m => `${m.role}: ${m.text}`).join('\n\n');
+                    contextText = `[Continued from ${msgs.length} messages]\n\n--- Start ---\n${firstMsgs}\n\n--- Recent ---\n${lastMsgs}\n\nPlease continue from where we left off.`;
+                  }
+                } else {
+                  // Less than 20 messages - transfer full context
+                  contextText = `[Continued from previous conversation - ${msgs.length} messages]\n\n${msgs.map(m => `${m.role}: ${m.text}`).join('\n\n')}\n\nPlease continue from where we left off.`;
+                }
+
+                // Store context for auto-insertion when target site loads
+                try {
+                  localStorage.setItem('chatbridge:continue_context', JSON.stringify({
+                    text: contextText,
+                    target: targetId,
+                    timestamp: Date.now()
+                  }));
+
+                  // Also store in chrome.storage for cross-tab access
+                  if (chrome.storage && chrome.storage.local) {
+                    chrome.storage.local.set({
+                      'chatbridge:continue_context': {
+                        text: contextText,
+                        target: targetId,
+                        timestamp: Date.now()
+                      }
+                    });
+                  }
+                } catch (e) { }
+
+                // Copy to clipboard as backup
+                await navigator.clipboard.writeText(contextText);
+
+                // Open target site
+                window.open(targetUrl, '_blank');
+
+                toast(`Opening ${btn.querySelector('span:last-child').textContent}. Context ready!`);
                 toolResultArea.style.display = 'none';
+
+              } catch (e) {
+                console.error('[ChatBridge] Continue With error:', e);
+                toast('Failed to prepare context');
+                btn.innerHTML = `<span style="font-size:14px;">${platforms.find(p => p.id === targetId)?.icon || '🔄'}</span><span>${platforms.find(p => p.id === targetId)?.name || 'Retry'}</span>`;
+                btn.disabled = false;
               }
             });
           });
