@@ -1901,6 +1901,15 @@
     // Add default insights blocks
     insightsContent.innerHTML = `
     <div class="cb-insights-section">
+      <div class="cb-insight-block" id="cb-media-library-block" style="background:linear-gradient(135deg, rgba(0,180,255,0.1), rgba(120,0,255,0.1));border:1px solid rgba(0,180,255,0.3);">
+        <div class="cb-insight-title" style="display:flex;align-items:center;justify-content:space-between;">
+          <span>🖼️ Media Library</span>
+          <span id="cb-media-library-count" style="font-size:11px;background:rgba(0,180,255,0.3);padding:2px 8px;border-radius:10px;color:#fff;">0</span>
+        </div>
+        <div class="cb-insight-content">Access images from your scanned conversations. Click on an image to insert it into the current chat.</div>
+        <div id="cb-media-library-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(60px,1fr));gap:8px;margin-top:12px;max-height:180px;overflow-y:auto;"></div>
+        <button id="cb-media-library-refresh" class="cb-btn cb-btn-primary" style="width:100%;margin-top:12px;font-size:11px;padding:8px;">🔄 Refresh Media Library</button>
+      </div>
       <div class="cb-insight-block">
         <div class="cb-insight-title">Compare Models</div>
         <div class="cb-insight-content">Quickly compare responses from different AI models side-by-side. Spot differences, strengths, and weaknesses for each platform.</div>
@@ -1920,6 +1929,156 @@
     </div>
   `;
     insightsView.appendChild(insightsContent);
+
+    // Media Library functionality - load images and enable insertion
+    async function loadMediaLibrary() {
+      try {
+        const grid = document.getElementById('cb-media-library-grid');
+        const countEl = document.getElementById('cb-media-library-count');
+        if (!grid) return;
+
+        // Get images from vault
+        let images = [];
+        if (typeof window.ChatBridge !== 'undefined' && typeof window.ChatBridge.getImageVault === 'function') {
+          images = await window.ChatBridge.getImageVault();
+        }
+
+        countEl.textContent = String(images.length);
+        grid.innerHTML = '';
+
+        if (images.length === 0) {
+          grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:rgba(255,255,255,0.5);font-size:11px;padding:20px;">No images yet. Scan a conversation with images first.</div>';
+          return;
+        }
+
+        // Display up to 12 images
+        images.slice(0, 12).forEach(imgData => {
+          const thumb = document.createElement('div');
+          thumb.style.cssText = 'position:relative;aspect-ratio:1;border-radius:6px;overflow:hidden;border:1px solid rgba(0,180,255,0.3);cursor:pointer;background:rgba(0,0,0,0.3);transition:all 0.2s;';
+
+          const img = document.createElement('img');
+          img.src = imgData.src;
+          img.style.cssText = 'width:100%;height:100%;object-fit:cover;';
+          img.loading = 'lazy';
+          img.onerror = () => { thumb.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:16px;">🖼️</div>'; };
+
+          thumb.appendChild(img);
+
+          // Hover effect
+          thumb.addEventListener('mouseenter', () => {
+            thumb.style.transform = 'scale(1.05)';
+            thumb.style.borderColor = 'rgba(0,180,255,0.8)';
+          });
+          thumb.addEventListener('mouseleave', () => {
+            thumb.style.transform = 'scale(1)';
+            thumb.style.borderColor = 'rgba(0,180,255,0.3)';
+          });
+
+          // Click to insert into chat
+          thumb.addEventListener('click', () => insertImageToChat(imgData));
+
+          grid.appendChild(thumb);
+        });
+
+        if (images.length > 12) {
+          const moreLabel = document.createElement('div');
+          moreLabel.style.cssText = 'grid-column:1/-1;text-align:center;color:rgba(0,180,255,0.8);font-size:11px;padding:8px;cursor:pointer;';
+          moreLabel.textContent = `+${images.length - 12} more in Image Vault`;
+          grid.appendChild(moreLabel);
+        }
+      } catch (e) {
+        console.warn('[ChatBridge] loadMediaLibrary error:', e);
+      }
+    }
+
+    // Insert image into current AI chat
+    async function insertImageToChat(imgData) {
+      try {
+        console.log('[ChatBridge] Inserting image to chat:', imgData.src.substring(0, 50) + '...');
+
+        // Try to find the input field for the current platform
+        const adapter = (typeof window.pickAdapter === 'function') ? window.pickAdapter() : null;
+        let input = null;
+
+        if (adapter && typeof adapter.getInput === 'function') {
+          input = adapter.getInput();
+        }
+
+        if (!input) {
+          // Fallback: try common selectors
+          input = document.querySelector('textarea[placeholder], textarea[data-testid], div[contenteditable="true"], input[type="text"]');
+        }
+
+        if (input) {
+          // For data URLs or short URLs, try to paste directly
+          if (imgData.src.startsWith('data:image') || imgData.src.length < 500) {
+            // Insert as markdown image
+            const markdownImg = `![Image](${imgData.src})`;
+
+            if (input.tagName === 'TEXTAREA' || input.tagName === 'INPUT') {
+              const start = input.selectionStart || 0;
+              const end = input.selectionEnd || 0;
+              const text = input.value;
+              input.value = text.slice(0, start) + markdownImg + text.slice(end);
+              input.focus();
+              // Trigger input event
+              input.dispatchEvent(new Event('input', { bubbles: true }));
+            } else if (input.contentEditable === 'true') {
+              // For contenteditable divs
+              const selection = window.getSelection();
+              const range = selection.getRangeAt(0);
+              range.deleteContents();
+              range.insertNode(document.createTextNode(markdownImg));
+              input.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+
+            toast('Image inserted! (Markdown format)');
+          } else {
+            // For external URLs, just insert the URL
+            const url = imgData.src;
+
+            if (input.tagName === 'TEXTAREA' || input.tagName === 'INPUT') {
+              const start = input.selectionStart || 0;
+              const end = input.selectionEnd || 0;
+              const text = input.value;
+              input.value = text.slice(0, start) + url + text.slice(end);
+              input.focus();
+              input.dispatchEvent(new Event('input', { bubbles: true }));
+            } else if (input.contentEditable === 'true') {
+              input.focus();
+              document.execCommand('insertText', false, url);
+            }
+
+            toast('Image URL inserted!');
+          }
+        } else {
+          // Copy to clipboard as fallback
+          await navigator.clipboard.writeText(imgData.src);
+          toast('Image URL copied to clipboard!');
+        }
+      } catch (e) {
+        console.error('[ChatBridge] insertImageToChat error:', e);
+        try {
+          await navigator.clipboard.writeText(imgData.src);
+          toast('Image URL copied to clipboard!');
+        } catch (_) {
+          toast('Failed to insert image');
+        }
+      }
+    }
+
+    // Set up refresh button handler after content is appended
+    setTimeout(() => {
+      const refreshBtn = document.getElementById('cb-media-library-refresh');
+      if (refreshBtn) {
+        refreshBtn.addEventListener('click', () => {
+          loadMediaLibrary();
+          toast('Media library refreshed');
+        });
+      }
+      // Initial load
+      loadMediaLibrary();
+    }, 100);
 
     panel.appendChild(insightsView);
 
@@ -3061,6 +3220,395 @@
       setTimeout(updateThemeVars, 10);
     }
 
+    // ============================================
+    // FAST LOCAL CONTENT EXTRACTION
+    // Extracts URLs, numbers, lists, code, tables during scan (no API)
+    // ============================================
+    function extractContentFromMessages(messages) {
+      const extracted = {
+        urls: [],
+        numbers: [],
+        lists: [],
+        codeBlocks: [],
+        tables: [],
+        keyPhrases: [],
+        emails: [],
+        dates: [],
+        commands: []
+      };
+
+      if (!messages || !messages.length) return extracted;
+
+      const seenUrls = new Set();
+      const seenNumbers = new Set();
+
+      for (let i = 0; i < messages.length; i++) {
+        const msg = messages[i];
+        const text = msg.text || '';
+        const role = msg.role || 'unknown';
+
+        // Extract URLs
+        const urlRegex = /https?:\/\/[^\s<>"{}|\\^`\[\]]+/gi;
+        const urls = text.match(urlRegex) || [];
+        urls.forEach(url => {
+          const cleanUrl = url.replace(/[.,;:!?)]+$/, ''); // Remove trailing punctuation
+          if (!seenUrls.has(cleanUrl) && cleanUrl.length > 10) {
+            seenUrls.add(cleanUrl);
+            extracted.urls.push({
+              value: cleanUrl,
+              msgIndex: i,
+              role: role,
+              domain: new URL(cleanUrl).hostname.replace('www.', '')
+            });
+          }
+        });
+
+        // Extract emails
+        const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
+        const emails = text.match(emailRegex) || [];
+        emails.forEach(email => extracted.emails.push({ value: email, msgIndex: i, role }));
+
+        // Extract numbers/statistics (with context)
+        const numberRegex = /(\$[\d,]+(?:\.\d+)?|[\d,]+(?:\.\d+)?%|[\d,]+(?:\.\d+)?\s*(?:GB|MB|KB|TB|ms|seconds?|minutes?|hours?|days?|months?|years?|users?|items?|records?|rows?|files?)|\b\d{1,3}(?:,\d{3})+(?:\.\d+)?|\b\d+(?:\.\d+)?(?:\s*(?:k|m|b|K|M|B))?\b)/gi;
+        const lines = text.split('\n');
+        lines.forEach(line => {
+          const nums = line.match(numberRegex) || [];
+          nums.forEach(num => {
+            const key = num.toLowerCase().replace(/\s+/g, '');
+            if (!seenNumbers.has(key) && num.length > 1) {
+              seenNumbers.add(key);
+              extracted.numbers.push({
+                value: num.trim(),
+                context: line.substring(0, 100).trim(),
+                msgIndex: i,
+                role
+              });
+            }
+          });
+        });
+
+        // Extract dates
+        const dateRegex = /(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}|\d{4}[\/\-]\d{1,2}[\/\-]\d{1,2}|(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+\d{1,2}(?:,?\s+\d{4})?|\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?(?:,?\s+\d{4})?)/gi;
+        const dates = text.match(dateRegex) || [];
+        dates.forEach(date => extracted.dates.push({ value: date, msgIndex: i, role }));
+
+        // Extract lists (bullet points, numbered lists)
+        const listItems = [];
+        lines.forEach(line => {
+          const listMatch = line.match(/^(?:\s*[-*•→]\s+|\s*\d+[.)]\s+|\s*[a-z][.)]\s+)(.+)/i);
+          if (listMatch && listMatch[1] && listMatch[1].length > 5) {
+            listItems.push(listMatch[1].trim());
+          }
+        });
+        if (listItems.length > 0) {
+          extracted.lists.push({
+            items: listItems,
+            count: listItems.length,
+            msgIndex: i,
+            role
+          });
+        }
+
+        // Extract code blocks
+        const codeBlockRegex = /```(\w*)\n?([\s\S]*?)```/g;
+        let codeMatch;
+        while ((codeMatch = codeBlockRegex.exec(text)) !== null) {
+          const lang = codeMatch[1] || 'code';
+          const code = codeMatch[2].trim();
+          if (code.length > 10) {
+            extracted.codeBlocks.push({
+              language: lang,
+              code: code,
+              preview: code.substring(0, 100),
+              msgIndex: i,
+              role
+            });
+          }
+        }
+
+        // Extract inline code/commands
+        const inlineCodeRegex = /`([^`]+)`/g;
+        let inlineMatch;
+        while ((inlineMatch = inlineCodeRegex.exec(text)) !== null) {
+          const cmd = inlineMatch[1].trim();
+          if (cmd.length > 3 && /^(npm|yarn|pip|python|node|git|docker|curl|wget|cd|mkdir|rm|mv|cp|ls|cat|echo|export|make|brew|apt|yum)/i.test(cmd)) {
+            extracted.commands.push({
+              value: cmd,
+              msgIndex: i,
+              role
+            });
+          }
+        }
+
+        // Detect tables (simple markdown tables)
+        const tableLines = [];
+        let inTable = false;
+        lines.forEach(line => {
+          if (line.includes('|') && line.split('|').length >= 3) {
+            tableLines.push(line);
+            inTable = true;
+          } else if (inTable && tableLines.length > 0) {
+            if (tableLines.length >= 2) {
+              extracted.tables.push({
+                rows: tableLines.length,
+                preview: tableLines[0].substring(0, 80),
+                content: tableLines.join('\n'),
+                msgIndex: i,
+                role
+              });
+            }
+            tableLines.length = 0;
+            inTable = false;
+          }
+        });
+        if (tableLines.length >= 2) {
+          extracted.tables.push({
+            rows: tableLines.length,
+            preview: tableLines[0].substring(0, 80),
+            content: tableLines.join('\n'),
+            msgIndex: i,
+            role
+          });
+        }
+      }
+
+      // Store globally for UI access
+      try {
+        window.ChatBridge = window.ChatBridge || {};
+        window.ChatBridge._extractedContent = extracted;
+      } catch (e) { }
+
+      console.log('[ChatBridge] Local extraction complete:', {
+        urls: extracted.urls.length,
+        numbers: extracted.numbers.length,
+        lists: extracted.lists.length,
+        codeBlocks: extracted.codeBlocks.length,
+        tables: extracted.tables.length,
+        emails: extracted.emails.length,
+        dates: extracted.dates.length,
+        commands: extracted.commands.length
+      });
+
+      return extracted;
+    }
+
+    // Expose globally
+    try {
+      window.ChatBridge = window.ChatBridge || {};
+      window.ChatBridge.extractContentFromMessages = extractContentFromMessages;
+    } catch (e) { }
+
+    // ============================================
+    // DEDUPLICATE & MERGE SAVED CONVERSATIONS
+    // Removes exact duplicates and merges overlapping conversations
+    // ============================================
+    async function deduplicateSavedConversations() {
+      const key = 'chatbridge:conversations';
+      let conversations = [];
+
+      // Load conversations - try loadConversationsAsync first, then fallback
+      try {
+        if (typeof loadConversationsAsync === 'function') {
+          conversations = await loadConversationsAsync();
+          console.log('[ChatBridge] Loaded', conversations.length, 'conversations via loadConversationsAsync');
+        } else if (typeof window.ChatBridge?.loadConversationsAsync === 'function') {
+          conversations = await window.ChatBridge.loadConversationsAsync();
+        }
+      } catch (e) {
+        console.log('[ChatBridge] loadConversationsAsync failed, using direct storage access');
+      }
+
+      // Fallback to direct storage access if needed
+      if (!conversations || conversations.length === 0) {
+        try {
+          if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+            const data = await new Promise(r => chrome.storage.local.get([key], d => r(d && d[key])));
+            conversations = Array.isArray(data) ? data : [];
+          }
+          if (conversations.length === 0) {
+            try {
+              const local = JSON.parse(localStorage.getItem(key) || '[]');
+              conversations = Array.isArray(local) ? local : [];
+            } catch (_) { }
+          }
+        } catch (_) { }
+      }
+
+      conversations = Array.isArray(conversations) ? conversations : [];
+
+      if (conversations.length < 2) {
+        return { cleaned: conversations, stats: { duplicates: 0, overlaps: 0, originalCount: conversations.length, finalCount: conversations.length } };
+      }
+
+      console.log('[ChatBridge] Deduplicating', conversations.length, 'saved conversations...');
+
+      // Helper: Generate hash from messages for comparison
+      const hashConversation = (conv) => {
+        const msgs = conv.conversation || conv.messages || [];
+        if (msgs.length === 0) return '';
+        // Use first 3 + last 3 messages for hash
+        const sample = [...msgs.slice(0, 3), ...msgs.slice(-3)];
+        return sample.map(m => (m.text || '').trim().substring(0, 100)).join('|||');
+      };
+
+      // Helper: Check if conv A is subset of conv B
+      const isSubset = (a, b) => {
+        const msgsA = a.conversation || a.messages || [];
+        const msgsB = b.conversation || b.messages || [];
+        if (msgsA.length === 0 || msgsB.length <= msgsA.length) return false;
+        if (a.platform?.toLowerCase() !== b.platform?.toLowerCase()) return false;
+
+        // Check if first 3 messages of A match first 3 of B
+        const sampleA = msgsA.slice(0, 3).map(m => (m.text || '').trim().substring(0, 200)).join('|||');
+        const sampleB = msgsB.slice(0, 3).map(m => (m.text || '').trim().substring(0, 200)).join('|||');
+
+        return sampleA === sampleB;
+      };
+
+      // Group by platform
+      const byPlatform = {};
+      conversations.forEach((conv, idx) => {
+        const p = (conv.platform || 'unknown').toLowerCase();
+        if (!byPlatform[p]) byPlatform[p] = [];
+        byPlatform[p].push({ conv, idx, hash: hashConversation(conv) });
+      });
+
+      const toRemove = new Set();
+      let duplicateCount = 0;
+      let overlapCount = 0;
+
+      // Process each platform group
+      for (const platform in byPlatform) {
+        const group = byPlatform[platform];
+
+        // Find exact duplicates (same hash)
+        const seenHashes = {};
+        for (const item of group) {
+          if (item.hash && seenHashes[item.hash] !== undefined) {
+            // This is a duplicate - keep the newer one (higher timestamp)
+            const existingIdx = seenHashes[item.hash];
+            const existing = group.find(g => g.idx === existingIdx);
+            if (existing) {
+              const tsA = item.conv.ts || 0;
+              const tsB = existing.conv.ts || 0;
+              if (tsA > tsB) {
+                toRemove.add(existingIdx);
+                seenHashes[item.hash] = item.idx;
+              } else {
+                toRemove.add(item.idx);
+              }
+              duplicateCount++;
+            }
+          } else if (item.hash) {
+            seenHashes[item.hash] = item.idx;
+          }
+        }
+
+        // Find overlapping conversations (subset relationships)
+        // Sort by message count descending
+        const sortedByLength = [...group].sort((a, b) => {
+          const lenA = (a.conv.conversation || a.conv.messages || []).length;
+          const lenB = (b.conv.conversation || b.conv.messages || []).length;
+          return lenB - lenA;
+        });
+
+        for (let i = 0; i < sortedByLength.length; i++) {
+          if (toRemove.has(sortedByLength[i].idx)) continue;
+
+          for (let j = i + 1; j < sortedByLength.length; j++) {
+            if (toRemove.has(sortedByLength[j].idx)) continue;
+
+            // Check if j is subset of i
+            if (isSubset(sortedByLength[j].conv, sortedByLength[i].conv)) {
+              toRemove.add(sortedByLength[j].idx);
+              overlapCount++;
+            }
+          }
+        }
+      }
+
+      // Build cleaned list
+      const cleaned = conversations.filter((_, idx) => !toRemove.has(idx));
+
+      console.log('[ChatBridge] Deduplication complete:', {
+        original: conversations.length,
+        duplicates: duplicateCount,
+        overlaps: overlapCount,
+        final: cleaned.length
+      });
+
+      return {
+        cleaned,
+        original: conversations,
+        stats: {
+          duplicates: duplicateCount,
+          overlaps: overlapCount,
+          originalCount: conversations.length,
+          finalCount: cleaned.length
+        }
+      };
+    }
+
+    // Save cleaned conversations back to ALL storage locations
+    async function saveCleannedConversations(conversations) {
+      const key = 'chatbridge:conversations';
+      let saved = false;
+
+      try {
+        // 1. Send to background script to replace IndexedDB AND chrome.storage.local
+        // This is the primary storage - wait for it to complete
+        try {
+          if (typeof chrome !== 'undefined' && chrome.runtime) {
+            const bgResult = await new Promise((resolve) => {
+              chrome.runtime.sendMessage({
+                type: 'replace_conversations',
+                payload: { conversations: conversations }
+              }, (response) => {
+                if (chrome.runtime.lastError) {
+                  console.warn('[ChatBridge] Background replace failed:', chrome.runtime.lastError);
+                  resolve(false);
+                } else {
+                  resolve(response?.ok || false);
+                }
+              });
+            });
+            if (bgResult) {
+              console.log('[ChatBridge] Background storage replaced with', conversations.length, 'conversations');
+              saved = true;
+            }
+          }
+        } catch (e) {
+          console.warn('[ChatBridge] Background replace error:', e);
+        }
+
+        // 2. Also save to chrome.storage.local directly (backup)
+        if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+          await new Promise(r => chrome.storage.local.set({ [key]: conversations }, r));
+          console.log('[ChatBridge] Saved', conversations.length, 'conversations to chrome.storage.local');
+          saved = true;
+        }
+
+        // 3. Save to localStorage (fallback)
+        try {
+          localStorage.setItem(key, JSON.stringify(conversations));
+          console.log('[ChatBridge] Saved', conversations.length, 'conversations to localStorage');
+          saved = true;
+        } catch (_) { }
+
+        return saved;
+      } catch (e) {
+        console.error('[ChatBridge] Failed to save cleaned conversations:', e);
+        return false;
+      }
+    }
+
+    // Expose globally
+    try {
+      window.ChatBridge = window.ChatBridge || {};
+      window.ChatBridge.deduplicateSavedConversations = deduplicateSavedConversations;
+      window.ChatBridge.saveCleannedConversations = saveCleannedConversations;
+    } catch (e) { }
+
     // Extract actionable items from plain chat text without AI calls
     function extractActionPlanFromText(text) {
       try {
@@ -3259,10 +3807,292 @@
       }
     }
 
+    // ============================================
+    // PLATFORM-SPECIFIC MEDIA EXTRACTION
+    // Extracts images, files, and artifacts from each AI platform
+    // ============================================
+    async function extractAllMediaFromPage() {
+      const platform = detectCurrentPlatform();
+      console.log('[ChatBridge] Extracting all media from platform:', platform);
+
+      const media = {
+        images: [],
+        files: [],
+        artifacts: [],
+        platform: platform,
+        timestamp: Date.now()
+      };
+
+      const seenUrls = new Set();
+
+      // Helper to add media item
+      const addMedia = async (type, src, name, extra = {}) => {
+        if (!src || src.length < 10 || seenUrls.has(src)) return;
+        seenUrls.add(src);
+
+        const hash = await hashImageSrc(src);
+        const item = {
+          id: hash,
+          type: type,
+          src: src,
+          name: name || 'unnamed',
+          timestamp: Date.now(),
+          platform: platform,
+          ...extra
+        };
+
+        if (type === 'image') media.images.push(item);
+        else if (type === 'file') media.files.push(item);
+        else if (type === 'artifact') media.artifacts.push(item);
+      };
+
+      // ========== CHATGPT EXTRACTION ==========
+      if (platform === 'ChatGPT') {
+        console.log('[ChatBridge] Using ChatGPT extraction...');
+
+        // Images in ChatGPT - look for DALL-E generated images and uploaded images
+        const imgSelectors = [
+          'img[src*="oaidalleapiprodscus"]',  // DALL-E images
+          'img[src*="blob:"]',                 // Uploaded images (blob URLs)
+          'img[src*="files.oaiusercontent"]',  // User uploaded files
+          'img[src*="openai"]',                // OpenAI hosted images
+          '[data-testid*="image"] img',        // Image containers
+          '[data-message-author-role] img',    // Images in message blocks
+          '.group img',                        // Message group images
+          'article img',                       // Article images
+          '.prose img',                        // Prose content images
+          'img[width][height]',                // Sized images (not icons)
+          'main img'                           // Any image in main area
+        ];
+
+        for (const sel of imgSelectors) {
+          try {
+            const imgs = document.querySelectorAll(sel);
+            console.log('[ChatBridge] ChatGPT selector', sel, 'found', imgs.length, 'images');
+            for (const img of imgs) {
+              const src = img.src || img.currentSrc;
+              if (src && src.length > 50 && !src.includes('avatar') && !src.includes('icon') && !src.includes('emoji') && !src.includes('logo')) {
+                // Check size to filter out tiny images
+                try {
+                  const rect = img.getBoundingClientRect();
+                  if (rect.width > 50 && rect.height > 50) {
+                    await addMedia('image', src, img.alt || 'ChatGPT Image');
+                  }
+                } catch (e) {
+                  await addMedia('image', src, img.alt || 'ChatGPT Image');
+                }
+              }
+            }
+          } catch (e) { }
+        }
+
+        // Fallback: scan ALL images in the document
+        if (media.images.length === 0) {
+          console.log('[ChatBridge] ChatGPT: No images found with specific selectors, scanning all images...');
+          const allImgs = document.querySelectorAll('img');
+          console.log('[ChatBridge] ChatGPT: Found', allImgs.length, 'total images in document');
+          for (const img of allImgs) {
+            const src = img.src || img.currentSrc;
+            if (!src || src.length < 50) continue;
+            if (src.includes('avatar') || src.includes('icon') || src.includes('emoji') || src.includes('logo') || src.includes('favicon')) continue;
+
+            try {
+              const rect = img.getBoundingClientRect();
+              if (rect.width > 50 && rect.height > 50) {
+                console.log('[ChatBridge] ChatGPT fallback: Adding image', src.substring(0, 80));
+                await addMedia('image', src, img.alt || 'Image');
+              }
+            } catch (e) { }
+          }
+        }
+
+        // Files in ChatGPT - uploaded documents
+        const fileLinks = document.querySelectorAll('a[href*="files.oaiusercontent"], a[download], [data-testid*="file"]');
+        for (const link of fileLinks) {
+          const href = link.href || link.getAttribute('data-url');
+          const name = link.textContent || link.getAttribute('download') || 'File';
+          if (href) await addMedia('file', href, name.trim());
+        }
+      }
+
+      // ========== CLAUDE EXTRACTION ==========
+      else if (platform === 'Claude') {
+        console.log('[ChatBridge] Using Claude extraction...');
+
+        // Images in Claude
+        const claudeImgs = document.querySelectorAll([
+          'img[src*="claude"]',
+          'img[src*="anthropic"]',
+          'img[src*="blob:"]',
+          '.prose img',
+          '[data-testid*="image"] img',
+          'img:not([alt*="avatar"]):not([alt*="icon"]):not([alt*="logo"])'
+        ].join(', '));
+
+        for (const img of claudeImgs) {
+          const src = img.src || img.currentSrc;
+          if (src && src.length > 50) {
+            // Check size
+            try {
+              const rect = img.getBoundingClientRect();
+              if (rect.width > 50 && rect.height > 50) {
+                await addMedia('image', src, img.alt || 'Claude Image');
+              }
+            } catch (e) {
+              await addMedia('image', src, img.alt || 'Claude Image');
+            }
+          }
+        }
+
+        // Files in Claude - attachments
+        const claudeFiles = document.querySelectorAll([
+          'a[download]',
+          '[data-testid*="attachment"]',
+          '[class*="attachment"]',
+          'a[href*="blob:"]'
+        ].join(', '));
+
+        for (const file of claudeFiles) {
+          const href = file.href || file.getAttribute('data-url');
+          const name = file.textContent || file.getAttribute('download') || 'File';
+          if (href) await addMedia('file', href, name.trim());
+        }
+
+        // ARTIFACTS in Claude - code blocks, rendered content, canvas
+        const artifactSelectors = [
+          '[data-testid*="artifact"]',
+          '[class*="artifact"]',
+          '[class*="code-block"]',
+          '[class*="rendered-content"]',
+          'pre code',
+          '.antml-artifact',
+          '[data-artifact]'
+        ];
+
+        for (const sel of artifactSelectors) {
+          const artifacts = document.querySelectorAll(sel);
+          artifacts.forEach(async (artifact, idx) => {
+            // Get artifact type/title if available
+            const titleEl = artifact.querySelector('[class*="title"], [class*="header"], h1, h2, h3');
+            const title = titleEl ? titleEl.textContent.trim() : `Artifact ${idx + 1}`;
+
+            // Get artifact content
+            let content = '';
+            const codeEl = artifact.querySelector('code, pre');
+            if (codeEl) {
+              content = codeEl.textContent || codeEl.innerText;
+            } else {
+              content = artifact.innerHTML || artifact.textContent;
+            }
+
+            // Detect artifact type
+            let artifactType = 'code';
+            if (artifact.classList.contains('html') || content.includes('<!DOCTYPE') || content.includes('<html')) {
+              artifactType = 'html';
+            } else if (artifact.classList.contains('react') || content.includes('import React') || content.includes('useState')) {
+              artifactType = 'react';
+            } else if (artifact.classList.contains('svg') || content.includes('<svg')) {
+              artifactType = 'svg';
+            } else if (content.includes('```mermaid') || content.includes('graph ') || content.includes('sequenceDiagram')) {
+              artifactType = 'mermaid';
+            }
+
+            if (content && content.length > 10) {
+              await addMedia('artifact', 'artifact:' + idx, title, {
+                artifactType: artifactType,
+                content: content.substring(0, 50000), // Limit size
+                preview: content.substring(0, 500)
+              });
+            }
+          });
+        }
+      }
+
+      // ========== GEMINI EXTRACTION ==========
+      else if (platform === 'Gemini') {
+        console.log('[ChatBridge] Using Gemini extraction...');
+
+        // Images in Gemini
+        const geminiImgs = document.querySelectorAll([
+          'message-content img',
+          'model-response img',
+          'user-query img',
+          'img[src*="googleusercontent"]',
+          'img[src*="blob:"]',
+          '.markdown img'
+        ].join(', '));
+
+        for (const img of geminiImgs) {
+          const src = img.src || img.currentSrc;
+          if (src && src.length > 50) {
+            try {
+              const rect = img.getBoundingClientRect();
+              if (rect.width > 40 && rect.height > 40) {
+                await addMedia('image', src, img.alt || 'Gemini Image');
+              }
+            } catch (e) {
+              await addMedia('image', src, img.alt || 'Gemini Image');
+            }
+          }
+        }
+      }
+
+      // ========== GENERIC FALLBACK ==========
+      else {
+        console.log('[ChatBridge] Using generic extraction...');
+
+        // Generic image extraction
+        const mainContent = document.querySelector('main, [role="main"], .conversation, .chat') || document.body;
+        const allImgs = mainContent.querySelectorAll('img');
+
+        for (const img of allImgs) {
+          const src = img.src || img.currentSrc;
+          if (!src || src.length < 30) continue;
+          if (src.includes('icon') || src.includes('avatar') || src.includes('logo') || src.includes('emoji')) continue;
+
+          try {
+            const rect = img.getBoundingClientRect();
+            if (rect.width > 50 && rect.height > 50) {
+              await addMedia('image', src, img.alt || 'Image');
+            }
+          } catch (e) {
+            await addMedia('image', src, img.alt || 'Image');
+          }
+        }
+
+        // Generic file links
+        const fileLinks = mainContent.querySelectorAll('a[download], a[href*=".pdf"], a[href*=".doc"], a[href*=".xlsx"]');
+        for (const link of fileLinks) {
+          const href = link.href;
+          const name = link.textContent || link.getAttribute('download') || 'File';
+          if (href) await addMedia('file', href, name.trim());
+        }
+      }
+
+      console.log('[ChatBridge] Media extraction complete:', {
+        images: media.images.length,
+        files: media.files.length,
+        artifacts: media.artifacts.length
+      });
+
+      return media;
+    }
+
+    // Expose the new function globally
+    try {
+      window.ChatBridge = window.ChatBridge || {};
+      window.ChatBridge.extractAllMediaFromPage = extractAllMediaFromPage;
+    } catch (e) { }
+
     // Extract images from messages
     async function extractImagesFromMessages(messages) {
+      console.log('[ChatBridge] Starting image extraction from', messages.length, 'messages');
       const images = [];
       const seenHashes = new Set();
+
+      // Debug: Log how many messages have element references
+      const msgsWithEl = messages.filter(m => m.el).length;
+      console.log('[ChatBridge] Messages with DOM element (el):', msgsWithEl, 'of', messages.length);
 
       for (let i = 0; i < messages.length; i++) {
         const msg = messages[i];
@@ -3274,34 +4104,120 @@
 
         // 1. Extract from message element if available
         if (el) {
+          // Standard img tags
           const imgTags = el.querySelectorAll('img');
+          console.log('[ChatBridge] Message', i, '- Found', imgTags.length, 'img tags');
           imgTags.forEach(img => {
-            const src = img.src || img.dataset.src || img.getAttribute('data-src');
-            if (src && !src.includes('icon') && !src.includes('avatar')) {
+            const src = img.src || img.dataset.src || img.getAttribute('data-src') || img.currentSrc;
+            if (src && src.length > 10 && !src.includes('icon') && !src.includes('avatar') && !src.includes('emoji') && !src.includes('logo')) {
               foundSrcs.add(src);
+              console.log('[ChatBridge] Found image in element:', src.substring(0, 100) + (src.length > 100 ? '...' : ''));
             }
           });
+
+          // Picture/source elements
+          const sources = el.querySelectorAll('picture source, source[type*="image"]');
+          sources.forEach(source => {
+            const srcset = source.srcset || source.src;
+            if (srcset) {
+              // Handle srcset format: "url1 1x, url2 2x"
+              const urls = srcset.split(',').map(s => s.trim().split(' ')[0]);
+              urls.forEach(url => {
+                if (url && url.length > 10) {
+                  foundSrcs.add(url);
+                  console.log('[ChatBridge] Found image in picture/source:', url.substring(0, 100));
+                }
+              });
+            }
+          });
+
+          // Background images in CSS
+          const allElements = el.querySelectorAll('*');
+          allElements.forEach(elem => {
+            try {
+              const style = window.getComputedStyle(elem);
+              const bgImage = style.backgroundImage;
+              if (bgImage && bgImage !== 'none' && bgImage.startsWith('url(')) {
+                const match = bgImage.match(/url\(["']?([^"')]+)["']?\)/);
+                if (match && match[1] && !match[1].includes('icon') && !match[1].includes('avatar')) {
+                  foundSrcs.add(match[1]);
+                  console.log('[ChatBridge] Found background image:', match[1].substring(0, 100));
+                }
+              }
+            } catch (e) { }
+          });
+
+          // Canvas elements (try to export as data URL)
+          const canvases = el.querySelectorAll('canvas');
+          canvases.forEach(canvas => {
+            try {
+              if (canvas.width > 50 && canvas.height > 50) {
+                const dataUrl = canvas.toDataURL('image/png');
+                if (dataUrl && dataUrl.length > 100) {
+                  foundSrcs.add(dataUrl);
+                  console.log('[ChatBridge] Found canvas image');
+                }
+              }
+            } catch (e) { /* CORS might block this */ }
+          });
+
+          // SVG elements
+          const svgs = el.querySelectorAll('svg');
+          svgs.forEach(svg => {
+            try {
+              const rect = svg.getBoundingClientRect();
+              if (rect.width > 50 && rect.height > 50) {
+                const svgData = new XMLSerializer().serializeToString(svg);
+                const dataUrl = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
+                foundSrcs.add(dataUrl);
+                console.log('[ChatBridge] Found SVG image');
+              }
+            } catch (e) { }
+          });
+        } else {
+          console.log('[ChatBridge] Message', i, '- No DOM element (el) available');
         }
 
         // 2. Extract from markdown images ![](url)
         const markdownImages = text.matchAll(/!\[([^\]]*)\]\(([^)]+)\)/g);
         for (const match of markdownImages) {
           foundSrcs.add(match[2]);
+          console.log('[ChatBridge] Found markdown image:', match[2].substring(0, 100));
         }
 
         // 3. Extract from HTML img tags in text
         const htmlImages = text.matchAll(/<img[^>]+src=["']([^"']+)["']/gi);
         for (const match of htmlImages) {
           foundSrcs.add(match[1]);
+          console.log('[ChatBridge] Found HTML img tag:', match[1].substring(0, 100));
         }
 
         // 4. Extract base64 and data URLs
         const dataUrls = text.matchAll(/data:image\/[^;]+;base64,[A-Za-z0-9+\/=]+/g);
         for (const match of dataUrls) {
           foundSrcs.add(match[0]);
+          console.log('[ChatBridge] Found data URL image (base64)');
+        }
+
+        // 5. Extract blob URLs
+        const blobUrls = text.matchAll(/blob:https?:\/\/[^\s"'<>]+/g);
+        for (const match of blobUrls) {
+          foundSrcs.add(match[0]);
+          console.log('[ChatBridge] Found blob URL:', match[0].substring(0, 100));
+        }
+
+        // 6. Check attachments array if present
+        if (msg.attachments && Array.isArray(msg.attachments)) {
+          for (const att of msg.attachments) {
+            if (att.type === 'image' && att.url) {
+              foundSrcs.add(att.url);
+              console.log('[ChatBridge] Found image in attachments:', att.url.substring(0, 100));
+            }
+          }
         }
 
         // Process found sources
+        console.log('[ChatBridge] Message', i, '- Total unique sources found:', foundSrcs.size);
         for (const src of foundSrcs) {
           if (!src || src.length < 10) continue;
 
@@ -3320,31 +4236,145 @@
         }
       }
 
+      // FALLBACK: If no images found in messages, scan the entire chat area
+      if (images.length === 0) {
+        console.log('[ChatBridge] No images in messages, trying page-wide scan...');
+
+        // Find the main chat container - try multiple selectors
+        let chatContainer = null;
+        const containerSelectors = [
+          '[data-testid="conversation-turn-3"]',  // ChatGPT specific
+          '[data-testid="conversation-turns"]',    // ChatGPT container
+          'main[class*="flex"]',                   // ChatGPT main area
+          '[role="main"]',
+          'main',
+          '.conversation',
+          '.chat',
+          '[data-testid*="conversation"]'
+        ];
+
+        for (const sel of containerSelectors) {
+          const el = document.querySelector(sel);
+          if (el && el.tagName !== 'BUTTON' && el.tagName !== 'A') {
+            chatContainer = el;
+            break;
+          }
+        }
+
+        // Ultimate fallback - search entire document
+        if (!chatContainer) {
+          chatContainer = document.body;
+        }
+
+        console.log('[ChatBridge] Scanning container:', chatContainer.tagName, (chatContainer.className || '').substring(0, 50));
+
+        // Get all images from the chat area AND the entire document
+        let allImgs = Array.from(chatContainer.querySelectorAll('img'));
+
+        // If still no images, search entire document
+        if (allImgs.length === 0) {
+          console.log('[ChatBridge] No images in container, searching entire document...');
+          allImgs = Array.from(document.querySelectorAll('img'));
+        }
+
+        console.log('[ChatBridge] Page-wide: Found', allImgs.length, 'total img tags');
+
+        for (const img of allImgs) {
+          const src = img.src || img.dataset.src || img.getAttribute('data-src') || img.currentSrc;
+
+          // Filter out icons, avatars, logos, and small images
+          if (!src || src.length < 20) continue;
+          if (src.includes('icon') || src.includes('avatar') || src.includes('emoji') || src.includes('logo') || src.includes('favicon')) continue;
+
+          // Check image size (skip tiny images)
+          try {
+            const rect = img.getBoundingClientRect();
+            if (rect.width < 40 || rect.height < 40) {
+              console.log('[ChatBridge] Skipping small image:', rect.width, 'x', rect.height);
+              continue;
+            }
+          } catch (e) { }
+
+          const hash = await hashImageSrc(src);
+          if (seenHashes.has(hash)) continue;
+          seenHashes.add(hash);
+
+          console.log('[ChatBridge] Page-wide: Adding image:', src.substring(0, 100));
+
+          images.push({
+            id: hash,
+            src: src,
+            role: 'unknown',
+            timestamp: Date.now(),
+            messageIndex: -1,
+            originatingModel: detectCurrentPlatform()
+          });
+        }
+
+        // Also check for background images in chat container
+        const elementsWithBg = chatContainer.querySelectorAll('[style*="background"], [class*="image"], [class*="img"]');
+        for (const elem of elementsWithBg) {
+          try {
+            const style = window.getComputedStyle(elem);
+            const bgImage = style.backgroundImage;
+            if (bgImage && bgImage !== 'none' && bgImage.startsWith('url(')) {
+              const match = bgImage.match(/url\(["']?([^"')]+)["']?\)/);
+              if (match && match[1] && match[1].length > 20) {
+                const src = match[1];
+                if (src.includes('icon') || src.includes('avatar')) continue;
+
+                const hash = await hashImageSrc(src);
+                if (seenHashes.has(hash)) continue;
+                seenHashes.add(hash);
+
+                console.log('[ChatBridge] Page-wide: Adding background image:', src.substring(0, 100));
+
+                images.push({
+                  id: hash,
+                  src: src,
+                  role: 'unknown',
+                  timestamp: Date.now(),
+                  messageIndex: -1,
+                  originatingModel: detectCurrentPlatform()
+                });
+              }
+            }
+          } catch (e) { }
+        }
+      }
+
+      console.log('[ChatBridge] Image extraction complete. Found', images.length, 'unique images');
       return images;
     }
 
     // Save images to IndexedDB
     async function saveImagesToVault(images) {
+      console.log('[ChatBridge] Saving', images.length, 'images to vault...');
       try {
         const db = await initImageVaultDB();
         const tx = db.transaction([IMAGE_VAULT_STORE_NAME], 'readwrite');
         const store = tx.objectStore(IMAGE_VAULT_STORE_NAME);
+        let savedCount = 0;
 
         for (const img of images) {
           try {
             await new Promise((resolve, reject) => {
               const request = store.put(img);
-              request.onsuccess = () => resolve();
+              request.onsuccess = () => {
+                savedCount++;
+                resolve();
+              };
               request.onerror = () => reject(request.error);
             });
           } catch (e) {
-            debugLog('Failed to save image:', e);
+            console.warn('[ChatBridge] Failed to save image:', e.message || e);
           }
         }
 
+        console.log('[ChatBridge] Successfully saved', savedCount, 'of', images.length, 'images to vault');
         return true;
       } catch (e) {
-        debugLog('saveImagesToVault error:', e);
+        console.error('[ChatBridge] saveImagesToVault error:', e.message || e);
         return false;
       }
     }
@@ -3399,6 +4429,24 @@
       if (hostname.includes('mistral')) return 'Mistral';
       if (hostname.includes('meta.ai')) return 'Meta AI';
       return 'Unknown';
+    }
+
+    // EXPOSE IMAGE FUNCTIONS GLOBALLY for use by scanChat and other modules
+    try {
+      window.ChatBridge = window.ChatBridge || {};
+      window.ChatBridge.extractImagesFromMessages = extractImagesFromMessages;
+      window.ChatBridge.saveImagesToVault = saveImagesToVault;
+      window.ChatBridge.getImageVault = getImageVault;
+      window.ChatBridge.clearImageVault = clearImageVault;
+      window.ChatBridge.refreshImageVault = async function () {
+        try {
+          const fn = typeof refreshImageVault === 'function' ? refreshImageVault : null;
+          if (fn) await fn();
+        } catch (e) { console.warn('[ChatBridge] refreshImageVault error:', e); }
+      };
+      console.log('[ChatBridge] Image vault functions exposed globally');
+    } catch (e) {
+      console.warn('[ChatBridge] Failed to expose image functions:', e);
     }
 
     // Render Image Vault Widget
@@ -3780,7 +4828,7 @@
         const controls = document.createElement('div');
         controls.style.cssText = 'display:flex;gap:8px;';
         controls.innerHTML = `
-          <button id="cb-vault-scan" class="cb-btn cb-btn-primary" style="flex:1;font-size:11px;padding:8px;">🔍 Scan Images</button>
+          <button id="cb-vault-scan" class="cb-btn cb-btn-primary" style="flex:1;font-size:11px;padding:8px;">🔍 Scan Media</button>
           <button id="cb-vault-clear" class="cb-btn" style="font-size:11px;padding:8px;">🗑️ Clear</button>
         `;
 
@@ -3803,27 +4851,60 @@
           const btn = document.getElementById('cb-vault-scan');
           addLoadingToButton(btn, 'Scanning...');
           try {
+            console.log('[ChatBridge] Image Vault: Starting scan...');
             const msgs = await scanChat();
-            if (!msgs || msgs.length === 0) {
-              toast('No messages to scan');
-              return;
+
+            // Count user and agent messages
+            const userMsgs = msgs ? msgs.filter(m => m.role === 'user').length : 0;
+            const agentMsgs = msgs ? msgs.filter(m => m.role === 'assistant').length : 0;
+            console.log('[ChatBridge] Image Vault: Found', userMsgs, 'user messages,', agentMsgs, 'agent replies');
+
+            // Try message-based extraction first
+            let images = [];
+            if (msgs && msgs.length > 0) {
+              images = await extractImagesFromMessages(msgs);
+              console.log('[ChatBridge] Image Vault: Message extraction found', images.length, 'images');
             }
 
-            const images = await extractImagesFromMessages(msgs);
+            // If no images found, use platform-specific page-wide extraction
+            let files = [];
+            let artifacts = [];
             if (images.length === 0) {
-              toast('No images found in conversation');
-              document.getElementById('cb-image-count').textContent = '0';
-              return;
+              console.log('[ChatBridge] Trying platform-specific extraction...');
+              const media = await extractAllMediaFromPage();
+              images = media.images || [];
+              files = media.files || [];
+              artifacts = media.artifacts || [];
+              console.log('[ChatBridge] Platform extraction found:', images.length, 'images,', files.length, 'files,', artifacts.length, 'artifacts');
             }
 
-            await saveImagesToVault(images);
-            await refreshImageVault();
-            toast(`Found ${images.length} image(s)`);
+            // Save images to vault
+            if (images.length > 0) {
+              await saveImagesToVault(images);
+              await refreshImageVault();
+            }
+
+            // Update count display
+            document.getElementById('cb-image-count').textContent = String(images.length);
+
+            // Build result message
+            let resultMsg = `${userMsgs} user, ${agentMsgs} agent`;
+            if (images.length > 0 || files.length > 0 || artifacts.length > 0) {
+              resultMsg += `: ${images.length} images`;
+              if (files.length > 0) resultMsg += `, ${files.length} files`;
+              if (artifacts.length > 0) resultMsg += `, ${artifacts.length} artifacts`;
+              resultMsg = 'Saved ' + resultMsg;
+            } else {
+              resultMsg = 'Scanned ' + resultMsg + '. No media found.';
+            }
+
+            toast(resultMsg);
+            console.log('[ChatBridge] Image Vault scan complete');
           } catch (e) {
-            debugLog('Scan images error:', e);
-            toast('Image scan failed');
+            console.error('[ChatBridge] Image Vault scan error:', e);
+            toast('Image scan failed - check console for details');
           } finally {
-            removeLoadingFromButton(btn, '🔍 Scan Images');
+            removeLoadingFromButton(btn, '🔍 Scan Media');
           }
         });
 
@@ -5031,10 +6112,10 @@ Respond with JSON only:
           });
         }
 
-        // Content area for inline tool results
+        // Content area for inline tool results - less boxy with themed scrollbar
         const toolResultArea = document.createElement('div');
         toolResultArea.id = 'cb-insights-tool-result';
-        toolResultArea.style.cssText = 'display:none;margin:0 8px 12px;background:rgba(0,0,0,0.2);border:1px solid var(--cb-border);border-radius:8px;padding:12px;max-height:300px;overflow-y:auto;';
+        toolResultArea.style.cssText = 'display:none;margin:8px;background:transparent;border-radius:10px;padding:12px;max-height:320px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(100,100,100,0.5) transparent;';
         insightsContent.appendChild(toolResultArea);
 
         // Helper to show inline result
@@ -5119,86 +6200,239 @@ Respond with JSON only:
             return;
           }
 
-          const listHTML = saved.slice(0, 8).map((conv, idx) => {
+          const listHTML = saved.slice(0, 10).map((conv, idx) => {
             const count = conv.conversation?.length || conv.messages?.length || 0;
             const date = new Date(conv.ts || Date.now()).toLocaleDateString();
-            return `<label style="display:flex;align-items:center;gap:8px;padding:8px;background:var(--cb-bg);border:1px solid var(--cb-border);border-radius:6px;cursor:pointer;margin-bottom:6px;">
-              <input type="checkbox" class="merge-check" data-idx="${idx}" style="cursor:pointer;">
+            const preview = (conv.conversation?.[0]?.text || conv.messages?.[0]?.text || '').substring(0, 30);
+            return `<label style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:rgba(255,255,255,0.03);border-radius:8px;cursor:pointer;margin-bottom:6px;transition:all 0.15s;" onmouseenter="this.style.background='rgba(0,180,255,0.1)'" onmouseleave="this.style.background='rgba(255,255,255,0.03)'">
+              <input type="checkbox" class="merge-check" data-idx="${idx}" style="cursor:pointer;accent-color:#60a5fa;width:16px;height:16px;">
               <div style="flex:1;overflow:hidden;">
-                <div style="font-size:11px;color:var(--cb-white);font-weight:500;">${conv.platform || 'Unknown'} - ${count} msgs</div>
-                <div style="font-size:9px;color:var(--cb-subtext);">${date}</div>
+                <div style="font-size:12px;color:var(--cb-white);font-weight:500;">${conv.platform || 'Chat'} • ${count} msgs</div>
+                <div style="font-size:10px;color:var(--cb-subtext);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${preview || date}</div>
               </div>
             </label>`;
           }).join('');
 
           showToolResult(`
-            <div style="margin-bottom:10px;font-size:11px;color:var(--cb-subtext);">Select conversations to merge:</div>
-            <div style="max-height:200px;overflow-y:auto;">${listHTML}</div>
-            <button id="cb-merge-go" style="margin-top:12px;width:100%;padding:8px;background:rgba(0,180,255,0.2);border:1px solid rgba(0,180,255,0.4);border-radius:6px;color:var(--cb-white);cursor:pointer;">🔗 Merge Selected</button>
+            <div style="font-size:12px;color:var(--cb-subtext);margin-bottom:12px;">Select conversations to merge:</div>
+            <div style="max-height:180px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(100,100,100,0.5) transparent;padding-right:4px;">${listHTML}</div>
+            <div style="display:flex;gap:8px;margin-top:14px;">
+              <button id="cb-merge-insert" style="flex:1;padding:10px;background:linear-gradient(135deg,rgba(96,165,250,0.2),rgba(167,139,250,0.2));border:1px solid rgba(96,165,250,0.4);border-radius:8px;color:var(--cb-white);cursor:pointer;font-size:11px;font-weight:500;">⬆️ Insert to Chat</button>
+              <button id="cb-merge-copy" style="flex:1;padding:10px;background:rgba(255,255,255,0.05);border:1px solid var(--cb-border);border-radius:8px;color:var(--cb-white);cursor:pointer;font-size:11px;">📋 Copy</button>
+            </div>
           `, '🔗 Merge Chats');
 
-          const mergeBtn = toolResultArea.querySelector('#cb-merge-go');
-          if (mergeBtn) {
-            mergeBtn.addEventListener('click', async () => {
-              const checks = toolResultArea.querySelectorAll('.merge-check:checked');
-              if (checks.length === 0) { toast('Select at least one conversation'); return; }
+          // Helper to get merged text
+          const getMergedText = () => {
+            const checks = toolResultArea.querySelectorAll('.merge-check:checked');
+            if (checks.length === 0) return null;
 
-              const allMessages = [];
-              checks.forEach(chk => {
-                const idx = parseInt(chk.dataset.idx);
-                const conv = saved[idx];
-                const msgs = conv.conversation || conv.messages || [];
-                allMessages.push(...msgs.map(m => ({ ...m, source: conv.platform })));
-              });
+            const allMessages = [];
+            checks.forEach(chk => {
+              const idx = parseInt(chk.dataset.idx);
+              const conv = saved[idx];
+              const msgs = conv.conversation || conv.messages || [];
+              allMessages.push(...msgs.map(m => ({ ...m, source: conv.platform })));
+            });
 
-              const merged = allMessages.map(m => `${m.role}: ${m.text}`).join('\n\n');
+            return allMessages.map(m => `${m.role}: ${m.text}`).join('\n\n');
+          };
+
+          // Insert to Chat handler
+          const insertBtn = toolResultArea.querySelector('#cb-merge-insert');
+          if (insertBtn) {
+            insertBtn.addEventListener('click', async () => {
+              const merged = getMergedText();
+              if (!merged) { toast('Select at least one conversation'); return; }
+
+              // Try to find the chat input
+              const adapter = pickAdapter ? pickAdapter() : null;
+              let input = adapter && adapter.getInput ? adapter.getInput() : null;
+
+              if (!input) {
+                input = document.querySelector('textarea, [contenteditable="true"], [role="textbox"]');
+              }
+
+              if (input) {
+                if (input.isContentEditable || input.contentEditable === 'true') {
+                  input.focus();
+                  input.innerHTML = merged.replace(/\n/g, '<br>');
+                  input.dispatchEvent(new InputEvent('input', { bubbles: true }));
+                } else {
+                  input.focus();
+                  input.value = merged;
+                  input.dispatchEvent(new Event('input', { bubbles: true }));
+                }
+                toast('Merged content inserted!');
+                toolResultArea.style.display = 'none';
+              } else {
+                // Fallback to clipboard
+                await navigator.clipboard.writeText(merged);
+                toast('No input found - copied to clipboard');
+              }
+            });
+          }
+
+          // Copy handler
+          const copyBtn = toolResultArea.querySelector('#cb-merge-copy');
+          if (copyBtn) {
+            copyBtn.addEventListener('click', async () => {
+              const merged = getMergedText();
+              if (!merged) { toast('Select at least one conversation'); return; }
+
               await navigator.clipboard.writeText(merged);
-              toast(`Merged ${allMessages.length} messages copied!`);
-              toolResultArea.style.display = 'none';
+              toast('Merged content copied!');
             });
           }
         });
         toolsGrid.appendChild(mergeCard);
 
-        // 3. Clean & Organize
-        const cleanCard = createToolCard('🧹', 'Clean & Organize', 'Remove duplicates, fix formatting');
+        // 3. Clean & Organize - Enhanced with storage deduplication
+        const cleanCard = createToolCard('🧹', 'Clean & Organize', 'Remove duplicate saved chats');
         cleanCard.addEventListener('click', async () => {
-          const msgs = await scanChat();
-          if (!msgs || msgs.length === 0) {
-            showToolResult('<div style="text-align:center;padding:20px;color:var(--cb-subtext);">No conversation to clean.<br><br>Scan a chat first.</div>', '🧹 Clean & Organize');
-            return;
-          }
+          // First, analyze saved conversations for duplicates
+          showToolResult('<div style="text-align:center;padding:20px;"><div class="cb-spinner"></div><div style="margin-top:8px;color:var(--cb-subtext);">Analyzing saved conversations...</div></div>', '🧹 Clean & Organize');
 
-          const { cleaned, stats } = cleanConversation(msgs);
+          try {
+            const result = await deduplicateSavedConversations();
+            const stats = result.stats;
 
-          showToolResult(`
-            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;">
-              <div style="text-align:center;padding:8px;background:var(--cb-bg);border-radius:6px;">
-                <div style="font-size:18px;font-weight:700;color:var(--cb-white);">${stats.original}</div>
-                <div style="font-size:9px;color:var(--cb-subtext);">Original</div>
-              </div>
-              <div style="text-align:center;padding:8px;background:var(--cb-bg);border-radius:6px;">
-                <div style="font-size:18px;font-weight:700;color:#66ff66;">${stats.cleaned}</div>
-                <div style="font-size:9px;color:var(--cb-subtext);">Cleaned</div>
-              </div>
-              <div style="text-align:center;padding:8px;background:var(--cb-bg);border-radius:6px;">
-                <div style="font-size:18px;font-weight:700;color:#ff6666;">${stats.saved}</div>
-                <div style="font-size:9px;color:var(--cb-subtext);">Removed</div>
-              </div>
-            </div>
-            <div style="font-size:11px;color:var(--cb-subtext);margin-bottom:8px;">
-              ${stats.duplicates} duplicates • ${stats.emptyRemoved} empty messages removed
-            </div>
-            <button id="cb-clean-copy" style="width:100%;padding:8px;background:rgba(0,180,255,0.2);border:1px solid rgba(0,180,255,0.4);border-radius:6px;color:var(--cb-white);cursor:pointer;">📋 Copy Cleaned Version</button>
-          `, '🧹 Clean & Organize');
+            // No issues found
+            if (stats.duplicates === 0 && stats.overlaps === 0) {
+              showToolResult(`
+                <div style="text-align:center;padding:20px;">
+                  <div style="font-size:32px;margin-bottom:12px;">✅</div>
+                  <div style="color:var(--cb-white);font-weight:600;margin-bottom:8px;">All Clean!</div>
+                  <div style="color:var(--cb-subtext);font-size:11px;">No duplicate or overlapping conversations found in your ${stats.originalCount} saved chats.</div>
+                </div>
+              `, '🧹 Clean & Organize');
+              return;
+            }
 
-          const copyBtn = toolResultArea.querySelector('#cb-clean-copy');
-          if (copyBtn) {
-            copyBtn.addEventListener('click', async () => {
-              const text = cleaned.map(m => `${m.role}: ${m.text}`).join('\n\n');
-              await navigator.clipboard.writeText(text);
-              toast('Cleaned conversation copied!');
-            });
+            // Show confirmation with what will be cleaned
+            const totalToRemove = stats.duplicates + stats.overlaps;
+
+            showToolResult(`
+              <div style="margin-bottom:16px;">
+                <div style="font-size:12px;color:var(--cb-white);margin-bottom:12px;font-weight:500;">Found issues in saved conversations:</div>
+                
+                <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px;">
+                  <div style="text-align:center;padding:12px;background:rgba(255,100,100,0.1);border:1px solid rgba(255,100,100,0.3);border-radius:8px;">
+                    <div style="font-size:24px;font-weight:700;color:#ff6b6b;">${stats.duplicates}</div>
+                    <div style="font-size:10px;color:var(--cb-subtext);">Exact Duplicates</div>
+                    <div style="font-size:9px;color:var(--cb-subtext);opacity:0.7;margin-top:2px;">Same chat scanned twice</div>
+                  </div>
+                  <div style="text-align:center;padding:12px;background:rgba(255,180,100,0.1);border:1px solid rgba(255,180,100,0.3);border-radius:8px;">
+                    <div style="font-size:24px;font-weight:700;color:#ffb347;">${stats.overlaps}</div>
+                    <div style="font-size:10px;color:var(--cb-subtext);">Overlapping Chats</div>
+                    <div style="font-size:9px;color:var(--cb-subtext);opacity:0.7;margin-top:2px;">10 msgs → 20 msgs</div>
+                  </div>
+                </div>
+                
+                <div style="padding:12px;background:rgba(255,255,255,0.03);border-radius:8px;margin-bottom:14px;">
+                  <div style="font-size:11px;color:var(--cb-subtext);line-height:1.5;">
+                    <strong style="color:var(--cb-white);">This will:</strong><br>
+                    • Remove ${stats.duplicates} duplicate conversations<br>
+                    • Merge ${stats.overlaps} overlapping chats (keeping the longer version)<br>
+                    • Reduce from ${stats.originalCount} → ${stats.finalCount} saved chats
+                  </div>
+                </div>
+                
+                <div style="display:flex;gap:8px;">
+                  <button id="cb-clean-cancel" style="flex:1;padding:10px;background:rgba(255,255,255,0.05);border:1px solid var(--cb-border);border-radius:8px;color:var(--cb-white);cursor:pointer;font-size:11px;">Cancel</button>
+                  <button id="cb-clean-confirm" style="flex:1;padding:10px;background:linear-gradient(135deg,rgba(255,100,100,0.2),rgba(255,150,100,0.2));border:1px solid rgba(255,100,100,0.4);border-radius:8px;color:var(--cb-white);cursor:pointer;font-size:11px;font-weight:500;">🧹 Clean Storage</button>
+                </div>
+              </div>
+            `, '🧹 Clean & Organize');
+
+            // Cancel handler
+            const cancelBtn = toolResultArea.querySelector('#cb-clean-cancel');
+            if (cancelBtn) {
+              cancelBtn.addEventListener('click', () => {
+                toolResultArea.style.display = 'none';
+              });
+            }
+
+            // Confirm handler
+            const confirmBtn = toolResultArea.querySelector('#cb-clean-confirm');
+            if (confirmBtn) {
+              confirmBtn.addEventListener('click', async () => {
+                confirmBtn.disabled = true;
+                confirmBtn.textContent = 'Cleaning...';
+
+                try {
+                  // Save the cleaned conversations
+                  const success = await saveCleannedConversations(result.cleaned);
+
+                  if (success) {
+                    // Invalidate the conversation cache to force reload
+                    try {
+                      if (typeof __cbConvCache !== 'undefined') {
+                        __cbConvCache.data = null;
+                        __cbConvCache.ts = 0;
+                      }
+                    } catch (_) { }
+
+                    showToolResult(`
+                      <div style="text-align:center;padding:20px;">
+                        <div style="font-size:32px;margin-bottom:12px;">🎉</div>
+                        <div style="color:var(--cb-white);font-weight:600;margin-bottom:8px;">Storage Cleaned!</div>
+                        <div style="color:var(--cb-subtext);font-size:11px;line-height:1.6;">
+                          Removed ${stats.duplicates} duplicates<br>
+                          Merged ${stats.overlaps} overlapping chats<br>
+                          Now: ${stats.finalCount} saved conversations
+                        </div>
+                        <div style="margin-top:12px;font-size:10px;color:var(--cb-subtext);opacity:0.7;">
+                          <span style="display:inline-block;animation:spin 1s linear infinite;">⚙️</span> Refreshing stats...
+                        </div>
+                      </div>
+                    `, '🧹 Clean & Organize');
+
+                    toast(`Cleaned! ${totalToRemove} conversations removed`);
+
+                    // Auto-refresh the Insights Hub to update stats and history
+                    setTimeout(async () => {
+                      toolResultArea.style.display = 'none';
+
+                      // Clear the conversation cache to force fresh load
+                      try {
+                        if (typeof __cbConvCache !== 'undefined') {
+                          __cbConvCache.data = [];
+                          __cbConvCache.ts = 0;
+                        }
+                      } catch (_) { }
+
+                      // Re-render the insights hub to update stats
+                      try {
+                        if (typeof renderInsightsHub === 'function') {
+                          await renderInsightsHub();
+                        }
+                      } catch (e) { console.log('renderInsightsHub error:', e); }
+
+                      // Also refresh the history panel (use global exposure)
+                      try {
+                        if (typeof refreshHistory === 'function') {
+                          await refreshHistory();
+                        } else if (window.ChatBridge && typeof window.ChatBridge.refreshHistory === 'function') {
+                          await window.ChatBridge.refreshHistory();
+                        }
+                      } catch (e) { console.log('refreshHistory error:', e); }
+
+                      toast('Stats & history refreshed!');
+                    }, 1500);
+                  } else {
+                    toast('Failed to save cleaned data');
+                  }
+                } catch (e) {
+                  console.error('[ChatBridge] Clean failed:', e);
+                  toast('Clean operation failed');
+                }
+              });
+            }
+
+          } catch (e) {
+            console.error('[ChatBridge] Clean & Organize error:', e);
+            showToolResult('<div style="text-align:center;padding:20px;color:var(--cb-subtext);">Failed to analyze conversations.</div>', '🧹 Clean & Organize');
           }
         });
         toolsGrid.appendChild(cleanCard);
@@ -5223,45 +6457,230 @@ Respond with JSON only:
         });
         toolsGrid.appendChild(exportCard);
 
-        // 5. Extract Content
-        const extractCard = createToolCard('📋', 'Extract Content', 'Get code, links, action items');
+        // 5. Extract Content - REDESIGNED PREMIUM UI
+        const extractCard = createToolCard('📋', 'Extract Content', 'URLs, numbers, code, lists');
         extractCard.addEventListener('click', async () => {
-          const chatText = await getConversationText();
-          if (!chatText || chatText.length < 20) {
-            showToolResult('<div style="text-align:center;padding:20px;color:var(--cb-subtext);">No conversation found.<br><br>Scan a chat first.</div>', '📋 Extract Content');
+          // Get extracted content from last scan or extract now
+          let extracted = window.ChatBridge?._extractedContent || window.ChatBridge?._lastScanData?.extracted;
+
+          if (!extracted || Object.values(extracted).every(arr => !arr || arr.length === 0)) {
+            // Need to scan first
+            showToolResult('<div style="text-align:center;padding:20px;"><div class="cb-spinner"></div><div style="margin-top:8px;color:var(--cb-subtext);">Scanning conversation...</div></div>', '📋 Extract Content');
+            const msgs = await scanChat();
+            if (!msgs || msgs.length === 0) {
+              showToolResult('<div style="text-align:center;padding:30px;color:var(--cb-subtext);"><div style="font-size:28px;margin-bottom:12px;">📭</div>No conversation found.<br><br><span style="font-size:10px;">Open a chat and try again.</span></div>', '📋 Extract Content');
+              return;
+            }
+            extracted = window.ChatBridge?._extractedContent || {};
+          }
+
+          // Define all categories with colors
+          const categoryConfig = {
+            urls: { icon: '🔗', label: 'Links', color: '#60a5fa', gradient: 'linear-gradient(135deg, rgba(96,165,250,0.15), rgba(59,130,246,0.08))' },
+            numbers: { icon: '🔢', label: 'Numbers', color: '#34d399', gradient: 'linear-gradient(135deg, rgba(52,211,153,0.15), rgba(16,185,129,0.08))' },
+            lists: { icon: '📝', label: 'Lists', color: '#a78bfa', gradient: 'linear-gradient(135deg, rgba(167,139,250,0.15), rgba(139,92,246,0.08))' },
+            codeBlocks: { icon: '💻', label: 'Code', color: '#f59e0b', gradient: 'linear-gradient(135deg, rgba(245,158,11,0.15), rgba(217,119,6,0.08))' },
+            commands: { icon: '⌨️', label: 'Commands', color: '#ec4899', gradient: 'linear-gradient(135deg, rgba(236,72,153,0.15), rgba(219,39,119,0.08))' },
+            emails: { icon: '📧', label: 'Emails', color: '#06b6d4', gradient: 'linear-gradient(135deg, rgba(6,182,212,0.15), rgba(8,145,178,0.08))' },
+            dates: { icon: '📅', label: 'Dates', color: '#f472b6', gradient: 'linear-gradient(135deg, rgba(244,114,182,0.15), rgba(236,72,153,0.08))' },
+            tables: { icon: '📊', label: 'Tables', color: '#8b5cf6', gradient: 'linear-gradient(135deg, rgba(139,92,246,0.15), rgba(124,58,237,0.08))' }
+          };
+
+          // Build categories with counts
+          const categories = Object.keys(categoryConfig)
+            .map(key => ({
+              key,
+              ...categoryConfig[key],
+              count: extracted[key]?.length || 0
+            }))
+            .filter(c => c.count > 0);
+
+          if (categories.length === 0) {
+            showToolResult(`
+              <div style="text-align:center;padding:30px;color:var(--cb-subtext);">
+                <div style="font-size:28px;margin-bottom:12px;">🔍</div>
+                <div style="font-weight:500;color:var(--cb-white);margin-bottom:6px;">No Extractable Content</div>
+                <div style="font-size:11px;opacity:0.7;">This chat doesn't contain links, numbers, code blocks, or lists.</div>
+              </div>
+            `, '📋 Extract Content');
             return;
           }
 
-          showToolResult('<div style="text-align:center;padding:20px;"><div class="cb-spinner"></div><div style="margin-top:8px;color:var(--cb-subtext);">Extracting...</div></div>', '📋 Extract Content');
+          // Calculate totals
+          const totalItems = categories.reduce((sum, c) => sum + c.count, 0);
 
-          try {
-            const result = await callGeminiAsync({
-              action: 'prompt',
-              text: `Extract key content from this conversation in a concise format:
-- Action Items (tasks/todos)
-- Code Snippets (if any)
-- Key Decisions
-- Important Links
+          // Build beautiful category cards
+          const categoryCardsHTML = categories.map((c, i) => `
+            <div class="cb-extract-cat" data-key="${c.key}" style="flex:1;min-width:80px;padding:10px 8px;background:${c.gradient};border:1px solid ${c.color}33;border-radius:10px;cursor:pointer;text-align:center;transition:all 0.2s ease;${i === 0 ? 'transform:scale(1.02);box-shadow:0 0 12px ' + c.color + '30;' : ''}">
+              <div style="font-size:18px;margin-bottom:4px;">${c.icon}</div>
+              <div style="font-size:9px;color:${c.color};font-weight:600;text-transform:uppercase;letter-spacing:0.3px;">${c.label}</div>
+              <div style="font-size:16px;font-weight:700;color:var(--cb-white);margin-top:2px;">${c.count}</div>
+            </div>
+          `).join('');
 
-Conversation:
-${chatText.slice(0, 6000)}`
+          showToolResult(`
+            <div style="margin-bottom:14px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                <span style="font-size:11px;color:var(--cb-subtext);">Found <span style="color:var(--cb-white);font-weight:600;">${totalItems}</span> items in <span style="color:var(--cb-white);font-weight:600;">${categories.length}</span> categories</span>
+                <span id="cb-extract-copy-all" style="font-size:10px;color:#60a5fa;cursor:pointer;opacity:0.8;">📋 Copy All</span>
+              </div>
+              <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;scrollbar-width:thin;scrollbar-color:rgba(100,100,100,0.3) transparent;">${categoryCardsHTML}</div>
+            </div>
+            <div id="cb-extract-items" style="max-height:220px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(100,100,100,0.4) transparent;padding:2px;"></div>
+          `, '📋 Extracted Content');
+
+          const itemsContainer = toolResultArea.querySelector('#cb-extract-items');
+
+          // Render items for a category - BEAUTIFUL VERSION
+          const renderItems = (key) => {
+            const items = extracted[key] || [];
+            const config = categoryConfig[key];
+            let html = '';
+
+            items.forEach((item, idx) => {
+              let content = '';
+              let copyValue = '';
+              let extraStyles = '';
+
+              if (key === 'urls') {
+                const domain = item.domain || new URL(item.value).hostname.replace('www.', '');
+                content = `
+                  <div style="display:flex;align-items:center;gap:8px;">
+                    <div style="width:24px;height:24px;background:linear-gradient(135deg,${config.color}40,${config.color}20);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;">🌐</div>
+                    <div style="flex:1;overflow:hidden;">
+                      <div style="font-size:11px;color:${config.color};font-weight:500;">${domain}</div>
+                      <div style="font-size:9px;color:var(--cb-subtext);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${item.value}</div>
+                    </div>
+                  </div>`;
+                copyValue = item.value;
+              } else if (key === 'numbers') {
+                content = `
+                  <div style="display:flex;align-items:center;gap:10px;">
+                    <div style="font-size:16px;font-weight:700;color:${config.color};min-width:60px;">${item.value}</div>
+                    <div style="font-size:10px;color:var(--cb-subtext);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${item.context || ''}</div>
+                  </div>`;
+                copyValue = item.value;
+              } else if (key === 'lists') {
+                const previewItems = item.items.slice(0, 3);
+                content = `
+                  <div>
+                    <div style="font-size:10px;color:${config.color};font-weight:500;margin-bottom:6px;">${item.count} items</div>
+                    <div style="padding-left:8px;border-left:2px solid ${config.color}40;">
+                      ${previewItems.map((li, i) => `<div style="font-size:10px;color:var(--cb-subtext);margin-bottom:3px;display:flex;gap:6px;"><span style="color:${config.color};opacity:0.6;">${i + 1}.</span> ${li.substring(0, 50)}${li.length > 50 ? '...' : ''}</div>`).join('')}
+                      ${item.items.length > 3 ? `<div style="font-size:9px;color:var(--cb-subtext);opacity:0.6;margin-top:4px;">+${item.items.length - 3} more...</div>` : ''}
+                    </div>
+                  </div>`;
+                copyValue = item.items.map((li, i) => `${i + 1}. ${li}`).join('\n');
+                extraStyles = 'white-space:normal;';
+              } else if (key === 'codeBlocks') {
+                const preview = (item.code || '').substring(0, 100).replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                content = `
+                  <div>
+                    <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+                      <span style="background:${config.color}30;color:${config.color};font-size:9px;padding:2px 6px;border-radius:4px;font-weight:600;">${item.language || 'code'}</span>
+                      <span style="font-size:9px;color:var(--cb-subtext);">${(item.code || '').split('\n').length} lines</span>
+                    </div>
+                    <pre style="font-size:9px;color:var(--cb-subtext);background:rgba(0,0,0,0.3);padding:8px;border-radius:6px;margin:0;overflow:hidden;white-space:pre-wrap;word-break:break-all;max-height:60px;font-family:ui-monospace,monospace;">${preview}${item.code?.length > 100 ? '...' : ''}</pre>
+                  </div>`;
+                copyValue = item.code;
+                extraStyles = 'white-space:normal;';
+              } else if (key === 'commands') {
+                content = `
+                  <div style="display:flex;align-items:center;gap:8px;">
+                    <div style="font-size:12px;">⚡</div>
+                    <code style="flex:1;background:rgba(0,0,0,0.4);padding:6px 10px;border-radius:6px;font-size:10px;color:${config.color};font-family:ui-monospace,monospace;">${item.value}</code>
+                  </div>`;
+                copyValue = item.value;
+              } else if (key === 'emails') {
+                content = `
+                  <div style="display:flex;align-items:center;gap:8px;">
+                    <div style="font-size:14px;">✉️</div>
+                    <span style="color:${config.color};font-size:11px;">${item.value}</span>
+                  </div>`;
+                copyValue = item.value;
+              } else if (key === 'dates') {
+                content = `
+                  <div style="display:flex;align-items:center;gap:8px;">
+                    <div style="width:24px;height:24px;background:${config.color}20;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;">${config.icon}</div>
+                    <span style="color:${config.color};font-size:12px;font-weight:500;">${item.value}</span>
+                  </div>`;
+                copyValue = item.value;
+              } else if (key === 'tables') {
+                content = `
+                  <div>
+                    <div style="font-size:10px;color:${config.color};font-weight:500;margin-bottom:4px;">${item.rows} rows</div>
+                    <div style="font-size:9px;color:var(--cb-subtext);background:rgba(0,0,0,0.2);padding:6px;border-radius:4px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">${item.preview || 'Table data'}</div>
+                  </div>`;
+                copyValue = item.content || '';
+              }
+
+              html += `
+                <div class="cb-extract-item" data-copy="${encodeURIComponent(copyValue)}" style="padding:12px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);border-radius:10px;margin-bottom:8px;cursor:pointer;transition:all 0.2s ease;${extraStyles}" onmouseenter="this.style.background='rgba(255,255,255,0.06)';this.style.borderColor='${config.color}40';this.style.transform='translateX(2px)'" onmouseleave="this.style.background='rgba(255,255,255,0.02)';this.style.borderColor='rgba(255,255,255,0.04)';this.style.transform='translateX(0)'">
+                  ${content}
+                </div>`;
             });
 
-            if (result && result.ok && result.result) {
-              const content = toolResultArea.querySelector('#cb-tool-result-content');
-              content.innerHTML = `
-                <div style="white-space:pre-wrap;font-size:11px;line-height:1.5;color:var(--cb-subtext);">${result.result}</div>
-                <button id="cb-extract-copy" style="margin-top:12px;width:100%;padding:8px;background:rgba(0,180,255,0.2);border:1px solid rgba(0,180,255,0.4);border-radius:6px;color:var(--cb-white);cursor:pointer;">📋 Copy</button>
-              `;
-              const copyBtn = content.querySelector('#cb-extract-copy');
-              if (copyBtn) {
-                copyBtn.addEventListener('click', async () => {
-                  await navigator.clipboard.writeText(result.result);
-                  toast('Copied!');
-                });
-              }
-            }
-          } catch (e) { toast('Extraction failed'); }
+            itemsContainer.innerHTML = html || `
+              <div style="text-align:center;padding:30px;color:var(--cb-subtext);">
+                <div style="font-size:24px;margin-bottom:8px;opacity:0.5;">📭</div>
+                <div style="font-size:11px;">No items in this category</div>
+              </div>`;
+
+            // Add click handlers
+            itemsContainer.querySelectorAll('.cb-extract-item').forEach(el => {
+              el.addEventListener('click', async () => {
+                const val = decodeURIComponent(el.dataset.copy);
+                await navigator.clipboard.writeText(val);
+                el.style.background = 'rgba(52,211,153,0.15)';
+                setTimeout(() => el.style.background = 'rgba(255,255,255,0.02)', 300);
+                toast('Copied!');
+              });
+            });
+          };
+
+          // Category card click handlers
+          toolResultArea.querySelectorAll('.cb-extract-cat').forEach(cat => {
+            cat.addEventListener('click', () => {
+              // Update active category styling
+              toolResultArea.querySelectorAll('.cb-extract-cat').forEach(c => {
+                c.style.transform = 'scale(1)';
+                c.style.boxShadow = 'none';
+              });
+              const config = categoryConfig[cat.dataset.key];
+              cat.style.transform = 'scale(1.02)';
+              cat.style.boxShadow = `0 0 12px ${config.color}30`;
+
+              // Render items
+              renderItems(cat.dataset.key);
+            });
+          });
+
+          // Copy all handler
+          const copyAllBtn = toolResultArea.querySelector('#cb-extract-copy-all');
+          if (copyAllBtn) {
+            copyAllBtn.addEventListener('click', async () => {
+              let allText = '';
+              categories.forEach(c => {
+                const items = extracted[c.key] || [];
+                if (items.length > 0) {
+                  allText += `\n\n## ${c.label}\n`;
+                  items.forEach(item => {
+                    if (c.key === 'urls') allText += `- ${item.value}\n`;
+                    else if (c.key === 'lists') allText += item.items.map((li, i) => `${i + 1}. ${li}`).join('\n') + '\n';
+                    else if (c.key === 'codeBlocks') allText += '```' + (item.language || '') + '\n' + item.code + '\n```\n';
+                    else allText += `- ${item.value || item.context || ''}\n`;
+                  });
+                }
+              });
+              await navigator.clipboard.writeText(allText.trim());
+              toast('All content copied!');
+            });
+          }
+
+          // Render first category
+          if (categories.length > 0) {
+            renderItems(categories[0].key);
+          }
         });
         toolsGrid.appendChild(extractCard);
 
@@ -11348,16 +12767,38 @@ ${chatText.slice(0, 8000)}
 Output ONLY valid JSON:`;
 
           const result = await callGeminiAsync({ action: 'custom', prompt: analysisPrompt, temperature: 0.3 });
+          debugLog('Agent analysis result:', result);
 
           let analysis = null;
-          if (result && result.ok && result.result) {
+          let errorMessage = null;
+
+          if (!result) {
+            errorMessage = 'No response from AI service. Please check your connection.';
+          } else if (!result.ok) {
+            // Handle specific error types
+            if (result.error === 'no_api_key') {
+              errorMessage = 'Gemini API key not configured. Go to ChatBridge Options to set it up.';
+            } else if (result.error === 'rate_limited') {
+              errorMessage = 'Rate limit reached. Please wait a moment and try again.';
+            } else if (result.error === 'all_models_failed') {
+              errorMessage = 'AI service temporarily unavailable. Please try again later.';
+            } else {
+              errorMessage = result.message || result.error || 'AI service error. Please try again.';
+            }
+          } else if (result.result) {
             try {
               // Extract JSON from response
               const jsonMatch = result.result.match(/\{[\s\S]*\}/);
               if (jsonMatch) {
                 analysis = JSON.parse(jsonMatch[0]);
+              } else {
+                errorMessage = 'AI response format error. Please try again.';
+                debugLog('No JSON found in response:', result.result.slice(0, 200));
               }
-            } catch (e) { debugLog('Agent JSON parse error', e); }
+            } catch (e) {
+              debugLog('Agent JSON parse error', e);
+              errorMessage = 'Failed to parse AI response. Please try again.';
+            }
           }
 
           if (analysis) {
@@ -11483,13 +12924,23 @@ ${chatText.slice(0, 12000)}`;
               });
             }
           } else {
+            // Show specific error message if available
+            const displayError = errorMessage || 'Could not analyze the conversation. Please try again.';
             content.innerHTML = `
               <div style="text-align:center;padding:40px 20px;">
                 <div style="font-size:48px;margin-bottom:16px;">⚠️</div>
                 <p style="color:var(--cb-white);font-size:16px;font-weight:600;margin-bottom:8px;">Analysis Failed</p>
-                <p style="color:var(--cb-subtext);font-size:13px;">Could not analyze the conversation. Please try again.</p>
+                <p style="color:var(--cb-subtext);font-size:13px;margin-bottom:16px;">${displayError}</p>
+                <button class="cb-btn cb-btn-primary" id="cb-agent-retry" style="padding:10px 20px;">🔄 Try Again</button>
               </div>
             `;
+            // Add retry handler
+            const retryBtn = content.querySelector('#cb-agent-retry');
+            if (retryBtn) {
+              retryBtn.addEventListener('click', () => {
+                btnKnowledgeGraph.click();
+              });
+            }
           }
         } catch (e) {
           debugLog('Agent analysis error', e);
@@ -12991,6 +14442,60 @@ ${chatText.slice(0, 12000)}`;
           window.ChatBridge._lastScan.attachments = atts;
         }
       } catch (_) { }
+
+      // AUTOMATIC CONTENT EXTRACTION - Extract URLs, numbers, lists, code during scan
+      try {
+        if (typeof window.ChatBridge !== 'undefined' && typeof window.ChatBridge.extractContentFromMessages === 'function') {
+          const extracted = window.ChatBridge.extractContentFromMessages(normalized);
+          window.ChatBridge._lastScanData = window.ChatBridge._lastScanData || {};
+          window.ChatBridge._lastScanData.extracted = extracted;
+        }
+      } catch (_) { }
+
+      // AUTOMATIC IMAGE EXTRACTION AND SAVING - Extract images from messages and save to vault
+      try {
+        console.log('[ChatBridge] Extracting images from scan results...');
+        if (typeof window.ChatBridge !== 'undefined' && typeof window.ChatBridge.extractImagesFromMessages === 'function') {
+          // Use the exposed functions for full image extraction
+          const images = await window.ChatBridge.extractImagesFromMessages(normalized);
+          if (images && images.length > 0) {
+            console.log('[ChatBridge] Saving', images.length, 'images to vault...');
+            await window.ChatBridge.saveImagesToVault(images);
+            // Update image count in _lastScanData
+            window.ChatBridge._lastScanData = window.ChatBridge._lastScanData || {};
+            window.ChatBridge._lastScanData.imageCount = images.length;
+            // Update the image count element if it exists
+            try {
+              const countEl = document.getElementById('cb-image-count');
+              if (countEl) {
+                countEl.textContent = String(images.length);
+              }
+            } catch (_) { }
+            // Trigger refresh of Image Vault display if function exists
+            if (typeof window.ChatBridge.refreshImageVault === 'function') {
+              try { await window.ChatBridge.refreshImageVault(); } catch (_) { }
+            }
+            console.log('[ChatBridge] Scan complete:', normalized.length, 'messages,', images.length, 'images saved');
+          } else {
+            console.log('[ChatBridge] No images found in scan');
+            window.ChatBridge._lastScanData = window.ChatBridge._lastScanData || {};
+            window.ChatBridge._lastScanData.imageCount = 0;
+          }
+        } else {
+          // Fallback: count images from attachments only
+          const imageCount = normalized.reduce((acc, m) => {
+            if (Array.isArray(m.attachments)) {
+              acc += m.attachments.filter(a => a.type === 'image').length;
+            }
+            return acc;
+          }, 0);
+          window.ChatBridge._lastScanData = window.ChatBridge._lastScanData || {};
+          window.ChatBridge._lastScanData.imageCount = imageCount;
+          console.log('[ChatBridge] Found', imageCount, 'images in attachments (fallback mode)');
+        }
+      } catch (e) {
+        console.warn('[ChatBridge] Automatic image extraction failed:', e);
+      }
 
       // Log any errors that occurred during scan
       debugLog('[Scan] Returning', normalized.length, 'messages');

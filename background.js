@@ -862,6 +862,51 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return true;
   }
 
+  // Handler to REPLACE all conversations with a new cleaned list
+  if (msg && msg.type === 'replace_conversations') {
+    (async () => {
+      try {
+        const newConvs = Array.isArray(msg.payload && msg.payload.conversations) ? msg.payload.conversations : [];
+        console.log('[ChatBridge] Replacing conversations with', newConvs.length, 'cleaned items');
+
+        // Clear the IndexedDB conversations store
+        if (!convDb) await openConvoDB();
+        if (convDb) {
+          await new Promise((res) => {
+            try {
+              const tx = convDb.transaction([CONV_STORE], 'readwrite');
+              const st = tx.objectStore(CONV_STORE);
+              const req = st.clear();
+              req.onsuccess = () => res(true);
+              req.onerror = () => res(false);
+            } catch (_) { res(false); }
+          });
+        }
+
+        // Save the new conversations to IndexedDB
+        for (const c of newConvs) {
+          try {
+            const id = String(c.ts || c.id || Date.now());
+            const obj = Object.assign({ id }, c);
+            await convoPut(obj);
+          } catch (e) { /* continue */ }
+        }
+
+        // Update chrome.storage.local mirror
+        try {
+          await new Promise(r => chrome.storage.local.set({ 'chatbridge:conversations': newConvs }, r));
+        } catch (e) { }
+
+        console.log('[ChatBridge] Replaced conversations successfully');
+        sendResponse({ ok: true, count: newConvs.length });
+      } catch (e) {
+        console.error('[ChatBridge] Replace conversations failed:', e);
+        sendResponse({ ok: false, error: e && e.message });
+      }
+    })();
+    return true;
+  }
+
   // Handler to save a conversation from content script into conversation DB
   if (msg && msg.type === 'save_conversation') {
     (async () => {
