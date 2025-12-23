@@ -1442,68 +1442,209 @@
 
     const pdIntro = document.createElement('div');
     pdIntro.className = 'cb-view-intro';
-    pdIntro.style.cssText = 'font-size: 13px; line-height: 1.6; color: var(--cb-subtext); margin-bottom: 20px; padding: 14px 16px; background: linear-gradient(135deg, rgba(96, 165, 250, 0.08), rgba(167, 139, 250, 0.08)); border: 1px solid rgba(96, 165, 250, 0.15); border-radius: 10px; backdrop-filter: blur(8px);';
-    pdIntro.innerHTML = '<div style="font-weight: 600; color: var(--cb-white); margin-bottom: 6px; font-size: 14px;">AI-Powered Suggestions</div>Get smart, tailored prompt suggestions based on your conversation context and flow.';
+    pdIntro.style.cssText = 'font-size:11px;line-height:1.4;color:var(--cb-subtext);margin-bottom:12px;padding:8px 12px;background:linear-gradient(135deg,rgba(96,165,250,0.06),rgba(167,139,250,0.06));border:1px solid rgba(96,165,250,0.1);border-radius:8px;';
+    pdIntro.innerHTML = 'Click a category below to generate tailored prompts.';
     promptDesignerView.appendChild(pdIntro);
 
-    // Prompt Designer content container
+    // Prompt Designer content container - DROPDOWN CATEGORIES
     const pdContent = document.createElement('div');
     pdContent.id = 'cb-pd-content';
-    pdContent.style.cssText = 'margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px;';
+    pdContent.style.cssText = 'display:flex;flex-direction:column;gap:6px;';
 
     // Add Generate Ideas button
     const btnGenerateIdeas = document.createElement('button');
     btnGenerateIdeas.className = 'cb-btn cb-btn-primary';
-    btnGenerateIdeas.textContent = '✨ Generate Ideas';
-    btnGenerateIdeas.style.cssText = 'margin-bottom: 16px; padding: 12px; font-weight: 600;';
+    btnGenerateIdeas.innerHTML = '✨ Generate Prompt Ideas';
+    btnGenerateIdeas.style.cssText = 'margin-bottom:12px;padding:10px 14px;font-weight:600;font-size:12px;background:linear-gradient(135deg,rgba(96,165,250,0.2),rgba(167,139,250,0.2));border:1px solid rgba(96,165,250,0.3);border-radius:8px;color:var(--cb-white);cursor:pointer;transition:all 0.2s;';
+    btnGenerateIdeas.addEventListener('mouseenter', () => { btnGenerateIdeas.style.background = 'linear-gradient(135deg,rgba(96,165,250,0.35),rgba(167,139,250,0.35))'; });
+    btnGenerateIdeas.addEventListener('mouseleave', () => { btnGenerateIdeas.style.background = 'linear-gradient(135deg,rgba(96,165,250,0.2),rgba(167,139,250,0.2))'; });
+
     btnGenerateIdeas.addEventListener('click', async () => {
       try {
         btnGenerateIdeas.disabled = true;
-        btnGenerateIdeas.textContent = '⏳ Generating...';
+        btnGenerateIdeas.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px;"><span class="cb-spinner" style="width:14px;height:14px;border-width:2px;"></span> Generating...</span>';
 
+        // Get conversation context
+        let messages = [];
         const lastScan = window.ChatBridge?.getLastScan?.();
-        if (!lastScan || !lastScan.messages || lastScan.messages.length === 0) {
+        if (lastScan && lastScan.messages && lastScan.messages.length > 0) {
+          messages = lastScan.messages;
+        } else {
+          // Try to scan
+          try {
+            messages = await scanChat();
+          } catch (e) { }
+        }
+
+        if (!messages || messages.length === 0) {
           toast('No conversation found. Please scan first.');
           btnGenerateIdeas.disabled = false;
-          btnGenerateIdeas.textContent = '✨ Generate Ideas';
+          btnGenerateIdeas.innerHTML = '✨ Generate Prompt Ideas';
           return;
         }
 
-        const contextText = lastScan.messages.slice(-5).map(m => `${m.role}: ${m.text}`).join('\\n');
-        const prompt = `Based on this conversation context, suggest 5 smart follow-up prompts that would be valuable next steps:\\n\\n${contextText}\\n\\nProvide 5 prompts in this format:\\n1. [Brief Title] - [Prompt text]\\n2. [Brief Title] - [Prompt text]\\netc.`;
+        const contextText = messages.slice(-8).map(m => `${m.role}: ${m.text.substring(0, 300)}`).join('\n');
+        const prompt = `Based on this conversation, generate 6 smart follow-up prompts in 3 categories.
 
-        const response = await callGeminiAsync({ action: 'prompt', text: prompt, length: 'short' });
+Conversation:
+${contextText}
+
+Generate exactly 6 prompts in this format (2 per category):
+FOLLOW-UP:
+1. [prompt text here]
+2. [prompt text here]
+DEEP-DIVE:
+3. [prompt text here]
+4. [prompt text here]
+CREATIVE:
+5. [prompt text here]
+6. [prompt text here]
+
+Each prompt should be concise (1-2 sentences) and actionable. Output ONLY the prompts in the format above.`;
+
+        // Call Llama model
+        const response = await new Promise((resolve) => {
+          chrome.runtime.sendMessage({
+            type: 'call_llama',
+            payload: {
+              action: 'generate',
+              text: prompt
+            }
+          }, (res) => {
+            if (chrome.runtime.lastError) {
+              resolve({ ok: false, error: chrome.runtime.lastError.message });
+            } else {
+              resolve(res || { ok: false, error: 'No response' });
+            }
+          });
+        });
 
         if (response && response.ok && response.result) {
-          pdContent.innerHTML = '<div style="color:var(--cb-subtext);font-size:12px;margin-bottom:12px;">💡 AI-Generated Suggestions:</div>';
+          // Parse the response
+          const result = response.result;
 
-          const suggestions = response.result.split('\\n').filter(line => line.match(/^\\d+\\./));
-          suggestions.forEach(sug => {
-            const card = document.createElement('div');
-            card.className = 'cb-prompt-card';
-            card.style.cssText = 'background:rgba(255,255,255,0.03);border:1px solid var(--cb-border);border-radius:10px;padding:14px;margin-bottom:10px;cursor:pointer;transition:all 0.2s;';
-            card.innerHTML = `<div style="color:var(--cb-white);font-size:13px;line-height:1.5;">${sug.replace(/^\\d+\\.\\s*/, '')}</div>`;
-            card.addEventListener('mouseenter', () => { card.style.background = 'rgba(96,165,250,0.1)'; card.style.borderColor = 'var(--cb-accent-primary)'; });
-            card.addEventListener('mouseleave', () => { card.style.background = 'rgba(255,255,255,0.03)'; card.style.borderColor = 'var(--cb-border)'; });
-            card.addEventListener('click', async () => {
-              const text = sug.replace(/^\\d+\\.\\s*\\[.*?\\]\\s*-\\s*/, '').trim();
-              await navigator.clipboard.writeText(text);
-              toast('Prompt copied to clipboard!');
+          const categories = [
+            { name: 'Follow-up', icon: '🎯', color: '#60a5fa', prompts: [] },
+            { name: 'Deep-dive', icon: '🔍', color: '#a78bfa', prompts: [] },
+            { name: 'Creative', icon: '💡', color: '#f59e0b', prompts: [] }
+          ];
+
+          // Parse prompts from response
+          const lines = result.split('\n').filter(l => l.trim());
+          let currentCategory = 0;
+
+          lines.forEach(line => {
+            if (line.toUpperCase().includes('FOLLOW')) currentCategory = 0;
+            else if (line.toUpperCase().includes('DEEP')) currentCategory = 1;
+            else if (line.toUpperCase().includes('CREATIVE')) currentCategory = 2;
+            else {
+              const match = line.match(/^\d+[\.\)]\s*(.+)/);
+              if (match && match[1]) {
+                categories[currentCategory].prompts.push(match[1].trim());
+              }
+            }
+          });
+
+          // If parsing failed, try to extract any numbered items
+          if (categories.every(c => c.prompts.length === 0)) {
+            const allPrompts = result.match(/\d+[\.\)]\s*[^\n]+/g) || [];
+            allPrompts.forEach((p, i) => {
+              const text = p.replace(/^\d+[\.\)]\s*/, '').trim();
+              if (text) categories[i % 3].prompts.push(text);
             });
-            pdContent.appendChild(card);
+          }
+
+          // Build beautiful UI
+          let html = '';
+
+          categories.forEach(cat => {
+            if (cat.prompts.length > 0) {
+              html += `
+                <div style="margin-bottom:12px;">
+                  <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
+                    <span style="font-size:14px;">${cat.icon}</span>
+                    <span style="font-size:11px;font-weight:600;color:${cat.color};text-transform:uppercase;letter-spacing:0.3px;">${cat.name}</span>
+                  </div>
+                  ${cat.prompts.map(p => `
+                    <div class="cb-smart-prompt" data-prompt="${encodeURIComponent(p)}" style="padding:10px 12px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:8px;margin-bottom:6px;cursor:pointer;transition:all 0.15s;font-size:11px;color:var(--cb-white);line-height:1.4;">
+                      ${p}
+                    </div>
+                  `).join('')}
+                </div>
+              `;
+            }
+          });
+
+          if (!html) {
+            html = '<div style="text-align:center;padding:20px;color:var(--cb-subtext);">Could not parse suggestions. Try again.</div>';
+          }
+
+          html += '<div style="font-size:9px;color:var(--cb-subtext);text-align:center;margin-top:8px;">Click a prompt to copy • Double-click to insert</div>';
+
+          pdContent.innerHTML = html;
+
+          // Add click handlers
+          pdContent.querySelectorAll('.cb-smart-prompt').forEach(card => {
+            // Hover effects
+            card.addEventListener('mouseenter', () => {
+              card.style.background = 'rgba(96,165,250,0.1)';
+              card.style.borderColor = 'rgba(96,165,250,0.3)';
+              card.style.transform = 'translateX(2px)';
+            });
+            card.addEventListener('mouseleave', () => {
+              card.style.background = 'rgba(255,255,255,0.02)';
+              card.style.borderColor = 'rgba(255,255,255,0.06)';
+              card.style.transform = 'translateX(0)';
+            });
+
+            // Single click = copy
+            card.addEventListener('click', async () => {
+              const text = decodeURIComponent(card.dataset.prompt);
+              await navigator.clipboard.writeText(text);
+              card.style.background = 'rgba(52,211,153,0.15)';
+              setTimeout(() => { card.style.background = 'rgba(255,255,255,0.02)'; }, 300);
+              toast('Copied!');
+            });
+
+            // Double click = insert into chat
+            card.addEventListener('dblclick', async () => {
+              const text = decodeURIComponent(card.dataset.prompt);
+              const input = document.querySelector('textarea, div[contenteditable="true"], [role="textbox"]');
+              if (input) {
+                if (input.isContentEditable || input.contentEditable === 'true') {
+                  input.focus();
+                  input.textContent = text;
+                  input.dispatchEvent(new InputEvent('input', { bubbles: true }));
+                } else {
+                  input.focus();
+                  input.value = text;
+                  input.dispatchEvent(new Event('input', { bubbles: true }));
+                }
+                toast('Inserted!');
+              } else {
+                await navigator.clipboard.writeText(text);
+                toast('Copied (no input found)');
+              }
+            });
           });
 
           toast('Ideas generated!');
         } else {
-          throw new Error('Failed to generate ideas');
+          throw new Error(response?.error || response?.message || 'Failed to generate ideas');
         }
       } catch (err) {
-        console.error('[Prompt Designer] Generate error:', err);
-        toast('Failed to generate ideas: ' + (err.message || err));
-        pdContent.innerHTML = '<div style="color:var(--cb-error);padding:12px;text-align:center;">Failed to generate ideas. Please try again.</div>';
+        console.error('[Smart Prompts] Generate error:', err);
+        pdContent.innerHTML = `
+          <div style="text-align:center;padding:20px;">
+            <div style="font-size:24px;margin-bottom:8px;">😔</div>
+            <div style="color:var(--cb-subtext);font-size:12px;margin-bottom:12px;">Failed to generate ideas</div>
+            <div style="font-size:10px;color:var(--cb-subtext);opacity:0.7;">${err.message || 'Please try again'}</div>
+          </div>
+        `;
+        toast('Generation failed');
       } finally {
         btnGenerateIdeas.disabled = false;
-        btnGenerateIdeas.textContent = '✨ Generate Ideas';
+        btnGenerateIdeas.innerHTML = '✨ Generate Prompt Ideas';
       }
     });
     promptDesignerView.appendChild(btnGenerateIdeas);

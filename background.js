@@ -1685,6 +1685,9 @@ Rewritten conversation (optimized for ${tgt}):`;
         } else if (action === 'translate') {
           const targetLang = payload.targetLang || 'English';
           promptText = `Translate the following text to ${targetLang}. Output ONLY the translated text with no explanations.\n\n${payload.text}`;
+        } else if (action === 'generate' || action === 'prompt') {
+          // Smart prompts / general generation - use text as-is
+          promptText = payload.text || '';
         } else {
           promptText = payload.text || '';
         }
