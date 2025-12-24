@@ -457,7 +457,7 @@ function hashString(s) {
 let __cbGeminiKeyCache = { value: null, ts: 0 };
 // WARNING: Hardcoding your API key exposes it if you share this code. Proceed intentionally.
 // If you insist on hardcoding, set your key below. It will be used as a fallback when no key is set in Options.
-const DEV_HARDCODED_GEMINI_KEY = 'AIzaSyDH7q1lOI8grDht1H-WHNtsyptIiSrgogQ';
+const DEV_HARDCODED_GEMINI_KEY = 'AIzaSyAYNefXySZsOkj4Cuagg6odKLPM7M-H1gM';
 /**
  * Get the Gemini API key from chrome.storage.local with a short-lived cache.
  * Never reads from .env (extensions cannot access it); Options page must set the key.
@@ -515,7 +515,7 @@ async function getOpenAIApiKey(opts) {
 
 // HuggingFace API key getter with cache (for Llama rewrite/translate)
 const __cbHuggingFaceKeyCache = { value: null, ts: 0 };
-const DEV_HARDCODED_HF_KEY = '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'; // User's HuggingFace API key
+const DEV_HARDCODED_HF_KEY = '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'; // User's HuggingFace API key
 
 async function getHuggingFaceApiKey(opts) {
   const force = !!(opts && opts.force);

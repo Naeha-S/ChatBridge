@@ -1406,6 +1406,31 @@
     ].forEach(b => actionsGrid.appendChild(b));
 
     actions.appendChild(actionsGrid);
+
+    // ⚡ Quick Actions Row - Always visible for instant access
+    const quickActionsRow = document.createElement('div');
+    quickActionsRow.className = 'cb-quick-actions-row';
+    quickActionsRow.style.cssText = 'display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:8px;padding:0 2px;';
+
+    const qaButtons = [
+      { id: 'qa-sidebar-summary', icon: '📋', label: 'Summary', title: 'Copy quick summary to clipboard' },
+      { id: 'qa-sidebar-export', icon: '📤', label: 'Export', title: 'Export recent conversations' },
+      { id: 'qa-sidebar-stats', icon: '📊', label: 'Stats', title: 'Show conversation stats' },
+      { id: 'qa-sidebar-archive', icon: '✅', label: 'Done', title: 'Mark conversation complete' },
+      { id: 'qa-sidebar-star', icon: '⭐', label: 'Star', title: 'Star this conversation' }
+    ];
+
+    qaButtons.forEach(qa => {
+      const btn = document.createElement('button');
+      btn.id = qa.id;
+      btn.className = 'cb-btn cb-btn-quick';
+      btn.title = qa.title;
+      btn.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 4px;font-size:14px;min-height:44px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);';
+      btn.innerHTML = `<span>${qa.icon}</span><span style="font-size:8px;opacity:0.6;">${qa.label}</span>`;
+      quickActionsRow.appendChild(btn);
+    });
+
+    actions.appendChild(quickActionsRow);
     panel.appendChild(actions);
 
     // Toolbar preview (moved above the Gemini textarea)
@@ -1451,215 +1476,138 @@
     pdContent.id = 'cb-pd-content';
     pdContent.style.cssText = 'display:flex;flex-direction:column;gap:6px;';
 
-    // Add Generate Ideas button
-    const btnGenerateIdeas = document.createElement('button');
-    btnGenerateIdeas.className = 'cb-btn cb-btn-primary';
-    btnGenerateIdeas.innerHTML = '✨ Generate Prompt Ideas';
-    btnGenerateIdeas.style.cssText = 'margin-bottom:12px;padding:10px 14px;font-weight:600;font-size:12px;background:linear-gradient(135deg,rgba(96,165,250,0.2),rgba(167,139,250,0.2));border:1px solid rgba(96,165,250,0.3);border-radius:8px;color:var(--cb-white);cursor:pointer;transition:all 0.2s;';
-    btnGenerateIdeas.addEventListener('mouseenter', () => { btnGenerateIdeas.style.background = 'linear-gradient(135deg,rgba(96,165,250,0.35),rgba(167,139,250,0.35))'; });
-    btnGenerateIdeas.addEventListener('mouseleave', () => { btnGenerateIdeas.style.background = 'linear-gradient(135deg,rgba(96,165,250,0.2),rgba(167,139,250,0.2))'; });
+    // Category definitions - 5 types with icon, color
+    const promptCategories = [
+      { id: 'followup', name: 'Follow-up', icon: '🎯', color: '#60a5fa', desc: 'Continue the chat' },
+      { id: 'deepdive', name: 'Deep Dive', icon: '🔍', color: '#a78bfa', desc: 'Explore in detail' },
+      { id: 'clarify', name: 'Clarify', icon: '💡', color: '#34d399', desc: 'Get explanations' },
+      { id: 'alternatives', name: 'Alternatives', icon: '🔄', color: '#f59e0b', desc: 'Other approaches' },
+      { id: 'creative', name: 'Creative', icon: '✨', color: '#ec4899', desc: 'Think different' }
+    ];
 
-    btnGenerateIdeas.addEventListener('click', async () => {
-      try {
-        btnGenerateIdeas.disabled = true;
-        btnGenerateIdeas.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px;"><span class="cb-spinner" style="width:14px;height:14px;border-width:2px;"></span> Generating...</span>';
+    // Build category accordions
+    promptCategories.forEach(cat => {
+      const catDiv = document.createElement('div');
+      catDiv.className = 'cb-prompt-cat';
+      catDiv.style.cssText = 'background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:8px;overflow:hidden;';
 
-        // Get conversation context
-        let messages = [];
-        const lastScan = window.ChatBridge?.getLastScan?.();
-        if (lastScan && lastScan.messages && lastScan.messages.length > 0) {
-          messages = lastScan.messages;
-        } else {
-          // Try to scan
-          try {
-            messages = await scanChat();
-          } catch (e) { }
-        }
+      const catHeader = document.createElement('div');
+      catHeader.style.cssText = 'display:flex;align-items:center;gap:6px;padding:9px 10px;cursor:pointer;transition:background 0.15s;';
+      catHeader.innerHTML = `
+        <span style="font-size:13px;">${cat.icon}</span>
+        <span style="flex:1;font-size:11px;font-weight:500;color:${cat.color};">${cat.name}</span>
+        <span style="font-size:9px;color:var(--cb-subtext);">${cat.desc}</span>
+        <span class="cb-arrow" style="font-size:9px;color:var(--cb-subtext);transition:transform 0.2s;">▶</span>
+      `;
 
-        if (!messages || messages.length === 0) {
-          toast('No conversation found. Please scan first.');
-          btnGenerateIdeas.disabled = false;
-          btnGenerateIdeas.innerHTML = '✨ Generate Prompt Ideas';
-          return;
-        }
+      const catContent = document.createElement('div');
+      catContent.style.cssText = 'display:none;padding:6px 10px 10px;border-top:1px solid rgba(255,255,255,0.04);';
 
-        const contextText = messages.slice(-8).map(m => `${m.role}: ${m.text.substring(0, 300)}`).join('\n');
-        const prompt = `Based on this conversation, generate 6 smart follow-up prompts in 3 categories.
+      catHeader.addEventListener('mouseenter', () => catHeader.style.background = `${cat.color}10`);
+      catHeader.addEventListener('mouseleave', () => catHeader.style.background = 'transparent');
 
-Conversation:
-${contextText}
+      catHeader.addEventListener('click', async () => {
+        const arrow = catHeader.querySelector('.cb-arrow');
+        const isOpen = catContent.style.display !== 'none';
 
-Generate exactly 6 prompts in this format (2 per category):
-FOLLOW-UP:
-1. [prompt text here]
-2. [prompt text here]
-DEEP-DIVE:
-3. [prompt text here]
-4. [prompt text here]
-CREATIVE:
-5. [prompt text here]
-6. [prompt text here]
-
-Each prompt should be concise (1-2 sentences) and actionable. Output ONLY the prompts in the format above.`;
-
-        // Call Llama model
-        const response = await new Promise((resolve) => {
-          chrome.runtime.sendMessage({
-            type: 'call_llama',
-            payload: {
-              action: 'generate',
-              text: prompt
-            }
-          }, (res) => {
-            if (chrome.runtime.lastError) {
-              resolve({ ok: false, error: chrome.runtime.lastError.message });
-            } else {
-              resolve(res || { ok: false, error: 'No response' });
-            }
-          });
+        // Close all
+        pdContent.querySelectorAll('.cb-prompt-cat > div:last-child').forEach(c => {
+          c.style.display = 'none';
+          c.parentElement.querySelector('.cb-arrow').style.transform = 'rotate(0deg)';
         });
 
-        if (response && response.ok && response.result) {
-          // Parse the response
-          const result = response.result;
+        if (isOpen) return;
 
-          const categories = [
-            { name: 'Follow-up', icon: '🎯', color: '#60a5fa', prompts: [] },
-            { name: 'Deep-dive', icon: '🔍', color: '#a78bfa', prompts: [] },
-            { name: 'Creative', icon: '💡', color: '#f59e0b', prompts: [] }
-          ];
+        catContent.style.display = 'block';
+        arrow.style.transform = 'rotate(90deg)';
 
-          // Parse prompts from response
-          const lines = result.split('\n').filter(l => l.trim());
-          let currentCategory = 0;
+        if (catContent.querySelector('.cb-sp')) return; // Already generated
 
-          lines.forEach(line => {
-            if (line.toUpperCase().includes('FOLLOW')) currentCategory = 0;
-            else if (line.toUpperCase().includes('DEEP')) currentCategory = 1;
-            else if (line.toUpperCase().includes('CREATIVE')) currentCategory = 2;
-            else {
-              const match = line.match(/^\d+[\.\)]\s*(.+)/);
-              if (match && match[1]) {
-                categories[currentCategory].prompts.push(match[1].trim());
-              }
-            }
-          });
+        catContent.innerHTML = '<div style="display:flex;align-items:center;gap:5px;padding:8px;justify-content:center;"><span class="cb-spinner" style="width:10px;height:10px;border-width:2px;"></span><span style="font-size:10px;color:var(--cb-subtext);">Generating...</span></div>';
 
-          // If parsing failed, try to extract any numbered items
-          if (categories.every(c => c.prompts.length === 0)) {
-            const allPrompts = result.match(/\d+[\.\)]\s*[^\n]+/g) || [];
-            allPrompts.forEach((p, i) => {
-              const text = p.replace(/^\d+[\.\)]\s*/, '').trim();
-              if (text) categories[i % 3].prompts.push(text);
-            });
+        try {
+          let messages = window.ChatBridge?.getLastScan?.()?.messages || [];
+          if (!messages.length) try { messages = await scanChat(); } catch (e) { }
+
+          if (!messages.length) {
+            catContent.innerHTML = '<div style="padding:8px;font-size:10px;color:var(--cb-subtext);text-align:center;">Scan a chat first</div>';
+            return;
           }
 
-          // Build beautiful UI
-          let html = '';
+          // Compact context (last 4 msgs, 120 chars)
+          const ctx = messages.slice(-4).map(m => `${m.role}:${m.text.substring(0, 120)}`).join('|');
 
-          categories.forEach(cat => {
-            if (cat.prompts.length > 0) {
-              html += `
-                <div style="margin-bottom:12px;">
-                  <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
-                    <span style="font-size:14px;">${cat.icon}</span>
-                    <span style="font-size:11px;font-weight:600;color:${cat.color};text-transform:uppercase;letter-spacing:0.3px;">${cat.name}</span>
-                  </div>
-                  ${cat.prompts.map(p => `
-                    <div class="cb-smart-prompt" data-prompt="${encodeURIComponent(p)}" style="padding:10px 12px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:8px;margin-bottom:6px;cursor:pointer;transition:all 0.15s;font-size:11px;color:var(--cb-white);line-height:1.4;">
-                      ${p}
-                    </div>
-                  `).join('')}
-                </div>
-              `;
+          // Optimized prompts per category
+          const prompts = {
+            followup: `3 short follow-up questions for: ${ctx}\nFormat:\n1.\n2.\n3.`,
+            deepdive: `3 short prompts to explore deeper: ${ctx}\nFormat:\n1.\n2.\n3.`,
+            clarify: `3 short clarification questions: ${ctx}\nFormat:\n1.\n2.\n3.`,
+            alternatives: `3 short alternative approach prompts: ${ctx}\nFormat:\n1.\n2.\n3.`,
+            creative: `3 creative/unusual prompts for: ${ctx}\nFormat:\n1.\n2.\n3.`
+          };
+
+          const response = await new Promise(r => {
+            chrome.runtime.sendMessage({ type: 'call_llama', payload: { action: 'generate', text: prompts[cat.id] } }, res => {
+              r(chrome.runtime.lastError ? { ok: false } : (res || { ok: false }));
+            });
+          });
+
+          if (response?.ok && response.result) {
+            const items = [];
+            response.result.split('\n').forEach(line => {
+              const m = line.match(/^\d+[\.\)]\s*(.+)/);
+              if (m && m[1]) items.push(m[1].trim());
+            });
+
+            if (items.length) {
+              catContent.innerHTML = items.slice(0, 3).map(p => `
+                <div class="cb-sp" data-p="${encodeURIComponent(p)}" style="padding:7px 9px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);border-radius:6px;margin-bottom:4px;cursor:pointer;font-size:10px;color:var(--cb-white);line-height:1.3;transition:all 0.12s;">${p}</div>
+              `).join('');
+
+              catContent.querySelectorAll('.cb-sp').forEach(el => {
+                el.addEventListener('mouseenter', () => { el.style.background = `${cat.color}12`; el.style.borderColor = `${cat.color}30`; });
+                el.addEventListener('mouseleave', () => { el.style.background = 'rgba(255,255,255,0.02)'; el.style.borderColor = 'rgba(255,255,255,0.04)'; });
+                el.addEventListener('click', async () => {
+                  const t = decodeURIComponent(el.dataset.p);
+                  await navigator.clipboard.writeText(t);
+                  el.style.background = 'rgba(52,211,153,0.15)';
+                  setTimeout(() => el.style.background = 'rgba(255,255,255,0.02)', 200);
+                  toast('Copied!');
+                });
+                el.addEventListener('dblclick', async () => {
+                  const t = decodeURIComponent(el.dataset.p);
+                  const inp = document.querySelector('textarea,[contenteditable="true"],[role="textbox"]');
+                  if (inp) {
+                    inp.focus();
+                    if (inp.isContentEditable) { inp.textContent = t; inp.dispatchEvent(new InputEvent('input', { bubbles: true })); }
+                    else { inp.value = t; inp.dispatchEvent(new Event('input', { bubbles: true })); }
+                    toast('Inserted!');
+                  }
+                });
+              });
+            } else {
+              catContent.innerHTML = '<div style="padding:8px;font-size:10px;color:var(--cb-subtext);text-align:center;">No prompts. Try again.</div>';
             }
-          });
-
-          if (!html) {
-            html = '<div style="text-align:center;padding:20px;color:var(--cb-subtext);">Could not parse suggestions. Try again.</div>';
+          } else {
+            catContent.innerHTML = '<div style="padding:8px;font-size:10px;color:#f87171;text-align:center;">Generation failed</div>';
           }
-
-          html += '<div style="font-size:9px;color:var(--cb-subtext);text-align:center;margin-top:8px;">Click a prompt to copy • Double-click to insert</div>';
-
-          pdContent.innerHTML = html;
-
-          // Add click handlers
-          pdContent.querySelectorAll('.cb-smart-prompt').forEach(card => {
-            // Hover effects
-            card.addEventListener('mouseenter', () => {
-              card.style.background = 'rgba(96,165,250,0.1)';
-              card.style.borderColor = 'rgba(96,165,250,0.3)';
-              card.style.transform = 'translateX(2px)';
-            });
-            card.addEventListener('mouseleave', () => {
-              card.style.background = 'rgba(255,255,255,0.02)';
-              card.style.borderColor = 'rgba(255,255,255,0.06)';
-              card.style.transform = 'translateX(0)';
-            });
-
-            // Single click = copy
-            card.addEventListener('click', async () => {
-              const text = decodeURIComponent(card.dataset.prompt);
-              await navigator.clipboard.writeText(text);
-              card.style.background = 'rgba(52,211,153,0.15)';
-              setTimeout(() => { card.style.background = 'rgba(255,255,255,0.02)'; }, 300);
-              toast('Copied!');
-            });
-
-            // Double click = insert into chat
-            card.addEventListener('dblclick', async () => {
-              const text = decodeURIComponent(card.dataset.prompt);
-              const input = document.querySelector('textarea, div[contenteditable="true"], [role="textbox"]');
-              if (input) {
-                if (input.isContentEditable || input.contentEditable === 'true') {
-                  input.focus();
-                  input.textContent = text;
-                  input.dispatchEvent(new InputEvent('input', { bubbles: true }));
-                } else {
-                  input.focus();
-                  input.value = text;
-                  input.dispatchEvent(new Event('input', { bubbles: true }));
-                }
-                toast('Inserted!');
-              } else {
-                await navigator.clipboard.writeText(text);
-                toast('Copied (no input found)');
-              }
-            });
-          });
-
-          toast('Ideas generated!');
-        } else {
-          throw new Error(response?.error || response?.message || 'Failed to generate ideas');
+        } catch (e) {
+          catContent.innerHTML = `<div style="padding:8px;font-size:10px;color:#f87171;text-align:center;">${e.message || 'Error'}</div>`;
         }
-      } catch (err) {
-        console.error('[Smart Prompts] Generate error:', err);
-        pdContent.innerHTML = `
-          <div style="text-align:center;padding:20px;">
-            <div style="font-size:24px;margin-bottom:8px;">😔</div>
-            <div style="color:var(--cb-subtext);font-size:12px;margin-bottom:12px;">Failed to generate ideas</div>
-            <div style="font-size:10px;color:var(--cb-subtext);opacity:0.7;">${err.message || 'Please try again'}</div>
-          </div>
-        `;
-        toast('Generation failed');
-      } finally {
-        btnGenerateIdeas.disabled = false;
-        btnGenerateIdeas.innerHTML = '✨ Generate Prompt Ideas';
-      }
-    });
-    promptDesignerView.appendChild(btnGenerateIdeas);
+      });
 
-    // Inject styles for dynamic content
-    const pdStyle = document.createElement('style');
-    pdStyle.textContent = `
-      #cb-pd-content .cb-btn { width: 100%; text-align: left; margin-bottom: 8px; padding: 12px; background: var(--cb-bg3); border: 1px solid var(--cb-border); border-radius: 8px; transition: all 0.2s ease; }
-      #cb-pd-content .cb-btn:hover { background: var(--cb-accent-primary-dim); border-color: var(--cb-accent-primary); transform: translateX(2px); }
-      #cb-pd-content .cb-prompt-card { background: rgba(255,255,255,0.03); border: 1px solid var(--cb-border); border-radius: 10px; padding: 16px; margin-bottom: 12px; }
-      #cb-pd-content .cb-prompt-title { font-weight: 600; color: var(--cb-white); margin-bottom: 8px; font-size: 14px; }
-      #cb-pd-content .cb-prompt-text { color: var(--cb-subtext); font-size: 13px; line-height: 1.5; }
-    `;
-    promptDesignerView.appendChild(pdStyle);
+      catDiv.appendChild(catHeader);
+      catDiv.appendChild(catContent);
+      pdContent.appendChild(catDiv);
+    });
+
     promptDesignerView.appendChild(pdContent);
+
+    // Footer
+    const pdFooter = document.createElement('div');
+    pdFooter.style.cssText = 'margin-top:8px;font-size:9px;color:var(--cb-subtext);text-align:center;opacity:0.6;';
+    pdFooter.textContent = 'Click = copy • Double-click = insert';
+    promptDesignerView.appendChild(pdFooter);
 
     // Append to panel
     panel.appendChild(promptDesignerView);
@@ -5518,64 +5466,70 @@ Each prompt should be concise (1-2 sentences) and actionable. Output ONLY the pr
       return context;
     }
 
-    // Generate smart prompts using Gemini
+    // Generate smart prompts using Llama
     async function generateSmartPrompts(messages) {
       try {
         const context = extractConversationContext(messages);
 
-        // Build prompt for Gemini
-        const conversationText = messages.map(m => `${m.role}: ${m.text}`).join('\n\n');
-        const systemPrompt = `You are a thought partner helping a user continue their AI conversation productively.
+        // Build compact prompt for Llama (optimized tokens)
+        const conversationText = messages.slice(-6).map(m => `${m.role}: ${m.text.substring(0, 200)}`).join('\n');
+        const prompt = `Analyze this conversation and give 5 follow-up questions (one per category):
 
-Analyze this conversation and generate exactly 5 follow-up questions that will help the user move forward:
+${conversationText}
 
-1. CLARIFICATION - Ask about something ambiguous or unclear
-2. IMPROVEMENT - Suggest how to make something better or more robust
-3. EXPANSION - Explore a related area or dig deeper into a topic
-4. CRITICAL THINKING - Challenge an assumption or identify a potential issue
-5. CREATIVE ALTERNATIVE - Propose a different approach or perspective
+Format exactly as:
+1. CLARIFICATION: [question about something unclear]
+2. IMPROVEMENT: [how to make it better]
+3. EXPANSION: [explore related topic]
+4. CRITICAL: [challenge an assumption]
+5. CREATIVE: [alternative approach]
 
-Rules:
-- Each question must be grounded in the actual conversation content
-- Be specific, not generic
-- Keep questions concise (1-2 sentences max)
-- Act like a thoughtful colleague, not a template
-- No hallucinations - only reference what's actually discussed
+Output ONLY the 5 numbered questions.`;
 
-Conversation:
-${conversationText.substring(0, 4000)}
-
-Respond with JSON only:
-{
-  "questions": [
-    {"text": "...", "category": "clarification", "sourceIndexes": [0, 3]},
-    {"text": "...", "category": "improvement", "sourceIndexes": [5]},
-    {"text": "...", "category": "expansion", "sourceIndexes": [2, 7]},
-    {"text": "...", "category": "critical", "sourceIndexes": [4]},
-    {"text": "...", "category": "creative", "sourceIndexes": [1, 6]}
-  ]
-}`;
-
-        const result = await callGeminiAsync({
-          action: 'custom',
-          prompt: systemPrompt,
-          temperature: 0.7
+        const result = await new Promise((resolve) => {
+          chrome.runtime.sendMessage({
+            type: 'call_llama',
+            payload: { action: 'generate', text: prompt }
+          }, (res) => {
+            if (chrome.runtime.lastError) {
+              resolve({ ok: false, error: chrome.runtime.lastError.message });
+            } else {
+              resolve(res || { ok: false });
+            }
+          });
         });
 
         if (result && result.ok && result.result) {
-          try {
-            // Try to parse JSON from result
-            let jsonStr = result.result;
-            // Extract JSON if wrapped in markdown
-            const jsonMatch = jsonStr.match(/```json\s*([\s\S]+?)```/) || jsonStr.match(/```\s*([\s\S]+?)```/);
-            if (jsonMatch) jsonStr = jsonMatch[1];
+          const questions = [];
+          const categoryMap = {
+            'clarification': 'clarification',
+            'improvement': 'improvement',
+            'expansion': 'expansion',
+            'critical': 'critical',
+            'creative': 'creative'
+          };
 
-            const parsed = JSON.parse(jsonStr);
-            if (parsed.questions && Array.isArray(parsed.questions)) {
-              return parsed;
+          const lines = result.result.split('\n');
+          lines.forEach(line => {
+            const match = line.match(/^\d+[\.\)]\s*(?:(\w+):?\s*)?(.+)/i);
+            if (match) {
+              const catWord = (match[1] || '').toLowerCase();
+              const text = match[2]?.trim() || match[0].replace(/^\d+[\.\)]\s*/, '').trim();
+              if (text && text.length > 5) {
+                let category = 'expansion';
+                for (const [key, val] of Object.entries(categoryMap)) {
+                  if (catWord.includes(key) || line.toLowerCase().includes(key)) {
+                    category = val;
+                    break;
+                  }
+                }
+                questions.push({ text, category, sourceIndexes: [] });
+              }
             }
-          } catch (parseErr) {
-            debugLog('Failed to parse prompt designer JSON:', parseErr);
+          });
+
+          if (questions.length > 0) {
+            return { questions: questions.slice(0, 5) };
           }
         }
 
@@ -5605,7 +5559,7 @@ Respond with JSON only:
     async function renderPromptDesignerWidget(container) {
       try {
         container.innerHTML = '';
-        container.style.cssText = 'padding: 0; margin: 0; display: flex; flex-direction: column; gap: 16px;';
+        container.style.cssText = 'padding: 0; margin: 0; display: flex; flex-direction: column; gap: 12px;';
 
         // Action bar at top
         const actionBar = document.createElement('div');
@@ -5615,21 +5569,21 @@ Respond with JSON only:
         const btnGenerate = document.createElement('button');
         btnGenerate.id = 'cb-prompts-generate';
         btnGenerate.className = 'cb-btn cb-btn-primary';
-        btnGenerate.style.cssText = 'background: linear-gradient(135deg, var(--cb-accent-primary), var(--cb-accent-secondary)); border: none; padding: 10px 16px; font-weight: 600; font-size: 13px; letter-spacing: 0.3px; box-shadow: 0 4px 12px rgba(96, 165, 250, 0.25); display: flex; align-items: center; justify-content: center; gap: 8px;';
-        btnGenerate.innerHTML = '<span style="font-size: 16px;">✨</span> Generate Ideas';
+        btnGenerate.style.cssText = 'background: linear-gradient(135deg, var(--cb-accent-primary), var(--cb-accent-secondary)); border: none; padding: 10px 16px; font-weight: 600; font-size: 12px; border-radius: 8px; color: var(--cb-white); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.2s;';
+        btnGenerate.innerHTML = '<span style="font-size: 14px;">✨</span> Generate Ideas';
 
         const btnRefresh = document.createElement('button');
         btnRefresh.id = 'cb-prompts-refresh';
         btnRefresh.className = 'cb-btn';
         btnRefresh.title = 'Refresh Context';
-        btnRefresh.style.cssText = 'width: 40px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 16px; background: var(--cb-bg3); border: 1px solid var(--cb-border);';
+        btnRefresh.style.cssText = 'width: 36px; height: 36px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 14px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; cursor: pointer; transition: all 0.2s;';
         btnRefresh.innerHTML = '🔄';
 
         const btnHistory = document.createElement('button');
         btnHistory.id = 'cb-prompts-history';
         btnHistory.className = 'cb-btn';
         btnHistory.title = 'History';
-        btnHistory.style.cssText = 'width: 40px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 16px; background: var(--cb-bg3); border: 1px solid var(--cb-border);';
+        btnHistory.style.cssText = 'width: 36px; height: 36px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 14px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; cursor: pointer; transition: all 0.2s;';
         btnHistory.innerHTML = '📜';
 
         actionBar.appendChild(btnGenerate);
@@ -5640,66 +5594,45 @@ Respond with JSON only:
         // Prompts container
         const promptsList = document.createElement('div');
         promptsList.id = 'cb-prompts-list';
-        promptsList.style.cssText = 'display: flex; flex-direction: column; gap: 12px;';
+        promptsList.style.cssText = 'display: flex; flex-direction: column; gap: 10px;';
 
-        // Beautiful empty state
+        // Empty state
         promptsList.innerHTML = `
-          <div style="text-align: center; padding: 40px 20px; background: rgba(255,255,255,0.02); border-radius: 12px; border: 1px dashed var(--cb-border);">
-            <div style="font-size: 48px; margin-bottom: 16px; opacity: 0.8; filter: drop-shadow(0 0 10px rgba(96,165,250,0.3));">🎯</div>
-            <h3 style="margin: 0 0 8px; font-size: 16px; font-weight: 600; color: var(--cb-white);">Ready to Generate</h3>
-            <p style="margin:0 0 24px;font-size:14px;color:rgba(255,255,255,0.6);max-width:320px;margin-left:auto;margin-right:auto;line-height:1.6;">
-              Click the button above to analyze your conversation and get AI-powered prompt suggestions.
-            </p>
-            <div style="display:inline-flex;align-items:center;gap:8px;padding:10px 16px;background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.3);border-radius:8px;font-size:12px;color:rgba(59,130,246,1);">
-              <span>💡</span>
-              <span>Works best with 3+ messages</span>
-            </div>
+          <div style="text-align: center; padding: 30px 16px; background: rgba(255,255,255,0.02); border-radius: 10px; border: 1px dashed rgba(255,255,255,0.1);">
+            <div style="font-size: 36px; margin-bottom: 12px; opacity: 0.7;">🎯</div>
+            <div style="font-size: 13px; font-weight: 500; color: var(--cb-white); margin-bottom: 6px;">Ready to Generate</div>
+            <div style="font-size: 11px; color: var(--cb-subtext); line-height: 1.5;">Click Generate Ideas to get AI-powered prompt suggestions</div>
           </div>
         `;
+        container.appendChild(promptsList);
 
-        promptsContainer.appendChild(promptsList);
-        wrapper.appendChild(actionBar);
-        wrapper.appendChild(promptsContainer);
-        container.appendChild(wrapper);
+        // Hover effects
+        btnGenerate.addEventListener('mouseenter', () => {
+          btnGenerate.style.transform = 'translateY(-1px)';
+          btnGenerate.style.boxShadow = '0 4px 16px rgba(96,165,250,0.3)';
+        });
+        btnGenerate.addEventListener('mouseleave', () => {
+          btnGenerate.style.transform = 'translateY(0)';
+          btnGenerate.style.boxShadow = 'none';
+        });
 
-        // Add hover effects
-        const generateBtn = shadow.getElementById('cb-prompts-generate');
-        const refreshBtn = shadow.getElementById('cb-prompts-refresh');
-        const historyBtn = shadow.getElementById('cb-prompts-history');
-
-        if (generateBtn) {
-          generateBtn.addEventListener('mouseenter', () => {
-            generateBtn.style.transform = 'translateY(-1px)';
-            generateBtn.style.boxShadow = '0 4px 16px rgba(59,130,246,0.4)';
+        [btnRefresh, btnHistory].forEach(btn => {
+          btn.addEventListener('mouseenter', () => {
+            btn.style.background = 'rgba(96,165,250,0.15)';
+            btn.style.borderColor = 'rgba(96,165,250,0.4)';
           });
-          generateBtn.addEventListener('mouseleave', () => {
-            generateBtn.style.transform = 'translateY(0)';
-            generateBtn.style.boxShadow = '0 2px 8px rgba(59,130,246,0.3)';
+          btn.addEventListener('mouseleave', () => {
+            btn.style.background = 'rgba(255,255,255,0.03)';
+            btn.style.borderColor = 'rgba(255,255,255,0.08)';
           });
-        }
-
-        [refreshBtn, historyBtn].forEach(btn => {
-          if (btn) {
-            btn.addEventListener('mouseenter', () => {
-              btn.style.background = 'rgba(96,165,250,0.2)';
-              btn.style.borderColor = 'rgba(96,165,250,0.5)';
-            });
-            btn.addEventListener('mouseleave', () => {
-              btn.style.background = 'rgba(96,165,250,0.1)';
-              btn.style.borderColor = 'rgba(96,165,250,0.3)';
-            });
-          }
         });
 
         // Generate prompts handler
         const generateHandler = async () => {
-          const btn = shadow.getElementById('cb-prompts-generate') || shadow.getElementById('cb-prompts-refresh');
-          if (!btn) return;
-
-          const originalHTML = btn.innerHTML;
-          btn.innerHTML = '<span style="display:inline-block;animation:spin 1s linear infinite;">⚙️</span> Generating...';
-          btn.disabled = true;
-          btn.style.opacity = '0.7';
+          const originalHTML = btnGenerate.innerHTML;
+          btnGenerate.innerHTML = '<span class="cb-spinner" style="width:12px;height:12px;border-width:2px;"></span> Generating...';
+          btnGenerate.disabled = true;
+          btnGenerate.style.opacity = '0.7';
 
           try {
             const msgs = await scanChat();
@@ -5710,29 +5643,87 @@ Respond with JSON only:
 
             const prompts = await generateSmartPrompts(msgs);
             savePromptVersion(prompts);
-            renderPrompts(prompts, msgs);
-            toast('✨ Prompts generated successfully');
+            renderPrompts(prompts, msgs, promptsList);
+            toast('✨ Prompts generated!');
           } catch (e) {
             debugLog('Generate prompts error:', e);
-            toast('❌ Prompt generation failed');
+            toast('❌ Generation failed');
+            promptsList.innerHTML = `<div style="text-align:center;padding:20px;color:#f87171;font-size:11px;">Failed to generate. Please try again.</div>`;
           } finally {
-            btn.innerHTML = originalHTML;
-            btn.disabled = false;
-            btn.style.opacity = '1';
+            btnGenerate.innerHTML = originalHTML;
+            btnGenerate.disabled = false;
+            btnGenerate.style.opacity = '1';
           }
         };
 
-        if (shadow.getElementById('cb-prompts-generate')) {
-          shadow.getElementById('cb-prompts-generate').addEventListener('click', generateHandler);
-        }
-        if (shadow.getElementById('cb-prompts-refresh')) {
-          shadow.getElementById('cb-prompts-refresh').addEventListener('click', generateHandler);
-        }
+        // Attach handlers directly to buttons
+        btnGenerate.addEventListener('click', generateHandler);
+        btnRefresh.addEventListener('click', generateHandler);
 
         // History button handler
-        if (shadow.getElementById('cb-prompts-history')) {
-          shadow.getElementById('cb-prompts-history').addEventListener('click', () => {
-            showPromptHistory();
+        btnHistory.addEventListener('click', () => {
+          showPromptHistory();
+        });
+
+        // Render prompts function
+        function renderPrompts(promptData, msgs, listContainer) {
+          if (!promptData || !promptData.questions || promptData.questions.length === 0) {
+            listContainer.innerHTML = '<div style="text-align:center;padding:20px;color:var(--cb-subtext);font-size:11px;">No prompts generated</div>';
+            return;
+          }
+
+          const categoryColors = {
+            clarification: '#60a5fa',
+            improvement: '#34d399',
+            expansion: '#a78bfa',
+            critical: '#f59e0b',
+            creative: '#ec4899'
+          };
+          const categoryIcons = {
+            clarification: '❓',
+            improvement: '⬆️',
+            expansion: '🔍',
+            critical: '⚠️',
+            creative: '✨'
+          };
+
+          listContainer.innerHTML = promptData.questions.map((q, i) => `
+            <div class="cb-prompt-item" data-text="${encodeURIComponent(q.text)}" style="padding:10px 12px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:8px;cursor:pointer;transition:all 0.15s;">
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+                <span style="font-size:12px;">${categoryIcons[q.category] || '💡'}</span>
+                <span style="font-size:9px;text-transform:uppercase;color:${categoryColors[q.category] || '#60a5fa'};font-weight:500;">${q.category}</span>
+              </div>
+              <div style="font-size:11px;color:var(--cb-white);line-height:1.4;">${q.text}</div>
+            </div>
+          `).join('');
+
+          // Add click handlers
+          listContainer.querySelectorAll('.cb-prompt-item').forEach(item => {
+            item.addEventListener('mouseenter', () => {
+              item.style.background = 'rgba(96,165,250,0.1)';
+              item.style.borderColor = 'rgba(96,165,250,0.3)';
+            });
+            item.addEventListener('mouseleave', () => {
+              item.style.background = 'rgba(255,255,255,0.02)';
+              item.style.borderColor = 'rgba(255,255,255,0.06)';
+            });
+            item.addEventListener('click', async () => {
+              const text = decodeURIComponent(item.dataset.text);
+              await navigator.clipboard.writeText(text);
+              item.style.background = 'rgba(52,211,153,0.15)';
+              setTimeout(() => item.style.background = 'rgba(255,255,255,0.02)', 200);
+              toast('Copied!');
+            });
+            item.addEventListener('dblclick', async () => {
+              const text = decodeURIComponent(item.dataset.text);
+              const inp = document.querySelector('textarea,[contenteditable="true"],[role="textbox"]');
+              if (inp) {
+                inp.focus();
+                if (inp.isContentEditable) { inp.textContent = text; inp.dispatchEvent(new InputEvent('input', { bubbles: true })); }
+                else { inp.value = text; inp.dispatchEvent(new Event('input', { bubbles: true })); }
+                toast('Inserted!');
+              }
+            });
           });
         }
 
@@ -5745,7 +5736,6 @@ Respond with JSON only:
               prompts: promptData,
               url: window.location.href
             });
-            // Keep last 20 versions
             if (history.length > 20) history.splice(20);
             localStorage.setItem('chatbridge:prompt_history', JSON.stringify(history));
           } catch (e) {
@@ -5763,250 +5753,34 @@ Respond with JSON only:
               return;
             }
 
-            const modal = document.createElement('div');
-            modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:999999;display:flex;align-items:center;justify-content:center;padding:20px;';
-            modal.innerHTML = `
-              <div style="background:var(--cb-bg);padding:24px;border-radius:12px;max-width:600px;width:100%;max-height:80vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,0.4);border:1px solid var(--cb-border);">
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-                  <h3 style="margin:0;color:var(--cb-white);font-size:16px;">📜 Prompt History</h3>
-                  <button id="cb-history-close" class="cb-btn" style="padding:4px 8px;font-size:12px;">✕ Close</button>
+            promptsList.innerHTML = `
+              <div style="font-size:11px;color:var(--cb-subtext);margin-bottom:8px;">📜 Recent History (${history.length})</div>
+              ${history.slice(0, 5).map((h, i) => `
+                <div class="cb-history-item" data-index="${i}" style="padding:8px 10px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:6px;cursor:pointer;transition:all 0.15s;">
+                  <div style="font-size:10px;color:var(--cb-subtext);margin-bottom:4px;">${new Date(h.timestamp).toLocaleString()}</div>
+                  <div style="font-size:10px;color:var(--cb-white);">${h.prompts?.questions?.length || 0} prompts</div>
                 </div>
-                <div id="cb-history-list" style="display:flex;flex-direction:column;gap:12px;"></div>
-              </div>
+              `).join('')}
             `;
 
-            document.body.appendChild(modal);
-
-            const historyList = modal.querySelector('#cb-history-list');
-            history.forEach((version, idx) => {
-              const versionCard = document.createElement('div');
-              versionCard.style.cssText = 'padding:12px;background:rgba(0,180,255,0.05);border:1px solid rgba(0,180,255,0.2);border-radius:8px;cursor:pointer;transition:all 0.2s;';
-
-              const timestamp = new Date(version.timestamp).toLocaleString();
-              const promptCount = version.prompts?.questions?.length || 0;
-
-              versionCard.innerHTML = `
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-                  <div style="font-size:12px;font-weight:600;color:var(--cb-white);">Version ${history.length - idx}</div>
-                  <div style="font-size:11px;color:var(--cb-subtext);">${timestamp}</div>
-                </div>
-                <div style="font-size:11px;color:var(--cb-subtext);margin-bottom:8px;">${promptCount} prompts generated</div>
-                <button class="cb-btn cb-btn-primary" style="width:100%;font-size:11px;padding:6px;">🔄 Restore This Version</button>
-              `;
-
-              versionCard.addEventListener('mouseenter', () => {
-                versionCard.style.background = 'rgba(0,180,255,0.1)';
+            promptsList.querySelectorAll('.cb-history-item').forEach(item => {
+              item.addEventListener('click', () => {
+                const idx = parseInt(item.dataset.index);
+                const h = history[idx];
+                if (h && h.prompts) {
+                  renderPrompts(h.prompts, [], promptsList);
+                }
               });
-              versionCard.addEventListener('mouseleave', () => {
-                versionCard.style.background = 'rgba(0,180,255,0.05)';
-              });
-
-              versionCard.querySelector('button').addEventListener('click', () => {
-                renderPrompts(version.prompts, []);
-                modal.remove();
-                toast(`Restored version ${history.length - idx}`);
-              });
-
-              historyList.appendChild(versionCard);
             });
-
-            modal.querySelector('#cb-history-close').addEventListener('click', () => {
-              modal.remove();
-            });
-
-            modal.addEventListener('click', (e) => {
-              if (e.target === modal) modal.remove();
-            });
-
           } catch (e) {
             debugLog('showPromptHistory error:', e);
-            toast('Failed to load history');
           }
-        }
-
-        // Render prompts in list - Clean Modern Design
-        function renderPrompts(promptData, messages) {
-          const list = shadow.getElementById('cb-prompts-list');
-          if (!list) return;
-
-          list.innerHTML = '';
-
-          if (!promptData || !promptData.questions || promptData.questions.length === 0) {
-            list.innerHTML = `
-              <div style="text-align:center;padding:40px 20px;">
-                <div style="font-size:48px;margin-bottom:16px;opacity:0.5;">💭</div>
-                <p style="margin:0;font-size:14px;color:rgba(255,255,255,0.5);">No prompts generated yet</p>
-              </div>
-            `;
-            return;
-          }
-
-          // Success header
-          const header = document.createElement('div');
-          header.style.cssText = 'margin-bottom:20px;padding:16px;background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);border-radius:10px;display:flex;align-items:center;justify-content:space-between;';
-          header.innerHTML = `
-            <div style="display:flex;align-items:center;gap:12px;">
-              <span style="font-size:24px;">✅</span>
-              <div>
-                <div style="font-size:15px;font-weight:700;color:#22c55e;">${promptData.questions.length} Prompts Generated</div>
-                <div style="font-size:12px;color:rgba(255,255,255,0.5);margin-top:2px;">Ready to use or copy</div>
-              </div>
-            </div>
-            <div style="font-size:11px;color:rgba(255,255,255,0.4);">${new Date().toLocaleTimeString()}</div>
-          `;
-          list.appendChild(header);
-
-          const categoryIcons = {
-            clarification: '❓',
-            improvement: '⚡',
-            expansion: '🔭',
-            critical: '🧠',
-            creative: '💡'
-          };
-
-          const categoryColors = {
-            clarification: '#3b82f6',
-            improvement: '#22c55e',
-            expansion: '#a855f7',
-            critical: '#f59e0b',
-            creative: '#ec4899'
-          };
-
-          const categoryBg = {
-            clarification: 'rgba(59,130,246,0.1)',
-            improvement: 'rgba(34,197,94,0.1)',
-            expansion: 'rgba(168,85,247,0.1)',
-            critical: 'rgba(245,158,11,0.1)',
-            creative: 'rgba(236,72,153,0.1)'
-          };
-
-          promptData.questions.forEach((q, idx) => {
-            const promptCard = document.createElement('div');
-            const color = categoryColors[q.category] || '#3b82f6';
-            const bg = categoryBg[q.category] || 'rgba(59,130,246,0.1)';
-
-            promptCard.style.cssText = `
-              padding:18px;
-              background:${bg};
-              border:1px solid ${color}33;
-              border-left:4px solid ${color};
-              border-radius:10px;
-              transition:all 0.2s ease;
-              cursor:pointer;
-            `;
-
-            const icon = categoryIcons[q.category] || '💬';
-            const categoryLabel = q.category.charAt(0).toUpperCase() + q.category.slice(1);
-
-            promptCard.innerHTML = `
-              <div style="display:flex;flex-direction:column;gap:14px;">
-                <div style="display:flex;align-items:center;justify-content:space-between;">
-                  <span style="display:inline-flex;align-items:center;gap:6px;font-size:11px;color:${color};font-weight:700;padding:6px 12px;background:${color}22;border-radius:20px;text-transform:uppercase;letter-spacing:0.5px;">
-                    <span style="font-size:14px;">${icon}</span>
-                    ${categoryLabel}
-                  </span>
-                  <span style="font-size:11px;color:rgba(255,255,255,0.3);font-weight:600;">#${idx + 1}</span>
-                </div>
-                <div style="font-size:14px;line-height:1.7;color:#fff;font-weight:400;">${escapeHtmlSimple(q.text)}</div>
-                <div style="display:flex;gap:8px;">
-                  <button class="cb-prompt-copy" style="flex:1;padding:10px;font-size:13px;font-weight:600;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:#fff;cursor:pointer;transition:all 0.2s;">
-                    📋 Copy
-                  </button>
-                  <button class="cb-prompt-send" style="flex:1;padding:10px;font-size:13px;font-weight:600;background:linear-gradient(135deg,${color},${color}dd);border:none;border-radius:8px;color:#fff;cursor:pointer;transition:all 0.2s;box-shadow:0 2px 8px ${color}33;">
-                    ➤ Use Now
-                  </button>
-                </div>
-              </div>
-            `;
-
-            // Hover effects
-            promptCard.addEventListener('mouseenter', () => {
-              promptCard.style.background = `${bg.replace('0.1', '0.15')}`;
-              promptCard.style.borderColor = `${color}66`;
-              promptCard.style.transform = 'translateY(-2px)';
-              promptCard.style.boxShadow = `0 8px 24px ${color}22`;
-            });
-            promptCard.addEventListener('mouseleave', () => {
-              promptCard.style.background = bg;
-              promptCard.style.borderColor = `${color}33`;
-              promptCard.style.transform = 'translateY(0)';
-              promptCard.style.boxShadow = 'none';
-            });
-
-            // Copy button hover
-            const copyBtn = promptCard.querySelector('.cb-prompt-copy');
-            copyBtn.addEventListener('mouseenter', () => {
-              copyBtn.style.background = 'rgba(255,255,255,0.15)';
-              copyBtn.style.transform = 'scale(1.02)';
-            });
-            copyBtn.addEventListener('mouseleave', () => {
-              copyBtn.style.background = 'rgba(255,255,255,0.08)';
-              copyBtn.style.transform = 'scale(1)';
-            });
-
-            // Send button hover
-            const sendBtn = promptCard.querySelector('.cb-prompt-send');
-            sendBtn.addEventListener('mouseenter', () => {
-              sendBtn.style.transform = 'scale(1.02)';
-              sendBtn.style.boxShadow = `0 4px 16px ${color}55`;
-            });
-            sendBtn.addEventListener('mouseleave', () => {
-              sendBtn.style.transform = 'scale(1)';
-              sendBtn.style.boxShadow = `0 2px 8px ${color}33`;
-            });
-
-            // Copy handler
-            copyBtn.addEventListener('click', async (e) => {
-              e.stopPropagation();
-              try {
-                await navigator.clipboard.writeText(q.text);
-                toast('✓ Copied to clipboard');
-                copyBtn.innerHTML = '✓ Copied!';
-                setTimeout(() => { copyBtn.innerHTML = '📋 Copy'; }, 2000);
-              } catch (err) {
-                toast('❌ Copy failed');
-              }
-            });
-
-            // Send to chat handler
-            sendBtn.addEventListener('click', async (e) => {
-              e.stopPropagation();
-              try {
-                const adapter = Object.values(window.SiteAdapters || {}).find(a => a.detect && a.detect());
-                if (adapter && adapter.getInput) {
-                  const input = adapter.getInput();
-                  if (input) {
-                    input.value = q.text;
-                    input.textContent = q.text;
-                    ['input', 'change', 'keydown'].forEach(evType => {
-                      const ev = new Event(evType, { bubbles: true });
-                      input.dispatchEvent(ev);
-                    });
-                    input.focus();
-                    toast('✓ Inserted into chat');
-                    sendBtn.innerHTML = '✓ Inserted!';
-                    setTimeout(() => { sendBtn.innerHTML = '➤ Use Now'; }, 2000);
-                  } else {
-                    toast('⚠️ Chat input not found');
-                  }
-                } else {
-                  toast('⚠️ Platform not supported');
-                }
-              } catch (err) {
-                debugLog('Send prompt error:', err);
-                toast('❌ Insert failed');
-              }
-            });
-
-            list.appendChild(promptCard);
-          });
         }
 
       } catch (e) {
         debugLog('renderPromptDesignerWidget error:', e);
       }
     }
-
     // Show fact-check modal with claims
     function showFactCheckModal(claims) {
       try {
@@ -7936,7 +7710,7 @@ Respond with JSON only:
     // AI AGENT HUB FUNCTIONS
     // ============================================
 
-    // Render Agent Hub UI with all four agents
+    // Render Agent Hub UI with 6 power agents - Premium Glassmorphism Design
     async function renderAgentHub() {
       try {
         if (!agentContent) {
@@ -7947,187 +7721,194 @@ Respond with JSON only:
         agentContent.innerHTML = '';
         debugLog('Rendering Agent Hub...');
 
-        // AI Status Header (simplified)
-        const aiStatus = document.createElement('div');
-        aiStatus.style.cssText = 'margin:12px;padding:14px 16px;background:linear-gradient(135deg,rgba(138,43,226,0.1),rgba(0,180,255,0.1));border:1px solid rgba(138,43,226,0.25);border-radius:12px;display:flex;align-items:center;gap:12px;';
-        aiStatus.innerHTML = `
-          <span style="font-size:24px;">🤖</span>
-          <div style="flex:1;">
-            <div style="font-weight:600;color:var(--cb-white);font-size:14px;">AI Agent Hub</div>
-            <div style="font-size:11px;color:var(--cb-subtext);margin-top:2px;">Powered by Gemini • Analyze, organize, and enhance your conversations</div>
+        // Premium Header with gradient glow
+        const header = document.createElement('div');
+        header.style.cssText = `
+          margin:12px;padding:16px 18px;
+          background:linear-gradient(135deg,rgba(138,43,226,0.12),rgba(0,180,255,0.08));
+          border:1px solid rgba(138,43,226,0.3);border-radius:16px;
+          position:relative;overflow:hidden;
+        `;
+        header.innerHTML = `
+          <div style="position:absolute;top:-20px;right:-20px;width:80px;height:80px;background:radial-gradient(circle,rgba(138,43,226,0.3),transparent);border-radius:50%;filter:blur(20px);"></div>
+          <div style="display:flex;align-items:center;gap:14px;position:relative;z-index:1;">
+            <div style="width:44px;height:44px;background:linear-gradient(135deg,#8b5cf6,#06b6d4);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 4px 15px rgba(139,92,246,0.4);">🤖</div>
+            <div style="flex:1;">
+              <div style="font-weight:700;color:#fff;font-size:15px;letter-spacing:-0.3px;">Power Agents</div>
+              <div style="font-size:11px;color:rgba(255,255,255,0.6);margin-top:2px;">6 intelligent tools to supercharge your workflow</div>
+            </div>
           </div>
         `;
-        agentContent.appendChild(aiStatus);
+        agentContent.appendChild(header);
 
-        // Agent Cards Grid
-        const agentsGrid = document.createElement('div');
-        agentsGrid.style.cssText = 'display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px;padding:0 12px;position:relative;z-index:0;';
+        // Agents Container - Vertical cards with premium styling
+        const agentsContainer = document.createElement('div');
+        agentsContainer.style.cssText = 'padding:0 12px;display:flex;flex-direction:column;gap:8px;';
 
-        // 1. Continuum - Context Reconstruction Agent
-        const continuumCard = createAgentCard(
-          'Continuum',
-          'Restore context across AI platforms',
-          '🔄',
-          'Never lose your train of thought when switching between AI tools',
-          async () => {
-            try {
-              await showContinuumAgent();
-            } catch (e) {
-              toast('Continuum failed');
-              debugLog('Continuum error', e);
-            }
+        // Agent definitions - The Final 6
+        const agents = [
+          {
+            id: 'action-extractor',
+            name: 'Action Extractor',
+            desc: 'Get your to-do list instantly',
+            icon: '📝',
+            gradient: 'linear-gradient(135deg,#10b981,#059669)',
+            glow: 'rgba(16,185,129,0.3)',
+            action: showActionExtractor
+          },
+          {
+            id: 'session-closer',
+            name: 'Session Closer',
+            desc: 'What changed • Unresolved • Next move',
+            icon: '🔚',
+            gradient: 'linear-gradient(135deg,#f59e0b,#d97706)',
+            glow: 'rgba(245,158,11,0.3)',
+            action: showSessionCloser
+          },
+          {
+            id: 'cognitive-simplifier',
+            name: 'Cognitive Simplifier',
+            desc: 'Make responses lighter to think through',
+            icon: '🧠',
+            gradient: 'linear-gradient(135deg,#8b5cf6,#7c3aed)',
+            glow: 'rgba(139,92,246,0.3)',
+            action: showCognitiveSimplifier
+          },
+          {
+            id: 'draft-generator',
+            name: 'Draft Generator',
+            desc: 'Create emails, notes & status updates',
+            icon: '📧',
+            gradient: 'linear-gradient(135deg,#3b82f6,#2563eb)',
+            glow: 'rgba(59,130,246,0.3)',
+            action: showDraftGenerator
+          },
+          {
+            id: 'echo-synth',
+            name: 'EchoSynth',
+            desc: 'Merge insights from multiple AIs',
+            icon: '⚡',
+            gradient: 'linear-gradient(135deg,#ec4899,#db2777)',
+            glow: 'rgba(236,72,153,0.3)',
+            action: showEchoSynth
+          },
+          {
+            id: 'auto-continue',
+            name: 'Auto-Continue',
+            desc: 'Continue cut-off AI responses instantly',
+            icon: '🔁',
+            gradient: 'linear-gradient(135deg,#06b6d4,#0891b2)',
+            glow: 'rgba(6,182,212,0.3)',
+            action: showAutoContinue
           }
-        );
+        ];
 
-        // 2. Memory Architect - Knowledge Organizer
-        const memoryCard = createAgentCard(
-          'Memory Architect',
-          'Build your AI knowledge base',
-          '🧠',
-          'Convert all chats into structured, searchable knowledge',
-          async () => {
+        agents.forEach(agent => {
+          const card = document.createElement('div');
+          card.style.cssText = `
+            display:flex;align-items:center;gap:12px;
+            padding:14px 16px;
+            background:rgba(255,255,255,0.03);
+            border:1px solid rgba(255,255,255,0.08);
+            border-radius:14px;
+            cursor:pointer;
+            transition:all 0.25s cubic-bezier(0.4,0,0.2,1);
+            position:relative;overflow:hidden;
+          `;
+
+          card.innerHTML = `
+            <div style="width:42px;height:42px;background:${agent.gradient};border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 3px 12px ${agent.glow};flex-shrink:0;">${agent.icon}</div>
+            <div style="flex:1;min-width:0;">
+              <div style="font-weight:600;color:#fff;font-size:13px;letter-spacing:-0.2px;">${agent.name}</div>
+              <div style="font-size:11px;color:rgba(255,255,255,0.5);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${agent.desc}</div>
+            </div>
+            <div style="width:32px;height:32px;background:rgba(255,255,255,0.06);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:12px;color:rgba(255,255,255,0.4);flex-shrink:0;transition:all 0.2s;">▶</div>
+          `;
+
+          // Hover effects
+          card.addEventListener('mouseenter', () => {
+            card.style.background = 'rgba(255,255,255,0.06)';
+            card.style.borderColor = 'rgba(255,255,255,0.15)';
+            card.style.transform = 'translateX(4px)';
+            card.style.boxShadow = `0 4px 20px ${agent.glow}`;
+            card.querySelector('div:last-child').style.background = agent.gradient;
+            card.querySelector('div:last-child').style.color = '#fff';
+          });
+          card.addEventListener('mouseleave', () => {
+            card.style.background = 'rgba(255,255,255,0.03)';
+            card.style.borderColor = 'rgba(255,255,255,0.08)';
+            card.style.transform = 'translateX(0)';
+            card.style.boxShadow = 'none';
+            card.querySelector('div:last-child').style.background = 'rgba(255,255,255,0.06)';
+            card.querySelector('div:last-child').style.color = 'rgba(255,255,255,0.4)';
+          });
+
+          // Click handler
+          card.addEventListener('click', async () => {
             try {
-              await showMemoryArchitect();
+              await agent.action();
             } catch (e) {
-              toast('Memory Architect failed');
-              debugLog('Memory Architect error', e);
+              toast(`${agent.name} failed`);
+              debugLog(`${agent.name} error`, e);
             }
-          }
-        );
+          });
 
-        // 3. EchoSynth - Multi-AI Synthesizer
-        const echoCard = createAgentCard(
-          'EchoSynth',
-          'Merge insights from multiple AIs',
-          '⚡',
-          'One prompt queries all AIs, synthesizes best answer',
-          async () => {
-            try {
-              await showEchoSynth();
-            } catch (e) {
-              toast('EchoSynth failed');
-              debugLog('EchoSynth error', e);
-            }
-          }
-        );
+          agentsContainer.appendChild(card);
+        });
 
-        // 4. Quick Agent - Simple task agent (original functionality)
-        const quickCard = createAgentCard(
-          'Quick Agent',
-          'Analyze & suggest next steps',
-          '🎯',
-          'Quick analysis and action recommendations',
-          async () => {
-            try {
-              await showQuickAgent();
-            } catch (e) {
-              toast('Quick Agent failed');
-              debugLog('Quick Agent error', e);
-            }
-          }
-        );
+        agentContent.appendChild(agentsContainer);
 
-        [continuumCard, memoryCard, echoCard, quickCard].forEach(card => agentsGrid.appendChild(card));
-        agentContent.appendChild(agentsGrid);
-
-        // Second Row: Agentic AI Agents
-        const agentsGrid2 = document.createElement('div');
-        agentsGrid2.style.cssText = 'display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px;padding:0 12px;position:relative;z-index:0;';
-
-        // 5. Threadkeeper - Conversation Operator
-        const threadkeeperCard = createAgentCard(
-          'Threadkeeper',
-          'Autonomous conversation tracking',
-          '🧵',
-          'Tracks all conversations, auto-injects context, warns when history is missing',
-          async () => {
-            try {
-              await showThreadkeeperAgent();
-            } catch (e) {
-              toast('Threadkeeper failed');
-              debugLog('Threadkeeper error', e);
-            }
-          }
-        );
-
-        // 6. Multi-AI Planner - Project Orchestrator
-        const plannerCard = createAgentCard(
-          'Multi-AI Planner',
-          'Break goals into AI-powered steps',
-          '🎯',
-          'Breaks projects into steps, assigns to best AI, builds unified plan',
-          async () => {
-            try {
-              await showMultiAIPlannerAgent();
-            } catch (e) {
-              toast('Multi-AI Planner failed');
-              debugLog('Multi-AI Planner error', e);
-            }
-          }
-        );
-
-        [threadkeeperCard, plannerCard].forEach(card => agentsGrid2.appendChild(card));
-        agentContent.appendChild(agentsGrid2);
-
-        // Agent Output Area
+        // Agent Output Area with premium styling
         const outputSection = document.createElement('div');
-        outputSection.style.cssText = 'padding:0 12px;margin-bottom:16px;';
+        outputSection.style.cssText = 'padding:16px 12px;';
 
-        const outputLabel = document.createElement('div');
-        outputLabel.style.cssText = 'font-weight:600;font-size:12px;margin-bottom:8px;color:var(--cb-subtext);';
-        outputLabel.textContent = '📊 Agent Output';
-        outputSection.appendChild(outputLabel);
+        const outputHeader = document.createElement('div');
+        outputHeader.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;';
+        outputHeader.innerHTML = `
+          <div style="font-weight:600;font-size:12px;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.5px;">📊 Output</div>
+        `;
+        outputSection.appendChild(outputHeader);
 
         const outputArea = document.createElement('div');
         outputArea.id = 'cb-agent-output';
         outputArea.className = 'cb-view-text';
-        outputArea.style.cssText = 'min-height:120px;max-height:400px;overflow-y:auto;background:rgba(16,24,43,0.4);border:1px solid rgba(0,180,255,0.2);border-radius:8px;padding:12px;font-size:12px;line-height:1.5;white-space:pre-wrap;';
-        outputArea.textContent = '(Agent results will appear here)';
+        outputArea.style.cssText = `
+          min-height:100px;max-height:350px;overflow-y:auto;
+          background:rgba(0,0,0,0.2);
+          border:1px solid rgba(255,255,255,0.06);
+          border-radius:12px;padding:14px;
+          font-size:12px;line-height:1.6;
+          color:rgba(255,255,255,0.8);
+        `;
+        outputArea.innerHTML = '<div style="text-align:center;color:rgba(255,255,255,0.3);padding:20px;">Click an agent to get started</div>';
         outputSection.appendChild(outputArea);
 
+        // Output action buttons
         const outputControls = document.createElement('div');
-        outputControls.style.cssText = 'display:flex;gap:8px;margin-top:8px;';
+        outputControls.style.cssText = 'display:flex;gap:8px;margin-top:10px;';
 
-        const btnAgentToChat = document.createElement('button');
-        btnAgentToChat.className = 'cb-btn cb-btn-primary';
-        btnAgentToChat.textContent = '➤ Insert to Chat';
-        btnAgentToChat.style.cssText = 'flex:1;';
-        btnAgentToChat.addEventListener('click', async () => {
-          const outputText = outputArea.textContent;
-          if (!outputText || outputText === '(Agent results will appear here)') {
-            toast('No output to insert');
-            return;
-          }
-
-          try {
-            await restoreToChat(outputText, []);
-            toast('Inserted to chat!');
-          } catch (e) {
-            debugLog('Insert to chat error', e);
-            toast('Failed to insert');
-          }
+        const btnInsert = document.createElement('button');
+        btnInsert.className = 'cb-btn cb-btn-primary';
+        btnInsert.style.cssText = 'flex:1;padding:10px;font-size:12px;border-radius:10px;';
+        btnInsert.textContent = '➤ Insert to Chat';
+        btnInsert.addEventListener('click', async () => {
+          const text = outputArea.innerText;
+          if (!text || text.includes('Click an agent')) { toast('No output'); return; }
+          try { await restoreToChat(text, []); toast('Inserted!'); } catch (e) { toast('Failed'); }
         });
 
-        const btnCopyAgentOutput = document.createElement('button');
-        btnCopyAgentOutput.className = 'cb-btn';
-        btnCopyAgentOutput.textContent = '📋 Copy';
-        btnCopyAgentOutput.addEventListener('click', async () => {
-          const outputText = outputArea.textContent;
-          if (!outputText || outputText === '(Agent results will appear here)') {
-            toast('No output to copy');
-            return;
-          }
-
-          try {
-            await navigator.clipboard.writeText(outputText);
-            toast('Copied to clipboard');
-          } catch (e) {
-            toast('Copy failed');
-          }
+        const btnCopy = document.createElement('button');
+        btnCopy.className = 'cb-btn';
+        btnCopy.style.cssText = 'padding:10px 16px;font-size:12px;border-radius:10px;';
+        btnCopy.textContent = '📋 Copy';
+        btnCopy.addEventListener('click', async () => {
+          const text = outputArea.innerText;
+          if (!text || text.includes('Click an agent')) { toast('No output'); return; }
+          try { await navigator.clipboard.writeText(text); toast('Copied!'); } catch (e) { toast('Failed'); }
         });
 
-        outputControls.appendChild(btnAgentToChat);
-        outputControls.appendChild(btnCopyAgentOutput);
+        outputControls.appendChild(btnInsert);
+        outputControls.appendChild(btnCopy);
         outputSection.appendChild(outputControls);
 
         agentContent.appendChild(outputSection);
@@ -9197,6 +8978,690 @@ Enhanced Answer:`;
           runBtn.textContent = '▶ Run EchoSynth';
         }
       });
+    }
+
+    // ============================================
+    // ACTION EXTRACTOR - Get to-dos instantly
+    // ============================================
+    async function showActionExtractor() {
+      const outputArea = (agentContent && agentContent.querySelector('#cb-agent-output')) || (shadow && shadow.getElementById && shadow.getElementById('cb-agent-output'));
+      if (!outputArea) return;
+
+      // Auto-scroll to output
+      outputArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+      outputArea.innerHTML = `
+        <div style="padding:4px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+            <div style="width:36px;height:36px;background:linear-gradient(135deg,#10b981,#059669);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;">📝</div>
+            <div>
+              <div style="font-weight:700;font-size:14px;color:#fff;">Action Extractor</div>
+              <div style="font-size:10px;color:rgba(255,255,255,0.5);">Extracting tasks, deadlines & assignments...</div>
+            </div>
+          </div>
+          <div style="display:flex;justify-content:center;padding:30px;"><div class="cb-spinner"></div></div>
+        </div>
+      `;
+
+      try {
+        const chatText = await getConversationText();
+        if (!chatText || chatText.length < 20) {
+          outputArea.innerHTML = `
+            <div style="text-align:center;padding:30px;">
+              <div style="font-size:32px;margin-bottom:12px;">💬</div>
+              <div style="font-size:13px;color:#fff;font-weight:600;">No Conversation Found</div>
+              <div style="font-size:11px;color:rgba(255,255,255,0.5);margin-top:4px;">Scan a chat first to extract actions</div>
+            </div>
+          `;
+          return;
+        }
+
+        const prompt = `Extract actionable items from this conversation. Return in this EXACT JSON format:
+{"tasks":["task1","task2"],"deadlines":[{"item":"what","when":"when"}],"assignments":[{"person":"who","task":"what"}]}
+
+Conversation:
+${chatText.slice(0, 3500)}
+
+Output ONLY valid JSON:`;
+
+        const res = await new Promise(resolve => {
+          chrome.runtime.sendMessage({ type: 'call_llama', payload: { action: 'generate', text: prompt } }, r => {
+            resolve(chrome.runtime.lastError ? { ok: false } : (r || { ok: false }));
+          });
+        });
+
+        if (res && res.ok && res.result) {
+          let data = { tasks: [], deadlines: [], assignments: [] };
+          try {
+            const jsonMatch = res.result.match(/\{[\s\S]*\}/);
+            if (jsonMatch) data = JSON.parse(jsonMatch[0]);
+          } catch (e) {
+            // Fallback: parse as text
+            const lines = res.result.split('\n').filter(l => l.trim());
+            data.tasks = lines.slice(0, 5);
+          }
+
+          const tasksHtml = (data.tasks || []).map((t, i) => `
+            <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.15);border-radius:10px;margin-bottom:6px;">
+              <div style="width:20px;height:20px;border:2px solid #10b981;border-radius:5px;flex-shrink:0;margin-top:1px;"></div>
+              <div style="flex:1;font-size:12px;color:#fff;line-height:1.4;">${t}</div>
+            </div>
+          `).join('') || '<div style="color:rgba(255,255,255,0.4);font-size:11px;padding:8px;">No tasks found</div>';
+
+          const deadlinesHtml = (data.deadlines || []).map(d => `
+            <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.15);border-radius:10px;margin-bottom:6px;">
+              <div style="font-size:16px;">📅</div>
+              <div style="flex:1;">
+                <div style="font-size:12px;color:#fff;">${d.item || d}</div>
+                <div style="font-size:10px;color:#f59e0b;margin-top:2px;">${d.when || ''}</div>
+              </div>
+            </div>
+          `).join('') || '<div style="color:rgba(255,255,255,0.4);font-size:11px;padding:8px;">No deadlines found</div>';
+
+          const assignmentsHtml = (data.assignments || []).map(a => `
+            <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:rgba(139,92,246,0.06);border:1px solid rgba(139,92,246,0.15);border-radius:10px;margin-bottom:6px;">
+              <div style="width:24px;height:24px;background:linear-gradient(135deg,#8b5cf6,#7c3aed);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;color:#fff;">👤</div>
+              <div style="flex:1;">
+                <div style="font-size:12px;color:#fff;font-weight:600;">${a.person || 'Someone'}</div>
+                <div style="font-size:10px;color:rgba(255,255,255,0.6);margin-top:2px;">${a.task || a}</div>
+              </div>
+            </div>
+          `).join('') || '<div style="color:rgba(255,255,255,0.4);font-size:11px;padding:8px;">No assignments found</div>';
+
+          outputArea.innerHTML = `
+            <div style="padding:4px;">
+              <!-- Stats Row -->
+              <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px;">
+                <div style="background:linear-gradient(135deg,rgba(16,185,129,0.15),rgba(16,185,129,0.05));border:1px solid rgba(16,185,129,0.25);border-radius:10px;padding:12px;text-align:center;">
+                  <div style="font-size:22px;font-weight:700;color:#10b981;">${(data.tasks || []).length}</div>
+                  <div style="font-size:9px;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.5px;">Tasks</div>
+                </div>
+                <div style="background:linear-gradient(135deg,rgba(245,158,11,0.15),rgba(245,158,11,0.05));border:1px solid rgba(245,158,11,0.25);border-radius:10px;padding:12px;text-align:center;">
+                  <div style="font-size:22px;font-weight:700;color:#f59e0b;">${(data.deadlines || []).length}</div>
+                  <div style="font-size:9px;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.5px;">Deadlines</div>
+                </div>
+                <div style="background:linear-gradient(135deg,rgba(139,92,246,0.15),rgba(139,92,246,0.05));border:1px solid rgba(139,92,246,0.25);border-radius:10px;padding:12px;text-align:center;">
+                  <div style="font-size:22px;font-weight:700;color:#8b5cf6;">${(data.assignments || []).length}</div>
+                  <div style="font-size:9px;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.5px;">Assigned</div>
+                </div>
+              </div>
+              
+              <!-- Tasks Section -->
+              <div style="margin-bottom:14px;">
+                <div style="font-size:11px;font-weight:600;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;display:flex;align-items:center;gap:6px;">
+                  <span style="color:#10b981;">●</span> Tasks
+                </div>
+                ${tasksHtml}
+              </div>
+              
+              <!-- Deadlines Section -->
+              <div style="margin-bottom:14px;">
+                <div style="font-size:11px;font-weight:600;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;display:flex;align-items:center;gap:6px;">
+                  <span style="color:#f59e0b;">●</span> Deadlines
+                </div>
+                ${deadlinesHtml}
+              </div>
+              
+              <!-- Assignments Section -->
+              <div style="margin-bottom:14px;">
+                <div style="font-size:11px;font-weight:600;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;display:flex;align-items:center;gap:6px;">
+                  <span style="color:#8b5cf6;">●</span> Assignments
+                </div>
+                ${assignmentsHtml}
+              </div>
+              
+              <!-- Action Buttons -->
+              <div style="display:flex;gap:8px;margin-top:16px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.06);">
+                <button id="action-copy" class="cb-btn cb-btn-primary" style="flex:1;padding:10px;font-size:11px;">📋 Copy All</button>
+                <button id="action-insert" class="cb-btn" style="flex:1;padding:10px;font-size:11px;">➤ To Chat</button>
+              </div>
+            </div>
+          `;
+
+          const copyText = `TASKS:\n${(data.tasks || []).map(t => `☐ ${t}`).join('\n')}\n\nDEADLINES:\n${(data.deadlines || []).map(d => `📅 ${d.item || d} - ${d.when || ''}`).join('\n')}\n\nASSIGNMENTS:\n${(data.assignments || []).map(a => `👤 ${a.person || ''}: ${a.task || a}`).join('\n')}`;
+
+          outputArea.querySelector('#action-copy')?.addEventListener('click', async () => {
+            await navigator.clipboard.writeText(copyText);
+            toast('📋 Copied!');
+          });
+
+          outputArea.querySelector('#action-insert')?.addEventListener('click', async () => {
+            try { await restoreToChat(copyText, []); toast('✓ Inserted!'); } catch (e) { toast('Failed'); }
+          });
+
+          toast('✅ Extracted!');
+        } else {
+          outputArea.innerHTML = `
+            <div style="text-align:center;padding:30px;">
+              <div style="font-size:32px;margin-bottom:12px;">⚠️</div>
+              <div style="font-size:13px;color:#fff;font-weight:600;">Extraction Failed</div>
+              <div style="font-size:11px;color:rgba(255,255,255,0.5);margin-top:4px;">${res?.error || 'Please try again'}</div>
+            </div>
+          `;
+        }
+      } catch (e) {
+        outputArea.innerHTML = `<div style="color:#f87171;padding:20px;text-align:center;">❌ Error: ${e.message || 'Unknown'}</div>`;
+        debugLog('Action Extractor error', e);
+      }
+    }
+
+    // ============================================
+    // DRAFT GENERATOR - Create emails & updates
+    // ============================================
+    async function showDraftGenerator() {
+      const outputArea = (agentContent && agentContent.querySelector('#cb-agent-output')) || (shadow && shadow.getElementById && shadow.getElementById('cb-agent-output'));
+      if (!outputArea) return;
+
+      outputArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+      outputArea.innerHTML = `
+        <div style="padding:4px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+            <div style="width:36px;height:36px;background:linear-gradient(135deg,#3b82f6,#2563eb);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;">📧</div>
+            <div>
+              <div style="font-weight:700;font-size:14px;color:#fff;">Draft Generator</div>
+              <div style="font-size:10px;color:rgba(255,255,255,0.5);">Select a draft type below</div>
+            </div>
+          </div>
+          
+          <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px;">
+            <button class="cb-draft-type cb-btn" data-type="email" style="padding:12px;text-align:center;background:rgba(96,165,250,0.1);border:2px solid #60a5fa;">
+              <div style="font-size:18px;margin-bottom:4px;">📧</div>
+              <div style="font-size:10px;font-weight:600;">Email</div>
+            </button>
+            <button class="cb-draft-type cb-btn" data-type="status" style="padding:12px;text-align:center;">
+              <div style="font-size:18px;margin-bottom:4px;">📊</div>
+              <div style="font-size:10px;font-weight:600;">Status Update</div>
+            </button>
+            <button class="cb-draft-type cb-btn" data-type="notes" style="padding:12px;text-align:center;">
+              <div style="font-size:18px;margin-bottom:4px;">📝</div>
+              <div style="font-size:10px;font-weight:600;">Meeting Notes</div>
+            </button>
+            <button class="cb-draft-type cb-btn" data-type="reply" style="padding:12px;text-align:center;">
+              <div style="font-size:18px;margin-bottom:4px;">💬</div>
+              <div style="font-size:10px;font-weight:600;">Quick Reply</div>
+            </button>
+          </div>
+          
+          <button id="draft-generate" class="cb-btn cb-btn-primary" style="width:100%;">
+            ✨ Generate Draft
+          </button>
+        </div>
+        <div id="draft-results" style="margin-top:12px;display:none;"></div>
+      `;
+
+      let selectedType = 'email';
+      const typeButtons = outputArea.querySelectorAll('.cb-draft-type');
+      const generateBtn = outputArea.querySelector('#draft-generate');
+      const resultsDiv = outputArea.querySelector('#draft-results');
+
+      typeButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+          typeButtons.forEach(b => {
+            b.style.background = 'rgba(255,255,255,0.03)';
+            b.style.borderColor = 'rgba(255,255,255,0.08)';
+          });
+          btn.style.background = 'rgba(96,165,250,0.1)';
+          btn.style.borderColor = '#60a5fa';
+          selectedType = btn.dataset.type;
+        });
+      });
+
+      generateBtn.addEventListener('click', async () => {
+        generateBtn.disabled = true;
+        generateBtn.innerHTML = '<span class="cb-spinner" style="width:12px;height:12px;border-width:2px;"></span> Generating...';
+        resultsDiv.style.display = 'block';
+        resultsDiv.innerHTML = '<div style="text-align:center;padding:20px;"><div class="cb-spinner"></div></div>';
+
+        try {
+          const chatText = await getConversationText();
+          if (!chatText || chatText.length < 20) {
+            resultsDiv.innerHTML = '<div style="color:#f87171;padding:12px;text-align:center;">⚠️ No conversation found.</div>';
+            return;
+          }
+
+          const prompts = {
+            email: `Based on this conversation, write a professional email summarizing the key points and any decisions made. Use a clear subject line, professional greeting, body with bullet points for key items, and sign off. Be concise but complete.`,
+            status: `Based on this conversation, create a brief project status update. Include: Current Status (1 sentence), Key Progress (2-3 bullets), Blockers/Issues (if any), Next Steps. Keep it executive-friendly.`,
+            notes: `Based on this conversation, create structured meeting notes. Include: Date/Time, Attendees (if mentioned), Agenda Items, Discussion Points, Decisions Made, Action Items, Next Meeting. Use bullet points.`,
+            reply: `Based on this conversation, draft a brief follow-up message or reply. Keep it friendly, professional, and action-oriented. 2-3 sentences max.`
+          };
+
+          const prompt = `${prompts[selectedType]}
+
+Conversation:
+${chatText.slice(0, 3500)}`;
+
+          const res = await new Promise(resolve => {
+            chrome.runtime.sendMessage({ type: 'call_llama', payload: { action: 'generate', text: prompt } }, r => {
+              resolve(chrome.runtime.lastError ? { ok: false, error: 'Message failed' } : (r || { ok: false }));
+            });
+          });
+
+          if (res && res.ok && res.result) {
+            resultsDiv.innerHTML = `
+              <div style="font-size:10px;color:var(--cb-subtext);margin-bottom:8px;display:flex;justify-content:space-between;">
+                <span>Generated ${selectedType.toUpperCase()}</span>
+                <span>${new Date().toLocaleTimeString()}</span>
+              </div>
+              <textarea id="draft-output" style="width:100%;min-height:200px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:12px;font-size:12px;line-height:1.5;color:var(--cb-white);resize:vertical;">${res.result}</textarea>
+              <div style="display:flex;gap:8px;margin-top:10px;">
+                <button id="draft-copy" class="cb-btn cb-btn-primary" style="flex:1;">📋 Copy Draft</button>
+                <button id="draft-insert" class="cb-btn" style="flex:1;">➤ Insert to Chat</button>
+              </div>
+            `;
+
+            resultsDiv.querySelector('#draft-copy')?.addEventListener('click', async () => {
+              const text = resultsDiv.querySelector('#draft-output').value;
+              await navigator.clipboard.writeText(text);
+              toast('📋 Draft copied!');
+            });
+
+            resultsDiv.querySelector('#draft-insert')?.addEventListener('click', async () => {
+              const text = resultsDiv.querySelector('#draft-output').value;
+              try {
+                await restoreToChat(text, []);
+                toast('➤ Inserted to chat!');
+              } catch (e) {
+                toast('Insert failed');
+              }
+            });
+
+            toast('✨ Draft generated!');
+          } else {
+            resultsDiv.innerHTML = `<div style="color:#f87171;padding:12px;">❌ Generation failed: ${res?.error || 'Unknown error'}</div>`;
+          }
+        } catch (e) {
+          resultsDiv.innerHTML = `<div style="color:#f87171;padding:12px;">❌ Error: ${e.message || 'Unknown error'}</div>`;
+          debugLog('Draft Generator error', e);
+        } finally {
+          generateBtn.disabled = false;
+          generateBtn.innerHTML = '✨ Generate Draft';
+        }
+      });
+    }
+
+    // ============================================
+    // SESSION CLOSER - End-of-chat clarity
+    // ============================================
+    async function showSessionCloser() {
+      const outputArea = (agentContent && agentContent.querySelector('#cb-agent-output')) || (shadow && shadow.getElementById && shadow.getElementById('cb-agent-output'));
+      if (!outputArea) return;
+
+      outputArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+      outputArea.innerHTML = `
+        <div style="padding:4px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+            <div style="width:36px;height:36px;background:linear-gradient(135deg,#f59e0b,#d97706);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;">🔚</div>
+            <div>
+              <div style="font-weight:700;font-size:14px;color:#fff;">Session Closer</div>
+              <div style="font-size:10px;color:rgba(255,255,255,0.5);">Analyzing conversation outcomes...</div>
+            </div>
+          </div>
+          <div style="display:flex;justify-content:center;padding:30px;"><div class="cb-spinner"></div></div>
+        </div>
+      `;
+
+      try {
+        const chatText = await getConversationText();
+        if (!chatText || chatText.length < 20) {
+          outputArea.innerHTML = `
+            <div style="text-align:center;padding:30px;">
+              <div style="font-size:32px;margin-bottom:12px;">💬</div>
+              <div style="font-size:13px;color:#fff;font-weight:600;">No Conversation Found</div>
+              <div style="font-size:11px;color:rgba(255,255,255,0.5);margin-top:4px;">Scan a chat first</div>
+            </div>
+          `;
+          return;
+        }
+
+        const prompt = `Analyze this conversation and return a JSON closure report:
+{"changed":["outcome1","outcome2"],"unresolved":["issue1","issue2"],"nextMove":"specific action to take"}
+
+Conversation:
+${chatText.slice(0, 3500)}
+
+Output ONLY valid JSON:`;
+
+        const res = await new Promise(resolve => {
+          chrome.runtime.sendMessage({ type: 'call_llama', payload: { action: 'generate', text: prompt } }, r => {
+            resolve(chrome.runtime.lastError ? { ok: false } : (r || { ok: false }));
+          });
+        });
+
+        if (res && res.ok && res.result) {
+          let data = { changed: [], unresolved: [], nextMove: '' };
+          try {
+            const jsonMatch = res.result.match(/\{[\s\S]*\}/);
+            if (jsonMatch) data = JSON.parse(jsonMatch[0]);
+          } catch (e) {
+            data.changed = [res.result.slice(0, 100)];
+          }
+
+          const changedHtml = (data.changed || []).map(c => `
+            <div style="display:flex;align-items:flex-start;gap:8px;padding:8px 10px;background:rgba(34,197,94,0.06);border-radius:8px;margin-bottom:4px;">
+              <span style="color:#22c55e;flex-shrink:0;">✓</span>
+              <span style="font-size:11px;color:#fff;line-height:1.4;">${c}</span>
+            </div>
+          `).join('') || '<div style="color:rgba(255,255,255,0.4);font-size:11px;">Nothing identified</div>';
+
+          const unresolvedHtml = (data.unresolved || []).map(u => `
+            <div style="display:flex;align-items:flex-start;gap:8px;padding:8px 10px;background:rgba(251,191,36,0.06);border-radius:8px;margin-bottom:4px;">
+              <span style="color:#fbbf24;flex-shrink:0;">○</span>
+              <span style="font-size:11px;color:#fff;line-height:1.4;">${u}</span>
+            </div>
+          `).join('') || '<div style="color:rgba(255,255,255,0.4);font-size:11px;">All resolved!</div>';
+
+          outputArea.innerHTML = `
+            <div style="padding:4px;">
+              <!-- Changed Section -->
+              <div style="margin-bottom:16px;">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+                  <div style="width:28px;height:28px;background:linear-gradient(135deg,#22c55e,#16a34a);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;">✅</div>
+                  <div>
+                    <div style="font-weight:700;font-size:12px;color:#22c55e;">WHAT CHANGED</div>
+                    <div style="font-size:9px;color:rgba(255,255,255,0.4);">${(data.changed || []).length} outcomes</div>
+                  </div>
+                </div>
+                ${changedHtml}
+              </div>
+              
+              <!-- Unresolved Section -->
+              <div style="margin-bottom:16px;">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+                  <div style="width:28px;height:28px;background:linear-gradient(135deg,#fbbf24,#f59e0b);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;">⏳</div>
+                  <div>
+                    <div style="font-weight:700;font-size:12px;color:#fbbf24;">UNRESOLVED</div>
+                    <div style="font-size:9px;color:rgba(255,255,255,0.4);">${(data.unresolved || []).length} pending</div>
+                  </div>
+                </div>
+                ${unresolvedHtml}
+              </div>
+              
+              <!-- Next Move -->
+              <div style="background:linear-gradient(135deg,rgba(99,102,241,0.12),rgba(99,102,241,0.04));border:1px solid rgba(99,102,241,0.25);border-radius:12px;padding:14px;">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                  <span style="font-size:16px;">➡️</span>
+                  <span style="font-weight:700;font-size:12px;color:#818cf8;">NEXT MOVE</span>
+                </div>
+                <div style="font-size:12px;color:#fff;line-height:1.5;">${data.nextMove || 'No specific action identified'}</div>
+              </div>
+              
+              <!-- Action Button -->
+              <button id="session-copy" class="cb-btn cb-btn-primary" style="width:100%;margin-top:14px;padding:10px;">📋 Copy Report</button>
+            </div>
+          `;
+
+          const copyText = `SESSION CLOSURE REPORT\n\n✅ WHAT CHANGED:\n${(data.changed || []).map(c => `• ${c}`).join('\n')}\n\n⏳ UNRESOLVED:\n${(data.unresolved || []).map(u => `• ${u}`).join('\n')}\n\n➡️ NEXT MOVE:\n${data.nextMove || 'None'}`;
+
+          outputArea.querySelector('#session-copy')?.addEventListener('click', async () => {
+            await navigator.clipboard.writeText(copyText);
+            toast('📋 Copied!');
+          });
+
+          toast('🔚 Report ready!');
+        } else {
+          outputArea.innerHTML = `
+            <div style="text-align:center;padding:30px;">
+              <div style="font-size:32px;margin-bottom:12px;">⚠️</div>
+              <div style="font-size:13px;color:#fff;">Analysis Failed</div>
+            </div>
+          `;
+        }
+      } catch (e) {
+        outputArea.innerHTML = `<div style="color:#f87171;padding:20px;text-align:center;">❌ Error</div>`;
+        debugLog('Session Closer error', e);
+      }
+    }
+
+    // ============================================
+    // COGNITIVE SIMPLIFIER - Make responses lighter
+    // ============================================
+    async function showCognitiveSimplifier() {
+      const outputArea = (agentContent && agentContent.querySelector('#cb-agent-output')) || (shadow && shadow.getElementById && shadow.getElementById('cb-agent-output'));
+      if (!outputArea) return;
+
+      outputArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+      outputArea.innerHTML = `
+        <div style="padding:4px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+            <div style="width:36px;height:36px;background:linear-gradient(135deg,#8b5cf6,#7c3aed);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;">🧠</div>
+            <div>
+              <div style="font-weight:700;font-size:14px;color:#fff;">Cognitive Simplifier</div>
+              <div style="font-size:10px;color:rgba(255,255,255,0.5);">Reducing cognitive load...</div>
+            </div>
+          </div>
+          <div style="display:flex;justify-content:center;padding:30px;"><div class="cb-spinner"></div></div>
+        </div>
+      `;
+
+      try {
+        const chatText = await getConversationText();
+        if (!chatText || chatText.length < 20) {
+          outputArea.innerHTML = `
+            <div style="text-align:center;padding:30px;">
+              <div style="font-size:32px;margin-bottom:12px;">💬</div>
+              <div style="font-size:13px;color:#fff;font-weight:600;">No Conversation Found</div>
+            </div>
+          `;
+          return;
+        }
+
+        const lastResponse = chatText.slice(-2500);
+        const originalWordCount = lastResponse.split(/\s+/).length;
+
+        const prompt = `Simplify this AI response. Return a JSON with the simplified version broken into clear sections:
+{"sections":[{"title":"Main Point","content":"..."},{"title":"Key Details","content":"..."}],"summary":"one sentence summary"}
+
+Text to simplify:
+${lastResponse}
+
+Output ONLY valid JSON:`;
+
+        const res = await new Promise(resolve => {
+          chrome.runtime.sendMessage({ type: 'call_llama', payload: { action: 'generate', text: prompt } }, r => {
+            resolve(chrome.runtime.lastError ? { ok: false } : (r || { ok: false }));
+          });
+        });
+
+        if (res && res.ok && res.result) {
+          let data = { sections: [], summary: '' };
+          let simplifiedText = res.result;
+          try {
+            const jsonMatch = res.result.match(/\{[\s\S]*\}/);
+            if (jsonMatch) data = JSON.parse(jsonMatch[0]);
+          } catch (e) {
+            data.sections = [{ title: 'Simplified', content: res.result }];
+          }
+
+          const sectionsHtml = (data.sections || []).map((s, i) => `
+            <div style="margin-bottom:12px;">
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+                <div style="width:20px;height:20px;background:linear-gradient(135deg,#8b5cf6,#7c3aed);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#fff;">${i + 1}</div>
+                <span style="font-weight:600;font-size:11px;color:#a78bfa;">${s.title || 'Section ' + (i + 1)}</span>
+              </div>
+              <div style="font-size:12px;color:#fff;line-height:1.6;padding-left:26px;">${s.content || ''}</div>
+            </div>
+          `).join('');
+
+          const newWordCount = (data.sections || []).reduce((sum, s) => sum + (s.content || '').split(/\s+/).length, 0);
+          const reduction = Math.round((1 - newWordCount / originalWordCount) * 100);
+
+          outputArea.innerHTML = `
+            <div style="padding:4px;">
+              <!-- Stats -->
+              <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:16px;">
+                <div style="background:linear-gradient(135deg,rgba(139,92,246,0.12),rgba(139,92,246,0.04));border:1px solid rgba(139,92,246,0.2);border-radius:10px;padding:12px;text-align:center;">
+                  <div style="font-size:20px;font-weight:700;color:#8b5cf6;">${reduction > 0 ? reduction : 0}%</div>
+                  <div style="font-size:9px;color:rgba(255,255,255,0.5);">LIGHTER</div>
+                </div>
+                <div style="background:linear-gradient(135deg,rgba(34,197,94,0.12),rgba(34,197,94,0.04));border:1px solid rgba(34,197,94,0.2);border-radius:10px;padding:12px;text-align:center;">
+                  <div style="font-size:20px;font-weight:700;color:#22c55e;">${(data.sections || []).length}</div>
+                  <div style="font-size:9px;color:rgba(255,255,255,0.5);">SECTIONS</div>
+                </div>
+              </div>
+              
+              ${data.summary ? `
+              <div style="background:rgba(139,92,246,0.08);border:1px solid rgba(139,92,246,0.2);border-radius:10px;padding:12px;margin-bottom:16px;">
+                <div style="font-size:10px;color:#a78bfa;font-weight:600;margin-bottom:4px;">TL;DR</div>
+                <div style="font-size:12px;color:#fff;line-height:1.5;">${data.summary}</div>
+              </div>
+              ` : ''}
+              
+              <!-- Sections -->
+              <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:14px;max-height:280px;overflow-y:auto;">
+                ${sectionsHtml || '<div style="color:rgba(255,255,255,0.4);">No sections generated</div>'}
+              </div>
+              
+              <!-- Actions -->
+              <div style="display:flex;gap:8px;margin-top:14px;">
+                <button id="simplify-copy" class="cb-btn" style="flex:1;padding:10px;font-size:11px;">📋 Copy</button>
+                <button id="simplify-insert" class="cb-btn cb-btn-primary" style="flex:1;padding:10px;font-size:11px;">➤ Use This</button>
+              </div>
+            </div>
+          `;
+
+          const copyText = (data.summary ? `TL;DR: ${data.summary}\n\n` : '') + (data.sections || []).map((s, i) => `${i + 1}. ${s.title || 'Section'}\n${s.content || ''}`).join('\n\n');
+
+          outputArea.querySelector('#simplify-copy')?.addEventListener('click', async () => {
+            await navigator.clipboard.writeText(copyText);
+            toast('📋 Copied!');
+          });
+
+          outputArea.querySelector('#simplify-insert')?.addEventListener('click', async () => {
+            try { await restoreToChat(copyText, []); toast('✓ Inserted!'); } catch (e) { toast('Failed'); }
+          });
+
+          toast('🧠 Simplified!');
+        } else {
+          outputArea.innerHTML = `
+            <div style="text-align:center;padding:30px;">
+              <div style="font-size:32px;margin-bottom:12px;">⚠️</div>
+              <div style="font-size:13px;color:#fff;">Simplification Failed</div>
+            </div>
+          `;
+        }
+      } catch (e) {
+        outputArea.innerHTML = `<div style="color:#f87171;padding:20px;text-align:center;">❌ Error</div>`;
+        debugLog('Cognitive Simplifier error', e);
+      }
+    }
+
+    // ============================================
+    // AUTO-CONTINUE - Continue cut-off responses
+    // ============================================
+    async function showAutoContinue() {
+      const outputArea = (agentContent && agentContent.querySelector('#cb-agent-output')) || (shadow && shadow.getElementById && shadow.getElementById('cb-agent-output'));
+      if (!outputArea) return;
+
+      outputArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+      // Immediately detect
+      outputArea.innerHTML = `
+        <div style="padding:4px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+            <div style="width:36px;height:36px;background:linear-gradient(135deg,#06b6d4,#0891b2);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;">🔁</div>
+            <div>
+              <div style="font-weight:700;font-size:14px;color:#fff;">Auto-Continue</div>
+              <div style="font-size:10px;color:rgba(255,255,255,0.5);">Scanning for incomplete responses...</div>
+            </div>
+          </div>
+          <div style="display:flex;justify-content:center;padding:20px;"><div class="cb-spinner"></div></div>
+        </div>
+      `;
+
+      try {
+        const chatText = await getConversationText();
+        if (!chatText || chatText.length < 20) {
+          outputArea.innerHTML = `
+            <div style="text-align:center;padding:30px;">
+              <div style="font-size:32px;margin-bottom:12px;">💬</div>
+              <div style="font-size:13px;color:#fff;font-weight:600;">No Conversation Found</div>
+            </div>
+          `;
+          return;
+        }
+
+        const lastPart = chatText.slice(-500);
+        const incompleteIndicators = [
+          /\.{3}$/,
+          /[,;:]$/,
+          /\b(and|or|but|however|therefore|for example|such as|including)\s*$/i,
+          /\d+\.\s*$/,
+          /[-•]\s*$/,
+          /```[^`]*$/,
+        ];
+        const isIncomplete = incompleteIndicators.some(p => p.test(lastPart.trim()));
+
+        if (isIncomplete) {
+          outputArea.innerHTML = `
+            <div style="padding:4px;">
+              <!-- Status Card -->
+              <div style="background:linear-gradient(135deg,rgba(245,158,11,0.12),rgba(245,158,11,0.04));border:1px solid rgba(245,158,11,0.25);border-radius:12px;padding:16px;margin-bottom:16px;">
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+                  <div style="width:32px;height:32px;background:linear-gradient(135deg,#f59e0b,#d97706);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;">⚠️</div>
+                  <div>
+                    <div style="font-weight:700;font-size:13px;color:#f59e0b;">Incomplete Response Detected</div>
+                    <div style="font-size:10px;color:rgba(255,255,255,0.5);">The last message appears cut off</div>
+                  </div>
+                </div>
+                <div style="font-size:11px;color:rgba(255,255,255,0.6);line-height:1.5;padding-left:42px;">
+                  Click the button below to ask the AI to continue where it left off.
+                </div>
+              </div>
+              
+              <!-- Preview -->
+              <div style="margin-bottom:16px;">
+                <div style="font-size:10px;color:rgba(255,255,255,0.4);margin-bottom:6px;">LAST 100 CHARACTERS:</div>
+                <div style="background:rgba(0,0,0,0.2);border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:10px;font-size:11px;color:rgba(255,255,255,0.6);font-family:monospace;">...${lastPart.slice(-100)}</div>
+              </div>
+              
+              <!-- Action Button -->
+              <button id="continue-insert" class="cb-btn cb-btn-primary" style="width:100%;padding:12px;font-size:12px;">
+                ➤ Insert "Continue" Prompt
+              </button>
+            </div>
+          `;
+        } else {
+          outputArea.innerHTML = `
+            <div style="padding:4px;">
+              <!-- Status Card -->
+              <div style="background:linear-gradient(135deg,rgba(34,197,94,0.12),rgba(34,197,94,0.04));border:1px solid rgba(34,197,94,0.25);border-radius:12px;padding:16px;margin-bottom:16px;">
+                <div style="display:flex;align-items:center;gap:10px;">
+                  <div style="width:32px;height:32px;background:linear-gradient(135deg,#22c55e,#16a34a);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;">✓</div>
+                  <div>
+                    <div style="font-weight:700;font-size:13px;color:#22c55e;">Response Looks Complete</div>
+                    <div style="font-size:10px;color:rgba(255,255,255,0.5);">No obvious signs of truncation</div>
+                  </div>
+                </div>
+              </div>
+              
+              <div style="font-size:11px;color:rgba(255,255,255,0.5);text-align:center;margin-bottom:16px;">
+                You can still insert a continue prompt if you think more content is needed.
+              </div>
+              
+              <!-- Action Button -->
+              <button id="continue-insert" class="cb-btn" style="width:100%;padding:12px;font-size:12px;">
+                ➤ Insert "Continue" Prompt Anyway
+              </button>
+            </div>
+          `;
+        }
+
+        outputArea.querySelector('#continue-insert')?.addEventListener('click', async () => {
+          try {
+            await restoreToChat("Please continue from where you left off.", []);
+            toast('➤ Inserted!');
+          } catch (e) {
+            toast('Failed');
+          }
+        });
+
+      } catch (e) {
+        outputArea.innerHTML = `<div style="color:#f87171;padding:20px;text-align:center;">❌ Error</div>`;
+      }
     }
 
     // Show Quick Agent Interface (original simple agent, lightly polished UI)
@@ -10703,6 +11168,81 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           toast('Copy failed');
         }
       }
+    });
+
+    // ⚡ Sidebar Quick Actions Event Listeners
+    shadow.getElementById('qa-sidebar-summary')?.addEventListener('click', async () => {
+      try {
+        const chatText = await getConversationText();
+        if (!chatText || chatText.length < 10) { toast('No conversation to summarize'); return; }
+        toast('Generating summary...');
+        const summaryPrompt = `Summarize this conversation in 2-3 sentences. Be concise:\n\n${chatText.slice(0, 3000)}`;
+        const res = await new Promise(resolve => {
+          chrome.runtime.sendMessage({ type: 'call_llama', payload: { action: 'generate', text: summaryPrompt } }, r => {
+            resolve(chrome.runtime.lastError ? { ok: false } : (r || { ok: false }));
+          });
+        });
+        if (res && res.ok && res.result) {
+          await navigator.clipboard.writeText(res.result);
+          toast('📋 Summary copied!');
+        } else { toast('Summary failed'); }
+      } catch (e) { toast('Error: ' + (e.message || 'unknown')); }
+    });
+
+    shadow.getElementById('qa-sidebar-export')?.addEventListener('click', async () => {
+      try {
+        const convs = await loadConversationsAsync();
+        if (!convs || convs.length === 0) { toast('No conversations to export'); return; }
+        const recent = convs.slice(0, 5);
+        const exportData = JSON.stringify(recent, null, 2);
+        const blob = new Blob([exportData], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `chatbridge-export-${Date.now()}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        toast('📤 Exported ' + recent.length + ' conversations');
+      } catch (e) { toast('Export failed'); }
+    });
+
+    shadow.getElementById('qa-sidebar-stats')?.addEventListener('click', async () => {
+      try {
+        const chatText = await getConversationText();
+        const words = chatText ? chatText.split(/\s+/).length : 0;
+        const chars = chatText ? chatText.length : 0;
+        const readTime = Math.ceil(words / 200);
+        const convs = await loadConversationsAsync();
+        toast(`📊 ${words.toLocaleString()} words • ${chars.toLocaleString()} chars • ~${readTime} min read • ${convs.length} saved`);
+      } catch (e) { toast('Stats failed'); }
+    });
+
+    shadow.getElementById('qa-sidebar-archive')?.addEventListener('click', async () => {
+      try {
+        const chatText = await getConversationText();
+        if (!chatText) { toast('No conversation to archive'); return; }
+        const archived = JSON.parse(localStorage.getItem('chatbridge:archived') || '[]');
+        archived.push({ url: window.location.href, ts: Date.now(), preview: chatText.slice(0, 100) });
+        localStorage.setItem('chatbridge:archived', JSON.stringify(archived));
+        toast('✅ Marked as complete');
+      } catch (e) { toast('Archive failed'); }
+    });
+
+    shadow.getElementById('qa-sidebar-star')?.addEventListener('click', async () => {
+      try {
+        const starred = JSON.parse(localStorage.getItem('chatbridge:starred') || '[]');
+        const url = window.location.href;
+        const isStarred = starred.some(s => s.url === url);
+        if (isStarred) {
+          const updated = starred.filter(s => s.url !== url);
+          localStorage.setItem('chatbridge:starred', JSON.stringify(updated));
+          toast('⭐ Unstarred');
+        } else {
+          starred.push({ url, ts: Date.now() });
+          localStorage.setItem('chatbridge:starred', JSON.stringify(starred));
+          toast('⭐ Starred!');
+        }
+      } catch (e) { toast('Star failed'); }
     });
 
     // Clear History button - remove all saved conversations
@@ -13064,239 +13604,17 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
     btnCloseSmart.addEventListener('click', () => { try { smartView.classList.remove('cb-view-active'); } catch (e) { } });
 
     // ============================================
-    // AGENT HUB: AI Analysis & Smart Actions
+    // AGENT HUB: New UI with Action Extractor, Draft Generator, Quick Actions
     // ============================================
     btnKnowledgeGraph.addEventListener('click', async () => {
       try {
         closeAllViews();
         agentView.classList.add('cb-view-active');
-
-        // Get the content container
-        const content = agentView.querySelector('#cb-agent-content');
-        if (!content) return;
-
-        // Show loading state
-        content.innerHTML = `
-          <div style="text-align:center;padding:40px 20px;">
-            <div class="cb-spinner" style="margin:0 auto 16px;"></div>
-            <p style="color:var(--cb-subtext);font-size:14px;">Analyzing conversation...</p>
-          </div>
-        `;
-
-        // Get conversation text
-        const chatText = await getConversationText();
-        if (!chatText || chatText.length < 20) {
-          content.innerHTML = `
-            <div style="text-align:center;padding:40px 20px;">
-              <div style="font-size:48px;margin-bottom:16px;">💬</div>
-              <p style="color:var(--cb-white);font-size:16px;font-weight:600;margin-bottom:8px;">No Conversation Found</p>
-              <p style="color:var(--cb-subtext);font-size:13px;">Click "Scan Chat" first to capture the current conversation.</p>
-            </div>
-          `;
-          return;
-        }
-
-        // Analyze with AI
-        try {
-          const analysisPrompt = `Analyze this conversation and provide actionable insights in JSON format:
-{
-  "summary": "1-2 sentence summary of what this conversation is about",
-  "topics": ["topic1", "topic2", "topic3"],
-  "sentiment": "positive/neutral/negative/mixed",
-  "suggestedActions": [
-    {"action": "Clear action item or follow-up", "priority": "high/medium/low"},
-    {"action": "Another suggested action", "priority": "high/medium/low"}
-  ],
-  "keyInsights": ["key insight 1", "key insight 2"],
-  "questionsToAsk": ["suggested follow-up question 1", "suggested follow-up question 2"]
-}
-
-Conversation:
-${chatText.slice(0, 8000)}
-
-Output ONLY valid JSON:`;
-
-          const result = await callGeminiAsync({ action: 'custom', prompt: analysisPrompt, temperature: 0.3 });
-          debugLog('Agent analysis result:', result);
-
-          let analysis = null;
-          let errorMessage = null;
-
-          if (!result) {
-            errorMessage = 'No response from AI service. Please check your connection.';
-          } else if (!result.ok) {
-            // Handle specific error types
-            if (result.error === 'no_api_key') {
-              errorMessage = 'Gemini API key not configured. Go to ChatBridge Options to set it up.';
-            } else if (result.error === 'rate_limited') {
-              errorMessage = 'Rate limit reached. Please wait a moment and try again.';
-            } else if (result.error === 'all_models_failed') {
-              errorMessage = 'AI service temporarily unavailable. Please try again later.';
-            } else {
-              errorMessage = result.message || result.error || 'AI service error. Please try again.';
-            }
-          } else if (result.result) {
-            try {
-              // Extract JSON from response
-              const jsonMatch = result.result.match(/\{[\s\S]*\}/);
-              if (jsonMatch) {
-                analysis = JSON.parse(jsonMatch[0]);
-              } else {
-                errorMessage = 'AI response format error. Please try again.';
-                debugLog('No JSON found in response:', result.result.slice(0, 200));
-              }
-            } catch (e) {
-              debugLog('Agent JSON parse error', e);
-              errorMessage = 'Failed to parse AI response. Please try again.';
-            }
-          }
-
-          if (analysis) {
-            // Render analysis results
-            const topicsHtml = (analysis.topics || []).map(t =>
-              `<span style="display:inline-block;padding:4px 10px;background:rgba(0,180,255,0.15);border:1px solid rgba(0,180,255,0.3);border-radius:12px;font-size:12px;margin:4px 4px 4px 0;">${t}</span>`
-            ).join('');
-
-            const actionsHtml = (analysis.suggestedActions || []).map(a => `
-              <div class="cb-action-item" style="padding:12px;background:rgba(255,255,255,0.03);border:1px solid var(--cb-border);border-radius:8px;margin-bottom:8px;cursor:pointer;transition:all 0.2s;" data-action="${encodeURIComponent(a.action)}">
-                <div style="display:flex;align-items:center;justify-content:space-between;">
-                  <span style="font-size:13px;color:var(--cb-white);">${a.action}</span>
-                  <span style="font-size:10px;padding:2px 6px;background:${a.priority === 'high' ? 'rgba(255,100,100,0.2)' : a.priority === 'medium' ? 'rgba(255,200,100,0.2)' : 'rgba(100,255,100,0.2)'};border-radius:4px;color:${a.priority === 'high' ? '#ff6666' : a.priority === 'medium' ? '#ffcc66' : '#66ff66'};">${a.priority}</span>
-                </div>
-              </div>
-            `).join('');
-
-            const questionsHtml = (analysis.questionsToAsk || []).map(q => `
-              <div class="cb-question-chip" style="padding:10px 14px;background:linear-gradient(135deg,rgba(140,30,255,0.1),rgba(0,180,255,0.1));border:1px solid rgba(140,30,255,0.25);border-radius:8px;margin-bottom:8px;cursor:pointer;transition:all 0.2s;font-size:13px;color:var(--cb-white);" data-question="${encodeURIComponent(q)}">
-                💡 ${q}
-              </div>
-            `).join('');
-
-            const insightsHtml = (analysis.keyInsights || []).map(i =>
-              `<li style="margin-bottom:6px;color:var(--cb-subtext);font-size:13px;">${i}</li>`
-            ).join('');
-
-            content.innerHTML = `
-              <div style="margin-bottom:20px;">
-                <div style="font-size:12px;font-weight:600;color:var(--cb-accent-primary);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px;">Summary</div>
-                <p style="margin:0;font-size:14px;line-height:1.6;color:var(--cb-white);">${analysis.summary || 'No summary available'}</p>
-              </div>
-              
-              <div style="margin-bottom:20px;">
-                <div style="font-size:12px;font-weight:600;color:var(--cb-accent-primary);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px;">Topics</div>
-                <div>${topicsHtml || '<span style="color:var(--cb-subtext);">No topics detected</span>'}</div>
-              </div>
-              
-              <div style="margin-bottom:20px;">
-                <div style="font-size:12px;font-weight:600;color:var(--cb-accent-primary);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px;">Suggested Next Steps</div>
-                ${actionsHtml || '<p style="color:var(--cb-subtext);font-size:13px;">No actions suggested</p>'}
-              </div>
-              
-              <div style="margin-bottom:20px;">
-                <div style="font-size:12px;font-weight:600;color:var(--cb-accent-primary);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px;">Follow-up Questions</div>
-                ${questionsHtml || '<p style="color:var(--cb-subtext);font-size:13px;">No follow-up questions</p>'}
-              </div>
-              
-              ${insightsHtml ? `
-              <div style="margin-bottom:20px;">
-                <div style="font-size:12px;font-weight:600;color:var(--cb-accent-primary);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px;">Key Insights</div>
-                <ul style="margin:0;padding-left:20px;">${insightsHtml}</ul>
-              </div>
-              ` : ''}
-              
-              <div style="padding-top:16px;border-top:1px solid var(--cb-border);">
-                <button class="cb-btn cb-btn-primary" id="cb-agent-deep-analysis" style="width:100%;padding:12px;">🔬 Deep Analysis</button>
-              </div>
-            `;
-
-            // Add click handlers for actions
-            content.querySelectorAll('.cb-action-item').forEach(el => {
-              el.addEventListener('click', () => {
-                const action = decodeURIComponent(el.dataset.action || '');
-                if (action) {
-                  navigator.clipboard.writeText(action).then(() => toast('Action copied!')).catch(() => { });
-                }
-              });
-              el.addEventListener('mouseenter', () => { el.style.background = 'rgba(255,255,255,0.08)'; el.style.borderColor = 'rgba(0,180,255,0.4)'; });
-              el.addEventListener('mouseleave', () => { el.style.background = 'rgba(255,255,255,0.03)'; el.style.borderColor = 'var(--cb-border)'; });
-            });
-
-            // Add click handlers for questions
-            content.querySelectorAll('.cb-question-chip').forEach(el => {
-              el.addEventListener('click', async () => {
-                const question = decodeURIComponent(el.dataset.question || '');
-                if (question) {
-                  await restoreToChat(question);
-                  toast('Question added to chat!');
-                }
-              });
-              el.addEventListener('mouseenter', () => { el.style.transform = 'translateX(4px)'; el.style.borderColor = 'rgba(140,30,255,0.5)'; });
-              el.addEventListener('mouseleave', () => { el.style.transform = 'translateX(0)'; el.style.borderColor = 'rgba(140,30,255,0.25)'; });
-            });
-
-            // Deep analysis button
-            const deepBtn = content.querySelector('#cb-agent-deep-analysis');
-            if (deepBtn) {
-              deepBtn.addEventListener('click', async () => {
-                deepBtn.disabled = true;
-                deepBtn.textContent = '⏳ Analyzing...';
-                try {
-                  const deepPrompt = `Provide a comprehensive analysis of this conversation including:
-1. Main objectives and whether they were achieved
-2. Key decisions or conclusions reached
-3. Areas of agreement and disagreement
-4. Potential next steps or action items
-5. Unanswered questions or concerns
-6. Overall effectiveness of the conversation
-
-Conversation:
-${chatText.slice(0, 12000)}`;
-
-                  const deepResult = await callGeminiAsync({ action: 'prompt', text: deepPrompt, temperature: 0.4 });
-                  if (deepResult && deepResult.ok && deepResult.result) {
-                    const modal = document.createElement('div');
-                    modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);z-index:999999;display:flex;align-items:center;justify-content:center;padding:40px;';
-                    modal.innerHTML = `
-                      <div style="background:var(--cb-bg);border:1px solid var(--cb-border);border-radius:12px;max-width:700px;width:100%;max-height:80vh;overflow:auto;padding:24px;">
-                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
-                          <h3 style="margin:0;font-size:18px;color:var(--cb-white);">🔬 Deep Analysis</h3>
-                          <button class="cb-btn" style="padding:4px 12px;" onclick="this.closest('div[style*=fixed]').remove()">✕</button>
-                        </div>
-                        <div style="white-space:pre-wrap;font-size:14px;line-height:1.7;color:var(--cb-subtext);">${deepResult.result}</div>
-                      </div>
-                    `;
-                    modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
-                    document.body.appendChild(modal);
-                  }
-                } catch (e) { toast('Analysis failed'); }
-                deepBtn.disabled = false;
-                deepBtn.textContent = '🔬 Deep Analysis';
-              });
-            }
-          } else {
-            // Show specific error message if available
-            const displayError = errorMessage || 'Could not analyze the conversation. Please try again.';
-            content.innerHTML = `
-              <div style="text-align:center;padding:40px 20px;">
-                <div style="font-size:48px;margin-bottom:16px;">⚠️</div>
-                <p style="color:var(--cb-white);font-size:16px;font-weight:600;margin-bottom:8px;">Analysis Failed</p>
-                <p style="color:var(--cb-subtext);font-size:13px;margin-bottom:16px;">${displayError}</p>
-                <button class="cb-btn cb-btn-primary" id="cb-agent-retry" style="padding:10px 20px;">🔄 Try Again</button>
-              </div>
-            `;
-            // Add retry handler
-            const retryBtn = content.querySelector('#cb-agent-retry');
-            if (retryBtn) {
-              retryBtn.addEventListener('click', () => {
-                btnKnowledgeGraph.click();
-              });
-            }
-          }
-        } catch (e) {
-          debugLog('Agent analysis error', e);
-          content.innerHTML = `<div style="text-align:center;padding:40px;color:var(--cb-subtext);">Analysis failed. Please try again.</div>`;
-        }
-      } catch (e) { toast('Failed to open Agent Hub'); debugLog('open agent view', e); }
+        await renderAgentHub();
+      } catch (e) {
+        toast('Failed to open Agent Hub');
+        debugLog('open agent view', e);
+      }
     });
 
     btnCloseAgent.addEventListener('click', () => { try { agentView.classList.remove('cb-view-active'); } catch (e) { } });
@@ -13371,15 +13689,15 @@ ${chatText.slice(0, 12000)}`;
       if (!container) return;
 
       const toggleHTML = `
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:8px;background:rgba(0,180,255,0.1);border-radius:6px;">
+          < div style = "display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:8px;background:rgba(0,180,255,0.1);border-radius:6px;" >
           <span style="font-size:11px;font-weight:600;opacity:0.9;">Detail Level:</span>
           <div class="cb-detail-toggle" style="display:flex;gap:4px;">
             <button class="cb-detail-btn" data-level="concise" style="padding:4px 10px;font-size:11px;border-radius:4px;border:1px solid rgba(0,180,255,0.3);background:rgba(0,180,255,0.2);color:#E6E9F0;cursor:pointer;">Concise</button>
             <button class="cb-detail-btn" data-level="detailed" style="padding:4px 10px;font-size:11px;border-radius:4px;border:1px solid rgba(0,180,255,0.3);background:transparent;color:#E6E9F0;cursor:pointer;">Detailed</button>
             <button class="cb-detail-btn" data-level="expert" style="padding:4px 10px;font-size:11px;border-radius:4px;border:1px solid rgba(0,180,255,0.3);background:transparent;color:#E6E9F0;cursor:pointer;">Expert</button>
           </div>
-        </div>
-      `;
+        </div >
+          `;
 
       container.insertAdjacentHTML('afterbegin', toggleHTML);
 
@@ -13616,7 +13934,7 @@ ${chatText.slice(0, 12000)}`;
         try {
           let s = String(str || '').toLowerCase();
           // strip punctuation except spaces, dash, underscore
-          s = s.replace(/["'`.,:;!?()\[\]{}]/g, ' ').replace(/\s+/g, ' ').trim();
+          s = s.replace(/["'`.,: ; !? () \[\]{ }]/g, ' ').replace(/\s +/g, ' ').trim();
           // remove prompt-like prefixes
           s = s.replace(/^(how to|how can i|how can we|can you|please|write|generate|create|build|explain|tell me|what is|show me|give me|help me)\s+/i, '').trim();
           // limit to 3 words max
