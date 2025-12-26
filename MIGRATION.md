@@ -14,8 +14,8 @@ Follow the instructions in `worker/SETUP.md`:
 npm install -g wrangler
 wrangler login
 cd worker
-wrangler secret put AIzaSyDHI3zMNupMAScI9aGVGL_nahrxoqNwMvc        # Paste your Gemini key
-wrangler secret put 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'   # Paste your HF key
+wrangler secret put GEMINI_API_KEY        # Enter your Gemini key when prompted
+wrangler secret put HUGGINGFACE_API_KEY   # Enter your HF key when prompted
 wrangler deploy
 ```
 
@@ -129,9 +129,8 @@ const response = await window.apiClient.callLlama({
 # Remove sensitive strings from all commits
 bfg --replace-text passwords.txt
 
-# passwords.txt should contain:
-# AIzaSyDHI3zMNupMAScI9aGVGL_nahrxoqNwMvc
-# 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
+# passwords.txt should contain your actual API keys
+# (one per line, no comments)
 ```
 
 ### Or use GitHub's approach:
