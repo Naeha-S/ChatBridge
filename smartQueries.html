@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Queries Demo - ChatBridge</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="smartQueries.css">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #f0f4ff;
+        }
+
+        .demo-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        .demo-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .demo-header h1 {
+            font-size: 48px;
+            font-weight: 800;
+            background: linear-gradient(135deg, #6366f1, #818cf8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 12px;
+        }
+
+        .demo-header p {
+            font-size: 18px;
+            color: #6b7280;
+        }
+
+        #smartQueriesDemo {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="demo-container">
+        <div class="demo-header">
+            <h1>🔮 Smart Queries Demo</h1>
+            <p>Experience the new luxury AI command center</p>
+        </div>
+
+        <div id="smartQueriesDemo"></div>
+    </div>
+
+    <script src="smartQueries.js"></script>
+    <script>
+        // Mock chrome.runtime for demo
+        if (typeof chrome === 'undefined') {
+            window.chrome = {
+                runtime: {
+                    sendMessage: function (msg, callback) {
+                        // Mock Llama response for demo
+                        setTimeout(() => {
+                            if (msg.type === 'call_llama') {
+                                callback({
+                                    ok: true,
+                                    result: `This is a demo response from the AI assistant.\n\nThe question was: "${msg.payload.text}"\n\n**Key Points:**\n- This is just a simulated response\n- In the real extension, Llama 3.1 would process your query\n- The response would be based on conversation context\n\nYou can ask follow-up questions or use the Quick Templates!`
+                                });
+                            }
+                        }, 1000);
+                    }
+                }
+            };
+        }
+
+        // Mock pick adapter for demo
+        if (typeof window.pickAdapter === 'undefined') {
+            window.pickAdapter = function () {
+                return {
+                    getMessages: function () {
+                        return [
+                            { role: 'user', text: 'How do I implement authentication in a React app?' },
+                            { role: 'assistant', text: 'Here are the main steps for implementing authentication in React...' },
+                            { role: 'user', text: 'What about JWT tokens?' },
+                            { role: 'assistant', text: 'JWT tokens are a popular choice for authentication...' }
+                        ];
+                    }
+                };
+            };
+        }
+
+        // Mock window.toast
+        window.toast = function (message) {
+            console.log('[Toast]', message);
+            const toast = document.createElement('div');
+            toast.textContent = message;
+            toast.style.cssText = `
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        background: #111827;
+        color: white;
+        padding: 12px 20px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 500;
+        z-index: 10000;
+        animation: slideIn 0.3s ease;
+      `;
+            document.body.appendChild(toast);
+            setTimeout(() => {
+                toast.style.animation = 'slideOut 0.3s ease';
+                setTimeout(() => toast.remove(), 300);
+            }, 2000);
+        };
+
+        const style = document.createElement('style');
+        style.textContent = `
+      @keyframes slideIn {
+        from { transform: translateY(100px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+      }
+      @keyframes slideOut {
+        from { transform: translateY(0); opacity: 1; }
+        to { transform: translateY(100px); opacity: 0; }
+      }
+    `;
+        document.head.appendChild(style);
+
+        // Initialize the Smart Queries tab
+        const assistant = new window.LiveAIAssistant();
+        const container = document.getElementById('smartQueriesDemo');
+
+        // Render the full interface
+        const layout = `
+      <div class="sq-container">
+        <div class="sq-header">
+          <h2 class="sq-main-title">
+            <span class="sq-title-icon">🔮</span>
+            Smart Queries
+          </h2>
+          <p class="sq-subtitle">AI-powered insights and search for your conversations</p>
+        </div>
+
+        <div class="sq-grid">
+          <div class="sq-col-full" id="sq-assistant-container"></div>
+        </div>
+      </div>
+    `;
+
+        container.innerHTML = layout;
+        assistant.renderAssistant(document.getElementById('sq-assistant-container'));
+
+        console.log('✅ Smart Queries Demo loaded successfully!');
+    </script>
+</body>
+
+</html>

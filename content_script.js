@@ -1200,9 +1200,17 @@
   @keyframes cb-success { 0% { transform: scale(0.8); opacity: 0; } 50% { transform: scale(1.1); } 100% { transform: scale(1); opacity: 1; } }
   @keyframes cb-shimmer { 0% { background-position: -200% center; } 100% { background-position: 200% center; } }
   @keyframes cb-fade-in { from { opacity: 0; } to { opacity: 1; } }
-  @keyframes cb-slide-up { from { transform: translateY(10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }\r
+  @keyframes cb-slide-up { from { transform: translateY(12px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
   @keyframes cb-pulse-glow { 0%, 100% { box-shadow: 0 4px 12px rgba(0, 180, 255, 0.3), 0 0 20px rgba(96, 165, 250, 0.2); } 50% { box-shadow: 0 4px 20px rgba(0, 180, 255, 0.5), 0 0 32px rgba(96, 165, 250, 0.35); } }
-    `;
+  
+  /* Tooltip styles */
+  .cb-tooltip { position:relative; }
+  .cb-tooltip::after { content: attr(title); position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%) translateY(-6px); background: rgba(0,0,0,0.8); color: #fff; padding: 6px 10px; border-radius: 6px; font-size: 11px; white-space: nowrap; visibility: hidden; opacity: 0; transition: opacity 0.2s 0.6s, transform 0.2s 0.6s; pointer-events: none; z-index: 1000; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+  .cb-tooltip:hover::after { visibility: visible; opacity: 1; transform: translateX(-50%) translateY(-10px); }
+  
+  /* Agent specific animations */
+  .cb-agent-enter { animation: cb-slide-up 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
+  `;
     shadow.appendChild(style);
     // Apply saved theme preference - DEFAULT TO DARK
     try {
@@ -1410,20 +1418,20 @@
     // ⚡ Quick Actions Row - Always visible for instant access
     const quickActionsRow = document.createElement('div');
     quickActionsRow.className = 'cb-quick-actions-row';
-    quickActionsRow.style.cssText = 'display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:8px;padding:0 2px;';
+    quickActionsRow.style.cssText = 'display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px;padding:0 2px;';
 
+    // Note: Summary removed - redundant with Summarize button
     const qaButtons = [
-      { id: 'qa-sidebar-summary', icon: '📋', label: 'Summary', title: 'Copy quick summary to clipboard' },
-      { id: 'qa-sidebar-export', icon: '📤', label: 'Export', title: 'Export recent conversations' },
-      { id: 'qa-sidebar-stats', icon: '📊', label: 'Stats', title: 'Show conversation stats' },
-      { id: 'qa-sidebar-archive', icon: '✅', label: 'Done', title: 'Mark conversation complete' },
-      { id: 'qa-sidebar-star', icon: '⭐', label: 'Star', title: 'Star this conversation' }
+      { id: 'qa-sidebar-export', icon: '📤', label: 'Export', title: 'Export recent conversations as JSON' },
+      { id: 'qa-sidebar-stats', icon: '📊', label: 'Stats', title: 'Show word count, read time & saved count' },
+      { id: 'qa-sidebar-archive', icon: '✅', label: 'Done', title: 'Mark this conversation as complete' },
+      { id: 'qa-sidebar-star', icon: '⭐', label: 'Star', title: 'Star/unstar this conversation' }
     ];
 
     qaButtons.forEach(qa => {
       const btn = document.createElement('button');
       btn.id = qa.id;
-      btn.className = 'cb-btn cb-btn-quick';
+      btn.className = 'cb-btn cb-btn-quick cb-tooltip';
       btn.title = qa.title;
       btn.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 4px;font-size:14px;min-height:44px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);';
       btn.innerHTML = `<span>${qa.icon}</span><span style="font-size:8px;opacity:0.6;">${qa.label}</span>`;
@@ -7721,84 +7729,88 @@ Respond with JSON only:
         agentContent.innerHTML = '';
         debugLog('Rendering Agent Hub...');
 
-        // Premium Header with gradient glow
+        // Main container with proper padding
+        const mainContainer = document.createElement('div');
+        mainContainer.style.cssText = 'padding:16px;display:flex;flex-direction:column;gap:16px;';
+
+        // Premium Header - cleaner
         const header = document.createElement('div');
         header.style.cssText = `
-          margin:12px;padding:16px 18px;
-          background:linear-gradient(135deg,rgba(138,43,226,0.12),rgba(0,180,255,0.08));
-          border:1px solid rgba(138,43,226,0.3);border-radius:16px;
+          padding:18px 20px;
+          background:linear-gradient(135deg,rgba(138,43,226,0.15),rgba(6,182,212,0.1));
+          border:1px solid rgba(138,43,226,0.25);border-radius:14px;
           position:relative;overflow:hidden;
         `;
         header.innerHTML = `
-          <div style="position:absolute;top:-20px;right:-20px;width:80px;height:80px;background:radial-gradient(circle,rgba(138,43,226,0.3),transparent);border-radius:50%;filter:blur(20px);"></div>
+          <div style="position:absolute;top:-30px;right:-30px;width:100px;height:100px;background:radial-gradient(circle,rgba(138,43,226,0.25),transparent);border-radius:50%;filter:blur(25px);"></div>
           <div style="display:flex;align-items:center;gap:14px;position:relative;z-index:1;">
-            <div style="width:44px;height:44px;background:linear-gradient(135deg,#8b5cf6,#06b6d4);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 4px 15px rgba(139,92,246,0.4);">🤖</div>
+            <div style="width:48px;height:48px;background:linear-gradient(135deg,#8b5cf6,#06b6d4);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:24px;box-shadow:0 4px 16px rgba(139,92,246,0.35);">🤖</div>
             <div style="flex:1;">
-              <div style="font-weight:700;color:#fff;font-size:15px;letter-spacing:-0.3px;">Power Agents</div>
-              <div style="font-size:11px;color:rgba(255,255,255,0.6);margin-top:2px;">6 intelligent tools to supercharge your workflow</div>
+              <div style="font-weight:700;color:#fff;font-size:16px;letter-spacing:-0.3px;">Power Agents</div>
+              <div style="font-size:12px;color:rgba(255,255,255,0.55);margin-top:3px;">6 intelligent tools for your workflow</div>
             </div>
           </div>
         `;
-        agentContent.appendChild(header);
+        mainContainer.appendChild(header);
 
-        // Agents Container - Vertical cards with premium styling
-        const agentsContainer = document.createElement('div');
-        agentsContainer.style.cssText = 'padding:0 12px;display:flex;flex-direction:column;gap:8px;';
+        // Agents Grid - 2 columns for cleaner layout
+        const agentsGrid = document.createElement('div');
+        agentsGrid.style.cssText = 'display:grid;grid-template-columns:repeat(2,1fr);gap:10px;';
 
         // Agent definitions - The Final 6
         const agents = [
           {
             id: 'action-extractor',
-            name: 'Action Extractor',
-            desc: 'Get your to-do list instantly',
+            name: 'Tasks',
+            desc: 'Extract to-dos',
             icon: '📝',
             gradient: 'linear-gradient(135deg,#10b981,#059669)',
-            glow: 'rgba(16,185,129,0.3)',
+            glow: 'rgba(16,185,129,0.25)',
             action: showActionExtractor
           },
           {
             id: 'session-closer',
-            name: 'Session Closer',
-            desc: 'What changed • Unresolved • Next move',
+            name: 'Closer',
+            desc: 'Session summary',
             icon: '🔚',
             gradient: 'linear-gradient(135deg,#f59e0b,#d97706)',
-            glow: 'rgba(245,158,11,0.3)',
+            glow: 'rgba(245,158,11,0.25)',
             action: showSessionCloser
           },
           {
             id: 'cognitive-simplifier',
-            name: 'Cognitive Simplifier',
-            desc: 'Make responses lighter to think through',
+            name: 'Simplify',
+            desc: 'Lighter to read',
             icon: '🧠',
             gradient: 'linear-gradient(135deg,#8b5cf6,#7c3aed)',
-            glow: 'rgba(139,92,246,0.3)',
+            glow: 'rgba(139,92,246,0.25)',
             action: showCognitiveSimplifier
           },
           {
             id: 'draft-generator',
-            name: 'Draft Generator',
-            desc: 'Create emails, notes & status updates',
+            name: 'Draft',
+            desc: 'Email & notes',
             icon: '📧',
             gradient: 'linear-gradient(135deg,#3b82f6,#2563eb)',
-            glow: 'rgba(59,130,246,0.3)',
+            glow: 'rgba(59,130,246,0.25)',
             action: showDraftGenerator
           },
           {
             id: 'echo-synth',
             name: 'EchoSynth',
-            desc: 'Merge insights from multiple AIs',
+            desc: 'Multi-AI merge',
             icon: '⚡',
             gradient: 'linear-gradient(135deg,#ec4899,#db2777)',
-            glow: 'rgba(236,72,153,0.3)',
+            glow: 'rgba(236,72,153,0.25)',
             action: showEchoSynth
           },
           {
             id: 'auto-continue',
-            name: 'Auto-Continue',
-            desc: 'Continue cut-off AI responses instantly',
+            name: 'Continue',
+            desc: 'Resume cut-off',
             icon: '🔁',
             gradient: 'linear-gradient(135deg,#06b6d4,#0891b2)',
-            glow: 'rgba(6,182,212,0.3)',
+            glow: 'rgba(6,182,212,0.25)',
             action: showAutoContinue
           }
         ];
@@ -7806,41 +7818,34 @@ Respond with JSON only:
         agents.forEach(agent => {
           const card = document.createElement('div');
           card.style.cssText = `
-            display:flex;align-items:center;gap:12px;
-            padding:14px 16px;
-            background:rgba(255,255,255,0.03);
-            border:1px solid rgba(255,255,255,0.08);
-            border-radius:14px;
+            display:flex;flex-direction:column;align-items:center;
+            padding:16px 12px;
+            background:rgba(255,255,255,0.025);
+            border:1px solid rgba(255,255,255,0.07);
+            border-radius:12px;
             cursor:pointer;
-            transition:all 0.25s cubic-bezier(0.4,0,0.2,1);
-            position:relative;overflow:hidden;
+            transition:all 0.2s ease;
+            text-align:center;
           `;
 
           card.innerHTML = `
-            <div style="width:42px;height:42px;background:${agent.gradient};border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 3px 12px ${agent.glow};flex-shrink:0;">${agent.icon}</div>
-            <div style="flex:1;min-width:0;">
-              <div style="font-weight:600;color:#fff;font-size:13px;letter-spacing:-0.2px;">${agent.name}</div>
-              <div style="font-size:11px;color:rgba(255,255,255,0.5);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${agent.desc}</div>
-            </div>
-            <div style="width:32px;height:32px;background:rgba(255,255,255,0.06);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:12px;color:rgba(255,255,255,0.4);flex-shrink:0;transition:all 0.2s;">▶</div>
+            <div style="width:40px;height:40px;background:${agent.gradient};border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 3px 10px ${agent.glow};margin-bottom:10px;">${agent.icon}</div>
+            <div style="font-weight:600;color:#fff;font-size:12px;margin-bottom:2px;">${agent.name}</div>
+            <div style="font-size:10px;color:rgba(255,255,255,0.45);line-height:1.3;">${agent.desc}</div>
           `;
 
           // Hover effects
           card.addEventListener('mouseenter', () => {
-            card.style.background = 'rgba(255,255,255,0.06)';
-            card.style.borderColor = 'rgba(255,255,255,0.15)';
-            card.style.transform = 'translateX(4px)';
-            card.style.boxShadow = `0 4px 20px ${agent.glow}`;
-            card.querySelector('div:last-child').style.background = agent.gradient;
-            card.querySelector('div:last-child').style.color = '#fff';
+            card.style.background = 'rgba(255,255,255,0.05)';
+            card.style.borderColor = 'rgba(255,255,255,0.12)';
+            card.style.transform = 'translateY(-2px)';
+            card.style.boxShadow = `0 6px 20px ${agent.glow}`;
           });
           card.addEventListener('mouseleave', () => {
-            card.style.background = 'rgba(255,255,255,0.03)';
-            card.style.borderColor = 'rgba(255,255,255,0.08)';
-            card.style.transform = 'translateX(0)';
+            card.style.background = 'rgba(255,255,255,0.025)';
+            card.style.borderColor = 'rgba(255,255,255,0.07)';
+            card.style.transform = 'translateY(0)';
             card.style.boxShadow = 'none';
-            card.querySelector('div:last-child').style.background = 'rgba(255,255,255,0.06)';
-            card.querySelector('div:last-child').style.color = 'rgba(255,255,255,0.4)';
           });
 
           // Click handler
@@ -7853,44 +7858,42 @@ Respond with JSON only:
             }
           });
 
-          agentsContainer.appendChild(card);
+          agentsGrid.appendChild(card);
         });
 
-        agentContent.appendChild(agentsContainer);
+        mainContainer.appendChild(agentsGrid);
 
-        // Agent Output Area with premium styling
+        // Output Section - cleaner
         const outputSection = document.createElement('div');
-        outputSection.style.cssText = 'padding:16px 12px;';
+        outputSection.style.cssText = 'display:flex;flex-direction:column;gap:10px;';
 
-        const outputHeader = document.createElement('div');
-        outputHeader.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;';
-        outputHeader.innerHTML = `
-          <div style="font-weight:600;font-size:12px;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.5px;">📊 Output</div>
-        `;
-        outputSection.appendChild(outputHeader);
+        const outputLabel = document.createElement('div');
+        outputLabel.style.cssText = 'font-size:11px;font-weight:600;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.5px;display:flex;align-items:center;gap:6px;';
+        outputLabel.innerHTML = '<span style="font-size:12px;">📊</span> Output';
+        outputSection.appendChild(outputLabel);
 
         const outputArea = document.createElement('div');
         outputArea.id = 'cb-agent-output';
-        outputArea.className = 'cb-view-text';
+        outputArea.className = 'cb-view-text cb-agent-enter';
         outputArea.style.cssText = `
-          min-height:100px;max-height:350px;overflow-y:auto;
-          background:rgba(0,0,0,0.2);
-          border:1px solid rgba(255,255,255,0.06);
-          border-radius:12px;padding:14px;
+          min-height:120px;max-height:320px;overflow-y:auto;
+          background:rgba(0,0,0,0.25);
+          border:1px solid rgba(255,255,255,0.05);
+          border-radius:12px;padding:16px;
           font-size:12px;line-height:1.6;
           color:rgba(255,255,255,0.8);
         `;
-        outputArea.innerHTML = '<div style="text-align:center;color:rgba(255,255,255,0.3);padding:20px;">Click an agent to get started</div>';
+        outputArea.innerHTML = '<div style="text-align:center;color:rgba(255,255,255,0.25);padding:30px 20px;font-size:13px;">Click an agent above to get started</div>';
         outputSection.appendChild(outputArea);
 
-        // Output action buttons
+        // Output controls
         const outputControls = document.createElement('div');
-        outputControls.style.cssText = 'display:flex;gap:8px;margin-top:10px;';
+        outputControls.style.cssText = 'display:flex;gap:8px;';
 
         const btnInsert = document.createElement('button');
         btnInsert.className = 'cb-btn cb-btn-primary';
-        btnInsert.style.cssText = 'flex:1;padding:10px;font-size:12px;border-radius:10px;';
-        btnInsert.textContent = '➤ Insert to Chat';
+        btnInsert.style.cssText = 'flex:1;padding:11px;font-size:12px;border-radius:10px;';
+        btnInsert.textContent = '➤ Insert';
         btnInsert.addEventListener('click', async () => {
           const text = outputArea.innerText;
           if (!text || text.includes('Click an agent')) { toast('No output'); return; }
@@ -7899,7 +7902,7 @@ Respond with JSON only:
 
         const btnCopy = document.createElement('button');
         btnCopy.className = 'cb-btn';
-        btnCopy.style.cssText = 'padding:10px 16px;font-size:12px;border-radius:10px;';
+        btnCopy.style.cssText = 'flex:1;padding:11px;font-size:12px;border-radius:10px;';
         btnCopy.textContent = '📋 Copy';
         btnCopy.addEventListener('click', async () => {
           const text = outputArea.innerText;
@@ -7911,7 +7914,8 @@ Respond with JSON only:
         outputControls.appendChild(btnCopy);
         outputSection.appendChild(outputControls);
 
-        agentContent.appendChild(outputSection);
+        mainContainer.appendChild(outputSection);
+        agentContent.appendChild(mainContainer);
 
         debugLog('Agent Hub rendered successfully');
 
@@ -8694,11 +8698,12 @@ Analyze the conversations and extract structured context in 6 categories. Output
           const tone = selectedTone === 'auto' ? inferTone(userPrompt) : selectedTone;
           tonePreview.textContent = `Preview: ${tone}`;
 
-          // Query both Gemini and ChatGPT in parallel for true multi-AI synthesis
+          // Query Llama twice (with slight variation) for multi-perspective synthesis without OpenAI
           const llamaPromise = callLlamaAsync({ action: 'prompt', text: enhancedPrompt }).catch(e => ({ ok: false, error: e.message }));
-          const openaiPromise = callOpenAIAsync({ text: enhancedPrompt }).catch(e => ({ ok: false, error: e.message }));
+          // Second call with 'Alternative perspective' hint to encourage diversity
+          const llama2Promise = callLlamaAsync({ action: 'prompt', text: enhancedPrompt + '\n\nProvide an alternative perspective or additional details.' }).catch(e => ({ ok: false, error: e.message }));
 
-          const [llamaRes, openaiRes] = await Promise.all([llamaPromise, openaiPromise]);
+          const [llamaRes, llama2Res] = await Promise.all([llamaPromise, llama2Promise]);
 
           // ═══ ENHANCEMENT 3: Ramble Filter ═══
           // Clean up AI responses locally before synthesis
@@ -8715,7 +8720,7 @@ Analyze the conversations and extract structured context in 6 categories. Output
           // Collect successful responses with ramble filtering
           const responses = [];
           if (llamaRes && llamaRes.ok && llamaRes.result) {
-            const modelName = 'Llama 3.1';
+            const modelName = 'Llama 3.1 (Primary)';
             const cleaned = cleanResponse(llamaRes.result);
             responses.push({
               source: modelName,
@@ -8723,12 +8728,12 @@ Analyze the conversations and extract structured context in 6 categories. Output
               raw: llamaRes.result
             });
           }
-          if (openaiRes && openaiRes.ok && openaiRes.result) {
-            const cleaned = cleanResponse(openaiRes.result);
+          if (llama2Res && llama2Res.ok && llama2Res.result) {
+            const cleaned = cleanResponse(llama2Res.result);
             responses.push({
-              source: 'ChatGPT (GPT-4o-mini)',
+              source: 'Llama 3.1 (Alternative)',
               answer: cleaned,
-              raw: openaiRes.result
+              raw: llama2Res.result
             });
           }
 
@@ -10075,6 +10080,66 @@ Keep it practical and actionable.`;
       try { promptDesignerView.classList.remove('cb-view-active'); } catch (e) { }
     });
 
+    // Open Smart Queries view  
+    btnSmartQuery.addEventListener('click', async () => {
+      try {
+        closeAllViews(); // Close other views first
+
+        // Create Smart Queries view if it doesn't exist
+        let smartQueryView = shadow.getElementById('cb-smart-query-view');
+        if (!smartQueryView) {
+          smartQueryView = document.createElement('div');
+          smartQueryView.id = 'cb-smart-query-view';
+          smartQueryView.className = 'cb-view';
+          smartQueryView.innerHTML = `
+            <div class="cb-view-header">
+              <h3 style="margin:0;font-size:16px;font-weight:700;flex:1;">🔮 Smart Queries</h3>
+              <button class="cb-close-view" id="btnCloseSQ">✕</button>
+            </div>
+            <div id="cb-sq-content" class="cb-view-content" style="padding:12px;overflow-y:auto;"></div>
+          `;
+          panel.appendChild(smartQueryView);
+
+          // Add close button handler
+          const btnCloseSQ = shadow.getElementById('btnCloseSQ');
+          if (btnCloseSQ) {
+            btnCloseSQ.addEventListener('click', () => {
+              try { smartQueryView.classList.remove('cb-view-active'); } catch (e) { }
+            });
+          }
+        }
+
+        smartQueryView.classList.add('cb-view-active');
+
+        // Initialize and render Smart Queries
+        const sqContent = shadow.getElementById('cb-sq-content');
+        if (sqContent && typeof window.LiveAIAssistant !== 'undefined') {
+          sqContent.innerHTML = ''; // Clear previous content
+
+          // Create and render the Live AI Assistant
+          const assistant = new window.LiveAIAssistant();
+
+          // Create container
+          const container = document.createElement('div');
+          container.className = 'sq-container';
+          container.style.cssText = 'padding:0;background:transparent;min-height:400px;';
+
+          sqContent.appendChild(container);
+          assistant.renderAssistant(container);
+
+          toast('Smart Queries ready!');
+        } else if (sqContent) {
+          sqContent.innerHTML = `
+            <div style="text-align:center;padding:40px 20px;color:var(--cb-subtext);">
+              <div style="font-size:48px;margin-bottom:16px;">🔮</div>
+              <div style="font-size:14px;margin-bottom:8px;">Smart Queries</div>
+              <div style="font-size:12px;opacity:0.7;">Loading AI assistant...</div>
+            </div>
+          `;
+        }
+      } catch (e) { toast('Failed to open Smart Queries'); debugLog('open smart queries view', e); }
+    });
+
     // Helper: per-view progress updater
     function updateProgress(el, action, ev) {
       try {
@@ -11171,23 +11236,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
     });
 
     // ⚡ Sidebar Quick Actions Event Listeners
-    shadow.getElementById('qa-sidebar-summary')?.addEventListener('click', async () => {
-      try {
-        const chatText = await getConversationText();
-        if (!chatText || chatText.length < 10) { toast('No conversation to summarize'); return; }
-        toast('Generating summary...');
-        const summaryPrompt = `Summarize this conversation in 2-3 sentences. Be concise:\n\n${chatText.slice(0, 3000)}`;
-        const res = await new Promise(resolve => {
-          chrome.runtime.sendMessage({ type: 'call_llama', payload: { action: 'generate', text: summaryPrompt } }, r => {
-            resolve(chrome.runtime.lastError ? { ok: false } : (r || { ok: false }));
-          });
-        });
-        if (res && res.ok && res.result) {
-          await navigator.clipboard.writeText(res.result);
-          toast('📋 Summary copied!');
-        } else { toast('Summary failed'); }
-      } catch (e) { toast('Error: ' + (e.message || 'unknown')); }
-    });
+    // Note: Summary removed - was redundant with Summarize button
 
     shadow.getElementById('qa-sidebar-export')?.addEventListener('click', async () => {
       try {

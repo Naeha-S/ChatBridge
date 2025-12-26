@@ -3,10 +3,17 @@
   "name": "ChatBridge",
   "version": "0.2.0",
   "description": "Manually scan your visible AI chat session and paste it into another AI chat. Local-only by default.",
-  "permissions": ["storage", "activeTab", "scripting", "clipboardWrite", "prompt"],
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting",
+    "clipboardWrite",
+    "prompt"
+  ],
   "host_permissions": [
     "https://generativelanguage.googleapis.com/*",
-    "https://api.openai.com/*"
+    "https://api.openai.com/*",
+    "https://api-inference.huggingface.co/*"
   ],
   "trial_tokens": [
     "A0+TzJqk1JecJ3NCv256jrsJPr5BJVRZXEeXI/XQrwkRP7NH8QFo+JaL+ptsnb6FeHJcyI+TetN2reqjZv1ZYAQAAACPeyJvcmlnaW4iOiJjaHJvbWUtZXh0ZW5zaW9uOi8vb21qZGNla2dqamFnbm5hYWdjZmxvZGZqbWltcGJwanAiLCJmZWF0dXJlIjoiQUlQcm9tcHRBUElNdWx0aW1vZGFsSW5wdXQiLCJleHBpcnkiOjE3NzQzMTA0MDAsImlzVGhpcmRQYXJ0eSI6dHJ1ZX0="
@@ -26,21 +33,21 @@
   },
   "content_scripts": [
     {
-  "matches": [
-    "*://chat.openai.com/*",
-    "*://chatgpt.com/*",
-    "*://*.chatgpt.com/*",
-    "*://gemini.google.com/*",
-    "*://claude.ai/*",
-    "*://chat.mistral.ai/*",
-    "*://deepseek.ai/*",
-    "*://www.perplexity.ai/*",
-    "*://*.poe.com/*",
-    "*://*.x.ai/*",
-    "*://copilot.microsoft.com/*",
-    "*://www.bing.com/*",
-    "*://meta.ai/*"
-  ],
+      "matches": [
+        "*://chat.openai.com/*",
+        "*://chatgpt.com/*",
+        "*://*.chatgpt.com/*",
+        "*://gemini.google.com/*",
+        "*://claude.ai/*",
+        "*://chat.mistral.ai/*",
+        "*://deepseek.ai/*",
+        "*://www.perplexity.ai/*",
+        "*://*.poe.com/*",
+        "*://*.x.ai/*",
+        "*://copilot.microsoft.com/*",
+        "*://www.bing.com/*",
+        "*://meta.ai/*"
+      ],
       "js": [
         "utils/constants.js",
         "utils/logger.js",
@@ -58,10 +65,14 @@
         "ragEngine.js",
         "mcpBridge.js",
         "smartFeatures.js",
+        "smartQueries.js",
         "luxuryMode.js",
         "content_script.js"
       ],
-      "css": ["styles.css"],
+      "css": [
+        "styles.css",
+        "smartQueries.css"
+      ],
       "run_at": "document_end",
       "all_frames": false
     }
@@ -72,8 +83,12 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["iconic.jpeg"],
-      "matches": ["<all_urls>"]
+      "resources": [
+        "iconic.jpeg"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
     },
     {
       "resources": [
@@ -82,7 +97,9 @@
         "onnx/*",
         "onnx/**/*.wasm"
       ],
-      "matches": ["<all_urls>"]
+      "matches": [
+        "<all_urls>"
+      ]
     }
   ],
   "commands": {

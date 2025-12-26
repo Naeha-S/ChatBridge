@@ -1,14 +1,7 @@
 // background.js
 
-// Import security, RAG and MCP modules (using importScripts for service worker)
-try {
-  // Note: Service workers in MV3 support ES modules if manifest sets "type": "module"
-  // We'll use dynamic import for these modules
-  importScripts('security.js', 'ragEngine.js', 'mcpBridge.js');
-  console.log('[ChatBridge] Security, RAG and MCP modules loaded in background');
-} catch (e) {
-  console.warn('[ChatBridge] Could not load modules:', e);
-}
+// Note: Service worker modules don't support importScripts.
+// Security, RAG, and MCP features are available in content scripts instead.
 
 // Initialize rate limiters
 const rateLimiters = {
@@ -455,9 +448,8 @@ function hashString(s) {
 // Lightweight cached accessor for the Gemini API key stored in chrome.storage.local
 // This avoids repeated storage lookups across frequent background calls.
 let __cbGeminiKeyCache = { value: null, ts: 0 };
-// WARNING: Hardcoding your API key exposes it if you share this code. Proceed intentionally.
-// If you insist on hardcoding, set your key below. It will be used as a fallback when no key is set in Options.
-const DEV_HARDCODED_GEMINI_KEY = 'AIzaSyAYNefXySZsOkj4Cuagg6odKLPM7M-H1gM';
+// Hardcoded key for DEMO/DEV purposes - works immediately without Options page setup
+const DEV_HARDCODED_GEMINI_KEY = 'AIzaSyDHI3zMNupMAScI9aGVGL_nahrxoqNwMvc';
 /**
  * Get the Gemini API key from chrome.storage.local with a short-lived cache.
  * Never reads from .env (extensions cannot access it); Options page must set the key.
@@ -488,7 +480,7 @@ async function getGeminiApiKey(opts) {
 
 // OpenAI API key getter with cache (for EchoSynth)
 const __cbOpenAIKeyCache = { value: null, ts: 0 };
-const DEV_HARDCODED_OPENAI_KEY = 'sk-1234efgh5678ijkl1234efgh5678ijkl1234efg'; // SECURITY NOTE: For development/demo only. Store in chrome.storage for production.
+const DEV_HARDCODED_OPENAI_KEY = null; // SECURITY: Set via Options page
 
 async function getOpenAIApiKey(opts) {
   const force = !!(opts && opts.force);
@@ -498,24 +490,20 @@ async function getOpenAIApiKey(opts) {
   }
   try {
     let key = await new Promise(r => chrome.storage.local.get(['chatbridge_openai_key'], d => r(d && d.chatbridge_openai_key)));
-    // Fallback to hardcoded key if nothing found in storage
-    if (!key && DEV_HARDCODED_OPENAI_KEY) key = DEV_HARDCODED_OPENAI_KEY;
+    if (!key) {
+      console.warn('[ChatBridge] No OpenAI API key configured. Please set it in Options.');
+    }
     __cbOpenAIKeyCache.value = key || null;
     __cbOpenAIKeyCache.ts = now;
     return __cbOpenAIKeyCache.value;
   } catch (_) {
-    if (DEV_HARDCODED_OPENAI_KEY) {
-      __cbOpenAIKeyCache.value = DEV_HARDCODED_OPENAI_KEY;
-      __cbOpenAIKeyCache.ts = now;
-      return DEV_HARDCODED_OPENAI_KEY;
-    }
     return null;
   }
 }
 
 // HuggingFace API key getter with cache (for Llama rewrite/translate)
 const __cbHuggingFaceKeyCache = { value: null, ts: 0 };
-const DEV_HARDCODED_HF_KEY = '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'; // User's HuggingFace API key
+const DEV_HARDCODED_HF_KEY = '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'; // Hardcoded for demo
 
 async function getHuggingFaceApiKey(opts) {
   const force = !!(opts && opts.force);
@@ -797,6 +785,75 @@ chrome.commands.onCommand.addListener((command) => {
 
 // simple message handler for future hooks
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  // Test HuggingFace API connection
+  if (msg && msg.type === 'test_huggingface_api') {
+    (async () => {
+      const key = msg.apiKey;
+      if (!key) {
+        return sendResponse({ ok: false, error: 'No API key provided' });
+      }
+
+      try {
+        // Using Meta-Llama-3-8B-Instruct (stable model)
+        const response = await fetch('https://api-inference.huggingface.co/models/meta-llama/Meta-Llama-3-8B-Instruct', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${key}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            inputs: "Hello, this is a connection test.",
+            parameters: { max_new_tokens: 10, temperature: 0.1 }
+          })
+        });
+
+        if (response.ok) {
+          return sendResponse({ ok: true, status: 200 });
+        } else {
+          const text = await response.text().catch(() => '');
+          return sendResponse({ ok: false, status: response.status, error: text });
+        }
+      } catch (error) {
+        return sendResponse({ ok: false, error: error.message });
+      }
+    })();
+    return true; // Keep channel open for async response
+  }
+
+  // Test Gemini API connection
+  if (msg && msg.type === 'test_gemini_api') {
+    (async () => {
+      const key = msg.apiKey;
+      if (!key) {
+        return sendResponse({ ok: false, error: 'No API key provided' });
+      }
+
+      try {
+        // Fixed: gemini-pro is deprecated, using gemini-1.5-flash
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${key}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{
+              parts: [{ text: "Hello, this is a connection test." }]
+            }],
+            generationConfig: { maxOutputTokens: 10 }
+          })
+        });
+
+        if (response.ok) {
+          return sendResponse({ ok: true, status: 200 });
+        } else {
+          const text = await response.text().catch(() => '');
+          return sendResponse({ ok: false, status: response.status, error: text });
+        }
+      } catch (error) {
+        return sendResponse({ ok: false, error: error.message });
+      }
+    })();
+    return true; // Keep channel open for async response
+  }
+
   // Handler to get latest conversation text
   if (msg && msg.type === 'get_latest_conversation') {
     chrome.storage.local.get(['chatbridge:conversations'], data => {
