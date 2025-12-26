@@ -49,6 +49,7 @@
         "*://meta.ai/*"
       ],
       "js": [
+        "config.js",
         "utils/constants.js",
         "utils/logger.js",
         "utils/validation.js",

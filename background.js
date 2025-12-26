@@ -448,8 +448,8 @@ function hashString(s) {
 // Lightweight cached accessor for the Gemini API key stored in chrome.storage.local
 // This avoids repeated storage lookups across frequent background calls.
 let __cbGeminiKeyCache = { value: null, ts: 0 };
-// Hardcoded key for DEMO/DEV purposes - works immediately without Options page setup
-const DEV_HARDCODED_GEMINI_KEY = 'AIzaSyDHI3zMNupMAScI9aGVGL_nahrxoqNwMvc';
+// Fallback to config.js if no key in storage (for demo/dev)
+const DEV_HARDCODED_GEMINI_KEY = typeof window !== 'undefined' && window.CHATBRIDGE_CONFIG ? window.CHATBRIDGE_CONFIG.GEMINI_API_KEY : null;
 /**
  * Get the Gemini API key from chrome.storage.local with a short-lived cache.
  * Never reads from .env (extensions cannot access it); Options page must set the key.
@@ -464,12 +464,12 @@ async function getGeminiApiKey(opts) {
   }
   try {
     let key = await new Promise(r => chrome.storage.local.get(['chatbridge_gemini_key'], d => r(d && d.chatbridge_gemini_key)));
-    // Fallback to hardcoded key if nothing found in storage
+    // Fallback to config.js key if nothing found in storage
     if (!key && DEV_HARDCODED_GEMINI_KEY) key = DEV_HARDCODED_GEMINI_KEY;
     __cbGeminiKeyCache = { value: key || null, ts: now };
     return __cbGeminiKeyCache.value;
   } catch (_) {
-    // On storage error, still attempt to use hardcoded key if present
+    // On storage error, still attempt to use config.js key if present
     if (DEV_HARDCODED_GEMINI_KEY) {
       __cbGeminiKeyCache = { value: DEV_HARDCODED_GEMINI_KEY, ts: now };
       return DEV_HARDCODED_GEMINI_KEY;
@@ -503,7 +503,7 @@ async function getOpenAIApiKey(opts) {
 
 // HuggingFace API key getter with cache (for Llama rewrite/translate)
 const __cbHuggingFaceKeyCache = { value: null, ts: 0 };
-const DEV_HARDCODED_HF_KEY = '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'; // Hardcoded for demo
+const DEV_HARDCODED_HF_KEY = typeof window !== 'undefined' && window.CHATBRIDGE_CONFIG ? window.CHATBRIDGE_CONFIG.HUGGINGFACE_API_KEY : null;
 
 async function getHuggingFaceApiKey(opts) {
   const force = !!(opts && opts.force);
@@ -513,7 +513,7 @@ async function getHuggingFaceApiKey(opts) {
   }
   try {
     let key = await new Promise(r => chrome.storage.local.get(['chatbridge_hf_key'], d => r(d && d.chatbridge_hf_key)));
-    // Fallback to hardcoded key if nothing found in storage
+    // Fallback to config.js key if nothing found in storage
     if (!key && DEV_HARDCODED_HF_KEY) key = DEV_HARDCODED_HF_KEY;
     __cbHuggingFaceKeyCache.value = key || null;
     __cbHuggingFaceKeyCache.ts = now;

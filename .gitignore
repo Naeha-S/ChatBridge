@@ -43,6 +43,7 @@ api-keys.json
 *.secret
 *_WITH_KEY.js
 *-api-key*.js
+config.js
 
 # Backup files
 *.bak
