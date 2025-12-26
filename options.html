@@ -1,15 +1,21 @@
 <!doctype html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ChatBridge — Settings</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+    rel="stylesheet">
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
     :root {
       --primary: #6366f1;
       --primary-light: #818cf8;
@@ -30,7 +36,7 @@
       --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
       --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
     }
-    
+
     body {
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
       margin: 0;
@@ -41,31 +47,38 @@
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
     }
-    
+
     .container {
       max-width: 1000px;
       margin: 0 auto;
       padding: 48px 24px;
       animation: fadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1);
     }
-    
+
     @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(24px); }
-      to { opacity: 1; transform: translateY(0); }
+      from {
+        opacity: 0;
+        transform: translateY(24px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
-    
+
     .header {
       text-align: center;
       margin-bottom: 56px;
     }
-    
+
     .logo {
       display: inline-flex;
       align-items: center;
       gap: 16px;
       margin-bottom: 16px;
     }
-    
+
     .logo-icon {
       width: 64px;
       height: 64px;
@@ -78,12 +91,19 @@
       box-shadow: var(--shadow-xl);
       animation: float 3s ease-in-out infinite;
     }
-    
+
     @keyframes float {
-      0%, 100% { transform: translateY(0px); }
-      50% { transform: translateY(-8px); }
+
+      0%,
+      100% {
+        transform: translateY(0px);
+      }
+
+      50% {
+        transform: translateY(-8px);
+      }
     }
-    
+
     h1 {
       font-size: 42px;
       font-weight: 800;
@@ -94,13 +114,13 @@
       background-clip: text;
       margin-bottom: 12px;
     }
-    
+
     .subtitle {
       font-size: 18px;
       color: var(--text-secondary);
       font-weight: 500;
     }
-    
+
     .card {
       background: var(--bg-card);
       border: 1px solid var(--border);
@@ -110,24 +130,24 @@
       box-shadow: var(--shadow-sm);
       transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     }
-    
+
     .card:hover {
       box-shadow: var(--shadow-lg);
       transform: translateY(-4px);
     }
-    
+
     .card-header {
       display: flex;
       align-items: center;
       gap: 12px;
       margin-bottom: 12px;
     }
-    
+
     .card-icon {
       font-size: 28px;
       line-height: 1;
     }
-    
+
     h2 {
       font-size: 22px;
       font-weight: 700;
@@ -135,22 +155,22 @@
       letter-spacing: -0.02em;
       flex: 1;
     }
-    
+
     .description {
       font-size: 15px;
       color: var(--text-secondary);
       line-height: 1.6;
       margin-bottom: 24px;
     }
-    
+
     .form-group {
       margin-bottom: 24px;
     }
-    
+
     .form-group:last-child {
       margin-bottom: 0;
     }
-    
+
     label {
       display: block;
       font-size: 14px;
@@ -158,7 +178,7 @@
       color: var(--text-primary);
       margin-bottom: 8px;
     }
-    
+
     input[type="password"],
     input[type="text"],
     textarea {
@@ -172,11 +192,11 @@
       font-size: 15px;
       transition: all 0.2s ease;
     }
-    
+
     input::placeholder {
       color: var(--text-tertiary);
     }
-    
+
     input:focus,
     textarea:focus {
       outline: none;
@@ -184,17 +204,17 @@
       background: white;
       box-shadow: 0 0 0 4px var(--border-focus);
     }
-    
+
     .input-group {
       display: flex;
       gap: 12px;
       align-items: flex-end;
     }
-    
+
     .input-wrapper {
       flex: 1;
     }
-    
+
     button {
       padding: 14px 28px;
       border-radius: 12px;
@@ -210,7 +230,7 @@
       position: relative;
       overflow: hidden;
     }
-    
+
     button::before {
       content: '';
       position: absolute;
@@ -223,40 +243,40 @@
       transform: translate(-50%, -50%);
       transition: width 0.6s, height 0.6s;
     }
-    
+
     button:hover::before {
       width: 300px;
       height: 300px;
     }
-    
+
     button:hover {
       transform: translateY(-2px);
       box-shadow: var(--shadow-lg);
     }
-    
+
     button:active {
       transform: translateY(0px);
     }
-    
+
     button.secondary {
       background: white;
       color: var(--text-primary);
       border: 1.5px solid var(--border);
     }
-    
+
     button.secondary:hover {
       background: var(--bg-elevated);
       border-color: var(--primary);
     }
-    
+
     button.test-btn {
       background: linear-gradient(135deg, var(--success), #059669);
     }
-    
+
     button.danger {
       background: linear-gradient(135deg, var(--error), #dc2626);
     }
-    
+
     .status-badge {
       display: inline-flex;
       align-items: center;
@@ -267,22 +287,22 @@
       font-weight: 600;
       margin-top: 12px;
     }
-    
+
     .status-badge.success {
       background: rgba(16, 185, 129, 0.1);
       color: var(--success);
     }
-    
+
     .status-badge.error {
       background: rgba(239, 68, 68, 0.1);
       color: var(--error);
     }
-    
+
     .status-badge.pending {
       background: rgba(245, 158, 11, 0.1);
       color: var(--warning);
     }
-    
+
     #viewer {
       white-space: pre-wrap;
       background: var(--bg-elevated);
@@ -296,41 +316,84 @@
       line-height: 1.7;
       color: var(--text-secondary);
     }
-    
-    .theme-selector {
-      display: flex;
-      gap: 12px;
+
+    /* Theme Grid - 4 premium themes */
+    .theme-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
       margin-top: 16px;
     }
-    
-    .theme-option {
-      flex: 1;
+
+    .theme-card {
       display: flex;
-      align-items: center;
-      gap: 12px;
+      flex-direction: column;
       padding: 16px;
       border: 2px solid var(--border);
-      border-radius: 12px;
+      border-radius: 16px;
       cursor: pointer;
-      transition: all 0.2s ease;
+      transition: all 0.3s ease;
+      position: relative;
     }
-    
-    .theme-option:hover {
+
+    .theme-card:hover {
       border-color: var(--primary-light);
-      background: var(--bg-elevated);
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
     }
-    
-    .theme-option input[type="radio"] {
-      width: 20px;
-      height: 20px;
-      cursor: pointer;
-    }
-    
-    .theme-option.selected {
+
+    .theme-card:has(input:checked) {
       border-color: var(--primary);
       background: rgba(99, 102, 241, 0.05);
+      box-shadow: 0 0 0 4px var(--border-focus);
     }
-    
+
+    .theme-card input[type="radio"] {
+      position: absolute;
+      opacity: 0;
+    }
+
+    .theme-preview {
+      height: 60px;
+      border-radius: 10px;
+      margin-bottom: 12px;
+    }
+
+    .dark-preview {
+      background: linear-gradient(135deg, #0A0F1C, #1a2332);
+      border: 1px solid rgba(0, 180, 255, 0.3);
+    }
+
+    .light-preview {
+      background: linear-gradient(135deg, #FFFFFF, #F1F5F9);
+      border: 1px solid rgba(0, 0, 0, 0.1);
+    }
+
+    .ocean-preview {
+      background: linear-gradient(135deg, #0c4a6e, #0891b2);
+      border: 1px solid rgba(8, 145, 178, 0.3);
+    }
+
+    .sunset-preview {
+      background: linear-gradient(135deg, #7c2d12, #ea580c);
+      border: 1px solid rgba(234, 88, 12, 0.3);
+    }
+
+    .theme-info {
+      text-align: center;
+    }
+
+    .theme-name {
+      font-weight: 700;
+      font-size: 14px;
+      margin-bottom: 4px;
+    }
+
+    .theme-desc {
+      font-size: 12px;
+      color: var(--text-tertiary);
+    }
+
     .checkbox-wrapper {
       display: flex;
       align-items: center;
@@ -341,18 +404,18 @@
       cursor: pointer;
       transition: all 0.2s ease;
     }
-    
+
     .checkbox-wrapper:hover {
       background: var(--bg-elevated);
       border-color: var(--primary-light);
     }
-    
+
     .checkbox-wrapper input[type="checkbox"] {
       width: 22px;
       height: 22px;
       cursor: pointer;
     }
-    
+
     #adapterInfo {
       background: var(--bg-elevated);
       padding: 20px;
@@ -364,32 +427,33 @@
       font-family: 'Inter', monospace;
       color: var(--text-secondary);
     }
-    
+
     .button-group {
       display: flex;
       gap: 12px;
       margin-top: 20px;
     }
-    
+
     @media (max-width: 768px) {
       .container {
         padding: 32px 16px;
       }
-      
+
       h1 {
         font-size: 32px;
       }
-      
+
       .input-group {
         flex-direction: column;
       }
-      
+
       button {
         width: 100%;
       }
     }
   </style>
 </head>
+
 <body>
   <div class="container">
     <div class="header">
@@ -406,8 +470,9 @@
         <span class="card-icon">🔑</span>
         <h2>API Keys</h2>
       </div>
-      <p class="description">Configure your AI service API keys. All keys are stored securely in your browser and never sent to external servers.</p>
-      
+      <p class="description">Configure your AI service API keys. All keys are stored securely in your browser and never
+        sent to external servers.</p>
+
       <!-- HuggingFace API Key -->
       <div class="form-group">
         <label for="hfApiKey">HuggingFace API Key (Primary)</label>
@@ -419,7 +484,9 @@
           <button id="btn-test-hf" class="test-btn">🧪 Test</button>
           <button id="btn-save-hf">💾 Save</button>
         </div>
-        <p class="description" style="margin-top:8px;margin-bottom:0;font-size:13px;">Get your key from <a href="https://huggingface.co/settings/tokens" target="_blank" style="color:var(--primary);">HuggingFace Settings</a></p>
+        <p class="description" style="margin-top:8px;margin-bottom:0;font-size:13px;">Get your key from <a
+            href="https://huggingface.co/settings/tokens" target="_blank" style="color:var(--primary);">HuggingFace
+            Settings</a></p>
       </div>
 
       <!-- Gemini API Key -->
@@ -433,7 +500,9 @@
           <button id="btn-test-gemini" class="test-btn">🧪 Test</button>
           <button id="btn-save-gemini">💾 Save</button>
         </div>
-        <p class="description" style="margin-top:8px;margin-bottom:0;font-size:13px;">Get your key from <a href="https://makersuite.google.com/app/apikey" target="_blank" style="color:var(--primary);">Google AI Studio</a></p>
+        <p class="description" style="margin-top:8px;margin-bottom:0;font-size:13px;">Get your key from <a
+            href="https://makersuite.google.com/app/apikey" target="_blank" style="color:var(--primary);">Google AI
+            Studio</a></p>
       </div>
     </div>
 
@@ -457,26 +526,47 @@
         <h2>Appearance</h2>
       </div>
       <p class="description">Customize the look and feel of ChatBridge</p>
-      
-      <div class="theme-selector">
-        <label class="theme-option" id="theme-dark-option">
-          <input type="radio" name="cb-theme" id="theme-dark" value="dark" />
-          <div>
-            <div style="font-weight:600;margin-bottom:4px;">🌙 Dark Neon</div>
-            <div style="font-size:12px;color:var(--text-tertiary);">Premium dark interface</div>
+
+      <div class="theme-grid">
+        <label class="theme-card" data-theme="dark">
+          <input type="radio" name="cb-theme" value="dark" />
+          <div class="theme-preview dark-preview"></div>
+          <div class="theme-info">
+            <div class="theme-name">🌙 Neon Dark</div>
+            <div class="theme-desc">Premium cyberpunk vibes</div>
           </div>
         </label>
-        <label class="theme-option" id="theme-light-option">
-          <input type="radio" name="cb-theme" id="theme-light" value="light" checked />
-          <div>
-            <div style="font-weight:600;margin-bottom:4px;">☀️ Light Mode</div>
-            <div style="font-size:12px;color:var(--text-tertiary);">Clean and bright</div>
+
+        <label class="theme-card" data-theme="light">
+          <input type="radio" name="cb-theme" value="light" checked />
+          <div class="theme-preview light-preview"></div>
+          <div class="theme-info">
+            <div class="theme-name">☀️ Luxury Light</div>
+            <div class="theme-desc">Clean and elegant</div>
+          </div>
+        </label>
+
+        <label class="theme-card" data-theme="ocean">
+          <input type="radio" name="cb-theme" value="ocean" />
+          <div class="theme-preview ocean-preview"></div>
+          <div class="theme-info">
+            <div class="theme-name">🌊 Ocean Blue</div>
+            <div class="theme-desc">Calm deep sea tones</div>
+          </div>
+        </label>
+
+        <label class="theme-card" data-theme="sunset">
+          <input type="radio" name="cb-theme" value="sunset" />
+          <div class="theme-preview sunset-preview"></div>
+          <div class="theme-info">
+            <div class="theme-name">🌅 Sunset</div>
+            <div class="theme-desc">Warm gradient glow</div>
           </div>
         </label>
       </div>
-      
+
       <div class="button-group">
-        <button id="btn-save-theme">✓ Save Theme</button>
+        <button id="btn-save-theme">✓ Apply Theme</button>
       </div>
     </div>
 
@@ -486,8 +576,9 @@
         <span class="card-icon">✨</span>
         <h2>Luxury Mode</h2>
       </div>
-      <p class="description">Enable Apple Vision Pro-inspired frosted glass UI, animated particles, and premium effects</p>
-      
+      <p class="description">Enable Apple Vision Pro-inspired frosted glass UI, animated particles, and premium effects
+      </p>
+
       <label class="checkbox-wrapper">
         <input type="checkbox" id="luxury-mode-toggle" />
         <div>
@@ -495,26 +586,13 @@
           <div style="font-size:12px;color:var(--text-tertiary);">Premium glassmorphism effects and animations</div>
         </div>
       </label>
-      
+
       <div class="button-group">
         <button id="btn-save-luxury">✓ Save Settings</button>
       </div>
     </div>
 
-    <!-- Advanced -->
-    <div class="card">
-      <div class="card-header">
-        <span class="card-icon">🔧</span>
-        <h2>Adapter Debug</h2>
-      </div>
-      <p class="description">Technical information about the adapter selected for the current page</p>
-      <pre id="adapterInfo">No adapter information available</pre>
-      <div class="button-group">
-        <button id="btn-refresh-adapter" class="secondary">🔄 Refresh Adapter Info</button>
-      </div>
-    </div>
-  </div>
-  
-  <script src="options.js"></script>
+    <script src="options.js"></script>
 </body>
+
 </html>

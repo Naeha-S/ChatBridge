@@ -1,12 +1,4 @@
-background.js: 10[ChatBridge] Could not load modules: TypeError: Failed to execute 'importScripts' on 'WorkerGlobalScope': Module scripts don't support importScripts().
-    at background.js: 7: 3
-  (anonymous) @background.js: 10Understand this warning
-background.js: 107 ChatBridge installed / updated
-background.js: 116[ChatBridge] Failed to initialize MCP: ReferenceError: window is not defined
-    at background.js: 111: 5
-  (anonymous) @background.js: 116Understand this error
-options.js: 200[ERROR] Connection failed: 410
-options.js: 200[ERROR] Invalid Gemini API key// options.js - Enhanced with HuggingFace API key support and connection testing
+// options.js - ChatBridge Settings Page
 
 function loadSaved() {
   chrome.storage.local.get(['chatbridge_conversations_v1'], res => {
@@ -30,31 +22,6 @@ document.getElementById('btn-clear').addEventListener('click', () => {
   chrome.storage.local.set({ 'chatbridge_conversations_v1': [] }, () => {
     loadSaved();
     showToast('All sessions cleared', 'success');
-  });
-});
-
-// Adapter debug
-document.getElementById('btn-refresh-adapter').addEventListener('click', () => {
-  chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
-    if (!tabs || !tabs[0]) return;
-    chrome.scripting.executeScript({
-      target: { tabId: tabs[0].id },
-      func: () => {
-        try {
-          const a = (window.pickAdapter && window.pickAdapter()) || null;
-          return { ok: true, adapter: a ? { id: a.id || a.label, label: a.label, detected: true } : null };
-        } catch (e) {
-          return { ok: false, err: e && e.message };
-        }
-      }
-    }, (res) => {
-      const pre = document.getElementById('adapterInfo');
-      if (!res || !res[0]) {
-        pre.innerText = "No result (ensure you opened options from a page that has the content script loaded).";
-        return;
-      }
-      pre.innerText = JSON.stringify(res[0].result, null, 2);
-    });
   });
 });
 
@@ -201,58 +168,108 @@ function updateStatus(element, text, type) {
   element.innerHTML = `<div class="status-badge ${type}">${text}</div>`;
 }
 
-// Helper: Show toast notification
+// Helper: Show toast notification (proper UI, no alert)
 function showToast(message, type = 'success') {
-  // Use browser's built-in notification for now
-  // You can enhance this with a custom toast UI later
-  console.log(`[${type.toUpperCase()}] ${message}`);
+  // Remove existing toast
+  const existing = document.getElementById('cb-toast');
+  if (existing) existing.remove();
+
+  // Create toast
+  const toast = document.createElement('div');
+  toast.id = 'cb-toast';
+  toast.style.cssText = `
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    padding: 16px 24px;
+    border-radius: 12px;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    color: white;
+    z-index: 10000;
+    animation: slideIn 0.3s ease;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  `;
+
+  // Set color based on type
   if (type === 'success') {
-    alert(`✓ ${message}`);
+    toast.style.background = 'linear-gradient(135deg, #10b981, #059669)';
+    toast.innerHTML = `<span>✓</span> ${message}`;
   } else if (type === 'error') {
-    alert(`✗ ${message}`);
+    toast.style.background = 'linear-gradient(135deg, #ef4444, #dc2626)';
+    toast.innerHTML = `<span>✗</span> ${message}`;
   } else {
-    alert(`ℹ ${message}`);
+    toast.style.background = 'linear-gradient(135deg, #f59e0b, #d97706)';
+    toast.innerHTML = `<span>ℹ</span> ${message}`;
   }
+
+  document.body.appendChild(toast);
+
+  // Add animation keyframes if not exists
+  if (!document.getElementById('toast-styles')) {
+    const style = document.createElement('style');
+    style.id = 'toast-styles';
+    style.textContent = `
+      @keyframes slideIn {
+        from { transform: translateX(100px); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+      }
+      @keyframes slideOut {
+        from { transform: translateX(0); opacity: 1; }
+        to { transform: translateX(100px); opacity: 0; }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  // Auto-remove after 3 seconds
+  setTimeout(() => {
+    toast.style.animation = 'slideOut 0.3s ease forwards';
+    setTimeout(() => toast.remove(), 300);
+  }, 3000);
 }
 
 // ============================================
-// THEME MANAGEMENT
+// THEME MANAGEMENT - 4 Premium Themes
 // ============================================
 
-const themeDark = document.getElementById('theme-dark');
-const themeLight = document.getElementById('theme-light');
-const themeDarkOption = document.getElementById('theme-dark-option');
-const themeLightOption = document.getElementById('theme-light-option');
+const themeNames = {
+  dark: '🌙 Neon Dark',
+  light: '☀️ Luxury Light',
+  ocean: '🌊 Ocean Blue',
+  sunset: '🌅 Sunset'
+};
+
 const btnSaveTheme = document.getElementById('btn-save-theme');
+const themeRadios = document.querySelectorAll('input[name="cb-theme"]');
 
-// Load and apply theme preference
+// Load and apply saved theme
 chrome.storage.local.get(['cb_theme'], res => {
-  const t = res.cb_theme || 'light';
-  if (t === 'light') {
-    themeLight.checked = true;
-    themeLightOption.classList.add('selected');
-  } else {
-    themeDark.checked = true;
-    themeDarkOption.classList.add('selected');
-  }
-});
-
-// Update selected state on radio change
-themeDark.addEventListener('change', () => {
-  themeDarkOption.classList.add('selected');
-  themeLightOption.classList.remove('selected');
-});
-
-themeLight.addEventListener('change', () => {
-  themeLightOption.classList.add('selected');
-  themeDarkOption.classList.remove('selected');
+  const savedTheme = res.cb_theme || 'light';
+  const radio = document.querySelector(`input[name="cb-theme"][value="${savedTheme}"]`);
+  if (radio) radio.checked = true;
 });
 
 // Save theme
 btnSaveTheme.addEventListener('click', () => {
-  const val = themeLight.checked ? 'light' : 'dark';
+  const selected = document.querySelector('input[name="cb-theme"]:checked');
+  const val = selected ? selected.value : 'light';
+
   chrome.storage.local.set({ cb_theme: val }, () => {
-    showToast(`Theme set to ${val === 'light' ? 'Light Mode' : 'Dark Neon'}`, 'success');
+    showToast(`Theme changed to ${themeNames[val]}`, 'success');
+
+    // Broadcast theme change to all tabs
+    chrome.tabs.query({}, tabs => {
+      tabs.forEach(tab => {
+        try {
+          chrome.tabs.sendMessage(tab.id, { type: 'theme_changed', theme: val });
+        } catch (e) { }
+      });
+    });
   });
 });
 
