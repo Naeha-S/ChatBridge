@@ -31,8 +31,40 @@
             if (window.IntentAnalyzer) {
                 this.intentAnalyzer = new window.IntentAnalyzer();
             }
+
+            // Load cached segments from localStorage
+            await this.loadCachedSegments();
+
             this.initialized = true;
         }
+
+        /**
+         * Load segments from localStorage cache
+         */
+        async loadCachedSegments() {
+            if (!this.segmentEngine) return;
+
+            try {
+                const segmentKey = 'chatbridge:segments';
+                const cached = localStorage.getItem(segmentKey);
+                if (cached) {
+                    const allSegments = JSON.parse(cached);
+                    let loadedCount = 0;
+
+                    for (const [convId, segments] of Object.entries(allSegments)) {
+                        if (Array.isArray(segments)) {
+                            this.segmentEngine.indexSegments(convId, segments);
+                            loadedCount += segments.length;
+                        }
+                    }
+
+                    console.log('[MemoryRetrieval] Loaded', loadedCount, 'cached segments from', Object.keys(allSegments).length, 'conversations');
+                }
+            } catch (e) {
+                console.log('[MemoryRetrieval] Failed to load cached segments:', e);
+            }
+        }
+
 
         /**
          * Index a conversation - extract segments and compute embeddings
@@ -149,7 +181,27 @@
             candidates = this.applyReasoningFilter(candidates, queryAnalysis);
 
             // Step 6: Rank and limit results
-            const results = this.rankResults(candidates, options.limit || 10);
+            let results = this.rankResults(candidates, 50); // Get more candidates initially
+
+            // Deduplicate and Filter
+            const seenHashes = new Set();
+            const uniqueResults = [];
+
+            for (const res of results) {
+                // Filter junk (React internals, etc)
+                const text = res.segment.messages.map(m => m.text).join(' ');
+                if (text.includes('__REACT_QUERY_CACHE__') || text.includes('window.__REACT')) continue;
+
+                // Deduplicate by content hash
+                const hash = this.simpleHash(text);
+                if (!seenHashes.has(hash)) {
+                    seenHashes.add(hash);
+                    uniqueResults.push(res);
+                }
+            }
+
+            // Limit to final count
+            results = uniqueResults.slice(0, options.limit || 10);
 
             // Cache results
             this.embeddingCache.set(cacheKey, results);

@@ -11105,6 +11105,37 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
                   debugLog('[Background] RAG indexing complete for', final.length, 'messages');
                 }
 
+                // Segment extraction for Smart Query (if SegmentEngine available)
+                if (final.length >= 5 && typeof window.SegmentEngine !== 'undefined') {
+                  try {
+                    debugLog('[Background] Starting segment extraction...');
+                    const segmentEngine = new window.SegmentEngine();
+                    const segments = segmentEngine.extractSegments(conv);
+
+                    // Store segments in localStorage for persistence
+                    const segmentKey = 'chatbridge:segments';
+                    let allSegments = {};
+                    try {
+                      allSegments = JSON.parse(localStorage.getItem(segmentKey) || '{}');
+                    } catch (e) { allSegments = {}; }
+
+                    // Add/update segments for this conversation
+                    allSegments[String(conv.ts)] = segments;
+
+                    // Limit storage to last 100 conversations
+                    const convIds = Object.keys(allSegments);
+                    if (convIds.length > 100) {
+                      convIds.sort((a, b) => Number(a) - Number(b));
+                      convIds.slice(0, convIds.length - 100).forEach(id => delete allSegments[id]);
+                    }
+
+                    localStorage.setItem(segmentKey, JSON.stringify(allSegments));
+                    debugLog('[Background] Segment extraction complete -', segments.length, 'segments from', final.length, 'messages');
+                  } catch (e) {
+                    debugLog('[Background] Segment extraction failed:', e);
+                  }
+                }
+
                 // Auto-summarize for longer conversations (20+ messages)
                 if (final.length >= 20) {
                   debugLog('[Background] Starting auto-summarize...');

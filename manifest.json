@@ -88,8 +88,7 @@
         "content_script.js"
       ],
       "css": [
-        "styles.css",
-        "smartQueries.css"
+        "styles.css"
       ],
       "run_at": "document_end",
       "all_frames": false

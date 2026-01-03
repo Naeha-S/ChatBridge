@@ -16,12 +16,13 @@
         }
 
         body {
-            font-family: 'Inter', sans-serif;
-            background: #f0f4ff;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+            min-height: 100vh;
         }
 
         .demo-container {
-            max-width: 1400px;
+            max-width: 1600px;
             margin: 0 auto;
             padding: 40px 20px;
         }
@@ -29,44 +30,192 @@
         .demo-header {
             text-align: center;
             margin-bottom: 40px;
+            animation: slideDown 0.6s ease-out;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .demo-header h1 {
-            font-size: 48px;
+            font-size: 52px;
             font-weight: 800;
-            background: linear-gradient(135deg, #6366f1, #818cf8);
+            background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 50%, #60a5fa 100%);
             -webkit-background-clip: text;
             background-clip: text;
             -webkit-text-fill-color: transparent;
             margin-bottom: 12px;
+            letter-spacing: -1px;
         }
 
         .demo-header p {
             font-size: 18px;
-            color: #6b7280;
+            color: #94a3b8;
+            margin-bottom: 24px;
+        }
+
+        .demo-features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 16px;
+            margin-bottom: 40px;
+        }
+
+        .feature-badge {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 12px;
+            padding: 12px 16px;
+            font-size: 13px;
+            color: #60a5fa;
+            font-weight: 500;
+            text-align: center;
+            backdrop-filter: blur(10px);
         }
 
         #smartQueriesDemo {
             background: white;
-            border-radius: 20px;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
             overflow: hidden;
+            height: 700px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            animation: fadeIn 0.6s ease-out 0.2s both;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .demo-footer {
+            text-align: center;
+            margin-top: 40px;
+            color: #64748b;
+            font-size: 14px;
+        }
+
+        .demo-footer a {
+            color: #60a5fa;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .demo-footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* Dark mode toggle */
+        .theme-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(59, 130, 246, 0.2);
+            border: 1px solid rgba(59, 130, 246, 0.4);
+            color: white;
+            padding: 10px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s;
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+        }
+
+        .theme-toggle:hover {
+            background: rgba(59, 130, 246, 0.3);
+            border-color: rgba(59, 130, 246, 0.6);
+        }
+
+        body.light-mode {
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 50%, #f8fafc 100%);
+        }
+
+        body.light-mode .demo-header h1 {
+            background: linear-gradient(135deg, #2563eb 0%, #7c3aed 50%, #2563eb 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        body.light-mode .demo-header p {
+            color: #64748b;
+        }
+
+        body.light-mode #smartQueriesDemo {
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.08);
+            border: 1px solid #e2e8f0;
+        }
+
+        body.light-mode .theme-toggle {
+            background: rgba(30, 58, 138, 0.1);
+            border-color: rgba(30, 58, 138, 0.3);
+            color: #1e3a8a;
+        }
+
+        body.light-mode .theme-toggle:hover {
+            background: rgba(30, 58, 138, 0.2);
+            border-color: rgba(30, 58, 138, 0.5);
         }
     </style>
 </head>
 
 <body>
+    <button class="theme-toggle" onclick="toggleTheme()">🌙 Dark</button>
+
     <div class="demo-container">
         <div class="demo-header">
-            <h1>🔮 Smart Queries Demo</h1>
-            <p>Experience the new luxury AI command center</p>
+            <h1>🧠 Smart Queries</h1>
+            <p>Intelligent Conversation Search & Synthesis</p>
+            
+            <div class="demo-features">
+                <div class="feature-badge">✨ AI Synthesis</div>
+                <div class="feature-badge">🔍 Memory Search</div>
+                <div class="feature-badge">📋 Query History</div>
+                <div class="feature-badge">⚙️ Advanced Filters</div>
+                <div class="feature-badge">📖 Expandable Previews</div>
+                <div class="feature-badge">⚡ Smart Suggestions</div>
+            </div>
         </div>
 
         <div id="smartQueriesDemo"></div>
+
+        <div class="demo-footer">
+            <p>💡 <strong>Try it:</strong> Switch to "Search Memory" tab and ask questions about your conversations</p>
+            <p style="margin-top: 12px; color: #475569;">Built with ❤️ as part of ChatBridge v2.0</p>
+        </div>
     </div>
 
     <script src="smartQueries.js"></script>
     <script>
+        // Theme toggle
+        function toggleTheme() {
+            document.body.classList.toggle('light-mode');
+            const isDark = !document.body.classList.contains('light-mode');
+            localStorage.setItem('sq-theme-dark', isDark);
+            document.querySelector('.theme-toggle').textContent = isDark ? '🌙 Dark' : '☀️ Light';
+        }
+
+        // Load theme preference
+        if (localStorage.getItem('sq-theme-dark') === 'false') {
+            document.body.classList.add('light-mode');
+            document.querySelector('.theme-toggle').textContent = '☀️ Light';
+        }
+
         // Mock chrome.runtime for demo
         if (typeof chrome === 'undefined') {
             window.chrome = {
@@ -75,12 +224,15 @@
                         // Mock Llama response for demo
                         setTimeout(() => {
                             if (msg.type === 'call_llama') {
-                                callback({
-                                    ok: true,
-                                    result: `This is a demo response from the AI assistant.\n\nThe question was: "${msg.payload.text}"\n\n**Key Points:**\n- This is just a simulated response\n- In the real extension, Llama 3.1 would process your query\n- The response would be based on conversation context\n\nYou can ask follow-up questions or use the Quick Templates!`
-                                });
+                                const responses = [
+                                    `This is a demo response from the AI assistant.\n\nThe question was: "${msg.payload.text}"\n\n**Key Points:**\n- AI synthesis is working perfectly\n- This is a simulated response for the demo\n- In production, Llama 3.1 would process your query\n- Responses are based on conversation context`,
+                                    `**Summary of Findings:**\n\n1. **Primary Theme**: Your conversations focus on technical implementation and architecture\n2. **Decision Points**: Multiple architectural decisions were made with careful consideration\n3. **Evolution**: Your understanding of the system evolved significantly through discussion\n4. **Key Insights**: Integration between components is critical for performance`,
+                                    `Based on the conversation context:\n\n**Main Topics Discussed:**\n- System architecture and design patterns\n- Implementation strategies and best practices\n- Integration points between different modules\n- Performance optimization techniques\n\n**Notable Patterns:**\nThe conversation shows a progression from high-level planning to implementation details, with a focus on maintaining code quality and system reliability.`
+                                ];
+                                const response = responses[Math.floor(Math.random() * responses.length)];
+                                callback({ ok: true, result: response });
                             }
-                        }, 1000);
+                        }, 1500);
                     }
                 }
             };
@@ -92,12 +244,83 @@
                 return {
                     getMessages: function () {
                         return [
-                            { role: 'user', text: 'How do I implement authentication in a React app?' },
-                            { role: 'assistant', text: 'Here are the main steps for implementing authentication in React...' },
-                            { role: 'user', text: 'What about JWT tokens?' },
-                            { role: 'assistant', text: 'JWT tokens are a popular choice for authentication...' }
+                            { role: 'user', text: 'How do I implement advanced caching strategies?' },
+                            { role: 'assistant', text: 'There are several effective caching strategies you can implement. Let me break down the most important ones...' },
+                            { role: 'user', text: 'What about memory efficiency?' },
+                            { role: 'assistant', text: 'Memory efficiency is crucial. You should consider using weak references, object pooling, and implementing cache eviction policies...' },
+                            { role: 'user', text: 'Can you give me a concrete example?' }
                         ];
                     }
+                };
+            };
+        }
+
+        // Mock MemoryRetrieval for demo
+        if (typeof window.MemoryRetrieval === 'undefined') {
+            window.MemoryRetrieval = class {
+                async initialize() { }
+
+                async search(query, options = {}) {
+                    // Generate mock results
+                    const mockData = [
+                        {
+                            score: 0.95,
+                            segment: { timestamp: new Date(Date.now() - 86400000).toISOString() },
+                            excerpt: [
+                                { role: 'user', text: 'How should I structure my authentication system?' },
+                                { role: 'assistant', text: 'A good authentication system should have clear separation of concerns...' }
+                            ]
+                        },
+                        {
+                            score: 0.87,
+                            segment: { timestamp: new Date(Date.now() - 172800000).toISOString() },
+                            excerpt: [
+                                { role: 'user', text: 'What are the best practices for API design?' },
+                                { role: 'assistant', text: 'API design is critical for maintainability and usability. Consider RESTful principles...' }
+                            ]
+                        },
+                        {
+                            score: 0.79,
+                            segment: { timestamp: new Date(Date.now() - 259200000).toISOString() },
+                            excerpt: [
+                                { role: 'user', text: 'How do I handle errors gracefully?' },
+                                { role: 'assistant', text: 'Error handling is essential for user experience. Implement proper logging...' }
+                            ]
+                        },
+                        {
+                            score: 0.71,
+                            segment: { timestamp: new Date(Date.now() - 345600000).toISOString() },
+                            excerpt: [
+                                { role: 'user', text: 'What about database optimization?' },
+                                { role: 'assistant', text: 'Database optimization involves query planning, indexing, and proper schema design...' }
+                            ]
+                        },
+                        {
+                            score: 0.65,
+                            segment: { timestamp: new Date(Date.now() - 432000000).toISOString() },
+                            excerpt: [
+                                { role: 'user', text: 'How do I scale microservices?' },
+                                { role: 'assistant', text: 'Scaling microservices requires careful planning of communication patterns...' }
+                            ]
+                        }
+                    ];
+
+                    return mockData.slice(0, options.limit || 8);
+                }
+            };
+        }
+
+        // Initialize Smart Queries UI
+        document.addEventListener('DOMContentLoaded', async () => {
+            const container = document.querySelector('#smartQueriesDemo');
+            const ui = new SmartQueryUI();
+            await ui.initialize();
+            ui.render(container);
+        });
+    </script>
+</body>
+
+</html>
                 };
             };
         }
