@@ -13,11 +13,26 @@
   font-family: var(--cb-font-sans, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif);
   color: var(--cb-white);
   line-height: 1.5;
-  height: 100%;
   display: flex;
   flex-direction: column;
   background-color: var(--cb-bg);
   box-sizing: border-box;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--cb-border);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--cb-subtext);
 }
 
 .sq-wrapper * {
@@ -25,40 +40,44 @@
 }
 
 /* Header */
+/* Header */
+/* Header */
 .sq-header {
-  background: var(--cb-bg2);
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--cb-border);
+  background: transparent;
+  padding: 8px 12px; /* Tightened */
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex-shrink: 0;
-}
-
-.sq-title {
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--cb-white);
-  display: flex;
-  align-items: center;
   gap: 8px;
 }
 
-.sq-title-icon {
-  font-size: 20px;
-}
+.sq-title { display: none; }
 
-/* Tabs */
+/* Helper Text */
+.sq-helper-text {
+  font-size: 11px;
+  color: var(--cb-subtext);
+  margin-bottom: 8px;
+  padding: 0 12px;
+  opacity: 0.8;
+  transition: all 0.3s ease;
+  font-weight: 500;
+  height: auto;
+  min-height: 0;
+}
+.sq-helper-text:empty { display: none; }
+
 .sq-tabs {
   display: flex;
   background: var(--cb-bg3);
-  padding: 4px;
+  padding: 3px;
   border-radius: 8px;
 }
 
 .sq-tab {
-  padding: 6px 12px;
-  font-size: 13px;
+  padding: 4px 10px; /* Tightened */
+  font-size: 12px;
   font-weight: 500;
   color: var(--cb-subtext);
   border: none;
@@ -74,18 +93,39 @@
   box-shadow: 0 1px 2px rgba(0,0,0,0.05);
 }
 
-.sq-tab:hover:not(.active) {
-  color: var(--cb-white);
-}
+.sq-tab:hover:not(.active) { color: var(--cb-white); }
 
-/* Content Area */
+/* Content Area - NO FLEX:1, only take content height */
 .sq-body {
-  flex: 1;
   overflow-y: auto;
-  padding: 20px;
+  padding: 12px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 12px;
+}
+
+/* Suggestions - hidden by default, zero space */
+.sq-suggestions {
+  display: none;
+}
+.sq-suggestions.active {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Filters Panel - hidden by default, zero space */
+.sq-filters-panel {
+  display: none;
+  background: var(--cb-bg2);
+  border-radius: 8px;
+  padding: 12px;
+  border: 1px solid var(--cb-border);
+}
+.sq-filters-panel.active {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
 }
 
 /* Input Section */
@@ -93,28 +133,78 @@
   background: var(--cb-bg2);
   border-radius: 12px;
   border: 1px solid var(--cb-border);
-  padding: 16px;
+  padding: 12px;
   box-shadow: var(--cb-shadow-sm);
 }
 
 .sq-textarea {
   width: 100%;
-  min-height: 80px;
-  padding: 12px;
+  padding: 10px;
   border: 1px solid var(--cb-border);
   border-radius: 8px;
   font-family: inherit;
-  font-size: 14px;
+  font-size: 13px;
   color: var(--cb-white);
   background: var(--cb-bg);
-  resize: vertical;
-  margin-bottom: 12px;
+  resize: none; /* Auto-growth via JS preferred, or fixed small */
+  height: 70px; /* Reduced fixed height */
+  margin-bottom: 8px;
+}
+.sq-textarea:focus {
+   outline: none;
+   border-color: var(--cb-accent-primary);
+   box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.1);
 }
 
-.sq-textarea:focus {
-  outline: none;
-  border-color: var(--cb-accent-primary);
-  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1);
+.sq-input-wrapper {
+  position: relative;
+}
+
+.sq-input-badge {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--cb-bg3);
+  color: var(--cb-subtext);
+  opacity: 0;
+  transition: opacity 0.2s;
+  pointer-events: none;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.sq-input-badge.visible { opacity: 0.7; }
+.sq-input-badge.intent { color: var(--cb-accent-primary); }
+
+.sq-res-tags {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+.sq-res-tag {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 2px 4px;
+  border-radius: 3px;
+  background: rgba(255,255,255,0.1);
+  color: var(--cb-subtext);
+}
+.sq-res-tag.decision { color: #34d399; background: rgba(52, 211, 153, 0.1); }
+.sq-res-tag.unresolved { color: #f87171; background: rgba(248, 113, 113, 0.1); }
+.sq-res-tag.change { color: #60a5fa; background: rgba(96, 165, 250, 0.1); }
+
+.sq-dedupe-notice {
+  font-size: 10px;
+  color: var(--cb-subtext);
+  text-align: center;
+  margin-top: -8px;
+  margin-bottom: 12px;
+  opacity: 0.7;
+  font-style: italic;
 }
 
 .sq-controls {
@@ -185,8 +275,11 @@
 .sq-response-section {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
+  flex: 1; /* Allow it to take up remaining space */
+  min-height: 0; /* Important for scroll */
 }
+.sq-response-section:empty { display: none; }
 
 /* AI Synthesis Card */
 .sq-synthesis-card {
@@ -659,24 +752,19 @@
             </div>
 
             <!-- Main Content -->
-            <div style="flex: 1; display: flex; flex-direction: column;">
+            <div style="flex: 1; display: flex; flex-direction: column; overflow-x: hidden;">
               <!-- Header -->
               <div class="sq-header">
-              <div class="sq-title">
-                <span class="sq-title-icon">🧠</span>
-                Smart Assistant
-                <button class="sq-history-toggle" id="sq-open-history" title="Show query history">📋</button>
+                <div class="sq-tabs">
+                    <button class="sq-history-toggle" id="sq-open-history" title="History" style="margin-right:8px; font-size:16px;">📋</button>
+                    <button class="sq-tab active" data-mode="live">Current Chat</button>
+                    <button class="sq-tab" data-mode="memory">Search Memory</button>
+                    <button class="sq-btn sq-btn-secondary sq-btn-sm" id="btn-index-now" style="margin-left: 8px;" title="Train your AI memory on saved conversions">
+                    ↻ Train
+                    </button>
+                </div>
               </div>
-              <div class="sq-tabs">
-                <button class="sq-tab active" data-mode="live">Current Chat</button>
-                <button class="sq-tab" data-mode="memory">Search Memory</button>
-                <button class="sq-btn sq-btn-secondary sq-btn-sm" id="btn-index-now" style="margin-left: 8px;" title="Train your AI memory on saved conversions">
-                   ↻ Train Memory
-                </button>
-              </div>
-            </div>
-
-            <!-- Body ... -->
+              <div id="sq-mode-helper" class="sq-helper-text">Reason only over this conversation</div>
 
             <!-- Body -->
             <div class="sq-body">
@@ -686,11 +774,14 @@
 
               <!-- Input Card -->
               <div class="sq-input-card">
-                <textarea 
-                  class="sq-textarea" 
-                  id="sq-query-input"
-                  placeholder="Ask a question about the current conversation..."
-                ></textarea>
+                <div class="sq-input-wrapper">
+                  <textarea 
+                    class="sq-textarea" 
+                    id="sq-query-input"
+                    placeholder="Ask about decisions, confusions, patterns..."
+                  ></textarea>
+                  <div id="sq-input-badge" class="sq-input-badge">Keyword assist</div>
+                </div>
                 
                 <div class="sq-controls">
                   <div class="sq-options">
@@ -771,19 +862,20 @@
       const clearBtn = this.container.querySelector('#btn-clear');
       const resultsArea = this.container.querySelector('#sq-results-area');
       const synthesisWrapper = this.container.querySelector('#chk-synthesis-wrapper');
-      const askSpan = askBtn.querySelector('span');
-      const sidebar = this.container.querySelector('#sq-history-sidebar');
+      const askSpan = askBtn ? askBtn.querySelector('span') : null;
+      const sidebar = this.container.querySelector('#sq-sidebar');
       const sidebarToggle = this.container.querySelector('#sq-sidebar-toggle');
       const openHistory = this.container.querySelector('#sq-open-history');
       const toggleFilters = this.container.querySelector('#sq-toggle-filters');
       const filtersPanel = this.container.querySelector('#sq-filters-panel');
       const indexBtn = this.container.querySelector('#btn-index-now');
+      const modeHelper = this.container.querySelector('#sq-mode-helper');
 
       // Index Button
       if (indexBtn) {
         indexBtn.addEventListener('click', async () => {
           indexBtn.disabled = true;
-          indexBtn.innerHTML = '<div class="sq-loading-spinner" style="width:12px;height:12px;border-width:2px;margin:0;"></div> Indexing...';
+          indexBtn.innerHTML = '<div class="sq-loading-spinner" style="width:12px;height:12px;border-width:2px;margin:0;"></div> Training...';
 
           try {
             // Trigger indexing via the main extension logic
@@ -799,29 +891,35 @@
               await window.indexAllChats();
             }
 
-            indexBtn.innerHTML = '✓ Done';
-            setTimeout(() => { indexBtn.innerHTML = '↻ Index'; indexBtn.disabled = false; }, 2000);
+            indexBtn.innerHTML = '✓ Trained';
+            setTimeout(() => { indexBtn.innerHTML = '↻ Train Memory'; indexBtn.disabled = false; }, 2000);
           } catch (e) {
             console.error('Indexing failed', e);
             indexBtn.innerHTML = '✕ Error';
-            setTimeout(() => { indexBtn.innerHTML = '↻ Index'; indexBtn.disabled = false; }, 2000);
+            setTimeout(() => { indexBtn.innerHTML = '↻ Train Memory'; indexBtn.disabled = false; }, 2000);
           }
         });
       }
 
       // Sidebar Toggle
-      sidebarToggle.addEventListener('click', () => {
-        sidebar.classList.remove('open');
-      });
+      if (sidebarToggle) {
+        sidebarToggle.addEventListener('click', () => {
+          sidebar.classList.remove('open');
+        });
+      }
 
-      openHistory.addEventListener('click', () => {
-        sidebar.classList.toggle('open');
-      });
+      if (openHistory) {
+        openHistory.addEventListener('click', () => {
+          sidebar.classList.toggle('open');
+        });
+      }
 
       // Filters Toggle
-      toggleFilters.addEventListener('click', () => {
-        filtersPanel.classList.toggle('open');
-      });
+      if (toggleFilters) {
+        toggleFilters.addEventListener('click', () => {
+          filtersPanel.classList.toggle('active');
+        });
+      }
 
       // Tab Switch
       tabs.forEach(tab => {
@@ -830,23 +928,55 @@
           tab.classList.add('active');
           this.mode = tab.dataset.mode;
 
-          // Reset UI for mode
+          // Update helper text dynamically
+          if (this.mode === 'live') {
+            modeHelper.textContent = "Reason only over this conversation";
+            synthesisWrapper.style.display = "none";
+            if (askSpan) askSpan.textContent = "Ask AI";
+            textarea.placeholder = "Ask about decisions, confusions, patterns...";
+          } else {
+            modeHelper.textContent = "Reason across all saved conversations";
+            synthesisWrapper.style.display = "flex";
+            if (askSpan) askSpan.textContent = "Search Memory";
+            textarea.placeholder = "Find patterns across your knowledge base...";
+            this.showSuggestions();
+          }
+
+          // Reset UI
           resultsArea.innerHTML = '';
           resultsArea.style.display = 'none';
           this.currentPage = 1;
-
-          if (this.mode === 'live') {
-            textarea.placeholder = "Ask a question about the current conversation...";
-            askSpan.textContent = "Ask AI";
-            synthesisWrapper.style.display = "none";
-          } else {
-            textarea.placeholder = "Search across all saved memories...";
-            askSpan.textContent = "Search Memory";
-            synthesisWrapper.style.display = "flex";
-            this.showSuggestions();
-          }
         });
       });
+
+      // Input logic (Re-added subtle badge)
+      textarea.addEventListener('input', () => {
+        const val = textarea.value.trim();
+        const badge = this.container.querySelector('#sq-input-badge');
+        if (!val) {
+          badge.classList.remove('visible');
+        } else {
+          badge.classList.add('visible');
+          // Simple heuristic: > 3 words = Intent
+          if (val.split(/\s+/).length > 3) {
+            badge.textContent = 'Intent-based';
+            badge.classList.add('intent');
+          } else {
+            badge.textContent = 'Keyword-assisted';
+            badge.classList.remove('intent');
+          }
+        }
+      });
+
+      // Summary Checkbox Logic
+      const chk = this.container.querySelector('#chk-synthesis');
+      const lbl = this.container.querySelector('#chk-synthesis-wrapper span');
+      if (chk && lbl) {
+        chk.addEventListener('change', () => {
+          lbl.textContent = chk.checked ? 'Summarize selected segments' : 'Raw excerpts only. No synthesis.';
+          lbl.style.opacity = chk.checked ? '1' : '0.7';
+        });
+      }
 
       // Ask Logic with debouncing
       askBtn.addEventListener('click', async () => {
@@ -859,11 +989,23 @@
         askBtn.disabled = true;
         resultsArea.style.display = 'block';
         resultsArea.innerHTML = `
-          <div class="sq-loading">
-            <div class="sq-loading-spinner"></div>
-            <div>${this.mode === 'live' ? 'Thinking...' : 'Scanning memories...'}</div>
-          </div>
-        `;
+           <div class="sq-loading">
+             <div class="sq-loading-spinner"></div>
+             <div>${this.mode === 'live' ? 'Thinking...' : 'Scanning memories...'}</div>
+             <button class="sq-btn sq-btn-secondary sq-btn-sm" id="sq-stop-gen" style="margin-top:10px;">Stop Generation</button>
+           </div>
+         `;
+
+        // Bind Stop Button (Mock)
+        setTimeout(() => {
+          const stopBtn = resultsArea.querySelector('#sq-stop-gen');
+          if (stopBtn) {
+            stopBtn.addEventListener('click', () => {
+              resultsArea.innerHTML = '<div class="sq-error">Generation stopped by user</div>';
+              askBtn.disabled = false;
+            });
+          }
+        }, 100);
 
         try {
           if (this.mode === 'live') {
@@ -876,7 +1018,9 @@
             await this.runMemorySearch(query, resultsArea, synthesize, { sortBy, dateFrom, dateTo });
           }
         } catch (e) {
-          resultsArea.innerHTML = `<div class="sq-error">Error: ${e.message}</div>`;
+          if (!resultsArea.innerHTML.includes('Generation stopped')) {
+            resultsArea.innerHTML = `<div class="sq-error">Error: ${this.escapeHTML(e.message)}</div>`;
+          }
         } finally {
           askBtn.disabled = false;
         }
@@ -887,6 +1031,7 @@
         textarea.value = '';
         resultsArea.innerHTML = '';
         resultsArea.style.display = 'none';
+        // Badge removed
       });
 
       // Keyboard shortcuts
@@ -914,7 +1059,7 @@
       ariaLive.style.position = 'absolute';
       ariaLive.style.left = '-10000px';
       ariaLive.id = 'sq-aria-live';
-      container.appendChild(ariaLive);
+      this.container.appendChild(ariaLive);
     }
 
     showSuggestions() {
@@ -922,14 +1067,14 @@
       if (!suggestionsArea) return;
 
       const suggestions = [
-        'What were the key decisions?',
-        'Where was I stuck?',
-        'How did my understanding evolve?',
-        'What were the main topics?',
+        { text: 'Unresolved questions', tip: 'Find open loops and unanswered decision points' },
+        { text: 'Key decisions made', tip: 'Extract agreed-upon directions and choices' },
+        { text: 'Changes in thinking', tip: 'Trace how your perspective evolved over time' },
+        { text: 'Action items', tip: 'List tasks and next steps identified in chats' }
       ];
 
       suggestionsArea.innerHTML = suggestions.map(s => `
-              <button class="sq-suggestion-chip">${s}</button>
+              <button class="sq-suggestion-chip" title="${s.tip}">${s.text}</button>
             `).join('');
 
       suggestionsArea.style.display = 'flex';
@@ -961,17 +1106,32 @@
     }
 
     async runMemorySearch(query, container, synthesize, filters = {}) {
-      // Search
       if (!this.memoryRetrieval) await this.initialize();
-      const results = await this.memoryRetrieval.search(query, { limit: 50 });
+      const rawResults = await this.memoryRetrieval.search(query, { limit: 50 });
 
-      if (!results || results.length === 0) {
+      if (!rawResults || rawResults.length === 0) {
         container.innerHTML = `<div class="sq-empty">No relevant memories found.</div>`;
         return;
       }
 
-      // Apply filters
-      let filtered = results;
+      // 1. Deduplication (String Similarity/Exact Check)
+      const uniqueResults = [];
+      const seenTexts = new Set();
+
+      for (const res of rawResults) {
+        // Flatten segments for comparison
+        const fullText = res.excerpt.map(m => m.text.trim()).join(' ');
+        // Simple fuzzy signature: first 60 chars
+        const signature = fullText.slice(0, 60).toLowerCase();
+
+        if (!seenTexts.has(signature)) {
+          seenTexts.add(signature);
+          uniqueResults.push(res);
+        }
+      }
+
+      // 2. Filter by Date
+      let filtered = uniqueResults;
       if (filters.dateFrom) {
         const fromDate = new Date(filters.dateFrom);
         filtered = filtered.filter(r => new Date(r.segment.timestamp) >= fromDate);
@@ -981,7 +1141,7 @@
         filtered = filtered.filter(r => new Date(r.segment.timestamp) <= toDate);
       }
 
-      // Apply sorting
+      // 3. Sorting
       if (filters.sortBy === 'recent') {
         filtered.sort((a, b) => new Date(b.segment.timestamp) - new Date(a.segment.timestamp));
       } else if (filters.sortBy === 'oldest') {
@@ -1001,26 +1161,52 @@
         return;
       }
 
-      // Synthesis
+      // Synthesis (Answer)
       if (synthesize) {
         const topResults = this.currentResults.slice(0, 8);
-        const context = topResults.map(r => r.excerpt.map(m => m.text).join(' ')).join('\n---\n');
+        const context = topResults.map(r => `[Date: ${new Date(r.segment.timestamp).toLocaleDateString()}] ${r.excerpt.map(m => m.text).join(' ')}`).join('\n---\n');
 
         html += `
           <div class="sq-synthesis-card" style="margin-bottom:20px;">
             <div class="sq-card-header">
-              <span class="sq-card-title-text">✨ Synthesis</span>
+              <span class="sq-card-title-text">✨ Answer</span>
               <button class="sq-btn sq-btn-secondary" style="padding:4px 8px;font-size:12px;" onclick="navigator.clipboard.writeText(this.parentElement.nextElementSibling.innerText)">📋 Copy</button>
             </div>
             <div class="sq-card-content" id="sq-synthesis-content">
               <div class="sq-loading-spinner" style="margin: 20px auto;"></div>
-              <div style="text-align: center; font-size: 12px; color: #6b7280;">Generating summary...</div>
+              <div style="text-align: center; font-size: 12px; color: #6b7280;">Thinking...</div>
             </div>
           </div>
         `;
 
-        // Generate synthesis asynchronously
-        const prompt = `User asked: "${this.currentResults[0].fullQuery || ''}"\n\nRelevant Memories:\n${context}\n\nSummarize the answer based on memories:`;
+        // Output Governance Prompt
+        const prompt = `You are the Smart Query reasoning engine for ChatBridge.
+
+Your job is to extract insight, not explain the system, not summarize conversations, and not describe user intent.
+
+Core Rules (non-negotiable):
+- Never describe the user’s request ("The user is asking...")
+- Do not say “Based on the provided conversation...”
+- Do not explain why the query was asked
+- Do not mention "segments", "matches", "percentages", or "timestamps" unless citing a specific event date.
+- Never summarize the conversation as a whole.
+- Extract only what directly answers the query.
+
+Task:
+User Question: "${this.currentResults[0].fullQuery || ''}"
+
+Relevant Memory Segments:
+${context}
+
+Instructions:
+1. Identify explicit decision moments or key facts.
+2. Ignore brainstorming, speculation, and repetition.
+3. Collapse duplicates into one decision.
+4. Phrase decisions as outcomes, not dialogue.
+5. If decisions are weak, say "No firm decisions were finalized" and list tentative directions.
+
+Answer directly:`;
+
         this.callLlama(prompt).then(summary => {
           const syntContent = container.querySelector('#sq-synthesis-content');
           if (syntContent) {
@@ -1034,14 +1220,28 @@
       const end = start + this.resultsPerPage;
       const pagedResults = this.currentResults.slice(start, end);
 
-      html += `<div style="font-size:12px;color:#6b7280;margin-bottom:10px;text-transform:uppercase;font-weight:600;">Found ${this.currentResults.length} Segments (Page ${this.currentPage})</div>`;
+      // Dedupe notice
+      if (rawResults.length > this.currentResults.length) {
+        const mergedCount = rawResults.length - this.currentResults.length;
+        html += `<div class="sq-dedupe-notice">Merged ${mergedCount} similar segments</div>`;
+      }
 
-      html += pagedResults.map((r, idx) => `
+      html += `<div style="font-size:11px;color:#6b7280;margin-bottom:10px;text-transform:uppercase;font-weight:600;letter-spacing:0.5px;">Found ${this.currentResults.length} Memories</div>`;
+
+      html += pagedResults.map((r, idx) => {
+        // Mock tag logic for demo - replace with real NLP tag if available
+        let tags = '';
+        const txt = r.excerpt.map(m => m.text).join(' ').toLowerCase();
+        if (txt.includes('decide') || txt.includes('agreed') || txt.includes('plan')) tags += `<span class="sq-res-tag decision">Decision</span>`;
+        else if (txt.includes('unsure') || txt.includes('maybe') || txt.includes('?')) tags += `<span class="sq-res-tag unresolved">Unresolved</span>`;
+        else if (txt.includes('change') || txt.includes('instead')) tags += `<span class="sq-res-tag change">Shift</span>`;
+
+        return `
         <div class="sq-result" data-result-index="${start + idx}">
           <div class="sq-res-meta">
-             <span class="sq-res-score">${Math.round(r.score * 100)}% Match</span>
-             <span>${new Date(r.segment.timestamp).toLocaleDateString()}</span>
-             <button class="sq-expand-btn" style="margin-left: auto; padding: 0; border: none; background: none; color: #6b7280; cursor: pointer;"></button>
+             ${tags ? `<div class="sq-res-tags">${tags}</div>` : ''}
+             <span style="margin-left:auto;">${new Date(r.segment.timestamp).toLocaleDateString()}</span>
+             <button class="sq-expand-btn" style="margin-left: 8px; padding: 0; border: none; background: none; color: #6b7280; cursor: pointer;"></button>
           </div>
           <div class="sq-res-preview">
             <div class="sq-res-content">
@@ -1054,7 +1254,7 @@
             </div>
           </div>
         </div>
-      `).join('');
+      `}).join('');
 
       // Pagination
       if (this.currentResults.length > this.resultsPerPage) {

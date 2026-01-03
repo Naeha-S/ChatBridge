@@ -1101,8 +1101,8 @@
       textarea:focus { outline: none; border-color: var(--cb-accent-primary); box-shadow: 0 0 0 3px rgba(0, 180, 255, 0.15); }
       select:focus { outline: none; border-color: var(--cb-accent-primary); box-shadow: 0 0 0 3px rgba(0, 180, 255, 0.15); }
       /* Internal view sections - inline in the sidebar */
-      .cb-internal-view { display: none; padding: var(--cb-space-xl); border-top: 1px solid var(--cb-border); background: var(--cb-bg); animation: slideIn 0.3s ease-out; }
-      .cb-internal-view.cb-view-active { display: block; }
+      .cb-internal-view { display: none; padding: var(--cb-space-xl); border-top: 1px solid var(--cb-border); background: var(--cb-bg); animation: slideIn 0.3s ease-out; position: relative; }
+      .cb-internal-view.cb-view-active { display: block; z-index: 100; }
       @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
       .cb-view-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
       .cb-view-close { background:transparent; border:1px solid var(--cb-border); color:var(--cb-white); padding:6px 12px; border-radius:8px; cursor:pointer; font-size:12px; font-weight:600; transition: all 0.2s ease; position:relative; z-index:2; }
@@ -13601,6 +13601,9 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
               await __cbSmartQueryUI.initialize();
             }
 
+            // Ensure Smart View is top-most (higher than base 100)
+            smartView.style.zIndex = '200';
+
             // Clear the smart view content and render new UI
             smartView.innerHTML = '';
 
@@ -13613,10 +13616,11 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
             `;
             smartView.appendChild(topBar);
 
-            // Create container for SmartQueryUI
+            // Create container for SmartQueryUI - NO FORCED HEIGHT
             const sqContainer = document.createElement('div');
             sqContainer.id = 'cb-smart-query-container';
-            sqContainer.style.cssText = 'max-height: calc(100vh - 200px); overflow-y: auto;';
+            // Let content determine height - no fixed height!
+            sqContainer.style.cssText = 'width: 100%;';
             smartView.appendChild(sqContainer);
 
             // Render the new UI
