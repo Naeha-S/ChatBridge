@@ -14,19 +14,47 @@
 
   // APPROVED SITES - Only show avatar/sidebar on these domains
   const APPROVED_SITES = [
+    // Major AI Assistants
     'chat.openai.com',
     'chatgpt.com',
     'gemini.google.com',
     'claude.ai',
     'chat.mistral.ai',
-    'deepseek.ai',
-    'www.perplexity.ai',
-    'perplexity.ai',
-    'poe.com',
-    'x.ai',
     'copilot.microsoft.com',
     'www.bing.com',
-    'meta.ai'
+
+    // Search-focused AI
+    'perplexity.ai',
+    'www.perplexity.ai',
+    'you.com',
+    'phind.com',
+
+    // Multi-model platforms
+    'poe.com',
+    'huggingface.co',
+    'forefront.ai',
+
+    // Research & Open Source
+    'deepseek.ai',
+    'chat.deepseek.com',
+    'open-assistant.io',
+
+    // Social AI
+    'x.ai',
+    'meta.ai',
+
+    // Character & Companion AI
+    'character.ai',
+    'beta.character.ai',
+    'replika.ai',
+
+    // Marketing & Content AI
+    'jasper.ai',
+    'writesonic.com',
+    'app.writesonic.com',
+
+    // Developer AI
+    'kuki.ai'
   ];
 
   // Check if current site is approved
@@ -897,7 +925,7 @@
     avatar.style.cssText = 'position:fixed;bottom:22px;right:26px;width:48px;height:48px;border-radius:12px;z-index:2147483647;display:flex;align-items:center;justify-content:center;cursor:pointer;background:transparent;box-shadow:0 6px 20px rgba(0,0,0,0.18);transition: transform .12s ease, box-shadow .12s ease;overflow:hidden;';
     avatar.addEventListener('mouseenter', () => { try { avatar.style.transform = 'translateY(-2px)'; avatar.style.boxShadow = '0 10px 26px rgba(0,180,255,0.26), 0 0 12px rgba(0,180,255,0.35)'; } catch (e) { } });
     avatar.addEventListener('mouseleave', () => { try { avatar.style.transform = ''; avatar.style.boxShadow = '0 6px 20px rgba(0,0,0,0.18)'; } catch (e) { } });
-    const host = document.createElement('div'); host.id = 'cb-host'; host.setAttribute('data-cb-ignore', 'true'); host.style.display = 'none';
+    const host = document.createElement('div'); host.id = 'cb-host'; host.setAttribute('data-cb-ignore', 'true'); host.style.cssText = 'display:none;position:fixed;top:0;right:0;z-index:2147483646;pointer-events:none;';
     document.body.appendChild(avatar); document.body.appendChild(host);
     const shadow = host.attachShadow({ mode: 'open' });
 
@@ -975,70 +1003,39 @@
     --cb-shadow-lg: 0 8px 16px rgba(0,0,0,0.1);
     --cb-shadow-xl: 0 20px 40px rgba(0,0,0,0.15);
   }
-  :host(.cb-theme-aurora) {
-    --cb-bg: #f7fbff;
-    --cb-bg2: #ffffff;
-    --cb-bg3: #eef7ff;
-    --cb-white: #1a2332;
-    --cb-subtext: #5a6b7d;
-    --cb-accent-primary: #00e6b8;
-    --cb-accent-secondary: #9370ff;
-    --cb-accent-tertiary: #6dd5ed;
-    --cb-error: #ff6b9d;
-    --cb-success: #00e6b8;
-    --cb-warning: #ffc947;
-    --cb-progress: #00e6b8;
-    --cb-border: rgba(0, 230, 184, 0.2);
-    --cb-shadow: rgba(0, 230, 184, 0.15);
+  :host(.cb-theme-ocean) {
+    --cb-bg: #0c4a6e;
+    --cb-bg2: #0e5a82;
+    --cb-bg3: #0f6897;
+    --cb-white: #f0f9ff;
+    --cb-subtext: #a5d8ff;
+    --cb-accent-primary: #0891b2;
+    --cb-accent-secondary: #22d3ee;
+    --cb-accent-tertiary: #67e8f9;
+    --cb-error: #fb7185;
+    --cb-success: #34d399;
+    --cb-warning: #fbbf24;
+    --cb-progress: #22d3ee;
+    --cb-border: rgba(8, 145, 178, 0.35);
+    --cb-shadow: rgba(8, 145, 178, 0.25);
   }
-  :host(.cb-theme-synthwave) {
-    --cb-bg: #1a0b2e;
-    --cb-bg2: #241334;
-    --cb-bg3: #2d1b3d;
-    --cb-white: #f9f0ff;
-    --cb-subtext: #c4b5fd;
-    --cb-accent-primary: #ff00ff;
-    --cb-accent-secondary: #00ffff;
-    --cb-accent-tertiary: #ff6ec7;
-    --cb-error: #ff2975;
-    --cb-success: #72f1b8;
-    --cb-warning: #ffd93d;
-    --cb-progress: #ff00ff;
-    --cb-border: rgba(255, 0, 255, 0.3);
-    --cb-shadow: rgba(255, 0, 255, 0.4);
+  :host(.cb-theme-sunset) {
+    --cb-bg: #7c2d12;
+    --cb-bg2: #9a3412;
+    --cb-bg3: #b45309;
+    --cb-white: #fff7ed;
+    --cb-subtext: #fed7aa;
+    --cb-accent-primary: #ea580c;
+    --cb-accent-secondary: #f97316;
+    --cb-accent-tertiary: #fb923c;
+    --cb-error: #fca5a5;
+    --cb-success: #86efac;
+    --cb-warning: #fde047;
+    --cb-progress: #f97316;
+    --cb-border: rgba(234, 88, 12, 0.35);
+    --cb-shadow: rgba(234, 88, 12, 0.25);
   }
-  :host(.cb-theme-nebula) {
-    --cb-bg: #0f1120;
-    --cb-bg2: #171a29;
-    --cb-bg3: #1f2336;
-    --cb-white: #e8f0ff;
-    --cb-subtext: #a5b8d6;
-    --cb-accent-primary: #7cc9ff;
-    --cb-accent-secondary: #c6a8ff;
-    --cb-accent-tertiary: #9dd9ff;
-    --cb-error: #ff8fa3;
-    --cb-success: #7ce3c4;
-    --cb-warning: #ffca7a;
-    --cb-progress: #7cc9ff;
-    --cb-border: rgba(124, 201, 255, 0.25);
-    --cb-shadow: rgba(124, 201, 255, 0.2);
-  }
-  :host(.cb-theme-rose) {
-    --cb-bg: #f1e6e9;
-    --cb-bg2: #f9eff3;
-    --cb-bg3: #faf5f7;
-    --cb-white: #3d2e33;
-    --cb-subtext: #7a6268;
-    --cb-accent-primary: #d97a9b;
-    --cb-accent-secondary: #b46e8a;
-    --cb-accent-tertiary: #e89fb8;
-    --cb-error: #d85a7a;
-    --cb-success: #91c7b1;
-    --cb-warning: #e6a978;
-    --cb-progress: #d97a9b;
-    --cb-border: rgba(217, 122, 155, 0.25);
-    --cb-shadow: rgba(217, 122, 155, 0.15);
-  }
+
   :host * { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important; letter-spacing: -0.01em; }
   .cb-panel { box-sizing: border-box; position:fixed; top:var(--cb-space-md); right:var(--cb-space-md); width:400px; max-width:calc(100vw - 24px); max-height:calc(100vh - 120px); overflow-y:auto; overflow-x:hidden; border-radius:var(--cb-radius-xl); background: var(--cb-bg2); color:var(--cb-white) !important; z-index:2147483647; box-shadow: var(--cb-shadow-xl), 0 0 40px rgba(96, 165, 250, 0.1); border: 1px solid var(--cb-border); backdrop-filter: blur(12px); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); word-wrap: break-word; pointer-events:auto; }
   .cb-panel * { max-width: 100%; word-wrap: break-word; overflow-wrap: break-word; }
@@ -1210,6 +1207,10 @@
   
   /* Agent specific animations */
   .cb-agent-enter { animation: cb-slide-up 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
+  
+  /* Toast animations */
+  @keyframes cb-toast-in { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  @keyframes cb-toast-out { from { transform: translateY(0); opacity: 1; } to { transform: translateY(10px); opacity: 0; } }
   `;
     shadow.appendChild(style);
     // Apply saved theme preference - DEFAULT TO DARK
@@ -1219,19 +1220,15 @@
           try {
             const theme = r?.cb_theme || 'dark';
             // Remove all theme classes first
-            host.classList.remove('cb-theme-light', 'cb-theme-synthwave', 'cb-theme-aurora', 'cb-theme-nebula', 'cb-theme-rose');
+            host.classList.remove('cb-theme-light', 'cb-theme-ocean', 'cb-theme-sunset');
 
-            // Apply selected theme
+            // Apply selected theme (matches options.html: dark, light, ocean, sunset)
             if (theme === 'light') {
               host.classList.add('cb-theme-light');
-            } else if (theme === 'synthwave') {
-              host.classList.add('cb-theme-synthwave');
-            } else if (theme === 'aurora') {
-              host.classList.add('cb-theme-aurora');
-            } else if (theme === 'nebula') {
-              host.classList.add('cb-theme-nebula');
-            } else if (theme === 'rose') {
-              host.classList.add('cb-theme-rose');
+            } else if (theme === 'ocean') {
+              host.classList.add('cb-theme-ocean');
+            } else if (theme === 'sunset') {
+              host.classList.add('cb-theme-sunset');
             }
             // dark is default (no class needed)
           } catch (e) { }
@@ -3008,6 +3005,7 @@
     // Helper to close all internal views
     function closeAllViews() {
       try {
+        // Close known views
         syncView.classList.remove('cb-view-active');
         summView.classList.remove('cb-view-active');
         rewView.classList.remove('cb-view-active');
@@ -3018,6 +3016,19 @@
         try { if (typeof promptDesignerView !== 'undefined' && promptDesignerView) promptDesignerView.classList.remove('cb-view-active'); } catch (_) { }
         try { if (typeof agentView !== 'undefined' && agentView) agentView.classList.remove('cb-view-active'); } catch (_) { }
         try { if (typeof settingsPanel !== 'undefined' && settingsPanel) settingsPanel.classList.remove('cb-view-active'); } catch (_) { }
+
+        // Close dynamically created views (Smart Queries, etc.)
+        try {
+          const smartQueryView = shadow.getElementById('cb-smart-query-view');
+          if (smartQueryView) smartQueryView.classList.remove('cb-view-active');
+        } catch (_) { }
+
+        // Fallback: close ANY view with cb-view-active class
+        try {
+          shadow.querySelectorAll('.cb-view-active').forEach(el => {
+            el.classList.remove('cb-view-active');
+          });
+        } catch (_) { }
       } catch (e) { }
     }
 
@@ -10080,65 +10091,9 @@ Keep it practical and actionable.`;
       try { promptDesignerView.classList.remove('cb-view-active'); } catch (e) { }
     });
 
-    // Open Smart Queries view  
-    btnSmartQuery.addEventListener('click', async () => {
-      try {
-        closeAllViews(); // Close other views first
+    // Open Smart Queries view - handler defined later at line ~13643
+    // That handler opens the full Smart Archive + Query view with search, filters, and results
 
-        // Create Smart Queries view if it doesn't exist
-        let smartQueryView = shadow.getElementById('cb-smart-query-view');
-        if (!smartQueryView) {
-          smartQueryView = document.createElement('div');
-          smartQueryView.id = 'cb-smart-query-view';
-          smartQueryView.className = 'cb-view';
-          smartQueryView.innerHTML = `
-            <div class="cb-view-header">
-              <h3 style="margin:0;font-size:16px;font-weight:700;flex:1;">🔮 Smart Queries</h3>
-              <button class="cb-close-view" id="btnCloseSQ">✕</button>
-            </div>
-            <div id="cb-sq-content" class="cb-view-content" style="padding:12px;overflow-y:auto;"></div>
-          `;
-          panel.appendChild(smartQueryView);
-
-          // Add close button handler
-          const btnCloseSQ = shadow.getElementById('btnCloseSQ');
-          if (btnCloseSQ) {
-            btnCloseSQ.addEventListener('click', () => {
-              try { smartQueryView.classList.remove('cb-view-active'); } catch (e) { }
-            });
-          }
-        }
-
-        smartQueryView.classList.add('cb-view-active');
-
-        // Initialize and render Smart Queries
-        const sqContent = shadow.getElementById('cb-sq-content');
-        if (sqContent && typeof window.LiveAIAssistant !== 'undefined') {
-          sqContent.innerHTML = ''; // Clear previous content
-
-          // Create and render the Live AI Assistant
-          const assistant = new window.LiveAIAssistant();
-
-          // Create container
-          const container = document.createElement('div');
-          container.className = 'sq-container';
-          container.style.cssText = 'padding:0;background:transparent;min-height:400px;';
-
-          sqContent.appendChild(container);
-          assistant.renderAssistant(container);
-
-          toast('Smart Queries ready!');
-        } else if (sqContent) {
-          sqContent.innerHTML = `
-            <div style="text-align:center;padding:40px 20px;color:var(--cb-subtext);">
-              <div style="font-size:48px;margin-bottom:16px;">🔮</div>
-              <div style="font-size:14px;margin-bottom:8px;">Smart Queries</div>
-              <div style="font-size:12px;opacity:0.7;">Loading AI assistant...</div>
-            </div>
-          `;
-        }
-      } catch (e) { toast('Failed to open Smart Queries'); debugLog('open smart queries view', e); }
-    });
 
     // Helper: per-view progress updater
     function updateProgress(el, action, ev) {
@@ -11150,8 +11105,8 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
                   debugLog('[Background] RAG indexing complete for', final.length, 'messages');
                 }
 
-                // Auto-summarize for longer conversations (15+ messages)
-                if (final.length > 15) {
+                // Auto-summarize for longer conversations (20+ messages)
+                if (final.length >= 20) {
                   debugLog('[Background] Starting auto-summarize...');
                   const summaryPrompt = `Summarize this chat concisely:\n\n${final.slice(0, 30).map(m => `${m.role}: ${m.text.slice(0, 200)}`).join('\n')}`;
                   try {
@@ -12368,9 +12323,9 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         // Show toast with what's being restored (no confirmation needed)
         toast(`Restoring ${msgCount} msgs from ${platform}${model ? ' (' + model + ')' : ''}...`);
 
-        // Auto-summarize if 10+ messages to preserve context without overwhelming the chat
+        // Auto-summarize if 20+ messages to preserve context without overwhelming the chat
         let formatted = '';
-        if (msgCount >= 10 && (!sel.summary || sel.summary.trim().length === 0)) {
+        if (msgCount >= 20 && (!sel.summary || sel.summary.trim().length === 0)) {
           // Auto-summarize for better context preservation with persistent status
           updateRestoreStatus(`Preparing autosummary for ${msgCount} messages...`);
           try {
@@ -13598,12 +13553,61 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
 
     // Smart Query handlers (open instantly, lazy-populate filters/suggestions)
     let __cbSmartOpenBusy = false;
+    let __cbSmartQueryUI = null;
+
     btnSmartQuery.addEventListener('click', async () => {
       if (__cbSmartOpenBusy) return; // simple click guard to avoid double-activation
       __cbSmartOpenBusy = true;
       try {
         closeAllViews();
-        // Reset visible state immediately for perceived snappiness
+
+        // Use new SmartQueryUI if available
+        if (window.SmartQueryUI) {
+          try {
+            // Initialize SmartQueryUI if not already done
+            if (!__cbSmartQueryUI) {
+              __cbSmartQueryUI = new window.SmartQueryUI();
+              await __cbSmartQueryUI.initialize();
+            }
+
+            // Clear the smart view content and render new UI
+            smartView.innerHTML = '';
+
+            // Re-add close button header
+            const topBar = document.createElement('div');
+            topBar.className = 'cb-view-top';
+            topBar.innerHTML = `
+              <div class="cb-view-title">🔬 Smart Query</div>
+              <button class="cb-view-close" id="btnCloseSmart2" aria-label="Close Smart Query">✕</button>
+            `;
+            smartView.appendChild(topBar);
+
+            // Create container for SmartQueryUI
+            const sqContainer = document.createElement('div');
+            sqContainer.id = 'cb-smart-query-container';
+            sqContainer.style.cssText = 'max-height: calc(100vh - 200px); overflow-y: auto;';
+            smartView.appendChild(sqContainer);
+
+            // Render the new UI
+            __cbSmartQueryUI.render(sqContainer);
+
+            // Attach close handler
+            const closeBtn = smartView.querySelector('#btnCloseSmart2');
+            if (closeBtn) {
+              closeBtn.addEventListener('click', () => {
+                try { smartView.classList.remove('cb-view-active'); } catch (e) { }
+              });
+            }
+
+            smartView.classList.add('cb-view-active');
+            __cbSmartOpenBusy = false;
+            return;
+          } catch (e) {
+            debugLog('SmartQueryUI render failed, falling back to legacy', e);
+          }
+        }
+
+        // Legacy fallback: Reset visible state immediately for perceived snappiness
         try { smartResults.textContent = '(No results yet)'; } catch (_) { }
         try { smartAnswer.textContent = ''; } catch (_) { }
         try { smartInput.value = ''; } catch (_) { }
@@ -13649,6 +13653,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         debugLog('open smart view', e);
       }
     });
+
 
     btnCloseSmart.addEventListener('click', () => { try { smartView.classList.remove('cb-view-active'); } catch (e) { } });
 
@@ -14314,6 +14319,13 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
               const count = conv ? (conv.conversation || []).length : (r.metadata && r.metadata.count) || 0;
               const topics = conv && Array.isArray(conv.topics) ? conv.topics : (r.metadata && r.metadata.topics ? r.metadata.topics : []);
               return { host, time, snippet, snippetFull: full, count, score: r.score, id, topics };
+            }).filter(r => r.count > 0);
+            // Deduplicate by ID (keep first occurrence which has highest score)
+            const seenIds = new Set();
+            const deduped = mapped.filter(r => {
+              if (seenIds.has(r.id)) return false;
+              seenIds.add(r.id);
+              return true;
             }).slice(0, 12);
             // apply filters from UI
             try {
@@ -14321,7 +14333,9 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
               const selTag = (tagSelect && tagSelect.value) ? tagSelect.value : '';
               const selDate = (dateSelect && dateSelect.value) ? dateSelect.value : 'All time';
               const now = Date.now();
-              const filtered = mapped.filter(it => {
+              const filtered = deduped.filter(it => {
+                // Filter out conversations with 0 messages
+                if (it.count <= 0) return false;
                 if (selHost && it.host && it.host !== selHost) return false;
                 if (selTag && (!it.topics || !it.topics.some(t => t.toLowerCase() === selTag.toLowerCase()))) return false;
                 if (selDate && selDate !== 'All time') {
@@ -14373,15 +14387,24 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           const score = (full.toLowerCase().split(ql).length - 1) + ((host || '').toLowerCase().includes(ql) ? 1 : 0);
           const snippet = full.length > 400 ? full.slice(0, 400) + '…' : full;
           return { s, score, host, time, snippet, snippetFull: full, count };
-        }).filter(x => x.score > 0).sort((a, b) => b.score - a.score).slice(0, 12);
-        // map and apply filters
-        const mapped = scored.map(r => ({ id: String(r.s && r.s.ts), host: r.host || new URL(r.s && r.s.url || location.href).hostname, time: r.time, snippet: r.snippet, snippetFull: r.snippetFull, count: r.count, topics: r.s && r.s.topics ? r.s.topics : [] }));
+        }).filter(x => x.score > 0 && x.count > 0).sort((a, b) => b.score - a.score);
+        // map and apply filters with deduplication
+        const mappedRaw = scored.map(r => ({ id: String(r.s && r.s.ts), host: r.host || new URL(r.s && r.s.url || location.href).hostname, time: r.time, snippet: r.snippet, snippetFull: r.snippetFull, count: r.count, topics: r.s && r.s.topics ? r.s.topics : [] }));
+        // Deduplicate by ID
+        const seenFallbackIds = new Set();
+        const mapped = mappedRaw.filter(r => {
+          if (seenFallbackIds.has(r.id)) return false;
+          seenFallbackIds.add(r.id);
+          return true;
+        }).slice(0, 12);
         try {
           const selHost = (hostSelect && hostSelect.value) ? hostSelect.value : '';
           const selTag = (tagSelect && tagSelect.value) ? tagSelect.value : '';
           const selDate = (dateSelect && dateSelect.value) ? dateSelect.value : 'All time';
           const now = Date.now();
           const filtered = mapped.filter(it => {
+            // Filter out conversations with 0 messages
+            if (it.count <= 0) return false;
             if (selHost && it.host && it.host !== selHost) return false;
             if (selTag && (!it.topics || !it.topics.some(t => t.toLowerCase() === selTag.toLowerCase()))) return false;
             if (selDate && selDate !== 'All time') {
@@ -14839,29 +14862,82 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       } catch (e) { }
     });
 
+    // Toast container for proper stacking
+    let toastContainer = null;
+    let toastStylesInjected = false;
+
+    function ensureToastStyles() {
+      if (toastStylesInjected) return;
+      try {
+        const style = document.createElement('style');
+        style.id = 'cb-toast-styles';
+        style.textContent = `
+          @keyframes cb-toast-slide-in { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+          @keyframes cb-toast-slide-out { from { transform: translateX(0); opacity: 1; } to { transform: translateX(100%); opacity: 0; } }
+        `;
+        document.head.appendChild(style);
+        toastStylesInjected = true;
+      } catch (e) { /* styles optional */ }
+    }
+
+    function getToastContainer() {
+      if (!toastContainer || !document.body.contains(toastContainer)) {
+        ensureToastStyles();
+        toastContainer = document.createElement('div');
+        toastContainer.id = 'cb-toast-container';
+        toastContainer.setAttribute('data-cb-ignore', 'true');
+        toastContainer.style.cssText = 'position:fixed;bottom:18px;left:18px;z-index:2147483647;display:flex;flex-direction:column-reverse;gap:8px;pointer-events:none;';
+        document.body.appendChild(toastContainer);
+        console.log('[ChatBridge] Toast container created');
+      }
+      return toastContainer;
+    }
+
     function toast(msg) {
       try {
+        if (!msg) return;
+        console.log('[ChatBridge] Toast:', msg);
+        const container = getToastContainer();
+        if (!container) { return; }
+
         const t = document.createElement('div');
         t.setAttribute('data-cb-ignore', 'true');
-        t.textContent = msg;
-        t.style.position = 'fixed';
-        t.style.bottom = '18px';
-        t.style.left = '18px';
-        t.style.background = 'rgba(10,15,28,0.9)';
-        t.style.color = '#E6E9F0';
-        t.style.padding = '8px 12px';
-        t.style.borderRadius = '10px';
-        t.style.zIndex = '2147483647';
-        t.style.border = '1px solid rgba(0,180,255,0.25)';
-        t.style.boxShadow = '0 0 12px rgba(0,180,255,0.25)';
-        t.style.letterSpacing = '0.5px';
-        t.style.fontFamily = "'Bebas Neue', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial";
+        t.textContent = String(msg);
+        t.style.cssText = `
+          background: rgba(10,15,28,0.95);
+          color: #E6E9F0;
+          padding: 10px 16px;
+          border-radius: 10px;
+          border: 1px solid rgba(0,180,255,0.25);
+          box-shadow: 0 4px 16px rgba(0,0,0,0.3), 0 0 12px rgba(0,180,255,0.15);
+          letter-spacing: 0.3px;
+          font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+          font-size: 13px;
+          font-weight: 500;
+          pointer-events: auto;
+          animation: cb-toast-slide-in 0.25s ease-out;
+          max-width: 320px;
+          word-wrap: break-word;
+        `;
         t.setAttribute('role', 'status');
         t.setAttribute('aria-live', 'polite');
-        document.body.appendChild(t); announce(msg);
-        setTimeout(() => { try { t.remove(); } catch (e) { } }, 2400);
-      } catch (e) { try { alert(msg); } catch (_) { } }
+        container.appendChild(t);
+        try { announce(msg); } catch (e) { }
+
+        // Auto-remove after delay with slide out
+        setTimeout(() => {
+          try {
+            t.style.animation = 'cb-toast-slide-out 0.2s ease-in forwards';
+            setTimeout(() => { try { t.remove(); } catch (e) { } }, 200);
+          } catch (e) { try { t.remove(); } catch (_) { } }
+        }, 2400);
+      } catch (e) {
+        // Log to console instead of alert
+        console.log('[ChatBridge] Toast:', msg);
+      }
     }
+
+
 
     refreshHistory();
     try {

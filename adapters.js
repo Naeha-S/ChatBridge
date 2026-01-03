@@ -834,23 +834,107 @@ const SiteAdapters = [
     id: "perplexity",
     label: "Perplexity (perplexity.ai)",
     detect: () => location.hostname.includes("perplexity.ai"),
-    scrollContainer: () => document.scrollingElement,
+    scrollContainer: () => document.querySelector('[class*="ThreadContent"]') || document.querySelector('main') || document.scrollingElement,
     getMessages: () => {
-      const nodes = Array.from(document.querySelectorAll(".answer, .conversation__message, .chat-bubble")).filter(n => n && n.innerText && n.innerText.trim().length > 1);
-      return nodes.map(n => ({ role: n.className.toLowerCase().includes("user") ? "user" : "assistant", text: n.innerText.trim() }));
+      const messages = [];
+
+      // Perplexity structures: look for thread/query blocks
+      // User messages are typically in query wrappers
+      const threadBlocks = document.querySelectorAll('[class*="ThreadMessage"], [class*="ConversationTurn"], [data-testid*="message"]');
+
+      if (threadBlocks.length) {
+        threadBlocks.forEach(block => {
+          const cls = (block.className || '').toLowerCase();
+          const isUser = cls.includes('user') || cls.includes('query') || cls.includes('human');
+
+          // Get text content from the prose/markdown area
+          const textEl = block.querySelector('.prose, .markdown, [class*="message-content"]') || block;
+          const text = (textEl.innerText || '').trim();
+
+          if (text && text.length > 3) {
+            // Skip citations, sources, related questions
+            if (/^\\[\\d+\\]|^Source:|^Related:|^Citations?:|^See also:/i.test(text)) return;
+            if (/^\\d+\\s*(sources?|results?)/i.test(text)) return;
+
+            if (!messages.some(m => m.text === text)) {
+              messages.push({ role: isUser ? 'user' : 'assistant', text, el: block });
+            }
+          }
+        });
+      } else {
+        // Fallback: look for specific Perplexity elements
+        // User queries
+        const queries = document.querySelectorAll('[class*="Query"], [class*="UserMessage"], .whitespace-pre-wrap:not(.prose)');
+        queries.forEach(q => {
+          const text = (q.innerText || '').trim();
+          if (text && text.length > 2 && !messages.some(m => m.text === text)) {
+            messages.push({ role: 'user', text, el: q });
+          }
+        });
+
+        // AI answers - be very specific to avoid grabbing citations
+        const answers = document.querySelectorAll('[class*="AnswerContent"], [class*="prose"]:not([class*="source"]):not([class*="citation"])');
+        answers.forEach(a => {
+          const text = (a.innerText || '').trim();
+          if (text && text.length > 20 && !messages.some(m => m.text === text)) {
+            if (!/^\\[\\d+\\]|^Source:|^Related:/i.test(text)) {
+              messages.push({ role: 'assistant', text, el: a });
+            }
+          }
+        });
+      }
+
+      // Sort by vertical position
+      messages.sort((a, b) => {
+        try { return a.el.getBoundingClientRect().top - b.el.getBoundingClientRect().top; } catch (e) { return 0; }
+      });
+
+      return messages;
     },
-    getInput: () => document.querySelector("textarea, input[type='text']")
+    getInput: () => document.querySelector('textarea[placeholder*="Ask"], textarea[class*="Input"], textarea, [contenteditable="true"]')
   },
   {
     id: "poe",
     label: "Poe (poe.com)",
     detect: () => location.hostname.includes("poe.com"),
-    scrollContainer: () => document.querySelector("main") || document.scrollingElement,
+    scrollContainer: () => document.querySelector('[class*="ChatMessagesView"]') || document.querySelector("main") || document.scrollingElement,
     getMessages: () => {
-      const nodes = Array.from(document.querySelectorAll(".message, .chat-item, .bot, .user")).filter(n => n && n.innerText && n.innerText.trim().length > 1);
-      return nodes.map(n => ({ role: (n.className || "").toLowerCase().includes("user") ? "user" : "assistant", text: n.innerText.trim() }));
+      const messages = [];
+
+      // Poe uses specific message wrapper classes - target the actual message bubbles
+      // Look for message containers with specific Poe class patterns
+      const messageContainers = document.querySelectorAll('[class*="Message_row"], [class*="ChatMessage"], [class*="message_row"]');
+
+      messageContainers.forEach(container => {
+        // Find the actual text content, not the entire container
+        const textEl = container.querySelector('[class*="Message_text"], [class*="Markdown_markdownContainer"], [class*="markdown"], .prose') || container;
+        const text = (textEl.innerText || '').trim();
+
+        // Skip if too short, is a script, JSON, or system text
+        if (!text || text.length < 3) return;
+        if (text.startsWith('{') || text.startsWith('[') || text.startsWith('function') || text.startsWith('var ') || text.startsWith('window.')) return;
+        if (/^!function|^<img|^<script|fbq\(|gtm\.start|OptanonWrapper/i.test(text)) return;
+        if (/View all Bots|Get more points|Creators API|Download.*app|Follow us|Privacy policy|Terms of service/i.test(text)) return;
+
+        // Determine role - look for specific class patterns
+        const containerClass = (container.className || '').toLowerCase();
+        const parentClass = (container.parentElement?.className || '').toLowerCase();
+        const isUser = containerClass.includes('human') || containerClass.includes('user') || parentClass.includes('human') || parentClass.includes('user');
+
+        // Avoid duplicates
+        if (!messages.some(m => m.text === text)) {
+          messages.push({ role: isUser ? 'user' : 'assistant', text, el: container });
+        }
+      });
+
+      // Sort by vertical position
+      messages.sort((a, b) => {
+        try { return a.el.getBoundingClientRect().top - b.el.getBoundingClientRect().top; } catch (e) { return 0; }
+      });
+
+      return messages;
     },
-    getInput: () => document.querySelector("textarea, [contenteditable='true']")
+    getInput: () => document.querySelector('textarea[class*="GrowingTextArea"], textarea, [contenteditable="true"]')
   },
   {
     id: "mistral",
@@ -906,6 +990,163 @@ const SiteAdapters = [
       return nodes.map(n => ({ role: (n.className || "").toLowerCase().includes("user") ? "user" : "assistant", text: n.innerText.trim() }));
     },
     getInput: () => document.querySelector("textarea, [contenteditable='true']")
+  },
+  // === NEW ADAPTERS ===
+  {
+    id: "huggingchat",
+    label: "HuggingChat (huggingface.co/chat)",
+    detect: () => location.hostname.includes("huggingface.co") && location.pathname.includes("/chat"),
+    scrollContainer: () => document.querySelector('main') || document.scrollingElement,
+    getMessages: () => {
+      const messages = [];
+      // HuggingChat uses specific message containers
+      const containers = document.querySelectorAll('[class*="message"], .group\\/message, [data-message]');
+      containers.forEach(c => {
+        const text = (c.innerText || '').trim();
+        if (text && text.length > 2) {
+          const cls = (c.className || '').toLowerCase();
+          const role = cls.includes('user') || cls.includes('human') ? 'user' : 'assistant';
+          if (!messages.some(m => m.text === text)) {
+            messages.push({ role, text, el: c });
+          }
+        }
+      });
+      return messages;
+    },
+    getInput: () => document.querySelector('textarea, [contenteditable="true"]')
+  },
+  {
+    id: "phind",
+    label: "Phind (phind.com)",
+    detect: () => location.hostname.includes("phind.com"),
+    scrollContainer: () => document.querySelector('main') || document.scrollingElement,
+    getMessages: () => {
+      const messages = [];
+      // Phind shows code-focused responses
+      const userQueries = document.querySelectorAll('[class*="UserMessage"], [class*="user-message"], .prose.user');
+      userQueries.forEach(q => {
+        const text = (q.innerText || '').trim();
+        if (text && text.length > 2) messages.push({ role: 'user', text, el: q });
+      });
+
+      const aiResponses = document.querySelectorAll('[class*="AIMessage"], [class*="assistant-message"], .prose:not(.user), .markdown');
+      aiResponses.forEach(a => {
+        const text = (a.innerText || '').trim();
+        if (text && text.length > 5 && !messages.some(m => m.text === text)) {
+          messages.push({ role: 'assistant', text, el: a });
+        }
+      });
+
+      messages.sort((a, b) => {
+        try { return a.el.getBoundingClientRect().top - b.el.getBoundingClientRect().top; } catch (e) { return 0; }
+      });
+      return messages;
+    },
+    getInput: () => document.querySelector('textarea, input[type="text"]')
+  },
+  {
+    id: "characterai",
+    label: "Character.AI",
+    detect: () => location.hostname.includes("character.ai"),
+    scrollContainer: () => document.querySelector('[class*="chat"]') || document.scrollingElement,
+    getMessages: () => {
+      const messages = [];
+      // Character.AI has a unique chat bubble structure
+      const bubbles = document.querySelectorAll('[class*="msg"], [class*="message"], [class*="chat-msg"]');
+      bubbles.forEach(b => {
+        const text = (b.innerText || '').trim();
+        if (text && text.length > 1) {
+          const cls = (b.className || '').toLowerCase();
+          const isUser = cls.includes('human') || cls.includes('user') || cls.includes('self');
+          if (!messages.some(m => m.text === text)) {
+            messages.push({ role: isUser ? 'user' : 'assistant', text, el: b });
+          }
+        }
+      });
+      return messages;
+    },
+    getInput: () => document.querySelector('textarea, [contenteditable="true"]')
+  },
+  {
+    id: "youchat",
+    label: "YouChat (you.com)",
+    detect: () => location.hostname.includes("you.com"),
+    scrollContainer: () => document.scrollingElement,
+    getMessages: () => {
+      const messages = [];
+      // You.com combines search with chat
+      const userParts = document.querySelectorAll('[class*="query"], [class*="user-input"], .searchbox-input');
+      userParts.forEach(u => {
+        const text = (u.innerText || u.value || '').trim();
+        if (text && text.length > 1) messages.push({ role: 'user', text, el: u });
+      });
+
+      const aiParts = document.querySelectorAll('[class*="answer"], [class*="response"], .markdown, .prose');
+      aiParts.forEach(a => {
+        const text = (a.innerText || '').trim();
+        if (text && text.length > 10 && !messages.some(m => m.text === text)) {
+          messages.push({ role: 'assistant', text, el: a });
+        }
+      });
+      return messages;
+    },
+    getInput: () => document.querySelector('textarea, input[type="text"], [contenteditable="true"]')
+  },
+  {
+    id: "replika",
+    label: "Replika",
+    detect: () => location.hostname.includes("replika.ai") || location.hostname.includes("replika.com"),
+    scrollContainer: () => document.scrollingElement,
+    getMessages: () => {
+      const msgs = document.querySelectorAll('[class*="message"], [class*="chat-bubble"]');
+      return Array.from(msgs).map(m => {
+        const cls = (m.className || '').toLowerCase();
+        return { role: cls.includes('user') || cls.includes('self') ? 'user' : 'assistant', text: (m.innerText || '').trim() };
+      }).filter(m => m.text.length > 1);
+    },
+    getInput: () => document.querySelector('textarea, input[type="text"]')
+  },
+  {
+    id: "jasper",
+    label: "Jasper Chat",
+    detect: () => location.hostname.includes("jasper.ai"),
+    scrollContainer: () => document.scrollingElement,
+    getMessages: () => {
+      const msgs = document.querySelectorAll('[class*="message"], .chat-message, .prose');
+      return Array.from(msgs).map(m => {
+        const cls = (m.className || '').toLowerCase();
+        return { role: cls.includes('user') || cls.includes('human') ? 'user' : 'assistant', text: (m.innerText || '').trim() };
+      }).filter(m => m.text.length > 2);
+    },
+    getInput: () => document.querySelector('textarea, [contenteditable="true"]')
+  },
+  {
+    id: "writesonic",
+    label: "Writesonic/Chatsonic",
+    detect: () => location.hostname.includes("writesonic.com"),
+    scrollContainer: () => document.scrollingElement,
+    getMessages: () => {
+      const msgs = document.querySelectorAll('[class*="message"], [class*="chat"], .prose');
+      return Array.from(msgs).map(m => {
+        const cls = (m.className || '').toLowerCase();
+        return { role: cls.includes('user') || cls.includes('human') ? 'user' : 'assistant', text: (m.innerText || '').trim() };
+      }).filter(m => m.text.length > 2);
+    },
+    getInput: () => document.querySelector('textarea, [contenteditable="true"]')
+  },
+  {
+    id: "forefront",
+    label: "Forefront AI",
+    detect: () => location.hostname.includes("forefront.ai"),
+    scrollContainer: () => document.querySelector('main') || document.scrollingElement,
+    getMessages: () => {
+      const msgs = document.querySelectorAll('[class*="message"], .chat-message, .prose');
+      return Array.from(msgs).map(m => {
+        const cls = (m.className || '').toLowerCase();
+        return { role: cls.includes('user') || cls.includes('human') ? 'user' : 'assistant', text: (m.innerText || '').trim() };
+      }).filter(m => m.text.length > 2);
+    },
+    getInput: () => document.querySelector('textarea, [contenteditable="true"]')
   }
 ];
 
