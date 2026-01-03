@@ -2058,17 +2058,17 @@
     // Agent Hub view (replaces Knowledge Graph) - Multi-agent system
     const agentView = document.createElement('div'); agentView.className = 'cb-internal-view'; agentView.id = 'cb-agent-view'; agentView.setAttribute('data-cb-ignore', 'true');
     const agentTop = document.createElement('div'); agentTop.className = 'cb-view-top';
-    const agentTitle = document.createElement('div'); agentTitle.className = 'cb-view-title'; agentTitle.textContent = '🤖 AI Agent Hub';
+    const agentTitle = document.createElement('div'); agentTitle.className = 'cb-view-title'; agentTitle.textContent = '◈ Agent Utilities';
     const btnCloseAgent = document.createElement('button'); btnCloseAgent.className = 'cb-view-close'; btnCloseAgent.textContent = '✕';
-    btnCloseAgent.setAttribute('aria-label', 'Close Agent Hub');
+    btnCloseAgent.setAttribute('aria-label', 'Close Agents');
     agentTop.appendChild(agentTitle); agentTop.appendChild(btnCloseAgent);
     agentView.appendChild(agentTop);
 
-    const agentIntro = document.createElement('div'); agentIntro.className = 'cb-view-intro'; agentIntro.textContent = 'Advanced AI agents that work in the background to enhance your conversations across platforms.';
+    const agentIntro = document.createElement('div'); agentIntro.className = 'cb-view-intro'; agentIntro.textContent = 'Specialized cognitive instruments for structured analysis and output generation.';
     agentView.appendChild(agentIntro);
 
     // Agent content container (will be populated by renderAgentHub)
-    const agentContent = document.createElement('div'); agentContent.id = 'cb-agent-content'; agentContent.style.cssText = 'padding:12px 0;overflow-y:auto;max-height:calc(100vh - 250px);';
+    const agentContent = document.createElement('div'); agentContent.id = 'cb-agent-content'; agentContent.style.cssText = 'padding:8px 0;overflow-y:auto;max-height:none;';
     agentView.appendChild(agentContent);
 
     panel.appendChild(agentView);
@@ -7740,123 +7740,99 @@ Respond with JSON only:
         agentContent.innerHTML = '';
         debugLog('Rendering Agent Hub...');
 
-        // Main container with proper padding
+        // Main container with refined padding
         const mainContainer = document.createElement('div');
-        mainContainer.style.cssText = 'padding:16px;display:flex;flex-direction:column;gap:16px;';
+        mainContainer.style.cssText = 'padding:8px;display:flex;flex-direction:column;gap:8px;';
 
-        // Premium Header - cleaner
+        // Premium Header - Luxury Minimal
         const header = document.createElement('div');
         header.style.cssText = `
-          padding:18px 20px;
-          background:linear-gradient(135deg,rgba(138,43,226,0.15),rgba(6,182,212,0.1));
-          border:1px solid rgba(138,43,226,0.25);border-radius:14px;
-          position:relative;overflow:hidden;
+          padding:10px 12px;
+          background:rgba(255,255,255,0.02);
+          border:1px solid rgba(255,255,255,0.06);
+          border-radius:8px;
         `;
         header.innerHTML = `
-          <div style="position:absolute;top:-30px;right:-30px;width:100px;height:100px;background:radial-gradient(circle,rgba(138,43,226,0.25),transparent);border-radius:50%;filter:blur(25px);"></div>
-          <div style="display:flex;align-items:center;gap:14px;position:relative;z-index:1;">
-            <div style="width:48px;height:48px;background:linear-gradient(135deg,#8b5cf6,#06b6d4);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:24px;box-shadow:0 4px 16px rgba(139,92,246,0.35);">🤖</div>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div style="width:28px;height:28px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--cb-accent-primary);">◈</div>
             <div style="flex:1;">
-              <div style="font-weight:700;color:#fff;font-size:16px;letter-spacing:-0.3px;">Power Agents</div>
-              <div style="font-size:12px;color:rgba(255,255,255,0.55);margin-top:3px;">6 intelligent tools for your workflow</div>
+              <div style="font-weight:600;color:var(--cb-white);font-size:13px;letter-spacing:0.3px;">Agent Utilities</div>
+              <div style="font-size:10px;color:var(--cb-subtext);margin-top:2px;text-transform:uppercase;letter-spacing:0.5px;">4 Cognitive Instruments</div>
             </div>
           </div>
         `;
         mainContainer.appendChild(header);
 
-        // Agents Grid - 2 columns for cleaner layout
+        // Agents Grid - 2 columns, tighter
         const agentsGrid = document.createElement('div');
-        agentsGrid.style.cssText = 'display:grid;grid-template-columns:repeat(2,1fr);gap:10px;';
+        agentsGrid.style.cssText = 'display:grid;grid-template-columns:repeat(2,1fr);gap:8px;';
 
-        // Agent definitions - The Final 6
+        // Agent definitions - Refined 4 (Closer and Continue REMOVED)
         const agents = [
           {
             id: 'action-extractor',
-            name: 'Tasks',
-            desc: 'Extract to-dos',
-            icon: '📝',
-            gradient: 'linear-gradient(135deg,#10b981,#059669)',
-            glow: 'rgba(16,185,129,0.25)',
+            name: 'Extractor',
+            desc: 'Surface action items',
+            icon: '◆',
+            accent: 'rgba(16,185,129,0.15)',
+            border: 'rgba(16,185,129,0.25)',
             action: showActionExtractor
           },
           {
-            id: 'session-closer',
-            name: 'Closer',
-            desc: 'Session summary',
-            icon: '🔚',
-            gradient: 'linear-gradient(135deg,#f59e0b,#d97706)',
-            glow: 'rgba(245,158,11,0.25)',
-            action: showSessionCloser
-          },
-          {
             id: 'cognitive-simplifier',
-            name: 'Simplify',
-            desc: 'Lighter to read',
-            icon: '🧠',
-            gradient: 'linear-gradient(135deg,#8b5cf6,#7c3aed)',
-            glow: 'rgba(139,92,246,0.25)',
+            name: 'Reduce',
+            desc: 'Distill complexity',
+            icon: '◇',
+            accent: 'rgba(139,92,246,0.15)',
+            border: 'rgba(139,92,246,0.25)',
             action: showCognitiveSimplifier
           },
           {
             id: 'draft-generator',
-            name: 'Draft',
-            desc: 'Email & notes',
-            icon: '📧',
-            gradient: 'linear-gradient(135deg,#3b82f6,#2563eb)',
-            glow: 'rgba(59,130,246,0.25)',
+            name: 'Compose',
+            desc: 'Generate structured outputs',
+            icon: '▣',
+            accent: 'rgba(59,130,246,0.15)',
+            border: 'rgba(59,130,246,0.25)',
             action: showDraftGenerator
           },
           {
             id: 'echo-synth',
-            name: 'EchoSynth',
-            desc: 'Multi-AI merge',
-            icon: '⚡',
-            gradient: 'linear-gradient(135deg,#ec4899,#db2777)',
-            glow: 'rgba(236,72,153,0.25)',
+            name: 'Synthesizer',
+            desc: 'Cross-model integration',
+            icon: '◎',
+            accent: 'rgba(236,72,153,0.15)',
+            border: 'rgba(236,72,153,0.25)',
             action: showEchoSynth
-          },
-          {
-            id: 'auto-continue',
-            name: 'Continue',
-            desc: 'Resume cut-off',
-            icon: '🔁',
-            gradient: 'linear-gradient(135deg,#06b6d4,#0891b2)',
-            glow: 'rgba(6,182,212,0.25)',
-            action: showAutoContinue
           }
         ];
 
         agents.forEach(agent => {
           const card = document.createElement('div');
           card.style.cssText = `
-            display:flex;flex-direction:column;align-items:center;
-            padding:16px 12px;
-            background:rgba(255,255,255,0.025);
-            border:1px solid rgba(255,255,255,0.07);
-            border-radius:12px;
+            display:flex;flex-direction:column;align-items:flex-start;
+            padding:10px 12px;
+            background:rgba(255,255,255,0.02);
+            border:1px solid rgba(255,255,255,0.06);
+            border-radius:6px;
             cursor:pointer;
-            transition:all 0.2s ease;
-            text-align:center;
+            transition:all 0.15s ease;
           `;
 
           card.innerHTML = `
-            <div style="width:40px;height:40px;background:${agent.gradient};border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 3px 10px ${agent.glow};margin-bottom:10px;">${agent.icon}</div>
-            <div style="font-weight:600;color:#fff;font-size:12px;margin-bottom:2px;">${agent.name}</div>
-            <div style="font-size:10px;color:rgba(255,255,255,0.45);line-height:1.3;">${agent.desc}</div>
+            <div style="width:28px;height:28px;background:${agent.accent};border:1px solid ${agent.border};border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;color:rgba(255,255,255,0.8);margin-bottom:8px;">${agent.icon}</div>
+            <div style="font-weight:600;color:var(--cb-white);font-size:11px;letter-spacing:0.2px;">${agent.name}</div>
+            <div style="font-size:9px;color:var(--cb-subtext);line-height:1.4;margin-top:2px;">${agent.desc}</div>
           `;
 
-          // Hover effects
+          // Hover effects - subtle luxury
           card.addEventListener('mouseenter', () => {
-            card.style.background = 'rgba(255,255,255,0.05)';
-            card.style.borderColor = 'rgba(255,255,255,0.12)';
-            card.style.transform = 'translateY(-2px)';
-            card.style.boxShadow = `0 6px 20px ${agent.glow}`;
+            card.style.background = 'rgba(255,255,255,0.04)';
+            card.style.borderColor = 'rgba(255,255,255,0.1)';
           });
           card.addEventListener('mouseleave', () => {
-            card.style.background = 'rgba(255,255,255,0.025)';
-            card.style.borderColor = 'rgba(255,255,255,0.07)';
-            card.style.transform = 'translateY(0)';
-            card.style.boxShadow = 'none';
+            card.style.background = 'rgba(255,255,255,0.02)';
+            card.style.borderColor = 'rgba(255,255,255,0.06)';
           });
 
           // Click handler
@@ -7874,56 +7850,27 @@ Respond with JSON only:
 
         mainContainer.appendChild(agentsGrid);
 
-        // Output Section - cleaner
+        // Output Section - ultra compact
         const outputSection = document.createElement('div');
-        outputSection.style.cssText = 'display:flex;flex-direction:column;gap:10px;';
-
-        const outputLabel = document.createElement('div');
-        outputLabel.style.cssText = 'font-size:11px;font-weight:600;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.5px;display:flex;align-items:center;gap:6px;';
-        outputLabel.innerHTML = '<span style="font-size:12px;">📊</span> Output';
-        outputSection.appendChild(outputLabel);
+        outputSection.style.cssText = 'display:flex;flex-direction:column;gap:4px;';
 
         const outputArea = document.createElement('div');
         outputArea.id = 'cb-agent-output';
         outputArea.className = 'cb-view-text cb-agent-enter';
         outputArea.style.cssText = `
-          min-height:120px;max-height:320px;overflow-y:auto;
-          background:rgba(0,0,0,0.25);
-          border:1px solid rgba(255,255,255,0.05);
-          border-radius:12px;padding:16px;
-          font-size:12px;line-height:1.6;
-          color:rgba(255,255,255,0.8);
+          min-height:80px;max-height:500px;overflow-y:auto;
+          background:rgba(0,0,0,0.15);
+          border:1px solid rgba(255,255,255,0.06);
+          border-radius:6px;padding:8px;
+          font-size:12px;line-height:1.5;
+          color:var(--cb-white);
         `;
         outputArea.innerHTML = '<div style="text-align:center;color:rgba(255,255,255,0.25);padding:30px 20px;font-size:13px;">Click an agent above to get started</div>';
         outputSection.appendChild(outputArea);
 
-        // Output controls
-        const outputControls = document.createElement('div');
-        outputControls.style.cssText = 'display:flex;gap:8px;';
+        // Output controls REMOVED - Agents render their own controls now
+        // This prevents double buttons and extra vertical space
 
-        const btnInsert = document.createElement('button');
-        btnInsert.className = 'cb-btn cb-btn-primary';
-        btnInsert.style.cssText = 'flex:1;padding:11px;font-size:12px;border-radius:10px;';
-        btnInsert.textContent = '➤ Insert';
-        btnInsert.addEventListener('click', async () => {
-          const text = outputArea.innerText;
-          if (!text || text.includes('Click an agent')) { toast('No output'); return; }
-          try { await restoreToChat(text, []); toast('Inserted!'); } catch (e) { toast('Failed'); }
-        });
-
-        const btnCopy = document.createElement('button');
-        btnCopy.className = 'cb-btn';
-        btnCopy.style.cssText = 'flex:1;padding:11px;font-size:12px;border-radius:10px;';
-        btnCopy.textContent = '📋 Copy';
-        btnCopy.addEventListener('click', async () => {
-          const text = outputArea.innerText;
-          if (!text || text.includes('Click an agent')) { toast('No output'); return; }
-          try { await navigator.clipboard.writeText(text); toast('Copied!'); } catch (e) { toast('Failed'); }
-        });
-
-        outputControls.appendChild(btnInsert);
-        outputControls.appendChild(btnCopy);
-        outputSection.appendChild(outputControls);
 
         mainContainer.appendChild(outputSection);
         agentContent.appendChild(mainContainer);
@@ -8586,6 +8533,7 @@ Analyze the conversations and extract structured context in 6 categories. Output
     }
 
     // Show EchoSynth Interface (ensure shadow-scoped bindings)
+    // Show EchoSynth Interface (ensure shadow-scoped bindings)
     async function showEchoSynth() {
       const outputArea = (agentContent && agentContent.querySelector('#cb-agent-output')) || (shadow && shadow.getElementById && shadow.getElementById('cb-agent-output'));
       if (!outputArea) return;
@@ -8593,23 +8541,23 @@ Analyze the conversations and extract structured context in 6 categories. Output
       // Show input UI for EchoSynth
       outputArea.innerHTML = `
         <div id="echosynth-detail-container"></div>
-        <div style="margin-bottom:12px;">
-          <div style="font-weight:600;margin-bottom:8px;font-size:13px;">⚡ EchoSynth - Multi-AI Query</div>
-          <div style="font-size:11px;opacity:0.8;margin-bottom:12px;">Ask one question, get synthesized answer from multiple AIs with adaptive depth and tone</div>
-          <div id="echosynth-tone" style="display:flex;gap:8px;margin-bottom:8px;align-items:center;">
-            <span style="font-size:11px;opacity:0.8;">Tone:</span>
-            <button class="cb-btn cb-btn-sm" data-tone="analytical">Analytical</button>
-            <button class="cb-btn cb-btn-sm" data-tone="narrative">Narrative</button>
-            <button class="cb-btn cb-btn-sm" data-tone="structured">Structured</button>
-            <span id="tone-preview" style="font-size:11px;opacity:0.75;margin-left:auto;">Preview: auto</span>
+        <div style="padding:0;display:flex;flex-direction:column;gap:8px;">
+          <div id="echosynth-tone" style="display:flex;gap:4px;align-items:center;">
+            <span style="font-size:10px;color:var(--cb-subtext);font-weight:600;margin-right:2px;">TONE:</span>
+            <button class="cb-btn cb-btn-sm" data-tone="analytical" style="font-size:10px;padding:4px 8px;border-radius:4px;">Analytical</button>
+            <button class="cb-btn cb-btn-sm" data-tone="narrative" style="font-size:10px;padding:4px 8px;border-radius:4px;">Narrative</button>
+            <button class="cb-btn cb-btn-sm" data-tone="structured" style="font-size:10px;padding:4px 8px;border-radius:4px;">Structured</button>
+            <span id="tone-preview" style="font-size:9px;color:var(--cb-subtext);margin-left:auto;opacity:0.7;">Auto</span>
           </div>
-          <textarea id="echosynth-prompt" placeholder="Enter your question..." style="width:100%;min-height:80px;padding:10px;background:rgba(10,15,28,0.6);border:1px solid rgba(0,180,255,0.3);border-radius:8px;color:#E6E9F0;font-size:13px;resize:vertical;font-family:inherit;"></textarea>
-          <div style="display:flex;gap:8px;margin-top:8px;">
-            <button id="echosynth-run" class="cb-btn cb-btn-primary" style="flex:1;">▶ Run EchoSynth</button>
-            <button id="echosynth-cancel" class="cb-btn">Cancel</button>
+          
+          <textarea id="echosynth-prompt" placeholder="Enter your question..." style="width:100%;min-height:70px;padding:8px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:var(--cb-white);font-size:11px;resize:vertical;font-family:inherit;"></textarea>
+          
+          <div style="display:flex;gap:6px;">
+            <button id="echosynth-run" class="cb-btn cb-btn-primary" style="flex:1;padding:8px;font-size:11px;border-radius:6px;">▶ Run Synthesis</button>
+            <button id="echosynth-cancel" class="cb-btn" style="padding:8px;font-size:11px;border-radius:6px;width:60px;">Cancel</button>
           </div>
         </div>
-        <div id="echosynth-results" style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(0,180,255,0.2);display:none;"></div>
+        <div id="echosynth-results" style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.06);display:none;"></div>
       `;
 
       // Add detail level toggle
@@ -9003,32 +8951,12 @@ Enhanced Answer:`;
       const outputArea = (agentContent && agentContent.querySelector('#cb-agent-output')) || (shadow && shadow.getElementById && shadow.getElementById('cb-agent-output'));
       if (!outputArea) return;
 
-      // Auto-scroll to output
-      outputArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
-
-      outputArea.innerHTML = `
-        <div style="padding:4px;">
-          <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
-            <div style="width:36px;height:36px;background:linear-gradient(135deg,#10b981,#059669);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;">📝</div>
-            <div>
-              <div style="font-weight:700;font-size:14px;color:#fff;">Action Extractor</div>
-              <div style="font-size:10px;color:rgba(255,255,255,0.5);">Extracting tasks, deadlines & assignments...</div>
-            </div>
-          </div>
-          <div style="display:flex;justify-content:center;padding:30px;"><div class="cb-spinner"></div></div>
-        </div>
-      `;
+      outputArea.innerHTML = `<div style="display:flex;align-items:center;gap:8px;padding:8px;"><div class="cb-spinner" style="width:16px;height:16px;"></div><span style="font-size:11px;color:var(--cb-subtext);">Extracting actions...</span></div>`;
 
       try {
         const chatText = await getConversationText();
         if (!chatText || chatText.length < 20) {
-          outputArea.innerHTML = `
-            <div style="text-align:center;padding:30px;">
-              <div style="font-size:32px;margin-bottom:12px;">💬</div>
-              <div style="font-size:13px;color:#fff;font-weight:600;">No Conversation Found</div>
-              <div style="font-size:11px;color:rgba(255,255,255,0.5);margin-top:4px;">Scan a chat first to extract actions</div>
-            </div>
-          `;
+          outputArea.innerHTML = `<div style="padding:12px;text-align:center;"><div style="font-size:20px;margin-bottom:6px;">💬</div><div style="font-size:11px;color:var(--cb-white);">No conversation found</div><div style="font-size:9px;color:var(--cb-subtext);margin-top:2px;">Scan a chat first</div></div>`;
           return;
         }
 
@@ -9052,84 +8980,71 @@ Output ONLY valid JSON:`;
             const jsonMatch = res.result.match(/\{[\s\S]*\}/);
             if (jsonMatch) data = JSON.parse(jsonMatch[0]);
           } catch (e) {
-            // Fallback: parse as text
             const lines = res.result.split('\n').filter(l => l.trim());
             data.tasks = lines.slice(0, 5);
           }
 
-          const tasksHtml = (data.tasks || []).map((t, i) => `
-            <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.15);border-radius:10px;margin-bottom:6px;">
-              <div style="width:20px;height:20px;border:2px solid #10b981;border-radius:5px;flex-shrink:0;margin-top:1px;"></div>
-              <div style="flex:1;font-size:12px;color:#fff;line-height:1.4;">${t}</div>
+          // Polished UI - Compact but designed
+          const tasksHtml = (data.tasks || []).map(t => `
+            <div style="display:flex;align-items:flex-start;gap:8px;padding:8px 10px;background:rgba(16,185,129,0.06);border-radius:6px;margin-bottom:4px;border:1px solid rgba(16,185,129,0.1);">
+              <span style="color:#10b981;font-size:10px;margin-top:2px;">◆</span>
+              <span style="font-size:11px;color:var(--cb-white);line-height:1.4;">${t}</span>
             </div>
-          `).join('') || '<div style="color:rgba(255,255,255,0.4);font-size:11px;padding:8px;">No tasks found</div>';
+          `).join('') || '<div style="color:var(--cb-subtext);font-size:11px;padding:4px;">No tasks found</div>';
 
           const deadlinesHtml = (data.deadlines || []).map(d => `
-            <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.15);border-radius:10px;margin-bottom:6px;">
-              <div style="font-size:16px;">📅</div>
-              <div style="flex:1;">
-                <div style="font-size:12px;color:#fff;">${d.item || d}</div>
-                <div style="font-size:10px;color:#f59e0b;margin-top:2px;">${d.when || ''}</div>
-              </div>
+            <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:rgba(245,158,11,0.06);border-radius:6px;margin-bottom:4px;border:1px solid rgba(245,158,11,0.1);">
+              <span style="font-size:12px;">📅</span>
+              <span style="font-size:11px;color:var(--cb-white);flex:1;">${d.item || d}</span>
+              <span style="font-size:10px;color:#f59e0b;font-weight:500;">${d.when || ''}</span>
             </div>
-          `).join('') || '<div style="color:rgba(255,255,255,0.4);font-size:11px;padding:8px;">No deadlines found</div>';
+          `).join('') || '<div style="color:var(--cb-subtext);font-size:11px;padding:4px;">No deadlines found</div>';
 
           const assignmentsHtml = (data.assignments || []).map(a => `
-            <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:rgba(139,92,246,0.06);border:1px solid rgba(139,92,246,0.15);border-radius:10px;margin-bottom:6px;">
-              <div style="width:24px;height:24px;background:linear-gradient(135deg,#8b5cf6,#7c3aed);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;color:#fff;">👤</div>
-              <div style="flex:1;">
-                <div style="font-size:12px;color:#fff;font-weight:600;">${a.person || 'Someone'}</div>
-                <div style="font-size:10px;color:rgba(255,255,255,0.6);margin-top:2px;">${a.task || a}</div>
-              </div>
+            <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:rgba(139,92,246,0.06);border-radius:6px;margin-bottom:4px;border:1px solid rgba(139,92,246,0.1);">
+              <span style="font-size:12px;">👤</span>
+              <span style="font-size:10px;color:#8b5cf6;font-weight:600;background:rgba(139,92,246,0.1);padding:2px 6px;border-radius:4px;">${a.person || '?'}</span>
+              <span style="font-size:11px;color:var(--cb-white);flex:1;">${a.task || a}</span>
             </div>
-          `).join('') || '<div style="color:rgba(255,255,255,0.4);font-size:11px;padding:8px;">No assignments found</div>';
+          `).join('') || '<div style="color:var(--cb-subtext);font-size:11px;padding:4px;">No assignments found</div>';
 
           outputArea.innerHTML = `
-            <div style="padding:4px;">
+            <div style="padding:0;">
               <!-- Stats Row -->
-              <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px;">
-                <div style="background:linear-gradient(135deg,rgba(16,185,129,0.15),rgba(16,185,129,0.05));border:1px solid rgba(16,185,129,0.25);border-radius:10px;padding:12px;text-align:center;">
-                  <div style="font-size:22px;font-weight:700;color:#10b981;">${(data.tasks || []).length}</div>
-                  <div style="font-size:9px;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.5px;">Tasks</div>
-                </div>
-                <div style="background:linear-gradient(135deg,rgba(245,158,11,0.15),rgba(245,158,11,0.05));border:1px solid rgba(245,158,11,0.25);border-radius:10px;padding:12px;text-align:center;">
-                  <div style="font-size:22px;font-weight:700;color:#f59e0b;">${(data.deadlines || []).length}</div>
-                  <div style="font-size:9px;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.5px;">Deadlines</div>
-                </div>
-                <div style="background:linear-gradient(135deg,rgba(139,92,246,0.15),rgba(139,92,246,0.05));border:1px solid rgba(139,92,246,0.25);border-radius:10px;padding:12px;text-align:center;">
-                  <div style="font-size:22px;font-weight:700;color:#8b5cf6;">${(data.assignments || []).length}</div>
-                  <div style="font-size:9px;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.5px;">Assigned</div>
-                </div>
+              <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;padding:0 2px;font-size:11px;color:var(--cb-subtext);">
+                <span style="color:#10b981;font-weight:600;">${(data.tasks || []).length} TASKS</span>
+                <span style="color:#f59e0b;font-weight:600;">${(data.deadlines || []).length} DUE</span>
+                <span style="color:#8b5cf6;font-weight:600;">${(data.assignments || []).length} PPL</span>
               </div>
-              
-              <!-- Tasks Section -->
-              <div style="margin-bottom:14px;">
-                <div style="font-size:11px;font-weight:600;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;display:flex;align-items:center;gap:6px;">
-                  <span style="color:#10b981;">●</span> Tasks
+
+              <!-- Sections -->
+              <div style="margin-bottom:8px;">
+                <div style="display:flex;align-items:center;gap:4px;margin-bottom:4px;">
+                  <div style="width:4px;height:4px;background:#10b981;border-radius:50%;"></div>
+                  <div style="font-size:9px;font-weight:600;color:var(--cb-subtext);text-transform:uppercase;letter-spacing:0.5px;">Tasks</div>
                 </div>
                 ${tasksHtml}
               </div>
-              
-              <!-- Deadlines Section -->
-              <div style="margin-bottom:14px;">
-                <div style="font-size:11px;font-weight:600;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;display:flex;align-items:center;gap:6px;">
-                  <span style="color:#f59e0b;">●</span> Deadlines
+
+              <div style="margin-bottom:8px;">
+                <div style="display:flex;align-items:center;gap:4px;margin-bottom:4px;">
+                  <div style="width:4px;height:4px;background:#f59e0b;border-radius:50%;"></div>
+                  <div style="font-size:9px;font-weight:600;color:var(--cb-subtext);text-transform:uppercase;letter-spacing:0.5px;">Deadlines</div>
                 </div>
                 ${deadlinesHtml}
               </div>
-              
-              <!-- Assignments Section -->
-              <div style="margin-bottom:14px;">
-                <div style="font-size:11px;font-weight:600;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;display:flex;align-items:center;gap:6px;">
-                  <span style="color:#8b5cf6;">●</span> Assignments
+
+              <div style="margin-bottom:6px;">
+                <div style="display:flex;align-items:center;gap:4px;margin-bottom:4px;">
+                  <div style="width:4px;height:4px;background:#8b5cf6;border-radius:50%;"></div>
+                  <div style="font-size:9px;font-weight:600;color:var(--cb-subtext);text-transform:uppercase;letter-spacing:0.5px;">Assigned</div>
                 </div>
                 ${assignmentsHtml}
               </div>
-              
-              <!-- Action Buttons -->
-              <div style="display:flex;gap:8px;margin-top:16px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.06);">
-                <button id="action-copy" class="cb-btn cb-btn-primary" style="flex:1;padding:10px;font-size:11px;">📋 Copy All</button>
-                <button id="action-insert" class="cb-btn" style="flex:1;padding:10px;font-size:11px;">➤ To Chat</button>
+
+              <div style="display:flex;gap:6px;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.06);">
+                <button id="action-copy" class="cb-btn cb-btn-secondary" style="flex:1;padding:6px;font-size:10px;border-radius:6px;">📋 Copy</button>
+                <button id="action-insert" class="cb-btn cb-btn-primary" style="flex:1;padding:6px;font-size:10px;border-radius:6px;">➤ Insert</button>
               </div>
             </div>
           `;
@@ -9138,25 +9053,18 @@ Output ONLY valid JSON:`;
 
           outputArea.querySelector('#action-copy')?.addEventListener('click', async () => {
             await navigator.clipboard.writeText(copyText);
-            toast('📋 Copied!');
+            toast('Copied!');
           });
 
           outputArea.querySelector('#action-insert')?.addEventListener('click', async () => {
-            try { await restoreToChat(copyText, []); toast('✓ Inserted!'); } catch (e) { toast('Failed'); }
+            try { await restoreToChat(copyText, []); toast('Inserted!'); } catch (e) { toast('Failed'); }
           });
 
-          toast('✅ Extracted!');
         } else {
-          outputArea.innerHTML = `
-            <div style="text-align:center;padding:30px;">
-              <div style="font-size:32px;margin-bottom:12px;">⚠️</div>
-              <div style="font-size:13px;color:#fff;font-weight:600;">Extraction Failed</div>
-              <div style="font-size:11px;color:rgba(255,255,255,0.5);margin-top:4px;">${res?.error || 'Please try again'}</div>
-            </div>
-          `;
+          outputArea.innerHTML = `<div style="padding:12px;text-align:center;"><div style="font-size:20px;margin-bottom:6px;">⚠️</div><div style="font-size:11px;color:var(--cb-white);">Extraction failed</div><div style="font-size:9px;color:var(--cb-subtext);margin-top:2px;">${res?.error || 'Try again'}</div></div>`;
         }
       } catch (e) {
-        outputArea.innerHTML = `<div style="color:#f87171;padding:20px;text-align:center;">❌ Error: ${e.message || 'Unknown'}</div>`;
+        outputArea.innerHTML = `<div style="color:#f87171;padding:12px;text-align:center;font-size:11px;">Error: ${e.message || 'Unknown'}</div>`;
         debugLog('Action Extractor error', e);
       }
     }
@@ -9168,42 +9076,34 @@ Output ONLY valid JSON:`;
       const outputArea = (agentContent && agentContent.querySelector('#cb-agent-output')) || (shadow && shadow.getElementById && shadow.getElementById('cb-agent-output'));
       if (!outputArea) return;
 
-      outputArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // outputArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
       outputArea.innerHTML = `
-        <div style="padding:4px;">
-          <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
-            <div style="width:36px;height:36px;background:linear-gradient(135deg,#3b82f6,#2563eb);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;">📧</div>
-            <div>
-              <div style="font-weight:700;font-size:14px;color:#fff;">Draft Generator</div>
-              <div style="font-size:10px;color:rgba(255,255,255,0.5);">Select a draft type below</div>
-            </div>
-          </div>
-          
-          <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px;">
-            <button class="cb-draft-type cb-btn" data-type="email" style="padding:12px;text-align:center;background:rgba(96,165,250,0.1);border:2px solid #60a5fa;">
-              <div style="font-size:18px;margin-bottom:4px;">📧</div>
-              <div style="font-size:10px;font-weight:600;">Email</div>
+        <div style="padding:0;">
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px;">
+            <button class="cb-draft-type cb-btn" data-type="email" style="flex-direction:column;gap:2px;padding:6px;text-align:center;background:rgba(96,165,250,0.1);border:1px solid #60a5fa;border-radius:6px;height:auto;">
+              <span style="font-size:14px;">📧</span>
+              <span style="font-size:9px;font-weight:600;">Email</span>
             </button>
-            <button class="cb-draft-type cb-btn" data-type="status" style="padding:12px;text-align:center;">
-              <div style="font-size:18px;margin-bottom:4px;">📊</div>
-              <div style="font-size:10px;font-weight:600;">Status Update</div>
+            <button class="cb-draft-type cb-btn" data-type="status" style="flex-direction:column;gap:2px;padding:6px;text-align:center;border-radius:6px;height:auto;">
+              <span style="font-size:14px;">📊</span>
+              <span style="font-size:9px;font-weight:600;">Status</span>
             </button>
-            <button class="cb-draft-type cb-btn" data-type="notes" style="padding:12px;text-align:center;">
-              <div style="font-size:18px;margin-bottom:4px;">📝</div>
-              <div style="font-size:10px;font-weight:600;">Meeting Notes</div>
+            <button class="cb-draft-type cb-btn" data-type="notes" style="flex-direction:column;gap:2px;padding:6px;text-align:center;border-radius:6px;height:auto;">
+              <span style="font-size:14px;">📝</span>
+              <span style="font-size:9px;font-weight:600;">Notes</span>
             </button>
-            <button class="cb-draft-type cb-btn" data-type="reply" style="padding:12px;text-align:center;">
-              <div style="font-size:18px;margin-bottom:4px;">💬</div>
-              <div style="font-size:10px;font-weight:600;">Quick Reply</div>
+            <button class="cb-draft-type cb-btn" data-type="reply" style="flex-direction:column;gap:2px;padding:6px;text-align:center;border-radius:6px;height:auto;">
+              <span style="font-size:14px;">💬</span>
+              <span style="font-size:9px;font-weight:600;">Reply</span>
             </button>
           </div>
           
-          <button id="draft-generate" class="cb-btn cb-btn-primary" style="width:100%;">
+          <button id="draft-generate" class="cb-btn cb-btn-primary" style="width:100%;padding:8px;font-size:11px;border-radius:6px;">
             ✨ Generate Draft
           </button>
         </div>
-        <div id="draft-results" style="margin-top:12px;display:none;"></div>
+        <div id="draft-results" style="margin-top:0px;display:none;"></div>
       `;
 
       let selectedType = 'email';
@@ -9215,24 +9115,25 @@ Output ONLY valid JSON:`;
         btn.addEventListener('click', () => {
           typeButtons.forEach(b => {
             b.style.background = 'rgba(255,255,255,0.03)';
-            b.style.borderColor = 'rgba(255,255,255,0.08)';
+            b.style.border = '1px solid rgba(255,255,255,0.08)';
           });
           btn.style.background = 'rgba(96,165,250,0.1)';
-          btn.style.borderColor = '#60a5fa';
+          btn.style.border = '1px solid #60a5fa';
           selectedType = btn.dataset.type;
         });
       });
 
       generateBtn.addEventListener('click', async () => {
         generateBtn.disabled = true;
-        generateBtn.innerHTML = '<span class="cb-spinner" style="width:12px;height:12px;border-width:2px;"></span> Generating...';
+        generateBtn.innerHTML = '<span class="cb-spinner" style="width:10px;height:10px;border-width:2px;"></span> Generating...';
         resultsDiv.style.display = 'block';
-        resultsDiv.innerHTML = '<div style="text-align:center;padding:20px;"><div class="cb-spinner"></div></div>';
+        resultsDiv.style.marginTop = '8px';
+        resultsDiv.innerHTML = '<div style="text-align:center;padding:12px;"><div class="cb-spinner" style="width:16px;height:16px;"></div></div>';
 
         try {
           const chatText = await getConversationText();
           if (!chatText || chatText.length < 20) {
-            resultsDiv.innerHTML = '<div style="color:#f87171;padding:12px;text-align:center;">⚠️ No conversation found.</div>';
+            resultsDiv.innerHTML = '<div style="color:var(--cb-warning);padding:8px;text-align:center;font-size:11px;">No conversation found.</div>';
             return;
           }
 
@@ -9256,39 +9157,35 @@ ${chatText.slice(0, 3500)}`;
 
           if (res && res.ok && res.result) {
             resultsDiv.innerHTML = `
-              <div style="font-size:10px;color:var(--cb-subtext);margin-bottom:8px;display:flex;justify-content:space-between;">
-                <span>Generated ${selectedType.toUpperCase()}</span>
-                <span>${new Date().toLocaleTimeString()}</span>
-              </div>
-              <textarea id="draft-output" style="width:100%;min-height:200px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:12px;font-size:12px;line-height:1.5;color:var(--cb-white);resize:vertical;">${res.result}</textarea>
-              <div style="display:flex;gap:8px;margin-top:10px;">
-                <button id="draft-copy" class="cb-btn cb-btn-primary" style="flex:1;">📋 Copy Draft</button>
-                <button id="draft-insert" class="cb-btn" style="flex:1;">➤ Insert to Chat</button>
+              <textarea id="draft-output" style="width:100%;min-height:120px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:8px;font-size:11px;line-height:1.5;color:var(--cb-white);resize:vertical;font-family:inherit;">${res.result}</textarea>
+              <div style="display:flex;gap:6px;margin-top:6px;">
+                <button id="draft-copy" class="cb-btn cb-btn-secondary" style="flex:1;padding:6px;font-size:10px;border-radius:6px;">📋 Copy</button>
+                <button id="draft-insert" class="cb-btn cb-btn-primary" style="flex:1;padding:6px;font-size:10px;border-radius:6px;">➤ Insert</button>
               </div>
             `;
 
             resultsDiv.querySelector('#draft-copy')?.addEventListener('click', async () => {
               const text = resultsDiv.querySelector('#draft-output').value;
               await navigator.clipboard.writeText(text);
-              toast('📋 Draft copied!');
+              toast('Draft copied!');
             });
 
             resultsDiv.querySelector('#draft-insert')?.addEventListener('click', async () => {
               const text = resultsDiv.querySelector('#draft-output').value;
               try {
                 await restoreToChat(text, []);
-                toast('➤ Inserted to chat!');
+                toast('Inserted!');
               } catch (e) {
                 toast('Insert failed');
               }
             });
 
-            toast('✨ Draft generated!');
+            toast('Generated!');
           } else {
-            resultsDiv.innerHTML = `<div style="color:#f87171;padding:12px;">❌ Generation failed: ${res?.error || 'Unknown error'}</div>`;
+            resultsDiv.innerHTML = `<div style="color:#f87171;padding:8px;font-size:11px;">Failed: ${res?.error || 'Unknown error'}</div>`;
           }
         } catch (e) {
-          resultsDiv.innerHTML = `<div style="color:#f87171;padding:12px;">❌ Error: ${e.message || 'Unknown error'}</div>`;
+          resultsDiv.innerHTML = `<div style="color:#f87171;padding:8px;font-size:11px;">Error: ${e.message || 'Unknown error'}</div>`;
           debugLog('Draft Generator error', e);
         } finally {
           generateBtn.disabled = false;
@@ -9457,9 +9354,9 @@ Output ONLY valid JSON:`;
         const chatText = await getConversationText();
         if (!chatText || chatText.length < 20) {
           outputArea.innerHTML = `
-            <div style="text-align:center;padding:30px;">
-              <div style="font-size:32px;margin-bottom:12px;">💬</div>
-              <div style="font-size:13px;color:#fff;font-weight:600;">No Conversation Found</div>
+            <div style="text-align:center;padding:12px;">
+              <div style="font-size:24px;margin-bottom:6px;">💬</div>
+              <div style="font-size:11px;color:#fff;">No Conversation Found</div>
             </div>
           `;
           return;
@@ -9484,7 +9381,6 @@ Output ONLY valid JSON:`;
 
         if (res && res.ok && res.result) {
           let data = { sections: [], summary: '' };
-          let simplifiedText = res.result;
           try {
             const jsonMatch = res.result.match(/\{[\s\S]*\}/);
             if (jsonMatch) data = JSON.parse(jsonMatch[0]);
@@ -9493,12 +9389,12 @@ Output ONLY valid JSON:`;
           }
 
           const sectionsHtml = (data.sections || []).map((s, i) => `
-            <div style="margin-bottom:12px;">
-              <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
-                <div style="width:20px;height:20px;background:linear-gradient(135deg,#8b5cf6,#7c3aed);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#fff;">${i + 1}</div>
-                <span style="font-weight:600;font-size:11px;color:#a78bfa;">${s.title || 'Section ' + (i + 1)}</span>
+            <div style="margin-bottom:8px;">
+              <div style="display:flex;align-items:center;gap:4px;margin-bottom:4px;">
+                <div style="width:16px;height:16px;background:linear-gradient(135deg,#8b5cf6,#7c3aed);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:9px;color:#fff;">${i + 1}</div>
+                <span style="font-weight:600;font-size:11px;color:#a78bfa;">${s.title || 'Section'}</span>
               </div>
-              <div style="font-size:12px;color:#fff;line-height:1.6;padding-left:26px;">${s.content || ''}</div>
+              <div style="font-size:11px;color:var(--cb-white);line-height:1.4;padding-left:20px;">${s.content || ''}</div>
             </div>
           `).join('');
 
@@ -9506,35 +9402,29 @@ Output ONLY valid JSON:`;
           const reduction = Math.round((1 - newWordCount / originalWordCount) * 100);
 
           outputArea.innerHTML = `
-            <div style="padding:4px;">
+            <div style="padding:0;">
               <!-- Stats -->
-              <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:16px;">
-                <div style="background:linear-gradient(135deg,rgba(139,92,246,0.12),rgba(139,92,246,0.04));border:1px solid rgba(139,92,246,0.2);border-radius:10px;padding:12px;text-align:center;">
-                  <div style="font-size:20px;font-weight:700;color:#8b5cf6;">${reduction > 0 ? reduction : 0}%</div>
-                  <div style="font-size:9px;color:rgba(255,255,255,0.5);">LIGHTER</div>
-                </div>
-                <div style="background:linear-gradient(135deg,rgba(34,197,94,0.12),rgba(34,197,94,0.04));border:1px solid rgba(34,197,94,0.2);border-radius:10px;padding:12px;text-align:center;">
-                  <div style="font-size:20px;font-weight:700;color:#22c55e;">${(data.sections || []).length}</div>
-                  <div style="font-size:9px;color:rgba(255,255,255,0.5);">SECTIONS</div>
-                </div>
+              <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;padding:0 2px;font-size:11px;color:var(--cb-subtext);">
+                  <span style="color:#8b5cf6;font-weight:600;">${reduction > 0 ? reduction : 0}% LIGHTER</span>
+                  <span style="color:#22c55e;font-weight:600;">${(data.sections || []).length} SECTIONS</span>
               </div>
               
               ${data.summary ? `
-              <div style="background:rgba(139,92,246,0.08);border:1px solid rgba(139,92,246,0.2);border-radius:10px;padding:12px;margin-bottom:16px;">
-                <div style="font-size:10px;color:#a78bfa;font-weight:600;margin-bottom:4px;">TL;DR</div>
-                <div style="font-size:12px;color:#fff;line-height:1.5;">${data.summary}</div>
+              <div style="background:rgba(139,92,246,0.08);border:1px solid rgba(139,92,246,0.2);border-radius:6px;padding:8px;margin-bottom:10px;">
+                <div style="font-size:9px;color:#a78bfa;font-weight:600;margin-bottom:2px;">TL;DR</div>
+                <div style="font-size:11px;color:var(--cb-white);line-height:1.4;">${data.summary}</div>
               </div>
               ` : ''}
               
               <!-- Sections -->
-              <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:14px;max-height:280px;overflow-y:auto;">
-                ${sectionsHtml || '<div style="color:rgba(255,255,255,0.4);">No sections generated</div>'}
+              <div style="margin-bottom:8px;">
+                ${sectionsHtml || '<div style="color:var(--cb-subtext);font-size:10px;">No sections</div>'}
               </div>
               
               <!-- Actions -->
-              <div style="display:flex;gap:8px;margin-top:14px;">
-                <button id="simplify-copy" class="cb-btn" style="flex:1;padding:10px;font-size:11px;">📋 Copy</button>
-                <button id="simplify-insert" class="cb-btn cb-btn-primary" style="flex:1;padding:10px;font-size:11px;">➤ Use This</button>
+              <div style="display:flex;gap:6px;margin-top:8px;border-top:1px solid rgba(255,255,255,0.06);padding-top:6px;">
+                <button id="simplify-copy" class="cb-btn cb-btn-secondary" style="flex:1;padding:6px;font-size:10px;border-radius:6px;">📋 Copy</button>
+                <button id="simplify-insert" class="cb-btn cb-btn-primary" style="flex:1;padding:6px;font-size:10px;border-radius:6px;">➤ Insert</button>
               </div>
             </div>
           `;
@@ -9543,24 +9433,19 @@ Output ONLY valid JSON:`;
 
           outputArea.querySelector('#simplify-copy')?.addEventListener('click', async () => {
             await navigator.clipboard.writeText(copyText);
-            toast('📋 Copied!');
+            toast('Copied!');
           });
 
           outputArea.querySelector('#simplify-insert')?.addEventListener('click', async () => {
-            try { await restoreToChat(copyText, []); toast('✓ Inserted!'); } catch (e) { toast('Failed'); }
+            try { await restoreToChat(copyText, []); toast('Inserted!'); } catch (e) { toast('Failed'); }
           });
 
-          toast('🧠 Simplified!');
+          toast('Simplified!');
         } else {
-          outputArea.innerHTML = `
-            <div style="text-align:center;padding:30px;">
-              <div style="font-size:32px;margin-bottom:12px;">⚠️</div>
-              <div style="font-size:13px;color:#fff;">Simplification Failed</div>
-            </div>
-          `;
+          outputArea.innerHTML = `<div style="padding:12px;text-align:center;"><div style="font-size:20px;margin-bottom:6px;">⚠️</div><div style="font-size:11px;color:var(--cb-white);">Failed</div></div>`;
         }
       } catch (e) {
-        outputArea.innerHTML = `<div style="color:#f87171;padding:20px;text-align:center;">❌ Error</div>`;
+        outputArea.innerHTML = `<div style="color:#f87171;padding:12px;text-align:center;font-size:11px;">Error</div>`;
         debugLog('Cognitive Simplifier error', e);
       }
     }
