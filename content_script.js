@@ -1942,23 +1942,115 @@
     const transGearBtn = document.createElement('button'); transGearBtn.textContent = '⚙️'; transGearBtn.title = 'Options'; transGearBtn.style.cssText = 'background:none;border:none;font-size:1.3em;cursor:pointer;padding:4px 8px;border-radius:4px;transition:background 0.2s;';
     transGearBtn.onmouseenter = () => transGearBtn.style.background = 'rgba(255,255,255,0.1)'; transGearBtn.onmouseleave = () => transGearBtn.style.background = 'none';
     transLangRow.appendChild(transLangLabel); transLangRow.appendChild(transLangSelect); transLangRow.appendChild(transGearBtn); transView.appendChild(transLangRow);
-    const transOptions = document.createElement('div'); transOptions.id = 'cb-trans-options'; transOptions.style.cssText = 'display:block;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:14px;margin:0 0 14px 0;';
-    const transModeGroup = document.createElement('div'); transModeGroup.style.cssText = 'margin-bottom:14px;';
-    const transModeLabel = document.createElement('div'); transModeLabel.textContent = 'Selective translation:'; transModeLabel.style.cssText = 'font-size:0.9em;font-weight:600;color:#e0e0e0;margin-bottom:8px;'; transModeGroup.appendChild(transModeLabel);
-    const transRadioGroup = document.createElement('div'); transRadioGroup.className = 'cb-radio-group'; transRadioGroup.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;';
-    ['all', 'user', 'ai', 'last'].forEach((mode, idx) => {
+
+    // Settings panel with improved styling
+    const transOptions = document.createElement('div');
+    transOptions.id = 'cb-trans-options';
+    transOptions.style.cssText = 'display:block;background:linear-gradient(135deg, rgba(96,165,250,0.08) 0%, rgba(139,92,246,0.08) 100%);border:1px solid rgba(96,165,250,0.25);border-radius:12px;padding:16px;margin:0 0 14px 0;backdrop-filter:blur(8px);';
+
+    // Section header
+    const settingsHeader = document.createElement('div');
+    settingsHeader.style.cssText = 'display:flex;align-items:center;gap:8px;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,0.08);';
+    settingsHeader.innerHTML = '<span style="font-size:13px;font-weight:600;color:var(--cb-white);letter-spacing:0.3px;">⚙️ Translation Settings</span>';
+    transOptions.appendChild(settingsHeader);
+
+    const transModeGroup = document.createElement('div');
+    transModeGroup.style.cssText = 'margin-bottom:16px;';
+    const transModeLabel = document.createElement('div');
+    transModeLabel.textContent = 'What to translate:';
+    transModeLabel.style.cssText = 'font-size:12px;font-weight:500;color:var(--cb-subtext);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.5px;';
+    transModeGroup.appendChild(transModeLabel);
+
+    const transRadioGroup = document.createElement('div');
+    transRadioGroup.className = 'cb-radio-group';
+    transRadioGroup.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;';
+
+    // Add 'custom' as an option
+    ['all', 'user', 'ai', 'last', 'custom'].forEach((mode, idx) => {
       const label = document.createElement('label');
       label.className = 'cb-radio';
-      label.style.cssText = 'display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border:1px solid rgba(255,255,255,0.15);border-radius:8px;background:rgba(255,255,255,0.04);cursor:pointer;transition:background .2s,border-color .2s;';
-      const radio = document.createElement('input'); radio.type = 'radio'; radio.name = 'cb-trans-mode'; radio.value = mode; radio.style.cursor = 'pointer'; if (idx === 0) radio.checked = true;
-      const span = document.createElement('span'); span.textContent = mode === 'all' ? 'All messages' : mode === 'user' ? 'Only user' : mode === 'ai' ? 'Only AI' : 'Last message'; span.className = 'cb-radio-text';
-      label.appendChild(radio); label.appendChild(span); transRadioGroup.appendChild(label);
+      label.style.cssText = 'display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border:1px solid rgba(96,165,250,0.3);border-radius:20px;background:rgba(255,255,255,0.03);cursor:pointer;transition:all .2s ease;font-size:12px;';
+      const radio = document.createElement('input');
+      radio.type = 'radio';
+      radio.name = 'cb-trans-mode';
+      radio.value = mode;
+      radio.style.cssText = 'cursor:pointer;accent-color:#60a5fa;';
+      if (idx === 0) radio.checked = true;
+      const span = document.createElement('span');
+      span.textContent = mode === 'all' ? '📄 All' : mode === 'user' ? '👤 User' : mode === 'ai' ? '🤖 AI' : mode === 'last' ? '💬 Last' : '✏️ Custom';
+      span.className = 'cb-radio-text';
+      span.style.cssText = 'font-weight:500;';
+      label.appendChild(radio);
+      label.appendChild(span);
+      transRadioGroup.appendChild(label);
     });
-    transModeGroup.appendChild(transRadioGroup); transOptions.appendChild(transModeGroup);
-    const transShortenRow = document.createElement('div'); transShortenRow.style.cssText = 'display:flex;align-items:center;justify-content:space-between;';
-    const transShortenLabel = document.createElement('label'); transShortenLabel.textContent = 'Shorten output:'; transShortenLabel.htmlFor = 'cb-trans-shorten'; transShortenLabel.style.cssText = 'font-size:0.9em;font-weight:600;color:#e0e0e0;';
-    const transShortenToggle = document.createElement('input'); transShortenToggle.type = 'checkbox'; transShortenToggle.id = 'cb-trans-shorten'; transShortenToggle.className = 'cb-toggle'; transShortenToggle.style.cssText = 'width:44px;height:24px;cursor:pointer;';
-    transShortenRow.appendChild(transShortenLabel); transShortenRow.appendChild(transShortenToggle); transOptions.appendChild(transShortenRow); transView.appendChild(transOptions);
+    transModeGroup.appendChild(transRadioGroup);
+    transOptions.appendChild(transModeGroup);
+
+    // Custom text input area (hidden by default)
+    const transCustomInputArea = document.createElement('div');
+    transCustomInputArea.id = 'cb-trans-custom-area';
+    transCustomInputArea.style.cssText = 'display:none;margin-bottom:16px;';
+
+    const customInputLabel = document.createElement('div');
+    customInputLabel.textContent = 'Enter text to translate:';
+    customInputLabel.style.cssText = 'font-size:12px;font-weight:500;color:var(--cb-subtext);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px;';
+    transCustomInputArea.appendChild(customInputLabel);
+
+    const transCustomInput = document.createElement('textarea');
+    transCustomInput.id = 'cb-trans-custom-input';
+    transCustomInput.placeholder = 'Type or paste your text here...';
+    transCustomInput.style.cssText = 'width:100%;min-height:100px;padding:12px;background:rgba(0,0,0,0.2);border:1px solid rgba(96,165,250,0.3);border-radius:8px;color:var(--cb-white);font-size:13px;font-family:inherit;resize:vertical;line-height:1.5;';
+    transCustomInput.maxLength = 10000; // Limit input length for safety
+    transCustomInputArea.appendChild(transCustomInput);
+
+    const customCharCount = document.createElement('div');
+    customCharCount.id = 'cb-trans-char-count';
+    customCharCount.style.cssText = 'font-size:10px;color:var(--cb-subtext);text-align:right;margin-top:4px;';
+    customCharCount.textContent = '0 / 10,000 characters';
+    transCustomInputArea.appendChild(customCharCount);
+
+    transOptions.appendChild(transCustomInputArea);
+
+    // Shorten output toggle with improved styling
+    const transShortenRow = document.createElement('div');
+    transShortenRow.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:12px;background:rgba(255,255,255,0.03);border-radius:8px;';
+    const transShortenLabel = document.createElement('label');
+    transShortenLabel.innerHTML = '<span style="font-weight:500;color:var(--cb-white);">Shorten output</span><br><span style="font-size:11px;color:var(--cb-subtext);">Condense the translation</span>';
+    transShortenLabel.htmlFor = 'cb-trans-shorten';
+    transShortenLabel.style.cssText = 'cursor:pointer;';
+    const transShortenToggle = document.createElement('input');
+    transShortenToggle.type = 'checkbox';
+    transShortenToggle.id = 'cb-trans-shorten';
+    transShortenToggle.className = 'cb-toggle';
+    transShortenToggle.style.cssText = 'width:44px;height:24px;cursor:pointer;';
+    transShortenRow.appendChild(transShortenLabel);
+    transShortenRow.appendChild(transShortenToggle);
+    transOptions.appendChild(transShortenRow);
+    transView.appendChild(transOptions);
+
+    // Toggle custom input area visibility based on radio selection
+    transRadioGroup.addEventListener('change', (e) => {
+      const customArea = transView.querySelector('#cb-trans-custom-area');
+      if (e.target.value === 'custom') {
+        customArea.style.display = 'block';
+        transCustomInput.focus();
+      } else {
+        customArea.style.display = 'none';
+      }
+    });
+
+    // Character count for custom input
+    transCustomInput.addEventListener('input', () => {
+      const count = transCustomInput.value.length;
+      customCharCount.textContent = `${count.toLocaleString()} / 10,000 characters`;
+      if (count > 9000) {
+        customCharCount.style.color = '#f87171';
+      } else {
+        customCharCount.style.color = 'var(--cb-subtext)';
+      }
+    });
+
     const transActionRow = document.createElement('div'); transActionRow.style.cssText = 'display:flex;align-items:center;gap:12px;margin:14px 0;';
     const btnGoTrans = document.createElement('button'); btnGoTrans.className = 'cb-btn cb-btn-primary'; btnGoTrans.textContent = 'Translate'; btnGoTrans.style.cssText = 'padding:10px 20px;';
     const transProg = document.createElement('span'); transProg.style.cssText = 'display:none;font-size:0.9em;color:#7aa2ff;align-items:center;'; transProg.innerHTML = '<span class="cb-spinner"></span><span class="cb-translating">Translating...</span>';
@@ -1976,17 +2068,19 @@
         if (!transView.querySelector('#cb-trans-style')) {
           const style = document.createElement('style'); style.id = 'cb-trans-style';
           style.textContent = `
-          .cb-radio:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.22); }
-          .cb-radio input { accent-color: #7aa2ff; }
+          .cb-radio:hover { background: rgba(96,165,250,0.15); border-color: rgba(96,165,250,0.5); transform: translateY(-1px); }
+          .cb-radio:has(input:checked) { background: rgba(96,165,250,0.2); border-color: rgba(96,165,250,0.6); }
+          .cb-radio input { accent-color: #60a5fa; }
           .cb-radio input:checked + .cb-radio-text { font-weight: 600; color: #ffffff; }
-          #cb-trans-options { box-shadow: 0 4px 14px rgba(0,0,0,0.25); }
+          #cb-trans-options { box-shadow: 0 8px 32px rgba(0,0,0,0.3); }
           #cb-trans-result { box-shadow: inset 0 1px 0 rgba(255,255,255,0.04); }
-          .cb-btn.cb-btn-primary { background: linear-gradient(135deg, #6aa0ff 0%, #8b6aff 100%); border: none; }
-          .cb-btn.cb-btn-primary:hover { filter: brightness(1.05); }
+          .cb-btn.cb-btn-primary { background: linear-gradient(135deg, #60a5fa 0%, #8b5cf6 100%); border: none; }
+          .cb-btn.cb-btn-primary:hover { filter: brightness(1.1); transform: translateY(-1px); }
           input.cb-toggle { appearance: none; background: rgba(255,255,255,0.2); border-radius: 999px; position: relative; outline: none; transition: background .2s; }
-          input.cb-toggle:checked { background: #7aa2ff; }
-          input.cb-toggle::before { content: ''; position: absolute; top: 3px; left: 4px; width: 18px; height: 18px; background: #fff; border-radius: 50%; transition: transform .2s; }
+          input.cb-toggle:checked { background: linear-gradient(135deg, #60a5fa, #8b5cf6); }
+          input.cb-toggle::before { content: ''; position: absolute; top: 3px; left: 4px; width: 18px; height: 18px; background: #fff; border-radius: 50%; transition: transform .2s; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
           input.cb-toggle:checked::before { transform: translateX(18px); }
+          #cb-trans-custom-input:focus { outline: none; border-color: #60a5fa; box-shadow: 0 0 0 3px rgba(96,165,250,0.2); }
         `;
           transView.appendChild(style);
         }
@@ -13504,6 +13598,29 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           }
           const lastMsg = lastScan.messages[lastScan.messages.length - 1];
           content = [{ role: lastMsg.role || 'assistant', text: lastMsg.text || '' }];
+        } else if (mode === 'custom') {
+          // Handle custom text input with XSS sanitization
+          const customInput = transView.querySelector('#cb-trans-custom-input');
+          let customText = customInput ? customInput.value.trim() : '';
+
+          // Sanitize input - remove potential script tags and dangerous content
+          customText = customText
+            .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+            .replace(/<\/script>/gi, '')
+            .replace(/<script[^>]*>/gi, '')
+            .replace(/javascript:/gi, '')
+            .replace(/on\w+\s*=/gi, '')
+            .replace(/data:/gi, 'data_')
+            .trim();
+
+          if (!customText || customText.length < 2) {
+            toast('Please enter text to translate');
+            btnGoTrans.disabled = false;
+            transProg.style.display = 'none';
+            return;
+          }
+
+          content = [{ role: 'custom', text: customText }];
         } else {
           if (!lastScan || !lastScan.messages || lastScan.messages.length === 0) {
             toast('No messages found. Please scan first.');
@@ -13522,11 +13639,13 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           textToTranslate = content.filter(m => m.role !== 'user').map(m => m.text).join('\n\n');
         } else if (mode === 'last') {
           textToTranslate = content[content.length - 1]?.text || '';
+        } else if (mode === 'custom') {
+          textToTranslate = content[0]?.text || '';
         } else {
           textToTranslate = content.map(m => `${m.role === 'user' ? 'User' : 'AI'}: ${m.text}`).join('\n\n');
         }
 
-        if (!textToTranslate || textToTranslate.length < 5) {
+        if (!textToTranslate || textToTranslate.length < 2) {
           toast('No content to translate');
           btnGoTrans.disabled = false;
           transProg.style.display = 'none';

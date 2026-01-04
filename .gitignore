@@ -34,7 +34,7 @@ desktop.ini
 *.zip
 web-ext-artifacts/
 
-# Environment & Secrets
+# Environment & Secrets & Keys
 .env*
 !.env.example
 secrets.json
@@ -43,6 +43,10 @@ api-keys.json
 *.secret
 *_WITH_KEY.js
 *-api-key*.js
+*.pem
+*.pub
+id_rsa
+id_rsa.pub
 
 # Backup files
 *.bak
@@ -50,14 +54,17 @@ api-keys.json
 *.backup
 *_backup.*
 *.old
+*.orig
 
-# Development documentation
-*_PROGRESS.md
-*_ANALYSIS.md
-*_FIX.md
-*_SUMMARY.md
-IMPLEMENTATION_*.md
-DEBUGGING_*.md
+# Development documentation (optional ignores)
+# *_PROGRESS.md
+# *_ANALYSIS.md
+# *_FIX.md
+# *_SUMMARY.md
+
+# Gemini / Antigravity artifacts
+.gemini/
+.antigravity/
 
 # User data & storage
 chatbridge:*
@@ -69,6 +76,8 @@ prompt-designer/
 *-export-*.json
 backup_*.json
 debug_*.log
+*.sqlite
+*.db
 
 # Temporary files
 .temp/
@@ -83,3 +92,5 @@ weights/
 !vendor/.keep
 !onnx/.keep
 
+# TypeScript
+*.tsbuildinfo
