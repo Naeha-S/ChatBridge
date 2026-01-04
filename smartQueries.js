@@ -44,22 +44,22 @@
 /* Header */
 .sq-header {
   background: transparent;
-  padding: 8px 12px; /* Tightened */
+  padding: 6px 10px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex-shrink: 0;
-  gap: 8px;
+  gap: 6px;
 }
 
 .sq-title { display: none; }
 
 /* Helper Text */
 .sq-helper-text {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--cb-subtext);
-  margin-bottom: 8px;
-  padding: 0 12px;
+  margin-bottom: 10px;
+  padding: 0 10px;
   opacity: 0.8;
   transition: all 0.3s ease;
   font-weight: 500;
@@ -101,7 +101,7 @@
   padding: 12px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
 }
 
 /* Suggestions - hidden by default, zero space */
@@ -111,7 +111,8 @@
 .sq-suggestions.active {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 10px;
+  margin-bottom: 4px;
 }
 
 /* Filters Panel - hidden by default, zero space */
@@ -124,16 +125,42 @@
 }
 .sq-filters-panel.active {
   display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sq-filter-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   flex-wrap: wrap;
-  gap: 12px;
+}
+
+.sq-filter-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--cb-subtext);
+  min-width: 70px;
+}
+
+.sq-filter-select, .sq-filter-input {
+  padding: 6px 10px;
+  background: var(--cb-bg);
+  border: 1px solid var(--cb-border);
+  border-radius: 6px;
+  color: var(--cb-white);
+  font-size: 12px;
+  flex: 1;
+  min-width: 80px;
+  max-width: 120px;
 }
 
 /* Input Section */
 .sq-input-card {
   background: var(--cb-bg2);
-  border-radius: 12px;
+  border-radius: 10px;
   border: 1px solid var(--cb-border);
-  padding: 12px;
+  padding: 14px;
   box-shadow: var(--cb-shadow-sm);
 }
 
@@ -146,9 +173,9 @@
   font-size: 13px;
   color: var(--cb-white);
   background: var(--cb-bg);
-  resize: none; /* Auto-growth via JS preferred, or fixed small */
-  height: 70px; /* Reduced fixed height */
-  margin-bottom: 8px;
+  resize: none;
+  height: 80px;
+  margin-bottom: 10px;
 }
 .sq-textarea:focus {
    outline: none;
@@ -211,6 +238,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 8px;
 }
 
 .sq-options {
@@ -229,9 +257,9 @@
 }
 
 .sq-btn {
-  padding: 8px 16px;
+  padding: 10px 18px;
   border-radius: 8px;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
   cursor: pointer;
   border: none;
@@ -290,7 +318,7 @@
 }
 
 .sq-card-header {
-  padding: 12px 16px;
+  padding: 10px 14px;
   background: rgba(96, 165, 250, 0.1);
   border-bottom: 1px solid rgba(96, 165, 250, 0.2);
   display: flex;
@@ -307,8 +335,8 @@
 }
 
 .sq-card-content {
-  padding: 16px;
-  font-size: 14px;
+  padding: 14px;
+  font-size: 13px;
   color: var(--cb-white);
   line-height: 1.6;
 }
@@ -317,9 +345,9 @@
 .sq-result {
   background: var(--cb-bg2);
   border: 1px solid var(--cb-border);
-  border-radius: 12px;
-  padding: 16px;
-  margin-bottom: 12px;
+  border-radius: 10px;
+  padding: 14px;
+  margin-bottom: 10px;
   transition: all 0.2s;
 }
 
@@ -535,26 +563,33 @@
 .sq-suggestions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 12px;
+  gap: 10px;
+  margin-bottom: 0;
 }
 
 .sq-suggestion-chip {
-  padding: 8px 12px;
+  padding: 7px 14px;
   background: var(--cb-bg2);
-  border: 1px solid var(--cb-border);
+  border: 1.5px solid var(--cb-accent-primary);
   border-radius: 20px;
   font-size: 12px;
-  color: var(--cb-subtext);
+  color: var(--cb-white);
   cursor: pointer;
   transition: all 0.2s;
   font-weight: 500;
+  box-shadow: 0 0 0 0 rgba(96, 165, 250, 0.3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 .sq-suggestion-chip:hover {
-  background: var(--cb-bg3);
-  border-color: var(--cb-accent-primary);
+  background: rgba(96, 165, 250, 0.15);
+  border-color: var(--cb-accent-secondary);
   color: var(--cb-white);
+  transform: translateY(-1px);
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.2);
 }
 
 /* Saved Searches */
@@ -829,6 +864,11 @@
 
       this.attachEvents();
       this.updateHistoryList();
+
+      // Show keyword suggestions on initial load if in live mode
+      if (this.mode === 'live') {
+        this.showKeywordSuggestions();
+      }
     }
 
     updateHistoryList() {
@@ -934,6 +974,8 @@
             synthesisWrapper.style.display = "none";
             if (askSpan) askSpan.textContent = "Ask AI";
             textarea.placeholder = "Ask about decisions, confusions, patterns...";
+            // Show keyword suggestions for current chat
+            this.showKeywordSuggestions();
           } else {
             modeHelper.textContent = "Reason across all saved conversations";
             synthesisWrapper.style.display = "flex";
@@ -1085,6 +1127,67 @@
           this.container.querySelector('#btn-ask').click();
         });
       });
+    }
+
+    showKeywordSuggestions() {
+      const suggestionsArea = this.container.querySelector('#sq-suggestions-area');
+      if (!suggestionsArea) return;
+
+      // Extract keywords from current conversation
+      const context = this.getContext();
+      const keywords = this.extractKeywords(context);
+
+      if (keywords.length === 0) {
+        suggestionsArea.style.display = 'none';
+        return;
+      }
+
+      suggestionsArea.innerHTML = keywords.slice(0, 8).map(kw => `
+              <button class="sq-suggestion-chip" title="Search for: ${this.escapeHTML(kw)}">${this.escapeHTML(kw)}</button>
+            `).join('');
+
+      suggestionsArea.style.display = 'flex';
+
+      suggestionsArea.querySelectorAll('.sq-suggestion-chip').forEach(btn => {
+        btn.addEventListener('click', () => {
+          this.container.querySelector('#sq-query-input').value = btn.textContent;
+          this.container.querySelector('#btn-ask').click();
+        });
+      });
+    }
+
+    extractKeywords(text) {
+      if (!text || text.length < 50) return [];
+
+      // Expanded stop words list to filter common words
+      const stopWords = new Set([
+        'the', 'is', 'at', 'which', 'on', 'a', 'an', 'and', 'or', 'but', 'in', 'with', 'to', 'for', 'of', 'as', 'by', 'from', 'that', 'this', 'it', 'its', 'be', 'are', 'was', 'were', 'been', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'can', 'cant', 'i', 'you', 'he', 'she', 'we', 'they', 'them', 'their', 'theirs', 'what', 'when', 'where', 'why', 'how', 'who', 'whom', 'whose', 'if', 'then', 'than', 'so', 'such', 'like', 'just', 'very', 'too', 'also', 'only', 'own', 'same', 'other', 'into', 'through', 'during', 'before', 'after', 'above', 'below', 'up', 'down', 'out', 'off', 'over', 'under', 'again', 'further', 'once', 'here', 'there', 'all', 'both', 'each', 'few', 'more', 'most', 'some', 'any', 'no', 'nor', 'not', 'yes', 'about', 'between', 'because', 'until', 'while', 'these', 'those', 'am', 'being', 'having', 'doing', 'get', 'got', 'make', 'made', 'see', 'saw', 'seen', 'go', 'went', 'gone', 'come', 'came', 'know', 'knew', 'known', 'think', 'thought', 'take', 'took', 'taken', 'give', 'gave', 'given', 'find', 'found', 'tell', 'told', 'ask', 'asked', 'work', 'worked', 'seem', 'seemed', 'feel', 'felt', 'try', 'tried', 'leave', 'left', 'call', 'called', 'use', 'used', 'using', 'need', 'needed', 'want', 'wanted', 'let', 'put', 'mean', 'meant', 'keep', 'kept', 'say', 'said', 'show', 'showed', 'shown', 'still', 'even', 'well', 'back', 'much', 'many', 'now', 'way', 'new', 'good', 'great', 'first', 'last', 'long', 'little', 'own', 'old', 'right', 'big', 'high', 'different', 'small', 'large', 'next', 'early', 'young', 'important', 'public', 'bad', 'able', 'sure'
+      ]);
+
+      // Extract words (3+ chars, alphanumeric, prioritize capitalized and technical terms)
+      const words = text
+        .replace(/[^\w\s]/g, ' ')
+        .split(/\s+/)
+        .filter(w => {
+          const lower = w.toLowerCase();
+          return w.length >= 3 &&
+            !stopWords.has(lower) &&
+            !/^\d+$/.test(w); // Filter pure numbers
+        });
+
+      // Count frequency
+      const freq = {};
+      words.forEach(w => {
+        const key = w.toLowerCase();
+        freq[key] = (freq[key] || 0) + 1;
+      });
+
+      // Sort by frequency and return top keywords
+      return Object.entries(freq)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 12)
+        .map(([word]) => word)
+        .filter(w => w.length <= 20); // Avoid very long words
     }
 
     async runLiveQuery(query, container) {

@@ -3002,20 +3002,108 @@
       }
     } catch (_) { /* ignore */ }
 
-    // Helper to close all internal views
+    // View State Management - Remembers state when switching between views
+    const __cbViewStates = {
+      summ: { sourceText: '', result: '', selectValues: {} },
+      rew: { selectedMessages: [], result: '', selectValues: {} },
+      trans: { sourceText: '', result: '', targetLang: '' },
+      prompt: { text: '', result: '' },
+      smart: { query: '', results: '' },
+      agent: { lastAgent: '', outputHtml: '' },
+      insights: { outputHtml: '' },
+      sync: { sourceText: '' }
+    };
+
+    // Save state of a specific view before closing
+    function saveViewState(viewName) {
+      try {
+        switch (viewName) {
+          case 'summ':
+            if (summSourceText) __cbViewStates.summ.sourceText = summSourceText.textContent || '';
+            if (summResult) __cbViewStates.summ.result = summResult.textContent || '';
+            if (summTypeSelect) __cbViewStates.summ.selectValues.type = summTypeSelect.value;
+            if (summLengthSelect) __cbViewStates.summ.selectValues.length = summLengthSelect.value;
+            break;
+          case 'trans':
+            if (transSourceText) __cbViewStates.trans.sourceText = transSourceText.textContent || '';
+            if (transResult) __cbViewStates.trans.result = transResult.textContent || '';
+            if (transLangSelect) __cbViewStates.trans.targetLang = transLangSelect.value;
+            break;
+          case 'rew':
+            const rewSourceEl = shadow.querySelector('#cb-rew-source');
+            if (rewSourceEl) __cbViewStates.rew.result = rewSourceEl.value || rewSourceEl.textContent || '';
+            break;
+          case 'sync':
+            if (syncSourceText) __cbViewStates.sync.sourceText = syncSourceText.textContent || '';
+            break;
+        }
+      } catch (e) { debugLog('saveViewState error', e); }
+    }
+
+    // Restore state of a specific view when opening
+    function restoreViewState(viewName) {
+      try {
+        switch (viewName) {
+          case 'summ':
+            if (__cbViewStates.summ.sourceText && summSourceText) {
+              summSourceText.textContent = __cbViewStates.summ.sourceText;
+            }
+            if (__cbViewStates.summ.result && summResult) {
+              summResult.textContent = __cbViewStates.summ.result;
+            }
+            if (__cbViewStates.summ.selectValues.type && summTypeSelect) {
+              summTypeSelect.value = __cbViewStates.summ.selectValues.type;
+            }
+            if (__cbViewStates.summ.selectValues.length && summLengthSelect) {
+              summLengthSelect.value = __cbViewStates.summ.selectValues.length;
+            }
+            break;
+          case 'trans':
+            if (__cbViewStates.trans.sourceText && transSourceText) {
+              transSourceText.textContent = __cbViewStates.trans.sourceText;
+            }
+            if (__cbViewStates.trans.result && transResult) {
+              transResult.textContent = __cbViewStates.trans.result;
+            }
+            if (__cbViewStates.trans.targetLang && transLangSelect) {
+              transLangSelect.value = __cbViewStates.trans.targetLang;
+            }
+            break;
+          case 'rew':
+            const rewSourceEl = shadow.querySelector('#cb-rew-source');
+            if (__cbViewStates.rew.result && rewSourceEl) {
+              if (rewSourceEl.value !== undefined) rewSourceEl.value = __cbViewStates.rew.result;
+              else rewSourceEl.textContent = __cbViewStates.rew.result;
+            }
+            break;
+          case 'sync':
+            if (__cbViewStates.sync.sourceText && syncSourceText) {
+              syncSourceText.textContent = __cbViewStates.sync.sourceText;
+            }
+            break;
+        }
+      } catch (e) { debugLog('restoreViewState error', e); }
+    }
+
+    // Helper to close all internal views (saves state before closing)
     function closeAllViews() {
       try {
-        // Close known views
-        syncView.classList.remove('cb-view-active');
-        summView.classList.remove('cb-view-active');
-        rewView.classList.remove('cb-view-active');
-        transView.classList.remove('cb-view-active');
+        // Save states of active views before closing
+        try { if (summView && summView.classList.contains('cb-view-active')) saveViewState('summ'); } catch (_) { }
+        try { if (transView && transView.classList.contains('cb-view-active')) saveViewState('trans'); } catch (_) { }
+        try { if (rewView && rewView.classList.contains('cb-view-active')) saveViewState('rew'); } catch (_) { }
+
+        // Close known views - each in try-catch to prevent cascade failures
+        try { if (typeof summView !== 'undefined' && summView) summView.classList.remove('cb-view-active'); } catch (_) { }
+        try { if (typeof rewView !== 'undefined' && rewView) rewView.classList.remove('cb-view-active'); } catch (_) { }
+        try { if (typeof transView !== 'undefined' && transView) transView.classList.remove('cb-view-active'); } catch (_) { }
         try { if (typeof smartView !== 'undefined' && smartView) smartView.classList.remove('cb-view-active'); } catch (_) { }
         try { if (typeof graphView !== 'undefined' && graphView) graphView.classList.remove('cb-view-active'); } catch (_) { }
         try { if (typeof insightsView !== 'undefined' && insightsView) insightsView.classList.remove('cb-view-active'); } catch (_) { }
         try { if (typeof promptDesignerView !== 'undefined' && promptDesignerView) promptDesignerView.classList.remove('cb-view-active'); } catch (_) { }
         try { if (typeof agentView !== 'undefined' && agentView) agentView.classList.remove('cb-view-active'); } catch (_) { }
         try { if (typeof settingsPanel !== 'undefined' && settingsPanel) settingsPanel.classList.remove('cb-view-active'); } catch (_) { }
+        try { if (typeof syncView !== 'undefined' && syncView) syncView.classList.remove('cb-view-active'); } catch (_) { }
 
         // Close dynamically created views (Smart Queries, etc.)
         try {
@@ -3023,13 +3111,22 @@
           if (smartQueryView) smartQueryView.classList.remove('cb-view-active');
         } catch (_) { }
 
-        // Fallback: close ANY view with cb-view-active class
+        // Fallback: close ANY element with cb-view-active class in the shadow DOM
         try {
           shadow.querySelectorAll('.cb-view-active').forEach(el => {
-            el.classList.remove('cb-view-active');
+            try { el.classList.remove('cb-view-active'); } catch (_) { }
           });
         } catch (_) { }
-      } catch (e) { }
+
+        // Additional fallback: also set display:none directly on internal views
+        try {
+          shadow.querySelectorAll('.cb-internal-view').forEach(el => {
+            if (el.classList.contains('cb-view-active')) {
+              try { el.classList.remove('cb-view-active'); } catch (_) { }
+            }
+          });
+        } catch (_) { }
+      } catch (e) { debugLog('closeAllViews error', e); }
     }
 
     // Helper to load conversation text from lastScannedText or saved conversations
@@ -12991,12 +13088,18 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
     btnSummarize.addEventListener('click', async () => {
       closeAllViews();
       try {
-        const inputText = await getConversationText();
-        summSourceText.textContent = inputText || '(no conversation found)';
-        summResult.textContent = '';
+        // Check if we have saved state to restore
+        if (__cbViewStates.summ.sourceText) {
+          restoreViewState('summ');
+        } else {
+          // First time opening - load fresh content
+          const inputText = await getConversationText();
+          summSourceText.textContent = inputText || '(no conversation found)';
+          summResult.textContent = '';
+          // Auto-pick a sensible default summary type (user can still change)
+          try { if (inputText && summTypeSelect) { summTypeSelect.value = pickAdaptiveSummaryType(inputText); } } catch (_) { }
+        }
         summView.classList.add('cb-view-active');
-        // Auto-pick a sensible default summary type (user can still change)
-        try { if (inputText && summTypeSelect) { summTypeSelect.value = pickAdaptiveSummaryType(inputText); } } catch (_) { }
       } catch (e) { toast('Failed to open Summarize'); debugLog('open summ view', e); }
     });
 
@@ -13180,21 +13283,29 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
     btnRewrite.addEventListener('click', async () => {
       closeAllViews();
       try {
-        // Get text to rewrite from last scan
-        const lastScan = window.ChatBridge.getLastScan();
-        const textToRewrite = (lastScan && lastScan.messages) ? lastScan.messages.map(m => m.text).join('\n') : '';
+        // Check if we have saved state to restore
+        if (__cbViewStates.rew.result) {
+          restoreViewState('rew');
+          rewView.classList.add('cb-view-active');
+          // Still load replies to maintain state
+          await loadAssistantReplies();
+        } else {
+          // First time opening - get text from last scan
+          const lastScan = window.ChatBridge.getLastScan();
+          const textToRewrite = (lastScan && lastScan.messages) ? lastScan.messages.map(m => m.text).join('\n') : '';
 
-        if (!textToRewrite) {
-          toast('No conversation to rewrite. Please scan first.');
-          return;
+          if (!textToRewrite) {
+            toast('No conversation to rewrite. Please scan first.');
+            return;
+          }
+
+          rewSourceText.textContent = textToRewrite.slice(0, 100) + '...';
+          rewResult.textContent = '';
+          rewView.classList.add('cb-view-active');
+
+          // Load replies on open
+          await loadAssistantReplies();
         }
-
-        rewSourceText.textContent = textToRewrite.slice(0, 100) + '...';
-        rewResult.textContent = '';
-        rewView.classList.add('cb-view-active');
-
-        // Load replies on open
-        await loadAssistantReplies();
       } catch (e) { toast('Failed to open Rewrite: ' + (e.message || e)); }
     });
 
@@ -13342,7 +13453,19 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
     btnTranslate.addEventListener('click', async () => {
       closeAllViews();
       try {
-        transResult.textContent = ''; transResult.style.display = 'none'; btnInsertTrans.style.display = 'none';
+        // Check if we have saved state to restore
+        if (__cbViewStates.trans.sourceText || __cbViewStates.trans.result) {
+          restoreViewState('trans');
+          if (__cbViewStates.trans.result) {
+            transResult.style.display = 'block';
+            btnInsertTrans.style.display = 'inline-block';
+          }
+        } else {
+          // First time opening - start fresh
+          transResult.textContent = '';
+          transResult.style.display = 'none';
+          btnInsertTrans.style.display = 'none';
+        }
         transView.classList.add('cb-view-active');
       } catch (e) { toast('Failed to open Translate'); debugLog('open trans view', e); }
     });
@@ -13501,15 +13624,23 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
             `;
             smartView.appendChild(topBar);
 
-            // Create container for SmartQueryUI - NO FORCED HEIGHT
+            // Create container for SmartQueryUI - RESPONSIVE HEIGHT
             const sqContainer = document.createElement('div');
             sqContainer.id = 'cb-smart-query-container';
-            // Let content determine height - no fixed height!
-            sqContainer.style.cssText = 'width: 100%;';
+            // Responsive height that wraps content (no min-height) but caps at max-height
+            sqContainer.style.cssText = 'width: 100%; max-height: min(70vh, 550px); overflow: hidden; display: flex; flex-direction: column;';
             smartView.appendChild(sqContainer);
 
             // Render the new UI
             __cbSmartQueryUI.render(sqContainer);
+
+            // Open settings/filters panel by default
+            setTimeout(() => {
+              try {
+                const filtersPanel = sqContainer.querySelector('#sq-filters-panel');
+                if (filtersPanel) filtersPanel.classList.add('active');
+              } catch (e) { }
+            }, 100);
 
             // Attach close handler
             const closeBtn = smartView.querySelector('#btnCloseSmart2');
