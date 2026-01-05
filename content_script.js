@@ -1738,20 +1738,27 @@
     summModeLabel.style.cssText = 'font-size:11px;font-weight:600;color:var(--cb-subtext);margin-bottom:10px;letter-spacing:0.5px;';
     summModeGroup.appendChild(summModeLabel);
 
-    // Radio pills
+    // Radio pills - 4 context options
     const summRadioGroup = document.createElement('div');
-    summRadioGroup.style.cssText = 'display:flex;gap:8px;';
+    summRadioGroup.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;';
 
-    ['all', 'lastUser'].forEach((mode, idx) => {
+    const modeLabels = {
+      'all': '📄 Full Chat',
+      'lastUser': '👤 Last User',
+      'lastAI': '🤖 Last AI',
+      'custom': '✏️ Custom'
+    };
+
+    ['all', 'lastUser', 'lastAI', 'custom'].forEach((mode, idx) => {
       const label = document.createElement('label');
-      label.className = 'cb-radio-pill'; // We'll add this styling or reuse inline
-      label.style.cssText = 'display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border:1px solid rgba(96,165,250,0.3);border-radius:20px;background:rgba(255,255,255,0.03);cursor:pointer;transition:all .2s ease;font-size:12px;';
+      label.className = 'cb-radio-pill';
+      label.style.cssText = 'display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border:1px solid rgba(96,165,250,0.3);border-radius:20px;background:rgba(255,255,255,0.03);cursor:pointer;transition:all .2s ease;font-size:11px;';
 
       const radio = document.createElement('input');
       radio.type = 'radio';
       radio.name = 'cb-summ-mode';
       radio.value = mode;
-      radio.style.cssText = 'cursor:pointer;accent-color:#60a5fa;';
+      radio.style.cssText = 'cursor:pointer;accent-color:#60a5fa;width:14px;height:14px;';
 
       // Default to stored pref or 'all'
       try {
@@ -1761,10 +1768,9 @@
       } catch (_) { if (idx === 0) radio.checked = true; }
 
       const span = document.createElement('span');
-      span.textContent = mode === 'all' ? '📄 Full Conversation' : '👤 Last User Message';
+      span.textContent = modeLabels[mode];
       span.style.cssText = 'font-weight:500;color:#e0e0e0;';
 
-      // Active state styling logic handled in listener
       label.appendChild(radio);
       label.appendChild(span);
       summRadioGroup.appendChild(label);
@@ -1773,7 +1779,6 @@
       radio.addEventListener('change', () => {
         try {
           localStorage.setItem('chatbridge:pref:summMode', mode);
-          // Trigger content update immediately if view is active
           if (typeof updateSummContent === 'function') updateSummContent(mode);
         } catch (e) { }
       });
@@ -1886,13 +1891,22 @@
     // Function to populate source text based on mode (shared logic)
     function updateSummContent(mode = 'all') {
       try {
+        // Custom mode: preserve existing text, just focus
+        if (mode === 'custom') {
+          if (!summSourceText.textContent.trim()) {
+            summSourceText.textContent = '';
+          }
+          summSourceText.focus();
+          updateSummStats(summSourceText.textContent);
+          return;
+        }
+
         const lastScan = window.ChatBridge.getLastScan ? window.ChatBridge.getLastScan() : null;
         let text = '';
 
         if (mode === 'lastUser') {
           // Find last user message
           if (lastScan && lastScan.messages && lastScan.messages.length > 0) {
-            // Traverse backwards
             for (let i = lastScan.messages.length - 1; i >= 0; i--) {
               if (lastScan.messages[i].role === 'user') {
                 text = lastScan.messages[i].text || '';
@@ -1901,6 +1915,17 @@
             }
           }
           if (!text) text = '(No user messages found)';
+        } else if (mode === 'lastAI') {
+          // Find last AI message
+          if (lastScan && lastScan.messages && lastScan.messages.length > 0) {
+            for (let i = lastScan.messages.length - 1; i >= 0; i--) {
+              if (lastScan.messages[i].role !== 'user') {
+                text = lastScan.messages[i].text || '';
+                break;
+              }
+            }
+          }
+          if (!text) text = '(No AI messages found)';
         } else {
           // All
           text = (lastScan && lastScan.messages) ? lastScan.messages.map(m => `${m.role === 'user' ? 'User' : 'AI'}: ${m.text}`).join('\n\n') : '';
@@ -1912,8 +1937,99 @@
       } catch (e) { console.error('content update failed', e); }
     }
 
-    // Make it available to listeners via closure reference if needed, 
-    // but easier to just define it here and call it from the radio listener which is in the same scope.
+    // Summarize Execute Handler
+    // Summarize Execute Handler
+    btnGoSumm.type = 'button'; // Prevent implicit form submission
+    btnGoSumm.addEventListener('click', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      try {
+        const text = summSourceText.textContent;
+        if (!text || text.trim().length === 0) { toast('No content to summarize.'); return; }
+
+        btnGoSumm.disabled = true;
+
+        summResult.style.display = 'none';
+        btnInsertSumm.style.display = 'none';
+
+        // nicer loading state
+        summProg.innerHTML = '<span class="cb-spinner" style="display:inline-block;width:12px;height:12px;border:2px solid var(--cb-accent-primary);border-top-color:transparent;border-radius:50%;margin-right:8px;animation:cb-spin 1s linear infinite;"></span>Analyzing...';
+        summProg.style.display = 'inline-flex';
+        summProg.style.alignItems = 'center';
+
+        const length = summLengthSelect.value;
+        const style = summTypeSelect.value;
+        const deep = summDeepToggle.checked;
+
+        // Custom prompt to ensure clean output without meta-commentary
+        const cleanPrompt = `Combine the following content into a high-quality summary.
+Rules:
+1. Output ONLY the summary.
+2. Do NOT use introductory phrases like "Here is a summary" or "Based on the text".
+3. Follow the requested length (${length}) and style (${style}).
+4. Ensure the output is ready to be pasted directly into a chat.`;
+
+        const result = await hierarchicalProcess(text, 'summarize', {
+          length: length,
+          deepThinking: deep,
+          mergePrompt: cleanPrompt, // Override default merge prompt
+          extraPayload: { style: style, length: length },
+          onProgress: (p) => {
+            if (typeof p === 'string') {
+              summProg.lastChild.textContent = p;
+            } else if (p && p.phase) {
+              const phaseMap = { preparing: 'Preparing', chunking: 'Analyzing', chunk: 'Processing chunks', merging: 'Finalizing' };
+              const label = phaseMap[p.phase] || p.phase;
+              summProg.lastChild.textContent = `${label} ${p.total ? '(' + (p.index || 0) + '/' + p.total + ')' : ''}...`;
+            }
+          }
+        });
+
+        if (result) {
+          // Extra cleanup just in case
+          const clean = result.replace(/^(Here is|This is) a (comprehensive )?summary.*?:\s*/i, '').trim();
+          summResult.textContent = clean;
+
+          // Force layout update/display
+          summResult.style.display = 'block';
+          btnInsertSumm.style.display = 'block';
+          summProg.style.display = 'none';
+
+          // Ensure visible
+          setTimeout(() => {
+            summResult.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          }, 50);
+        } else {
+          toast('Summarization returned empty result');
+          summProg.style.display = 'none';
+        }
+      } catch (e) {
+        console.error('Summarize error:', e);
+        toast('Summarization failed: ' + (e.message || 'Unknown error'));
+        summProg.style.display = 'none';
+      } finally {
+        btnGoSumm.disabled = false;
+      }
+    });
+
+    // Ensure spinner animation style exists
+    if (!document.getElementById('cb-spin-style')) {
+      const s = document.createElement('style');
+      s.id = 'cb-spin-style';
+      s.textContent = '@keyframes cb-spin {to{transform:rotate(360deg)}}';
+      document.head.appendChild(s);
+    }
+
+    btnInsertSumm.addEventListener('click', async () => {
+      const text = summResult.textContent;
+      if (text) {
+        const success = await restoreToChat(text);
+        if (success) toast('Inserted into chat');
+        else toast('Failed to insert');
+      }
+    });
+
+    // Make it available to listeners via closure reference if needed
     // The previous radio listener calls `updateSummContent(mode)` assuming it exists.
 
     // ... End of Summarize view creation ...
@@ -13707,7 +13823,10 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           let text = '';
           const lastScan = window.ChatBridge.getLastScan ? window.ChatBridge.getLastScan() : null;
 
-          if (mode === 'lastUser') {
+          if (mode === 'custom') {
+            // Just use empty or existing, allow user to type
+            text = summSourceText ? summSourceText.textContent : '';
+          } else if (mode === 'lastUser') {
             // Find last user message
             if (lastScan && lastScan.messages && lastScan.messages.length > 0) {
               for (let i = lastScan.messages.length - 1; i >= 0; i--) {
@@ -13718,17 +13837,33 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
               }
             }
             if (!text) text = '(No user messages found)';
+          } else if (mode === 'lastAI') {
+            // Find last AI message
+            if (lastScan && lastScan.messages && lastScan.messages.length > 0) {
+              for (let i = lastScan.messages.length - 1; i >= 0; i--) {
+                if (lastScan.messages[i].role !== 'user') {
+                  text = lastScan.messages[i].text || '';
+                  break;
+                }
+              }
+            }
+            if (!text) text = '(No AI messages found)';
           } else {
             // All messages
             text = (lastScan && lastScan.messages) ? lastScan.messages.map(m => `${m.role === 'user' ? 'User' : 'AI'}: ${m.text}`).join('\n\n') : '';
           }
 
           if (summSourceText) {
-            summSourceText.textContent = text;
-            updateSummStats(text);
+            // Only overwrite if not custom, or if custom and empty? 
+            // Actually for custom we just want to ensure it's not null.
+            if (mode !== 'custom' || !summSourceText.textContent.trim()) {
+              summSourceText.textContent = text;
+            }
+            updateSummStats(summSourceText.textContent);
+            if (mode === 'custom') summSourceText.focus();
           }
 
-          // Auto-pick smart summary type
+          // Auto-pick smart summary type (only if we have text and not in custom mode necessarily)
           try { if (text && typeof pickAdaptiveSummaryType === 'function') summTypeSelect.value = pickAdaptiveSummaryType(text); } catch (_) { }
         }
         summView.classList.add('cb-view-active');
