@@ -396,7 +396,45 @@ console.log('[Translator] Starting module initialization...');
     const { cleaned, placeholders } = extractCodeBlocks(text);
 
     const languageName = SUPPORTED_LANGUAGES[targetLanguage] || targetLanguage;
-    // Try Llama first (faster for short texts)
+
+    // 1. Try EuroLLM first (best for multilingual translation, especially European languages)
+    if (cleaned && cleaned.length < 10000) {
+      try {
+        Logger.debug('[Translator] Trying EuroLLM translation...');
+        const euroResponse = await new Promise((resolve, reject) => {
+          chrome.runtime.sendMessage({
+            type: 'call_eurollm',
+            payload: {
+              action: 'translate',
+              text: cleaned,
+              targetLang: languageName
+            }
+          }, (response) => {
+            if (chrome.runtime.lastError) {
+              reject(new Error(chrome.runtime.lastError.message));
+            } else {
+              resolve(response);
+            }
+          });
+        });
+
+        if (euroResponse && euroResponse.ok && euroResponse.result) {
+          Logger.debug('[Translator] Translation complete via EuroLLM', {
+            targetLanguage,
+            domain,
+            length: euroResponse.result.length
+          });
+          const restored = restoreCodeBlocks(euroResponse.result, placeholders);
+          return restored;
+        } else if (euroResponse && euroResponse.error) {
+          Logger.warn('[Translator] EuroLLM returned error:', euroResponse.error, euroResponse.message);
+        }
+      } catch (euroError) {
+        Logger.warn('[Translator] EuroLLM failed, trying Llama...', euroError);
+      }
+    }
+
+    // 2. Fallback to Llama (faster for short texts)
     if (cleaned && cleaned.length < 8000) {
       try {
         const llamaResponse = await new Promise((resolve, reject) => {
@@ -430,7 +468,7 @@ console.log('[Translator] Starting module initialization...');
       }
     }
 
-    // Fallback to Gemini
+    // 3. Final fallback to Gemini
     try {
       const response = await new Promise((resolve, reject) => {
         chrome.runtime.sendMessage({

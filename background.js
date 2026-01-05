@@ -854,6 +854,304 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return true; // Keep channel open for async response
   }
 
+  // EuroLLM Translation Handler (Hugging Face OpenAI-compatible API)
+  // Uses utter-project/EuroLLM-22B-Instruct for high-quality multilingual translation
+  if (msg && msg.type === 'call_eurollm') {
+    (async () => {
+      try {
+        const hfKey = await getHuggingFaceApiKey();
+        if (!hfKey) {
+          return sendResponse({ ok: false, error: 'no_api_key', message: 'HuggingFace API key not configured. Open ChatBridge Options to set it.' });
+        }
+
+        const payload = msg.payload || {};
+        const targetLang = payload.targetLang || 'English';
+        const text = payload.text || '';
+
+        if (!text || text.length < 2) {
+          return sendResponse({ ok: false, error: 'no_text', message: 'No text provided for translation' });
+        }
+
+        // Professional translator system prompt - clean, accurate translations only
+        const systemPrompt = `You are a highly accurate, concise translation engine. Translate the user's input to ${targetLang}. Provide ONLY the translation. Do not include 'Here is the translation' or any conversational filler. Maintain the original tone (formal/informal).`;
+
+        console.log(`[EuroLLM] Translating ${text.length} chars to ${targetLang}`);
+
+        // Before making network call, check cache for this exact translation
+        try {
+          const cacheKey = hashString(stableStringify({ type: 'call_eurollm', targetLang, text }));
+          const rec = await cacheGet(cacheKey);
+          if (rec && rec.ts && rec.ttl && (Date.now() - rec.ts) < rec.ttl && rec.response) {
+            console.log('[EuroLLM] Cache hit');
+            return sendResponse(rec.response);
+          }
+        } catch (e) { /* ignore */ }
+
+        const response = await fetch('https://router.huggingface.co/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${hfKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            model: 'utter-project/EuroLLM-22B-Instruct-2512:publicai',
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: text }
+            ],
+            max_tokens: 4096,
+            temperature: 0.3  // Lower temperature for more accurate, consistent translations
+          })
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text().catch(() => '');
+          console.error('[EuroLLM] API error:', response.status, errorText);
+          return sendResponse({ ok: false, error: 'api_error', status: response.status, message: errorText });
+        }
+
+        const json = await response.json();
+        const result = json.choices?.[0]?.message?.content || '';
+
+        if (!result) {
+          return sendResponse({ ok: false, error: 'empty_response', message: 'Model returned empty response' });
+        }
+
+        // Cache successful result (1 hour TTL for translations)
+        try {
+          const cacheKey = hashString(stableStringify({ type: 'call_eurollm', targetLang, text }));
+          await cachePut({ id: cacheKey, ts: Date.now(), ttl: 1000 * 60 * 60, response: { ok: true, result: result.trim() } });
+        } catch (e) { /* ignore */ }
+
+        console.log(`[EuroLLM-22B] Translation complete: ${result.length} chars`);
+        return sendResponse({ ok: true, result: result.trim() });
+      } catch (e) {
+        console.error('[EuroLLM-22B] Fetch error:', e);
+        return sendResponse({ ok: false, error: 'fetch_error', message: e.message || String(e) });
+      }
+    })();
+    return true; // Keep channel open for async response
+  }
+
+  // EuroLLM FAST Translation Handler (1.7B model - instant translations)
+  if (msg && msg.type === 'call_eurollm_fast') {
+    (async () => {
+      try {
+        const hfKey = await getHuggingFaceApiKey();
+        if (!hfKey) {
+          return sendResponse({ ok: false, error: 'no_api_key', message: 'HuggingFace API key not configured.' });
+        }
+
+        const payload = msg.payload || {};
+        const targetLang = payload.targetLang || 'English';
+        const text = payload.text || '';
+
+        if (!text || text.length < 2) {
+          return sendResponse({ ok: false, error: 'no_text', message: 'No text provided' });
+        }
+
+        const systemPrompt = `You are a translation engine. Translate to ${targetLang}. Output ONLY the translation.`;
+
+        console.log(`[EuroLLM-1.7B] Fast translating ${text.length} chars to ${targetLang}`);
+
+        // Check cache first
+        try {
+          const cacheKey = hashString(stableStringify({ type: 'call_eurollm_fast', targetLang, text }));
+          const rec = await cacheGet(cacheKey);
+          if (rec && rec.ts && rec.ttl && (Date.now() - rec.ts) < rec.ttl && rec.response) {
+            console.log('[EuroLLM-1.7B] Cache hit');
+            return sendResponse(rec.response);
+          }
+        } catch (e) { /* ignore */ }
+
+        const response = await fetch('https://router.huggingface.co/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${hfKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            model: 'utter-project/EuroLLM-1.7B-Instruct:publicai',
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: text }
+            ],
+            max_tokens: 2048,
+            temperature: 0.2
+          })
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text().catch(() => '');
+          console.error('[EuroLLM-1.7B] API error:', response.status, errorText);
+          return sendResponse({ ok: false, error: 'api_error', status: response.status, message: errorText });
+        }
+
+        const json = await response.json();
+        const result = json.choices?.[0]?.message?.content || '';
+
+        if (!result) {
+          return sendResponse({ ok: false, error: 'empty_response', message: 'Model returned empty response' });
+        }
+
+        // Cache result (30 min TTL for fast translations)
+        try {
+          const cacheKey = hashString(stableStringify({ type: 'call_eurollm_fast', targetLang, text }));
+          await cachePut({ id: cacheKey, ts: Date.now(), ttl: 1000 * 60 * 30, response: { ok: true, result: result.trim() } });
+        } catch (e) { /* ignore */ }
+
+        console.log(`[EuroLLM-1.7B] Fast translation complete: ${result.length} chars`);
+        return sendResponse({ ok: true, result: result.trim() });
+      } catch (e) {
+        console.error('[EuroLLM-1.7B] Fetch error:', e);
+        return sendResponse({ ok: false, error: 'fetch_error', message: e.message || String(e) });
+      }
+    })();
+    return true;
+  }
+
+  // Gemma 2 Rewrite Handler (google/gemma-2-2b-it via HuggingFace router)
+  // Uses comprehensive style-conditioning system prompt for optimal rewrites
+  if (msg && msg.type === 'call_gemma_rewrite') {
+    (async () => {
+      try {
+        const hfKey = await getHuggingFaceApiKey();
+        if (!hfKey) {
+          return sendResponse({ ok: false, error: 'no_api_key', message: 'HuggingFace API key not configured.' });
+        }
+
+        const payload = msg.payload || {};
+        const text = payload.text || '';
+        const style = payload.style || 'humanized';
+
+        if (!text || text.length < 3) {
+          return sendResponse({ ok: false, error: 'no_text', message: 'No text provided for rewriting' });
+        }
+
+        // Comprehensive style-conditioning system prompt
+        const systemPrompt = `You are an advanced rewriting and style-conditioning engine.
+
+Your task is to rewrite the provided text according to the specified STYLE,
+while preserving the original meaning, intent, and factual correctness.
+
+You must NOT summarize unless explicitly instructed.
+You must NOT add new information unless it improves clarity, coherence,
+or human readability without changing intent.
+
+Before rewriting, silently analyze:
+1. The emotional tone of the original text
+2. The purpose (informative, persuasive, instructional, reflective, etc.)
+3. The target reader's likely expectations
+4. The weaknesses of the original text (stiffness, vagueness, redundancy, robotic tone, lack of flow, unnatural phrasing)
+
+STYLE RULESETS:
+
+STYLE: Academic
+- Use formal, objective, and precise language
+- Avoid conversational phrases
+- Maintain logical flow and structured reasoning
+- Prefer clarity over flourish
+- Sound like a high-quality textbook or peer-reviewed explanation
+
+STYLE: Detailed
+- Expand explanations where clarity benefits
+- Add contextual bridges between ideas
+- Clarify implicit assumptions
+- Preserve neutrality while increasing depth
+
+STYLE: Humanized (HIGHEST PRIORITY STYLE)
+- Rewrite as if a thoughtful, intelligent human wrote it
+- Natural sentence rhythm (vary sentence length organically)
+- Subtle warmth and relatability without sounding casual or unprofessional
+- Avoid robotic symmetry, list-heavy phrasing, and mechanical transitions
+- Sound confident, grounded, and genuinely human
+- No emojis, no corporate buzzwords, no exaggerated hype
+
+STYLE: Creative
+- Introduce expressive phrasing and imaginative structure
+- Use metaphors or vivid language when appropriate
+- Maintain meaning while enhancing originality
+
+STYLE: Professional
+- Clear, polished, and confident tone
+- Suitable for workplace, reports, proposals
+- No slang, no fluff, efficient and credible
+
+STYLE: Simple
+- Reduce complexity without losing meaning
+- Shorter sentences, plain accessible language
+- Explain ideas as if to a smart beginner
+
+QUALITY CHECK (MANDATORY):
+After rewriting, internally verify:
+- Meaning is preserved
+- Tone matches the selected STYLE
+- No unnecessary repetition
+- Flow feels natural when read aloud
+- Output does NOT sound AI-generated
+
+Return ONLY the rewritten text. No preamble, no explanation.`;
+
+        const userMessage = `STYLE: ${style}\nTEXT:\n${text}`;
+
+        console.log(`[Gemma Rewrite] Rewriting ${text.length} chars in style: ${style}`);
+
+        // Check cache first
+        try {
+          const cacheKey = hashString(stableStringify({ type: 'call_gemma_rewrite', style, text }));
+          const rec = await cacheGet(cacheKey);
+          if (rec && rec.ts && rec.ttl && (Date.now() - rec.ts) < rec.ttl && rec.response) {
+            console.log('[Gemma Rewrite] Cache hit');
+            return sendResponse(rec.response);
+          }
+        } catch (e) { /* ignore */ }
+
+        const response = await fetch('https://router.huggingface.co/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${hfKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            model: 'google/gemma-2-2b-it:nebius',
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: userMessage }
+            ],
+            max_tokens: 4096,
+            temperature: 0.4
+          })
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text().catch(() => '');
+          console.error('[Gemma Rewrite] API error:', response.status, errorText);
+          return sendResponse({ ok: false, error: 'api_error', status: response.status, message: errorText });
+        }
+
+        const json = await response.json();
+        const result = json.choices?.[0]?.message?.content || '';
+
+        if (!result) {
+          return sendResponse({ ok: false, error: 'empty_response', message: 'Model returned empty response' });
+        }
+
+        // Cache result (45 min TTL for rewrites)
+        try {
+          const cacheKey = hashString(stableStringify({ type: 'call_gemma_rewrite', style, text }));
+          await cachePut({ id: cacheKey, ts: Date.now(), ttl: 1000 * 60 * 45, response: { ok: true, result: result.trim() } });
+        } catch (e) { /* ignore */ }
+
+        console.log(`[Gemma Rewrite] Complete: ${result.length} chars`);
+        return sendResponse({ ok: true, result: result.trim() });
+      } catch (e) {
+        console.error('[Gemma Rewrite] Fetch error:', e);
+        return sendResponse({ ok: false, error: 'fetch_error', message: e.message || String(e) });
+      }
+    })();
+    return true;
+  }
+
   // Handler to get latest conversation text
   if (msg && msg.type === 'get_latest_conversation') {
     chrome.storage.local.get(['chatbridge:conversations'], data => {

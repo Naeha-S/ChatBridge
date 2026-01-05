@@ -1419,7 +1419,7 @@
 
     // Note: Summary removed - redundant with Summarize button
     const qaButtons = [
-      { id: 'qa-sidebar-export', icon: '📤', label: 'Export', title: 'Export recent conversations as JSON' },
+      { id: 'qa-sidebar-optimize', icon: '✨', label: 'Optimize', title: 'Transform raw prompts into high-performance AI prompts' },
       { id: 'qa-sidebar-stats', icon: '📊', label: 'Stats', title: 'Show word count, read time & saved count' },
       { id: 'qa-sidebar-archive', icon: '✅', label: 'Done', title: 'Mark this conversation as complete' },
       { id: 'qa-sidebar-star', icon: '⭐', label: 'Star', title: 'Star/unstar this conversation' }
@@ -1617,56 +1617,100 @@
     // Append to panel
     panel.appendChild(promptDesignerView);
 
-    // Summarize view
+    // Summarize view - LUXURY REDESIGN
     const summView = document.createElement('div'); summView.className = 'cb-internal-view'; summView.id = 'cb-summ-view'; summView.setAttribute('data-cb-ignore', 'true');
-    const summTop = document.createElement('div'); summTop.className = 'cb-view-top';
-    const summTitle = document.createElement('div'); summTitle.className = 'cb-view-title'; summTitle.textContent = '📝 Summarize';
-    const btnCloseSumm = document.createElement('button'); btnCloseSumm.className = 'cb-view-close'; btnCloseSumm.textContent = '✕';
+
+    // Header
+    const summTop = document.createElement('div');
+    summTop.className = 'cb-view-top';
+    summTop.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--cb-border);';
+
+    const summTitle = document.createElement('div');
+    summTitle.className = 'cb-view-title';
+    summTitle.style.cssText = 'font-size:20px;font-weight:700;color:var(--cb-white);display:flex;align-items:center;gap:10px;';
+    summTitle.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="url(#sumgrad)" stroke-width="2"><defs><linearGradient id="sumgrad" x1="0" y1="0" x2="24" y2="24"><stop offset="0%" stop-color="#60a5fa"/><stop offset="100%" stop-color="#8b5cf6"/></linearGradient></defs><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm-1 2l5 5h-5V4zM6 20V4h5v5h5v11H6z"/><path d="M8 12h8M8 16h8M8 8h4"/></svg><span>Summarize</span>';
+
+    const btnCloseSumm = document.createElement('button');
+    btnCloseSumm.className = 'cb-view-close';
+    btnCloseSumm.textContent = '✕';
+    btnCloseSumm.style.cssText = 'background:transparent;border:none;color:var(--cb-subtext);cursor:pointer;font-size:20px;padding:4px 8px;border-radius:6px;transition:all 0.2s ease;width:32px;height:32px;display:flex;align-items:center;justify-content:center;';
     btnCloseSumm.setAttribute('aria-label', 'Close Summarize view');
-    summTop.appendChild(summTitle); summTop.appendChild(btnCloseSumm);
+    btnCloseSumm.addEventListener('mouseenter', () => { btnCloseSumm.style.background = 'rgba(255, 255, 255, 0.05)'; btnCloseSumm.style.color = 'var(--cb-white)'; });
+    btnCloseSumm.addEventListener('mouseleave', () => { btnCloseSumm.style.background = 'transparent'; btnCloseSumm.style.color = 'var(--cb-subtext)'; });
+
+    summTop.appendChild(summTitle);
+    summTop.appendChild(btnCloseSumm);
     summView.appendChild(summTop);
-    const summIntro = document.createElement('div'); summIntro.className = 'cb-view-intro';
-    summIntro.style.cssText = 'font-size: 13px; line-height: 1.6; color: var(--cb-subtext); margin-bottom: 16px; padding: 12px 14px; background: linear-gradient(135deg, rgba(96, 165, 250, 0.08), rgba(167, 139, 250, 0.08)); border: 1px solid rgba(96, 165, 250, 0.15); border-radius: 10px;';
-    summIntro.innerHTML = '<div style="font-weight: 600; color: var(--cb-white); margin-bottom: 4px;">Extract Key Insights</div>Perfect for quick reviews, sharing highlights, or creating meeting notes.';
+
+    // Intro Card
+    const summIntro = document.createElement('div');
+    summIntro.className = 'cb-view-intro';
+    summIntro.style.cssText = 'font-size:13px;line-height:1.6;color:var(--cb-subtext);margin-bottom:20px;padding:14px 16px;background:linear-gradient(135deg,rgba(96,165,250,0.08),rgba(167,139,250,0.08));border:1px solid rgba(96,165,250,0.15);border-radius:12px;backdrop-filter:blur(8px);';
+    summIntro.innerHTML = '<div style="font-weight:600;color:var(--cb-white);margin-bottom:6px;font-size:14px;">Extract Key Insights</div>Instant summaries for quick reviews, sharing highlights, or creating structured meeting notes.';
     summView.appendChild(summIntro);
 
-    // Stats display (word count, char count, estimated time)
+    // Stats Bar
     const summStats = document.createElement('div');
     summStats.id = 'cb-summ-stats';
-    summStats.style.cssText = 'font-size: 11px; color: var(--cb-subtext); padding: 8px 12px; background: rgba(0,0,0,0.2); border-radius: 6px; margin-bottom: 12px; display: flex; gap: 16px; flex-wrap: wrap;';
-    summStats.innerHTML = '<span>📊 Words: --</span><span>📝 Chars: --</span><span>⏱️ Est. time: --</span>';
+    summStats.style.cssText = 'display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;font-size:11px;color:var(--cb-subtext);';
+    summStats.innerHTML = '<div style="background:rgba(255,255,255,0.05);padding:6px 10px;border-radius:20px;">📊 Words: --</div><div style="background:rgba(255,255,255,0.05);padding:6px 10px;border-radius:20px;">📝 Chars: --</div><div style="background:rgba(255,255,255,0.05);padding:6px 10px;border-radius:20px;">⏱️ Est. time: --</div>';
     summView.appendChild(summStats);
 
-    const summControls = document.createElement('div'); summControls.className = 'cb-view-controls';
-    summControls.style.cssText = 'display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;';
-    const summLengthLabel = document.createElement('label'); summLengthLabel.className = 'cb-label'; summLengthLabel.textContent = 'Length:';
-    summLengthLabel.style.cssText = 'font-size: 11px; font-weight: 600; color: var(--cb-subtext); text-transform: uppercase; letter-spacing: 0.5px;';
-    const summLengthSelect = document.createElement('select'); summLengthSelect.className = 'cb-select'; summLengthSelect.id = 'cb-summ-length';
-    summLengthSelect.style.cssText = 'width: 100%; background: var(--cb-bg3); border: 1px solid var(--cb-border); color: var(--cb-white); padding: 8px 10px; border-radius: 6px; font-size: 13px;';
-    ['concise', 'short', 'medium', 'comprehensive', 'detailed'].forEach(v => { const o = document.createElement('option'); o.value = v; o.textContent = v.charAt(0).toUpperCase() + v.slice(1); summLengthSelect.appendChild(o); });
+    // Controls Row & Settings Button
+    const summControlRow = document.createElement('div');
+    summControlRow.style.cssText = 'display:flex;align-items:center;gap:12px;margin-bottom:16px;';
+
+    // Length Selector
+    const lenGroup = document.createElement('div');
+    lenGroup.style.cssText = 'flex:1;display:flex;flex-direction:column;gap:6px;';
+    const lenLabel = document.createElement('label');
+    lenLabel.textContent = 'LENGTH';
+    lenLabel.style.cssText = 'font-size:10px;font-weight:700;color:var(--cb-subtext);letter-spacing:0.5px;';
+    const summLengthSelect = document.createElement('select');
+    summLengthSelect.className = 'cb-select';
+    summLengthSelect.id = 'cb-summ-length';
+    summLengthSelect.style.cssText = 'background:var(--cb-bg3);border:1px solid var(--cb-border);color:var(--cb-white);padding:10px;border-radius:8px;font-size:13px;outline:none;width:100%;';
+    ['concise', 'short', 'medium', 'comprehensive', 'detailed'].forEach(v => {
+      const o = document.createElement('option'); o.value = v; o.textContent = v.charAt(0).toUpperCase() + v.slice(1); summLengthSelect.appendChild(o);
+    });
     summLengthSelect.value = 'medium';
-    const summTypeLabel = document.createElement('label'); summTypeLabel.className = 'cb-label'; summTypeLabel.textContent = 'Style:';
-    summTypeLabel.style.cssText = 'font-size: 11px; font-weight: 600; color: var(--cb-subtext); text-transform: uppercase; letter-spacing: 0.5px;';
-    const summTypeSelect = document.createElement('select'); summTypeSelect.className = 'cb-select'; summTypeSelect.id = 'cb-summ-type';
-    summTypeSelect.style.cssText = 'width: 100%; background: var(--cb-bg3); border: 1px solid var(--cb-border); color: var(--cb-white); padding: 8px 10px; border-radius: 6px; font-size: 13px;';
-    // Include a specialized AI-to-AI transfer style optimized for cross-model handoff
-    const summTypes = ['paragraph', 'bullet', 'detailed', 'executive', 'technical', 'transfer'];
-    summTypes.forEach(v => {
+    lenGroup.appendChild(lenLabel);
+    lenGroup.appendChild(summLengthSelect);
+
+    // Type Selector
+    const typeGroup = document.createElement('div');
+    typeGroup.style.cssText = 'flex:1;display:flex;flex-direction:column;gap:6px;';
+    const typeLabel = document.createElement('label');
+    typeLabel.textContent = 'STYLE';
+    typeLabel.style.cssText = 'font-size:10px;font-weight:700;color:var(--cb-subtext);letter-spacing:0.5px;';
+    const summTypeSelect = document.createElement('select');
+    summTypeSelect.className = 'cb-select';
+    summTypeSelect.id = 'cb-summ-type';
+    summTypeSelect.style.cssText = 'background:var(--cb-bg3);border:1px solid var(--cb-border);color:var(--cb-white);padding:10px;border-radius:8px;font-size:13px;outline:none;width:100%;';
+    ['paragraph', 'bullet', 'detailed', 'executive', 'technical', 'transfer'].forEach(v => {
       const o = document.createElement('option');
       o.value = v;
       o.textContent = (v === 'transfer') ? 'AI-to-AI Transfer' : (v.charAt(0).toUpperCase() + v.slice(1));
       summTypeSelect.appendChild(o);
     });
     summTypeSelect.value = 'paragraph';
+    typeGroup.appendChild(typeLabel);
+    typeGroup.appendChild(summTypeSelect);
 
-    const lengthGroup = document.createElement('div'); lengthGroup.style.cssText = 'display: flex; flex-direction: column; gap: 6px;';
-    lengthGroup.appendChild(summLengthLabel); lengthGroup.appendChild(summLengthSelect);
-    const typeGroup = document.createElement('div'); typeGroup.style.cssText = 'display: flex; flex-direction: column; gap: 6px;';
-    typeGroup.appendChild(summTypeLabel); typeGroup.appendChild(summTypeSelect);
-    summControls.appendChild(lengthGroup); summControls.appendChild(typeGroup);
-    summView.appendChild(summControls);
+    // Gear Button
+    const summGearBtn = document.createElement('button');
+    summGearBtn.innerHTML = '⚙️';
+    summGearBtn.title = 'Settings';
+    summGearBtn.style.cssText = 'background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:18px;cursor:pointer;margin-top:16px;transition:all 0.2s;';
+    summGearBtn.onmouseenter = () => summGearBtn.style.background = 'rgba(255,255,255,0.1)';
+    summGearBtn.onmouseleave = () => summGearBtn.style.background = 'rgba(255,255,255,0.05)';
 
-    // Restore saved summary preferences
+    summControlRow.appendChild(lenGroup);
+    summControlRow.appendChild(typeGroup);
+    summControlRow.appendChild(summGearBtn);
+    summView.appendChild(summControlRow);
+
+    // Restore saved preferences
     try {
       const savedLen = localStorage.getItem('chatbridge:pref:summLength');
       const savedType = localStorage.getItem('chatbridge:pref:summType');
@@ -1675,24 +1719,145 @@
     } catch (e) { }
     summLengthSelect.addEventListener('change', () => { try { localStorage.setItem('chatbridge:pref:summLength', summLengthSelect.value); } catch (e) { } });
     summTypeSelect.addEventListener('change', () => { try { localStorage.setItem('chatbridge:pref:summType', summTypeSelect.value); } catch (e) { } });
-    const summSourceText = document.createElement('div'); summSourceText.className = 'cb-view-text'; summSourceText.id = 'cb-summ-source-text'; summSourceText.setAttribute('contenteditable', 'false'); summSourceText.textContent = '';
-    summSourceText.style.cssText = 'max-height: 200px; overflow-y: auto; padding: 12px; background: rgba(0,0,0,0.15); border-radius: 8px; border: 1px solid var(--cb-border); font-size: 12px; line-height: 1.5; margin-bottom: 12px;';
+
+    // Settings Panel (Hidden by default)
+    const summOptions = document.createElement('div');
+    summOptions.id = 'cb-summ-options';
+    summOptions.style.cssText = 'display:none;background:linear-gradient(135deg, rgba(96,165,250,0.08) 0%, rgba(139,92,246,0.08) 100%);border:1px solid rgba(96,165,250,0.25);border-radius:12px;padding:16px;margin:0 0 16px 0;backdrop-filter:blur(8px);';
+
+    const summOptHeader = document.createElement('div');
+    summOptHeader.style.cssText = 'display:flex;align-items:center;gap:8px;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,0.08);';
+    summOptHeader.innerHTML = '<span style="font-size:13px;font-weight:600;color:var(--cb-white);letter-spacing:0.3px;">⚙️ Settings</span>';
+    summOptions.appendChild(summOptHeader);
+
+    // What to summarize (Mode)
+    const summModeGroup = document.createElement('div');
+    summModeGroup.style.cssText = 'margin-bottom:14px;';
+    const summModeLabel = document.createElement('div');
+    summModeLabel.textContent = 'CONTEXT';
+    summModeLabel.style.cssText = 'font-size:11px;font-weight:600;color:var(--cb-subtext);margin-bottom:10px;letter-spacing:0.5px;';
+    summModeGroup.appendChild(summModeLabel);
+
+    // Radio pills
+    const summRadioGroup = document.createElement('div');
+    summRadioGroup.style.cssText = 'display:flex;gap:8px;';
+
+    ['all', 'lastUser'].forEach((mode, idx) => {
+      const label = document.createElement('label');
+      label.className = 'cb-radio-pill'; // We'll add this styling or reuse inline
+      label.style.cssText = 'display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border:1px solid rgba(96,165,250,0.3);border-radius:20px;background:rgba(255,255,255,0.03);cursor:pointer;transition:all .2s ease;font-size:12px;';
+
+      const radio = document.createElement('input');
+      radio.type = 'radio';
+      radio.name = 'cb-summ-mode';
+      radio.value = mode;
+      radio.style.cssText = 'cursor:pointer;accent-color:#60a5fa;';
+
+      // Default to stored pref or 'all'
+      try {
+        const stored = localStorage.getItem('chatbridge:pref:summMode');
+        if (stored === mode) radio.checked = true;
+        else if (!stored && idx === 0) radio.checked = true;
+      } catch (_) { if (idx === 0) radio.checked = true; }
+
+      const span = document.createElement('span');
+      span.textContent = mode === 'all' ? '📄 Full Conversation' : '👤 Last User Message';
+      span.style.cssText = 'font-weight:500;color:#e0e0e0;';
+
+      // Active state styling logic handled in listener
+      label.appendChild(radio);
+      label.appendChild(span);
+      summRadioGroup.appendChild(label);
+
+      // Listener
+      radio.addEventListener('change', () => {
+        try {
+          localStorage.setItem('chatbridge:pref:summMode', mode);
+          // Trigger content update immediately if view is active
+          if (typeof updateSummContent === 'function') updateSummContent(mode);
+        } catch (e) { }
+      });
+    });
+    summModeGroup.appendChild(summRadioGroup);
+    summOptions.appendChild(summModeGroup);
+
+    // Deep Thinking Toggle
+    const summDeepRow = document.createElement('div');
+    summDeepRow.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:12px;background:rgba(167,139,250,0.1);border-radius:8px;border:1px solid rgba(167,139,250,0.2);';
+    const summDeepLabel = document.createElement('label');
+    summDeepLabel.innerHTML = '<span style="font-weight:500;color:var(--cb-white);">🧠 Deep Thinking</span><br><span style="font-size:11px;color:var(--cb-subtext);">Uses larger model (better quality)</span>';
+    summDeepLabel.htmlFor = 'cb-summ-deep';
+    summDeepLabel.style.cssText = 'cursor:pointer;';
+    const summDeepToggle = document.createElement('input');
+    summDeepToggle.type = 'checkbox';
+    summDeepToggle.id = 'cb-summ-deep';
+    summDeepToggle.className = 'cb-toggle'; // Reuse existing class
+    summDeepToggle.style.cssText = 'width:44px;height:24px;cursor:pointer;';
+    try { if (localStorage.getItem('chatbridge:pref:summDeep') === 'true') summDeepToggle.checked = true; } catch (_) { }
+    summDeepToggle.addEventListener('change', () => { try { localStorage.setItem('chatbridge:pref:summDeep', summDeepToggle.checked); } catch (e) { } });
+
+    summDeepRow.appendChild(summDeepLabel);
+    summDeepRow.appendChild(summDeepToggle);
+    summOptions.appendChild(summDeepRow);
+
+    summView.appendChild(summOptions);
+
+    // Toggle Settings
+    summGearBtn.addEventListener('click', () => {
+      const isHidden = summOptions.style.display === 'none';
+      summOptions.style.display = isHidden ? 'block' : 'none';
+      summGearBtn.style.background = isHidden ? 'rgba(96,165,250,0.2)' : 'rgba(255,255,255,0.05)';
+    });
+
+    // Source Text Preview
+    const summSourceText = document.createElement('div');
+    summSourceText.className = 'cb-view-text';
+    summSourceText.id = 'cb-summ-source-text';
+    summSourceText.setAttribute('contenteditable', 'true'); // Allow manual tweaking
+    summSourceText.textContent = '';
+    summSourceText.style.cssText = 'max-height:180px;overflow-y:auto;padding:14px;background:rgba(0,0,0,0.2);border-radius:10px;border:1px solid rgba(255,255,255,0.08);font-size:12px;line-height:1.6;margin-bottom:16px;color:rgba(255,255,255,0.9);white-space:pre-wrap;';
     summView.appendChild(summSourceText);
 
-    // Button row
-    const summBtnRow = document.createElement('div'); summBtnRow.style.cssText = 'display: flex; gap: 8px; margin-bottom: 12px;';
-    const btnGoSumm = document.createElement('button'); btnGoSumm.className = 'cb-btn cb-btn-primary cb-view-go'; btnGoSumm.textContent = '✨ Summarize';
-    btnGoSumm.style.cssText = 'flex: 1; padding: 10px 16px; font-weight: 600;';
-    const btnCopySumm = document.createElement('button'); btnCopySumm.className = 'cb-btn'; btnCopySumm.textContent = '📋 Copy';
-    btnCopySumm.style.cssText = 'padding: 10px 16px;';
-    summBtnRow.appendChild(btnGoSumm); summBtnRow.appendChild(btnCopySumm);
+    // Helper: Update content based on mode
+    // We attach this to the global scope or close over it, but since btnSummarize needs it, we'll assign it to a var reachable by the closure
+    let updateSummContentRef = null;
+
+    // Buttons
+    const summBtnRow = document.createElement('div');
+    summBtnRow.style.cssText = 'display:flex;gap:10px;margin-bottom:16px;';
+
+    const btnGoSumm = document.createElement('button');
+    btnGoSumm.className = 'cb-btn cb-view-go';
+    btnGoSumm.textContent = '✨ Summarize';
+    btnGoSumm.style.cssText = 'flex:1;padding:12px;font-weight:600;font-size:14px;background:linear-gradient(135deg,#60a5fa,#8b5cf6);border:none;box-shadow:0 4px 12px rgba(96,165,250,0.3);';
+    btnGoSumm.onmouseenter = () => btnGoSumm.style.filter = 'brightness(1.1) translateY(-1px)';
+    btnGoSumm.onmouseleave = () => btnGoSumm.style.filter = 'brightness(1) translateY(0)';
+
+    const btnCopySumm = document.createElement('button');
+    btnCopySumm.className = 'cb-btn';
+    btnCopySumm.textContent = '📋 Copy';
+    btnCopySumm.style.cssText = 'padding:12px 18px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);';
+
+    summBtnRow.appendChild(btnGoSumm);
+    summBtnRow.appendChild(btnCopySumm);
     summView.appendChild(summBtnRow);
 
-    const summProg = document.createElement('span'); summProg.className = 'cb-progress'; summProg.style.display = 'none'; summView.appendChild(summProg);
-    const btnInsertSumm = document.createElement('button'); btnInsertSumm.className = 'cb-btn cb-view-go'; btnInsertSumm.textContent = '⬆️ Insert to Chat'; btnInsertSumm.style.display = 'none';
+    const summProg = document.createElement('span');
+    summProg.className = 'cb-progress';
+    summProg.style.display = 'none';
+    summView.appendChild(summProg);
+
+    const btnInsertSumm = document.createElement('button');
+    btnInsertSumm.className = 'cb-btn cb-view-go';
+    btnInsertSumm.textContent = '⬆️ Insert to Chat';
+    btnInsertSumm.style.cssText = 'width:100%;margin-bottom:12px;display:none;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.2);';
     summView.appendChild(btnInsertSumm);
-    const summResult = document.createElement('div'); summResult.className = 'cb-view-result'; summResult.id = 'cb-summ-result'; summResult.textContent = '';
-    summResult.style.cssText = 'font-size: 12px; color: var(--cb-subtext); padding: 8px 0;';
+
+    const summResult = document.createElement('div');
+    summResult.className = 'cb-view-result';
+    summResult.id = 'cb-summ-result';
+    summResult.textContent = '';
+    summResult.style.cssText = 'font-size:13px;color:rgba(230,230,255,0.95);line-height:1.6;padding:12px;background:rgba(255,255,255,0.03);border-radius:10px;border:1px solid rgba(255,255,255,0.05);';
     summView.appendChild(summResult);
 
     // Helper to update stats display
@@ -1702,8 +1867,8 @@
         if (!statsEl) return;
         const words = text ? text.trim().split(/\s+/).filter(w => w.length > 0).length : 0;
         const chars = text ? text.length : 0;
-        const estSeconds = Math.max(2, Math.ceil(chars / 1500)); // ~1500 chars/sec processing
-        statsEl.innerHTML = `<span>📊 Words: ${words.toLocaleString()}</span><span>📝 Chars: ${chars.toLocaleString()}</span><span>⏱️ Est. time: ~${estSeconds}s</span>`;
+        const estSeconds = Math.max(2, Math.ceil(chars / 1500));
+        statsEl.innerHTML = `<div style="background:rgba(255,255,255,0.05);padding:6px 10px;border-radius:20px;">📊 Words: ${words.toLocaleString()}</div><div style="background:rgba(255,255,255,0.05);padding:6px 10px;border-radius:20px;">📝 Chars: ${chars.toLocaleString()}</div><div style="background:rgba(255,255,255,0.05);padding:6px 10px;border-radius:20px;">⏱️ Est. time: ~${estSeconds}s</div>`;
       } catch (e) { }
     }
 
@@ -1716,6 +1881,42 @@
         toast(`Copied ${text.length.toLocaleString()} chars`);
       } catch (e) { toast('Copy failed'); }
     });
+
+
+    // Function to populate source text based on mode (shared logic)
+    function updateSummContent(mode = 'all') {
+      try {
+        const lastScan = window.ChatBridge.getLastScan ? window.ChatBridge.getLastScan() : null;
+        let text = '';
+
+        if (mode === 'lastUser') {
+          // Find last user message
+          if (lastScan && lastScan.messages && lastScan.messages.length > 0) {
+            // Traverse backwards
+            for (let i = lastScan.messages.length - 1; i >= 0; i--) {
+              if (lastScan.messages[i].role === 'user') {
+                text = lastScan.messages[i].text || '';
+                break;
+              }
+            }
+          }
+          if (!text) text = '(No user messages found)';
+        } else {
+          // All
+          text = (lastScan && lastScan.messages) ? lastScan.messages.map(m => `${m.role === 'user' ? 'User' : 'AI'}: ${m.text}`).join('\n\n') : '';
+        }
+
+        summSourceText.textContent = text;
+        updateSummStats(text);
+
+      } catch (e) { console.error('content update failed', e); }
+    }
+
+    // Make it available to listeners via closure reference if needed, 
+    // but easier to just define it here and call it from the radio listener which is in the same scope.
+    // The previous radio listener calls `updateSummContent(mode)` assuming it exists.
+
+    // ... End of Summarize view creation ...
 
     // Rewrite view - Sleek Modern Redesign
     const rewView = document.createElement('div'); rewView.className = 'cb-internal-view'; rewView.id = 'cb-rew-view'; rewView.setAttribute('data-cb-ignore', 'true');
@@ -1760,21 +1961,22 @@
     const rewStyleSelect = document.createElement('select');
     rewStyleSelect.className = 'cb-select';
     rewStyleSelect.id = 'cb-rew-style';
-    rewStyleSelect.style.cssText = 'width: 100%; background: var(--cb-bg3); border: 1px solid var(--cb-border); color: var(--cb-white); padding: 10px 12px; border-radius: 8px; font-size: 14px; outline: none; transition: all 0.2s ease; cursor: pointer;';
-    rewStyleSelect.addEventListener('focus', () => rewStyleSelect.style.borderColor = 'var(--cb-accent-primary)');
-    rewStyleSelect.addEventListener('blur', () => rewStyleSelect.style.borderColor = 'var(--cb-border)');
+    rewStyleSelect.style.cssText = 'width: 100%; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; color: var(--cb-white); padding: 12px; font-size: 14px; outline: none; transition: all 0.3s ease; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.1);';
+    rewStyleSelect.addEventListener('focus', () => { rewStyleSelect.style.borderColor = 'rgba(96,165,250,0.5)'; rewStyleSelect.style.boxShadow = '0 0 0 3px rgba(96,165,250,0.1)'; });
+    rewStyleSelect.addEventListener('blur', () => { rewStyleSelect.style.borderColor = 'rgba(255,255,255,0.1)'; rewStyleSelect.style.boxShadow = '0 4px 15px rgba(0,0,0,0.1)'; });
 
-    // Organized dropdown with groups
-    const groupBasic = document.createElement('optgroup'); groupBasic.label = 'Basic';
-    ;['normal', 'concise', 'direct', 'detailed', 'academic'].forEach(v => { const o = document.createElement('option'); o.value = v; o.textContent = v.charAt(0).toUpperCase() + v.slice(1); groupBasic.appendChild(o); });
-    rewStyleSelect.appendChild(groupBasic);
-    const groupTonal = document.createElement('optgroup'); groupTonal.label = 'Tonal & Style';
-    ;['humanized', 'creative', 'professional', 'simple', 'friendly'].forEach(v => { const o = document.createElement('option'); o.value = v; o.textContent = v.charAt(0).toUpperCase() + v.slice(1); groupTonal.appendChild(o); });
-    rewStyleSelect.appendChild(groupTonal);
-    const groupPersonal = document.createElement('optgroup'); groupPersonal.label = 'Personalized';
-    ;['customStyle'].forEach(v => { const o = document.createElement('option'); o.value = v; o.textContent = 'Personalized Style'; groupPersonal.appendChild(o); });
-    rewStyleSelect.appendChild(groupPersonal);
-    rewStyleSelect.value = 'normal';
+    // Premium Styles Only (removed basic ones per user request)
+    const styles = [
+      { v: 'academic', n: 'Academic' },
+      { v: 'detailed', n: 'Detailed' },
+      { v: 'humanized', n: 'Humanized' },
+      { v: 'creative', n: 'Creative' },
+      { v: 'professional', n: 'Professional' },
+      { v: 'simple', n: 'Simple' },
+      { v: 'customStyle', n: 'Custom Style' }
+    ];
+    styles.forEach(s => { const o = document.createElement('option'); o.value = s.v; o.textContent = s.n; rewStyleSelect.appendChild(o); });
+    rewStyleSelect.value = 'academic';
 
     styleGroup.appendChild(rewStyleLabel);
     styleGroup.appendChild(rewStyleSelect);
@@ -1806,43 +2008,72 @@
 
     rewView.appendChild(rewControls);
 
-    // Style hint (only for Personalized Style)
+    // Style hint (always accessible, but toggles on select)
     const styleHintWrap = document.createElement('div');
     styleHintWrap.className = 'cb-style-hint-wrap';
     styleHintWrap.style.cssText = 'display: none; margin-bottom: 20px;';
 
     const styleHintLabel = document.createElement('label');
     styleHintLabel.className = 'cb-label';
-    styleHintLabel.textContent = 'Style Hint (Optional)';
-    styleHintLabel.style.cssText = 'font-size: 12px; font-weight: 600; color: var(--cb-subtext); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 8px;';
+    styleHintLabel.textContent = 'Custom Style Intent';
+    styleHintLabel.style.cssText = 'font-size: 11px; font-weight: 700; color: var(--cb-subtext); text-transform: uppercase; letter-spacing: 0.8px; display: block; margin-bottom: 10px; opacity: 0.8;';
 
     const styleHintInput = document.createElement('input');
     styleHintInput.className = 'cb-input';
     styleHintInput.type = 'text';
     styleHintInput.id = 'cb-rew-style-hint';
-    styleHintInput.placeholder = 'e.g., “Calm, minimalist, technical product docs”';
-    styleHintInput.style.cssText = 'width: 100%; background: var(--cb-bg3); border: 1px solid var(--cb-border); color: var(--cb-white); padding: 10px 12px; border-radius: 8px; font-size: 14px; outline: none; transition: all 0.2s ease;';
-    styleHintInput.addEventListener('focus', () => styleHintInput.style.borderColor = 'var(--cb-accent-primary)');
-    styleHintInput.addEventListener('blur', () => styleHintInput.style.borderColor = 'var(--cb-border)');
+    styleHintInput.placeholder = 'e.g., “Calm, minimalist tone”';
+    styleHintInput.style.cssText = 'width: 100%; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; color: var(--cb-white); padding: 12px; font-size: 14px; outline: none; transition: all 0.3s ease;';
+    styleHintInput.addEventListener('focus', () => styleHintInput.style.borderColor = 'rgba(167,139,250,0.5)');
+    styleHintInput.addEventListener('blur', () => styleHintInput.style.borderColor = 'rgba(255,255,255,0.1)');
 
     styleHintWrap.appendChild(styleHintLabel);
     styleHintWrap.appendChild(styleHintInput);
-    rewControls.appendChild(styleHintWrap);
-    rewControls.appendChild(styleHintWrap);
-    // rewControls already appended to rewView earlier
+    rewView.appendChild(styleHintWrap);
+
     // Replies list (assistant only - compact preview mode)
-    const rewRepliesWrap = document.createElement('div'); rewRepliesWrap.className = 'cb-replies-wrap';
-    const rewRepliesHeader = document.createElement('div'); rewRepliesHeader.className = 'cb-replies-header';
-    const rewRepliesTitle = document.createElement('div'); rewRepliesTitle.className = 'cb-replies-title'; rewRepliesTitle.textContent = 'Replies';
-    const rewReplyControls = document.createElement('div'); rewReplyControls.style.cssText = 'display:flex;align-items:center;gap:var(--cb-space-sm);flex-wrap:wrap;';
-    const rewMultiBtn = document.createElement('button'); rewMultiBtn.className = 'cb-btn cb-btn-secondary'; rewMultiBtn.style.cssText = 'padding:6px 12px;font-size:11px;'; rewMultiBtn.textContent = 'Multi'; rewMultiBtn.title = 'Toggle multi-select mode';
-    const rewFilterBtn = document.createElement('button'); rewFilterBtn.className = 'cb-btn cb-btn-secondary'; rewFilterBtn.style.cssText = 'padding:6px 12px;font-size:11px;'; rewFilterBtn.textContent = 'All'; rewFilterBtn.title = 'Filter replies (All / Assistant / User)';
-    // Remove selected message preview - only show selection controls
-    rewReplyControls.appendChild(rewMultiBtn); rewReplyControls.appendChild(rewFilterBtn);
-    rewRepliesHeader.appendChild(rewRepliesTitle); rewRepliesHeader.appendChild(rewReplyControls);
-    const rewReplies = document.createElement('div'); rewReplies.className = 'cb-replies'; rewReplies.id = 'cb-replies-list';
-    rewRepliesWrap.appendChild(rewRepliesHeader); rewRepliesWrap.appendChild(rewReplies);
+    const rewRepliesWrap = document.createElement('div');
+    rewRepliesWrap.className = 'cb-replies-wrap';
+    rewRepliesWrap.style.cssText = 'margin-top: 24px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.05);';
+
+    const rewRepliesHeader = document.createElement('div');
+    rewRepliesHeader.className = 'cb-replies-header';
+    rewRepliesHeader.style.cssText = 'display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;';
+
+    const rewRepliesTitle = document.createElement('div');
+    rewRepliesTitle.className = 'cb-replies-title';
+    rewRepliesTitle.textContent = 'Message Selection';
+    rewRepliesTitle.style.cssText = 'font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.9);';
+
+    const rewReplyControls = document.createElement('div');
+    rewReplyControls.style.cssText = 'display:flex;align-items:center;gap:8px;';
+
+    const rewMultiBtn = document.createElement('button');
+    rewMultiBtn.className = 'cb-btn cb-btn-secondary';
+    rewMultiBtn.style.cssText = 'padding:6px 14px;font-size:11px;border-radius:20px;background:rgba(255,255,255,0.05);';
+    rewMultiBtn.textContent = 'Multi-Select';
+
+    const rewFilterBtn = document.createElement('button');
+    rewFilterBtn.className = 'cb-btn cb-btn-secondary';
+    rewFilterBtn.style.cssText = 'padding:6px 14px;font-size:11px;border-radius:20px;background:rgba(255,255,255,0.05);';
+    rewFilterBtn.textContent = 'Filter: All';
+
+    rewReplyControls.appendChild(rewMultiBtn);
+    rewReplyControls.appendChild(rewFilterBtn);
+    rewRepliesHeader.appendChild(rewRepliesTitle);
+    rewRepliesHeader.appendChild(rewReplyControls);
+
+    const rewReplies = document.createElement('div');
+    rewReplies.className = 'cb-replies';
+    rewReplies.id = 'cb-replies-list';
+    rewReplies.style.cssText = 'max-height: 250px; overflow-y: auto; display: grid; gap: 8px; padding-right: 4px;';
+
+    rewRepliesWrap.appendChild(rewRepliesHeader);
+    rewRepliesWrap.appendChild(rewReplies);
     rewView.appendChild(rewRepliesWrap);
+
+    // Removed preview area for singular message selection as requested
+    // Logic updated to rewrite "everything" if nothing selected
 
     // Rewrite editor (appears when a reply is selected)
     const rewEditor = document.createElement('div'); rewEditor.className = 'cb-rewrite-editor'; rewEditor.id = 'cb-rewrite-editor';
@@ -2027,6 +2258,23 @@
     transShortenRow.appendChild(transShortenLabel);
     transShortenRow.appendChild(transShortenToggle);
     transOptions.appendChild(transShortenRow);
+
+    // Deep Thinking toggle (uses 22B model for higher quality)
+    const transDeepRow = document.createElement('div');
+    transDeepRow.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:12px;background:rgba(167,139,250,0.08);border-radius:8px;margin-top:8px;border:1px solid rgba(167,139,250,0.2);';
+    const transDeepLabel = document.createElement('label');
+    transDeepLabel.innerHTML = '<span style="font-weight:500;color:var(--cb-white);">🧠 Deep Thinking</span><br><span style="font-size:11px;color:var(--cb-subtext);">Uses 22B model (slower but more accurate)</span>';
+    transDeepLabel.htmlFor = 'cb-trans-deep';
+    transDeepLabel.style.cssText = 'cursor:pointer;';
+    const transDeepToggle = document.createElement('input');
+    transDeepToggle.type = 'checkbox';
+    transDeepToggle.id = 'cb-trans-deep';
+    transDeepToggle.className = 'cb-toggle';
+    transDeepToggle.style.cssText = 'width:44px;height:24px;cursor:pointer;';
+    transDeepRow.appendChild(transDeepLabel);
+    transDeepRow.appendChild(transDeepToggle);
+    transOptions.appendChild(transDeepRow);
+
     transView.appendChild(transOptions);
 
     // Toggle custom input area visibility based on radio selection
@@ -2092,6 +2340,103 @@
     panel.appendChild(summView);
     panel.appendChild(rewView);
     panel.appendChild(transView);
+
+    // ======================== PROMPT OPTIMIZER VIEW ========================
+    const optimizerView = document.createElement('div');
+    optimizerView.className = 'cb-internal-view';
+    optimizerView.id = 'cb-optimizer-view';
+    optimizerView.setAttribute('data-cb-ignore', 'true');
+
+    const optTop = document.createElement('div');
+    optTop.className = 'cb-view-top';
+    optTop.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--cb-border);';
+
+    const optTitle = document.createElement('div');
+    optTitle.className = 'cb-view-title';
+    optTitle.style.cssText = 'font-size:20px;font-weight:700;color:var(--cb-white);display:flex;align-items:center;gap:10px;';
+    optTitle.innerHTML = '✨ <span>Prompt Optimizer</span>';
+
+    const btnCloseOpt = document.createElement('button');
+    btnCloseOpt.className = 'cb-view-close';
+    btnCloseOpt.textContent = '✕';
+    btnCloseOpt.style.cssText = 'background:transparent;border:none;color:var(--cb-subtext);cursor:pointer;font-size:20px;padding:4px 8px;border-radius:6px;transition:all 0.2s ease;width:32px;height:32px;display:flex;align-items:center;justify-content:center;';
+    btnCloseOpt.setAttribute('aria-label', 'Close Prompt Optimizer');
+
+    optTop.appendChild(optTitle);
+    optTop.appendChild(btnCloseOpt);
+    optimizerView.appendChild(optTop);
+
+    const optIntro = document.createElement('div');
+    optIntro.className = 'cb-view-intro';
+    optIntro.style.cssText = 'font-size:11px;line-height:1.5;color:var(--cb-subtext);margin-bottom:16px;padding:10px 14px;background:linear-gradient(135deg,rgba(167,139,250,0.08),rgba(96,165,250,0.06));border:1px solid rgba(167,139,250,0.15);border-radius:10px;';
+    optIntro.innerHTML = 'Transform raw prompts into clear, high-performance AI instructions. Your intent is preserved. Only clarity is upgraded.';
+    optimizerView.appendChild(optIntro);
+
+    // Input area
+    const optInputLabel = document.createElement('div');
+    optInputLabel.style.cssText = 'font-size:11px;font-weight:600;color:var(--cb-subtext);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:8px;';
+    optInputLabel.textContent = 'Your Raw Prompt';
+    optimizerView.appendChild(optInputLabel);
+
+    const optInput = document.createElement('textarea');
+    optInput.id = 'cb-opt-input';
+    optInput.className = 'cb-view-text';
+    optInput.placeholder = 'Paste or type your rough prompt here... e.g. "help me write an essay about climate change"';
+    optInput.style.cssText = 'width:100%;min-height:120px;max-height:180px;resize:vertical;background:rgba(0,0,0,0.2);color:var(--cb-white);border:1px solid rgba(255,255,255,0.1);padding:14px;border-radius:10px;font-family:inherit;font-size:13px;line-height:1.6;';
+    optimizerView.appendChild(optInput);
+
+    // Action row
+    const optActionRow = document.createElement('div');
+    optActionRow.style.cssText = 'display:flex;align-items:center;gap:12px;margin:16px 0;';
+
+    const btnOptimize = document.createElement('button');
+    btnOptimize.className = 'cb-btn cb-btn-primary';
+    btnOptimize.id = 'cb-btn-optimize';
+    btnOptimize.textContent = '✨ Optimize';
+    btnOptimize.style.cssText = 'padding:12px 24px;font-weight:600;background:linear-gradient(135deg,#a78bfa,#60a5fa);border:none;';
+
+    const optProg = document.createElement('span');
+    optProg.id = 'cb-opt-progress';
+    optProg.style.cssText = 'display:none;font-size:12px;color:#a78bfa;align-items:center;';
+    optProg.innerHTML = '<span class="cb-spinner"></span><span>Optimizing...</span>';
+
+    optActionRow.appendChild(btnOptimize);
+    optActionRow.appendChild(optProg);
+    optimizerView.appendChild(optActionRow);
+
+    // Output area
+    const optOutputLabel = document.createElement('div');
+    optOutputLabel.style.cssText = 'font-size:11px;font-weight:600;color:var(--cb-subtext);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:8px;margin-top:8px;';
+    optOutputLabel.textContent = 'Optimized Prompt';
+    optimizerView.appendChild(optOutputLabel);
+
+    const optOutput = document.createElement('div');
+    optOutput.id = 'cb-opt-output';
+    optOutput.className = 'cb-view-result';
+    optOutput.style.cssText = 'min-height:80px;max-height:250px;overflow-y:auto;white-space:pre-wrap;background:rgba(167,139,250,0.05);border:1px solid rgba(167,139,250,0.2);border-radius:10px;padding:14px;display:none;';
+    optimizerView.appendChild(optOutput);
+
+    // Copy & Insert buttons
+    const optBtnRow = document.createElement('div');
+    optBtnRow.style.cssText = 'display:flex;gap:10px;margin-top:12px;';
+
+    const btnOptCopy = document.createElement('button');
+    btnOptCopy.className = 'cb-btn';
+    btnOptCopy.id = 'cb-btn-opt-copy';
+    btnOptCopy.textContent = '📋 Copy';
+    btnOptCopy.style.cssText = 'display:none;padding:10px 18px;';
+
+    const btnOptInsert = document.createElement('button');
+    btnOptInsert.className = 'cb-btn';
+    btnOptInsert.id = 'cb-btn-opt-insert';
+    btnOptInsert.textContent = '↩ Insert to Chat';
+    btnOptInsert.style.cssText = 'display:none;padding:10px 18px;';
+
+    optBtnRow.appendChild(btnOptCopy);
+    optBtnRow.appendChild(btnOptInsert);
+    optimizerView.appendChild(optBtnRow);
+
+    panel.appendChild(optimizerView);
 
     // Smart Query view
     const smartView = document.createElement('div'); smartView.className = 'cb-internal-view'; smartView.id = 'cb-smart-view'; smartView.setAttribute('data-cb-ignore', 'true');
@@ -12968,6 +13313,52 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       });
     }
 
+    // EuroLLM API wrapper (for high-quality multilingual translation)
+    function callEuroLLMAsync(originalPayload) {
+      return new Promise(async (resolve) => {
+        try {
+          chrome.runtime.sendMessage({ type: 'call_eurollm', payload: originalPayload }, res => {
+            const out = res || { ok: false, error: 'no-response' };
+            // Apply ramble filter to successful responses
+            if (out && out.ok && out.result && typeof out.result === 'string') {
+              out.result = rambleFilter(out.result);
+            }
+            resolve(out);
+          });
+        } catch (e) { resolve({ ok: false, error: e && e.message }); }
+      });
+    }
+
+    // EuroLLM FAST API wrapper (1.7B model for instant translations)
+    function callEuroLLMFastAsync(originalPayload) {
+      return new Promise(async (resolve) => {
+        try {
+          chrome.runtime.sendMessage({ type: 'call_eurollm_fast', payload: originalPayload }, res => {
+            const out = res || { ok: false, error: 'no-response' };
+            if (out && out.ok && out.result && typeof out.result === 'string') {
+              out.result = rambleFilter(out.result);
+            }
+            resolve(out);
+          });
+        } catch (e) { resolve({ ok: false, error: e && e.message }); }
+      });
+    }
+
+    // Gemma 2 Rewrite API wrapper (google/gemma-2-2b-it for style-conditioned rewrites)
+    function callGemmaRewriteAsync(text, style) {
+      return new Promise(async (resolve) => {
+        try {
+          chrome.runtime.sendMessage({ type: 'call_gemma_rewrite', payload: { text, style } }, res => {
+            const out = res || { ok: false, error: 'no-response' };
+            if (out && out.ok && out.result && typeof out.result === 'string') {
+              out.result = rambleFilter(out.result);
+            }
+            resolve(out);
+          });
+        } catch (e) { resolve({ ok: false, error: e && e.message }); }
+      });
+    }
+
     // Hierarchical summarization: chunk long text, summarize chunks in parallel, then merge
     async function hierarchicalSummarize(text, options) {
       options = options || {};
@@ -13081,6 +13472,100 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       return summaries.join('\n\n');
     }
 
+    // Hierarchical translation: split long text into chunks, translate in parallel, then recombine
+    async function hierarchicalTranslate(text, options) {
+      options = options || {};
+      const targetLang = options.targetLang || 'English';
+      const shorten = !!options.shorten;
+      const deepThinking = !!options.deepThinking; // Use 22B model for higher quality
+      const chunkSize = options.chunkSize || 4000;
+      const maxParallel = options.maxParallel || 4; // Increased to 4 for better throughput
+
+      if (!text || typeof text !== 'string') return '';
+
+      let workText = text.trim();
+
+      // OPTIMIZATION: If shorten is true, summarize first to reduce tokens
+      if (shorten && workText.length > 500) {
+        debugLog('[Translation] Pre-summarizing to save tokens...');
+        try {
+          const summary = await hierarchicalSummarize(workText, { length: 'medium', summaryType: 'paragraph' });
+          if (summary) workText = summary;
+        } catch (e) {
+          debugLog('[Translation] Pre-summarization failed, continuing with full text', e);
+        }
+      }
+
+      // Choose the translation function based on deepThinking mode
+      const translateFn = deepThinking ? callEuroLLMAsync : callEuroLLMFastAsync;
+      const modelName = deepThinking ? 'EuroLLM-22B' : 'EuroLLM-1.7B';
+      debugLog(`[Translation] Using ${modelName} model`);
+
+      if (workText.length <= chunkSize) {
+        // Single call for small text
+        const euroRes = await translateFn({ action: 'translate', text: workText, targetLang });
+        if (euroRes && euroRes.ok) return euroResultPreFilter(euroRes.result);
+
+        // Fallback chain (only if primary fails)
+        debugLog('[Translation] Primary model failed, trying Llama fallback...');
+        const llamaRes = await callLlamaAsync({ action: 'translate', text: workText, targetLang });
+        if (llamaRes && llamaRes.ok) return llamaRes.result;
+
+        const geminiRes = await callGeminiAsync({ action: 'translate', text: workText, targetLang });
+        if (geminiRes && geminiRes.ok) return geminiRes.result;
+
+        throw new Error(euroRes?.error || llamaRes?.error || geminiRes?.error || 'Translation failed');
+      }
+
+      // Split on double newlines if possible
+      const parts = workText.split(/\n\s*\n/);
+      const chunks = [];
+      let cur = '';
+      for (const p of parts) {
+        if ((cur + '\n\n' + p).length > chunkSize && cur) { chunks.push(cur); cur = p; }
+        else { cur = cur ? (cur + '\n\n' + p) : p; }
+      }
+      if (cur) chunks.push(cur);
+
+      const translatedChunks = new Array(chunks.length);
+
+      // Batch parallel processing
+      for (let i = 0; i < chunks.length; i += maxParallel) {
+        const batch = chunks.slice(i, i + maxParallel);
+        const batchPromises = batch.map(async (chunkText, idx) => {
+          const globalIdx = i + idx;
+          try {
+            // Use the selected model (fast or deep)
+            const res = await (async () => {
+              const e = await translateFn({ action: 'translate', text: chunkText, targetLang });
+              if (e && e.ok) return euroResultPreFilter(e.result);
+              // Fallback to Llama then Gemini
+              const l = await callLlamaAsync({ action: 'translate', text: chunkText, targetLang });
+              if (l && l.ok) return l.result;
+              const g = await callGeminiAsync({ action: 'translate', text: chunkText, targetLang });
+              if (g && g.ok) return g.result;
+              return '[translation-failed]';
+            })();
+            translatedChunks[globalIdx] = res;
+          } catch (e) {
+            translatedChunks[globalIdx] = '[translation-error]';
+          }
+        });
+        await Promise.all(batchPromises);
+      }
+
+      return translatedChunks.join('\n\n');
+    }
+
+    // Pre-filtering for EuroLLM to remove common hallucinations/fillers
+    function euroResultPreFilter(text) {
+      if (!text) return '';
+      return text
+        .replace(/^(Here is the translation:|Translation:)\s*/i, '')
+        .replace(/^(Translation into [^:]+:)\s*/i, '')
+        .trim();
+    }
+
     // Generic hierarchical processor for other actions (prompt/rewrite/translate)
     async function hierarchicalProcess(text, action, options) {
       options = options || {};
@@ -13144,11 +13629,38 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
     // Selects template via background templates and handles chunk/merge.
     // Uses Llama (HuggingFace) as primary, Gemini as fallback
     async function rewriteText(mode, text, options = {}) {
-      const styleKey = mode || 'normal';
+      const styleKey = mode || 'humanized';
       const styleHint = options.style || options.styleHint || '';
       const onProgress = typeof options.onProgress === 'function' ? options.onProgress : null;
 
-      // Try Llama first (faster for short texts)
+      // Map style names to the comprehensive system prompt styles
+      const styleMap = {
+        'academic': 'Academic',
+        'detailed': 'Detailed',
+        'humanized': 'Humanized',
+        'creative': 'Creative',
+        'professional': 'Professional',
+        'simple': 'Simple',
+        'customStyle': styleHint ? `Custom Style: ${styleHint}` : 'Humanized'
+      };
+      const mappedStyle = styleMap[styleKey] || 'Humanized';
+
+      // PRIMARY: Try Gemma 2 (best quality for style-conditioned rewrites)
+      try {
+        if (onProgress) onProgress({ phase: 'preparing' });
+        debugLog(`[Rewrite] Using Gemma 2 with style: ${mappedStyle}`);
+
+        const gemmaRes = await callGemmaRewriteAsync(text, mappedStyle);
+        if (gemmaRes && gemmaRes.ok && gemmaRes.result) {
+          if (onProgress) onProgress({ phase: 'done' });
+          return gemmaRes.result;
+        }
+        debugLog('[Rewrite] Gemma 2 failed, falling back to Llama', gemmaRes?.error);
+      } catch (e) {
+        debugLog('[Rewrite] Gemma 2 error, falling back', e);
+      }
+
+      // FALLBACK 1: Llama for shorter texts
       if (text && text.length < 8000) {
         try {
           if (onProgress) onProgress({ phase: 'preparing' });
@@ -13167,7 +13679,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         }
       }
 
-      // Fallback to Gemini hierarchical processing (for long texts or if Llama fails)
+      // FALLBACK 2: Gemini hierarchical processing (for long texts or if all else fails)
       const opts = {
         chunkSize: options.chunkSize || 14000,
         maxParallel: options.maxParallel || 3,
@@ -13186,12 +13698,38 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         if (__cbViewStates.summ.sourceText) {
           restoreViewState('summ');
         } else {
-          // First time opening - load fresh content
-          const inputText = await getConversationText();
-          summSourceText.textContent = inputText || '(no conversation found)';
-          summResult.textContent = '';
-          // Auto-pick a sensible default summary type (user can still change)
-          try { if (inputText && summTypeSelect) { summTypeSelect.value = pickAdaptiveSummaryType(inputText); } } catch (_) { }
+          // First time opening - load fresh content based on preference
+          summView.classList.add('cb-view-active');
+
+          let mode = 'all';
+          try { mode = localStorage.getItem('chatbridge:pref:summMode') || 'all'; } catch (e) { }
+
+          let text = '';
+          const lastScan = window.ChatBridge.getLastScan ? window.ChatBridge.getLastScan() : null;
+
+          if (mode === 'lastUser') {
+            // Find last user message
+            if (lastScan && lastScan.messages && lastScan.messages.length > 0) {
+              for (let i = lastScan.messages.length - 1; i >= 0; i--) {
+                if (lastScan.messages[i].role === 'user') {
+                  text = lastScan.messages[i].text || '';
+                  break;
+                }
+              }
+            }
+            if (!text) text = '(No user messages found)';
+          } else {
+            // All messages
+            text = (lastScan && lastScan.messages) ? lastScan.messages.map(m => `${m.role === 'user' ? 'User' : 'AI'}: ${m.text}`).join('\n\n') : '';
+          }
+
+          if (summSourceText) {
+            summSourceText.textContent = text;
+            updateSummStats(text);
+          }
+
+          // Auto-pick smart summary type
+          try { if (text && typeof pickAdaptiveSummaryType === 'function') summTypeSelect.value = pickAdaptiveSummaryType(text); } catch (_) { }
         }
         summView.classList.add('cb-view-active');
       } catch (e) { toast('Failed to open Summarize'); debugLog('open summ view', e); }
@@ -13493,47 +14031,98 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
 
     btnGoRew.addEventListener('click', async () => {
       try {
-        btnGoRew.disabled = true; addLoadingToButton(btnGoRew, 'Rewriting'); rewResult.textContent = ''; btnInsertRew.style.display = 'none';
-        rewProg.style.display = 'inline'; updateProgress(rewProg, 'rewrite', { phase: 'preparing' });
-        const chatText = (rewSourceText && rewSourceText.textContent) ? rewSourceText.textContent : '';
+        btnGoRew.disabled = true;
+        addLoadingToButton(btnGoRew, 'Refining...');
+        rewResult.textContent = '';
+        btnInsertRew.style.display = 'none';
+        rewProg.style.display = 'inline';
+        updateProgress(rewProg, 'rewrite', { phase: 'preparing' });
+
+        // Logic: prioritize multi-select, then single-select, then WHOLE conversation
+        let textToRewrite = '';
+        if (_rewMultiMode && _cbSelectedReplyIds.size > 0) {
+          const selected = _cbRepliesData.filter(r => _cbSelectedReplyIds.has(r.id));
+          textToRewrite = selected.map(r => r.text).join('\n\n');
+          debugLog(`[Rewrite] Multi-select mode: ${selected.length} messages`);
+        } else if (_cbSelectedReplyId) {
+          const target = _cbRepliesData.find(r => r.id === _cbSelectedReplyId);
+          if (target) textToRewrite = target.text;
+          debugLog('[Rewrite] Single-select mode');
+        } else {
+          // Default: Rewrite entire conversation
+          const lastScan = window.ChatBridge.getLastScan();
+          textToRewrite = (lastScan && lastScan.messages) ? lastScan.messages.map(m => `${m.role === 'user' ? 'User' : 'AI'}: ${m.text}`).join('\n\n') : '';
+          debugLog('[Rewrite] Default mode: Whole conversation');
+        }
+
+        if (!textToRewrite || textToRewrite.trim().length < 5) {
+          toast('No content found to rewrite');
+          btnGoRew.disabled = false;
+          btnGoRew.textContent = '✨ Rewrite';
+          return;
+        }
+
         const style = (rewStyleSelect && rewStyleSelect.value) || 'normal';
-        const styleHint = (typeof styleHintInput !== 'undefined' && styleHintInput && styleHintInput.value) ? styleHintInput.value : '';
+        const styleHint = (styleHintInput && styleHintInput.value) ? styleHintInput.value : '';
         const targetModel = (rewTargetSelect && rewTargetSelect.value && rewTargetSelect.value !== 'None') ? rewTargetSelect.value : null;
 
-        // Fallback to whole conversation rewrite (legacy behavior)
-        if (!chatText || chatText.trim().length < 10) { toast('No conversation to rewrite'); btnGoRew.disabled = false; btnGoRew.textContent = 'Rewrite'; return; }
-
         let result = '';
-        // If target model is selected, use syncTone logic
+        // If target model is selected, use syncTone logic (cross-model adaptation)
         if (targetModel) {
           updateProgress(rewProg, 'sync', { phase: 'preparing' });
-          if (typeof window.syncTone === 'function') {
-            try { result = await window.syncTone(chatText, targetModel); } catch (e) { debugLog('window.syncTone error', e); }
-          }
-          if (!result) {
-            try {
-              result = await hierarchicalProcess(chatText, 'syncTone', { chunkSize: 14000, maxParallel: 3, length: 'medium', sourceModel: 'unknown', targetModel: targetModel, onProgress: (ev) => updateProgress(rewProg, 'rewrite', ev) });
-            } catch (e) { debugLog('hierarchicalProcess syncTone error', e); throw e; }
-          }
+          result = await hierarchicalProcess(textToRewrite, 'syncTone', {
+            chunkSize: 12000,
+            maxParallel: 3,
+            length: 'medium',
+            sourceModel: 'Source',
+            targetModel: targetModel,
+            onProgress: (ev) => updateProgress(rewProg, 'rewrite', ev)
+          });
         } else {
-          // Standard rewrite
-          result = await rewriteText(style, chatText, { styleHint, chunkSize: 14000, maxParallel: 3, length: 'medium', onProgress: (ev) => updateProgress(rewProg, 'rewrite', ev) });
+          // Standard rewrite with style
+          result = await rewriteText(style, textToRewrite, {
+            styleHint,
+            chunkSize: 12000,
+            maxParallel: 3,
+            length: 'medium',
+            onProgress: (ev) => updateProgress(rewProg, 'rewrite', ev)
+          });
         }
 
-        rewSourceText.textContent = result || '(no result)';
-        rewResult.textContent = '✅ Rewrite completed and inserted!';
-        btnInsertRew.style.display = 'inline-block';
-        rewProg.style.display = 'none';
-        // Auto-insert into chat
-        if (result && result.length > 10) {
-          try { await restoreToChat(result); toast('✓ Rewritten and inserted'); } catch (e) { toast('Rewrite done - click Insert to add to chat'); }
+        if (result && result.trim().length > 0) {
+          // If we were editing a single reply, update it in the list
+          if (_cbSelectedReplyId && !_rewMultiMode) {
+            const target = _cbRepliesData.find(r => r.id === _cbSelectedReplyId);
+            if (target) {
+              target.text = result;
+              target.preview = _generatePreview(result);
+              const editorTextarea = rewView.querySelector('#cb-editor-textarea');
+              if (editorTextarea) editorTextarea.value = result;
+              renderReplies();
+            }
+          }
+
+          rewResult.textContent = '✅ Transformation completed!';
+          btnInsertRew.style.display = 'inline-block';
+          rewProg.style.display = 'none';
+
+          // Auto-insert for fluid UX
+          try {
+            await restoreToChat(result);
+            toast('✓ Applied successfully');
+          } catch (e) {
+            toast('Transformation done - click Insert');
+          }
         } else {
-          toast(targetModel ? `Adapted for ${targetModel}` : 'Rewrite completed');
+          toast('Transformation returned no result');
         }
       } catch (err) {
-        toast('Rewrite failed: ' + (err && err.message ? err.message : err));
-        debugLog('hierarchicalProcess rewrite error', err);
-      } finally { removeLoadingFromButton(btnGoRew, 'Rewrite'); }
+        toast('Transformation failed: ' + (err && err.message ? err.message : err));
+        debugLog('rewrite error', err);
+      } finally {
+        removeLoadingFromButton(btnGoRew, '✨ Rewrite');
+        rewProg.style.display = 'none';
+      }
     });
 
     btnInsertRew.addEventListener('click', () => {
@@ -13568,6 +14157,238 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       try { transView.classList.remove('cb-view-active'); } catch (e) { }
     });
 
+    // ======================== PROMPT OPTIMIZER HANDLERS ========================
+    // Quick action button click - grabs text from chat textarea, optimizes, and reinserts
+    try {
+      const qaOptimize = panel.querySelector('#qa-sidebar-optimize');
+      if (qaOptimize) {
+        qaOptimize.addEventListener('click', async () => {
+          try {
+            toast('Optimizing prompt...');
+
+            // Find the chat input (textarea or contenteditable)
+            let input = null;
+            let originalText = '';
+
+            try {
+              const pick = (typeof window.pickAdapter === 'function') ? window.pickAdapter : null;
+              const adapter = pick ? pick() : null;
+              if (adapter && typeof adapter.getInput === 'function') {
+                input = adapter.getInput();
+              }
+            } catch (e) { }
+
+            // Fallback to generic finder
+            if (!input) {
+              input = document.querySelector('textarea[data-id="root"], div[contenteditable="true"], textarea.prompt-textarea, #prompt-textarea, textarea[placeholder*="Message"], div[data-placeholder*="Message"]');
+            }
+
+            if (!input) {
+              toast('No chat input found');
+              return;
+            }
+
+            // Get text from input
+            if (input.isContentEditable) {
+              originalText = input.textContent || input.innerText || '';
+            } else {
+              originalText = input.value || '';
+            }
+
+            originalText = originalText.trim();
+
+            if (!originalText || originalText.length < 3) {
+              toast('Type something in the chat first');
+              return;
+            }
+
+            // Optimization system prompt - humanized, no meta-analysis
+            const systemPrompt = `You are an optimization and rewrite assistant.
+
+Your job is NOT to analyze the user.
+Your job is to improve the text.
+
+When given input text, do the following internally:
+1. Identify concrete problems in the text (clarity, structure, redundancy, tone).
+2. Decide how to improve it with minimal expansion.
+3. Rewrite or guide improvements directly.
+
+DO NOT:
+- Explain your reasoning
+- Write essays about intent or enthusiasm
+- Describe what the user "is trying to do"
+- Overuse headings or meta commentary
+- Inflate length unless explicitly asked
+
+HUMANIZATION RULES (CRITICAL):
+- Write like a thoughtful human editor.
+- Natural sentence rhythm.
+- No academic analysis tone.
+- No list-heavy over-structuring unless it adds clarity.
+- Avoid phrases like: "Let's break this down", "Key patterns observed", "This reveals that the user…"
+
+If it sounds like an AI explaining itself, rewrite internally.
+
+OUTPUT RULES:
+- Be concise and practical.
+- Focus on actionable improvements.
+- If a rewrite is better, rewrite.
+
+IMPROVEMENT MODE:
+- Prefer clarity over cleverness.
+- Remove redundancy before adding detail.
+- Replace vague phrasing with precise language.
+- Tighten structure instead of expanding explanations.
+
+If the input is messy or overlong: Simplify it. Reorder ideas logically. Remove unnecessary meta commentary.
+If the input already has strong intent: Preserve the voice. Refine flow and coherence. Do not overwrite personality.
+
+AVOID AT ALL COSTS:
+- Meta-analysis of the user
+- Explaining AI limitations
+- Academic or diagnostic tone
+- Excessive bullet lists
+- Repeating the same insight in different words
+- "Let's break this down" style phrasing
+
+Return ONLY the improved text. No explanations. No commentary.`;
+
+            debugLog('[Prompt Optimizer] Optimizing inline:', originalText.slice(0, 50) + '...');
+
+            // Call Gemini with the system prompt
+            const result = await callGeminiAsync({
+              action: 'prompt',
+              text: originalText,
+              systemPrompt: systemPrompt,
+              length: 'medium'
+            });
+
+            if (result && result.ok && result.result) {
+              const optimizedText = result.result.trim();
+
+              // Reinsert into the input
+              if (input.isContentEditable) {
+                input.focus();
+                input.textContent = '';
+                const textNode = document.createTextNode(optimizedText);
+                input.appendChild(textNode);
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+              } else {
+                input.focus();
+                input.value = optimizedText;
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+              }
+
+              toast('✓ Prompt optimized!');
+            } else {
+              toast('Optimization failed: ' + (result?.error || 'Unknown error'));
+            }
+          } catch (err) {
+            toast('Optimization error: ' + (err?.message || err));
+            debugLog('[Prompt Optimizer] Error:', err);
+          }
+        });
+      }
+    } catch (e) { debugLog('qa-optimize setup error', e); }
+
+    // Close button
+    btnCloseOpt.addEventListener('click', () => {
+      try { optimizerView.classList.remove('cb-view-active'); } catch (e) { }
+    });
+
+    // Optimize button - the core functionality
+    btnOptimize.addEventListener('click', async () => {
+      try {
+        const rawPrompt = optInput.value.trim();
+        if (!rawPrompt || rawPrompt.length < 5) {
+          toast('Please enter a prompt to optimize');
+          return;
+        }
+
+        btnOptimize.disabled = true;
+        optProg.style.display = 'inline-flex';
+        optOutput.style.display = 'none';
+        btnOptCopy.style.display = 'none';
+        btnOptInsert.style.display = 'none';
+
+        // Expert prompt engineer system prompt
+        const systemPrompt = `You are an expert prompt engineer whose sole task is to transform raw user input into a clear, high-performance prompt for advanced AI models.
+
+Your goal is to improve precision, structure, and outcome quality while preserving the user's original intent, tone, and constraints.
+
+Core Rules (non-negotiable):
+- Do not answer the prompt — Only rewrite it
+- Preserve intent, upgrade clarity — Do not change what the user wants
+- Do not invent requirements — Infer carefully if something is missing
+- Do not sound like marketing — The output must feel like a serious, expert-written prompt
+- No fluff, no hype, no emojis
+
+Transformation Strategy:
+- Identify the true objective
+- Clarify scope and output expectations
+- Add structure only when it improves results
+- Convert vague requests into actionable instructions
+- Preserve the user's voice level (casual stays casual, technical stays technical)
+
+Output Format Rules:
+- Output only the optimized prompt
+- No preamble, no explanation, no headings unless they meaningfully improve clarity
+- The optimized prompt must be immediately usable in ChatGPT, Claude, or Gemini
+
+Quality Bar: After optimization, the prompt should feel like "This was written by someone who knows exactly how to talk to AI."`;
+
+        debugLog('[Prompt Optimizer] Optimizing prompt...');
+
+        // Call Gemini with the system prompt
+        const result = await callGeminiAsync({
+          action: 'prompt',
+          text: rawPrompt,
+          systemPrompt: systemPrompt,
+          length: 'medium'
+        });
+
+        if (result && result.ok && result.result) {
+          optOutput.textContent = result.result.trim();
+          optOutput.style.display = 'block';
+          btnOptCopy.style.display = 'inline-flex';
+          btnOptInsert.style.display = 'inline-flex';
+          toast('✓ Prompt optimized');
+        } else {
+          toast('Optimization failed: ' + (result?.error || 'Unknown error'));
+          optOutput.textContent = '(Optimization failed - please try again)';
+          optOutput.style.display = 'block';
+        }
+      } catch (err) {
+        toast('Optimization error: ' + (err?.message || err));
+        debugLog('[Prompt Optimizer] Error:', err);
+      } finally {
+        btnOptimize.disabled = false;
+        optProg.style.display = 'none';
+      }
+    });
+
+    // Copy button
+    btnOptCopy.addEventListener('click', () => {
+      try {
+        const text = optOutput.textContent;
+        if (text && text.length > 0 && !text.includes('(Optimization failed')) {
+          navigator.clipboard.writeText(text);
+          toast('Copied to clipboard');
+        }
+      } catch (e) { toast('Copy failed'); }
+    });
+
+    // Insert to chat button
+    btnOptInsert.addEventListener('click', async () => {
+      try {
+        const text = optOutput.textContent;
+        if (text && text.length > 0 && !text.includes('(Optimization failed')) {
+          const success = await restoreToChat(text);
+          if (success) toast('Inserted to chat');
+        }
+      } catch (e) { toast('Insert failed'); }
+    });
+
     btnGoTrans.addEventListener('click', async () => {
       try {
         // UI setup
@@ -13584,6 +14405,8 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         const mode = selectedMode ? selectedMode.value : 'all';
         const shortenEl = transView.querySelector('#cb-trans-shorten');
         const shorten = !!(shortenEl && shortenEl.checked);
+        const deepEl = transView.querySelector('#cb-trans-deep');
+        const deepThinking = !!(deepEl && deepEl.checked);
 
         // Get content to translate
         let content;
@@ -13656,39 +14479,29 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         const langNames = { en: 'English', es: 'Spanish', fr: 'French', de: 'German', it: 'Italian', pt: 'Portuguese', ru: 'Russian', ja: 'Japanese', ko: 'Korean', zh: 'Chinese', ar: 'Arabic', hi: 'Hindi', nl: 'Dutch', pl: 'Polish', tr: 'Turkish', vi: 'Vietnamese', th: 'Thai', sv: 'Swedish', da: 'Danish', fi: 'Finnish', no: 'Norwegian', cs: 'Czech', hu: 'Hungarian', ro: 'Romanian', el: 'Greek', he: 'Hebrew', id: 'Indonesian', ms: 'Malay', uk: 'Ukrainian', bg: 'Bulgarian', ta: 'Tamil' };
         const langName = langNames[targetLanguage] || targetLanguage;
 
-        // FAST: Use Llama directly for quick translation
-        debugLog('[Translation] Using fast Llama translation...');
-        const llamaResult = await callLlamaAsync({
-          action: 'translate',
-          text: textToTranslate.slice(0, 8000), // Limit for speed
-          targetLang: langName
+        // Use hierarchical translation for parallel processing and speed
+        debugLog(`[Translation] Starting hierarchical translation (deep=${deepThinking})...`);
+        const result = await hierarchicalTranslate(textToTranslate, {
+          targetLang: langName,
+          shorten: shorten,
+          deepThinking: deepThinking // Use 22B model if enabled
         });
 
-        if (llamaResult && llamaResult.ok && llamaResult.result) {
-          transResult.textContent = llamaResult.result;
+        if (result && !result.includes('[translation-failed]') && !result.includes('[translation-error]')) {
+          transResult.textContent = result;
           transResult.style.display = 'block';
           btnInsertTrans.style.display = 'inline-block';
           transProg.style.display = 'none';
           toast('✓ Translation complete');
+        } else if (result) {
+          // Some chunks might have failed but we have partial data?
+          transResult.textContent = result;
+          transResult.style.display = 'block';
+          btnInsertTrans.style.display = 'inline-block';
+          transProg.style.display = 'none';
+          toast('⚠️ Translation completed with errors');
         } else {
-          // Fallback to Gemini if Llama fails
-          debugLog('[Translation] Llama failed, trying Gemini...');
-          const geminiResult = await callGeminiAsync({
-            action: 'translate',
-            text: textToTranslate.slice(0, 8000),
-            targetLang: langName
-          });
-
-          if (geminiResult && geminiResult.ok && geminiResult.result) {
-            transResult.textContent = geminiResult.result;
-            transResult.style.display = 'block';
-            btnInsertTrans.style.display = 'inline-block';
-            transProg.style.display = 'none';
-            toast('✓ Translation complete');
-          } else {
-            toast('Translation failed: ' + (geminiResult?.error || 'Unknown error'));
-            transProg.style.display = 'none';
-          }
+          throw new Error('All translation services failed to return a result');
         }
 
       } catch (err) {
@@ -16043,4 +16856,3 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
   }
 
 })();
-
