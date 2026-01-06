@@ -874,12 +874,15 @@
     // store last scanned text so Clipboard and textarea can access it
     let lastScannedText = '';
 
-    // Initialize ChatBridge.getLastScan() early so all sections can access it
     try {
       window.ChatBridge = window.ChatBridge || {};
       window.ChatBridge._lastScanData = null;
       window.ChatBridge.getLastScan = function () {
         return window.ChatBridge._lastScanData || null;
+      };
+      window.ChatBridge.setLastScan = function (data) {
+        window.ChatBridge._lastScanData = data;
+        if (data && data.text) lastScannedText = data.text;
       };
     } catch (e) { }
 
@@ -1862,18 +1865,28 @@
     summResult.className = 'cb-view-result';
     summResult.id = 'cb-summ-result';
     summResult.textContent = '';
-    summResult.style.cssText = 'font-size:13px;color:rgba(230,230,255,0.95);line-height:1.6;padding:12px;background:rgba(255,255,255,0.03);border-radius:10px;border:1px solid rgba(255,255,255,0.05);';
+    summResult.style.cssText = 'font-size:13px;color:rgba(230,230,255,0.95);line-height:1.6;padding:12px;background:rgba(255,255,255,0.03);border-radius:10px;border:1px solid rgba(255,255,255,0.05);display:none;';
     summView.appendChild(summResult);
 
-    // Helper to update stats display
     function updateSummStats(text) {
       try {
         const statsEl = summView.querySelector('#cb-summ-stats');
         if (!statsEl) return;
         const words = text ? text.trim().split(/\s+/).filter(w => w.length > 0).length : 0;
         const chars = text ? text.length : 0;
-        const estSeconds = Math.max(2, Math.ceil(chars / 1500));
-        statsEl.innerHTML = `<div style="background:rgba(255,255,255,0.05);padding:6px 10px;border-radius:20px;">📊 Words: ${words.toLocaleString()}</div><div style="background:rgba(255,255,255,0.05);padding:6px 10px;border-radius:20px;">📝 Chars: ${chars.toLocaleString()}</div><div style="background:rgba(255,255,255,0.05);padding:6px 10px;border-radius:20px;">⏱️ Est. time: ~${estSeconds}s</div>`;
+
+        // Proper Reading Time calculation (standard 200 WPM)
+        const readingTimeSeconds = Math.round((words / 200) * 60);
+        let readingTimeStr = '';
+        if (readingTimeSeconds < 60) {
+          readingTimeStr = `${readingTimeSeconds}s`;
+        } else {
+          const mins = Math.floor(readingTimeSeconds / 60);
+          const secs = readingTimeSeconds % 60;
+          readingTimeStr = secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
+        }
+
+        statsEl.innerHTML = `<div style="background:rgba(255,255,255,0.05);padding:6px 10px;border-radius:20px;">📊 Words: ${words.toLocaleString()}</div><div style="background:rgba(255,255,255,0.05);padding:6px 10px;border-radius:20px;">📝 Chars: ${chars.toLocaleString()}</div><div style="background:rgba(255,255,255,0.05);padding:6px 10px;border-radius:20px;">📖 Reading time: ~${readingTimeStr}</div>`;
       } catch (e) { }
     }
 
@@ -2223,8 +2236,7 @@ Rules:
     btnInsertRew.onmouseleave = () => { btnInsertRew.style.background = 'var(--cb-bg3)'; btnInsertRew.style.borderColor = 'var(--cb-border)'; };
 
     rewView.appendChild(btnInsertRew);
-    const rewResult = document.createElement('div'); rewResult.className = 'cb-view-result'; rewResult.id = 'cb-rew-result'; rewResult.textContent = '';
-    rewView.appendChild(rewResult);
+
 
     // Translate view
     // Translate view - NEW SIMPLIFIED UI
@@ -2281,7 +2293,7 @@ Rules:
     // Settings panel with improved styling
     const transOptions = document.createElement('div');
     transOptions.id = 'cb-trans-options';
-    transOptions.style.cssText = 'display:block;background:linear-gradient(135deg, rgba(96,165,250,0.08) 0%, rgba(139,92,246,0.08) 100%);border:1px solid rgba(96,165,250,0.25);border-radius:12px;padding:16px;margin:0 0 14px 0;backdrop-filter:blur(8px);';
+    transOptions.style.cssText = 'display:none;background:linear-gradient(135deg, rgba(96,165,250,0.08) 0%, rgba(139,92,246,0.08) 100%);border:1px solid rgba(96,165,250,0.25);border-radius:12px;padding:16px;margin:0 0 14px 0;backdrop-filter:blur(8px);';
 
     // Section header
     const settingsHeader = document.createElement('div');
@@ -2938,7 +2950,24 @@ Rules:
     const historyWrapper = document.createElement('div'); historyWrapper.className = 'cb-history-wrapper';
     const historyHeader = document.createElement('div'); historyHeader.className = 'cb-history-header';
     const historyTitle = document.createElement('div'); historyTitle.className = 'cb-history-title'; historyTitle.textContent = '📜 History';
-    const btnClearHistory = document.createElement('button'); btnClearHistory.className = 'cb-btn cb-btn-danger'; btnClearHistory.textContent = '×'; btnClearHistory.title = 'Clear all saved conversation history';
+    const btnClearHistory = document.createElement('button');
+    btnClearHistory.className = 'cb-btn cb-btn-danger cb-tooltip';
+    btnClearHistory.title = 'Clear all saved conversation history';
+    btnClearHistory.style.cssText = 'padding: 4px; border: 1px solid rgba(248, 113, 113, 0.2); background: rgba(248, 113, 113, 0.1); border-radius: 6px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;';
+    btnClearHistory.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>';
+
+    btnClearHistory.addEventListener('click', async () => {
+      if (!confirm('Are you sure you want to clear ALL historical conversations? This cannot be undone.')) return;
+      try {
+        const convs = await loadConversationsAsync();
+        for (const c of convs) {
+          await new Promise(r => chrome.runtime.sendMessage({ type: 'delete_conversation', payload: { id: String(c.ts) } }, r));
+        }
+        toast('History cleared');
+        refreshHistory();
+      } catch (e) { toast('Clear failed'); }
+    });
+
     historyHeader.appendChild(historyTitle);
     historyHeader.appendChild(btnClearHistory);
     historyWrapper.appendChild(historyHeader);
@@ -3056,12 +3085,16 @@ Rules:
                 <div style="font-size: 12px; font-weight: 600; color: var(--cb-white);">${platform}${model ? ' · ' + model : ''}</div>
                 <div style="font-size: 10px; color: var(--cb-subtext);">${time}</div>
               </div>
-              <div style="font-size: 11px; color: var(--cb-subtext); line-height: 1.4; margin-bottom: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${preview}...</div>
-              <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div style="font-size: 10px; color: var(--cb-subtext);">${totalMsgs} msgs (${userMsgs} user, ${aiMsgs} AI)</div>
-                <div style="display: flex; gap: 4px;">
-                  <button class="cb-btn cb-history-open" style="padding: 4px 8px; font-size: 10px;">Open</button>
-                  <button class="cb-btn cb-btn-danger cb-history-delete" style="padding: 4px 8px; font-size: 10px;">×</button>
+              <div style="font-size: 11px; color: var(--cb-subtext); line-height: 1.4; margin-bottom: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; opacity: 0.8;">${preview}...</div>
+              <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 8px;">
+                <div style="font-size: 10px; color: rgba(255,255,255,0.4); font-weight: 500;">${totalMsgs} msg</div>
+                <div style="display: flex; gap: 6px;">
+                  <button class="cb-btn cb-history-open cb-tooltip" title="Load this chat to use with Summary/Rewrite" style="width: 30px; height: 30px; padding: 0; display: flex; align-items: center; justify-content: center; background: rgba(0, 180, 255, 0.1); border: 1px solid rgba(0, 180, 255, 0.2); border-radius: 6px;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                  </button>
+                  <button class="cb-btn cb-btn-danger cb-history-delete cb-tooltip" title="Permanently delete from local history" style="width: 30px; height: 30px; padding: 0; display: flex; align-items: center; justify-content: center; background: rgba(248, 113, 113, 0.1); border: 1px solid rgba(248, 113, 113, 0.2); border-radius: 6px;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                  </button>
                 </div>
               </div>
             `;
@@ -3082,12 +3115,35 @@ Rules:
               openBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 try {
-                  window.ChatBridge.selectedConversation = conv;
-                  const text = (conv.conversation || []).map(m => `${m.role}: ${m.text}`).join('\n\n');
-                  lastScannedText = text;
-                  preview.textContent = `Preview: "${(conv.conversation?.[0]?.text || '').slice(0, 100)}..."`;
-                  toast(`Loaded: ${totalMsgs} messages`);
-                } catch (err) { debugLog('open history error', err); }
+                  // Set this session as the "Active" session for all modules
+                  window.ChatBridge.setLastScan({
+                    ts: conv.ts,
+                    platform: platform,
+                    model: model,
+                    messages: conv.conversation,
+                    text: (conv.conversation || []).map(m => `${m.role === 'user' ? 'User' : 'AI'}: ${m.text}`).join('\n\n')
+                  });
+
+                  // Clear previous active state from all rows
+                  historyEl.querySelectorAll('.cb-history-row').forEach(r => {
+                    r.style.background = 'rgba(0, 180, 255, 0.05)';
+                    r.style.borderColor = 'rgba(0, 180, 255, 0.15)';
+                    r.classList.remove('cb-active-session');
+                  });
+
+                  // Mark this row as active
+                  row.classList.add('cb-active-session');
+                  row.style.background = 'rgba(16, 185, 129, 0.15)';
+                  row.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+
+                  // Update the preview text in main panel
+                  try {
+                    const mainPreview = shadow.querySelector('.cb-preview');
+                    if (mainPreview) mainPreview.textContent = `📂 Active: ${platform} (${totalMsgs} msgs)`;
+                  } catch (e) { }
+
+                  toast(`✓ Loaded: ${totalMsgs} messages ready for Summarize/Rewrite/Translate`);
+                } catch (err) { debugLog('open history error', err); toast('Failed to load session'); }
               });
             }
 
@@ -3096,14 +3152,34 @@ Rules:
             if (deleteBtn) {
               deleteBtn.addEventListener('click', async (e) => {
                 e.stopPropagation();
-                if (!confirm('Delete this conversation?')) return;
+                if (!confirm('🗑️ Permanently delete this conversation?\n\nThis cannot be undone.')) return;
                 try {
+                  // Fade out animation
+                  row.style.transition = 'opacity 0.3s, transform 0.3s';
+                  row.style.opacity = '0';
+                  row.style.transform = 'translateX(20px)';
+
+                  // Delete from conversations DB
                   await new Promise(resolve => {
                     chrome.runtime.sendMessage({ type: 'delete_conversation', payload: { id: String(conv.ts) } }, resolve);
                   });
-                  toast('Deleted');
-                  refreshHistory(filter);
-                } catch (err) { debugLog('delete error', err); toast('Delete failed'); }
+
+                  // Also delete from vector store
+                  await new Promise(resolve => {
+                    chrome.runtime.sendMessage({ type: 'vector_delete', payload: { id: String(conv.ts) } }, resolve);
+                  });
+
+                  // Wait for animation then refresh
+                  setTimeout(() => {
+                    toast('🗑️ Deleted permanently');
+                    refreshHistory(filter);
+                  }, 300);
+                } catch (err) {
+                  debugLog('delete error', err);
+                  toast('Delete failed');
+                  row.style.opacity = '1';
+                  row.style.transform = 'translateX(0)';
+                }
               });
             }
 
@@ -14027,7 +14103,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
             return;
           }
 
-          rewResult.textContent = '';
+
           rewView.classList.add('cb-view-active');
 
           // Load replies on open
@@ -14070,7 +14146,6 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       try {
         btnGoRew.disabled = true;
         addLoadingToButton(btnGoRew, 'Refining...');
-        rewResult.textContent = '';
         btnInsertRew.style.display = 'none';
         rewProg.style.display = 'inline';
         updateProgress(rewProg, 'rewrite', { phase: 'preparing' });
@@ -14137,7 +14212,6 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
             }
           }
 
-          rewResult.textContent = '✅ Transformation completed!';
           btnInsertRew.style.display = 'inline-block';
           rewProg.style.display = 'none';
 

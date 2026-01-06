@@ -182,6 +182,18 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     sendResponse({ ok: true });
     return true;
   }
+
+  if (msg.type === 'delete_conversation') {
+    (async () => {
+      try {
+        const id = String(msg.payload && msg.payload.id);
+        if (!id) { sendResponse({ ok: false, error: 'no_id' }); return; }
+        const ok = await convoDelete(id);
+        sendResponse({ ok: !!ok });
+      } catch (e) { sendResponse({ ok: false, error: e && e.message }); }
+    })();
+    return true;
+  }
 });
 
 // OPTIMIZATION: Precompute embeddings during idle time with batching and throttling
@@ -414,6 +426,20 @@ async function convoAll() {
       req.onerror = () => res([]);
     });
   } catch (e) { return []; }
+}
+
+async function convoDelete(id) {
+  try {
+    if (!convDb) await openConvoDB();
+    if (!convDb) return false;
+    return await new Promise((res) => {
+      const tx = convDb.transaction([CONV_STORE], 'readwrite');
+      const st = tx.objectStore(CONV_STORE);
+      const req = st.delete(id);
+      req.onsuccess = () => res(true);
+      req.onerror = () => res(false);
+    });
+  } catch (e) { return false; }
 }
 
 function cosine(a, b) {
@@ -727,6 +753,26 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         scored.sort((a, b) => b.score - a.score);
         const top = scored.slice(0, topK);
         return sendResponse({ ok: true, results: top });
+      })();
+      return true;
+    }
+
+    if (msg.type === 'vector_delete') {
+      (async () => {
+        try {
+          const id = String(msg.payload && msg.payload.id);
+          if (!id) { sendResponse({ ok: false, error: 'no_id' }); return; }
+          if (!idb) await openVectorDB();
+          if (!idb) { sendResponse({ ok: false, error: 'no_db' }); return; }
+          await new Promise((res) => {
+            const tx = idb.transaction([V_STORE], 'readwrite');
+            const st = tx.objectStore(V_STORE);
+            const req = st.delete(id);
+            req.onsuccess = () => res(true);
+            req.onerror = () => res(false);
+          });
+          sendResponse({ ok: true });
+        } catch (e) { sendResponse({ ok: false, error: e && e.message }); }
       })();
       return true;
     }
