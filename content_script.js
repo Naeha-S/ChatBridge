@@ -2191,19 +2191,9 @@ Rules:
     // Removed preview area for singular message selection as requested
     // Logic updated to rewrite "everything" if nothing selected
 
-    // Rewrite editor (appears when a reply is selected)
-    const rewEditor = document.createElement('div'); rewEditor.className = 'cb-rewrite-editor'; rewEditor.id = 'cb-rewrite-editor';
-    const editorLabel = document.createElement('div'); editorLabel.className = 'cb-editor-label'; editorLabel.textContent = 'Editing Reply';
-    rewEditor.appendChild(editorLabel);
-    const editorTextarea = document.createElement('textarea'); editorTextarea.className = 'cb-editor-textarea'; editorTextarea.id = 'cb-editor-textarea'; editorTextarea.placeholder = 'Full reply text...';
-    rewEditor.appendChild(editorTextarea);
-    const editorActions = document.createElement('div'); editorActions.className = 'cb-editor-actions';
-    const btnEditorRewrite = document.createElement('button'); btnEditorRewrite.className = 'cb-btn cb-btn-primary'; btnEditorRewrite.textContent = 'Rewrite'; btnEditorRewrite.id = 'cb-btn-editor-rewrite';
-    const btnEditorCancel = document.createElement('button'); btnEditorCancel.className = 'cb-btn'; btnEditorCancel.textContent = 'Cancel'; btnEditorCancel.id = 'cb-btn-editor-cancel';
-    const btnEditorCopy = document.createElement('button'); btnEditorCopy.className = 'cb-btn'; btnEditorCopy.textContent = 'Copy'; btnEditorCopy.id = 'cb-btn-editor-copy';
-    editorActions.appendChild(btnEditorRewrite); editorActions.appendChild(btnEditorCopy); editorActions.appendChild(btnEditorCancel);
-    rewEditor.appendChild(editorActions);
-    rewView.appendChild(rewEditor);
+    // Removed: Editor textarea between messages and rewrite button per user request
+    // Selection now just highlights, rewrite button uses selected or entire chat
+
     // Restore saved rewrite style
     try { const savedRew = localStorage.getItem('chatbridge:pref:rewStyle'); if (savedRew) rewStyleSelect.value = savedRew; } catch (e) { }
     try { const savedHint = localStorage.getItem('chatbridge:pref:rewStyleHint'); if (savedHint) styleHintInput.value = savedHint; } catch (e) { }
@@ -2214,8 +2204,6 @@ Rules:
       updateStyleHintVisibility();
     });
     styleHintInput.addEventListener('input', () => { try { localStorage.setItem('chatbridge:pref:rewStyleHint', styleHintInput.value); } catch (e) { } });
-    const rewSourceText = document.createElement('div'); rewSourceText.className = 'cb-view-text'; rewSourceText.id = 'cb-rew-source-text'; rewSourceText.setAttribute('contenteditable', 'false'); rewSourceText.textContent = '';
-    rewView.appendChild(rewSourceText);
     const btnGoRew = document.createElement('button');
     btnGoRew.className = 'cb-btn cb-view-go';
     btnGoRew.textContent = '✨ Rewrite';
@@ -13975,10 +13963,9 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         }));
         _cbSelectedReplyId = null;
         renderReplies();
-        hideEditor();
       } catch (e) {
         debugLog('loadAssistantReplies error', e);
-        _cbRepliesData = []; _cbSelectedReplyId = null; renderReplies(); hideEditor();
+        _cbRepliesData = []; _cbSelectedReplyId = null; renderReplies();
       }
     }
 
@@ -13999,16 +13986,19 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           bubble.appendChild(meta);
           bubble.addEventListener('click', () => {
             if (_rewMultiMode) {
+              // Multi-select: toggle selection
               if (_cbSelectedReplyIds.has(r.id)) _cbSelectedReplyIds.delete(r.id); else _cbSelectedReplyIds.add(r.id);
-              // clear single-select id in multi mode
               _cbSelectedReplyId = null;
               renderReplies();
-              updateRewSourceFromSelection();
             } else {
-              _cbSelectedReplyId = r.id;
+              // Single-select: just highlight, don't open editor
+              if (_cbSelectedReplyId === r.id) {
+                _cbSelectedReplyId = null; // deselect if clicking same
+              } else {
+                _cbSelectedReplyId = r.id;
+              }
               _cbSelectedReplyIds.clear();
               renderReplies();
-              showEditor(r);
             }
           });
           list.appendChild(bubble);
@@ -14016,36 +14006,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       } catch (e) { debugLog('renderReplies error', e); }
     }
 
-    function updateRewSourceFromSelection() {
-      try {
-        if (!_rewMultiMode) return;
-        const selected = _cbRepliesData.filter(r => _cbSelectedReplyIds.has(r.id));
-        const text = selected.map(r => r.text).join('\n\n');
-        rewSourceText.textContent = text || '(no selection)';
-      } catch (e) { }
-    }
 
-    function showEditor(reply) {
-      try {
-        const editor = rewView.querySelector('#cb-rewrite-editor');
-        const textarea = rewView.querySelector('#cb-editor-textarea');
-        const repliesList = rewView.querySelector('#cb-replies-list');
-        if (!editor || !textarea) return;
-        textarea.value = reply.text;
-        editor.classList.add('cb-active');
-        if (repliesList) repliesList.classList.add('cb-editor-open');
-        setTimeout(() => { try { textarea.focus(); textarea.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch (e) { } }, 100);
-      } catch (e) { debugLog('showEditor error', e); }
-    }
-
-    function hideEditor() {
-      try {
-        const editor = rewView.querySelector('#cb-rewrite-editor');
-        const repliesList = rewView.querySelector('#cb-replies-list');
-        if (editor) editor.classList.remove('cb-active');
-        if (repliesList) repliesList.classList.remove('cb-editor-open');
-      } catch (e) { }
-    }
 
     btnRewrite.addEventListener('click', async () => {
       closeAllViews();
@@ -14059,14 +14020,13 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         } else {
           // First time opening - get text from last scan
           const lastScan = window.ChatBridge.getLastScan();
-          const textToRewrite = (lastScan && lastScan.messages) ? lastScan.messages.map(m => m.text).join('\n') : '';
+          const hasMessages = (lastScan && lastScan.messages && lastScan.messages.length > 0);
 
-          if (!textToRewrite) {
+          if (!hasMessages) {
             toast('No conversation to rewrite. Please scan first.');
             return;
           }
 
-          rewSourceText.textContent = textToRewrite.slice(0, 100) + '...';
           rewResult.textContent = '';
           rewView.classList.add('cb-view-active');
 
@@ -14084,9 +14044,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         if (_rewMultiMode) {
           _cbSelectedReplyId = null;
           _cbSelectedReplyIds.clear();
-          hideEditor();
           renderReplies();
-          updateRewSourceFromSelection();
         }
       });
     } catch (e) { }
@@ -14103,66 +14061,10 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
     } catch (e) { }
 
     btnCloseRew.addEventListener('click', () => {
-      try { rewView.classList.remove('cb-view-active'); _cbSelectedReplyId = null; hideEditor(); } catch (e) { }
+      try { rewView.classList.remove('cb-view-active'); _cbSelectedReplyId = null; } catch (e) { }
     })
 
-    // Editor rewrite button
-    try {
-      const btnEditorRewrite = rewView.querySelector('#cb-btn-editor-rewrite');
-      const btnEditorCancel = rewView.querySelector('#cb-btn-editor-cancel');
-      const btnEditorCopy = rewView.querySelector('#cb-btn-editor-copy');
-      const editorTextarea = rewView.querySelector('#cb-editor-textarea');
 
-      if (btnEditorRewrite) {
-        btnEditorRewrite.addEventListener('click', async () => {
-          try {
-            if (!_cbSelectedReplyId || !editorTextarea) { toast('No reply selected'); return; }
-            const target = _cbRepliesData.find(r => r.id === _cbSelectedReplyId);
-            if (!target) { toast('Reply not found'); return; }
-            const style = (rewStyleSelect && rewStyleSelect.value) || 'normal';
-            const styleHint = (typeof styleHintInput !== 'undefined' && styleHintInput && styleHintInput.value) ? styleHintInput.value : '';
-            const currentText = editorTextarea.value || target.text;
-            if (!currentText || currentText.trim().length < 3) { toast('Text is empty'); return; }
-            btnEditorRewrite.disabled = true; addLoadingToButton(btnEditorRewrite, 'Rewriting');
-            const result = await rewriteText(style, currentText, { styleHint, chunkSize: 14000, maxParallel: 3, length: 'medium' });
-            if (result && result.trim().length > 0) {
-              if (!_cbOriginals.has(target.id)) _cbOriginals.set(target.id, target.text);
-              target.text = result;
-              target.preview = _generatePreview(result);
-              editorTextarea.value = result;
-              renderReplies();
-              toast('Rewritten');
-            } else {
-              toast('No result');
-            }
-          } catch (err) {
-            toast('Rewrite failed: ' + (err && err.message ? err.message : err));
-            debugLog('editor rewrite error', err);
-          } finally {
-            removeLoadingFromButton(btnEditorRewrite, 'Rewrite');
-          }
-        });
-      }
-
-      if (btnEditorCancel) {
-        btnEditorCancel.addEventListener('click', () => {
-          _cbSelectedReplyId = null;
-          hideEditor();
-          renderReplies();
-        });
-      }
-
-      if (btnEditorCopy) {
-        btnEditorCopy.addEventListener('click', () => {
-          try {
-            if (editorTextarea && editorTextarea.value) {
-              navigator.clipboard.writeText(editorTextarea.value);
-              toast('Copied');
-            }
-          } catch (e) { toast('Copy failed'); }
-        });
-      }
-    } catch (e) { debugLog('editor buttons setup error', e); }
 
     btnGoRew.addEventListener('click', async () => {
       try {
@@ -14231,8 +14133,6 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
             if (target) {
               target.text = result;
               target.preview = _generatePreview(result);
-              const editorTextarea = rewView.querySelector('#cb-editor-textarea');
-              if (editorTextarea) editorTextarea.value = result;
               renderReplies();
             }
           }
