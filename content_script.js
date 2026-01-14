@@ -862,11 +862,11 @@
       return;
     }
     const avatar = document.createElement('div'); avatar.id = 'cb-avatar'; avatar.setAttribute('data-cb-ignore', 'true');
-    const avatarImg = document.createElement('img');
-    avatarImg.src = chrome.runtime.getURL('iconic.jpeg');
-    avatarImg.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:12px;';
-    avatarImg.alt = 'ChatBridge';
-    avatar.appendChild(avatarImg);
+    const mainAvatarImg = document.createElement('img');
+    mainAvatarImg.src = chrome.runtime.getURL('iconic.jpeg');
+    mainAvatarImg.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:12px;';
+    mainAvatarImg.alt = 'ChatBridge';
+    avatar.appendChild(mainAvatarImg);
     // store last scanned text so Clipboard and textarea can access it
     let lastScannedText = '';
 
@@ -931,7 +931,20 @@
     // High-end Dark Neon theme inside shadow DOM (Bebas Neue font)
     const style = document.createElement('style');
     style.textContent = `
-      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+      @font-face {
+        font-family: 'Inter';
+        src: url('${chrome.runtime.getURL('fonts/Inter-Regular.woff2')}') format('woff2');
+        font-weight: 400;
+        font-style: normal;
+        font-display: swap;
+      }
+      @font-face {
+        font-family: 'Inter';
+        src: url('${chrome.runtime.getURL('fonts/Inter-Bold.woff2')}') format('woff2');
+        font-weight: 700;
+        font-style: normal;
+        font-display: swap;
+      }
       :host { all: initial; }
   :host {
     /* Colors - Dark Theme */
@@ -1042,9 +1055,18 @@
   .cb-panel::-webkit-scrollbar-track { background: var(--cb-bg); border-radius: 10px; }
   .cb-panel::-webkit-scrollbar-thumb { background: linear-gradient(180deg, var(--cb-accent-primary), var(--cb-accent-secondary)); border-radius: 10px; border: 2px solid var(--cb-bg); }
   .cb-panel::-webkit-scrollbar-thumb:hover { opacity: 0.8; }
-  .cb-header { display:flex; flex-direction:row; align-items:flex-start; justify-content:space-between; padding:var(--cb-space-xl) var(--cb-space-xl) var(--cb-space-lg) var(--cb-space-xl); gap:var(--cb-space-md); border-bottom: 1px solid var(--cb-border); }
-  .cb-title { font-weight:800; font-size:20px; letter-spacing:-0.02em; color: var(--cb-white); background: linear-gradient(135deg, var(--cb-accent-primary), var(--cb-accent-secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-  .cb-subtitle { font-size:13px; color: var(--cb-subtext); font-weight:500; margin-top:4px; margin-bottom:2px; letter-spacing:-0.01em; }
+  .cb-header { display:flex; flex-direction:row; align-items:flex-start; justify-content:space-between; padding:var(--cb-space-xl) var(--cb-space-xl) var(--cb-space-lg) var(--cb-space-xl); gap:var(--cb-space-md); border-bottom: 1px solid var(--cb-border); background: rgba(255,255,255,0.02); backdrop-filter: blur(10px); position: relative; }
+  .cb-title { font-weight:700; font-size:20px; letter-spacing:-0.02em; color: var(--cb-white); background: linear-gradient(135deg, #00D4FF, #7C3AED); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .cb-subtitle { font-size:12px; color: var(--cb-subtext); font-weight:500; margin-top:4px; margin-bottom:2px; letter-spacing:-0.01em; opacity:0.8; }
+  .cb-badge { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, #00D4FF, #7C3AED); color: #ffffff; font-weight: 800; font-size: 15px; letter-spacing: -0.5px; box-shadow: 0 4px 16px rgba(0, 212, 255, 0.3), 0 0 20px rgba(124, 58, 237, 0.2); margin-right: 14px; animation: cb-badge-float 3s ease-in-out infinite; transition: box-shadow 0.3s, transform 0.3s; }
+  .cb-badge:hover { box-shadow: 0 6px 24px rgba(0, 212, 255, 0.5), 0 0 32px rgba(124, 58, 237, 0.4); transform: translateY(-2px); }
+  @keyframes cb-badge-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+  .cb-header-controls { display: flex; align-items: center; gap: 8px; }
+  .cb-header-btn { width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--cb-border); background: rgba(255,255,255,0.03); color: var(--cb-subtext); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); backdrop-filter: blur(8px); }
+  .cb-header-btn:hover { background: rgba(255,255,255,0.08); color: var(--cb-white); border-color: rgba(0, 212, 255, 0.3); box-shadow: 0 4px 12px rgba(0, 212, 255, 0.15); }
+  .cb-header-btn svg { width: 18px; height: 18px; stroke-width: 2; }
+  .cb-header-btn.cb-settings-btn:hover { transform: rotate(90deg); }
+  .cb-header-btn.cb-close-btn:hover { background: rgba(248, 81, 73, 0.15); color: #f85149; border-color: rgba(248, 81, 73, 0.3); transform: scale(1.05); }
     .cb-actions { padding:var(--cb-space-lg) var(--cb-space-xl) var(--cb-space-md) var(--cb-space-xl); display:flex; flex-direction:column; gap:var(--cb-space-md); align-items:stretch; justify-content:flex-start; }
   .cb-actions-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap:var(--cb-space-md); width:100%; }
   .cb-actions .cb-btn { min-width:0; padding:12px 14px; font-size:12px; white-space:nowrap; font-weight:600; letter-spacing:-0.01em; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); text-transform: uppercase; width:100%; position: relative; overflow: hidden; z-index: 0; }
@@ -1089,9 +1111,8 @@
       .cb-preview::-webkit-scrollbar-thumb { background: linear-gradient(180deg, var(--cb-accent-primary), var(--cb-accent-secondary)); border-radius: 10px; border: 2px solid var(--cb-bg3); }
       .cb-preview::-webkit-scrollbar-thumb:hover { opacity: 0.8; }
       .cb-footer { display:flex; justify-content:flex-end; gap:12px; padding:14px 20px }
-  .cb-close { background:transparent; border:none; color:var(--cb-subtext) !important; cursor:pointer; font-size:16px; padding:8px; position:absolute; top:12px; right:12px; transition: all 0.2s ease; border-radius: 8px; }
-  .cb-close:hover { background: rgba(255,255,255,0.05); color: var(--cb-white) !important; }
-  .cb-header { padding-right: 50px; }
+  .cb-close { display: none; /* Use cb-close-btn instead */ }
+  .cb-header { padding-right: 100px; }
       textarea { background: var(--cb-bg); color: var(--cb-white) !important; border: 1px solid var(--cb-border); border-radius: 10px; font-size:14px; padding:12px; font-family:inherit; max-height:200px; overflow-x:hidden; overflow-y:auto; transition: all 0.2s ease; }
       textarea::-webkit-scrollbar { width: 8px; }
       textarea::-webkit-scrollbar-track { background: var(--cb-bg3); border-radius: 10px; }
@@ -1198,6 +1219,7 @@
   @keyframes cb-fade-in { from { opacity: 0; } to { opacity: 1; } }
   @keyframes cb-slide-up { from { transform: translateY(12px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
   @keyframes cb-pulse-glow { 0%, 100% { box-shadow: 0 4px 12px rgba(0, 180, 255, 0.3), 0 0 20px rgba(96, 165, 250, 0.2); } 50% { box-shadow: 0 4px 20px rgba(0, 180, 255, 0.5), 0 0 32px rgba(96, 165, 250, 0.35); } }
+  @keyframes cb-pulse-dot { 0%, 100% { opacity: 1; box-shadow: 0 0 8px rgba(63, 185, 80, 0.6); } 50% { opacity: 0.7; box-shadow: 0 0 12px rgba(63, 185, 80, 0.9); } }
   
   /* Tooltip styles */
   .cb-tooltip { position:relative; }
@@ -1245,26 +1267,34 @@
       }
     } catch (e) { }
 
-    // Add resize handle
+    // Add resize handle with premium SVG grip
     const resizeHandle = document.createElement('div');
     resizeHandle.className = 'cb-resize-handle';
-    resizeHandle.innerHTML = '⋮⋮';
+    resizeHandle.innerHTML = `<svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+      <circle cx="2" cy="2" r="1.5" opacity="0.4"/>
+      <circle cx="6" cy="2" r="1.5" opacity="0.4"/>
+      <circle cx="2" cy="6" r="1.5" opacity="0.4"/>
+      <circle cx="6" cy="6" r="1.5" opacity="0.6"/>
+      <circle cx="10" cy="6" r="1.5" opacity="0.4"/>
+      <circle cx="6" cy="10" r="1.5" opacity="0.4"/>
+      <circle cx="10" cy="10" r="1.5" opacity="0.6"/>
+    </svg>`;
     resizeHandle.style.cssText = `
       position: absolute;
       bottom: 8px;
       right: 8px;
-      width: 24px;
-      height: 24px;
+      width: 20px;
+      height: 20px;
       cursor: nwse-resize;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 14px;
       color: var(--cb-subtext);
-      opacity: 0.5;
-      transition: opacity 0.2s;
+      opacity: 0.4;
+      transition: opacity 0.2s, transform 0.2s;
       z-index: 10;
       user-select: none;
+      border-radius: 4px;
     `;
 
     resizeHandle.addEventListener('mouseenter', () => {
@@ -1306,58 +1336,100 @@
 
     panel.appendChild(resizeHandle);
 
-    // Header: Title and subtitle with CB badge
+    // Header: Premium Glassmorphism Design with Avatar
     const header = document.createElement('div'); header.className = 'cb-header';
 
-    // CB Monogram Badge
-    const badge = document.createElement('div');
-    badge.className = 'cb-badge';
-    badge.textContent = 'CB';
-    badge.style.cssText = 'display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 10px; background: linear-gradient(135deg, var(--cb-accent-primary), var(--cb-accent-secondary)); color: #ffffff; font-weight: 800; font-size: 14px; letter-spacing: -0.5px; box-shadow: 0 4px 12px rgba(0, 180, 255, 0.3); margin-right: 12px;';
+    // Avatar image (using iconic.jpeg) with glow effect
+    const avatarWrap = document.createElement('div');
+    avatarWrap.className = 'cb-header-avatar';
+    avatarWrap.style.cssText = 'width: 42px; height: 42px; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 16px rgba(0, 212, 255, 0.25), 0 0 20px rgba(124, 58, 237, 0.15); flex-shrink: 0; animation: cb-badge-float 3s ease-in-out infinite;';
 
-    const titleRow = document.createElement('div');
-    titleRow.style.cssText = 'display: flex; align-items: center; gap: 0;';
+    const headerAvatarImg = document.createElement('img');
+    headerAvatarImg.src = chrome.runtime.getURL('iconic.jpeg');
+    headerAvatarImg.alt = 'ChatBridge';
+    headerAvatarImg.style.cssText = 'width: 100%; height: 100%; object-fit: cover;';
+    avatarWrap.appendChild(headerAvatarImg);
+
+    // Title and status row
+    const titleBlock = document.createElement('div');
+    titleBlock.style.cssText = 'display: flex; flex-direction: column; gap: 2px;';
 
     const title = document.createElement('div');
     title.className = 'cb-title';
     title.textContent = 'ChatBridge';
-    title.style.fontSize = '22px';
 
-    titleRow.appendChild(badge);
-    titleRow.appendChild(title);
+    // Status row with green indicator
+    const statusRow = document.createElement('div');
+    statusRow.style.cssText = 'display: flex; align-items: center; gap: 6px;';
 
+    // Green pulsing status dot
+    const statusDot = document.createElement('div');
+    statusDot.className = 'cb-status-dot';
+    statusDot.style.cssText = 'width: 8px; height: 8px; border-radius: 50%; background: #3fb950; box-shadow: 0 0 8px rgba(63, 185, 80, 0.6); animation: cb-pulse-dot 2s ease-in-out infinite;';
+
+    // Platform-aware subtitle
     const subtitle = document.createElement('div');
     subtitle.className = 'cb-subtitle';
-    subtitle.textContent = 'Bridge AI conversations seamlessly';
+    subtitle.id = 'cb-subtitle';
+    subtitle.style.cssText = 'font-size: 11px; color: var(--cb-subtext); font-weight: 500; opacity: 0.9;';
 
-    const left = document.createElement('div');
-    left.style.display = 'flex';
-    left.style.flexDirection = 'column';
-    left.style.gap = '6px';
-    left.style.alignItems = 'flex-start';
-    left.appendChild(title);
-    left.appendChild(subtitle);
+    // Detect current platform
+    function getPlatformName() {
+      const host = window.location.hostname;
+      if (host.includes('openai.com') || host.includes('chatgpt.com')) return 'ChatGPT';
+      if (host.includes('claude.ai')) return 'Claude';
+      if (host.includes('gemini.google.com')) return 'Gemini';
+      if (host.includes('perplexity.ai')) return 'Perplexity';
+      if (host.includes('copilot.microsoft.com')) return 'Copilot';
+      if (host.includes('poe.com')) return 'Poe';
+      if (host.includes('deepseek')) return 'DeepSeek';
+      if (host.includes('mistral.ai')) return 'Mistral';
+      if (host.includes('huggingface.co')) return 'HuggingFace';
+      if (host.includes('phind.com')) return 'Phind';
+      if (host.includes('you.com')) return 'You.com';
+      if (host.includes('character.ai')) return 'Character.AI';
+      return 'AI Chat';
+    }
+    subtitle.textContent = `Ready on ${getPlatformName()}`;
 
+    statusRow.appendChild(statusDot);
+    statusRow.appendChild(subtitle);
+    titleBlock.appendChild(title);
+    titleBlock.appendChild(statusRow);
+
+    // Header left container
+    const headerLeft = document.createElement('div');
+    headerLeft.style.cssText = 'display: flex; align-items: center; gap: 12px;';
+    headerLeft.appendChild(avatarWrap);
+    headerLeft.appendChild(titleBlock);
+
+    // Controls container with glassmorphism buttons
     const controls = document.createElement('div');
-    controls.style.display = 'flex';
-    controls.style.alignItems = 'flex-start';
-    controls.style.gap = '8px';
+    controls.className = 'cb-header-controls';
+    controls.style.cssText = 'position: absolute; top: 16px; right: 16px; display: flex; align-items: center; gap: 8px;';
 
+    // Settings button with SVG gear icon
     const btnSettings = document.createElement('button');
-    btnSettings.className = 'cb-btn';
-    btnSettings.textContent = '⚙️';
+    btnSettings.className = 'cb-header-btn cb-settings-btn';
+    btnSettings.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="3"></circle>
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+    </svg>`;
     btnSettings.title = 'Settings';
-    btnSettings.style.cssText = 'padding: 6px 10px; font-size: 16px;';
     btnSettings.setAttribute('aria-label', 'Open settings');
 
+    // Close button with SVG X icon
     const btnClose = document.createElement('button');
-    btnClose.className = 'cb-close';
-    btnClose.textContent = '✕';
+    btnClose.className = 'cb-header-btn cb-close-btn';
+    btnClose.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="18" y1="6" x2="6" y2="18"></line>
+      <line x1="6" y1="6" x2="18" y2="18"></line>
+    </svg>`;
     btnClose.setAttribute('aria-label', 'Close panel');
 
     controls.appendChild(btnSettings);
     controls.appendChild(btnClose);
-    header.appendChild(left);
+    header.appendChild(headerLeft);
     header.appendChild(controls);
     panel.appendChild(header);
 

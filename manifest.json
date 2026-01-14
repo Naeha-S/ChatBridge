@@ -101,7 +101,9 @@
   "web_accessible_resources": [
     {
       "resources": [
-        "iconic.jpeg"
+        "iconic.jpeg",
+        "fonts/Inter-Regular.woff2",
+        "fonts/Inter-Bold.woff2"
       ],
       "matches": [
         "<all_urls>"
