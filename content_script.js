@@ -1229,6 +1229,50 @@
   /* Agent specific animations */
   .cb-agent-enter { animation: cb-slide-up 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
   
+  /* Premium Scan Button */
+  .cb-scan-premium { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 16px 24px; font-size: 15px; font-weight: 700; letter-spacing: 0.02em; background: linear-gradient(135deg, #00D4FF 0%, #7C3AED 50%, #00D4FF 100%); background-size: 200% 200%; animation: cb-gradient-shift 3s ease infinite, cb-breathe 2s ease-in-out infinite; border: none; border-radius: 14px; box-shadow: 0 4px 20px rgba(0, 212, 255, 0.35), 0 0 40px rgba(124, 58, 237, 0.2), inset 0 1px 0 rgba(255,255,255,0.2); text-transform: uppercase; }
+  .cb-scan-premium:hover { transform: translateY(-3px) scale(1.02); box-shadow: 0 8px 32px rgba(0, 212, 255, 0.5), 0 0 60px rgba(124, 58, 237, 0.35); }
+  .cb-scan-premium svg { width: 20px; height: 20px; stroke-width: 2.5; }
+  @keyframes cb-gradient-shift { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+  @keyframes cb-breathe { 0%, 100% { box-shadow: 0 4px 20px rgba(0, 212, 255, 0.35), 0 0 40px rgba(124, 58, 237, 0.2); } 50% { box-shadow: 0 6px 28px rgba(0, 212, 255, 0.5), 0 0 56px rgba(124, 58, 237, 0.35); } }
+  
+  /* Action Grid Premium Buttons */
+  .cb-action-card { display: flex; align-items: center; gap: 8px; padding: 12px 14px; background: rgba(255,255,255,0.03); backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.02em; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+  .cb-action-card:hover { background: rgba(255,255,255,0.08); border-color: rgba(0, 212, 255, 0.4); box-shadow: 0 4px 16px rgba(0, 212, 255, 0.2), inset 0 1px 0 rgba(255,255,255,0.1); transform: translateY(-2px); }
+  .cb-action-card svg { width: 16px; height: 16px; opacity: 0.7; transition: opacity 0.2s; }
+  .cb-action-card:hover svg { opacity: 1; }
+  
+  /* Quick Action Pills */
+  .cb-quick-pill { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 8px; min-width: 56px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; color: var(--cb-subtext); transition: all 0.25s ease; }
+  .cb-quick-pill:hover { background: rgba(0, 212, 255, 0.1); border-color: rgba(0, 212, 255, 0.3); color: var(--cb-white); transform: scale(1.05); }
+  .cb-quick-pill svg { width: 18px; height: 18px; stroke: currentColor; }
+  .cb-quick-pill.cb-active { background: rgba(0, 212, 255, 0.15); border-color: rgba(0, 212, 255, 0.4); color: #00D4FF; }
+  
+  /* Preview Card */
+  .cb-preview-card { margin: 0 var(--cb-space-xl); padding: 14px 16px; background: linear-gradient(135deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01)); border: 1px solid var(--cb-border); border-radius: 12px; position: relative; overflow: hidden; }
+  .cb-preview-card::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 40px; background: linear-gradient(to top, var(--cb-bg2), transparent); pointer-events: none; }
+  .cb-preview-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .cb-preview-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; background: rgba(63, 185, 80, 0.15); border: 1px solid rgba(63, 185, 80, 0.3); border-radius: 20px; font-size: 10px; font-weight: 600; color: #3fb950; text-transform: uppercase; letter-spacing: 0.05em; }
+  .cb-preview-badge::before { content: ''; width: 6px; height: 6px; background: #3fb950; border-radius: 50%; animation: cb-pulse-dot 2s ease-in-out infinite; }
+  .cb-preview-stats { display: flex; gap: 8px; }
+  .cb-preview-stat { padding: 3px 8px; background: var(--cb-bg3); border-radius: 6px; font-size: 10px; font-weight: 500; color: var(--cb-subtext); }
+  .cb-preview-text { font-size: 13px; line-height: 1.5; color: var(--cb-white); max-height: 80px; overflow: hidden; opacity: 0.9; }
+  
+  /* Status Bar */
+  .cb-status-bar { display: flex; align-items: center; gap: 10px; padding: 12px var(--cb-space-xl); background: linear-gradient(90deg, rgba(0, 212, 255, 0.05), rgba(124, 58, 237, 0.05)); border-top: 1px solid var(--cb-border); }
+  .cb-status-indicator { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 500; color: var(--cb-subtext); }
+  .cb-status-dot { width: 8px; height: 8px; border-radius: 50%; background: #3fb950; box-shadow: 0 0 8px rgba(63, 185, 80, 0.5); }
+  .cb-status-dot.scanning { background: #f59e0b; animation: cb-pulse 1s ease-in-out infinite; box-shadow: 0 0 8px rgba(245, 158, 11, 0.5); }
+  .cb-status-dot.processing { background: #00D4FF; animation: cb-spin 1s linear infinite; box-shadow: 0 0 8px rgba(0, 212, 255, 0.5); }
+  .cb-status-text { flex: 1; font-size: 11px; color: var(--cb-subtext); }
+  .cb-status-action { font-size: 10px; color: var(--cb-accent-primary); font-weight: 600; cursor: pointer; transition: opacity 0.2s; }
+  .cb-status-action:hover { opacity: 0.8; }
+  
+  /* Section Dividers */
+  .cb-section-divider { display: flex; align-items: center; gap: 10px; margin: 12px 0; padding: 0 var(--cb-space-xl); }
+  .cb-section-divider::before, .cb-section-divider::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, transparent, var(--cb-border), transparent); }
+  .cb-section-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--cb-subtext); opacity: 0.6; }
+  
   /* Toast animations */
   @keyframes cb-toast-in { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
   @keyframes cb-toast-out { from { transform: translateY(0); opacity: 1; } to { transform: translateY(10px); opacity: 0; } }
@@ -1439,26 +1483,67 @@
     // Create a neat grid for secondary actions (luxury layout)
     const actionsGrid = document.createElement('div'); actionsGrid.className = 'cb-actions-grid';
 
+    // Premium Scan Button with SVG icon
     const btnScan = document.createElement('button');
-    btnScan.className = 'cb-btn cb-btn-primary cb-scan-wide';
-    btnScan.innerHTML = '🔍 Scan Chat';
+    btnScan.className = 'cb-btn cb-scan-premium cb-scan-wide';
+    btnScan.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg><span>Scan Chat</span>`;
     btnScan.title = 'Capture this conversation - Save it for later, search across it, or continue on another AI [Shortcut: S]';
     btnScan.id = 'btnScan';
-    btnScan.style.cssText = 'animation: cb-pulse-glow 2s ease-in-out infinite;';
-    const btnRestore = document.createElement('button'); btnRestore.className = 'cb-btn'; btnRestore.textContent = 'Restore'; btnRestore.title = 'Continue where you left off - Pick any saved chat and paste it into this AI'; btnRestore.setAttribute('aria-label', 'Restore conversation');
-    const btnClipboard = document.createElement('button'); btnClipboard.className = 'cb-btn'; btnClipboard.textContent = 'Copy'; btnClipboard.title = 'Quick export - Copy this conversation to share or save externally'; btnClipboard.setAttribute('aria-label', 'Copy conversation to clipboard');
-    const btnSmartQuery = document.createElement('button'); btnSmartQuery.className = 'cb-btn'; btnSmartQuery.textContent = 'Query'; btnSmartQuery.title = 'Ask questions across ALL your saved chats - Natural language search powered by AI'; btnSmartQuery.setAttribute('aria-label', 'Open Smart Query');
-    const btnKnowledgeGraph = document.createElement('button'); btnKnowledgeGraph.className = 'cb-btn'; btnKnowledgeGraph.textContent = 'Agent'; btnKnowledgeGraph.title = 'AI Agent – analyze this chat and suggest next actions'; btnKnowledgeGraph.setAttribute('aria-label', 'Open Agent');
-    const btnInsights = document.createElement('button'); btnInsights.className = 'cb-btn'; btnInsights.textContent = 'Insights'; btnInsights.title = 'Smart workspace tools - Compare, merge, extract, and organize your conversations'; btnInsights.setAttribute('aria-label', 'Open Smart Workspace');
 
-    // Gemini API buttons
-    const btnPromptDesigner = document.createElement('button'); btnPromptDesigner.className = 'cb-btn'; btnPromptDesigner.textContent = 'Prompts'; btnPromptDesigner.title = 'AI-powered prompt suggestions - Get smart next steps for your conversation';
-    const btnSummarize = document.createElement('button'); btnSummarize.className = 'cb-btn'; btnSummarize.textContent = 'Summarize'; btnSummarize.title = 'Get the key points - Condense long chats into concise summaries';
-    const btnRewrite = document.createElement('button'); btnRewrite.className = 'cb-btn'; btnRewrite.textContent = 'Rewrite'; btnRewrite.title = 'Polish your content - Improve clarity, tone, and professionalism. Adapt for different AI models';
-    const btnTranslate = document.createElement('button'); btnTranslate.className = 'cb-btn'; btnTranslate.textContent = 'Translate'; btnTranslate.title = 'Break language barriers - Convert chats to 20+ languages instantly';
+    // Action Grid Buttons with SVG icons
+    const btnRestore = document.createElement('button');
+    btnRestore.className = 'cb-btn cb-action-card';
+    btnRestore.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg><span>Restore</span>`;
+    btnRestore.title = 'Continue where you left off - Pick any saved chat and paste it into this AI';
+    btnRestore.setAttribute('aria-label', 'Restore conversation');
+
+    const btnClipboard = document.createElement('button');
+    btnClipboard.className = 'cb-btn cb-action-card';
+    btnClipboard.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg><span>Copy</span>`;
+    btnClipboard.title = 'Quick export - Copy this conversation to share or save externally';
+    btnClipboard.setAttribute('aria-label', 'Copy conversation to clipboard');
+
+    const btnSmartQuery = document.createElement('button');
+    btnSmartQuery.className = 'cb-btn cb-action-card';
+    btnSmartQuery.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg><span>Query</span>`;
+    btnSmartQuery.title = 'Ask questions across ALL your saved chats - Natural language search powered by AI';
+    btnSmartQuery.setAttribute('aria-label', 'Open Smart Query');
+
+    const btnKnowledgeGraph = document.createElement('button');
+    btnKnowledgeGraph.className = 'cb-btn cb-action-card';
+    btnKnowledgeGraph.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2M7 14a1 1 0 1 0 0 2 1 1 0 0 0 0-2m10 0a1 1 0 1 0 0 2 1 1 0 0 0 0-2"></path></svg><span>Agent</span>`;
+    btnKnowledgeGraph.title = 'AI Agent – analyze this chat and suggest next actions';
+    btnKnowledgeGraph.setAttribute('aria-label', 'Open Agent');
+
+    const btnInsights = document.createElement('button');
+    btnInsights.className = 'cb-btn cb-action-card';
+    btnInsights.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg><span>Insights</span>`;
+    btnInsights.title = 'Smart workspace tools - Compare, merge, extract, and organize your conversations';
+    btnInsights.setAttribute('aria-label', 'Open Smart Workspace');
+
+    // Gemini API buttons with SVG icons
+    const btnPromptDesigner = document.createElement('button');
+    btnPromptDesigner.className = 'cb-btn cb-action-card';
+    btnPromptDesigner.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg><span>Prompts</span>`;
+    btnPromptDesigner.title = 'AI-powered prompt suggestions - Get smart next steps for your conversation';
     btnPromptDesigner.setAttribute('aria-label', 'Open Prompt Designer');
+
+    const btnSummarize = document.createElement('button');
+    btnSummarize.className = 'cb-btn cb-action-card';
+    btnSummarize.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg><span>Summarize</span>`;
+    btnSummarize.title = 'Get the key points - Condense long chats into concise summaries';
     btnSummarize.setAttribute('aria-label', 'Summarize conversation');
+
+    const btnRewrite = document.createElement('button');
+    btnRewrite.className = 'cb-btn cb-action-card';
+    btnRewrite.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg><span>Rewrite</span>`;
+    btnRewrite.title = 'Polish your content - Improve clarity, tone, and professionalism. Adapt for different AI models';
     btnRewrite.setAttribute('aria-label', 'Rewrite conversation');
+
+    const btnTranslate = document.createElement('button');
+    btnTranslate.className = 'cb-btn cb-action-card';
+    btnTranslate.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg><span>Translate</span>`;
+    btnTranslate.title = 'Break language barriers - Convert chats to 20+ languages instantly';
     btnTranslate.setAttribute('aria-label', 'Translate conversation');
 
     // Place Scan button prominently in its own row below the header
@@ -1483,34 +1568,88 @@
 
     actions.appendChild(actionsGrid);
 
-    // ⚡ Quick Actions Row - Always visible for instant access
+    // ⚡ Quick Actions Row - Premium pill design with SVG icons
     const quickActionsRow = document.createElement('div');
     quickActionsRow.className = 'cb-quick-actions-row';
-    quickActionsRow.style.cssText = 'display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px;padding:0 2px;';
+    quickActionsRow.style.cssText = 'display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px;padding:0 2px;';
 
-    // Note: Summary removed - redundant with Summarize button
+    // Quick action buttons with SVG icons
     const qaButtons = [
-      { id: 'qa-sidebar-optimize', icon: '✨', label: 'Optimize', title: 'Transform raw prompts into high-performance AI prompts' },
-      { id: 'qa-sidebar-stats', icon: '📊', label: 'Stats', title: 'Show word count, read time & saved count' },
-      { id: 'qa-sidebar-archive', icon: '✅', label: 'Done', title: 'Mark this conversation as complete' },
-      { id: 'qa-sidebar-star', icon: '⭐', label: 'Star', title: 'Star/unstar this conversation' }
+      { id: 'qa-sidebar-optimize', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v5m0 4v8m-4-4l4-4 4 4"/><circle cx="12" cy="12" r="10"/></svg>', label: 'Optimize', title: 'Transform raw prompts into high-performance AI prompts' },
+      { id: 'qa-sidebar-stats', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>', label: 'Stats', title: 'Show word count, read time & saved count' },
+      { id: 'qa-sidebar-archive', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>', label: 'Done', title: 'Mark this conversation as complete' },
+      { id: 'qa-sidebar-star', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>', label: 'Star', title: 'Star/unstar this conversation' }
     ];
 
     qaButtons.forEach(qa => {
       const btn = document.createElement('button');
       btn.id = qa.id;
-      btn.className = 'cb-btn cb-btn-quick cb-tooltip';
+      btn.className = 'cb-btn cb-quick-pill cb-tooltip';
       btn.title = qa.title;
-      btn.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 4px;font-size:14px;min-height:44px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);';
-      btn.innerHTML = `<span>${qa.icon}</span><span style="font-size:8px;opacity:0.6;">${qa.label}</span>`;
+      btn.innerHTML = `${qa.svg}<span>${qa.label}</span>`;
       quickActionsRow.appendChild(btn);
     });
 
     actions.appendChild(quickActionsRow);
     panel.appendChild(actions);
 
-    // Toolbar preview (moved above the Gemini textarea)
-    const preview = document.createElement('div'); preview.className = 'cb-preview'; preview.textContent = 'Preview: (none)';
+    // Premium Preview Card with session badge and stats
+    const previewCard = document.createElement('div');
+    previewCard.className = 'cb-preview-card';
+    previewCard.id = 'cb-preview-card';
+
+    const previewHeader = document.createElement('div');
+    previewHeader.className = 'cb-preview-header';
+
+    const previewBadge = document.createElement('div');
+    previewBadge.className = 'cb-preview-badge';
+    previewBadge.textContent = 'Active Session';
+
+    const previewStats = document.createElement('div');
+    previewStats.className = 'cb-preview-stats';
+    previewStats.id = 'cb-preview-stats';
+    previewStats.innerHTML = '<span class="cb-preview-stat">0 words</span><span class="cb-preview-stat">0 msgs</span>';
+
+    previewHeader.appendChild(previewBadge);
+    previewHeader.appendChild(previewStats);
+
+    const previewText = document.createElement('div');
+    previewText.className = 'cb-preview-text';
+    previewText.id = 'cb-preview-text';
+    previewText.textContent = 'Scan a conversation to see preview...';
+
+    previewCard.appendChild(previewHeader);
+    previewCard.appendChild(previewText);
+    panel.appendChild(previewCard);
+
+    // Premium Status Bar
+    const statusBar = document.createElement('div');
+    statusBar.className = 'cb-status-bar';
+    statusBar.id = 'cb-status-bar';
+
+    const statusIndicator = document.createElement('div');
+    statusIndicator.className = 'cb-status-indicator';
+    statusIndicator.innerHTML = '<div class="cb-status-dot" id="cb-status-dot"></div><span id="cb-status-label">Ready</span>';
+
+    const statusText = document.createElement('div');
+    statusText.className = 'cb-status-text';
+    statusText.id = 'cb-status-text';
+    statusText.textContent = 'Idle';
+
+    const statusAction = document.createElement('span');
+    statusAction.className = 'cb-status-action';
+    statusAction.id = 'cb-status-action';
+    statusAction.textContent = '';
+
+    statusBar.appendChild(statusIndicator);
+    statusBar.appendChild(statusText);
+    statusBar.appendChild(statusAction);
+
+    // Legacy preview element for backward compatibility
+    const preview = document.createElement('div');
+    preview.className = 'cb-preview';
+    preview.style.display = 'none';
+    preview.textContent = 'Preview: (none)';
 
     // --- Internal views (Prompt Designer, Summarize, Rewrite, Translate) - inline sections ---
 
