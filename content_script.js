@@ -606,19 +606,15 @@
   function filterCandidateNodes(nodes) {
     return nodes.filter(node => {
       if (!node || !node.textContent || node.textContent.trim() === '') {
-        console.debug('[Claude Debug] Skipping node: Empty or whitespace-only content', node);
         return false;
       }
       if (node.textContent.length < 5) { // Example threshold for minimum length
-        console.debug('[Claude Debug] Skipping node: Content too short', node.textContent);
         return false;
       }
       if (node.nodeType !== Node.ELEMENT_NODE && node.nodeType !== Node.TEXT_NODE) {
-        console.debug('[Claude Debug] Skipping node: Unsupported node type', node.nodeType);
         return false;
       }
       if (node.hasAttribute && node.hasAttribute('aria-hidden') && node.getAttribute('aria-hidden') === 'true') {
-        console.debug('[Claude Debug] Skipping node: aria-hidden=true', node);
         return false;
       }
       // Add more conditions as needed
@@ -16337,50 +16333,51 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
         }
       } catch (_) { }
 
-      // AUTOMATIC IMAGE EXTRACTION AND SAVING - Extract images from messages and save to vault
-      try {
-        console.log('[ChatBridge] Extracting images from scan results...');
-        if (typeof window.ChatBridge !== 'undefined' && typeof window.ChatBridge.extractImagesFromMessages === 'function') {
-          // Use the exposed functions for full image extraction
-          const images = await window.ChatBridge.extractImagesFromMessages(normalized);
-          if (images && images.length > 0) {
-            console.log('[ChatBridge] Saving', images.length, 'images to vault...');
-            await window.ChatBridge.saveImagesToVault(images);
-            // Update image count in _lastScanData
-            window.ChatBridge._lastScanData = window.ChatBridge._lastScanData || {};
-            window.ChatBridge._lastScanData.imageCount = images.length;
-            // Update the image count element if it exists
-            try {
-              const countEl = document.getElementById('cb-image-count');
-              if (countEl) {
-                countEl.textContent = String(images.length);
+      // AUTOMATIC IMAGE EXTRACTION AND SAVING - Run asynchronously in background for speed
+      // This is non-blocking so scanChat returns immediately
+      (async () => {
+        try {
+          debugLog('[ChatBridge] Background: Extracting images from scan results...');
+          if (typeof window.ChatBridge !== 'undefined' && typeof window.ChatBridge.extractImagesFromMessages === 'function') {
+            // Use the exposed functions for full image extraction
+            const images = await window.ChatBridge.extractImagesFromMessages(normalized);
+            if (images && images.length > 0) {
+              debugLog('[ChatBridge] Background: Saving', images.length, 'images to vault...');
+              await window.ChatBridge.saveImagesToVault(images);
+              // Update image count in _lastScanData
+              window.ChatBridge._lastScanData = window.ChatBridge._lastScanData || {};
+              window.ChatBridge._lastScanData.imageCount = images.length;
+              // Update the image count element if it exists
+              try {
+                const countEl = document.getElementById('cb-image-count');
+                if (countEl) {
+                  countEl.textContent = String(images.length);
+                }
+              } catch (_) { }
+              // Trigger refresh of Image Vault display if function exists
+              if (typeof window.ChatBridge.refreshImageVault === 'function') {
+                try { await window.ChatBridge.refreshImageVault(); } catch (_) { }
               }
-            } catch (_) { }
-            // Trigger refresh of Image Vault display if function exists
-            if (typeof window.ChatBridge.refreshImageVault === 'function') {
-              try { await window.ChatBridge.refreshImageVault(); } catch (_) { }
+              debugLog('[ChatBridge] Background: Image extraction complete:', images.length, 'images saved');
+            } else {
+              window.ChatBridge._lastScanData = window.ChatBridge._lastScanData || {};
+              window.ChatBridge._lastScanData.imageCount = 0;
             }
-            console.log('[ChatBridge] Scan complete:', normalized.length, 'messages,', images.length, 'images saved');
           } else {
-            console.log('[ChatBridge] No images found in scan');
+            // Fallback: count images from attachments only
+            const imageCount = normalized.reduce((acc, m) => {
+              if (Array.isArray(m.attachments)) {
+                acc += m.attachments.filter(a => a.type === 'image').length;
+              }
+              return acc;
+            }, 0);
             window.ChatBridge._lastScanData = window.ChatBridge._lastScanData || {};
-            window.ChatBridge._lastScanData.imageCount = 0;
+            window.ChatBridge._lastScanData.imageCount = imageCount;
           }
-        } else {
-          // Fallback: count images from attachments only
-          const imageCount = normalized.reduce((acc, m) => {
-            if (Array.isArray(m.attachments)) {
-              acc += m.attachments.filter(a => a.type === 'image').length;
-            }
-            return acc;
-          }, 0);
-          window.ChatBridge._lastScanData = window.ChatBridge._lastScanData || {};
-          window.ChatBridge._lastScanData.imageCount = imageCount;
-          console.log('[ChatBridge] Found', imageCount, 'images in attachments (fallback mode)');
+        } catch (e) {
+          debugLog('[ChatBridge] Background image extraction failed:', e);
         }
-      } catch (e) {
-        console.warn('[ChatBridge] Automatic image extraction failed:', e);
-      }
+      })();
 
       // Log any errors that occurred during scan
       debugLog('[Scan] Returning', normalized.length, 'messages');
