@@ -223,6 +223,7 @@ cd ChatBridge
 * Google Gemini API
 * Hierarchical chunking & parallel processing
 * Retry & fallback logic
+* Hugging face models
 
 **Storage:**
 
