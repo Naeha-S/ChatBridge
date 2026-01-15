@@ -1140,13 +1140,16 @@
   .cb-snippet { font-size: 13px; line-height: 1.5; color: var(--cb-white); margin-bottom: 8px; white-space: pre-wrap; word-break: break-word; }
   .cb-tag-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
   .cb-tag-chip { display: inline-block; padding: 3px 8px; background: var(--cb-accent-primary); color: var(--cb-bg); font-size: 10px; font-weight: 600; border-radius: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
-  /* AI Insights Styling */
-  .cb-insights-section { display: flex; flex-direction: column; gap: 12px; }
-  .cb-insight-block { padding: 10px 12px; background: rgba(0, 180, 255, 0.05); border-left: 3px solid var(--cb-accent-primary); border-radius: 6px; }
-  .cb-insight-title { font-weight: 600; font-size: 11px; color: var(--cb-accent-primary); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
-  .cb-insight-content { font-size: 12px; color: var(--cb-white); line-height: 1.5; }
-  .cb-insight-list { margin: 6px 0 0 18px; padding: 0; font-size: 12px; color: var(--cb-white); }
-  .cb-insight-list li { margin-bottom: 4px; line-height: 1.4; }
+  /* AI Insights Styling - Luxury Minimal */
+  .cb-insights-section { display: flex; flex-direction: column; gap: 14px; padding: 0 4px; }
+  .cb-insight-block { padding: 16px 18px; background: linear-gradient(135deg, rgba(0,212,255,0.04), rgba(124,58,237,0.03)); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; transition: all 0.25s ease; position: relative; overflow: hidden; }
+  .cb-insight-block::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: linear-gradient(180deg, #00D4FF, #7C3AED); border-radius: 3px 0 0 3px; }
+  .cb-insight-block:hover { background: linear-gradient(135deg, rgba(0,212,255,0.08), rgba(124,58,237,0.06)); border-color: rgba(0,212,255,0.2); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.15); }
+  .cb-insight-title { font-weight: 600; font-size: 13px; color: var(--cb-white); margin-bottom: 8px; display: flex; align-items: center; gap: 10px; }
+  .cb-insight-title svg { width: 18px; height: 18px; stroke: url(#insightGrad); flex-shrink: 0; }
+  .cb-insight-content { font-size: 12px; color: var(--cb-subtext); line-height: 1.6; opacity: 0.85; }
+  .cb-insight-list { margin: 8px 0 0 20px; padding: 0; font-size: 12px; color: var(--cb-white); }
+  .cb-insight-list li { margin-bottom: 6px; line-height: 1.5; }
   .cb-code-snippet { background: var(--cb-bg); border: 1px solid var(--cb-border); border-radius: 6px; padding: 8px; font-size: 11px; font-family: 'Courier New', monospace; color: var(--cb-accent-tertiary); overflow-x: auto; margin: 6px 0; }
   .cb-code-snippet::-webkit-scrollbar { height: 6px; }
   .cb-code-snippet::-webkit-scrollbar-track { background: var(--cb-bg3); }
@@ -3059,44 +3062,65 @@
     // INSIGHTS / SMART WORKSPACE VIEW
     // ============================================
     const insightsView = document.createElement('div'); insightsView.className = 'cb-internal-view'; insightsView.id = 'cb-insights-view'; insightsView.setAttribute('data-cb-ignore', 'true');
-    const insightsTop = document.createElement('div'); insightsTop.className = 'cb-view-top';
-    const insightsTitle = document.createElement('div'); insightsTitle.className = 'cb-view-title'; insightsTitle.textContent = '🎯 Smart Workspace';
+    const insightsTop = document.createElement('div'); insightsTop.className = 'cb-view-top'; insightsTop.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;';
+    const insightsTitle = document.createElement('div'); insightsTitle.className = 'cb-view-title';
+    insightsTitle.innerHTML = '<span style="background: linear-gradient(135deg, #00D4FF, #7C3AED); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; display: inline-flex; align-items: center; gap: 10px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="url(#insightGrad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/><defs><linearGradient id="insightGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00D4FF"/><stop offset="100%" stop-color="#7C3AED"/></linearGradient></defs></svg>Smart Workspace</span>';
     const btnCloseInsights = document.createElement('button'); btnCloseInsights.className = 'cb-view-close'; btnCloseInsights.textContent = '✕';
     btnCloseInsights.setAttribute('aria-label', 'Close Smart Workspace view');
     insightsTop.appendChild(insightsTitle); insightsTop.appendChild(btnCloseInsights);
     insightsView.appendChild(insightsTop);
 
-    const insightsIntro = document.createElement('div'); insightsIntro.className = 'cb-view-intro'; insightsIntro.textContent = 'Practical tools to help you work smarter: compare models, merge threads, extract content, and stay organized.';
+    const insightsIntro = document.createElement('div'); insightsIntro.className = 'cb-view-intro';
+    insightsIntro.style.cssText = 'font-size:12px;line-height:1.7;color:var(--cb-subtext);margin-bottom:20px;padding:14px 16px;background:linear-gradient(135deg, rgba(0,212,255,0.03), rgba(124,58,237,0.02));border:1px solid rgba(255,255,255,0.05);border-left:2px solid rgba(0,212,255,0.4);border-radius:10px;';
+    insightsIntro.textContent = 'Practical tools to help you work smarter: compare models, merge threads, extract content, and stay organized.';
     insightsView.appendChild(insightsIntro);
 
     const insightsContent = document.createElement('div'); insightsContent.id = 'cb-insights-content'; insightsContent.style.cssText = 'padding:12px 0;overflow-y:auto;max-height:calc(100vh - 250px);';
-    // Add default insights blocks
+    // Add default insights blocks with luxury styling
     insightsContent.innerHTML = `
     <div class="cb-insights-section">
-      <div class="cb-insight-block" id="cb-media-library-block" style="background:linear-gradient(135deg, rgba(0,180,255,0.1), rgba(120,0,255,0.1));border:1px solid rgba(0,180,255,0.3);">
-        <div class="cb-insight-title" style="display:flex;align-items:center;justify-content:space-between;">
-          <span>🖼️ Media Library</span>
-          <span id="cb-media-library-count" style="font-size:11px;background:rgba(0,180,255,0.3);padding:2px 8px;border-radius:10px;color:#fff;">0</span>
+      <div class="cb-insight-block" id="cb-media-library-block">
+        <div class="cb-insight-title" style="justify-content:space-between;">
+          <span style="display:flex;align-items:center;gap:8px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="url(#mediaGrad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/><defs><linearGradient id="mediaGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00D4FF"/><stop offset="100%" stop-color="#7C3AED"/></linearGradient></defs></svg>
+            Media Library
+          </span>
+          <span id="cb-media-library-count" style="font-size:10px;background:linear-gradient(135deg, rgba(0,212,255,0.3), rgba(124,58,237,0.3));padding:3px 10px;border-radius:12px;color:#fff;font-weight:600;">0</span>
         </div>
-        <div class="cb-insight-content">Access images from your scanned conversations. Click on an image to insert it into the current chat.</div>
-        <div id="cb-media-library-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(60px,1fr));gap:8px;margin-top:12px;max-height:180px;overflow-y:auto;"></div>
-        <button id="cb-media-library-refresh" class="cb-btn cb-btn-primary" style="width:100%;margin-top:12px;font-size:11px;padding:8px;">🔄 Refresh Media Library</button>
+        <div class="cb-insight-content">Access images from your scanned conversations. Click to insert into chat.</div>
+        <div id="cb-media-library-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(60px,1fr));gap:8px;margin-top:14px;max-height:180px;overflow-y:auto;"></div>
+        <button id="cb-media-library-refresh" class="cb-btn" style="width:100%;margin-top:14px;font-size:11px;padding:10px;background:linear-gradient(135deg, rgba(0,212,255,0.15), rgba(124,58,237,0.1));border:1px solid rgba(0,212,255,0.2);display:flex;align-items:center;justify-content:center;gap:6px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+          Refresh Library
+        </button>
       </div>
       <div class="cb-insight-block">
-        <div class="cb-insight-title">Compare Models</div>
-        <div class="cb-insight-content">Quickly compare responses from different AI models side-by-side. Spot differences, strengths, and weaknesses for each platform.</div>
+        <div class="cb-insight-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="url(#compareGrad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><defs><linearGradient id="compareGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00D4FF"/><stop offset="100%" stop-color="#7C3AED"/></linearGradient></defs></svg>
+          Compare Models
+        </div>
+        <div class="cb-insight-content">Compare responses from different AI models side-by-side. Spot differences, strengths, and weaknesses.</div>
       </div>
       <div class="cb-insight-block">
-        <div class="cb-insight-title">Merge Threads</div>
-        <div class="cb-insight-content">Combine multiple chat threads into a single unified view. Useful for project tracking, research, or summarizing long discussions.</div>
+        <div class="cb-insight-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="url(#mergeGrad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3v12"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/><defs><linearGradient id="mergeGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00D4FF"/><stop offset="100%" stop-color="#7C3AED"/></linearGradient></defs></svg>
+          Merge Threads
+        </div>
+        <div class="cb-insight-content">Combine multiple chat threads into a unified view. Perfect for project tracking and research.</div>
       </div>
       <div class="cb-insight-block">
-        <div class="cb-insight-title">Extract Key Content</div>
-        <div class="cb-insight-content">Automatically extract highlights, action items, and decisions from your conversations. Perfect for meeting notes and follow-ups.</div>
+        <div class="cb-insight-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="url(#extractGrad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><defs><linearGradient id="extractGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00D4FF"/><stop offset="100%" stop-color="#7C3AED"/></linearGradient></defs></svg>
+          Extract Key Content
+        </div>
+        <div class="cb-insight-content">Extract highlights, action items, and decisions from conversations. Perfect for meeting notes.</div>
       </div>
       <div class="cb-insight-block">
-        <div class="cb-insight-title">Organize & Tag</div>
-        <div class="cb-insight-content">Tag, categorize, and search your chats for easy retrieval. Stay organized and never lose track of important information.</div>
+        <div class="cb-insight-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="url(#organizeGrad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/><defs><linearGradient id="organizeGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00D4FF"/><stop offset="100%" stop-color="#7C3AED"/></linearGradient></defs></svg>
+          Organize & Tag
+        </div>
+        <div class="cb-insight-content">Tag, categorize, and search your chats for easy retrieval. Never lose important info.</div>
       </div>
     </div>
   `;
@@ -3132,7 +3156,7 @@
           img.src = imgData.src;
           img.style.cssText = 'width:100%;height:100%;object-fit:cover;';
           img.loading = 'lazy';
-          img.onerror = () => { thumb.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:16px;">🖼️</div>'; };
+          img.onerror = () => { thumb.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div>'; };
 
           thumb.appendChild(img);
 
@@ -4319,13 +4343,15 @@
       `;
       header.innerHTML = `
         <div style="display:flex;align-items:center;gap:12px;">
-          <span style="font-size:24px;">🔍</span>
+          <div style="width:40px;height:40px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg, rgba(0,212,255,0.15), rgba(124,58,237,0.1));border-radius:12px;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="url(#findGrad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><defs><linearGradient id="findGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00D4FF"/><stop offset="100%" stop-color="#7C3AED"/></linearGradient></defs></svg>
+          </div>
           <div>
-            <div style="font-weight:700;font-size:18px;color:${themeVars.white};">Insight Finder</div>
+            <div style="font-weight:700;font-size:18px;color:${themeVars.white};background:linear-gradient(135deg, #00D4FF, #7C3AED);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">Insight Finder</div>
             <div style="font-size:12px;color:${themeVars.subtext};margin-top:2px;">Semantic spotlight on key chat elements</div>
           </div>
         </div>
-        <button id="cb-insight-close" style="background:none;border:none;color:${themeVars.white}B3;font-size:24px;cursor:pointer;padding:4px 8px;transition:all 0.2s;">×</button>
+        <button id="cb-insight-close" style="background:linear-gradient(135deg, rgba(0,212,255,0.08), rgba(124,58,237,0.05));border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:${themeVars.white}B3;font-size:18px;cursor:pointer;padding:6px 10px;transition:all 0.2s;">×</button>
       `;
 
       // Main content area (split: categories left, snippets right)
@@ -4347,11 +4373,11 @@
       `;
 
       const categories = [
-        { key: 'comparisons', icon: '⚖️', label: 'Comparisons', count: insights.comparisons.length },
-        { key: 'contradictions', icon: '⚠️', label: 'Contradictions', count: insights.contradictions.length },
-        { key: 'requirements', icon: '✓', label: 'Requirements', count: insights.requirements.length },
-        { key: 'todos', icon: '📋', label: 'Todos', count: insights.todos.length },
-        { key: 'deprecated', icon: '🗑️', label: 'Deprecated', count: insights.deprecated.length }
+        { key: 'comparisons', icon: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10H3M21 6H3M21 14H3M21 18H3"/></svg>', label: 'Comparisons', count: insights.comparisons.length },
+        { key: 'contradictions', icon: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>', label: 'Contradictions', count: insights.contradictions.length },
+        { key: 'requirements', icon: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>', label: 'Requirements', count: insights.requirements.length },
+        { key: 'todos', icon: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>', label: 'Todos', count: insights.todos.length },
+        { key: 'deprecated', icon: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>', label: 'Deprecated', count: insights.deprecated.length }
       ];
 
       let selectedCategory = categories.find(c => c.count > 0)?.key || 'comparisons';
@@ -7396,23 +7422,23 @@ Output ONLY the 5 numbered questions.`;
         const platforms = [...new Set(convs.map(c => c.platform || 'Unknown'))];
 
         const statsSection = document.createElement('div');
-        statsSection.style.cssText = 'display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:0 8px;margin-bottom:16px;';
+        statsSection.style.cssText = 'display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:0 8px;margin-bottom:18px;';
         statsSection.innerHTML = `
-          <div style="background:linear-gradient(135deg,rgba(0,180,255,0.1),rgba(140,30,255,0.1));border:1px solid rgba(0,180,255,0.2);border-radius:8px;padding:10px;text-align:center;">
-            <div style="font-size:20px;font-weight:700;color:var(--cb-white);">${totalConvs}</div>
-            <div style="font-size:9px;color:var(--cb-subtext);text-transform:uppercase;">Chats</div>
+          <div style="background:linear-gradient(135deg, rgba(0,212,255,0.06), rgba(124,58,237,0.04));border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:14px 10px;text-align:center;transition:all 0.25s;">
+            <div style="font-size:22px;font-weight:700;color:var(--cb-white);background:linear-gradient(135deg, #00D4FF, #7C3AED);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">${totalConvs}</div>
+            <div style="font-size:9px;color:var(--cb-subtext);text-transform:uppercase;letter-spacing:0.5px;margin-top:4px;">Chats</div>
           </div>
-          <div style="background:linear-gradient(135deg,rgba(0,180,255,0.1),rgba(140,30,255,0.1));border:1px solid rgba(0,180,255,0.2);border-radius:8px;padding:10px;text-align:center;">
-            <div style="font-size:20px;font-weight:700;color:var(--cb-white);">${totalMsgs}</div>
-            <div style="font-size:9px;color:var(--cb-subtext);text-transform:uppercase;">Messages</div>
+          <div style="background:linear-gradient(135deg, rgba(0,212,255,0.06), rgba(124,58,237,0.04));border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:14px 10px;text-align:center;transition:all 0.25s;">
+            <div style="font-size:22px;font-weight:700;color:var(--cb-white);background:linear-gradient(135deg, #00D4FF, #7C3AED);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">${totalMsgs}</div>
+            <div style="font-size:9px;color:var(--cb-subtext);text-transform:uppercase;letter-spacing:0.5px;margin-top:4px;">Messages</div>
           </div>
-          <div style="background:linear-gradient(135deg,rgba(0,180,255,0.1),rgba(140,30,255,0.1));border:1px solid rgba(0,180,255,0.2);border-radius:8px;padding:10px;text-align:center;">
-            <div style="font-size:20px;font-weight:700;color:var(--cb-white);">${platforms.length}</div>
-            <div style="font-size:9px;color:var(--cb-subtext);text-transform:uppercase;">Platforms</div>
+          <div style="background:linear-gradient(135deg, rgba(0,212,255,0.06), rgba(124,58,237,0.04));border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:14px 10px;text-align:center;transition:all 0.25s;">
+            <div style="font-size:22px;font-weight:700;color:var(--cb-white);background:linear-gradient(135deg, #00D4FF, #7C3AED);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">${platforms.length}</div>
+            <div style="font-size:9px;color:var(--cb-subtext);text-transform:uppercase;letter-spacing:0.5px;margin-top:4px;">Platforms</div>
           </div>
-          <div style="background:linear-gradient(135deg,rgba(0,180,255,0.1),rgba(140,30,255,0.1));border:1px solid rgba(0,180,255,0.2);border-radius:8px;padding:10px;text-align:center;">
-            <div style="font-size:20px;font-weight:700;color:var(--cb-white);">${Math.round(totalMsgs / Math.max(1, totalConvs))}</div>
-            <div style="font-size:9px;color:var(--cb-subtext);text-transform:uppercase;">Avg/Chat</div>
+          <div style="background:linear-gradient(135deg, rgba(0,212,255,0.06), rgba(124,58,237,0.04));border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:14px 10px;text-align:center;transition:all 0.25s;">
+            <div style="font-size:22px;font-weight:700;color:var(--cb-white);background:linear-gradient(135deg, #00D4FF, #7C3AED);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">${Math.round(totalMsgs / Math.max(1, totalConvs))}</div>
+            <div style="font-size:9px;color:var(--cb-subtext);text-transform:uppercase;letter-spacing:0.5px;margin-top:4px;">Avg/Chat</div>
           </div>
         `;
         insightsContent.appendChild(statsSection);
@@ -7421,8 +7447,8 @@ Output ONLY the 5 numbered questions.`;
         const toolsHeader = document.createElement('div');
         toolsHeader.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:0 8px;margin-bottom:12px;';
         toolsHeader.innerHTML = `
-          <div style="font-size:11px;font-weight:600;color:var(--cb-accent-primary);text-transform:uppercase;letter-spacing:0.5px;">Workspace Tools</div>
-          <button id="cb-insights-refresh" style="background:rgba(0,180,255,0.1);border:1px solid rgba(0,180,255,0.3);border-radius:6px;padding:4px 10px;font-size:10px;color:var(--cb-white);cursor:pointer;">🔄 Refresh</button>
+          <div style="font-size:11px;font-weight:600;color:var(--cb-white);display:flex;align-items:center;gap:6px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="url(#toolsGrad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/><defs><linearGradient id="toolsGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00D4FF"/><stop offset="100%" stop-color="#7C3AED"/></linearGradient></defs></svg>Workspace Tools</div>
+          <button id="cb-insights-refresh" style="background:linear-gradient(135deg, rgba(0,212,255,0.1), rgba(124,58,237,0.08));border:1px solid rgba(0,212,255,0.2);border-radius:8px;padding:6px 12px;font-size:10px;color:var(--cb-white);cursor:pointer;display:flex;align-items:center;gap:4px;transition:all 0.2s;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>Refresh</button>
         `;
         insightsContent.appendChild(toolsHeader);
 
@@ -7431,13 +7457,13 @@ Output ONLY the 5 numbered questions.`;
         if (refreshBtn) {
           refreshBtn.addEventListener('click', async () => {
             try {
-              refreshBtn.textContent = '⏳ Loading...';
+              refreshBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="cb-spin"><circle cx="12" cy="12" r="10"/></svg> Loading...';
               refreshBtn.disabled = true;
               // Clear cache to force fresh load
               __cbConvCache.data = [];
               __cbConvCache.ts = 0;
               await renderInsightsHub();
-              toast('✓ Refreshed');
+              toast('Refreshed');
             } catch (e) {
               toast('Refresh failed');
               debugLog('Insights refresh error', e);
@@ -8181,16 +8207,16 @@ Output ONLY the 5 numbered questions.`;
             insightsSection.style.cssText = 'margin-bottom:16px;padding:0 12px;';
 
             const insightsTitle = document.createElement('div');
-            insightsTitle.style.cssText = 'font-weight:600;font-size:12px;margin-bottom:8px;color:var(--cb-subtext);display:flex;align-items:center;justify-content:space-between;';
+            insightsTitle.style.cssText = 'font-weight:600;font-size:12px;margin-bottom:10px;color:var(--cb-white);display:flex;align-items:center;justify-content:space-between;';
             insightsTitle.innerHTML = `
-              <span>🎯 AI-Generated Insights</span>
-              <button class="cb-btn" style="padding:2px 8px;font-size:10px;">Refresh</button>
+              <span style="display:flex;align-items:center;gap:8px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="url(#aiInsGrad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/><defs><linearGradient id="aiInsGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00D4FF"/><stop offset="100%" stop-color="#7C3AED"/></linearGradient></defs></svg>AI-Generated Insights</span>
+              <button class="cb-btn" style="padding:4px 10px;font-size:10px;background:linear-gradient(135deg, rgba(0,212,255,0.1), rgba(124,58,237,0.08));border:1px solid rgba(0,212,255,0.2);">Refresh</button>
             `;
             insightsSection.appendChild(insightsTitle);
 
             const insightsContainer = document.createElement('div');
             insightsContainer.id = 'cb-ai-insights-container';
-            insightsContainer.style.cssText = 'background:rgba(16,24,43,0.4);border:1px solid rgba(0,180,255,0.2);border-radius:8px;padding:12px;max-height:300px;overflow-y:auto;';
+            insightsContainer.style.cssText = 'background:linear-gradient(135deg, rgba(0,212,255,0.04), rgba(124,58,237,0.03));border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:14px;max-height:300px;overflow-y:auto;';
 
             const summaryEngine = new window.AISummaryEngine();
             summaryEngine.renderInsights(insights, insightsContainer);
@@ -8231,8 +8257,8 @@ Output ONLY the 5 numbered questions.`;
           const msgs = await scanChat();
           if (msgs && msgs.length > 15) {
             const autoSection = document.createElement('div');
-            autoSection.style.cssText = 'margin:12px;padding:12px;background:rgba(16,24,43,0.4);border:1px solid rgba(0,180,255,0.25);border-radius:8px;';
-            autoSection.innerHTML = '<div style="font-weight:600;font-size:12px;margin-bottom:6px;color:var(--cb-subtext);">🧠 Auto Summary</div><div id="cb-auto-sum" style="font-size:12px;opacity:0.9;line-height:1.4;">Summarizing conversation…</div>';
+            autoSection.style.cssText = 'margin:12px;padding:14px 16px;background:linear-gradient(135deg, rgba(0,212,255,0.04), rgba(124,58,237,0.03));border:1px solid rgba(255,255,255,0.06);border-radius:10px;';
+            autoSection.innerHTML = '<div style="font-weight:600;font-size:12px;margin-bottom:8px;color:var(--cb-white);display:flex;align-items:center;gap:8px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="url(#autoGrad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 10 10H12V2z"/><path d="M12 2a10 10 0 0 1 10 10"/><circle cx="12" cy="12" r="3"/><defs><linearGradient id="autoGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00D4FF"/><stop offset="100%" stop-color="#7C3AED"/></linearGradient></defs></svg>Auto Summary</div><div id="cb-auto-sum" style="font-size:12px;color:var(--cb-subtext);line-height:1.5;">Summarizing conversation...</div>';
             insightsContent.appendChild(autoSection);
             // Generate summary asynchronously without blocking UI
             (async () => {
@@ -8273,12 +8299,18 @@ Output ONLY the 5 numbered questions.`;
           }
         } catch (e) { debugLog('auto summary failed', e); }
 
-        // Quick Actions Grid
+        // Quick Actions Grid with section header
+        const actionsLabel = document.createElement('div');
+        actionsLabel.style.cssText = 'font-size:11px;font-weight:600;color:var(--cb-white);margin-bottom:12px;padding:0 12px;display:flex;align-items:center;gap:6px;';
+        actionsLabel.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="url(#actGrad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/><defs><linearGradient id="actGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00D4FF"/><stop offset="100%" stop-color="#7C3AED"/></linearGradient></defs></svg>Quick Actions';
+        insightsContent.appendChild(actionsLabel);
+
         const actionsGrid = document.createElement('div');
-        actionsGrid.style.cssText = 'display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;padding:0 12px;';
+        actionsGrid.style.cssText = 'display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px;padding:0 12px;';
 
         // 1. Quick Compare (compare responses from different models)
-        const compareBtn = createFeatureCard('Compare Models', 'Compare how different AIs answered the same question', '🔄', async () => {
+        const compareIcon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="url(#cmpGrad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><defs><linearGradient id="cmpGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00D4FF"/><stop offset="100%" stop-color="#7C3AED"/></linearGradient></defs></svg>';
+        const compareBtn = createFeatureCard('Compare Models', 'Compare how different AIs answered', compareIcon, async () => {
           try {
             const convs = await loadConversationsAsync();
             if (!convs || convs.length < 2) { toast('Need at least 2 conversations'); return; }
@@ -8299,7 +8331,8 @@ Output ONLY the 5 numbered questions.`;
         });
 
         // 2. Smart Merge (merge related conversations)
-        const mergeBtn = createFeatureCard('Merge Threads', 'Combine related conversations into one coherent thread', '🔗', async () => {
+        const mergeIcon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="url(#mrgGrad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3v12"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/><defs><linearGradient id="mrgGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00D4FF"/><stop offset="100%" stop-color="#7C3AED"/></linearGradient></defs></svg>';
+        const mergeBtn = createFeatureCard('Merge Threads', 'Combine related conversations', mergeIcon, async () => {
           try {
             const convs = await loadConversationsAsync();
             if (!convs || convs.length < 2) { toast('Need at least 2 conversations'); return; }
@@ -8313,7 +8346,8 @@ Output ONLY the 5 numbered questions.`;
         });
 
         // 3. Quick Extract (extract code, lists, or key info)
-        const extractBtn = createFeatureCard('Extract Content', 'Pull out code blocks, lists, or important info', '📋', () => {
+        const extractIcon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="url(#extGrad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><defs><linearGradient id="extGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00D4FF"/><stop offset="100%" stop-color="#7C3AED"/></linearGradient></defs></svg>';
+        const extractBtn = createFeatureCard('Extract Content', 'Pull out code blocks and key info', extractIcon, () => {
           try {
             showExtractView();
           } catch (e) {
@@ -8323,7 +8357,8 @@ Output ONLY the 5 numbered questions.`;
         });
 
         // 4. Insight Finder (semantic spotlight - CTRL+SHIFT+F)
-        const insightBtn = createFeatureCard('Insight Finder', 'Extract comparisons, contradictions, requirements & more', '🔍', async () => {
+        const insightIcon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="url(#insGrad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><defs><linearGradient id="insGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00D4FF"/><stop offset="100%" stop-color="#7C3AED"/></linearGradient></defs></svg>';
+        const insightBtn = createFeatureCard('Insight Finder', 'Extract comparisons and requirements', insightIcon, async () => {
           addLoadingToButton(insightBtn, 'Analyzing...');
           try {
             const msgs = await scanChat();
@@ -8350,7 +8385,8 @@ Output ONLY the 5 numbered questions.`;
         });
 
         // 5. Continue Conversation (cross-model handoff)
-        const continueBtn = createFeatureCard('Continue on...', 'Move this conversation to a different AI model', '🔄', async () => {
+        const continueIcon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="url(#conGrad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 14 20 9 15 4"/><path d="M4 20v-7a4 4 0 0 1 4-4h12"/><defs><linearGradient id="conGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00D4FF"/><stop offset="100%" stop-color="#7C3AED"/></linearGradient></defs></svg>';
+        const continueBtn = createFeatureCard('Continue on...', 'Move to a different AI model', continueIcon, async () => {
           addLoadingToButton(continueBtn, 'Preparing...');
           try {
             const msgs = await scanChat();
@@ -8442,7 +8478,8 @@ Output ONLY the 5 numbered questions.`;
         actionsGrid.appendChild(continueBtn);
 
         // 6. Fact-Check Mode (extract and verify claims)
-        const factCheckBtn = createFeatureCard('Fact-Check', 'Extract and analyze factual claims from conversation', '✓', async () => {
+        const factIcon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="url(#fctGrad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/><defs><linearGradient id="fctGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00D4FF"/><stop offset="100%" stop-color="#7C3AED"/></linearGradient></defs></svg>';
+        const factCheckBtn = createFeatureCard('Fact-Check', 'Analyze factual claims', factIcon, async () => {
           addLoadingToButton(factCheckBtn, 'Analyzing...');
           try {
             const msgs = await scanChat();
@@ -8519,8 +8556,8 @@ Respond with JSON only:
         outputSection.style.cssText = 'padding:0 12px;margin-bottom:16px;';
 
         const outputLabel = document.createElement('div');
-        outputLabel.style.cssText = 'font-weight:600;font-size:12px;margin-bottom:8px;color:var(--cb-subtext);';
-        outputLabel.textContent = '📄 Output Preview';
+        outputLabel.style.cssText = 'font-weight:600;font-size:12px;margin-bottom:8px;color:var(--cb-white);display:flex;align-items:center;gap:6px;';
+        outputLabel.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="url(#outGrad)" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><defs><linearGradient id="outGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00D4FF"/><stop offset="100%" stop-color="#7C3AED"/></linearGradient></defs></svg>Output Preview';
         outputSection.appendChild(outputLabel);
 
         const outputArea = document.createElement('div');
@@ -8640,23 +8677,31 @@ Respond with JSON only:
       }
     }
 
-    // Helper: Create feature card
+    // Helper: Create feature card with luxury styling
     function createFeatureCard(title, description, icon, onClick) {
       const card = document.createElement('button');
       card.className = 'cb-btn';
-      card.style.cssText = 'padding:14px 12px;text-align:left;height:auto;display:flex;flex-direction:column;gap:6px;background:rgba(16,24,43,0.4);border:1px solid rgba(0,180,255,0.2);transition:all 0.2s;';
+      card.style.cssText = 'padding:16px 14px;text-align:left;height:auto;display:flex;flex-direction:column;gap:8px;background:linear-gradient(135deg, rgba(0,212,255,0.04), rgba(124,58,237,0.03));border:1px solid rgba(255,255,255,0.06);border-radius:12px;transition:all 0.25s ease;position:relative;overflow:hidden;';
+      // Check if icon is SVG or emoji
+      const iconContent = icon.startsWith('<svg') ? icon : `<span style="font-size:18px;">${icon}</span>`;
       card.innerHTML = `
-        <div style="font-size:20px;line-height:1;">${icon}</div>
-        <div style="font-weight:600;font-size:13px;">${title}</div>
-        <div style="font-size:11px;opacity:0.7;line-height:1.3;">${description}</div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div style="width:20px;height:20px;display:flex;align-items:center;justify-content:center;">${iconContent}</div>
+          <div style="font-weight:600;font-size:12px;color:var(--cb-white);">${title}</div>
+        </div>
+        <div style="font-size:11px;opacity:0.7;line-height:1.4;color:var(--cb-subtext);padding-left:28px;">${description}</div>
       `;
       card.addEventListener('mouseenter', () => {
-        card.style.background = 'rgba(0,180,255,0.15)';
+        card.style.background = 'linear-gradient(135deg, rgba(0,212,255,0.1), rgba(124,58,237,0.08))';
+        card.style.borderColor = 'rgba(0,212,255,0.3)';
         card.style.transform = 'translateY(-2px)';
+        card.style.boxShadow = '0 8px 24px rgba(0,0,0,0.15)';
       });
       card.addEventListener('mouseleave', () => {
-        card.style.background = 'rgba(16,24,43,0.4)';
+        card.style.background = 'linear-gradient(135deg, rgba(0,212,255,0.04), rgba(124,58,237,0.03))';
+        card.style.borderColor = 'rgba(255,255,255,0.06)';
         card.style.transform = 'translateY(0)';
+        card.style.boxShadow = 'none';
       });
       card.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); try { onClick && onClick(e); } catch (_) { } });
       return card;
@@ -8921,7 +8966,7 @@ Respond with JSON only:
       // Send to Chat button
       const sendBtn = document.createElement('button');
       sendBtn.className = 'cb-btn cb-btn-primary';
-      sendBtn.textContent = '📤 Send to Chat';
+      sendBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px;"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>Send to Chat';
       sendBtn.style.cssText = 'margin:0 12px;width:calc(100% - 24px);';
       sendBtn.addEventListener('click', async () => {
         try {
