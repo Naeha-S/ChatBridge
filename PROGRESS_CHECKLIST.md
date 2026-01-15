@@ -131,7 +131,7 @@ This comprehensive checklist tracks the implementation progress of ALL ChatBridg
 - [x] Status text display ("Status: idle")
 
 ### History Section
-- [ ] **History Header**
+    - [ ] **History Header**
     - [ ] 📜 History title
     - [ ] 🗑️ Clear all history button
 - [ ] **Search Filter**
@@ -470,11 +470,11 @@ This comprehensive checklist tracks the implementation progress of ALL ChatBridg
 ---
 
 ## 🔔 Floating Avatar
-- [ ] Avatar button (CB badge)
-- [ ] Click to open sidebar
+- [x] Avatar button (CB badge)
+- [x] Click to open sidebar
 - [ ] Drag/drop functionality
-- [ ] Hover effects
-- [ ] Contextual positioning
+- [x] Hover effects
+- [x] Contextual positioning
 
 ---
 

@@ -856,11 +856,11 @@
   }
 
   function injectUI() {
-    // If host already exists, ensure avatar is present (in case it was removed)
-    if (document.getElementById('cb-host')) {
-      try { ensureAvatarExists(); } catch (e) { }
-      return;
-    }
+    // Generic cleanup of existing elements (handles extension reloads/orphans)
+    const existingHost = document.getElementById('cb-host');
+    const existingAvatar = document.getElementById('cb-avatar');
+    if (existingHost) existingHost.remove();
+    if (existingAvatar) existingAvatar.remove();
     const avatar = document.createElement('div'); avatar.id = 'cb-avatar'; avatar.setAttribute('data-cb-ignore', 'true');
     const mainAvatarImg = document.createElement('img');
     mainAvatarImg.src = chrome.runtime.getURL('iconic.jpeg');
@@ -1055,7 +1055,7 @@
   .cb-panel::-webkit-scrollbar-track { background: var(--cb-bg); border-radius: 10px; }
   .cb-panel::-webkit-scrollbar-thumb { background: linear-gradient(180deg, var(--cb-accent-primary), var(--cb-accent-secondary)); border-radius: 10px; border: 2px solid var(--cb-bg); }
   .cb-panel::-webkit-scrollbar-thumb:hover { opacity: 0.8; }
-  .cb-header { display:flex; flex-direction:row; align-items:flex-start; justify-content:space-between; padding:var(--cb-space-xl) var(--cb-space-xl) var(--cb-space-lg) var(--cb-space-xl); gap:var(--cb-space-md); border-bottom: 1px solid var(--cb-border); background: rgba(255,255,255,0.02); backdrop-filter: blur(10px); position: relative; }
+  .cb-header { display:flex; flex-direction:row; align-items:flex-start; justify-content:space-between; padding:var(--cb-space-xl) var(--cb-space-xl) var(--cb-space-sm) var(--cb-space-xl); gap:var(--cb-space-md); position: relative; }
   .cb-title { font-weight:700; font-size:20px; letter-spacing:-0.02em; color: var(--cb-white); background: linear-gradient(135deg, #00D4FF, #7C3AED); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
   .cb-subtitle { font-size:12px; color: var(--cb-subtext); font-weight:500; margin-top:4px; margin-bottom:2px; letter-spacing:-0.01em; opacity:0.8; }
   .cb-badge { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, #00D4FF, #7C3AED); color: #ffffff; font-weight: 800; font-size: 15px; letter-spacing: -0.5px; box-shadow: 0 4px 16px rgba(0, 212, 255, 0.3), 0 0 20px rgba(124, 58, 237, 0.2); margin-right: 14px; animation: cb-badge-float 3s ease-in-out infinite; transition: box-shadow 0.3s, transform 0.3s; }
@@ -1067,9 +1067,9 @@
   .cb-header-btn svg { width: 18px; height: 18px; stroke-width: 2; }
   .cb-header-btn.cb-settings-btn:hover { transform: rotate(90deg); }
   .cb-header-btn.cb-close-btn:hover { background: rgba(248, 81, 73, 0.15); color: #f85149; border-color: rgba(248, 81, 73, 0.3); transform: scale(1.05); }
-    .cb-actions { padding:var(--cb-space-lg) var(--cb-space-xl) var(--cb-space-md) var(--cb-space-xl); display:flex; flex-direction:column; gap:var(--cb-space-md); align-items:stretch; justify-content:flex-start; }
-  .cb-actions-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap:var(--cb-space-md); width:100%; }
-  .cb-actions .cb-btn { min-width:0; padding:12px 14px; font-size:12px; white-space:nowrap; font-weight:600; letter-spacing:-0.01em; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); text-transform: uppercase; width:100%; position: relative; overflow: hidden; z-index: 0; }
+    .cb-actions { padding:var(--cb-space-md) var(--cb-space-xl) var(--cb-space-sm) var(--cb-space-xl); display:flex; flex-direction:column; gap:var(--cb-space-sm); align-items:stretch; justify-content:flex-start; }
+  .cb-actions-grid { display:grid; grid-template-columns: repeat(3, 1fr); gap:8px; width:100%; }
+  .cb-actions .cb-btn { min-width:0; padding:8px 10px; font-size:10px; white-space:nowrap; font-weight:600; letter-spacing:0.02em; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); text-transform: uppercase; width:100%; position: relative; overflow: hidden; z-index: 0; }
     .cb-btn { background: var(--cb-bg3); border:1px solid var(--cb-border); color:var(--cb-white) !important; padding:12px 16px; border-radius:10px; cursor:pointer; font-size:13px; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); font-weight:600; box-shadow: 0 2px 8px var(--cb-shadow); position: relative; overflow: hidden; }
   .cb-btn::before { content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent); transition: left 0.5s ease; pointer-events: none; z-index: 1; }
   .cb-btn:hover::before { left: 100%; }
@@ -1086,8 +1086,8 @@
   .cb-btn-secondary:hover { background: var(--cb-bg3); border-color: var(--cb-accent-primary); color: var(--cb-white) !important; }
   .cb-btn-tertiary { background: none; border: none; color: var(--cb-subtext) !important; padding:var(--cb-space-sm) var(--cb-space-md); font-weight:500; }
   .cb-btn-tertiary:hover { background: var(--cb-bg3); color: var(--cb-white) !important; }
-  .cb-scan-row { padding: 0 var(--cb-space-xl) var(--cb-space-md) var(--cb-space-xl); }
-  .cb-scan-wide { width: 100%; margin: 0; padding:var(--cb-space-lg); font-size:var(--cb-text-lg); font-weight:700; border-radius:var(--cb-radius-lg); display:block; letter-spacing:-0.02em; }
+  .cb-scan-row { padding: 12px var(--cb-space-xl) var(--cb-space-sm) var(--cb-space-xl); }
+  .cb-scan-wide { width: 100%; margin: 0; padding:12px 16px; font-size:13px; font-weight:700; border-radius:var(--cb-radius-md); display:block; letter-spacing:0.02em; }
       .cb-btn-danger { background: rgba(255,30,86,0.1); border:1px solid rgba(255,30,86,0.3); color:#FF7A9A !important; font-size:13px; padding:8px 12px; }
       .cb-btn-danger:hover { background: rgba(255,30,86,0.15); border-color: rgba(255,30,86,0.5); color:#FF9CB3 !important; box-shadow: 0 4px 12px rgba(255,30,86,0.2); transform: translateY(-2px); }
       .cb-toolbar { display:flex; align-items:center; gap:var(--cb-space-md); padding:var(--cb-space-lg) var(--cb-space-xl); border-bottom: 1px solid var(--cb-border); }
@@ -1230,23 +1230,24 @@
   .cb-agent-enter { animation: cb-slide-up 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
   
   /* Premium Scan Button */
-  .cb-scan-premium { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 16px 24px; font-size: 15px; font-weight: 700; letter-spacing: 0.02em; background: linear-gradient(135deg, #00D4FF 0%, #7C3AED 50%, #00D4FF 100%); background-size: 200% 200%; animation: cb-gradient-shift 3s ease infinite, cb-breathe 2s ease-in-out infinite; border: none; border-radius: 14px; box-shadow: 0 4px 20px rgba(0, 212, 255, 0.35), 0 0 40px rgba(124, 58, 237, 0.2), inset 0 1px 0 rgba(255,255,255,0.2); text-transform: uppercase; }
-  .cb-scan-premium:hover { transform: translateY(-3px) scale(1.02); box-shadow: 0 8px 32px rgba(0, 212, 255, 0.5), 0 0 60px rgba(124, 58, 237, 0.35); }
-  .cb-scan-premium svg { width: 20px; height: 20px; stroke-width: 2.5; }
+  /* Premium Scan Button with Theme Support */
+  .cb-scan-premium { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 20px; font-size: 12px; font-weight: 700; letter-spacing: 0.04em; background: linear-gradient(135deg, var(--cb-accent-primary) 0%, var(--cb-accent-secondary) 50%, var(--cb-accent-primary) 100%); background-size: 200% 200%; animation: cb-gradient-shift 4s ease infinite; border: none; border-radius: 10px; box-shadow: 0 2px 12px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.15); text-transform: uppercase; color: #ffffff !important; }
+  .cb-scan-premium:hover { transform: translateY(-2px); box-shadow: 0 4px 20px rgba(var(--cb-accent-primary-rgb, 0, 180, 255), 0.35); }
+  .cb-scan-premium svg { width: 16px; height: 16px; stroke-width: 2.5; }
   @keyframes cb-gradient-shift { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
-  @keyframes cb-breathe { 0%, 100% { box-shadow: 0 4px 20px rgba(0, 212, 255, 0.35), 0 0 40px rgba(124, 58, 237, 0.2); } 50% { box-shadow: 0 6px 28px rgba(0, 212, 255, 0.5), 0 0 56px rgba(124, 58, 237, 0.35); } }
   
-  /* Action Grid Premium Buttons */
-  .cb-action-card { display: flex; align-items: center; gap: 8px; padding: 12px 14px; background: rgba(255,255,255,0.03); backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.02em; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-  .cb-action-card:hover { background: rgba(255,255,255,0.08); border-color: rgba(0, 212, 255, 0.4); box-shadow: 0 4px 16px rgba(0, 212, 255, 0.2), inset 0 1px 0 rgba(255,255,255,0.1); transform: translateY(-2px); }
-  .cb-action-card svg { width: 16px; height: 16px; opacity: 0.7; transition: opacity 0.2s; }
+  /* Action Grid Premium Buttons - Compact Luxury */
+  .cb-action-card { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 4px; padding: 10px 6px; min-height: 52px; background: rgba(255,255,255,0.02); backdrop-filter: blur(6px); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); color: var(--cb-subtext); }
+  .cb-action-card:hover { background: rgba(255,255,255,0.06); border-color: rgba(0, 212, 255, 0.3); box-shadow: 0 2px 10px rgba(0, 212, 255, 0.15); transform: translateY(-1px); color: var(--cb-white); }
+  .cb-action-card svg { width: 18px; height: 18px; opacity: 0.65; transition: all 0.2s; stroke: currentColor; }
   .cb-action-card:hover svg { opacity: 1; }
+  .cb-action-card span { font-size: 8px; opacity: 0.85; }
   
-  /* Quick Action Pills */
-  .cb-quick-pill { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 8px; min-width: 56px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; color: var(--cb-subtext); transition: all 0.25s ease; }
-  .cb-quick-pill:hover { background: rgba(0, 212, 255, 0.1); border-color: rgba(0, 212, 255, 0.3); color: var(--cb-white); transform: scale(1.05); }
-  .cb-quick-pill svg { width: 18px; height: 18px; stroke: currentColor; }
-  .cb-quick-pill.cb-active { background: rgba(0, 212, 255, 0.15); border-color: rgba(0, 212, 255, 0.4); color: #00D4FF; }
+  /* Quick Action Pills - Subtle & Refined */
+  .cb-quick-pill { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 5px 3px; min-width: 42px; background: rgba(255,255,255,0.015); border: 1px solid rgba(255,255,255,0.04); border-radius: 8px; font-size: 8px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.02em; color: var(--cb-subtext); transition: all 0.2s ease; opacity: 0.8; }
+  .cb-quick-pill:hover { background: rgba(0, 212, 255, 0.08); border-color: rgba(0, 212, 255, 0.2); color: var(--cb-white); opacity: 1; }
+  .cb-quick-pill svg { width: 12px; height: 12px; stroke: currentColor; }
+  .cb-quick-pill.cb-active { background: rgba(0, 212, 255, 0.12); border-color: rgba(0, 212, 255, 0.3); color: #00D4FF; opacity: 1; }
   
   /* Preview Card */
   .cb-preview-card { margin: 0 var(--cb-space-xl); padding: 14px 16px; background: linear-gradient(135deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01)); border: 1px solid var(--cb-border); border-radius: 12px; position: relative; overflow: hidden; }
@@ -1440,6 +1441,32 @@
     statusRow.appendChild(subtitle);
     titleBlock.appendChild(title);
     titleBlock.appendChild(statusRow);
+
+    // Update global status elements for easy access
+    window.__CB_UPDATE_STATUS = (status, type = 'idle') => {
+      try {
+        const dot = shadow.querySelector('#cb-status-dot');
+        const text = shadow.querySelector('#cb-status-text');
+        const sub = shadow.querySelector('.cb-subtitle');
+        const badge = shadow.querySelector('.cb-preview-badge');
+
+        if (text) text.textContent = status;
+        if (sub) sub.textContent = status === 'Idle' ? `Ready on ${getPlatformName()}` : status;
+
+        if (dot) {
+          dot.className = 'cb-status-dot'; // reset
+          if (type === 'scanning') dot.classList.add('scanning');
+          if (type === 'processing') dot.classList.add('processing');
+        }
+
+        if (badge) {
+          if (type === 'active') {
+            badge.style.display = 'inline-flex';
+            badge.innerHTML = '<span style="display:inline-block;width:6px;height:6px;background:#3fb950;border-radius:50%;margin-right:6px;animation:cb-pulse-dot 2s infinite;"></span>Active Session';
+          }
+        }
+      } catch (e) { }
+    };
 
     // Header left container
     const headerLeft = document.createElement('div');
@@ -1740,9 +1767,26 @@
 
         catContent.innerHTML = '<div style="display:flex;align-items:center;gap:5px;padding:8px;justify-content:center;"><span class="cb-spinner" style="width:10px;height:10px;border-width:2px;"></span><span style="font-size:10px;color:var(--cb-subtext);">Generating...</span></div>';
 
+
         try {
-          let messages = window.ChatBridge?.getLastScan?.()?.messages || [];
-          if (!messages.length) try { messages = await scanChat(); } catch (e) { }
+          // Robustly get messages from cache or scan
+          let messages = [];
+          const last = window.ChatBridge?.getLastScan?.() || null;
+          if (last) {
+            if (Array.isArray(last)) messages = last;
+            else if (last.conversation) messages = last.conversation;
+            else if (last.messages) messages = last.messages;
+          }
+
+          if (!messages.length) {
+            try {
+              const res = await scanChat();
+              if (res) {
+                if (Array.isArray(res)) messages = res;
+                else if (res.conversation) messages = res.conversation;
+              }
+            } catch (e) { }
+          }
 
           if (!messages.length) {
             catContent.innerHTML = '<div style="padding:8px;font-size:10px;color:var(--cb-subtext);text-align:center;">Scan a chat first</div>';
@@ -2126,29 +2170,37 @@
 
         if (mode === 'lastUser') {
           // Find last user message
-          if (lastScan && lastScan.messages && lastScan.messages.length > 0) {
-            for (let i = lastScan.messages.length - 1; i >= 0; i--) {
-              if (lastScan.messages[i].role === 'user') {
-                text = lastScan.messages[i].text || '';
-                break;
+          if (lastScan) {
+            const msgs = lastScan.conversation || lastScan.messages || (Array.isArray(lastScan) ? lastScan : []);
+            if (msgs.length > 0) {
+              for (let i = msgs.length - 1; i >= 0; i--) {
+                if (msgs[i].role === 'user') {
+                  text = msgs[i].text || '';
+                  break;
+                }
               }
             }
           }
           if (!text) text = '(No user messages found)';
         } else if (mode === 'lastAI') {
           // Find last AI message
-          if (lastScan && lastScan.messages && lastScan.messages.length > 0) {
-            for (let i = lastScan.messages.length - 1; i >= 0; i--) {
-              if (lastScan.messages[i].role !== 'user') {
-                text = lastScan.messages[i].text || '';
-                break;
+          if (lastScan) {
+            const msgs = lastScan.conversation || lastScan.messages || (Array.isArray(lastScan) ? lastScan : []);
+            if (msgs.length > 0) {
+              for (let i = msgs.length - 1; i >= 0; i--) {
+                if (msgs[i].role !== 'user') {
+                  text = msgs[i].text || '';
+                  break;
+                }
               }
             }
           }
           if (!text) text = '(No AI messages found)';
         } else {
           // All
-          text = (lastScan && lastScan.messages) ? lastScan.messages.map(m => `${m.role === 'user' ? 'User' : 'AI'}: ${m.text}`).join('\n\n') : '';
+          let msgs = [];
+          if (lastScan) msgs = lastScan.conversation || lastScan.messages || (Array.isArray(lastScan) ? lastScan : []);
+          text = msgs.map(m => `${m.role === 'user' ? 'User' : 'AI'}: ${m.text}`).join('\n\n');
         }
 
         summSourceText.textContent = text;
@@ -5688,6 +5740,82 @@ Rules:
           refreshLibrary();
         });
 
+        // Connect scan button to preview updates and status bar
+        btnScan.addEventListener('click', async () => {
+          const originalText = btnScan.innerHTML;
+          try {
+            // Update status to scanning
+            if (window.__CB_UPDATE_STATUS) window.__CB_UPDATE_STATUS('Scanning...', 'scanning');
+
+            btnScan.disabled = true;
+            // Show spinner in premium button while preserving layout
+            btnScan.innerHTML = `<span class="cb-spinner"></span><span>Scanning...</span>`;
+
+            // Elements
+            const previewParam = shadow.querySelector('#cb-preview-text');
+            const statsEl = shadow.querySelector('#cb-preview-stats');
+            const legacyPreview = shadow.querySelector('.cb-preview'); // Ensure we target the class if id missing or variable lost
+
+            // Hide legacy, show scanning in new card
+            if (legacyPreview) legacyPreview.style.display = 'none';
+            if (preview) preview.style.display = 'none'; // variable from closure if available
+
+            if (previewParam) previewParam.textContent = 'Scanning conversation...';
+            if (statsEl) statsEl.innerHTML = '<span class="cb-preview-stat">...</span>';
+
+            // Actual scan
+            const result = await scanChat();
+
+            if (result && result.conversation && result.conversation.length > 0) {
+              const msgCount = result.conversation.length;
+              const wordCount = result.conversation.reduce((acc, m) => acc + (m.text || '').split(/\s+/).length, 0);
+
+              // Update Premium Preview Card
+              if (previewParam) {
+                const lastMsg = result.conversation[result.conversation.length - 1];
+                const text = lastMsg.text || '';
+                previewParam.textContent = text.slice(0, 150) + (text.length > 150 ? '...' : '');
+                previewParam.style.opacity = '1';
+              }
+
+              if (statsEl) {
+                statsEl.innerHTML = `<span class="cb-preview-stat">${wordCount.toLocaleString()} words</span><span class="cb-preview-stat">${msgCount} msgs</span>`;
+              }
+
+              if (window.__CB_UPDATE_STATUS) window.__CB_UPDATE_STATUS('Session Active', 'active');
+
+              // Trigger save
+              saveConversation(result);
+
+              // Show success animation on button
+              btnScan.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg><span>Saved</span>`;
+              btnScan.classList.add('cb-success');
+
+              setTimeout(() => {
+                btnScan.classList.remove('cb-success');
+                btnScan.innerHTML = originalText;
+                btnScan.disabled = false;
+                if (window.__CB_UPDATE_STATUS) window.__CB_UPDATE_STATUS('Idle', 'idle');
+              }, 2000);
+
+            } else {
+              // Failed / Empty
+              if (previewParam) previewParam.textContent = 'No messages found. Please scroll through the chat and try again.';
+              if (statsEl) statsEl.innerHTML = '<span class="cb-preview-stat">0 words</span><span class="cb-preview-stat">0 msgs</span>';
+
+              if (window.__CB_UPDATE_STATUS) window.__CB_UPDATE_STATUS('Scan Failed', 'idle');
+              btnScan.innerHTML = '❌ Failed';
+              setTimeout(() => { btnScan.innerHTML = originalText; btnScan.disabled = false; }, 2000);
+            }
+          } catch (e) {
+            console.error('Scan failed', e);
+            const previewParam = shadow.querySelector('#cb-preview-text');
+            if (previewParam) previewParam.textContent = 'Error: ' + (e.message || 'Unknown error');
+
+            btnScan.innerHTML = '❌ Error';
+            setTimeout(() => { btnScan.innerHTML = originalText; btnScan.disabled = false; }, 2000);
+          }
+        });
         // Index all handler
         document.getElementById('cb-library-index').addEventListener('click', async () => {
           const btn = document.getElementById('cb-library-index');
@@ -11871,6 +11999,21 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
             const previewText = firstUser ? firstUser.text.slice(0, 150) : (final[0]?.text || '').slice(0, 150);
             preview.textContent = `Preview: "${previewText}${previewText.length >= 150 ? '...' : ''}"`;
 
+            // Update Premium Preview Card (Active Session)
+            try {
+              const previewStatsEl = shadow.querySelector('#cb-preview-stats');
+              const previewTextEl = shadow.querySelector('#cb-preview-text');
+              const wordCount = final.reduce((acc, m) => acc + (m.text || '').split(/\s+/).length, 0);
+
+              if (previewStatsEl) {
+                previewStatsEl.innerHTML = `<span class="cb-preview-stat">${wordCount.toLocaleString()} words</span><span class="cb-preview-stat">${final.length} msgs</span>`;
+              }
+              if (previewTextEl) {
+                previewTextEl.textContent = previewText + (previewText.length >= 150 ? '...' : '');
+                previewTextEl.style.opacity = '1';
+              }
+            } catch (e) { debugLog('Premium preview update failed:', e); }
+
             // Auto-select this conversation for other features
             try {
               window.ChatBridge.selectedConversation = conv;
@@ -16270,6 +16413,55 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
     // Luxury Mode removed - themes handle visual styling now
     debugLog('[ChatBridge] Using theme system for visual styles');
 
+    // Ensure avatar is visible initially
+    avatar.style.display = 'flex';
+
+    // Toggle logic for sidebar
+    const toggleSidebar = () => {
+      const isHidden = host.style.display === 'none';
+      if (isHidden) {
+        host.style.display = 'block';
+        // Reset panel for entry animation
+        panel.style.opacity = '0';
+        panel.style.transform = 'translateY(10px)';
+
+        requestAnimationFrame(() => {
+          panel.style.transition = 'opacity 0.3s ease, transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)';
+          panel.style.opacity = '1';
+          panel.style.transform = 'translateY(0)';
+        });
+
+        avatar.style.display = 'none';
+      } else {
+        // Exit animation
+        panel.style.opacity = '0';
+        panel.style.transform = 'translateY(10px) scale(0.98)';
+        setTimeout(() => {
+          host.style.display = 'none';
+          avatar.style.display = 'flex';
+        }, 200);
+      }
+    };
+
+    // Attach functionality
+    avatar.onclick = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      toggleSidebar();
+    };
+
+    // Ensure Clean Closure
+    if (typeof btnClose !== 'undefined') {
+      btnClose.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        toggleSidebar();
+      });
+    }
+
+    // Expose toggle for keyboard shortcuts
+    avatar.toggle = toggleSidebar;
+
     return { host, avatar, panel };
   }
 
@@ -16600,7 +16792,17 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
         }
       } catch (e) { }
 
-      return normalized;
+      // Return array with metadata props for full backward compatibility
+      const resultObj = Object.assign([...normalized], {
+        conversation: normalized,
+        messages: normalized,
+        platform: (adapter && adapter.name) || (document.title || 'Chat'),
+        ts: Date.now(),
+        url: window.location.href
+      });
+
+      if (window.ChatBridge) window.ChatBridge._lastScanResult = resultObj;
+      return resultObj;
     } catch (e) {
       debugLog('=== SCAN FAILED ===', e);
       console.error('[ChatBridge] Fatal scan error:', e);
@@ -16823,8 +17025,7 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
   // Usage: ChatBridge.testE2E({ text?: string })
   // Returns a Promise<{ savedOk, topOk, restoreOk, details }>
   window.ChatBridge.testE2E = async function (opts) {
-    const details = [];
-    try {
+    const details = []; try {
       const before = await loadConversationsAsync();
       const preCount = Array.isArray(before) ? before.length : 0;
       details.push(`Pre-count: ${preCount}`);
