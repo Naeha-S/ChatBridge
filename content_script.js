@@ -462,20 +462,15 @@
       if (document.getElementById('cb-avatar')) return;
       const a = document.createElement('div');
       a.id = 'cb-avatar'; a.setAttribute('data-cb-ignore', 'true');
-      // polished SVG lettermark for avatar (CB)
-      a.innerHTML = `
-        <svg width="34" height="34" viewBox="0 0 34 34" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-          <defs>
-            <filter id="s" x="-50%" y="-50%" width="200%" height="200%"><feDropShadow dx="0" dy="4" stdDeviation="6" flood-opacity="0.12" flood-color="#000"/></filter>
-          </defs>
-          <g filter="url(#s)">
-            <circle cx="17" cy="17" r="16" fill="#e6cf9f" stroke="#0b0f17" stroke-width="1" />
-            <text x="50%" y="52%" text-anchor="middle" fill="#0b0f17" font-family="Inter, Arial, sans-serif" font-weight="700" font-size="12">CB</text>
-          </g>
-        </svg>`;
-      a.style.cssText = 'position:fixed;bottom:22px;right:26px;width:48px;height:48px;border-radius:12px;z-index:2147483647;display:flex;align-items:center;justify-content:center;cursor:pointer;background:transparent;box-shadow:0 6px 20px rgba(0,0,0,0.18);transition: transform .12s ease, box-shadow .12s ease;';
-      a.addEventListener('mouseenter', () => { try { a.style.transform = 'translateY(-2px)'; a.style.boxShadow = '0 10px 26px rgba(230,207,159,0.18)'; } catch (e) { } });
-      a.addEventListener('mouseleave', () => { try { a.style.transform = ''; a.style.boxShadow = '0 6px 20px rgba(0,0,0,0.18)'; } catch (e) { } });
+      // Use the new ring logo
+      const img = document.createElement('img');
+      img.src = chrome.runtime.getURL('logo.png');
+      img.alt = 'ChatBridge';
+      img.style.cssText = 'width:100%;height:100%;object-fit:contain;border-radius:0;filter:drop-shadow(0 0 8px rgba(0, 212, 255, 0.5)) drop-shadow(0 0 16px rgba(124, 58, 237, 0.4));';
+      a.appendChild(img);
+      a.style.cssText = 'position:fixed;bottom:22px;right:26px;width:52px;height:52px;border-radius:50%;z-index:2147483647;display:flex;align-items:center;justify-content:center;cursor:pointer;background:transparent;box-shadow:none;transition: transform .15s ease, filter .15s ease;overflow:visible;';
+      a.addEventListener('mouseenter', () => { try { a.style.transform = 'translateY(-3px) scale(1.08)'; a.querySelector('img').style.filter = 'drop-shadow(0 0 12px rgba(0, 212, 255, 0.7)) drop-shadow(0 0 24px rgba(124, 58, 237, 0.6))'; } catch (e) { } });
+      a.addEventListener('mouseleave', () => { try { a.style.transform = ''; a.querySelector('img').style.filter = 'drop-shadow(0 0 8px rgba(0, 212, 255, 0.5)) drop-shadow(0 0 16px rgba(124, 58, 237, 0.4))'; } catch (e) { } });
       // Click should reveal the host sidebar if present
       a.addEventListener('click', () => {
         try {
@@ -863,8 +858,8 @@
     if (existingAvatar) existingAvatar.remove();
     const avatar = document.createElement('div'); avatar.id = 'cb-avatar'; avatar.setAttribute('data-cb-ignore', 'true');
     const mainAvatarImg = document.createElement('img');
-    mainAvatarImg.src = chrome.runtime.getURL('iconic.jpeg');
-    mainAvatarImg.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:12px;';
+    mainAvatarImg.src = chrome.runtime.getURL('logo.png');
+    mainAvatarImg.style.cssText = 'width:100%;height:100%;object-fit:contain;border-radius:0;filter:drop-shadow(0 0 8px rgba(0, 212, 255, 0.5)) drop-shadow(0 0 16px rgba(124, 58, 237, 0.4));';
     mainAvatarImg.alt = 'ChatBridge';
     avatar.appendChild(mainAvatarImg);
     // store last scanned text so Clipboard and textarea can access it
@@ -920,10 +915,10 @@
       messageHistory: []
     };
 
-    // Slightly larger avatar, pulled in from the corner with refined styling
-    avatar.style.cssText = 'position:fixed;bottom:22px;right:26px;width:48px;height:48px;border-radius:12px;z-index:2147483647;display:flex;align-items:center;justify-content:center;cursor:pointer;background:transparent;box-shadow:0 6px 20px rgba(0,0,0,0.18);transition: transform .12s ease, box-shadow .12s ease;overflow:hidden;';
-    avatar.addEventListener('mouseenter', () => { try { avatar.style.transform = 'translateY(-2px)'; avatar.style.boxShadow = '0 10px 26px rgba(0,180,255,0.26), 0 0 12px rgba(0,180,255,0.35)'; } catch (e) { } });
-    avatar.addEventListener('mouseleave', () => { try { avatar.style.transform = ''; avatar.style.boxShadow = '0 6px 20px rgba(0,0,0,0.18)'; } catch (e) { } });
+    // Slightly larger avatar, pulled in from the corner with refined styling - transparent background for ring logo
+    avatar.style.cssText = 'position:fixed;bottom:22px;right:26px;width:52px;height:52px;border-radius:50%;z-index:2147483647;display:flex;align-items:center;justify-content:center;cursor:pointer;background:transparent;box-shadow:none;transition: transform .15s ease, filter .15s ease;overflow:visible;';
+    avatar.addEventListener('mouseenter', () => { try { avatar.style.transform = 'translateY(-3px) scale(1.08)'; avatar.querySelector('img').style.filter = 'drop-shadow(0 0 12px rgba(0, 212, 255, 0.7)) drop-shadow(0 0 24px rgba(124, 58, 237, 0.6))'; } catch (e) { } });
+    avatar.addEventListener('mouseleave', () => { try { avatar.style.transform = ''; avatar.querySelector('img').style.filter = 'drop-shadow(0 0 8px rgba(0, 212, 255, 0.5)) drop-shadow(0 0 16px rgba(124, 58, 237, 0.4))'; } catch (e) { } });
     const host = document.createElement('div'); host.id = 'cb-host'; host.setAttribute('data-cb-ignore', 'true'); host.style.cssText = 'display:none;position:fixed;top:0;right:0;z-index:2147483646;pointer-events:none;';
     document.body.appendChild(avatar); document.body.appendChild(host);
     const shadow = host.attachShadow({ mode: 'open' });
@@ -1121,7 +1116,7 @@
       textarea:focus { outline: none; border-color: var(--cb-accent-primary); box-shadow: 0 0 0 3px rgba(0, 180, 255, 0.15); }
       select:focus { outline: none; border-color: var(--cb-accent-primary); box-shadow: 0 0 0 3px rgba(0, 180, 255, 0.15); }
       /* Internal view sections - inline in the sidebar */
-      .cb-internal-view { display: none; padding: var(--cb-space-xl); border-top: 1px solid var(--cb-border); background: var(--cb-bg); animation: slideIn 0.3s ease-out; position: relative; }
+      .cb-internal-view { display: none; margin-top: var(--cb-space-lg); padding: var(--cb-space-xl); border-top: 1px solid var(--cb-border); background: var(--cb-bg); animation: slideIn 0.3s ease-out; position: relative; }
       .cb-internal-view.cb-view-active { display: block; z-index: 100; }
       @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
       .cb-view-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
@@ -1384,15 +1379,15 @@
     // Header: Premium Glassmorphism Design with Avatar
     const header = document.createElement('div'); header.className = 'cb-header';
 
-    // Avatar image (using iconic.jpeg) with glow effect
+    // Logo ring (using logo.png) with glow effect - no black background
     const avatarWrap = document.createElement('div');
     avatarWrap.className = 'cb-header-avatar';
-    avatarWrap.style.cssText = 'width: 42px; height: 42px; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 16px rgba(0, 212, 255, 0.25), 0 0 20px rgba(124, 58, 237, 0.15); flex-shrink: 0; animation: cb-badge-float 3s ease-in-out infinite;';
+    avatarWrap.style.cssText = 'width: 38px; height: 38px; border-radius: 50%; overflow: visible; flex-shrink: 0; animation: cb-badge-float 3s ease-in-out infinite; background: transparent;';
 
     const headerAvatarImg = document.createElement('img');
-    headerAvatarImg.src = chrome.runtime.getURL('iconic.jpeg');
+    headerAvatarImg.src = chrome.runtime.getURL('logo.png');
     headerAvatarImg.alt = 'ChatBridge';
-    headerAvatarImg.style.cssText = 'width: 100%; height: 100%; object-fit: cover;';
+    headerAvatarImg.style.cssText = 'width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 0 6px rgba(0, 212, 255, 0.4)) drop-shadow(0 0 12px rgba(124, 58, 237, 0.3)); background: transparent;';
     avatarWrap.appendChild(headerAvatarImg);
 
     // Title and status row
@@ -1680,7 +1675,7 @@
 
     // --- Internal views (Prompt Designer, Summarize, Rewrite, Translate) - inline sections ---
 
-    // Prompt Designer view - Modern Clean Design
+    // Prompt Designer view - Luxury Minimal Design
     const promptDesignerView = document.createElement('div');
     promptDesignerView.className = 'cb-internal-view';
     promptDesignerView.id = 'cb-prompt-designer-view';
@@ -1688,20 +1683,26 @@
 
     const pdTop = document.createElement('div');
     pdTop.className = 'cb-view-top';
-    pdTop.style.cssText = 'display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--cb-border);';
+    pdTop.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;'; // Removed border for cleaner look
 
     const pdTitle = document.createElement('div');
     pdTitle.className = 'cb-view-title';
-    pdTitle.style.cssText = 'font-size: 20px; font-weight: 700; color: var(--cb-white); display: flex; align-items: center; gap: 10px;';
-    pdTitle.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" fill="url(#gradient)" stroke="var(--cb-accent-primary)" stroke-width="1.5"/><defs><linearGradient id="gradient" x1="2" y1="2" x2="22" y2="21" gradientUnits="userSpaceOnUse"><stop stop-color="var(--cb-accent-primary)"/><stop offset="1" stop-color="var(--cb-accent-secondary)"/></linearGradient></defs></svg><span>Smart Prompts</span>';
+    pdTitle.style.cssText = 'font-size:18px;font-weight:600;color:var(--cb-white);display:flex;align-items:center;gap:12px;letter-spacing:-0.02em;';
+    pdTitle.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" fill="url(#gradient-pd)" stroke="none"/><defs><linearGradient id="gradient-pd" x1="2" y1="2" x2="22" y2="21" gradientUnits="userSpaceOnUse"><stop stop-color="#a78bfa"/><stop offset="1" stop-color="#60a5fa"/></linearGradient></defs></svg><span>Smart Prompts</span>';
 
     const btnClosePD = document.createElement('button');
     btnClosePD.className = 'cb-view-close';
-    btnClosePD.textContent = '✕';
-    btnClosePD.style.cssText = 'background: transparent; border: none; color: var(--cb-subtext); cursor: pointer; font-size: 20px; padding: 4px 8px; border-radius: 6px; transition: all 0.2s ease; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;';
+    btnClosePD.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
+    btnClosePD.style.cssText = 'background:transparent;border:none;color:var(--cb-subtext);cursor:pointer;padding:8px;border-radius:50%;transition:all 0.2s ease;display:flex;align-items:center;justify-content:center;opacity:0.7;';
     btnClosePD.setAttribute('aria-label', 'Close Prompt Designer view');
-    btnClosePD.addEventListener('mouseenter', () => { btnClosePD.style.background = 'rgba(255, 255, 255, 0.05)'; btnClosePD.style.color = 'var(--cb-white)'; });
-    btnClosePD.addEventListener('mouseleave', () => { btnClosePD.style.background = 'transparent'; btnClosePD.style.color = 'var(--cb-subtext)'; });
+    btnClosePD.addEventListener('mouseenter', () => { btnClosePD.style.background = 'rgba(255,255,255,0.05)'; btnClosePD.style.color = 'var(--cb-white)'; btnClosePD.style.opacity = '1'; });
+    btnClosePD.addEventListener('mouseleave', () => { btnClosePD.style.background = 'transparent'; btnClosePD.style.color = 'var(--cb-subtext)'; btnClosePD.style.opacity = '0.7'; });
+    btnClosePD.addEventListener('click', () => {
+      promptDesignerView.style.display = 'none';
+      if (typeof actions !== 'undefined') actions.style.display = 'block';
+      const preview = panel.querySelector('#cb-preview-card');
+      if (preview) preview.style.display = 'block';
+    });
 
     pdTop.appendChild(pdTitle);
     pdTop.appendChild(btnClosePD);
@@ -1709,63 +1710,93 @@
 
     const pdIntro = document.createElement('div');
     pdIntro.className = 'cb-view-intro';
-    pdIntro.style.cssText = 'font-size:11px;line-height:1.4;color:var(--cb-subtext);margin-bottom:12px;padding:8px 12px;background:linear-gradient(135deg,rgba(96,165,250,0.06),rgba(167,139,250,0.06));border:1px solid rgba(96,165,250,0.1);border-radius:8px;';
-    pdIntro.innerHTML = 'Click a category below to generate tailored prompts.';
+    pdIntro.style.cssText = 'font-size:12px;line-height:1.5;color:var(--cb-subtext);margin-bottom:20px;padding:0 4px;font-weight:400;opacity:0.8;';
+    pdIntro.textContent = 'Select a category to generate AI-crafted prompts tailored to your specific conversation context.';
     promptDesignerView.appendChild(pdIntro);
 
     // Prompt Designer content container - DROPDOWN CATEGORIES
     const pdContent = document.createElement('div');
     pdContent.id = 'cb-pd-content';
-    pdContent.style.cssText = 'display:flex;flex-direction:column;gap:6px;';
+    pdContent.style.cssText = 'display:flex;flex-direction:column;gap:12px;';
 
-    // Category definitions - 5 types with icon, color
+    // Category definitions - 5 types with minimalist elegance
     const promptCategories = [
-      { id: 'followup', name: 'Follow-up', icon: '🎯', color: '#60a5fa', desc: 'Continue the chat' },
-      { id: 'deepdive', name: 'Deep Dive', icon: '🔍', color: '#a78bfa', desc: 'Explore in detail' },
-      { id: 'clarify', name: 'Clarify', icon: '💡', color: '#34d399', desc: 'Get explanations' },
-      { id: 'alternatives', name: 'Alternatives', icon: '🔄', color: '#f59e0b', desc: 'Other approaches' },
-      { id: 'creative', name: 'Creative', icon: '✨', color: '#ec4899', desc: 'Think different' }
+      { id: 'followup', name: 'Follow-up', color: '#60a5fa', desc: 'Continue the flow' },
+      { id: 'deepdive', name: 'Deep Dive', color: '#a78bfa', desc: 'Expand details' },
+      { id: 'clarify', name: 'Clarify', color: '#34d399', desc: 'Resolve ambiguity' },
+      { id: 'alternatives', name: 'Alternatives', color: '#f59e0b', desc: 'New perspectives' },
+      { id: 'creative', name: 'Creative', color: '#ec4899', desc: 'Think different' }
     ];
 
     // Build category accordions
     promptCategories.forEach(cat => {
       const catDiv = document.createElement('div');
       catDiv.className = 'cb-prompt-cat';
-      catDiv.style.cssText = 'background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:8px;overflow:hidden;';
+      // Minimal glass container
+      catDiv.style.cssText = 'background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:12px;overflow:hidden;transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1);';
 
       const catHeader = document.createElement('div');
-      catHeader.style.cssText = 'display:flex;align-items:center;gap:6px;padding:9px 10px;cursor:pointer;transition:background 0.15s;';
+      catHeader.style.cssText = 'display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer;transition:background 0.2s;';
       catHeader.innerHTML = `
-        <span style="font-size:13px;">${cat.icon}</span>
-        <span style="flex:1;font-size:11px;font-weight:500;color:${cat.color};">${cat.name}</span>
-        <span style="font-size:9px;color:var(--cb-subtext);">${cat.desc}</span>
-        <span class="cb-arrow" style="font-size:9px;color:var(--cb-subtext);transition:transform 0.2s;">▶</span>
+        <div style="width:6px;height:6px;border-radius:50%;background:${cat.color};box-shadow:0 0 8px ${cat.color}40;"></div>
+        <span style="flex:1;font-size:13px;font-weight:500;color:var(--cb-white);letter-spacing:0.3px;">${cat.name}</span>
+        <span style="font-size:10px;color:var(--cb-subtext);opacity:0.6;margin-right:8px;">${cat.desc}</span>
+        <div class="cb-arrow" style="font-size:10px;color:rgba(255,255,255,0.3);transition:transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+        </div>
       `;
 
       const catContent = document.createElement('div');
-      catContent.style.cssText = 'display:none;padding:6px 10px 10px;border-top:1px solid rgba(255,255,255,0.04);';
+      catContent.style.cssText = 'display:none;padding:4px 16px 16px;';
 
-      catHeader.addEventListener('mouseenter', () => catHeader.style.background = `${cat.color}10`);
-      catHeader.addEventListener('mouseleave', () => catHeader.style.background = 'transparent');
+      catHeader.addEventListener('mouseenter', () => {
+        catDiv.style.borderColor = 'rgba(255,255,255,0.1)';
+        catDiv.style.background = 'rgba(255,255,255,0.04)';
+      });
+      catHeader.addEventListener('mouseleave', () => {
+        const isOpen = catContent.style.display !== 'none';
+        if (!isOpen) {
+          catDiv.style.borderColor = 'rgba(255,255,255,0.05)';
+          catDiv.style.background = 'rgba(255,255,255,0.02)';
+        }
+      });
 
       catHeader.addEventListener('click', async () => {
         const arrow = catHeader.querySelector('.cb-arrow');
         const isOpen = catContent.style.display !== 'none';
 
-        // Close all
+        // Close all others
         pdContent.querySelectorAll('.cb-prompt-cat > div:last-child').forEach(c => {
-          c.style.display = 'none';
-          c.parentElement.querySelector('.cb-arrow').style.transform = 'rotate(0deg)';
+          if (c !== catContent) {
+            c.style.display = 'none';
+            c.parentElement.querySelector('.cb-arrow').style.transform = 'rotate(0deg)';
+            c.parentElement.style.borderColor = 'rgba(255,255,255,0.05)';
+            c.parentElement.style.background = 'rgba(255,255,255,0.02)';
+          }
         });
 
-        if (isOpen) return;
+        if (isOpen) {
+          catContent.style.display = 'none';
+          arrow.style.transform = 'rotate(0deg)';
+          catDiv.style.borderColor = 'rgba(255,255,255,0.05)';
+          catDiv.style.background = 'rgba(255,255,255,0.04)'; // Keep slight hover state if mouse is there
+          return;
+        }
 
+        // Open
         catContent.style.display = 'block';
+        catContent.style.animation = 'cbSlideDown 0.3s ease-out';
         arrow.style.transform = 'rotate(90deg)';
+        catDiv.style.borderColor = `${cat.color}40`;
+        catDiv.style.background = 'rgba(255,255,255,0.04)';
 
         if (catContent.querySelector('.cb-sp')) return; // Already generated
 
-        catContent.innerHTML = '<div style="display:flex;align-items:center;gap:5px;padding:8px;justify-content:center;"><span class="cb-spinner" style="width:10px;height:10px;border-width:2px;"></span><span style="font-size:10px;color:var(--cb-subtext);">Generating...</span></div>';
+        catContent.innerHTML = `
+            <div style="display:flex;align-items:center;gap:8px;padding:20px;justify-content:center;opacity:0.7;">
+                <div class="cb-spinner" style="width:14px;height:14px;border-width:2px;border-color:${cat.color} transparent ${cat.color} transparent;"></div>
+                <span style="font-size:11px;color:var(--cb-subtext);">Crafting prompts...</span>
+            </div>`;
 
 
         try {
@@ -1789,7 +1820,7 @@
           }
 
           if (!messages.length) {
-            catContent.innerHTML = '<div style="padding:8px;font-size:10px;color:var(--cb-subtext);text-align:center;">Scan a chat first</div>';
+            catContent.innerHTML = '<div style="padding:15px;font-size:11px;color:var(--cb-subtext);text-align:center;font-style:italic;">Please scan a chat first to generate prompts.</div>';
             return;
           }
 
@@ -1798,11 +1829,11 @@
 
           // Optimized prompts per category
           const prompts = {
-            followup: `3 short follow-up questions for: ${ctx}\nFormat:\n1.\n2.\n3.`,
-            deepdive: `3 short prompts to explore deeper: ${ctx}\nFormat:\n1.\n2.\n3.`,
-            clarify: `3 short clarification questions: ${ctx}\nFormat:\n1.\n2.\n3.`,
-            alternatives: `3 short alternative approach prompts: ${ctx}\nFormat:\n1.\n2.\n3.`,
-            creative: `3 creative/unusual prompts for: ${ctx}\nFormat:\n1.\n2.\n3.`
+            followup: `3 short, engaging follow-up questions for: ${ctx}\nFormat:\n1.\n2.\n3.`,
+            deepdive: `3 short prompts to explore deeper concepts: ${ctx}\nFormat:\n1.\n2.\n3.`,
+            clarify: `3 short prompts to resolve ambiguities: ${ctx}\nFormat:\n1.\n2.\n3.`,
+            alternatives: `3 short alternative perspectives/approaches: ${ctx}\nFormat:\n1.\n2.\n3.`,
+            creative: `3 highly creative/unusual prompts based on: ${ctx}\nFormat:\n1.\n2.\n3.`
           };
 
           const response = await new Promise(r => {
@@ -1820,18 +1851,52 @@
 
             if (items.length) {
               catContent.innerHTML = items.slice(0, 3).map(p => `
-                <div class="cb-sp" data-p="${encodeURIComponent(p)}" style="padding:7px 9px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);border-radius:6px;margin-bottom:4px;cursor:pointer;font-size:10px;color:var(--cb-white);line-height:1.3;transition:all 0.12s;">${p}</div>
+                <div class="cb-sp" data-p="${encodeURIComponent(p)}" style="
+                    padding:12px 14px;
+                    background:linear-gradient(90deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%);
+                    border:1px solid rgba(255,255,255,0.04);
+                    border-radius:8px;
+                    margin-bottom:8px;
+                    cursor:pointer;
+                    font-size:11px;
+                    color:var(--cb-white);
+                    line-height:1.5;
+                    transition:all 0.2s cubic-bezier(0.4,0,0.2,1);
+                    position:relative;
+                    overflow:hidden;
+                ">
+                    <div style="position:relative;z-index:2;">${p}</div>
+                    <div class="cb-sp-overlay" style="position:absolute;inset:0;background:${cat.color};opacity:0;transition:opacity 0.2s;z-index:1;"></div>
+                </div>
               `).join('');
 
               catContent.querySelectorAll('.cb-sp').forEach(el => {
-                el.addEventListener('mouseenter', () => { el.style.background = `${cat.color}12`; el.style.borderColor = `${cat.color}30`; });
-                el.addEventListener('mouseleave', () => { el.style.background = 'rgba(255,255,255,0.02)'; el.style.borderColor = 'rgba(255,255,255,0.04)'; });
+                el.addEventListener('mouseenter', () => {
+                  el.style.transform = 'translateY(-1px)';
+                  el.style.borderColor = 'rgba(255,255,255,0.1)';
+                  el.style.background = 'rgba(255,255,255,0.06)';
+                  el.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+                });
+                el.addEventListener('mouseleave', () => {
+                  el.style.transform = 'translateY(0)';
+                  el.style.borderColor = 'rgba(255,255,255,0.04)';
+                  el.style.background = 'linear-gradient(90deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)';
+                  el.style.boxShadow = 'none';
+                });
                 el.addEventListener('click', async () => {
                   const t = decodeURIComponent(el.dataset.p);
                   await navigator.clipboard.writeText(t);
-                  el.style.background = 'rgba(52,211,153,0.15)';
-                  setTimeout(() => el.style.background = 'rgba(255,255,255,0.02)', 200);
-                  toast('Copied!');
+
+                  // Flash effect
+                  el.style.borderColor = '#34d399';
+                  el.style.background = 'rgba(52,211,153,0.1)';
+
+                  setTimeout(() => {
+                    el.style.borderColor = 'rgba(255,255,255,0.1)';
+                    el.style.background = 'rgba(255,255,255,0.06)';
+                  }, 300);
+
+                  toast('Copied to clipboard');
                 });
                 el.addEventListener('dblclick', async () => {
                   const t = decodeURIComponent(el.dataset.p);
@@ -1840,18 +1905,18 @@
                     inp.focus();
                     if (inp.isContentEditable) { inp.textContent = t; inp.dispatchEvent(new InputEvent('input', { bubbles: true })); }
                     else { inp.value = t; inp.dispatchEvent(new Event('input', { bubbles: true })); }
-                    toast('Inserted!');
+                    toast('Inserted into chat');
                   }
                 });
               });
             } else {
-              catContent.innerHTML = '<div style="padding:8px;font-size:10px;color:var(--cb-subtext);text-align:center;">No prompts. Try again.</div>';
+              catContent.innerHTML = '<div style="padding:15px;font-size:11px;color:var(--cb-subtext);text-align:center;">No prompts generated.</div>';
             }
           } else {
-            catContent.innerHTML = '<div style="padding:8px;font-size:10px;color:#f87171;text-align:center;">Generation failed</div>';
+            catContent.innerHTML = '<div style="padding:15px;font-size:11px;color:#f87171;text-align:center;">Generation failed. Check connection.</div>';
           }
         } catch (e) {
-          catContent.innerHTML = `<div style="padding:8px;font-size:10px;color:#f87171;text-align:center;">${e.message || 'Error'}</div>`;
+          catContent.innerHTML = `<div style="padding:15px;font-size:11px;color:#f87171;text-align:center;">${e.message || 'Error'}</div>`;
         }
       });
 
@@ -1864,12 +1929,25 @@
 
     // Footer
     const pdFooter = document.createElement('div');
-    pdFooter.style.cssText = 'margin-top:8px;font-size:9px;color:var(--cb-subtext);text-align:center;opacity:0.6;';
-    pdFooter.textContent = 'Click = copy • Double-click = insert';
+    pdFooter.style.cssText = 'margin-top:20px;font-size:10px;color:var(--cb-subtext);text-align:center;opacity:0.5;letter-spacing:0.4px;';
+    pdFooter.innerHTML = 'CLICK TO COPY &nbsp;•&nbsp; DOUBLE CLICK TO INSERT';
     promptDesignerView.appendChild(pdFooter);
 
     // Append to panel
     panel.appendChild(promptDesignerView);
+
+    // Prompt Designer Open Handler
+    btnPromptDesigner.addEventListener('click', () => {
+      // Hide other views
+      panel.querySelectorAll('.cb-internal-view').forEach(v => v.style.display = 'none');
+      // Hide main actions
+      if (typeof actions !== 'undefined') actions.style.display = 'none';
+      const preview = panel.querySelector('#cb-preview-card');
+      if (preview) preview.style.display = 'none';
+
+      // Show Prompt Designer
+      promptDesignerView.style.display = 'block';
+    });
 
     // Summarize view - LUXURY REDESIGN
     const summView = document.createElement('div'); summView.className = 'cb-internal-view'; summView.id = 'cb-summ-view'; summView.setAttribute('data-cb-ignore', 'true');
@@ -2497,56 +2575,108 @@ Rules:
     rewView.appendChild(btnInsertRew);
 
 
-    // Translate view
-    // Translate view - NEW SIMPLIFIED UI
+    // Translate view - Premium Luxury UI
     const transView = document.createElement('div'); transView.className = 'cb-internal-view'; transView.id = 'cb-trans-view'; transView.setAttribute('data-cb-ignore', 'true');
+
+    // Header with gradient icon
     const transTop = document.createElement('div'); transTop.className = 'cb-view-top';
-    const transTitle = document.createElement('div'); transTitle.className = 'cb-view-title'; transTitle.textContent = '🌐 Translate';
+    const transTitle = document.createElement('div');
+    transTitle.className = 'cb-view-title';
+    transTitle.innerHTML = '<span style="background: linear-gradient(135deg, #00D4FF, #7C3AED); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">🌐 Translate</span>';
     const btnCloseTrans = document.createElement('button'); btnCloseTrans.className = 'cb-view-close'; btnCloseTrans.textContent = '✕';
     btnCloseTrans.setAttribute('aria-label', 'Close Translate view');
     transTop.appendChild(transTitle); transTop.appendChild(btnCloseTrans);
     transView.appendChild(transTop);
 
-    // Intro with helpful tips
+    // Premium glassmorphic intro card
     const transIntro = document.createElement('div');
-    transIntro.style.cssText = 'font-size: 12px; color: var(--cb-subtext); margin-bottom: 14px; line-height: 1.5;';
-    transIntro.innerHTML = 'Translate your conversation to another language. <strong>Technical terms and code</strong> are preserved.';
+    transIntro.className = 'cb-view-intro';
+    transIntro.style.cssText = 'font-size: 12px; color: var(--cb-subtext); margin: 16px 0; line-height: 1.6; padding: 14px 16px; background: linear-gradient(135deg, rgba(0, 212, 255, 0.06), rgba(124, 58, 237, 0.04)); border-left: 3px solid var(--cb-accent-primary); border-radius: 8px; backdrop-filter: blur(8px);';
+    transIntro.innerHTML = '<span style="color: var(--cb-white); font-weight: 600;">Translate conversations</span> to 30+ languages. <span style="color: var(--cb-accent-tertiary);">Technical terms</span> and <span style="color: var(--cb-accent-tertiary);">code blocks</span> are intelligently preserved.';
     transView.appendChild(transIntro);
 
-    // Quick language chips
+    // Section label for quick languages
+    const quickLangLabel = document.createElement('div');
+    quickLangLabel.style.cssText = 'font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--cb-subtext); margin-bottom: 10px; opacity: 0.8;';
+    quickLangLabel.textContent = 'Quick Select';
+    transView.appendChild(quickLangLabel);
+
+    // Premium quick language chips with flags
     const transQuickRow = document.createElement('div');
-    transQuickRow.style.cssText = 'display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px;';
+    transQuickRow.style.cssText = 'display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px;';
     const quickLangs = [
-      { code: 'es', label: '🇪🇸 Spanish' },
-      { code: 'fr', label: '🇫🇷 French' },
-      { code: 'de', label: '🇩🇪 German' },
-      { code: 'ja', label: '🇯🇵 Japanese' },
-      { code: 'zh', label: '🇨🇳 Chinese' },
-      { code: 'hi', label: '🇮🇳 Hindi' },
-      { code: 'pt', label: '🇧🇷 Portuguese' },
-      { code: 'ar', label: '🇸🇦 Arabic' }
+      { code: 'es', flag: '🇪🇸', label: 'Spanish' },
+      { code: 'fr', flag: '🇫🇷', label: 'French' },
+      { code: 'de', flag: '🇩🇪', label: 'German' },
+      { code: 'ja', flag: '🇯🇵', label: 'Japanese' },
+      { code: 'zh', flag: '🇨🇳', label: 'Chinese' },
+      { code: 'hi', flag: '🇮🇳', label: 'Hindi' },
+      { code: 'pt', flag: '🇧🇷', label: 'Portuguese' },
+      { code: 'ar', flag: '🇸🇦', label: 'Arabic' }
     ];
     quickLangs.forEach(lang => {
       const chip = document.createElement('button');
-      chip.className = 'cb-btn';
-      chip.textContent = lang.label;
-      chip.style.cssText = 'padding: 5px 10px; font-size: 11px; background: rgba(0,180,255,0.1); border: 1px solid rgba(0,180,255,0.3);';
+      chip.className = 'cb-lang-chip';
+      chip.innerHTML = `<span style="font-size: 14px;">${lang.flag}</span><span>${lang.label}</span>`;
+      chip.style.cssText = 'display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; font-size: 11px; font-weight: 500; background: rgba(255,255,255,0.03); border: 1px solid var(--cb-border); border-radius: 20px; color: var(--cb-subtext); cursor: pointer; transition: all 0.2s ease;';
+      chip.addEventListener('mouseenter', () => {
+        chip.style.background = 'rgba(0, 212, 255, 0.12)';
+        chip.style.borderColor = 'rgba(0, 212, 255, 0.4)';
+        chip.style.color = 'var(--cb-white)';
+        chip.style.transform = 'translateY(-2px)';
+        chip.style.boxShadow = '0 4px 12px rgba(0, 212, 255, 0.2)';
+      });
+      chip.addEventListener('mouseleave', () => {
+        if (!chip.classList.contains('active')) {
+          chip.style.background = 'rgba(255,255,255,0.03)';
+          chip.style.borderColor = 'var(--cb-border)';
+          chip.style.color = 'var(--cb-subtext)';
+          chip.style.transform = '';
+          chip.style.boxShadow = '';
+        }
+      });
       chip.addEventListener('click', () => {
+        // Remove active from siblings
+        transQuickRow.querySelectorAll('.cb-lang-chip').forEach(c => {
+          c.classList.remove('active');
+          c.style.background = 'rgba(255,255,255,0.03)';
+          c.style.borderColor = 'var(--cb-border)';
+          c.style.color = 'var(--cb-subtext)';
+        });
+        // Set active
+        chip.classList.add('active');
+        chip.style.background = 'linear-gradient(135deg, rgba(0, 212, 255, 0.15), rgba(124, 58, 237, 0.1))';
+        chip.style.borderColor = 'rgba(0, 212, 255, 0.5)';
+        chip.style.color = '#00D4FF';
         transLangSelect.value = lang.code;
         try { localStorage.setItem('chatbridge:pref:transLang', lang.code); } catch (e) { }
-        toast(`Language: ${lang.label.split(' ')[1]}`);
+        toast(`Language set to ${lang.label}`);
       });
       transQuickRow.appendChild(chip);
     });
     transView.appendChild(transQuickRow);
 
-    const transLangRow = document.createElement('div'); transLangRow.style.cssText = 'display:flex;align-items:center;gap:10px;margin:16px 0;';
-    const transLangLabel = document.createElement('label'); transLangLabel.textContent = 'Output language:'; transLangLabel.style.cssText = 'font-size:0.95em;font-weight:500;color:#e0e0e0;min-width:120px;';
-    const transLangSelect = document.createElement('select'); transLangSelect.className = 'cb-select'; transLangSelect.id = 'cb-trans-lang'; transLangSelect.style.cssText = 'flex:1;padding:8px 12px;border-radius:6px;';
+    // Language selection row - polished design
+    const transLangRow = document.createElement('div');
+    transLangRow.style.cssText = 'display:flex;align-items:center;gap:12px;margin:20px 0 16px 0;padding:14px 16px;background:rgba(255,255,255,0.02);border:1px solid var(--cb-border);border-radius:10px;';
+
+    const transLangLabel = document.createElement('label');
+    transLangLabel.innerHTML = '<span style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--cb-subtext);opacity:0.8;">Output</span>';
+    transLangLabel.style.cssText = 'min-width:50px;';
+
+    const transLangSelect = document.createElement('select');
+    transLangSelect.className = 'cb-select';
+    transLangSelect.id = 'cb-trans-lang';
+    transLangSelect.style.cssText = 'flex:1;padding:10px 14px;border-radius:8px;font-weight:500;';
     const langNameToCode = { 'English': 'en', 'Spanish': 'es', 'French': 'fr', 'German': 'de', 'Italian': 'it', 'Portuguese': 'pt', 'Russian': 'ru', 'Japanese': 'ja', 'Korean': 'ko', 'Chinese': 'zh', 'Arabic': 'ar', 'Hindi': 'hi', 'Dutch': 'nl', 'Polish': 'pl', 'Turkish': 'tr', 'Vietnamese': 'vi', 'Thai': 'th', 'Swedish': 'sv', 'Danish': 'da', 'Finnish': 'fi', 'Norwegian': 'no', 'Czech': 'cs', 'Hungarian': 'hu', 'Romanian': 'ro', 'Greek': 'el', 'Hebrew': 'he', 'Indonesian': 'id', 'Malay': 'ms', 'Ukrainian': 'uk', 'Bulgarian': 'bg', 'Tamil': 'ta' };
     Object.entries(langNameToCode).forEach(([name, code]) => { const opt = document.createElement('option'); opt.value = code; opt.textContent = name; transLangSelect.appendChild(opt); });
-    const transGearBtn = document.createElement('button'); transGearBtn.textContent = '⚙️'; transGearBtn.title = 'Options'; transGearBtn.style.cssText = 'background:none;border:none;font-size:1.3em;cursor:pointer;padding:4px 8px;border-radius:4px;transition:background 0.2s;';
-    transGearBtn.onmouseenter = () => transGearBtn.style.background = 'rgba(255,255,255,0.1)'; transGearBtn.onmouseleave = () => transGearBtn.style.background = 'none';
+
+    const transGearBtn = document.createElement('button');
+    transGearBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>';
+    transGearBtn.title = 'Advanced Options';
+    transGearBtn.style.cssText = 'background:transparent;border:1px solid var(--cb-border);color:var(--cb-subtext);font-size:1em;cursor:pointer;padding:8px;border-radius:8px;transition:all 0.2s ease;display:flex;align-items:center;justify-content:center;';
+    transGearBtn.onmouseenter = () => { transGearBtn.style.background = 'rgba(0, 212, 255, 0.1)'; transGearBtn.style.borderColor = 'rgba(0, 212, 255, 0.4)'; transGearBtn.style.color = '#00D4FF'; transGearBtn.style.transform = 'rotate(45deg)'; };
+    transGearBtn.onmouseleave = () => { transGearBtn.style.background = 'transparent'; transGearBtn.style.borderColor = 'var(--cb-border)'; transGearBtn.style.color = 'var(--cb-subtext)'; transGearBtn.style.transform = ''; };
     transLangRow.appendChild(transLangLabel); transLangRow.appendChild(transLangSelect); transLangRow.appendChild(transGearBtn); transView.appendChild(transLangRow);
 
     // Settings panel with improved styling
@@ -2674,13 +2804,33 @@ Rules:
       }
     });
 
-    const transActionRow = document.createElement('div'); transActionRow.style.cssText = 'display:flex;align-items:center;gap:12px;margin:14px 0;';
-    const btnGoTrans = document.createElement('button'); btnGoTrans.className = 'cb-btn cb-btn-primary'; btnGoTrans.textContent = 'Translate'; btnGoTrans.style.cssText = 'padding:10px 20px;';
-    const transProg = document.createElement('span'); transProg.style.cssText = 'display:none;font-size:0.9em;color:#7aa2ff;align-items:center;'; transProg.innerHTML = '<span class="cb-spinner"></span><span class="cb-translating">Translating...</span>';
+    // Premium action row with gradient button
+    const transActionRow = document.createElement('div');
+    transActionRow.style.cssText = 'display:flex;align-items:center;gap:12px;margin:18px 0 16px 0;';
+
+    const btnGoTrans = document.createElement('button');
+    btnGoTrans.className = 'cb-btn cb-btn-primary';
+    btnGoTrans.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:8px;"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>Translate';
+    btnGoTrans.style.cssText = 'display:flex;align-items:center;justify-content:center;padding:12px 24px;font-weight:600;font-size:13px;letter-spacing:0.02em;';
+
+    const transProg = document.createElement('span');
+    transProg.style.cssText = 'display:none;font-size:12px;color:var(--cb-accent-primary);align-items:center;gap:8px;';
+    transProg.innerHTML = '<span class="cb-spinner"></span><span class="cb-translating">Translating...</span>';
     transActionRow.appendChild(btnGoTrans); transActionRow.appendChild(transProg); transView.appendChild(transActionRow);
-    const transResult = document.createElement('div'); transResult.className = 'cb-view-result'; transResult.id = 'cb-trans-result'; transResult.style.cssText = 'margin-top:14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:14px;max-height:400px;overflow-y:auto;white-space:pre-wrap;line-height:1.6;display:none;';
+
+    // Result container with premium styling
+    const transResult = document.createElement('div');
+    transResult.className = 'cb-view-result';
+    transResult.id = 'cb-trans-result';
+    transResult.style.cssText = 'margin-top:12px;background:linear-gradient(135deg, rgba(0, 212, 255, 0.03), rgba(124, 58, 237, 0.02));border:1px solid rgba(0, 212, 255, 0.15);border-radius:12px;padding:16px;max-height:300px;overflow-y:auto;white-space:pre-wrap;line-height:1.7;font-size:13px;display:none;box-shadow:inset 0 1px 0 rgba(255,255,255,0.04);';
     transView.appendChild(transResult);
-    const btnInsertTrans = document.createElement('button'); btnInsertTrans.className = 'cb-btn'; btnInsertTrans.textContent = 'Insert to Chat'; btnInsertTrans.style.cssText = 'margin-top:12px;display:none;'; transView.appendChild(btnInsertTrans);
+
+    // Insert button with success styling
+    const btnInsertTrans = document.createElement('button');
+    btnInsertTrans.className = 'cb-btn';
+    btnInsertTrans.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>Insert to Chat';
+    btnInsertTrans.style.cssText = 'margin-top:12px;display:none;background:rgba(16, 185, 129, 0.1);border-color:rgba(16, 185, 129, 0.3);color:#10b981;padding:10px 18px;';
+    transView.appendChild(btnInsertTrans);
     transGearBtn.addEventListener('click', () => { const isHidden = transOptions.style.display === 'none'; transOptions.style.display = isHidden ? 'block' : 'none'; });
     try { const saved = localStorage.getItem('chatbridge:pref:transLang'); if (saved) { transLangSelect.value = saved; } else { const nav = (navigator.language || navigator.userLanguage || 'en').toLowerCase().split('-')[0]; const navToCode = { 'en': 'en', 'ja': 'ja', 'es': 'es', 'fr': 'fr', 'de': 'de', 'zh': 'zh', 'ko': 'ko', 'it': 'it', 'pt': 'pt', 'ru': 'ru', 'ar': 'ar', 'hi': 'hi', 'tr': 'tr', 'nl': 'nl', 'sv': 'sv', 'pl': 'pl', 'ta': 'ta' }; transLangSelect.value = navToCode[nav] || 'en'; } } catch (e) { }
     transLangSelect.addEventListener('change', () => { try { localStorage.setItem('chatbridge:pref:transLang', transLangSelect.value); } catch (e) { } });
@@ -3329,31 +3479,28 @@ Rules:
           convList.forEach((conv, idx) => {
             const row = document.createElement('div');
             row.className = 'cb-history-row';
-            row.style.cssText = 'padding: 10px; margin-bottom: 6px; background: rgba(0, 180, 255, 0.05); border: 1px solid rgba(0, 180, 255, 0.15); border-radius: 8px; cursor: pointer; transition: all 0.2s;';
+            row.style.cssText = 'padding:8px 10px;margin-bottom:6px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:8px;cursor:pointer;transition:all 0.2s;';
 
-            const userMsgs = (conv.conversation || []).filter(m => m.role === 'user').length;
-            const aiMsgs = (conv.conversation || []).filter(m => m.role === 'assistant').length;
-            const totalMsgs = userMsgs + aiMsgs;
-            const preview = (conv.conversation && conv.conversation[0]) ? conv.conversation[0].text.slice(0, 80) : 'No preview';
-            const platform = conv.platform || 'unknown';
-            const model = conv.model || '';
+            const totalMsgs = (conv.conversation || []).length;
             const time = relativeTime(conv.ts || Date.now());
 
+            // Generate 3-word title
+            const msgs = conv.conversation || [];
+            const firstUser = msgs.find(m => m.role === 'user');
+            const titleText = firstUser?.text || msgs[0]?.text || '';
+            const stopWords = ['the', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been', 'i', 'you', 'we', 'they', 'it', 'this', 'that', 'what', 'how', 'can', 'do', 'please', 'help', 'me', 'my'];
+            const words = titleText.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(w => w.length > 2 && !stopWords.includes(w));
+            const title = words.length > 0 ? words.slice(0, 3).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : (conv.platform || 'Chat');
+
             row.innerHTML = `
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                <div style="font-size: 12px; font-weight: 600; color: var(--cb-white);">${platform}${model ? ' · ' + model : ''}</div>
-                <div style="font-size: 10px; color: var(--cb-subtext);">${time}</div>
-              </div>
-              <div style="font-size: 11px; color: var(--cb-subtext); line-height: 1.4; margin-bottom: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; opacity: 0.8;">${preview}...</div>
-              <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 8px;">
-                <div style="font-size: 10px; color: rgba(255,255,255,0.4); font-weight: 500;">${totalMsgs} msg</div>
-                <div style="display: flex; gap: 6px;">
-                  <button class="cb-btn cb-history-open cb-tooltip" title="Load this chat to use with Summary/Rewrite" style="width: 30px; height: 30px; padding: 0; display: flex; align-items: center; justify-content: center; background: rgba(0, 180, 255, 0.1); border: 1px solid rgba(0, 180, 255, 0.2); border-radius: 6px;">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
-                  </button>
-                  <button class="cb-btn cb-btn-danger cb-history-delete cb-tooltip" title="Permanently delete from local history" style="width: 30px; height: 30px; padding: 0; display: flex; align-items: center; justify-content: center; background: rgba(248, 113, 113, 0.1); border: 1px solid rgba(248, 113, 113, 0.2); border-radius: 6px;">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
-                  </button>
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+                <div style="flex:1;min-width:0;">
+                  <div style="font-size:11px;font-weight:600;color:var(--cb-white);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${title}</div>
+                  <div style="font-size:9px;color:var(--cb-subtext);margin-top:2px;">${totalMsgs} msgs · ${time}</div>
+                </div>
+                <div style="display:flex;gap:4px;flex-shrink:0;">
+                  <button class="cb-history-open" style="padding:4px 8px;font-size:9px;background:rgba(96,165,250,0.15);border:1px solid rgba(96,165,250,0.3);border-radius:5px;color:#60a5fa;cursor:pointer;">Open</button>
+                  <button class="cb-history-delete" style="padding:4px 6px;font-size:9px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.25);border-radius:5px;color:#ef4444;cursor:pointer;">✕</button>
                 </div>
               </div>
             `;
@@ -5846,7 +5993,7 @@ Rules:
           }
         });
 
-        // Render library list
+        // Render library list - Minimal Design with 3-word titles
         async function refreshLibrary() {
           try {
             const convs = await loadConversationsAsync();
@@ -5862,85 +6009,126 @@ Rules:
 
             if (convs.length === 0) {
               list.innerHTML = `
-                <div class="cb-empty-state">
-                  <div class="cb-empty-state-icon">📚</div>
-                  <div class="cb-empty-state-title">No Saved Conversations</div>
-                  <div class="cb-empty-state-text">Scan and save conversations to build your personal library. They'll appear here with tags and semantic search.</div>
+                <div style="text-align:center;padding:20px;color:var(--cb-subtext);">
+                  <div style="font-size:24px;margin-bottom:8px;">📚</div>
+                  <div style="font-size:11px;">No saved conversations yet</div>
                 </div>
               `;
               return;
             }
 
-            // Collect all unique tags
-            const allTags = new Set();
-            convs.forEach(c => {
-              if (c.topics) c.topics.forEach(t => allTags.add(t));
-            });
+            // Helper: Generate 3-word title from conversation
+            function generateShortTitle(conv) {
+              const msgs = conv.messages || conv.conversation || [];
+              const firstUser = msgs.find(m => m.role === 'user');
+              const text = firstUser?.text || msgs[0]?.text || '';
 
-            // Render tag filter chips
-            if (allTags.size > 0) {
-              Array.from(allTags).slice(0, 8).forEach(tag => {
-                const chip = document.createElement('button');
-                chip.className = 'cb-btn';
-                chip.style.cssText = 'font-size:10px;padding:4px 8px;background:rgba(0,180,255,0.1);border:1px solid rgba(0,180,255,0.3);';
-                chip.textContent = `#${tag}`;
-                chip.addEventListener('click', () => {
-                  document.getElementById('cb-library-search').value = tag;
-                  document.getElementById('cb-library-search-btn').click();
-                });
-                tagsEl.appendChild(chip);
-              });
+              // Extract meaningful words (filter common words)
+              const stopWords = ['the', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been', 'i', 'you', 'we', 'they', 'it', 'this', 'that', 'what', 'how', 'can', 'do', 'please', 'help', 'me', 'my'];
+              const words = text.toLowerCase()
+                .replace(/[^a-z0-9\s]/g, '')
+                .split(/\s+/)
+                .filter(w => w.length > 2 && !stopWords.includes(w));
+
+              if (words.length === 0) return conv.platform || 'Chat Session';
+
+              // Take first 3 meaningful words and capitalize
+              return words.slice(0, 3)
+                .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+                .join(' ');
             }
 
             // Sort by timestamp (newest first)
             const sorted = convs.sort((a, b) => (b.ts || 0) - (a.ts || 0));
 
-            // Render conversation cards
+            // Render minimal conversation cards
             sorted.slice(0, 20).forEach((conv, idx) => {
               const card = document.createElement('div');
-              card.style.cssText = 'padding:10px;background:rgba(0,180,255,0.05);border:1px solid rgba(0,180,255,0.2);border-radius:6px;cursor:pointer;transition:all 0.2s;';
+              card.style.cssText = 'padding:8px 10px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:8px;margin-bottom:6px;transition:all 0.2s;';
 
               const msgCount = conv.messages?.length || conv.conversation?.length || 0;
-              const platform = conv.platform || 'unknown';
-              const timestamp = conv.ts ? new Date(conv.ts).toLocaleDateString() : 'Unknown';
-              const topics = conv.topics ? conv.topics.slice(0, 3).map(t => `<span style="font-size:10px;background:rgba(0,180,255,0.2);padding:2px 6px;border-radius:10px;margin-right:4px;">#${t}</span>`).join('') : '';
-              const preview = conv.messages?.[0]?.text?.slice(0, 80) || conv.conversation?.[0]?.text?.slice(0, 80) || 'No preview';
-              const hasEmbedding = conv.embedding ? '⚡' : '';
+              const title = generateShortTitle(conv);
+              const timeAgo = conv.ts ? getRelativeTime(conv.ts) : '';
+              const convId = conv.id || conv.ts;
 
+              // Minimal card HTML
               card.innerHTML = `
-                <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:6px;">
-                  <div style="font-size:12px;font-weight:600;color:var(--cb-white);">${platform} ${hasEmbedding}</div>
-                  <div style="font-size:10px;color:var(--cb-subtext);">${timestamp}</div>
-                </div>
-                <div style="font-size:11px;color:var(--cb-subtext);margin-bottom:6px;line-height:1.3;">${preview}...</div>
-                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-                  <span style="font-size:10px;color:var(--cb-subtext);">${msgCount} messages</span>
-                  ${topics}
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+                  <div style="flex:1;min-width:0;">
+                    <div style="font-size:11px;font-weight:600;color:var(--cb-white);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${title}</div>
+                    <div style="font-size:9px;color:var(--cb-subtext);margin-top:2px;">${msgCount} msgs · ${timeAgo}</div>
+                  </div>
+                  <div style="display:flex;gap:4px;flex-shrink:0;">
+                    <button class="cb-lib-open" data-idx="${idx}" style="padding:4px 8px;font-size:9px;background:rgba(96,165,250,0.15);border:1px solid rgba(96,165,250,0.3);border-radius:5px;color:#60a5fa;cursor:pointer;transition:all 0.15s;">Open</button>
+                    <button class="cb-lib-del" data-idx="${idx}" style="padding:4px 6px;font-size:9px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.25);border-radius:5px;color:#ef4444;cursor:pointer;transition:all 0.15s;">✕</button>
+                  </div>
                 </div>
               `;
 
+              // Hover effects
               card.addEventListener('mouseenter', () => {
-                card.style.background = 'rgba(0,180,255,0.1)';
-                card.style.borderColor = 'rgba(0,180,255,0.4)';
+                card.style.background = 'rgba(255,255,255,0.04)';
+                card.style.borderColor = 'rgba(96,165,250,0.2)';
               });
               card.addEventListener('mouseleave', () => {
-                card.style.background = 'rgba(0,180,255,0.05)';
-                card.style.borderColor = 'rgba(0,180,255,0.2)';
+                card.style.background = 'rgba(255,255,255,0.02)';
+                card.style.borderColor = 'rgba(255,255,255,0.06)';
               });
 
-              card.addEventListener('click', () => {
-                // Load conversation into history view
+              // Open button handler
+              card.querySelector('.cb-lib-open').addEventListener('click', async (e) => {
+                e.stopPropagation();
                 try {
-                  // Navigate to history view
-                  showView('history');
-                  toast('Viewing conversation history');
-                } catch (e) {
-                  debugLog('Load conversation error:', e);
+                  const msgs = conv.messages || conv.conversation || [];
+                  if (msgs.length === 0) { toast('No messages to restore'); return; }
+
+                  // Format conversation for insertion
+                  const text = msgs.map(m => `${m.role === 'user' ? 'User' : 'AI'}: ${m.text}`).join('\n\n');
+                  await restoreToChat(text, msgs);
+                  toast('Conversation restored!');
+                } catch (err) {
+                  debugLog('Open conversation error:', err);
+                  toast('Failed to open');
+                }
+              });
+
+              // Delete button handler
+              card.querySelector('.cb-lib-del').addEventListener('click', async (e) => {
+                e.stopPropagation();
+                try {
+                  const allConvs = await loadConversationsAsync();
+                  const filtered = allConvs.filter(c => (c.id || c.ts) !== convId);
+                  await saveConversationsAsync(filtered);
+                  card.style.opacity = '0';
+                  card.style.transform = 'translateX(10px)';
+                  setTimeout(() => {
+                    card.remove();
+                    countEl.textContent = filtered.length.toString();
+                    if (filtered.length === 0) refreshLibrary();
+                  }, 200);
+                  toast('Removed');
+                } catch (err) {
+                  debugLog('Delete error:', err);
+                  toast('Delete failed');
                 }
               });
 
               list.appendChild(card);
             });
+
+            // Helper: Relative time
+            function getRelativeTime(ts) {
+              const diff = Date.now() - ts;
+              const mins = Math.floor(diff / 60000);
+              if (mins < 1) return 'now';
+              if (mins < 60) return `${mins}m`;
+              const hrs = Math.floor(mins / 60);
+              if (hrs < 24) return `${hrs}h`;
+              const days = Math.floor(hrs / 24);
+              if (days < 7) return `${days}d`;
+              return new Date(ts).toLocaleDateString();
+            }
+
           } catch (e) {
             debugLog('refreshLibrary error:', e);
           }

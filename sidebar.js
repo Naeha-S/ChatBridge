@@ -105,20 +105,39 @@
             return;
         }
 
+        // Helper: Generate 3-word title from conversation
+        function generateShortTitle(conv) {
+            const msgs = conv.conversation || [];
+            const firstUser = msgs.find(m => m.role === 'user' || m.type === 'human');
+            const text = firstUser?.content || firstUser?.text || msgs[0]?.content || msgs[0]?.text || '';
+
+            const stopWords = ['the', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been', 'i', 'you', 'we', 'they', 'it', 'this', 'that', 'what', 'how', 'can', 'do', 'please', 'help', 'me', 'my'];
+            const words = text.toLowerCase()
+                .replace(/[^a-z0-9\s]/g, '')
+                .split(/\s+/)
+                .filter(w => w.length > 2 && !stopWords.includes(w));
+
+            if (words.length === 0) return formatPlatform(conv.platform || conv.host || 'Chat');
+
+            return words.slice(0, 3)
+                .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+                .join(' ');
+        }
+
         conversationList.innerHTML = filteredConversations.map((conv, i) => {
-            const platform = formatPlatform(conv.platform || conv.host || 'Unknown');
+            const title = generateShortTitle(conv);
             const date = new Date(conv.ts || conv.timestamp || Date.now());
             const timeAgo = getTimeAgo(date);
-            const preview = getPreviewText(conv);
+            const msgCount = conv.conversation ? conv.conversation.length : 0;
             const isActive = conversations.indexOf(conv) === selectedIndex;
 
             return `
         <div class="list-item ${isActive ? 'active' : ''}" data-index="${conversations.indexOf(conv)}">
           <div class="item-header">
-            <div class="item-platform">${platform}</div>
+            <div class="item-platform">${title}</div>
             <div class="item-time">${timeAgo}</div>
           </div>
-          <div class="item-preview">${preview}</div>
+          <div class="item-preview">${msgCount} msgs</div>
         </div>
       `;
         }).join('');

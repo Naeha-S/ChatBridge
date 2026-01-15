@@ -102,6 +102,7 @@
     {
       "resources": [
         "iconic.jpeg",
+        "logo.png",
         "fonts/Inter-Regular.woff2",
         "fonts/Inter-Bold.woff2"
       ],
