@@ -2384,62 +2384,62 @@ Rules:
 
     // ... End of Summarize view creation ...
 
-    // Rewrite view - Sleek Modern Redesign
+    // Rewrite view - Premium Luxury UI (matching Translate style)
     const rewView = document.createElement('div'); rewView.className = 'cb-internal-view'; rewView.id = 'cb-rew-view'; rewView.setAttribute('data-cb-ignore', 'true');
 
     const rewTop = document.createElement('div');
     rewTop.className = 'cb-view-top';
-    rewTop.style.cssText = 'display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--cb-border);';
+    rewTop.style.cssText = 'display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;';
 
     const rewTitle = document.createElement('div');
     rewTitle.className = 'cb-view-title';
-    rewTitle.style.cssText = 'font-size: 20px; font-weight: 700; color: var(--cb-white); display: flex; align-items: center; gap: 10px;';
-    rewTitle.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M14.06 9.02l.92.92L5.92 19H5v-.92l9.06-9.06M17.66 3c-.25 0-.51.1-.7.29l-1.83 1.83 3.75 3.75 1.83-1.83c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.2-.2-.45-.29-.71-.29zm-3.6 3.19L3 17.25V21h3.75L17.81 9.94l-3.75-3.75z" fill="url(#gradient2)" stroke="var(--cb-accent-primary)" stroke-width="0.5"/><defs><linearGradient id="gradient2" x1="3" y1="3" x2="21" y2="21" gradientUnits="userSpaceOnUse"><stop stop-color="var(--cb-accent-primary)"/><stop offset="1" stop-color="var(--cb-accent-secondary)"/></linearGradient></defs></svg><span>Rewrite</span>';
+    rewTitle.innerHTML = '<span style="background: linear-gradient(135deg, #00D4FF, #7C3AED); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; display: inline-flex; align-items: center; gap: 10px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="url(#rewGrad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path><defs><linearGradient id="rewGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00D4FF"/><stop offset="100%" stop-color="#7C3AED"/></linearGradient></defs></svg>Rewrite</span>';
 
     const btnCloseRew = document.createElement('button');
     btnCloseRew.className = 'cb-view-close';
     btnCloseRew.textContent = '✕';
-    btnCloseRew.style.cssText = 'background: transparent; border: none; color: var(--cb-subtext); cursor: pointer; font-size: 20px; padding: 4px 8px; border-radius: 6px; transition: all 0.2s ease; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;';
     btnCloseRew.setAttribute('aria-label', 'Close Rewrite view');
-    btnCloseRew.addEventListener('mouseenter', () => { btnCloseRew.style.background = 'rgba(255, 255, 255, 0.05)'; btnCloseRew.style.color = 'var(--cb-white)'; });
-    btnCloseRew.addEventListener('mouseleave', () => { btnCloseRew.style.background = 'transparent'; btnCloseRew.style.color = 'var(--cb-subtext)'; });
 
     rewTop.appendChild(rewTitle);
     rewTop.appendChild(btnCloseRew);
     rewView.appendChild(rewTop);
 
+    // Premium glassmorphic intro card (matching translate style)
     const rewIntro = document.createElement('div');
     rewIntro.className = 'cb-view-intro';
-    rewIntro.style.cssText = 'font-size: 13px; line-height: 1.6; color: var(--cb-subtext); margin-bottom: 20px; padding: 14px 16px; background: linear-gradient(135deg, rgba(96, 165, 250, 0.08), rgba(167, 139, 250, 0.08)); border: 1px solid rgba(96, 165, 250, 0.15); border-radius: 10px; backdrop-filter: blur(8px);';
-    rewIntro.innerHTML = '<div style="font-weight: 600; color: var(--cb-white); margin-bottom: 6px; font-size: 14px;">Polish & Refine</div>Transform your conversation with style options, select specific messages, and adapt content for different AI models.';
+    rewIntro.style.cssText = 'font-size: 12px; color: var(--cb-subtext); margin: 16px 0; line-height: 1.6; padding: 14px 16px; background: linear-gradient(135deg, rgba(0, 212, 255, 0.06), rgba(124, 58, 237, 0.04)); border-left: 3px solid var(--cb-accent-primary); border-radius: 8px; backdrop-filter: blur(8px);';
+    rewIntro.innerHTML = '<span style="color: var(--cb-white); font-weight: 600;">Polish & Refine</span> your content with AI-powered rewriting. Select <span style="color: var(--cb-accent-tertiary);">style presets</span> or create <span style="color: var(--cb-accent-tertiary);">custom transformations</span>.';
     rewView.appendChild(rewIntro);
+    // Section label for controls
+    const controlsLabel = document.createElement('div');
+    controlsLabel.style.cssText = 'font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--cb-subtext); margin-bottom: 12px; opacity: 0.8;';
+    controlsLabel.textContent = 'Style Options';
+    rewView.appendChild(controlsLabel);
+
     const rewControls = document.createElement('div');
     rewControls.className = 'cb-view-controls';
-    rewControls.style.cssText = 'display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;';
+    rewControls.style.cssText = 'display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; padding: 14px 16px; background: rgba(255,255,255,0.02); border: 1px solid var(--cb-border); border-radius: 10px;';
 
     const styleGroup = document.createElement('div');
     styleGroup.style.cssText = 'display: flex; flex-direction: column; gap: 8px;';
     const rewStyleLabel = document.createElement('label');
     rewStyleLabel.className = 'cb-label';
-    rewStyleLabel.textContent = 'Style';
-    rewStyleLabel.style.cssText = 'font-size: 12px; font-weight: 600; color: var(--cb-subtext); text-transform: uppercase; letter-spacing: 0.5px;';
+    rewStyleLabel.innerHTML = '<span style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--cb-subtext);opacity:0.8;">Style</span>';
 
     const rewStyleSelect = document.createElement('select');
     rewStyleSelect.className = 'cb-select';
     rewStyleSelect.id = 'cb-rew-style';
-    rewStyleSelect.style.cssText = 'width: 100%; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; color: var(--cb-white); padding: 12px; font-size: 14px; outline: none; transition: all 0.3s ease; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.1);';
-    rewStyleSelect.addEventListener('focus', () => { rewStyleSelect.style.borderColor = 'rgba(96,165,250,0.5)'; rewStyleSelect.style.boxShadow = '0 0 0 3px rgba(96,165,250,0.1)'; });
-    rewStyleSelect.addEventListener('blur', () => { rewStyleSelect.style.borderColor = 'rgba(255,255,255,0.1)'; rewStyleSelect.style.boxShadow = '0 4px 15px rgba(0,0,0,0.1)'; });
+    rewStyleSelect.style.cssText = 'width: 100%; padding: 10px 14px; border-radius: 8px; font-weight: 500;';
 
-    // Premium Styles Only (removed basic ones per user request)
+    // Premium Styles
     const styles = [
-      { v: 'academic', n: 'Academic' },
-      { v: 'detailed', n: 'Detailed' },
-      { v: 'humanized', n: 'Humanized' },
-      { v: 'creative', n: 'Creative' },
-      { v: 'professional', n: 'Professional' },
-      { v: 'simple', n: 'Simple' },
-      { v: 'customStyle', n: 'Custom Style' }
+      { v: 'academic', n: '🎓 Academic' },
+      { v: 'detailed', n: '📝 Detailed' },
+      { v: 'humanized', n: '💬 Humanized' },
+      { v: 'creative', n: '✨ Creative' },
+      { v: 'professional', n: '💼 Professional' },
+      { v: 'simple', n: '📌 Simple' },
+      { v: 'customStyle', n: '🎨 Custom Style' }
     ];
     styles.forEach(s => { const o = document.createElement('option'); o.value = s.v; o.textContent = s.n; rewStyleSelect.appendChild(o); });
     rewStyleSelect.value = 'academic';
@@ -2447,25 +2447,28 @@ Rules:
     styleGroup.appendChild(rewStyleLabel);
     styleGroup.appendChild(rewStyleSelect);
     rewControls.appendChild(styleGroup);
-    rewStyleSelect.value = 'normal';
 
     const targetGroup = document.createElement('div');
     targetGroup.style.cssText = 'display: flex; flex-direction: column; gap: 8px;';
 
     const rewTargetLabel = document.createElement('label');
     rewTargetLabel.className = 'cb-label';
-    rewTargetLabel.textContent = 'Target Model';
-    rewTargetLabel.style.cssText = 'font-size: 12px; font-weight: 600; color: var(--cb-subtext); text-transform: uppercase; letter-spacing: 0.5px;';
+    rewTargetLabel.innerHTML = '<span style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--cb-subtext);opacity:0.8;">Target Model</span>';
 
     const rewTargetSelect = document.createElement('select');
     rewTargetSelect.className = 'cb-select';
     rewTargetSelect.id = 'cb-rew-target-select';
-    rewTargetSelect.style.cssText = 'width: 100%; background: var(--cb-bg3); border: 1px solid var(--cb-border); color: var(--cb-white); padding: 10px 12px; border-radius: 8px; font-size: 14px; outline: none; transition: all 0.2s ease; cursor: pointer;';
-    rewTargetSelect.addEventListener('focus', () => rewTargetSelect.style.borderColor = 'var(--cb-accent-primary)');
-    rewTargetSelect.addEventListener('blur', () => rewTargetSelect.style.borderColor = 'var(--cb-border)');
+    rewTargetSelect.style.cssText = 'width: 100%; padding: 10px 14px; border-radius: 8px; font-weight: 500;';
 
-    const targetModels = ['None', 'Claude', 'ChatGPT', 'Gemini', 'OpenAI', 'Llama', 'Bing', 'Anthropic', 'Cohere', 'HuggingFace', 'Custom'];
-    targetModels.forEach(m => { const o = document.createElement('option'); o.value = m; o.textContent = m; rewTargetSelect.appendChild(o); });
+    const targetModels = [
+      { v: 'None', n: '🔄 None (Generic)' },
+      { v: 'Claude', n: '🟠 Claude' },
+      { v: 'ChatGPT', n: '🟢 ChatGPT' },
+      { v: 'Gemini', n: '🔵 Gemini' },
+      { v: 'Llama', n: '🦙 Llama' },
+      { v: 'Custom', n: '🎯 Custom' }
+    ];
+    targetModels.forEach(m => { const o = document.createElement('option'); o.value = m.v; o.textContent = m.n; rewTargetSelect.appendChild(o); });
     rewTargetSelect.value = 'None';
 
     targetGroup.appendChild(rewTargetLabel);
@@ -2497,32 +2500,38 @@ Rules:
     styleHintWrap.appendChild(styleHintInput);
     rewView.appendChild(styleHintWrap);
 
-    // Replies list (assistant only - compact preview mode)
+    // Section divider for message selection
+    const msgDivider = document.createElement('div');
+    msgDivider.style.cssText = 'display: flex; align-items: center; gap: 10px; margin: 16px 0; padding: 0;';
+    msgDivider.innerHTML = '<div style="flex: 1; height: 1px; background: linear-gradient(90deg, transparent, var(--cb-border), transparent);"></div><span style="font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--cb-subtext); opacity: 0.8;">Messages</span><div style="flex: 1; height: 1px; background: linear-gradient(90deg, transparent, var(--cb-border), transparent);"></div>';
+    rewView.appendChild(msgDivider);
+
+    // Message selection section
     const rewRepliesWrap = document.createElement('div');
     rewRepliesWrap.className = 'cb-replies-wrap';
-    rewRepliesWrap.style.cssText = 'margin-top: 24px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.05);';
+    rewRepliesWrap.style.cssText = 'margin-top: 12px;';
 
     const rewRepliesHeader = document.createElement('div');
     rewRepliesHeader.className = 'cb-replies-header';
-    rewRepliesHeader.style.cssText = 'display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;';
+    rewRepliesHeader.style.cssText = 'display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;';
 
     const rewRepliesTitle = document.createElement('div');
     rewRepliesTitle.className = 'cb-replies-title';
-    rewRepliesTitle.textContent = 'Message Selection';
-    rewRepliesTitle.style.cssText = 'font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.9);';
+    rewRepliesTitle.textContent = 'Select messages to rewrite';
+    rewRepliesTitle.style.cssText = 'font-size: 12px; font-weight: 500; color: var(--cb-subtext);';
 
     const rewReplyControls = document.createElement('div');
-    rewReplyControls.style.cssText = 'display:flex;align-items:center;gap:8px;';
+    rewReplyControls.style.cssText = 'display:flex;align-items:center;gap:6px;';
 
     const rewMultiBtn = document.createElement('button');
     rewMultiBtn.className = 'cb-btn cb-btn-secondary';
-    rewMultiBtn.style.cssText = 'padding:6px 14px;font-size:11px;border-radius:20px;background:rgba(255,255,255,0.05);';
-    rewMultiBtn.textContent = 'Multi-Select';
+    rewMultiBtn.style.cssText = 'padding:6px 12px;font-size:10px;border-radius:16px;background:transparent;border:1px solid var(--cb-border);';
+    rewMultiBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><polyline points="9 11 12 14 22 4"></polyline><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>Multi';
 
     const rewFilterBtn = document.createElement('button');
     rewFilterBtn.className = 'cb-btn cb-btn-secondary';
-    rewFilterBtn.style.cssText = 'padding:6px 14px;font-size:11px;border-radius:20px;background:rgba(255,255,255,0.05);';
-    rewFilterBtn.textContent = 'Filter: All';
+    rewFilterBtn.style.cssText = 'padding:6px 12px;font-size:10px;border-radius:16px;background:transparent;border:1px solid var(--cb-border);';
+    rewFilterBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>All';
 
     rewReplyControls.appendChild(rewMultiBtn);
     rewReplyControls.appendChild(rewFilterBtn);
@@ -2532,17 +2541,11 @@ Rules:
     const rewReplies = document.createElement('div');
     rewReplies.className = 'cb-replies';
     rewReplies.id = 'cb-replies-list';
-    rewReplies.style.cssText = 'max-height: 250px; overflow-y: auto; display: grid; gap: 8px; padding-right: 4px;';
+    rewReplies.style.cssText = 'max-height: 200px; overflow-y: auto; display: grid; gap: 8px; padding: 12px; background: rgba(255,255,255,0.02); border: 1px solid var(--cb-border); border-radius: 10px;';
 
     rewRepliesWrap.appendChild(rewRepliesHeader);
     rewRepliesWrap.appendChild(rewReplies);
     rewView.appendChild(rewRepliesWrap);
-
-    // Removed preview area for singular message selection as requested
-    // Logic updated to rewrite "everything" if nothing selected
-
-    // Removed: Editor textarea between messages and rewrite button per user request
-    // Selection now just highlights, rewrite button uses selected or entire chat
 
     // Restore saved rewrite style
     try { const savedRew = localStorage.getItem('chatbridge:pref:rewStyle'); if (savedRew) rewStyleSelect.value = savedRew; } catch (e) { }
@@ -2554,23 +2557,22 @@ Rules:
       updateStyleHintVisibility();
     });
     styleHintInput.addEventListener('input', () => { try { localStorage.setItem('chatbridge:pref:rewStyleHint', styleHintInput.value); } catch (e) { } });
+
+    // Premium action button with icon
     const btnGoRew = document.createElement('button');
-    btnGoRew.className = 'cb-btn cb-view-go';
-    btnGoRew.textContent = '✨ Rewrite';
-    btnGoRew.style.cssText = 'width: 100%; margin-top: 16px; background: linear-gradient(135deg, var(--cb-accent-primary), var(--cb-accent-secondary)); border: none; padding: 12px; font-weight: 600; font-size: 14px; letter-spacing: 0.5px; box-shadow: 0 4px 12px rgba(96, 165, 250, 0.3);';
-    btnGoRew.onmouseenter = () => btnGoRew.style.filter = 'brightness(1.1) translateY(-1px)';
-    btnGoRew.onmouseleave = () => btnGoRew.style.filter = 'brightness(1) translateY(0)';
+    btnGoRew.className = 'cb-btn cb-btn-primary cb-view-go';
+    btnGoRew.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:8px;"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>Rewrite';
+    btnGoRew.style.cssText = 'width: 100%; margin-top: 16px; display: flex; align-items: center; justify-content: center; padding: 12px 24px; font-weight: 600; font-size: 13px; letter-spacing: 0.02em;';
 
     rewView.appendChild(btnGoRew);
 
     const rewProg = document.createElement('span'); rewProg.className = 'cb-progress'; rewProg.style.display = 'none'; rewView.appendChild(rewProg);
 
+    // Insert button with success styling
     const btnInsertRew = document.createElement('button');
     btnInsertRew.className = 'cb-btn cb-view-go';
-    btnInsertRew.textContent = '⬆️ Insert to Chat';
-    btnInsertRew.style.cssText = 'width: 100%; margin-top: 12px; display: none; background: var(--cb-bg3); border: 1px solid var(--cb-border); color: var(--cb-white); padding: 12px; font-weight: 600;';
-    btnInsertRew.onmouseenter = () => { btnInsertRew.style.background = 'rgba(255, 255, 255, 0.1)'; btnInsertRew.style.borderColor = 'var(--cb-white)'; };
-    btnInsertRew.onmouseleave = () => { btnInsertRew.style.background = 'var(--cb-bg3)'; btnInsertRew.style.borderColor = 'var(--cb-border)'; };
+    btnInsertRew.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px;"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>Insert to Chat';
+    btnInsertRew.style.cssText = 'width: 100%; margin-top: 12px; display: none; background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.3); color: #10b981; padding: 10px 18px;';
 
     rewView.appendChild(btnInsertRew);
 
@@ -14708,7 +14710,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         if (!textToRewrite || textToRewrite.trim().length < 5) {
           toast('No content found to rewrite');
           btnGoRew.disabled = false;
-          btnGoRew.textContent = '✨ Rewrite';
+          btnGoRew.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:8px;"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>Rewrite';
           return;
         }
 
@@ -14767,7 +14769,8 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         toast('Transformation failed: ' + (err && err.message ? err.message : err));
         debugLog('rewrite error', err);
       } finally {
-        removeLoadingFromButton(btnGoRew, '✨ Rewrite');
+        btnGoRew.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:8px;"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>Rewrite';
+        btnGoRew.disabled = false;
         rewProg.style.display = 'none';
       }
     });

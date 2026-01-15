@@ -159,33 +159,32 @@ This comprehensive checklist tracks the implementation progress of ALL ChatBridg
 ---
 
 ## 🎯 Prompt Designer View
-- [x] **Header**
-    - [x] ⭐ Icon with gradient
-    - [x] "Smart Prompts" title
-    - [x] ✕ Close button
-- [x] **Intro Card**
-    - [x] Instructions text (Minimal glass design)
-- [x] **Prompt Categories (Accordion Style)**
-    - [x] 🎯 **Follow-up** category
-        - [x] Accordion header with icon/color
-        - [x] Generated prompts list (3 prompts)
-        - [x] Click-to-copy functionality
-        - [x] Double-click to insert
-    - [x] 🔍 **Deep Dive** category
-        - [x] Accordion header with icon/color
-        - [x] Generated prompts list
-    - [x] 💡 **Clarify** category
-        - [x] Accordion header with icon/color
-        - [x] Generated prompts list
-    - [x] 🔄 **Alternatives** category
-        - [x] Accordion header with icon/color
-        - [x] Generated prompts list
-    - [x] ✨ **Creative** category
-        - [x] Accordion header with icon/color
-        - [x] Generated prompts list
-- [x] **Footer**
-    - [x] Usage hints ("Click = copy • Double-click = insert")
-
+- [ ] **Header**
+    - [ ] ⭐ Icon with gradient
+    - [ ] "Smart Prompts" title
+    - [ ] ✕ Close button
+- [ ] **Intro Card**
+    - [ ] Instructions text (Minimal glass design)
+- [ ] **Prompt Categories (Accordion Style)**
+    - [ ] 🎯 **Follow-up** category
+        - [ ] Accordion header with icon/color
+        - [ ] Generated prompts list (3 prompts)
+        - [ ] Click-to-copy functionality
+        - [ ] Double-click to insert
+    - [ ] 🔍 **Deep Dive** category
+        - [ ] Accordion header with icon/color
+        - [ ] Generated prompts list
+    - [ ] 💡 **Clarify** category
+        - [ ] Accordion header with icon/color
+        - [ ] Generated prompts list
+    - [ ] 🔄 **Alternatives** category
+        - [ ] Accordion header with icon/color
+        - [ ] Generated prompts list
+    - [ ] ✨ **Creative** category
+        - [ ] Accordion header with icon/color
+        - [ ] Generated prompts list
+- [ ] **Footer**
+    - [ ] Usage hints ("Click = copy • Double-click = insert")
 ---
 
 ## 📄 Summarize View
@@ -240,95 +239,90 @@ This comprehensive checklist tracks the implementation progress of ALL ChatBridg
 ---
 
 ## ✏️ Rewrite View
-- [ ] **Header**
-    - [ ] ✏️ Icon with gradient
-    - [ ] "Rewrite" title
-    - [ ] ✕ Close button
-- [ ] **Intro Card**
-    - [ ] "Polish & Refine" title
-    - [ ] Description text
-- [ ] **Controls Grid**
-    - [ ] **Style Selector**
-        - [ ] Academic option
-        - [ ] Detailed option
-        - [ ] Humanized option
-        - [ ] Creative option
-        - [ ] Professional option
-        - [ ] Simple option
-        - [ ] Custom Style option
-    - [ ] **Target Model Selector**
-        - [ ] None option
-        - [ ] Claude option
-        - [ ] ChatGPT option
-        - [ ] Gemini option
-        - [ ] OpenAI option
-        - [ ] Llama option
-        - [ ] Bing option
-        - [ ] Anthropic option
-        - [ ] Cohere option
-        - [ ] HuggingFace option
-        - [ ] Custom option
-- [ ] **Custom Style Hint** (shown when Custom Style selected)
-    - [ ] Text input for style intent
-- [ ] **Message Selection Section**
-    - [ ] "Message Selection" header
-    - [ ] Multi-Select button
-    - [ ] Filter: All button
-    - [ ] Message list with checkboxes
-    - [ ] Message preview cards
-- [ ] **Action Button**
-    - [ ] "✨ Rewrite" primary button
-- [ ] **Progress Indicator**
-- [ ] **Insert Button**
-    - [ ] "⬆️ Insert to Chat" button
+- [x] **Header**
+    - [x] ✏️ Icon with gradient
+    - [x] "Rewrite" title
+    - [x] ✕ Close button
+- [x] **Intro Card**
+    - [x] "Polish & Refine" title
+    - [x] Description text
+- [x] **Controls Grid**
+    - [x] **Style Selector**
+        - [x] Academic option
+        - [x] Detailed option
+        - [x] Humanized option
+        - [x] Creative option
+        - [x] Professional option
+        - [x] Simple option
+        - [x] Custom Style option
+    - [x] **Target Model Selector**
+        - [x] None option
+        - [x] Claude option
+        - [x] ChatGPT option
+        - [x] Gemini option
+        - [x] Llama option
+        - [x] Custom option
+- [x] **Custom Style Hint** (shown when Custom Style selected)
+    - [x] Text input for style intent
+- [x] **Message Selection Section**
+    - [x] "Message Selection" header
+    - [x] Multi-Select button
+    - [x] Filter: All button
+    - [x] Message list with checkboxes
+    - [x] Message preview cards
+- [x] **Action Button**
+    - [x] "✨ Rewrite" primary button
+- [x] **Progress Indicator**
+- [x] **Insert Button**
+    - [x] "⬆️ Insert to Chat" button
 
 ---
 
 ## 🌐 Translate View
-- [ ] **Header**
-    - [ ] 🌐 Emoji
-    - [ ] "Translate" title
-    - [ ] ✕ Close button
-- [ ] **Intro Text**
-    - [ ] Description with technical terms note
-- [ ] **Quick Language Chips**
-    - [ ] 🇪🇸 Spanish chip
-    - [ ] 🇫🇷 French chip
-    - [ ] 🇩🇪 German chip
-    - [ ] 🇯🇵 Japanese chip
-    - [ ] 🇨🇳 Chinese chip
-    - [ ] 🇮🇳 Hindi chip
-    - [ ] 🇧🇷 Portuguese chip
-    - [ ] 🇸🇦 Arabic chip
-- [ ] **Language Selection Row**
-    - [ ] "Output language:" label
-    - [ ] Language dropdown (31 languages)
-    - [ ] ⚙️ Options gear button
-- [ ] **Settings Panel (Hidden by default)**
-    - [ ] "⚙️ Translation Settings" header
-    - [ ] **What to translate radio group**
-        - [ ] 📄 All option
-        - [ ] 👤 User option
-        - [ ] 🤖 AI option
-        - [ ] 💬 Last option
-        - [ ] ✏️ Custom option
-    - [ ] **Custom Text Input Area** (shown when Custom selected)
-        - [ ] Textarea input
-        - [ ] Character count display
-    - [ ] **Shorten output toggle**
-        - [ ] Label and description
-        - [ ] Toggle switch
-    - [ ] **🧠 Deep Thinking toggle**
-        - [ ] Label and description (22B model)
-        - [ ] Toggle switch
-- [ ] **Action Row**
-    - [ ] "Translate" primary button
-    - [ ] Progress spinner with "Translating..." text
-- [ ] **Result Display**
-    - [ ] Translated text area
-    - [ ] Scroll support
-- [ ] **Insert Button**
-    - [ ] "Insert to Chat" button
+- [x] **Header**
+    - [x] 🌐 Emoji
+    - [x] "Translate" title
+    - [x] ✕ Close button
+- [x] **Intro Text**
+    - [x] Description with technical terms note
+- [x] **Quick Language Chips**
+    - [x] 🇪🇸 Spanish chip
+    - [x] 🇫🇷 French chip
+    - [x] 🇩🇪 German chip
+    - [x] 🇯🇵 Japanese chip
+    - [x] 🇨🇳 Chinese chip
+    - [x] 🇮🇳 Hindi chip
+    - [x] 🇧🇷 Portuguese chip
+    - [x] 🇸🇦 Arabic chip
+- [x] **Language Selection Row**
+    - [x] "Output language:" label
+    - [x] Language dropdown (31 languages)
+    - [x] ⚙️ Options gear button
+- [x] **Settings Panel (Hidden by default)**
+    - [x] "⚙️ Translation Settings" header
+    - [x] **What to translate radio group**
+        - [x] 📄 All option
+        - [x] 👤 User option
+        - [x] 🤖 AI option
+        - [x] 💬 Last option
+        - [x] ✏️ Custom option
+    - [x] **Custom Text Input Area** (shown when Custom selected)
+        - [x] Textarea input
+        - [x] Character count display
+    - [x] **Shorten output toggle**
+        - [x] Label and description
+        - [x] Toggle switch
+    - [x] **🧠 Deep Thinking toggle**
+        - [x] Label and description (22B model)
+        - [x] Toggle switch
+- [x] **Action Row**
+    - [x] "Translate" primary button
+    - [x] Progress spinner with "Translating..." text
+- [x] **Result Display**
+    - [x] Translated text area
+    - [x] Scroll support
+- [x] **Insert Button**
+    - [x] "Insert to Chat" button
 
 ---
 
