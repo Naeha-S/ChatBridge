@@ -1050,7 +1050,7 @@
   .cb-panel::-webkit-scrollbar-thumb { background: linear-gradient(180deg, var(--cb-accent-primary), var(--cb-accent-secondary)); border-radius: 10px; border: 2px solid var(--cb-bg); }
   .cb-panel::-webkit-scrollbar-thumb:hover { opacity: 0.8; }
   .cb-header { display:flex; flex-direction:row; align-items:flex-start; justify-content:space-between; padding:var(--cb-space-xl) var(--cb-space-xl) var(--cb-space-sm) var(--cb-space-xl); gap:var(--cb-space-md); position: relative; }
-  .cb-title { font-weight:700; font-size:20px; letter-spacing:-0.02em; color: var(--cb-white); background: linear-gradient(135deg, #00D4FF, #7C3AED); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .cb-title { font-weight:700; font-size:21px; letter-spacing:-0.02em; color: var(--cb-white); background: linear-gradient(135deg, #00D4FF, #7C3AED); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
   .cb-subtitle { font-size:12px; color: var(--cb-subtext); font-weight:500; margin-top:4px; margin-bottom:2px; letter-spacing:-0.01em; opacity:0.8; }
   .cb-badge { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, #00D4FF, #7C3AED); color: #ffffff; font-weight: 800; font-size: 15px; letter-spacing: -0.5px; box-shadow: 0 4px 16px rgba(0, 212, 255, 0.3), 0 0 20px rgba(124, 58, 237, 0.2); margin-right: 14px; animation: cb-badge-float 3s ease-in-out infinite; transition: box-shadow 0.3s, transform 0.3s; }
   .cb-badge:hover { box-shadow: 0 6px 24px rgba(0, 212, 255, 0.5), 0 0 32px rgba(124, 58, 237, 0.4); transform: translateY(-2px); }
@@ -1121,7 +1121,7 @@
       .cb-view-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
       .cb-view-close { background:transparent; border:1px solid var(--cb-border); color:var(--cb-white); padding:6px 12px; border-radius:8px; cursor:pointer; font-size:12px; font-weight:600; transition: all 0.2s ease; position:relative; z-index:2; }
       .cb-view-close:hover { background:var(--cb-bg3); border-color: var(--cb-accent-primary); box-shadow: 0 2px 8px rgba(0, 180, 255, 0.2); transform: translateY(-1px); }
-      .cb-view-title { font-weight:700; font-size:16px; color:var(--cb-white); letter-spacing:-0.01em; }
+      .cb-view-title { font-weight:700; font-size:18px; color:var(--cb-white); letter-spacing:-0.01em; }
       .cb-view-intro { font-size:13px; color:var(--cb-subtext); line-height:1.6; margin:12px 0 16px 0; padding:12px 14px; background:var(--cb-bg3); border-left:3px solid var(--cb-accent-primary); border-radius:8px; }
       .cb-view-select { margin:10px 0 14px 0; width:100%; }
   .cb-view-text { width:100%; min-height:140px; max-height:200px; resize:vertical; background:var(--cb-bg); color:var(--cb-white); border:1px solid var(--cb-border); padding:12px; border-radius:10px; font-family:inherit; white-space:pre-wrap; overflow-y:auto; overflow-x:hidden; font-size:13px; line-height:1.6; transition: all 0.2s ease; }
@@ -1214,6 +1214,7 @@
   @keyframes cb-slide-up { from { transform: translateY(12px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
   @keyframes cb-pulse-glow { 0%, 100% { box-shadow: 0 4px 12px rgba(0, 180, 255, 0.3), 0 0 20px rgba(96, 165, 250, 0.2); } 50% { box-shadow: 0 4px 20px rgba(0, 180, 255, 0.5), 0 0 32px rgba(96, 165, 250, 0.35); } }
   @keyframes cb-pulse-dot { 0%, 100% { opacity: 1; box-shadow: 0 0 8px rgba(63, 185, 80, 0.6); } 50% { opacity: 0.7; box-shadow: 0 0 12px rgba(63, 185, 80, 0.9); } }
+  @keyframes cbFadeSlideIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
   
   /* Tooltip styles */
   .cb-tooltip { position:relative; }
@@ -1225,7 +1226,7 @@
   
   /* Premium Scan Button */
   /* Premium Scan Button with Theme Support */
-  .cb-scan-premium { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 20px; font-size: 12px; font-weight: 700; letter-spacing: 0.04em; background: linear-gradient(135deg, var(--cb-accent-primary) 0%, var(--cb-accent-secondary) 50%, var(--cb-accent-primary) 100%); background-size: 200% 200%; animation: cb-gradient-shift 4s ease infinite; border: none; border-radius: 10px; box-shadow: 0 2px 12px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.15); text-transform: uppercase; color: #ffffff !important; }
+  .cb-scan-premium { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 14px 24px; font-size: 13px; font-weight: 700; letter-spacing: 0.04em; background: linear-gradient(135deg, var(--cb-accent-primary) 0%, var(--cb-accent-secondary) 50%, var(--cb-accent-primary) 100%); background-size: 200% 200%; animation: cb-gradient-shift 4s ease infinite; border: none; border-radius: 10px; box-shadow: 0 2px 12px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.15); text-transform: uppercase; color: #ffffff !important; }
   .cb-scan-premium:hover { transform: translateY(-2px); box-shadow: 0 4px 20px rgba(var(--cb-accent-primary-rgb, 0, 180, 255), 0.35); }
   .cb-scan-premium svg { width: 16px; height: 16px; stroke-width: 2.5; }
   @keyframes cb-gradient-shift { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
@@ -1686,7 +1687,7 @@
 
     const pdTitle = document.createElement('div');
     pdTitle.className = 'cb-view-title';
-    pdTitle.style.cssText = 'font-size:17px;font-weight:600;color:var(--cb-white);display:flex;align-items:center;gap:10px;letter-spacing:-0.01em;';
+    pdTitle.style.cssText = 'font-size:18px;font-weight:600;color:var(--cb-white);display:flex;align-items:center;gap:10px;letter-spacing:-0.01em;';
     pdTitle.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="url(#gradient-pd-stroke)" stroke-width="1.5"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/><defs><linearGradient id="gradient-pd-stroke" x1="2" y1="2" x2="22" y2="21"><stop stop-color="#00D4FF"/><stop offset="1" stop-color="#7C3AED"/></linearGradient></defs></svg><span style="background:linear-gradient(135deg, #00D4FF, #7C3AED);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">Smart Prompts</span>';
 
     const btnClosePD = document.createElement('button');
@@ -1697,10 +1698,7 @@
     btnClosePD.addEventListener('mouseenter', () => { btnClosePD.style.background = 'rgba(255,255,255,0.08)'; btnClosePD.style.borderColor = 'rgba(255,255,255,0.1)'; btnClosePD.style.color = 'var(--cb-white)'; });
     btnClosePD.addEventListener('mouseleave', () => { btnClosePD.style.background = 'rgba(255,255,255,0.03)'; btnClosePD.style.borderColor = 'rgba(255,255,255,0.06)'; btnClosePD.style.color = 'var(--cb-subtext)'; });
     btnClosePD.addEventListener('click', () => {
-      promptDesignerView.style.display = 'none';
-      if (typeof actions !== 'undefined') actions.style.display = 'block';
-      const preview = panel.querySelector('#cb-preview-card');
-      if (preview) preview.style.display = 'block';
+      promptDesignerView.classList.remove('cb-view-active');
     });
 
     pdTop.appendChild(pdTitle);
@@ -1936,15 +1934,14 @@
 
     // Prompt Designer Open Handler
     btnPromptDesigner.addEventListener('click', () => {
-      // Hide other views
-      panel.querySelectorAll('.cb-internal-view').forEach(v => v.style.display = 'none');
-      // Hide main actions
-      if (typeof actions !== 'undefined') actions.style.display = 'none';
-      const preview = panel.querySelector('#cb-preview-card');
-      if (preview) preview.style.display = 'none';
-
+      // Use closeAllViews if available, otherwise manually hide views
+      if (typeof closeAllViews === 'function') {
+        closeAllViews();
+      } else {
+        panel.querySelectorAll('.cb-internal-view').forEach(v => v.classList.remove('cb-view-active'));
+      }
       // Show Prompt Designer
-      promptDesignerView.style.display = 'block';
+      promptDesignerView.classList.add('cb-view-active');
     });
 
     // Summarize view - Premium Luxury UI (matching Translate/Rewrite style)
@@ -2234,7 +2231,7 @@
           readingTimeStr = secs > 0 ? `${mins}m ${secs} s` : `${mins} m`;
         }
 
-        statsEl.innerHTML = `< div style = "background:rgba(255,255,255,0.05);padding:6px 10px;border-radius:20px;" >📊 Words: ${words.toLocaleString()}</div ><div style="background:rgba(255,255,255,0.05);padding:6px 10px;border-radius:20px;">📝 Chars: ${chars.toLocaleString()}</div><div style="background:rgba(255,255,255,0.05);padding:6px 10px;border-radius:20px;">📖 Reading time: ~${readingTimeStr}</div>`;
+        statsEl.innerHTML = `<div style="background:rgba(255,255,255,0.05);padding:6px 10px;border-radius:20px;">Words: ${words.toLocaleString()}</div><div style="background:rgba(255,255,255,0.05);padding:6px 10px;border-radius:20px;">Chars: ${chars.toLocaleString()}</div><div style="background:rgba(255,255,255,0.05);padding:6px 10px;border-radius:20px;">Reading time: ~${readingTimeStr}</div>`;
       } catch (e) { }
     }
 
@@ -2638,7 +2635,7 @@
     quickLangs.forEach(lang => {
       const chip = document.createElement('button');
       chip.className = 'cb-lang-chip';
-      chip.innerHTML = `< span > ${lang.label}</span > `;
+      chip.innerHTML = `<span>${lang.label}</span>`;
       chip.style.cssText = 'display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; font-size: 11px; font-weight: 500; background: rgba(255,255,255,0.03); border: 1px solid var(--cb-border); border-radius: 20px; color: var(--cb-subtext); cursor: pointer; transition: all 0.2s ease;';
       chip.addEventListener('mouseenter', () => {
         chip.style.background = 'rgba(0, 212, 255, 0.12)';
@@ -6848,22 +6845,22 @@ Output ONLY the 5 numbered questions.`;
         const btnGenerate = document.createElement('button');
         btnGenerate.id = 'cb-prompts-generate';
         btnGenerate.className = 'cb-btn cb-btn-primary';
-        btnGenerate.style.cssText = 'background: linear-gradient(135deg, var(--cb-accent-primary), var(--cb-accent-secondary)); border: none; padding: 10px 16px; font-weight: 600; font-size: 12px; border-radius: 8px; color: var(--cb-white); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.2s;';
-        btnGenerate.innerHTML = '<span style="font-size: 14px;">✨</span> Generate Ideas';
+        btnGenerate.style.cssText = 'background: linear-gradient(135deg, #00D4FF, #7C3AED); border: none; padding: 11px 18px; font-weight: 500; font-size: 12px; border-radius: 8px; color: var(--cb-white); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s; letter-spacing: 0.3px;';
+        btnGenerate.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg> Generate';
 
         const btnRefresh = document.createElement('button');
         btnRefresh.id = 'cb-prompts-refresh';
         btnRefresh.className = 'cb-btn';
         btnRefresh.title = 'Refresh Context';
-        btnRefresh.style.cssText = 'width: 36px; height: 36px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 14px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; cursor: pointer; transition: all 0.2s;';
-        btnRefresh.innerHTML = '🔄';
+        btnRefresh.style.cssText = 'width: 36px; height: 36px; padding: 0; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; cursor: pointer; transition: all 0.2s; color: var(--cb-subtext);';
+        btnRefresh.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>';
 
         const btnHistory = document.createElement('button');
         btnHistory.id = 'cb-prompts-history';
         btnHistory.className = 'cb-btn';
         btnHistory.title = 'History';
-        btnHistory.style.cssText = 'width: 36px; height: 36px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 14px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; cursor: pointer; transition: all 0.2s;';
-        btnHistory.innerHTML = '📜';
+        btnHistory.style.cssText = 'width: 36px; height: 36px; padding: 0; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; cursor: pointer; transition: all 0.2s; color: var(--cb-subtext);';
+        btnHistory.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>';
 
         actionBar.appendChild(btnGenerate);
         actionBar.appendChild(btnRefresh);
@@ -6890,7 +6887,7 @@ Output ONLY the 5 numbered questions.`;
         // Hover effects
         btnGenerate.addEventListener('mouseenter', () => {
           btnGenerate.style.transform = 'translateY(-1px)';
-          btnGenerate.style.boxShadow = '0 4px 16px rgba(96,165,250,0.3)';
+          btnGenerate.style.boxShadow = '0 4px 20px rgba(0,212,255,0.25)';
         });
         btnGenerate.addEventListener('mouseleave', () => {
           btnGenerate.style.transform = 'translateY(0)';
@@ -6899,36 +6896,38 @@ Output ONLY the 5 numbered questions.`;
 
         [btnRefresh, btnHistory].forEach(btn => {
           btn.addEventListener('mouseenter', () => {
-            btn.style.background = 'rgba(96,165,250,0.15)';
-            btn.style.borderColor = 'rgba(96,165,250,0.4)';
+            btn.style.background = 'rgba(255,255,255,0.06)';
+            btn.style.borderColor = 'rgba(255,255,255,0.1)';
+            btn.style.color = 'var(--cb-white)';
           });
           btn.addEventListener('mouseleave', () => {
-            btn.style.background = 'rgba(255,255,255,0.03)';
-            btn.style.borderColor = 'rgba(255,255,255,0.08)';
+            btn.style.background = 'rgba(255,255,255,0.02)';
+            btn.style.borderColor = 'rgba(255,255,255,0.06)';
+            btn.style.color = 'var(--cb-subtext)';
           });
         });
 
         // Generate prompts handler
         const generateHandler = async () => {
           const originalHTML = btnGenerate.innerHTML;
-          btnGenerate.innerHTML = '<span class="cb-spinner" style="width:12px;height:12px;border-width:2px;"></span> Generating...';
+          btnGenerate.innerHTML = '<span class="cb-spinner" style="width:12px;height:12px;border-width:2px;"></span> Generating';
           btnGenerate.disabled = true;
           btnGenerate.style.opacity = '0.7';
 
           try {
             const msgs = await scanChat();
             if (!msgs || msgs.length === 0) {
-              toast('⚠️ No messages to analyze');
+              toast('No messages to analyze');
               return;
             }
 
             const prompts = await generateSmartPrompts(msgs);
             savePromptVersion(prompts);
             renderPrompts(prompts, msgs, promptsList);
-            toast('✨ Prompts generated!');
+            toast('Prompts generated');
           } catch (e) {
             debugLog('Generate prompts error:', e);
-            toast('❌ Generation failed');
+            toast('Generation failed');
             promptsList.innerHTML = `<div style="text-align:center;padding:20px;color:#f87171;font-size:11px;">Failed to generate. Please try again.</div>`;
           } finally {
             btnGenerate.innerHTML = originalHTML;
@@ -6960,49 +6959,78 @@ Output ONLY the 5 numbered questions.`;
             critical: '#f59e0b',
             creative: '#ec4899'
           };
-          const categoryIcons = {
-            clarification: '❓',
-            improvement: '⬆️',
-            expansion: '🔍',
-            critical: '⚠️',
-            creative: '✨'
-          };
+          // Category colors only - icons replaced with colored dots in template
 
           listContainer.innerHTML = promptData.questions.map((q, i) => `
-            <div class="cb-prompt-item" data-text="${encodeURIComponent(q.text)}" style="padding:10px 12px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:8px;cursor:pointer;transition:all 0.15s;">
-              <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
-                <span style="font-size:12px;">${categoryIcons[q.category] || '💡'}</span>
-                <span style="font-size:9px;text-transform:uppercase;color:${categoryColors[q.category] || '#60a5fa'};font-weight:500;">${q.category}</span>
+            <div class="cb-prompt-item" data-text="${encodeURIComponent(q.text)}" data-index="${i}" style="padding:14px 16px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-left:2px solid ${categoryColors[q.category] || '#60a5fa'};border-radius:8px;cursor:pointer;transition:all 0.25s ease;opacity:0;transform:translateY(8px);animation:cbFadeSlideIn 0.3s ease forwards;animation-delay:${i * 0.06}s;">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                <div style="width:6px;height:6px;border-radius:50%;background:${categoryColors[q.category] || '#60a5fa'};box-shadow:0 0 8px ${categoryColors[q.category] || '#60a5fa'}60;"></div>
+                <span style="font-size:12px;text-transform:uppercase;color:${categoryColors[q.category] || '#60a5fa'};font-weight:500;letter-spacing:0.5px;">${q.category}</span>
               </div>
-              <div style="font-size:11px;color:var(--cb-white);line-height:1.4;">${q.text}</div>
+              <div style="font-size:12px;color:var(--cb-white);line-height:1.6;">${q.text}</div>
             </div>
           `).join('');
 
           // Add click handlers
           listContainer.querySelectorAll('.cb-prompt-item').forEach(item => {
             item.addEventListener('mouseenter', () => {
-              item.style.background = 'rgba(96,165,250,0.1)';
-              item.style.borderColor = 'rgba(96,165,250,0.3)';
+              item.style.background = 'rgba(255,255,255,0.04)';
+              item.style.borderColor = 'rgba(255,255,255,0.1)';
+              item.style.transform = 'translateX(2px)';
             });
             item.addEventListener('mouseleave', () => {
               item.style.background = 'rgba(255,255,255,0.02)';
-              item.style.borderColor = 'rgba(255,255,255,0.06)';
+              item.style.borderColor = 'rgba(255,255,255,0.05)';
+              item.style.transform = 'translateX(0)';
             });
-            item.addEventListener('click', async () => {
+            item.addEventListener('click', async (e) => {
+              if (e.detail === 2) return; // Skip if double-click
               const text = decodeURIComponent(item.dataset.text);
               await navigator.clipboard.writeText(text);
-              item.style.background = 'rgba(52,211,153,0.15)';
-              setTimeout(() => item.style.background = 'rgba(255,255,255,0.02)', 200);
-              toast('Copied!');
+              item.style.background = 'rgba(0,212,255,0.1)';
+              item.style.borderLeftColor = '#00D4FF';
+              setTimeout(() => {
+                item.style.background = 'rgba(255,255,255,0.02)';
+                item.style.borderLeftColor = '';
+              }, 300);
+              toast('Copied');
             });
             item.addEventListener('dblclick', async () => {
               const text = decodeURIComponent(item.dataset.text);
-              const inp = document.querySelector('textarea,[contenteditable="true"],[role="textbox"]');
+              // Try multiple selectors for different AI chat sites
+              const selectors = [
+                'textarea[placeholder*="Message"]',
+                'textarea[placeholder*="message"]',
+                'div[contenteditable="true"][data-placeholder]',
+                'div[contenteditable="true"]',
+                '[role="textbox"]',
+                'textarea',
+                '#prompt-textarea'
+              ];
+              let inp = null;
+              for (const sel of selectors) {
+                inp = document.querySelector(sel);
+                if (inp) break;
+              }
               if (inp) {
                 inp.focus();
-                if (inp.isContentEditable) { inp.textContent = text; inp.dispatchEvent(new InputEvent('input', { bubbles: true })); }
-                else { inp.value = text; inp.dispatchEvent(new Event('input', { bubbles: true })); }
-                toast('Inserted!');
+                if (inp.isContentEditable) {
+                  inp.innerHTML = '';
+                  inp.textContent = text;
+                  inp.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText' }));
+                } else {
+                  inp.value = text;
+                  inp.dispatchEvent(new Event('input', { bubbles: true }));
+                }
+                item.style.background = 'rgba(52,211,153,0.1)';
+                item.style.borderLeftColor = '#34d399';
+                setTimeout(() => {
+                  item.style.background = 'rgba(255,255,255,0.02)';
+                  item.style.borderLeftColor = '';
+                }, 300);
+                toast('Inserted');
+              } else {
+                toast('No input found');
               }
             });
           });
@@ -14773,14 +14801,16 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
             }
           }
 
-          btnInsertRew.style.display = 'inline-block';
           rewProg.style.display = 'none';
 
           // Auto-insert for fluid UX
           try {
             await restoreToChat(result);
-            toast('✓ Applied successfully');
+            btnInsertRew.style.display = 'none'; // Hide since auto-inserted
+            toast('Inserted to chat');
           } catch (e) {
+            // Show insert button as fallback
+            btnInsertRew.style.display = 'inline-block';
             toast('Transformation done - click Insert');
           }
         } else {
@@ -15397,14 +15427,14 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
       if (!container) return;
 
       const toggleHTML = `
-          < div style = "display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:8px;background:rgba(0,180,255,0.1);border-radius:6px;" >
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:8px;background:rgba(0,180,255,0.1);border-radius:6px;">
           <span style="font-size:11px;font-weight:600;opacity:0.9;">Detail Level:</span>
           <div class="cb-detail-toggle" style="display:flex;gap:4px;">
             <button class="cb-detail-btn" data-level="concise" style="padding:4px 10px;font-size:11px;border-radius:4px;border:1px solid rgba(0,180,255,0.3);background:rgba(0,180,255,0.2);color:#E6E9F0;cursor:pointer;">Concise</button>
             <button class="cb-detail-btn" data-level="detailed" style="padding:4px 10px;font-size:11px;border-radius:4px;border:1px solid rgba(0,180,255,0.3);background:transparent;color:#E6E9F0;cursor:pointer;">Detailed</button>
             <button class="cb-detail-btn" data-level="expert" style="padding:4px 10px;font-size:11px;border-radius:4px;border:1px solid rgba(0,180,255,0.3);background:transparent;color:#E6E9F0;cursor:pointer;">Expert</button>
           </div>
-        </div >
+        </div>
           `;
 
       container.insertAdjacentHTML('afterbegin', toggleHTML);
