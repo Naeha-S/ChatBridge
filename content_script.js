@@ -12,7 +12,6 @@
     window.__CHATBRIDGE.MAX_MESSAGES = window.__CHATBRIDGE.MAX_MESSAGES || 200;
   }
 
-  // APPROVED SITES - Only show avatar/sidebar on these domains
   const APPROVED_SITES = [
     // Major AI Assistants
     'chat.openai.com',
@@ -1683,20 +1682,20 @@
 
     const pdTop = document.createElement('div');
     pdTop.className = 'cb-view-top';
-    pdTop.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;'; // Removed border for cleaner look
+    pdTop.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid rgba(255,255,255,0.04);';
 
     const pdTitle = document.createElement('div');
     pdTitle.className = 'cb-view-title';
-    pdTitle.style.cssText = 'font-size:18px;font-weight:600;color:var(--cb-white);display:flex;align-items:center;gap:12px;letter-spacing:-0.02em;';
-    pdTitle.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" fill="url(#gradient-pd)" stroke="none"/><defs><linearGradient id="gradient-pd" x1="2" y1="2" x2="22" y2="21" gradientUnits="userSpaceOnUse"><stop stop-color="#a78bfa"/><stop offset="1" stop-color="#60a5fa"/></linearGradient></defs></svg><span>Smart Prompts</span>';
+    pdTitle.style.cssText = 'font-size:17px;font-weight:600;color:var(--cb-white);display:flex;align-items:center;gap:10px;letter-spacing:-0.01em;';
+    pdTitle.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="url(#gradient-pd-stroke)" stroke-width="1.5"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/><defs><linearGradient id="gradient-pd-stroke" x1="2" y1="2" x2="22" y2="21"><stop stop-color="#00D4FF"/><stop offset="1" stop-color="#7C3AED"/></linearGradient></defs></svg><span style="background:linear-gradient(135deg, #00D4FF, #7C3AED);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">Smart Prompts</span>';
 
     const btnClosePD = document.createElement('button');
     btnClosePD.className = 'cb-view-close';
-    btnClosePD.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
-    btnClosePD.style.cssText = 'background:transparent;border:none;color:var(--cb-subtext);cursor:pointer;padding:8px;border-radius:50%;transition:all 0.2s ease;display:flex;align-items:center;justify-content:center;opacity:0.7;';
+    btnClosePD.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
+    btnClosePD.style.cssText = 'background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);color:var(--cb-subtext);cursor:pointer;padding:8px;border-radius:8px;transition:all 0.2s ease;display:flex;align-items:center;justify-content:center;';
     btnClosePD.setAttribute('aria-label', 'Close Prompt Designer view');
-    btnClosePD.addEventListener('mouseenter', () => { btnClosePD.style.background = 'rgba(255,255,255,0.05)'; btnClosePD.style.color = 'var(--cb-white)'; btnClosePD.style.opacity = '1'; });
-    btnClosePD.addEventListener('mouseleave', () => { btnClosePD.style.background = 'transparent'; btnClosePD.style.color = 'var(--cb-subtext)'; btnClosePD.style.opacity = '0.7'; });
+    btnClosePD.addEventListener('mouseenter', () => { btnClosePD.style.background = 'rgba(255,255,255,0.08)'; btnClosePD.style.borderColor = 'rgba(255,255,255,0.1)'; btnClosePD.style.color = 'var(--cb-white)'; });
+    btnClosePD.addEventListener('mouseleave', () => { btnClosePD.style.background = 'rgba(255,255,255,0.03)'; btnClosePD.style.borderColor = 'rgba(255,255,255,0.06)'; btnClosePD.style.color = 'var(--cb-subtext)'; });
     btnClosePD.addEventListener('click', () => {
       promptDesignerView.style.display = 'none';
       if (typeof actions !== 'undefined') actions.style.display = 'block';
@@ -1710,8 +1709,8 @@
 
     const pdIntro = document.createElement('div');
     pdIntro.className = 'cb-view-intro';
-    pdIntro.style.cssText = 'font-size:12px;line-height:1.5;color:var(--cb-subtext);margin-bottom:20px;padding:0 4px;font-weight:400;opacity:0.8;';
-    pdIntro.textContent = 'Select a category to generate AI-crafted prompts tailored to your specific conversation context.';
+    pdIntro.style.cssText = 'font-size:12px;line-height:1.7;color:var(--cb-subtext);margin-bottom:24px;padding:16px 18px;background:linear-gradient(135deg, rgba(0,212,255,0.03), rgba(124,58,237,0.02));border:1px solid rgba(255,255,255,0.05);border-left:2px solid rgba(0,212,255,0.4);border-radius:10px;';
+    pdIntro.innerHTML = '<span style="color:var(--cb-white);font-weight:500;">AI-crafted prompts</span> designed to deepen your conversation and uncover new insights.';
     promptDesignerView.appendChild(pdIntro);
 
     // Prompt Designer content container - DROPDOWN CATEGORIES
@@ -1732,17 +1731,16 @@
     promptCategories.forEach(cat => {
       const catDiv = document.createElement('div');
       catDiv.className = 'cb-prompt-cat';
-      // Minimal glass container
-      catDiv.style.cssText = 'background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:12px;overflow:hidden;transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1);';
+      catDiv.style.cssText = 'background:rgba(255,255,255,0.015);border:1px solid rgba(255,255,255,0.04);border-radius:10px;overflow:hidden;transition:all 0.25s ease;';
 
       const catHeader = document.createElement('div');
-      catHeader.style.cssText = 'display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer;transition:background 0.2s;';
+      catHeader.style.cssText = 'display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer;transition:all 0.2s ease;';
       catHeader.innerHTML = `
-        <div style="width:6px;height:6px;border-radius:50%;background:${cat.color};box-shadow:0 0 8px ${cat.color}40;"></div>
-        <span style="flex:1;font-size:13px;font-weight:500;color:var(--cb-white);letter-spacing:0.3px;">${cat.name}</span>
-        <span style="font-size:10px;color:var(--cb-subtext);opacity:0.6;margin-right:8px;">${cat.desc}</span>
-        <div class="cb-arrow" style="font-size:10px;color:rgba(255,255,255,0.3);transition:transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);">
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+        <div style="width:6px;height:6px;border-radius:50%;background:${cat.color};box-shadow:0 0 8px ${cat.color}60;"></div>
+        <span style="flex:1;font-size:12px;font-weight:500;color:var(--cb-white);">${cat.name}</span>
+        <span style="font-size:9px;color:var(--cb-subtext);opacity:0.4;text-transform:uppercase;letter-spacing:0.5px;">${cat.desc}</span>
+        <div class="cb-arrow" style="color:rgba(255,255,255,0.25);transition:transform 0.2s ease;margin-left:4px;">
+            <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
         </div>
       `;
 
@@ -1827,13 +1825,13 @@
           // Compact context (last 4 msgs, 120 chars)
           const ctx = messages.slice(-4).map(m => `${m.role}:${m.text.substring(0, 120)}`).join('|');
 
-          // Optimized prompts per category
+          // Enhanced prompts for more thought-provoking output
           const prompts = {
-            followup: `3 short, engaging follow-up questions for: ${ctx}\nFormat:\n1.\n2.\n3.`,
-            deepdive: `3 short prompts to explore deeper concepts: ${ctx}\nFormat:\n1.\n2.\n3.`,
-            clarify: `3 short prompts to resolve ambiguities: ${ctx}\nFormat:\n1.\n2.\n3.`,
-            alternatives: `3 short alternative perspectives/approaches: ${ctx}\nFormat:\n1.\n2.\n3.`,
-            creative: `3 highly creative/unusual prompts based on: ${ctx}\nFormat:\n1.\n2.\n3.`
+            followup: `Based on this conversation: ${ctx}\n\nGenerate 3 incisive follow-up questions that:\n- Challenge assumptions made\n- Uncover hidden implications\n- Push the discussion deeper\n\nFormat as numbered list, each question should be provocative yet respectful.`,
+            deepdive: `Based on this conversation: ${ctx}\n\nGenerate 3 deep exploration prompts that:\n- Reveal underlying principles or mechanisms\n- Connect to broader concepts or frameworks\n- Invite expert-level analysis\n\nFormat as numbered list.`,
+            clarify: `Based on this conversation: ${ctx}\n\nGenerate 3 clarification prompts that:\n- Expose potential logical gaps\n- Request concrete examples or evidence\n- Distinguish between similar concepts\n\nFormat as numbered list.`,
+            alternatives: `Based on this conversation: ${ctx}\n\nGenerate 3 contrarian perspectives that:\n- Challenge the dominant viewpoint\n- Offer paradigm-shifting alternatives\n- Consider edge cases or exceptions\n\nFormat as numbered list.`,
+            creative: `Based on this conversation: ${ctx}\n\nGenerate 3 highly creative "what if" scenarios that:\n- Combine unexpected elements\n- Explore unconventional applications\n- Spark lateral thinking\n\nFormat as numbered list.`
           };
 
           const response = await new Promise(r => {
@@ -1852,21 +1850,21 @@
             if (items.length) {
               catContent.innerHTML = items.slice(0, 3).map(p => `
                 <div class="cb-sp" data-p="${encodeURIComponent(p)}" style="
-                    padding:12px 14px;
-                    background:linear-gradient(90deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%);
-                    border:1px solid rgba(255,255,255,0.04);
+                    padding:14px 16px;
+                    background:rgba(255,255,255,0.02);
+                    border:1px solid rgba(255,255,255,0.06);
+                    border-left:2px solid ${cat.color}40;
                     border-radius:8px;
-                    margin-bottom:8px;
+                    margin-bottom:10px;
                     cursor:pointer;
-                    font-size:11px;
+                    font-size:12px;
                     color:var(--cb-white);
-                    line-height:1.5;
-                    transition:all 0.2s cubic-bezier(0.4,0,0.2,1);
+                    line-height:1.6;
+                    transition:all 0.25s cubic-bezier(0.4,0,0.2,1);
                     position:relative;
-                    overflow:hidden;
                 ">
                     <div style="position:relative;z-index:2;">${p}</div>
-                    <div class="cb-sp-overlay" style="position:absolute;inset:0;background:${cat.color};opacity:0;transition:opacity 0.2s;z-index:1;"></div>
+                    <div style="position:absolute;top:8px;right:10px;opacity:0.3;font-size:9px;color:var(--cb-subtext);pointer-events:none;">click to copy</div>
                 </div>
               `).join('');
 
@@ -1929,8 +1927,8 @@
 
     // Footer
     const pdFooter = document.createElement('div');
-    pdFooter.style.cssText = 'margin-top:20px;font-size:10px;color:var(--cb-subtext);text-align:center;opacity:0.5;letter-spacing:0.4px;';
-    pdFooter.innerHTML = 'CLICK TO COPY &nbsp;•&nbsp; DOUBLE CLICK TO INSERT';
+    pdFooter.style.cssText = 'margin-top:24px;font-size:9px;color:var(--cb-subtext);text-align:center;opacity:0.4;letter-spacing:0.5px;text-transform:uppercase;';
+    pdFooter.innerHTML = 'Click to copy &nbsp;•&nbsp; Double-click to insert';
     promptDesignerView.appendChild(pdFooter);
 
     // Append to panel
@@ -1949,61 +1947,78 @@
       promptDesignerView.style.display = 'block';
     });
 
-    // Summarize view - LUXURY REDESIGN
+    // Summarize view - Premium Luxury UI (matching Translate/Rewrite style)
     const summView = document.createElement('div'); summView.className = 'cb-internal-view'; summView.id = 'cb-summ-view'; summView.setAttribute('data-cb-ignore', 'true');
 
-    // Header
+    // Header with gradient title
     const summTop = document.createElement('div');
     summTop.className = 'cb-view-top';
-    summTop.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--cb-border);';
+    summTop.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;';
 
     const summTitle = document.createElement('div');
     summTitle.className = 'cb-view-title';
-    summTitle.style.cssText = 'font-size:20px;font-weight:700;color:var(--cb-white);display:flex;align-items:center;gap:10px;';
-    summTitle.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="url(#sumgrad)" stroke-width="2"><defs><linearGradient id="sumgrad" x1="0" y1="0" x2="24" y2="24"><stop offset="0%" stop-color="#60a5fa"/><stop offset="100%" stop-color="#8b5cf6"/></linearGradient></defs><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm-1 2l5 5h-5V4zM6 20V4h5v5h5v11H6z"/><path d="M8 12h8M8 16h8M8 8h4"/></svg><span>Summarize</span>';
+    summTitle.innerHTML = '<span style="background: linear-gradient(135deg, #00D4FF, #7C3AED); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; display: inline-flex; align-items: center; gap: 10px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="url(#summGrad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z"/><path d="M14 2v6h6"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/><defs><linearGradient id="summGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00D4FF"/><stop offset="100%" stop-color="#7C3AED"/></linearGradient></defs></svg>Summarize</span>';
 
     const btnCloseSumm = document.createElement('button');
     btnCloseSumm.className = 'cb-view-close';
     btnCloseSumm.textContent = '✕';
-    btnCloseSumm.style.cssText = 'background:transparent;border:none;color:var(--cb-subtext);cursor:pointer;font-size:20px;padding:4px 8px;border-radius:6px;transition:all 0.2s ease;width:32px;height:32px;display:flex;align-items:center;justify-content:center;';
     btnCloseSumm.setAttribute('aria-label', 'Close Summarize view');
-    btnCloseSumm.addEventListener('mouseenter', () => { btnCloseSumm.style.background = 'rgba(255, 255, 255, 0.05)'; btnCloseSumm.style.color = 'var(--cb-white)'; });
-    btnCloseSumm.addEventListener('mouseleave', () => { btnCloseSumm.style.background = 'transparent'; btnCloseSumm.style.color = 'var(--cb-subtext)'; });
 
     summTop.appendChild(summTitle);
     summTop.appendChild(btnCloseSumm);
     summView.appendChild(summTop);
 
-    // Intro Card
+    // Premium glassmorphic intro card (matching translate style)
     const summIntro = document.createElement('div');
     summIntro.className = 'cb-view-intro';
-    summIntro.style.cssText = 'font-size:13px;line-height:1.6;color:var(--cb-subtext);margin-bottom:20px;padding:14px 16px;background:linear-gradient(135deg,rgba(96,165,250,0.08),rgba(167,139,250,0.08));border:1px solid rgba(96,165,250,0.15);border-radius:12px;backdrop-filter:blur(8px);';
-    summIntro.innerHTML = '<div style="font-weight:600;color:var(--cb-white);margin-bottom:6px;font-size:14px;">Extract Key Insights</div>Instant summaries for quick reviews, sharing highlights, or creating structured meeting notes.';
+    summIntro.style.cssText = 'font-size: 12px; color: var(--cb-subtext); margin: 16px 0; line-height: 1.6; padding: 14px 16px; background: linear-gradient(135deg, rgba(0, 212, 255, 0.06), rgba(124, 58, 237, 0.04)); border-left: 3px solid var(--cb-accent-primary); border-radius: 8px; backdrop-filter: blur(8px);';
+    summIntro.innerHTML = '<span style="color: var(--cb-white); font-weight: 600;">Extract Key Insights</span> from your conversations. Create <span style="color: var(--cb-accent-tertiary);">structured summaries</span>, <span style="color: var(--cb-accent-tertiary);">meeting notes</span>, or <span style="color: var(--cb-accent-tertiary);">quick highlights</span>.';
     summView.appendChild(summIntro);
 
-    // Stats Bar
+    // Premium Stats Bar with gradient pills
     const summStats = document.createElement('div');
     summStats.id = 'cb-summ-stats';
-    summStats.style.cssText = 'display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;font-size:11px;color:var(--cb-subtext);';
-    summStats.innerHTML = '<div style="background:rgba(255,255,255,0.05);padding:6px 10px;border-radius:20px;">📊 Words: --</div><div style="background:rgba(255,255,255,0.05);padding:6px 10px;border-radius:20px;">📝 Chars: --</div><div style="background:rgba(255,255,255,0.05);padding:6px 10px;border-radius:20px;">⏱️ Est. time: --</div>';
+    summStats.style.cssText = 'display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;font-size:10px;';
+    summStats.innerHTML = `
+      <div style="background:linear-gradient(135deg, rgba(0,212,255,0.1), rgba(124,58,237,0.05));padding:6px 12px;border-radius:16px;border:1px solid rgba(0,212,255,0.2);color:var(--cb-subtext);display:flex;align-items:center;gap:4px;">
+        Words: <span id="cb-summ-words" style="color:var(--cb-white);font-weight:600;">--</span>
+      </div>
+      <div style="background:linear-gradient(135deg, rgba(0,212,255,0.1), rgba(124,58,237,0.05));padding:6px 12px;border-radius:16px;border:1px solid rgba(0,212,255,0.2);color:var(--cb-subtext);display:flex;align-items:center;gap:4px;">
+        Chars: <span id="cb-summ-chars" style="color:var(--cb-white);font-weight:600;">--</span>
+      </div>
+      <div style="background:linear-gradient(135deg, rgba(0,212,255,0.1), rgba(124,58,237,0.05));padding:6px 12px;border-radius:16px;border:1px solid rgba(0,212,255,0.2);color:var(--cb-subtext);display:flex;align-items:center;gap:4px;">
+        Est: <span id="cb-summ-time" style="color:var(--cb-white);font-weight:600;">--</span>
+      </div>`;
     summView.appendChild(summStats);
 
-    // Controls Row & Settings Button
+    // Section label for controls
+    const summControlsLabel = document.createElement('div');
+    summControlsLabel.style.cssText = 'font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--cb-subtext); margin-bottom: 12px; opacity: 0.8;';
+    summControlsLabel.textContent = 'Summary Options';
+    summView.appendChild(summControlsLabel);
+
+    // Controls Row with container styling
     const summControlRow = document.createElement('div');
-    summControlRow.style.cssText = 'display:flex;align-items:center;gap:12px;margin-bottom:16px;';
+    summControlRow.style.cssText = 'display:flex;align-items:flex-end;gap:12px;margin-bottom:16px;padding:14px 16px;background:rgba(255,255,255,0.02);border:1px solid var(--cb-border);border-radius:10px;';
 
     // Length Selector
     const lenGroup = document.createElement('div');
     lenGroup.style.cssText = 'flex:1;display:flex;flex-direction:column;gap:6px;';
     const lenLabel = document.createElement('label');
-    lenLabel.textContent = 'LENGTH';
-    lenLabel.style.cssText = 'font-size:10px;font-weight:700;color:var(--cb-subtext);letter-spacing:0.5px;';
+    lenLabel.innerHTML = '<span style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--cb-subtext);opacity:0.8;">Length</span>';
     const summLengthSelect = document.createElement('select');
     summLengthSelect.className = 'cb-select';
     summLengthSelect.id = 'cb-summ-length';
-    summLengthSelect.style.cssText = 'background:var(--cb-bg3);border:1px solid var(--cb-border);color:var(--cb-white);padding:10px;border-radius:8px;font-size:13px;outline:none;width:100%;';
-    ['concise', 'short', 'medium', 'comprehensive', 'detailed'].forEach(v => {
-      const o = document.createElement('option'); o.value = v; o.textContent = v.charAt(0).toUpperCase() + v.slice(1); summLengthSelect.appendChild(o);
+    summLengthSelect.style.cssText = 'width:100%;padding:10px 14px;border-radius:8px;font-weight:500;';
+    const lenOptions = [
+      { v: 'concise', n: 'Concise' },
+      { v: 'short', n: 'Short' },
+      { v: 'medium', n: 'Medium' },
+      { v: 'comprehensive', n: 'Comprehensive' },
+      { v: 'detailed', n: 'Detailed' }
+    ];
+    lenOptions.forEach(opt => {
+      const o = document.createElement('option'); o.value = opt.v; o.textContent = opt.n; summLengthSelect.appendChild(o);
     });
     summLengthSelect.value = 'medium';
     lenGroup.appendChild(lenLabel);
@@ -2013,29 +2028,33 @@
     const typeGroup = document.createElement('div');
     typeGroup.style.cssText = 'flex:1;display:flex;flex-direction:column;gap:6px;';
     const typeLabel = document.createElement('label');
-    typeLabel.textContent = 'STYLE';
-    typeLabel.style.cssText = 'font-size:10px;font-weight:700;color:var(--cb-subtext);letter-spacing:0.5px;';
+    typeLabel.innerHTML = '<span style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--cb-subtext);opacity:0.8;">Style</span>';
     const summTypeSelect = document.createElement('select');
     summTypeSelect.className = 'cb-select';
     summTypeSelect.id = 'cb-summ-type';
-    summTypeSelect.style.cssText = 'background:var(--cb-bg3);border:1px solid var(--cb-border);color:var(--cb-white);padding:10px;border-radius:8px;font-size:13px;outline:none;width:100%;';
-    ['paragraph', 'bullet', 'detailed', 'executive', 'technical', 'transfer'].forEach(v => {
-      const o = document.createElement('option');
-      o.value = v;
-      o.textContent = (v === 'transfer') ? 'AI-to-AI Transfer' : (v.charAt(0).toUpperCase() + v.slice(1));
-      summTypeSelect.appendChild(o);
+    summTypeSelect.style.cssText = 'width:100%;padding:10px 14px;border-radius:8px;font-weight:500;';
+    const typeOptions = [
+      { v: 'paragraph', n: 'Paragraph' },
+      { v: 'bullet', n: 'Bullet Points' },
+      { v: 'detailed', n: 'Detailed' },
+      { v: 'executive', n: 'Executive' },
+      { v: 'technical', n: 'Technical' },
+      { v: 'transfer', n: 'AI-to-AI' }
+    ];
+    typeOptions.forEach(opt => {
+      const o = document.createElement('option'); o.value = opt.v; o.textContent = opt.n; summTypeSelect.appendChild(o);
     });
     summTypeSelect.value = 'paragraph';
     typeGroup.appendChild(typeLabel);
     typeGroup.appendChild(summTypeSelect);
 
-    // Gear Button
+    // Gear Button with SVG icon
     const summGearBtn = document.createElement('button');
-    summGearBtn.innerHTML = '⚙️';
-    summGearBtn.title = 'Settings';
-    summGearBtn.style.cssText = 'background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:18px;cursor:pointer;margin-top:16px;transition:all 0.2s;';
-    summGearBtn.onmouseenter = () => summGearBtn.style.background = 'rgba(255,255,255,0.1)';
-    summGearBtn.onmouseleave = () => summGearBtn.style.background = 'rgba(255,255,255,0.05)';
+    summGearBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>';
+    summGearBtn.title = 'Advanced Options';
+    summGearBtn.style.cssText = 'background:transparent;border:1px solid var(--cb-border);color:var(--cb-subtext);cursor:pointer;padding:10px;border-radius:8px;transition:all 0.2s ease;display:flex;align-items:center;justify-content:center;';
+    summGearBtn.onmouseenter = () => { summGearBtn.style.background = 'rgba(0, 212, 255, 0.1)'; summGearBtn.style.borderColor = 'rgba(0, 212, 255, 0.4)'; summGearBtn.style.color = '#00D4FF'; summGearBtn.style.transform = 'rotate(45deg)'; };
+    summGearBtn.onmouseleave = () => { summGearBtn.style.background = 'transparent'; summGearBtn.style.borderColor = 'var(--cb-border)'; summGearBtn.style.color = 'var(--cb-subtext)'; summGearBtn.style.transform = ''; };
 
     summControlRow.appendChild(lenGroup);
     summControlRow.appendChild(typeGroup);
@@ -2059,7 +2078,7 @@
 
     const summOptHeader = document.createElement('div');
     summOptHeader.style.cssText = 'display:flex;align-items:center;gap:8px;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,0.08);';
-    summOptHeader.innerHTML = '<span style="font-size:13px;font-weight:600;color:var(--cb-white);letter-spacing:0.3px;">⚙️ Settings</span>';
+    summOptHeader.innerHTML = '<span style="font-size:13px;font-weight:600;color:var(--cb-white);letter-spacing:0.3px;">Settings</span>';
     summOptions.appendChild(summOptHeader);
 
     // What to summarize (Mode)
@@ -2075,10 +2094,10 @@
     summRadioGroup.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;';
 
     const modeLabels = {
-      'all': '📄 Full Chat',
-      'lastUser': '👤 Last User',
-      'lastAI': '🤖 Last AI',
-      'custom': '✏️ Custom'
+      'all': 'Full Chat',
+      'lastUser': 'Last User',
+      'lastAI': 'Last AI',
+      'custom': 'Custom'
     };
 
     ['all', 'lastUser', 'lastAI', 'custom'].forEach((mode, idx) => {
@@ -2159,21 +2178,19 @@
     // We attach this to the global scope or close over it, but since btnSummarize needs it, we'll assign it to a var reachable by the closure
     let updateSummContentRef = null;
 
-    // Buttons
+    // Buttons Row with premium styling
     const summBtnRow = document.createElement('div');
     summBtnRow.style.cssText = 'display:flex;gap:10px;margin-bottom:16px;';
 
     const btnGoSumm = document.createElement('button');
-    btnGoSumm.className = 'cb-btn cb-view-go';
-    btnGoSumm.textContent = '✨ Summarize';
-    btnGoSumm.style.cssText = 'flex:1;padding:12px;font-weight:600;font-size:14px;background:linear-gradient(135deg,#60a5fa,#8b5cf6);border:none;box-shadow:0 4px 12px rgba(96,165,250,0.3);';
-    btnGoSumm.onmouseenter = () => btnGoSumm.style.filter = 'brightness(1.1) translateY(-1px)';
-    btnGoSumm.onmouseleave = () => btnGoSumm.style.filter = 'brightness(1) translateY(0)';
+    btnGoSumm.className = 'cb-btn cb-btn-primary cb-view-go';
+    btnGoSumm.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:8px;"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z"/><path d="M14 2v6h6"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>Summarize';
+    btnGoSumm.style.cssText = 'flex:1;display:flex;align-items:center;justify-content:center;padding:12px 24px;font-weight:600;font-size:13px;letter-spacing:0.02em;';
 
     const btnCopySumm = document.createElement('button');
     btnCopySumm.className = 'cb-btn';
-    btnCopySumm.textContent = '📋 Copy';
-    btnCopySumm.style.cssText = 'padding:12px 18px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);';
+    btnCopySumm.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>Copy';
+    btnCopySumm.style.cssText = 'padding:12px 18px;background:transparent;border:1px solid var(--cb-border);display:flex;align-items:center;';
 
     summBtnRow.appendChild(btnGoSumm);
     summBtnRow.appendChild(btnCopySumm);
@@ -2184,17 +2201,19 @@
     summProg.style.display = 'none';
     summView.appendChild(summProg);
 
+    // Insert button with success styling
     const btnInsertSumm = document.createElement('button');
     btnInsertSumm.className = 'cb-btn cb-view-go';
-    btnInsertSumm.textContent = '⬆️ Insert to Chat';
-    btnInsertSumm.style.cssText = 'width:100%;margin-bottom:12px;display:none;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.2);';
+    btnInsertSumm.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px;"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>Insert to Chat';
+    btnInsertSumm.style.cssText = 'width:100%;margin-bottom:12px;display:none;background:rgba(16, 185, 129, 0.1);border-color:rgba(16, 185, 129, 0.3);color:#10b981;padding:10px 18px;';
     summView.appendChild(btnInsertSumm);
 
+    // Result container with premium styling
     const summResult = document.createElement('div');
     summResult.className = 'cb-view-result';
     summResult.id = 'cb-summ-result';
     summResult.textContent = '';
-    summResult.style.cssText = 'font-size:13px;color:rgba(230,230,255,0.95);line-height:1.6;padding:12px;background:rgba(255,255,255,0.03);border-radius:10px;border:1px solid rgba(255,255,255,0.05);display:none;';
+    summResult.style.cssText = 'font-size:13px;line-height:1.7;padding:16px;background:linear-gradient(135deg, rgba(0, 212, 255, 0.03), rgba(124, 58, 237, 0.02));border:1px solid rgba(0, 212, 255, 0.15);border-radius:12px;display:none;max-height:250px;overflow-y:auto;box-shadow:inset 0 1px 0 rgba(255,255,255,0.04);';
     summView.appendChild(summResult);
 
     function updateSummStats(text) {
@@ -2208,14 +2227,14 @@
         const readingTimeSeconds = Math.round((words / 200) * 60);
         let readingTimeStr = '';
         if (readingTimeSeconds < 60) {
-          readingTimeStr = `${readingTimeSeconds}s`;
+          readingTimeStr = `${readingTimeSeconds} s`;
         } else {
           const mins = Math.floor(readingTimeSeconds / 60);
           const secs = readingTimeSeconds % 60;
-          readingTimeStr = secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
+          readingTimeStr = secs > 0 ? `${mins}m ${secs} s` : `${mins} m`;
         }
 
-        statsEl.innerHTML = `<div style="background:rgba(255,255,255,0.05);padding:6px 10px;border-radius:20px;">📊 Words: ${words.toLocaleString()}</div><div style="background:rgba(255,255,255,0.05);padding:6px 10px;border-radius:20px;">📝 Chars: ${chars.toLocaleString()}</div><div style="background:rgba(255,255,255,0.05);padding:6px 10px;border-radius:20px;">📖 Reading time: ~${readingTimeStr}</div>`;
+        statsEl.innerHTML = `< div style = "background:rgba(255,255,255,0.05);padding:6px 10px;border-radius:20px;" >📊 Words: ${words.toLocaleString()}</div ><div style="background:rgba(255,255,255,0.05);padding:6px 10px;border-radius:20px;">📝 Chars: ${chars.toLocaleString()}</div><div style="background:rgba(255,255,255,0.05);padding:6px 10px;border-radius:20px;">📖 Reading time: ~${readingTimeStr}</div>`;
       } catch (e) { }
     }
 
@@ -2278,7 +2297,7 @@
           // All
           let msgs = [];
           if (lastScan) msgs = lastScan.conversation || lastScan.messages || (Array.isArray(lastScan) ? lastScan : []);
-          text = msgs.map(m => `${m.role === 'user' ? 'User' : 'AI'}: ${m.text}`).join('\n\n');
+          text = msgs.map(m => `${m.role === 'user' ? 'User' : 'AI'}: ${m.text} `).join('\n\n');
         }
 
         summSourceText.textContent = text;
@@ -2312,11 +2331,11 @@
         const deep = summDeepToggle.checked;
 
         // Custom prompt to ensure clean output without meta-commentary
-        const cleanPrompt = `Combine the following content into a high-quality summary.
-Rules:
-1. Output ONLY the summary.
+        const cleanPrompt = `Combine the following content into a high - quality summary.
+      Rules:
+    1. Output ONLY the summary.
 2. Do NOT use introductory phrases like "Here is a summary" or "Based on the text".
-3. Follow the requested length (${length}) and style (${style}).
+3. Follow the requested length(${length}) and style(${style}).
 4. Ensure the output is ready to be pasted directly into a chat.`;
 
         const result = await hierarchicalProcess(text, 'summarize', {
@@ -2433,13 +2452,13 @@ Rules:
 
     // Premium Styles
     const styles = [
-      { v: 'academic', n: '🎓 Academic' },
-      { v: 'detailed', n: '📝 Detailed' },
-      { v: 'humanized', n: '💬 Humanized' },
-      { v: 'creative', n: '✨ Creative' },
-      { v: 'professional', n: '💼 Professional' },
-      { v: 'simple', n: '📌 Simple' },
-      { v: 'customStyle', n: '🎨 Custom Style' }
+      { v: 'academic', n: 'Academic' },
+      { v: 'detailed', n: 'Detailed' },
+      { v: 'humanized', n: 'Humanized' },
+      { v: 'creative', n: 'Creative' },
+      { v: 'professional', n: 'Professional' },
+      { v: 'simple', n: 'Simple' },
+      { v: 'customStyle', n: 'Custom Style' }
     ];
     styles.forEach(s => { const o = document.createElement('option'); o.value = s.v; o.textContent = s.n; rewStyleSelect.appendChild(o); });
     rewStyleSelect.value = 'academic';
@@ -2461,12 +2480,12 @@ Rules:
     rewTargetSelect.style.cssText = 'width: 100%; padding: 10px 14px; border-radius: 8px; font-weight: 500;';
 
     const targetModels = [
-      { v: 'None', n: '🔄 None (Generic)' },
-      { v: 'Claude', n: '🟠 Claude' },
-      { v: 'ChatGPT', n: '🟢 ChatGPT' },
-      { v: 'Gemini', n: '🔵 Gemini' },
-      { v: 'Llama', n: '🦙 Llama' },
-      { v: 'Custom', n: '🎯 Custom' }
+      { v: 'None', n: 'None (Generic)' },
+      { v: 'Claude', n: 'Claude' },
+      { v: 'ChatGPT', n: 'ChatGPT' },
+      { v: 'Gemini', n: 'Gemini' },
+      { v: 'Llama', n: 'Llama' },
+      { v: 'Custom', n: 'Custom' }
     ];
     targetModels.forEach(m => { const o = document.createElement('option'); o.value = m.v; o.textContent = m.n; rewTargetSelect.appendChild(o); });
     rewTargetSelect.value = 'None';
@@ -2584,7 +2603,7 @@ Rules:
     const transTop = document.createElement('div'); transTop.className = 'cb-view-top';
     const transTitle = document.createElement('div');
     transTitle.className = 'cb-view-title';
-    transTitle.innerHTML = '<span style="background: linear-gradient(135deg, #00D4FF, #7C3AED); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">🌐 Translate</span>';
+    transTitle.innerHTML = '<span style="background: linear-gradient(135deg, #00D4FF, #7C3AED); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">Translate</span>';
     const btnCloseTrans = document.createElement('button'); btnCloseTrans.className = 'cb-view-close'; btnCloseTrans.textContent = '✕';
     btnCloseTrans.setAttribute('aria-label', 'Close Translate view');
     transTop.appendChild(transTitle); transTop.appendChild(btnCloseTrans);
@@ -2603,23 +2622,23 @@ Rules:
     quickLangLabel.textContent = 'Quick Select';
     transView.appendChild(quickLangLabel);
 
-    // Premium quick language chips with flags
+    // Premium quick language chips
     const transQuickRow = document.createElement('div');
     transQuickRow.style.cssText = 'display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px;';
     const quickLangs = [
-      { code: 'es', flag: '🇪🇸', label: 'Spanish' },
-      { code: 'fr', flag: '🇫🇷', label: 'French' },
-      { code: 'de', flag: '🇩🇪', label: 'German' },
-      { code: 'ja', flag: '🇯🇵', label: 'Japanese' },
-      { code: 'zh', flag: '🇨🇳', label: 'Chinese' },
-      { code: 'hi', flag: '🇮🇳', label: 'Hindi' },
-      { code: 'pt', flag: '🇧🇷', label: 'Portuguese' },
-      { code: 'ar', flag: '🇸🇦', label: 'Arabic' }
+      { code: 'es', label: 'Spanish' },
+      { code: 'fr', label: 'French' },
+      { code: 'de', label: 'German' },
+      { code: 'ja', label: 'Japanese' },
+      { code: 'zh', label: 'Chinese' },
+      { code: 'hi', label: 'Hindi' },
+      { code: 'pt', label: 'Portuguese' },
+      { code: 'ar', label: 'Arabic' }
     ];
     quickLangs.forEach(lang => {
       const chip = document.createElement('button');
       chip.className = 'cb-lang-chip';
-      chip.innerHTML = `<span style="font-size: 14px;">${lang.flag}</span><span>${lang.label}</span>`;
+      chip.innerHTML = `< span > ${lang.label}</span > `;
       chip.style.cssText = 'display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; font-size: 11px; font-weight: 500; background: rgba(255,255,255,0.03); border: 1px solid var(--cb-border); border-radius: 20px; color: var(--cb-subtext); cursor: pointer; transition: all 0.2s ease;';
       chip.addEventListener('mouseenter', () => {
         chip.style.background = 'rgba(0, 212, 255, 0.12)';
@@ -2652,7 +2671,7 @@ Rules:
         chip.style.color = '#00D4FF';
         transLangSelect.value = lang.code;
         try { localStorage.setItem('chatbridge:pref:transLang', lang.code); } catch (e) { }
-        toast(`Language set to ${lang.label}`);
+        toast(`Language set to ${lang.label} `);
       });
       transQuickRow.appendChild(chip);
     });
@@ -2689,7 +2708,7 @@ Rules:
     // Section header
     const settingsHeader = document.createElement('div');
     settingsHeader.style.cssText = 'display:flex;align-items:center;gap:8px;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,0.08);';
-    settingsHeader.innerHTML = '<span style="font-size:13px;font-weight:600;color:var(--cb-white);letter-spacing:0.3px;">⚙️ Translation Settings</span>';
+    settingsHeader.innerHTML = '<span style="font-size:13px;font-weight:600;color:var(--cb-white);letter-spacing:0.3px;">Translation Settings</span>';
     transOptions.appendChild(settingsHeader);
 
     const transModeGroup = document.createElement('div');
@@ -2715,7 +2734,7 @@ Rules:
       radio.style.cssText = 'cursor:pointer;accent-color:#60a5fa;';
       if (idx === 0) radio.checked = true;
       const span = document.createElement('span');
-      span.textContent = mode === 'all' ? '📄 All' : mode === 'user' ? '👤 User' : mode === 'ai' ? '🤖 AI' : mode === 'last' ? '💬 Last' : '✏️ Custom';
+      span.textContent = mode === 'all' ? 'All' : mode === 'user' ? 'User' : mode === 'ai' ? 'AI' : mode === 'last' ? 'Last' : 'Custom';
       span.className = 'cb-radio-text';
       span.style.cssText = 'font-weight:500;';
       label.appendChild(radio);
@@ -6858,10 +6877,12 @@ Output ONLY the 5 numbered questions.`;
 
         // Empty state
         promptsList.innerHTML = `
-          <div style="text-align: center; padding: 30px 16px; background: rgba(255,255,255,0.02); border-radius: 10px; border: 1px dashed rgba(255,255,255,0.1);">
-            <div style="font-size: 36px; margin-bottom: 12px; opacity: 0.7;">🎯</div>
+          <div style="text-align: center; padding: 32px 20px; background: linear-gradient(135deg, rgba(0,212,255,0.02), rgba(124,58,237,0.01)); border-radius: 10px; border: 1px solid rgba(255,255,255,0.04);">
+            <div style="width:40px;height:40px;margin:0 auto 14px;border-radius:10px;background:linear-gradient(135deg, rgba(0,212,255,0.1), rgba(124,58,237,0.08));display:flex;align-items:center;justify-content:center;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="url(#emptyGrad)" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/><defs><linearGradient id="emptyGrad" x1="4" y1="4" x2="20" y2="20"><stop stop-color="#00D4FF"/><stop offset="1" stop-color="#7C3AED"/></linearGradient></defs></svg>
+            </div>
             <div style="font-size: 13px; font-weight: 500; color: var(--cb-white); margin-bottom: 6px;">Ready to Generate</div>
-            <div style="font-size: 11px; color: var(--cb-subtext); line-height: 1.5;">Click Generate Ideas to get AI-powered prompt suggestions</div>
+            <div style="font-size: 11px; color: var(--cb-subtext); line-height: 1.6; opacity: 0.7;">Select a category above to generate<br>thought-provoking prompts</div>
           </div>
         `;
         container.appendChild(promptsList);
