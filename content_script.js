@@ -1061,6 +1061,31 @@
   .cb-header-btn svg { width: 18px; height: 18px; stroke-width: 2; }
   .cb-header-btn.cb-settings-btn:hover { transform: rotate(90deg); }
   .cb-header-btn.cb-close-btn:hover { background: rgba(248, 81, 73, 0.15); color: #f85149; border-color: rgba(248, 81, 73, 0.3); transform: scale(1.05); }
+  .cb-header-btn.cb-minimize-btn:hover { background: rgba(0, 212, 255, 0.15); color: #00D4FF; border-color: rgba(0, 212, 255, 0.3); }
+  
+  /* Minimized Toolbar Mode */
+  .cb-panel.cb-minimized { width: 68px !important; min-width: 68px !important; padding: 0 !important; transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1), min-width 0.35s cubic-bezier(0.4, 0, 0.2, 1); }
+  .cb-panel { transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1), min-width 0.35s cubic-bezier(0.4, 0, 0.2, 1); }
+  .cb-panel.cb-minimized > *:not(.cb-mini-toolbar) { display: none !important; opacity: 0; }
+  .cb-mini-toolbar { display: none; flex-direction: column; align-items: center; padding: 14px 10px; gap: 10px; height: 100%; background: linear-gradient(180deg, var(--cb-bg) 0%, var(--cb-bg2) 100%); animation: cb-mini-fadein 0.3s ease-out; }
+  @keyframes cb-mini-fadein { from { opacity: 0; } to { opacity: 1; } }
+  .cb-panel.cb-minimized .cb-mini-toolbar { display: flex; }
+  .cb-mini-btn { width: 48px; height: 48px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.08); background: linear-gradient(135deg, rgba(0,212,255,0.05), rgba(124,58,237,0.04)); color: var(--cb-subtext); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.25s ease; position: relative; }
+  .cb-mini-btn:hover { background: linear-gradient(135deg, rgba(0,212,255,0.18), rgba(124,58,237,0.12)); color: var(--cb-white); border-color: rgba(0,212,255,0.4); transform: scale(1.1); box-shadow: 0 6px 20px rgba(0,212,255,0.25); }
+  .cb-mini-btn svg { width: 24px; height: 24px; stroke-width: 2; }
+  .cb-mini-btn.cb-mini-loading { animation: cb-mini-pulse 1s ease-in-out infinite; pointer-events: none; }
+  .cb-mini-btn.cb-mini-loading svg { animation: cb-mini-spin 1s linear infinite; }
+  .cb-mini-btn.cb-mini-success { background: linear-gradient(135deg, rgba(46,160,67,0.25), rgba(46,160,67,0.15)) !important; border-color: rgba(46,160,67,0.5) !important; color: #3fb950 !important; }
+  @keyframes cb-mini-pulse { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; } }
+  @keyframes cb-mini-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  .cb-mini-btn[data-tooltip]:hover::before { content: ''; position: absolute; left: 54px; top: 50%; transform: translateY(-50%); border: 7px solid transparent; border-right-color: var(--cb-bg); z-index: 9999; }
+  .cb-mini-btn[data-tooltip]:hover::after { content: attr(data-tooltip); position: absolute; left: 68px; top: 50%; transform: translateY(-50%); background: var(--cb-bg); border: 1px solid rgba(0,212,255,0.4); border-radius: 8px; padding: 10px 14px; font-size: 12px; font-weight: 600; white-space: nowrap; color: var(--cb-white); z-index: 10000; box-shadow: 0 8px 32px rgba(0,0,0,0.5); animation: cb-tooltip-fade 0.15s ease-out; }
+  @keyframes cb-tooltip-fade { from { opacity: 0; transform: translateY(-50%) translateX(-10px); } to { opacity: 1; transform: translateY(-50%) translateX(0); } }
+  .cb-mini-expand { margin-top: auto; background: linear-gradient(135deg, rgba(0,212,255,0.12), rgba(124,58,237,0.1)) !important; border-color: rgba(0,212,255,0.25) !important; }
+  .cb-mini-expand:hover { background: linear-gradient(135deg, rgba(0,212,255,0.25), rgba(124,58,237,0.18)) !important; }
+  .cb-mini-logo { width: 44px; height: 44px; border-radius: 12px; overflow: hidden; margin-bottom: 8px; cursor: pointer; transition: transform 0.25s ease, box-shadow 0.25s ease; }
+  .cb-mini-logo:hover { transform: scale(1.08); box-shadow: 0 4px 16px rgba(0,212,255,0.25); }
+  .cb-mini-logo img { width: 100%; height: 100%; object-fit: cover; }
     .cb-actions { padding:var(--cb-space-md) var(--cb-space-xl) var(--cb-space-sm) var(--cb-space-xl); display:flex; flex-direction:column; gap:var(--cb-space-sm); align-items:stretch; justify-content:flex-start; }
   .cb-actions-grid { display:grid; grid-template-columns: repeat(3, 1fr); gap:8px; width:100%; }
   .cb-actions .cb-btn { min-width:0; padding:8px 10px; font-size:10px; white-space:nowrap; font-weight:600; letter-spacing:0.02em; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); text-transform: uppercase; width:100%; position: relative; overflow: hidden; z-index: 0; }
@@ -1141,15 +1166,21 @@
   .cb-tag-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
   .cb-tag-chip { display: inline-block; padding: 3px 8px; background: var(--cb-accent-primary); color: var(--cb-bg); font-size: 10px; font-weight: 600; border-radius: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
   /* AI Insights Styling - Luxury Minimal */
-  .cb-insights-section { display: flex; flex-direction: column; gap: 14px; padding: 0 4px; }
+  .cb-insights-section { display: flex; flex-direction: column; gap: 14px; padding: 0 4px; overflow-x: hidden; }
   .cb-insight-block { padding: 16px 18px; background: linear-gradient(135deg, rgba(0,212,255,0.04), rgba(124,58,237,0.03)); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; transition: all 0.25s ease; position: relative; overflow: hidden; }
   .cb-insight-block::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: linear-gradient(180deg, #00D4FF, #7C3AED); border-radius: 3px 0 0 3px; }
   .cb-insight-block:hover { background: linear-gradient(135deg, rgba(0,212,255,0.08), rgba(124,58,237,0.06)); border-color: rgba(0,212,255,0.2); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.15); }
   .cb-insight-title { font-weight: 600; font-size: 13px; color: var(--cb-white); margin-bottom: 8px; display: flex; align-items: center; gap: 10px; }
   .cb-insight-title svg { width: 18px; height: 18px; stroke: url(#insightGrad); flex-shrink: 0; }
-  .cb-insight-content { font-size: 12px; color: var(--cb-subtext); line-height: 1.6; opacity: 0.85; }
+  .cb-insight-content { font-size: 12px; color: var(--cb-subtext); line-height: 1.6; opacity: 0.85; word-break: break-word; }
   .cb-insight-list { margin: 8px 0 0 20px; padding: 0; font-size: 12px; color: var(--cb-white); }
   .cb-insight-list li { margin-bottom: 6px; line-height: 1.5; }
+  /* Insights View Scrollbar - Themed */
+  #cb-insights-content { scrollbar-width: thin; scrollbar-color: rgba(0,212,255,0.4) rgba(16,24,43,0.3); overflow-x: hidden; }
+  #cb-insights-content::-webkit-scrollbar { width: 6px; }
+  #cb-insights-content::-webkit-scrollbar-track { background: rgba(16,24,43,0.3); border-radius: 3px; }
+  #cb-insights-content::-webkit-scrollbar-thumb { background: linear-gradient(180deg, rgba(0,212,255,0.5), rgba(124,58,237,0.5)); border-radius: 3px; }
+  #cb-insights-content::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, rgba(0,212,255,0.7), rgba(124,58,237,0.7)); }
   .cb-code-snippet { background: var(--cb-bg); border: 1px solid var(--cb-border); border-radius: 6px; padding: 8px; font-size: 11px; font-family: 'Courier New', monospace; color: var(--cb-accent-tertiary); overflow-x: auto; margin: 6px 0; }
   .cb-code-snippet::-webkit-scrollbar { height: 6px; }
   .cb-code-snippet::-webkit-scrollbar-track { background: var(--cb-bg3); }
@@ -1496,11 +1527,348 @@
     </svg>`;
     btnClose.setAttribute('aria-label', 'Close panel');
 
+    // Minimize button with SVG icon (collapse to mini toolbar)
+    const btnMinimize = document.createElement('button');
+    btnMinimize.className = 'cb-header-btn cb-minimize-btn';
+    btnMinimize.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="4 14 10 14 10 20"></polyline>
+      <polyline points="20 10 14 10 14 4"></polyline>
+      <line x1="14" y1="10" x2="21" y2="3"></line>
+      <line x1="3" y1="21" x2="10" y2="14"></line>
+    </svg>`;
+    btnMinimize.title = 'Minimize to toolbar';
+    btnMinimize.setAttribute('aria-label', 'Minimize to toolbar');
+
     controls.appendChild(btnSettings);
+    controls.appendChild(btnMinimize);
     controls.appendChild(btnClose);
     header.appendChild(headerLeft);
     header.appendChild(controls);
     panel.appendChild(header);
+
+    // Create Minimized Toolbar (hidden by default, shown when minimized)
+    const miniToolbar = document.createElement('div');
+    miniToolbar.className = 'cb-mini-toolbar';
+
+    // Logo/Brand at top - use the actual logo image
+    const miniBrand = document.createElement('div');
+    miniBrand.className = 'cb-mini-logo';
+    miniBrand.title = 'ChatBridge - Click to expand';
+    const logoImg = document.createElement('img');
+    logoImg.src = chrome.runtime.getURL('logo.png');
+    logoImg.alt = 'ChatBridge';
+    miniBrand.appendChild(logoImg);
+    miniToolbar.appendChild(miniBrand);
+
+    // Divider
+    const miniDivider = document.createElement('div');
+    miniDivider.style.cssText = 'width:24px;height:1px;background:linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);margin:4px 0;';
+    miniToolbar.appendChild(miniDivider);
+
+    // Mini Scan Button
+    const miniScan = document.createElement('button');
+    miniScan.className = 'cb-mini-btn';
+    miniScan.dataset.tooltip = 'Scan & Save Chat';
+    miniScan.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>';
+    miniToolbar.appendChild(miniScan);
+
+    // Mini Restore Button
+    const miniRestore = document.createElement('button');
+    miniRestore.className = 'cb-mini-btn';
+    miniRestore.dataset.tooltip = 'Restore Last Chat';
+    miniRestore.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>';
+    miniToolbar.appendChild(miniRestore);
+
+    // Mini Copy Button
+    const miniCopy = document.createElement('button');
+    miniCopy.className = 'cb-mini-btn';
+    miniCopy.dataset.tooltip = 'Copy to Clipboard';
+    miniCopy.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>';
+    miniToolbar.appendChild(miniCopy);
+
+    // Mini Summarize Button
+    const miniSummarize = document.createElement('button');
+    miniSummarize.className = 'cb-mini-btn';
+    miniSummarize.dataset.tooltip = 'AI Summarize';
+    miniSummarize.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><line x1="21" y1="10" x2="3" y2="10"></line><line x1="21" y1="6" x2="3" y2="6"></line><line x1="21" y1="14" x2="3" y2="14"></line><line x1="21" y1="18" x2="3" y2="18"></line></svg>';
+    miniToolbar.appendChild(miniSummarize);
+
+    // Mini Optimize Button
+    const miniOptimize = document.createElement('button');
+    miniOptimize.className = 'cb-mini-btn';
+    miniOptimize.dataset.tooltip = 'Enhance Prompt';
+    miniOptimize.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>';
+    miniToolbar.appendChild(miniOptimize);
+
+    // Expand button (at bottom)
+    const miniExpand = document.createElement('button');
+    miniExpand.className = 'cb-mini-btn cb-mini-expand';
+    miniExpand.dataset.tooltip = 'Expand';
+    miniExpand.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>';
+    miniToolbar.appendChild(miniExpand);
+
+    panel.appendChild(miniToolbar);
+
+    // Toggle minimize state
+    function toggleMinimize(forceState) {
+      const isMinimized = panel.classList.contains('cb-minimized');
+      const newState = forceState !== undefined ? forceState : !isMinimized;
+
+      if (newState) {
+        panel.classList.add('cb-minimized');
+        localStorage.setItem('chatbridge:minimized', 'true');
+      } else {
+        panel.classList.remove('cb-minimized');
+        localStorage.setItem('chatbridge:minimized', 'false');
+      }
+    }
+
+    // Minimize button handler
+    btnMinimize.addEventListener('click', () => toggleMinimize(true));
+    miniExpand.addEventListener('click', () => toggleMinimize(false));
+    miniBrand.addEventListener('click', () => toggleMinimize(false));
+
+    // Restore minimized state from localStorage
+    if (localStorage.getItem('chatbridge:minimized') === 'true') {
+      panel.classList.add('cb-minimized');
+    }
+
+    // Mini button handlers - work directly without expanding sidebar
+    // Helper for loading/success states
+    const setMiniState = (btn, state) => {
+      btn.classList.remove('cb-mini-loading', 'cb-mini-success');
+      if (state === 'loading') btn.classList.add('cb-mini-loading');
+      if (state === 'success') {
+        btn.classList.add('cb-mini-success');
+        setTimeout(() => btn.classList.remove('cb-mini-success'), 1500);
+      }
+    };
+
+    // Helper to insert text into chat input (handles textarea, input, contenteditable)
+    const insertTextToChat = (text) => {
+      try {
+        // Try multiple selectors for different AI platforms
+        const selectors = [
+          'textarea[placeholder*="message" i]',
+          'textarea[placeholder*="chat" i]',
+          'textarea[data-id="root"]',
+          '#prompt-textarea',
+          'textarea.w-full',
+          'div[contenteditable="true"][data-placeholder]',
+          'div[contenteditable="true"]',
+          'textarea',
+          'input[type="text"]'
+        ];
+
+        let input = null;
+        for (const sel of selectors) {
+          input = document.querySelector(sel);
+          if (input) break;
+        }
+
+        // Also check if findChatInput exists and returns something
+        if (!input && typeof findChatInput === 'function') {
+          input = findChatInput();
+        }
+
+        if (!input) {
+          debugLog('insertTextToChat: No input element found');
+          return false;
+        }
+
+        // Handle different input types
+        if (input.tagName === 'TEXTAREA' || input.tagName === 'INPUT') {
+          input.value = text;
+          input.dispatchEvent(new Event('input', { bubbles: true }));
+          input.dispatchEvent(new Event('change', { bubbles: true }));
+        } else if (input.isContentEditable || input.contentEditable === 'true') {
+          // For contenteditable divs (like ChatGPT, Claude)
+          input.focus();
+          input.innerHTML = '';
+          input.textContent = text;
+          // Trigger input event for React/Vue apps
+          input.dispatchEvent(new InputEvent('input', { bubbles: true, data: text }));
+          input.dispatchEvent(new Event('input', { bubbles: true }));
+        } else {
+          // Generic fallback
+          if (input.value !== undefined) {
+            input.value = text;
+          } else {
+            input.textContent = text;
+          }
+          input.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+
+        // Focus the input
+        input.focus();
+        debugLog('insertTextToChat: Text inserted successfully');
+        return true;
+      } catch (e) {
+        debugLog('insertTextToChat error:', e);
+        return false;
+      }
+    };
+
+    miniScan.addEventListener('click', async () => {
+      if (miniScan.classList.contains('cb-mini-loading')) return;
+      try {
+        setMiniState(miniScan, 'loading');
+        toast('Scanning conversation...');
+        const msgs = await scanChat();
+        if (msgs && msgs.length) {
+          lastScannedText = msgs.map(m => `${m.role}: ${m.text}`).join('\n\n');
+          const final = normalizeMessages(msgs);
+          const conv = { platform: location.hostname, url: location.href, ts: Date.now(), id: String(Date.now()), model: detectCurrentModel(), conversation: final };
+          await saveConversation(conv);
+          setMiniState(miniScan, 'success');
+          toast(`✓ Saved ${final.length} messages`);
+        } else {
+          setMiniState(miniScan, 'idle');
+          toast('No messages found in chat');
+        }
+      } catch (e) {
+        setMiniState(miniScan, 'idle');
+        toast('Scan failed - try again');
+        debugLog('miniScan error', e);
+      }
+    });
+
+    miniRestore.addEventListener('click', async () => {
+      if (miniRestore.classList.contains('cb-mini-loading')) return;
+      try {
+        setMiniState(miniRestore, 'loading');
+        toast('Loading saved chat...');
+        const convs = await loadConversationsAsync();
+        if (convs && convs.length > 0) {
+          const latest = convs[0];
+          const messages = latest.conversation || latest.messages || [];
+          if (messages.length === 0) {
+            setMiniState(miniRestore, 'idle');
+            toast('Saved chat is empty');
+            return;
+          }
+          const text = messages.map(m => `${m.role}: ${m.text}`).join('\n\n');
+
+          // Robust insert into chat input
+          const inserted = insertTextToChat(text);
+          if (inserted) {
+            setMiniState(miniRestore, 'success');
+            toast(`✓ Restored ${messages.length} messages`);
+          } else {
+            // Fallback: copy to clipboard
+            await navigator.clipboard.writeText(text);
+            setMiniState(miniRestore, 'success');
+            toast('✓ Copied to clipboard (no input found)');
+          }
+        } else {
+          setMiniState(miniRestore, 'idle');
+          toast('No saved conversations yet');
+        }
+      } catch (e) {
+        setMiniState(miniRestore, 'idle');
+        toast('Restore failed');
+        debugLog('miniRestore error', e);
+      }
+    });
+
+    miniCopy.addEventListener('click', async () => {
+      if (miniCopy.classList.contains('cb-mini-loading')) return;
+      try {
+        setMiniState(miniCopy, 'loading');
+        if (lastScannedText) {
+          await navigator.clipboard.writeText(lastScannedText);
+          setMiniState(miniCopy, 'success');
+          toast('✓ Chat copied to clipboard');
+        } else {
+          toast('Scanning first...');
+          const msgs = await scanChat();
+          if (msgs && msgs.length) {
+            lastScannedText = msgs.map(m => `${m.role}: ${m.text}`).join('\n\n');
+            await navigator.clipboard.writeText(lastScannedText);
+            setMiniState(miniCopy, 'success');
+            toast('✓ Scanned & copied');
+          } else {
+            setMiniState(miniCopy, 'idle');
+            toast('Nothing to copy');
+          }
+        }
+      } catch (e) {
+        setMiniState(miniCopy, 'idle');
+        toast('Copy failed');
+      }
+    });
+
+    miniSummarize.addEventListener('click', async () => {
+      if (miniSummarize.classList.contains('cb-mini-loading')) return;
+      try {
+        setMiniState(miniSummarize, 'loading');
+        toast('Generating summary...');
+        let text = lastScannedText;
+        if (!text) {
+          const msgs = await scanChat();
+          if (msgs && msgs.length) text = msgs.map(m => `${m.role}: ${m.text}`).join('\n\n');
+        }
+        if (!text) {
+          setMiniState(miniSummarize, 'idle');
+          toast('No conversation to summarize');
+          return;
+        }
+        const response = await callGeminiAsync(`Summarize this conversation concisely in 2-3 bullet points:\n\n${text.slice(0, 15000)}`);
+        const summary = response && response.ok ? response.result : null;
+        if (summary) {
+          // Insert into chat input
+          const inserted = insertTextToChat(summary);
+          if (inserted) {
+            setMiniState(miniSummarize, 'success');
+            toast('✓ Summary added to chat!');
+          } else {
+            await navigator.clipboard.writeText(summary);
+            setMiniState(miniSummarize, 'success');
+            toast('✓ Summary copied!');
+          }
+        } else {
+          setMiniState(miniSummarize, 'idle');
+          toast('Could not generate summary');
+        }
+      } catch (e) {
+        setMiniState(miniSummarize, 'idle');
+        toast('Summarize failed');
+        debugLog('miniSummarize error', e);
+      }
+    });
+
+    miniOptimize.addEventListener('click', async () => {
+      if (miniOptimize.classList.contains('cb-mini-loading')) return;
+      try {
+        const input = findChatInput();
+        if (!input) { toast('No chat input field found'); return; }
+        const userText = input.value || input.innerText || input.textContent || '';
+        if (!userText.trim()) { toast('Type a prompt first, then optimize'); return; }
+
+        setMiniState(miniOptimize, 'loading');
+        toast('Enhancing your prompt...');
+        const response = await callGeminiAsync(`Improve this prompt to be clearer, more specific, and more effective. Return ONLY the improved prompt, no explanation or preamble:\n\n${userText}`);
+        const optimized = response && response.ok ? response.result : null;
+        if (optimized) {
+          // Insert optimized text
+          const inserted = insertTextToChat(optimized);
+          if (inserted) {
+            setMiniState(miniOptimize, 'success');
+            toast('✓ Prompt enhanced!');
+          } else {
+            setMiniState(miniOptimize, 'idle');
+            toast('Could not update input');
+          }
+        } else {
+          setMiniState(miniOptimize, 'idle');
+          toast('Could not optimize prompt');
+        }
+      } catch (e) {
+        setMiniState(miniOptimize, 'idle');
+        toast('Optimize failed');
+        debugLog('miniOptimize error', e);
+      }
+    });
 
     // Actions: Scan, Restore, Gemini APIs
     const actions = document.createElement('div'); actions.className = 'cb-actions';
@@ -3065,7 +3433,8 @@
     const insightsTop = document.createElement('div'); insightsTop.className = 'cb-view-top'; insightsTop.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;';
     const insightsTitle = document.createElement('div'); insightsTitle.className = 'cb-view-title';
     insightsTitle.innerHTML = '<span style="background: linear-gradient(135deg, #00D4FF, #7C3AED); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; display: inline-flex; align-items: center; gap: 10px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="url(#insightGrad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/><defs><linearGradient id="insightGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00D4FF"/><stop offset="100%" stop-color="#7C3AED"/></linearGradient></defs></svg>Smart Workspace</span>';
-    const btnCloseInsights = document.createElement('button'); btnCloseInsights.className = 'cb-view-close'; btnCloseInsights.textContent = '✕';
+    const btnCloseInsights = document.createElement('button'); btnCloseInsights.className = 'cb-view-close';
+    btnCloseInsights.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
     btnCloseInsights.setAttribute('aria-label', 'Close Smart Workspace view');
     insightsTop.appendChild(insightsTitle); insightsTop.appendChild(btnCloseInsights);
     insightsView.appendChild(insightsTop);
@@ -3075,7 +3444,7 @@
     insightsIntro.textContent = 'Practical tools to help you work smarter: compare models, merge threads, extract content, and stay organized.';
     insightsView.appendChild(insightsIntro);
 
-    const insightsContent = document.createElement('div'); insightsContent.id = 'cb-insights-content'; insightsContent.style.cssText = 'padding:12px 0;overflow-y:auto;max-height:calc(100vh - 250px);';
+    const insightsContent = document.createElement('div'); insightsContent.id = 'cb-insights-content'; insightsContent.style.cssText = 'padding:12px 0;overflow-y:auto;overflow-x:hidden;max-height:calc(100vh - 250px);';
     // Add default insights blocks with luxury styling
     insightsContent.innerHTML = `
     <div class="cb-insights-section">
@@ -7482,7 +7851,7 @@ Output ONLY the 5 numbered questions.`;
           toolResultArea.innerHTML = `
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
               <span style="font-weight:600;font-size:13px;color:var(--cb-white);">${title}</span>
-              <button id="cb-tool-result-close" style="background:none;border:none;color:var(--cb-subtext);cursor:pointer;font-size:16px;">✕</button>
+              <button id="cb-tool-result-close" style="background:none;border:none;color:var(--cb-subtext);cursor:pointer;padding:4px;display:flex;align-items:center;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
             </div>
             <div id="cb-tool-result-content">${html}</div>
           `;
@@ -7496,22 +7865,36 @@ Output ONLY the 5 numbered questions.`;
         const toolsGrid = document.createElement('div');
         toolsGrid.style.cssText = 'display:grid;grid-template-columns:repeat(2,1fr);gap:8px;padding:0 8px;';
 
-        // Helper to create tool card
-        function createToolCard(icon, title, desc) {
+        // Helper to create tool card (WITH SVG ICONS)
+        function createToolCard(svgIcon, title, desc) {
           const card = document.createElement('div');
-          card.style.cssText = 'background:rgba(255,255,255,0.03);border:1px solid var(--cb-border);border-radius:8px;padding:12px;cursor:pointer;transition:all 0.2s;';
+          card.style.cssText = 'display:flex;align-items:flex-start;gap:10px;background:linear-gradient(135deg, rgba(16,24,43,0.6), rgba(16,24,43,0.4));border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:14px;cursor:pointer;transition:all 0.2s;min-height:60px;';
           card.innerHTML = `
-            <div style="font-size:24px;margin-bottom:6px;">${icon}</div>
-            <div style="font-size:12px;font-weight:600;color:var(--cb-white);margin-bottom:4px;">${title}</div>
-            <div style="font-size:10px;color:var(--cb-subtext);line-height:1.4;">${desc}</div>
+            <div style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg, rgba(0,212,255,0.15), rgba(124,58,237,0.1));border-radius:8px;flex-shrink:0;">
+              ${svgIcon}
+            </div>
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:12px;font-weight:600;color:var(--cb-white);margin-bottom:3px;">${title}</div>
+              <div style="font-size:10px;color:var(--cb-subtext);line-height:1.4;opacity:0.7;">${desc}</div>
+            </div>
           `;
-          card.addEventListener('mouseenter', () => { card.style.background = 'rgba(0,180,255,0.1)'; card.style.borderColor = 'rgba(0,180,255,0.4)'; });
-          card.addEventListener('mouseleave', () => { card.style.background = 'rgba(255,255,255,0.03)'; card.style.borderColor = 'var(--cb-border)'; });
+          card.addEventListener('mouseenter', () => {
+            card.style.background = 'linear-gradient(135deg, rgba(0,212,255,0.1), rgba(124,58,237,0.08))';
+            card.style.borderColor = 'rgba(0,212,255,0.3)';
+            card.style.transform = 'translateY(-2px)';
+            card.style.boxShadow = '0 6px 20px rgba(0,0,0,0.2)';
+          });
+          card.addEventListener('mouseleave', () => {
+            card.style.background = 'linear-gradient(135deg, rgba(16,24,43,0.6), rgba(16,24,43,0.4))';
+            card.style.borderColor = 'rgba(255,255,255,0.06)';
+            card.style.transform = 'translateY(0)';
+            card.style.boxShadow = 'none';
+          });
           return card;
         }
 
         // 1. Media Vault
-        const mediaCard = createToolCard('🖼️', 'Media Vault', 'View images from conversation');
+        const mediaCard = createToolCard('<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00D4FF" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>', 'Media Vault', 'View images from conversation');
         mediaCard.addEventListener('click', async () => {
           const msgs = await scanChat();
           const allMedia = [];
@@ -7522,7 +7905,7 @@ Output ONLY the 5 numbered questions.`;
           }
 
           if (allMedia.length === 0) {
-            showToolResult('<div style="text-align:center;padding:20px;color:var(--cb-subtext);">No media found in this conversation.<br><br>Scan a chat with images first.</div>', '🖼️ Media Vault');
+            showToolResult('<div style="text-align:center;padding:20px;color:var(--cb-subtext);">No media found in this conversation.<br><br>Scan a chat with images first.</div>', 'Media Vault');
             return;
           }
 
@@ -7536,8 +7919,8 @@ Output ONLY the 5 numbered questions.`;
           showToolResult(`
             <div style="margin-bottom:10px;font-size:12px;color:var(--cb-subtext);">${allMedia.length} media items found</div>
             <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">${imageGrid}</div>
-            <button id="cb-media-copy-urls" style="margin-top:12px;width:100%;padding:8px;background:rgba(0,180,255,0.2);border:1px solid rgba(0,180,255,0.4);border-radius:6px;color:var(--cb-white);cursor:pointer;">📋 Copy All URLs</button>
-          `, '🖼️ Media Vault');
+            <button id="cb-media-copy-urls" style="margin-top:12px;width:100%;padding:8px;background:rgba(0,180,255,0.2);border:1px solid rgba(0,180,255,0.4);border-radius:6px;color:var(--cb-white);cursor:pointer;">Copy All URLs</button>
+          `, 'Media Vault');
 
           const copyBtn = toolResultArea.querySelector('#cb-media-copy-urls');
           if (copyBtn) {
@@ -7551,11 +7934,11 @@ Output ONLY the 5 numbered questions.`;
         toolsGrid.appendChild(mediaCard);
 
         // 2. Merge Chats
-        const mergeCard = createToolCard('🔗', 'Merge Chats', 'Combine saved conversations');
+        const mergeCard = createToolCard('<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00D4FF" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>', 'Merge Chats', 'Combine saved conversations');
         mergeCard.addEventListener('click', async () => {
           const saved = await loadConversationsAsync();
           if (!saved || saved.length === 0) {
-            showToolResult('<div style="text-align:center;padding:20px;color:var(--cb-subtext);">No saved conversations to merge.<br><br>Scan and save some chats first.</div>', '🔗 Merge Chats');
+            showToolResult('<div style="text-align:center;padding:20px;color:var(--cb-subtext);">No saved conversations to merge.<br><br>Scan and save some chats first.</div>', 'Merge Chats');
             return;
           }
 
@@ -7576,10 +7959,10 @@ Output ONLY the 5 numbered questions.`;
             <div style="font-size:12px;color:var(--cb-subtext);margin-bottom:12px;">Select conversations to merge:</div>
             <div style="max-height:180px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(100,100,100,0.5) transparent;padding-right:4px;">${listHTML}</div>
             <div style="display:flex;gap:8px;margin-top:14px;">
-              <button id="cb-merge-insert" style="flex:1;padding:10px;background:linear-gradient(135deg,rgba(96,165,250,0.2),rgba(167,139,250,0.2));border:1px solid rgba(96,165,250,0.4);border-radius:8px;color:var(--cb-white);cursor:pointer;font-size:11px;font-weight:500;">⬆️ Insert to Chat</button>
-              <button id="cb-merge-copy" style="flex:1;padding:10px;background:rgba(255,255,255,0.05);border:1px solid var(--cb-border);border-radius:8px;color:var(--cb-white);cursor:pointer;font-size:11px;">📋 Copy</button>
+              <button id="cb-merge-insert" style="flex:1;padding:10px;background:linear-gradient(135deg,rgba(96,165,250,0.2),rgba(167,139,250,0.2));border:1px solid rgba(96,165,250,0.4);border-radius:8px;color:var(--cb-white);cursor:pointer;font-size:11px;font-weight:500;">Insert to Chat</button>
+              <button id="cb-merge-copy" style="flex:1;padding:10px;background:rgba(255,255,255,0.05);border:1px solid var(--cb-border);border-radius:8px;color:var(--cb-white);cursor:pointer;font-size:11px;">Copy</button>
             </div>
-          `, '🔗 Merge Chats');
+          `, 'Merge Chats');
 
           // Helper to get merged text
           const getMergedText = () => {
@@ -7647,10 +8030,10 @@ Output ONLY the 5 numbered questions.`;
         toolsGrid.appendChild(mergeCard);
 
         // 3. Clean & Organize - Enhanced with storage deduplication
-        const cleanCard = createToolCard('🧹', 'Clean & Organize', 'Remove duplicate saved chats');
+        const cleanCard = createToolCard('<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00D4FF" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>', 'Clean & Organize', 'Remove duplicate saved chats');
         cleanCard.addEventListener('click', async () => {
           // First, analyze saved conversations for duplicates
-          showToolResult('<div style="text-align:center;padding:20px;"><div class="cb-spinner"></div><div style="margin-top:8px;color:var(--cb-subtext);">Analyzing saved conversations...</div></div>', '🧹 Clean & Organize');
+          showToolResult('<div style="text-align:center;padding:20px;"><div class="cb-spinner"></div><div style="margin-top:8px;color:var(--cb-subtext);">Analyzing saved conversations...</div></div>', 'Clean & Organize');
 
           try {
             const result = await deduplicateSavedConversations();
@@ -7660,11 +8043,11 @@ Output ONLY the 5 numbered questions.`;
             if (stats.duplicates === 0 && stats.overlaps === 0) {
               showToolResult(`
                 <div style="text-align:center;padding:20px;">
-                  <div style="font-size:32px;margin-bottom:12px;">✅</div>
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2" style="margin-bottom:12px;"><circle cx="12" cy="12" r="10"/><polyline points="9 12 12 15 16 10"/></svg>
                   <div style="color:var(--cb-white);font-weight:600;margin-bottom:8px;">All Clean!</div>
                   <div style="color:var(--cb-subtext);font-size:11px;">No duplicate or overlapping conversations found in your ${stats.originalCount} saved chats.</div>
                 </div>
-              `, '🧹 Clean & Organize');
+              `, 'Clean & Organize');
               return;
             }
 
@@ -7699,10 +8082,10 @@ Output ONLY the 5 numbered questions.`;
                 
                 <div style="display:flex;gap:8px;">
                   <button id="cb-clean-cancel" style="flex:1;padding:10px;background:rgba(255,255,255,0.05);border:1px solid var(--cb-border);border-radius:8px;color:var(--cb-white);cursor:pointer;font-size:11px;">Cancel</button>
-                  <button id="cb-clean-confirm" style="flex:1;padding:10px;background:linear-gradient(135deg,rgba(255,100,100,0.2),rgba(255,150,100,0.2));border:1px solid rgba(255,100,100,0.4);border-radius:8px;color:var(--cb-white);cursor:pointer;font-size:11px;font-weight:500;">🧹 Clean Storage</button>
+                  <button id="cb-clean-confirm" style="flex:1;padding:10px;background:linear-gradient(135deg,rgba(255,100,100,0.2),rgba(255,150,100,0.2));border:1px solid rgba(255,100,100,0.4);border-radius:8px;color:var(--cb-white);cursor:pointer;font-size:11px;font-weight:500;">Clean Storage</button>
                 </div>
               </div>
-            `, '🧹 Clean & Organize');
+            `, 'Clean & Organize');
 
             // Cancel handler
             const cancelBtn = toolResultArea.querySelector('#cb-clean-cancel');
@@ -7734,7 +8117,7 @@ Output ONLY the 5 numbered questions.`;
 
                     showToolResult(`
                       <div style="text-align:center;padding:20px;">
-                        <div style="font-size:32px;margin-bottom:12px;">🎉</div>
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2" style="margin-bottom:12px;"><circle cx="12" cy="12" r="10"/><polyline points="9 12 12 15 16 10"/></svg>
                         <div style="color:var(--cb-white);font-weight:600;margin-bottom:8px;">Storage Cleaned!</div>
                         <div style="color:var(--cb-subtext);font-size:11px;line-height:1.6;">
                           Removed ${stats.duplicates} duplicates<br>
@@ -7742,10 +8125,10 @@ Output ONLY the 5 numbered questions.`;
                           Now: ${stats.finalCount} saved conversations
                         </div>
                         <div style="margin-top:12px;font-size:10px;color:var(--cb-subtext);opacity:0.7;">
-                          <span style="display:inline-block;animation:spin 1s linear infinite;">⚙️</span> Refreshing stats...
+                          <span class="cb-spinner" style="display:inline-block;width:12px;height:12px;margin-right:6px;vertical-align:middle;"></span>Refreshing stats...
                         </div>
                       </div>
-                    `, '🧹 Clean & Organize');
+                    `, 'Clean & Organize');
 
                     toast(`Cleaned! ${totalToRemove} conversations removed`);
 
@@ -7791,13 +8174,13 @@ Output ONLY the 5 numbered questions.`;
 
           } catch (e) {
             console.error('[ChatBridge] Clean & Organize error:', e);
-            showToolResult('<div style="text-align:center;padding:20px;color:var(--cb-subtext);">Failed to analyze conversations.</div>', '🧹 Clean & Organize');
+            showToolResult('<div style="text-align:center;padding:20px;color:var(--cb-subtext);">Failed to analyze conversations.</div>', 'Clean & Organize');
           }
         });
         toolsGrid.appendChild(cleanCard);
 
         // 4. Export All
-        const exportCard = createToolCard('📥', 'Export All', 'Download all saved chats');
+        const exportCard = createToolCard('<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00D4FF" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>', 'Export All', 'Download all saved chats');
         exportCard.addEventListener('click', async () => {
           const convs = await loadConversationsAsync();
           if (!convs || convs.length === 0) {
@@ -7817,32 +8200,32 @@ Output ONLY the 5 numbered questions.`;
         toolsGrid.appendChild(exportCard);
 
         // 5. Extract Content - REDESIGNED PREMIUM UI
-        const extractCard = createToolCard('📋', 'Extract Content', 'URLs, numbers, code, lists');
+        const extractCard = createToolCard('<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00D4FF" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>', 'Extract Content', 'URLs, numbers, code, lists');
         extractCard.addEventListener('click', async () => {
           // Get extracted content from last scan or extract now
           let extracted = window.ChatBridge?._extractedContent || window.ChatBridge?._lastScanData?.extracted;
 
           if (!extracted || Object.values(extracted).every(arr => !arr || arr.length === 0)) {
             // Need to scan first
-            showToolResult('<div style="text-align:center;padding:20px;"><div class="cb-spinner"></div><div style="margin-top:8px;color:var(--cb-subtext);">Scanning conversation...</div></div>', '📋 Extract Content');
+            showToolResult('<div style="text-align:center;padding:20px;"><div class="cb-spinner"></div><div style="margin-top:8px;color:var(--cb-subtext);">Scanning conversation...</div></div>', 'Extract Content');
             const msgs = await scanChat();
             if (!msgs || msgs.length === 0) {
-              showToolResult('<div style="text-align:center;padding:30px;color:var(--cb-subtext);"><div style="font-size:28px;margin-bottom:12px;">📭</div>No conversation found.<br><br><span style="font-size:10px;">Open a chat and try again.</span></div>', '📋 Extract Content');
+              showToolResult('<div style="text-align:center;padding:30px;color:var(--cb-subtext);"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom:12px;opacity:0.5;"><rect x="3" y="5" width="18" height="14" rx="2"/><polyline points="7 15 7 10 12 10"/></svg><br>No conversation found.<br><br><span style="font-size:10px;">Open a chat and try again.</span></div>', 'Extract Content');
               return;
             }
             extracted = window.ChatBridge?._extractedContent || {};
           }
 
-          // Define all categories with colors
+          // Define all categories with colors (no emoji icons - text only)
           const categoryConfig = {
-            urls: { icon: '🔗', label: 'Links', color: '#60a5fa', gradient: 'linear-gradient(135deg, rgba(96,165,250,0.15), rgba(59,130,246,0.08))' },
-            numbers: { icon: '🔢', label: 'Numbers', color: '#34d399', gradient: 'linear-gradient(135deg, rgba(52,211,153,0.15), rgba(16,185,129,0.08))' },
-            lists: { icon: '📝', label: 'Lists', color: '#a78bfa', gradient: 'linear-gradient(135deg, rgba(167,139,250,0.15), rgba(139,92,246,0.08))' },
-            codeBlocks: { icon: '💻', label: 'Code', color: '#f59e0b', gradient: 'linear-gradient(135deg, rgba(245,158,11,0.15), rgba(217,119,6,0.08))' },
-            commands: { icon: '⌨️', label: 'Commands', color: '#ec4899', gradient: 'linear-gradient(135deg, rgba(236,72,153,0.15), rgba(219,39,119,0.08))' },
-            emails: { icon: '📧', label: 'Emails', color: '#06b6d4', gradient: 'linear-gradient(135deg, rgba(6,182,212,0.15), rgba(8,145,178,0.08))' },
-            dates: { icon: '📅', label: 'Dates', color: '#f472b6', gradient: 'linear-gradient(135deg, rgba(244,114,182,0.15), rgba(236,72,153,0.08))' },
-            tables: { icon: '📊', label: 'Tables', color: '#8b5cf6', gradient: 'linear-gradient(135deg, rgba(139,92,246,0.15), rgba(124,58,237,0.08))' }
+            urls: { label: 'Links', color: '#60a5fa', gradient: 'linear-gradient(135deg, rgba(96,165,250,0.15), rgba(59,130,246,0.08))' },
+            numbers: { label: 'Numbers', color: '#34d399', gradient: 'linear-gradient(135deg, rgba(52,211,153,0.15), rgba(16,185,129,0.08))' },
+            lists: { label: 'Lists', color: '#a78bfa', gradient: 'linear-gradient(135deg, rgba(167,139,250,0.15), rgba(139,92,246,0.08))' },
+            codeBlocks: { label: 'Code', color: '#f59e0b', gradient: 'linear-gradient(135deg, rgba(245,158,11,0.15), rgba(217,119,6,0.08))' },
+            commands: { label: 'Commands', color: '#ec4899', gradient: 'linear-gradient(135deg, rgba(236,72,153,0.15), rgba(219,39,119,0.08))' },
+            emails: { label: 'Emails', color: '#06b6d4', gradient: 'linear-gradient(135deg, rgba(6,182,212,0.15), rgba(8,145,178,0.08))' },
+            dates: { label: 'Dates', color: '#f472b6', gradient: 'linear-gradient(135deg, rgba(244,114,182,0.15), rgba(236,72,153,0.08))' },
+            tables: { label: 'Tables', color: '#8b5cf6', gradient: 'linear-gradient(135deg, rgba(139,92,246,0.15), rgba(124,58,237,0.08))' }
           };
 
           // Build categories with counts
@@ -7857,21 +8240,20 @@ Output ONLY the 5 numbered questions.`;
           if (categories.length === 0) {
             showToolResult(`
               <div style="text-align:center;padding:20px;color:var(--cb-subtext);">
-                <div style="font-size:24px;margin-bottom:8px;">🔍</div>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom:8px;opacity:0.5;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                 <div style="font-weight:500;color:var(--cb-white);margin-bottom:4px;font-size:12px;">No Extractable Content</div>
                 <div style="font-size:10px;opacity:0.7;">No links, numbers, code, or lists found.</div>
               </div>
-            `, '📋 Extract Content');
+            `, 'Extract Content');
             return;
           }
 
           // Calculate totals
           const totalItems = categories.reduce((sum, c) => sum + c.count, 0);
 
-          // Build category pills with labels
+          // Build category pills with labels (text only, no icons)
           const categoryPillsHTML = categories.map((c, i) => `
             <div class="cb-extract-cat" data-key="${c.key}" style="display:flex;align-items:center;gap:5px;padding:6px 10px;background:${i === 0 ? c.gradient : 'rgba(255,255,255,0.03)'};border:1px solid ${i === 0 ? c.color + '40' : 'rgba(255,255,255,0.08)'};border-radius:8px;cursor:pointer;transition:all 0.15s;${i === 0 ? 'box-shadow:0 0 10px ' + c.color + '20;' : ''}">
-              <span style="font-size:13px;">${c.icon}</span>
               <span style="font-size:10px;color:var(--cb-white);opacity:0.9;">${c.label}</span>
               <span style="font-size:10px;color:${c.color};font-weight:600;">${c.count}</span>
             </div>
@@ -7881,12 +8263,12 @@ Output ONLY the 5 numbered questions.`;
             <div style="margin-bottom:12px;">
               <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
                 <span style="font-size:11px;color:var(--cb-subtext);">Found <span style="color:var(--cb-white);font-weight:600;">${totalItems}</span> items</span>
-                <span id="cb-extract-copy-all" style="font-size:10px;color:#60a5fa;cursor:pointer;padding:4px 8px;background:rgba(96,165,250,0.1);border-radius:6px;">📋 Copy All</span>
+                <span id="cb-extract-copy-all" style="font-size:10px;color:#60a5fa;cursor:pointer;padding:4px 8px;background:rgba(96,165,250,0.1);border-radius:6px;">Copy All</span>
               </div>
               <div style="display:flex;flex-wrap:wrap;gap:6px;">${categoryPillsHTML}</div>
             </div>
             <div id="cb-extract-items" style="max-height:200px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(100,100,100,0.4) transparent;"></div>
-          `, '📋 Extracted Content');
+          `, 'Extracted Content');
 
           const itemsContainer = toolResultArea.querySelector('#cb-extract-items');
 
@@ -7905,7 +8287,7 @@ Output ONLY the 5 numbered questions.`;
                 const domain = item.domain || new URL(item.value).hostname.replace('www.', '');
                 content = `
                   <div style="display:flex;align-items:center;gap:8px;overflow:hidden;">
-                    <span style="font-size:13px;">🔗</span>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="${config.color}" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
                     <div style="flex:1;overflow:hidden;">
                       <div style="font-size:11px;color:${config.color};font-weight:500;">${domain}</div>
                       <div style="font-size:10px;color:var(--cb-subtext);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${item.value}</div>
@@ -7923,7 +8305,7 @@ Output ONLY the 5 numbered questions.`;
                 const previewItems = item.items.slice(0, 3);
                 content = `
                   <div>
-                    <div style="font-size:10px;color:${config.color};font-weight:500;margin-bottom:5px;">📝 ${item.count} items</div>
+                    <div style="font-size:10px;color:${config.color};font-weight:500;margin-bottom:5px;">${item.count} items</div>
                     <div style="padding-left:8px;border-left:2px solid ${config.color}40;">
                       ${previewItems.map((li, i) => `<div style="font-size:10px;color:var(--cb-subtext);margin-bottom:3px;line-height:1.3;">${li.substring(0, 55)}${li.length > 55 ? '...' : ''}</div>`).join('')}
                       ${item.items.length > 3 ? `<div style="font-size:9px;color:var(--cb-subtext);opacity:0.6;margin-top:2px;">+${item.items.length - 3} more...</div>` : ''}
@@ -7946,28 +8328,28 @@ Output ONLY the 5 numbered questions.`;
               } else if (key === 'commands') {
                 content = `
                   <div style="display:flex;align-items:center;gap:6px;">
-                    <span style="font-size:12px;">⚡</span>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="${config.color}" stroke-width="2" style="flex-shrink:0;"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
                     <code style="flex:1;background:rgba(0,0,0,0.3);padding:5px 8px;border-radius:5px;font-size:10px;color:${config.color};font-family:ui-monospace,monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${item.value}</code>
                   </div>`;
                 copyValue = item.value;
               } else if (key === 'emails') {
                 content = `
                   <div style="display:flex;align-items:center;gap:6px;">
-                    <span style="font-size:12px;">✉️</span>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="${config.color}" stroke-width="2" style="flex-shrink:0;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
                     <span style="color:${config.color};font-size:11px;">${item.value}</span>
                   </div>`;
                 copyValue = item.value;
               } else if (key === 'dates') {
                 content = `
                   <div style="display:flex;align-items:center;gap:6px;">
-                    <span style="font-size:12px;">📅</span>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="${config.color}" stroke-width="2" style="flex-shrink:0;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                     <span style="color:${config.color};font-size:11px;font-weight:500;">${item.value}</span>
                   </div>`;
                 copyValue = item.value;
               } else if (key === 'tables') {
                 content = `
                   <div>
-                    <div style="font-size:10px;color:${config.color};font-weight:500;margin-bottom:4px;">📊 ${item.rows} rows</div>
+                    <div style="font-size:10px;color:${config.color};font-weight:500;margin-bottom:4px;">${item.rows} rows</div>
                     <div style="font-size:9px;color:var(--cb-subtext);background:rgba(0,0,0,0.2);padding:6px;border-radius:4px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">${item.preview || 'Table data'}</div>
                   </div>`;
                 copyValue = item.content || '';
@@ -7981,7 +8363,7 @@ Output ONLY the 5 numbered questions.`;
 
             itemsContainer.innerHTML = html || `
               <div style="text-align:center;padding:25px;color:var(--cb-subtext);">
-                <div style="font-size:22px;margin-bottom:8px;opacity:0.5;">📭</div>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom:8px;opacity:0.5;"><rect x="3" y="5" width="18" height="14" rx="2"/><polyline points="7 15 7 10 12 10"/></svg>
                 <div style="font-size:11px;">No items in this category</div>
               </div>`;
 
@@ -8044,7 +8426,7 @@ Output ONLY the 5 numbered questions.`;
         toolsGrid.appendChild(extractCard);
 
         // 6. Continue With - ALL 10 PLATFORMS + AUTO-INSERT
-        const continueCard = createToolCard('🔄', 'Continue With', 'Open chat in another AI');
+        const continueCard = createToolCard('<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00D4FF" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>', 'Continue With', 'Open chat in another AI');
         continueCard.addEventListener('click', async () => {
           const msgs = await scanChat();
           if (!msgs || msgs.length === 0) {
@@ -8052,24 +8434,24 @@ Output ONLY the 5 numbered questions.`;
             return;
           }
 
-          // All 10 supported platforms with URLs and icons
+          // All 10 supported platforms with URLs and SVG icons
           const platforms = [
-            { id: 'chatgpt', name: 'ChatGPT', icon: '🤖', url: 'https://chatgpt.com/', color: '#10a37f' },
-            { id: 'claude', name: 'Claude', icon: '🧠', url: 'https://claude.ai/', color: '#cc785c' },
-            { id: 'gemini', name: 'Gemini', icon: '✨', url: 'https://gemini.google.com/', color: '#4285f4' },
-            { id: 'copilot', name: 'Copilot', icon: '🔷', url: 'https://copilot.microsoft.com/', color: '#0078d4' },
-            { id: 'perplexity', name: 'Perplexity', icon: '🔍', url: 'https://www.perplexity.ai/', color: '#1fb8cd' },
-            { id: 'mistral', name: 'Mistral', icon: '🌀', url: 'https://chat.mistral.ai/', color: '#ff6b35' },
-            { id: 'deepseek', name: 'DeepSeek', icon: '🌊', url: 'https://deepseek.ai/', color: '#0066cc' },
-            { id: 'poe', name: 'Poe', icon: '💬', url: 'https://poe.com/', color: '#5a4fcf' },
-            { id: 'grok', name: 'Grok', icon: '⚡', url: 'https://x.ai/', color: '#1da1f2' },
-            { id: 'meta', name: 'Meta AI', icon: '🔵', url: 'https://meta.ai/', color: '#0668e1' }
+            { id: 'chatgpt', name: 'ChatGPT', url: 'https://chatgpt.com/', color: '#10a37f', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10a37f" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>' },
+            { id: 'claude', name: 'Claude', url: 'https://claude.ai/', color: '#cc785c', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#cc785c" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>' },
+            { id: 'gemini', name: 'Gemini', url: 'https://gemini.google.com/', color: '#4285f4', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4285f4" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>' },
+            { id: 'copilot', name: 'Copilot', url: 'https://copilot.microsoft.com/', color: '#0078d4', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0078d4" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>' },
+            { id: 'perplexity', name: 'Perplexity', url: 'https://www.perplexity.ai/', color: '#1fb8cd', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1fb8cd" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>' },
+            { id: 'mistral', name: 'Mistral', url: 'https://chat.mistral.ai/', color: '#ff6b35', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ff6b35" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>' },
+            { id: 'deepseek', name: 'DeepSeek', url: 'https://deepseek.ai/', color: '#0066cc', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0066cc" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>' },
+            { id: 'poe', name: 'Poe', url: 'https://poe.com/', color: '#5a4fcf', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5a4fcf" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>' },
+            { id: 'grok', name: 'Grok', url: 'https://x.ai/', color: '#1da1f2', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1da1f2" stroke-width="2"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>' },
+            { id: 'meta', name: 'Meta AI', url: 'https://meta.ai/', color: '#0668e1', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0668e1" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><line x1="21.17" y1="8" x2="12" y2="8"/><line x1="3.95" y1="6.06" x2="8.54" y2="14"/><line x1="10.88" y1="21.94" x2="15.46" y2="14"/></svg>' }
           ];
 
-          // Build platform grid
+          // Build platform grid (using SVG icons)
           const platformsHTML = platforms.map(p => `
-            <button class="cb-continue-btn" data-id="${p.id}" data-url="${p.url}" style="display:flex;align-items:center;gap:6px;padding:8px 10px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:var(--cb-white);cursor:pointer;transition:all 0.15s;font-size:11px;" onmouseenter="this.style.background='${p.color}20';this.style.borderColor='${p.color}50'" onmouseleave="this.style.background='rgba(255,255,255,0.02)';this.style.borderColor='rgba(255,255,255,0.08)'">
-              <span style="font-size:14px;">${p.icon}</span>
+            <button class="cb-continue-btn" data-id="${p.id}" data-url="${p.url}" style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:var(--cb-white);cursor:pointer;transition:all 0.15s;font-size:11px;" onmouseenter="this.style.background='${p.color}20';this.style.borderColor='${p.color}50'" onmouseleave="this.style.background='rgba(255,255,255,0.02)';this.style.borderColor='rgba(255,255,255,0.08)'">
+              <span style="width:22px;height:22px;display:flex;align-items:center;justify-content:center;background:${p.color}20;border-radius:6px;">${p.svg}</span>
               <span>${p.name}</span>
             </button>
           `).join('');
@@ -8086,14 +8468,14 @@ Output ONLY the 5 numbered questions.`;
             <div style="margin-top:10px;font-size:9px;color:var(--cb-subtext);text-align:center;">
               Context will be auto-inserted when you open the target AI
             </div>
-          `, '🔄 Continue With');
+          `, 'Continue With');
 
           toolResultArea.querySelectorAll('.cb-continue-btn').forEach(btn => {
             btn.addEventListener('click', async () => {
               const targetUrl = btn.dataset.url;
               const targetId = btn.dataset.id;
 
-              btn.innerHTML = '<span style="font-size:11px;">⏳ Preparing...</span>';
+              btn.innerHTML = '<span class="cb-spinner" style="display:inline-block;width:10px;height:10px;margin-right:6px;vertical-align:middle;"></span><span style="font-size:11px;">Preparing...</span>';
               btn.disabled = true;
 
               try {
@@ -8171,7 +8553,7 @@ Output ONLY the 5 numbered questions.`;
               } catch (e) {
                 console.error('[ChatBridge] Continue With error:', e);
                 toast('Failed to prepare context');
-                btn.innerHTML = `<span style="font-size:14px;">${platforms.find(p => p.id === targetId)?.icon || '🔄'}</span><span>${platforms.find(p => p.id === targetId)?.name || 'Retry'}</span>`;
+                btn.innerHTML = `<span style="width:22px;height:22px;display:flex;align-items:center;justify-content:center;background:${platforms.find(p => p.id === targetId)?.color || '#666'}20;border-radius:6px;">${platforms.find(p => p.id === targetId)?.svg || ''}</span><span>${platforms.find(p => p.id === targetId)?.name || 'Retry'}</span>`;
                 btn.disabled = false;
               }
             });
@@ -8299,14 +8681,15 @@ Output ONLY the 5 numbered questions.`;
           }
         } catch (e) { debugLog('auto summary failed', e); }
 
-        // Quick Actions Grid with section header
+        // Quick Actions Grid with section header (text-only, minimal)
         const actionsLabel = document.createElement('div');
-        actionsLabel.style.cssText = 'font-size:11px;font-weight:600;color:var(--cb-white);margin-bottom:12px;padding:0 12px;display:flex;align-items:center;gap:6px;';
-        actionsLabel.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="url(#actGrad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/><defs><linearGradient id="actGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00D4FF"/><stop offset="100%" stop-color="#7C3AED"/></linearGradient></defs></svg>Quick Actions';
+        actionsLabel.style.cssText = 'font-size:11px;font-weight:600;color:var(--cb-subtext);margin-bottom:12px;padding:0 12px;text-transform:uppercase;letter-spacing:0.5px;';
+        actionsLabel.textContent = 'Quick Actions';
         insightsContent.appendChild(actionsLabel);
 
         const actionsGrid = document.createElement('div');
-        actionsGrid.style.cssText = 'display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px;padding:0 12px;';
+        actionsGrid.id = 'cb-quick-actions-grid';
+        actionsGrid.style.cssText = 'display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:18px;padding:0 12px;';
 
         // 1. Quick Compare (compare responses from different models)
         const compareIcon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="url(#cmpGrad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><defs><linearGradient id="cmpGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00D4FF"/><stop offset="100%" stop-color="#7C3AED"/></linearGradient></defs></svg>';
@@ -8572,8 +8955,8 @@ Respond with JSON only:
 
         const btnSendToChat = document.createElement('button');
         btnSendToChat.className = 'cb-btn cb-btn-primary';
-        btnSendToChat.textContent = '➤ Send to Chat';
-        btnSendToChat.style.cssText = 'flex:1;';
+        btnSendToChat.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>Send to Chat';
+        btnSendToChat.style.cssText = 'flex:1;display:flex;align-items:center;justify-content:center;';
         btnSendToChat.addEventListener('click', async () => {
           const outputText = outputArea.textContent;
           if (!outputText || outputText === '(Results will appear here)') {
@@ -8613,7 +8996,7 @@ Respond with JSON only:
 
         const btnCopyOutput = document.createElement('button');
         btnCopyOutput.className = 'cb-btn';
-        btnCopyOutput.textContent = '📋 Copy';
+        btnCopyOutput.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copy';
         btnCopyOutput.addEventListener('click', async () => {
           const outputText = outputArea.textContent;
           if (!outputText || outputText === '(Results will appear here)') {
@@ -8631,7 +9014,7 @@ Respond with JSON only:
 
         const btnClearOutput = document.createElement('button');
         btnClearOutput.className = 'cb-btn';
-        btnClearOutput.textContent = '✕ Clear';
+        btnClearOutput.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Clear';
         btnClearOutput.addEventListener('click', () => {
           outputArea.textContent = '(Results will appear here)';
           toast('Output cleared');
@@ -8646,8 +9029,8 @@ Respond with JSON only:
 
         // Smart Suggestions Section
         const suggestTitle = document.createElement('div');
-        suggestTitle.style.cssText = 'font-weight:600;font-size:12px;margin:16px 12px 8px 12px;color:var(--cb-subtext);';
-        suggestTitle.textContent = '💡 Suggested Actions';
+        suggestTitle.style.cssText = 'font-weight:600;font-size:12px;margin:16px 12px 8px 12px;color:var(--cb-subtext);display:flex;align-items:center;gap:6px;';
+        suggestTitle.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="url(#suggGrad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z"/><defs><linearGradient id="suggGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00D4FF"/><stop offset="100%" stop-color="#7C3AED"/></linearGradient></defs></svg>Suggested Actions';
         insightsContent.appendChild(suggestTitle);
 
         // Generate contextual suggestions
@@ -8677,29 +9060,27 @@ Respond with JSON only:
       }
     }
 
-    // Helper: Create feature card with luxury styling
+    // Helper: Create feature card with luxury minimal styling (NO ICONS - text only)
     function createFeatureCard(title, description, icon, onClick) {
       const card = document.createElement('button');
-      card.className = 'cb-btn';
-      card.style.cssText = 'padding:16px 14px;text-align:left;height:auto;display:flex;flex-direction:column;gap:8px;background:linear-gradient(135deg, rgba(0,212,255,0.04), rgba(124,58,237,0.03));border:1px solid rgba(255,255,255,0.06);border-radius:12px;transition:all 0.25s ease;position:relative;overflow:hidden;';
-      // Check if icon is SVG or emoji
-      const iconContent = icon.startsWith('<svg') ? icon : `<span style="font-size:18px;">${icon}</span>`;
+      card.className = 'cb-btn cb-feature-card';
+      card.style.cssText = 'padding:14px 16px;text-align:left;height:auto;display:flex;flex-direction:column;gap:6px;background:linear-gradient(135deg, rgba(16,24,43,0.6), rgba(16,24,43,0.4));border:1px solid rgba(255,255,255,0.06);border-left:3px solid rgba(0,212,255,0.5);border-radius:10px;transition:all 0.25s ease;position:relative;overflow:hidden;';
+      // Minimal text-only design - no icons
       card.innerHTML = `
-        <div style="display:flex;align-items:center;gap:8px;">
-          <div style="width:20px;height:20px;display:flex;align-items:center;justify-content:center;">${iconContent}</div>
-          <div style="font-weight:600;font-size:12px;color:var(--cb-white);">${title}</div>
-        </div>
-        <div style="font-size:11px;opacity:0.7;line-height:1.4;color:var(--cb-subtext);padding-left:28px;">${description}</div>
+        <div style="font-weight:600;font-size:12px;color:var(--cb-white);line-height:1.3;">${title}</div>
+        <div style="font-size:10px;opacity:0.6;line-height:1.4;color:var(--cb-subtext);">${description}</div>
       `;
       card.addEventListener('mouseenter', () => {
-        card.style.background = 'linear-gradient(135deg, rgba(0,212,255,0.1), rgba(124,58,237,0.08))';
+        card.style.background = 'linear-gradient(135deg, rgba(0,212,255,0.08), rgba(124,58,237,0.06))';
         card.style.borderColor = 'rgba(0,212,255,0.3)';
+        card.style.borderLeftColor = 'rgba(0,212,255,0.8)';
         card.style.transform = 'translateY(-2px)';
-        card.style.boxShadow = '0 8px 24px rgba(0,0,0,0.15)';
+        card.style.boxShadow = '0 6px 20px rgba(0,0,0,0.15)';
       });
       card.addEventListener('mouseleave', () => {
-        card.style.background = 'linear-gradient(135deg, rgba(0,212,255,0.04), rgba(124,58,237,0.03))';
+        card.style.background = 'linear-gradient(135deg, rgba(16,24,43,0.6), rgba(16,24,43,0.4))';
         card.style.borderColor = 'rgba(255,255,255,0.06)';
+        card.style.borderLeftColor = 'rgba(0,212,255,0.5)';
         card.style.transform = 'translateY(0)';
         card.style.boxShadow = 'none';
       });
@@ -8861,23 +9242,50 @@ Respond with JSON only:
 
       const header = document.createElement('div');
       header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding:0 12px;';
-      header.innerHTML = `<div style="font-weight:700;font-size:14px;">Extract Content</div><button class="cb-btn cb-view-close">← Back</button>`;
+      header.innerHTML = `<div style="font-weight:700;font-size:14px;display:flex;align-items:center;gap:8px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="url(#extHdrGrad)" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><defs><linearGradient id="extHdrGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00D4FF"/><stop offset="100%" stop-color="#7C3AED"/></linearGradient></defs></svg>Extract Content</div><button class="cb-btn cb-view-close"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>Back</button>`;
       header.querySelector('.cb-view-close').addEventListener('click', () => renderSmartWorkspace());
       insightsContent.appendChild(header);
 
+      // Scroll to top
+      insightsContent.scrollTop = 0;
+
+      const hint = document.createElement('div');
+      hint.style.cssText = 'font-size:10px;color:var(--cb-subtext);margin:0 12px 12px;opacity:0.7;';
+      hint.textContent = 'Click = copy • Double-click = insert to chat';
+      insightsContent.appendChild(hint);
+
+      // Enhanced extraction types with SVG icons
       const types = [
-        { name: 'Code Blocks', icon: '💻', pattern: /```[\s\S]*?```/g },
-        { name: 'Lists', icon: '📝', pattern: /^[\s]*[-*•]\s+.+$/gm },
-        { name: 'Ordered Lists', icon: '🔢', pattern: /^[\s]*\d+\.\s+.+$/gm },
-        { name: 'URLs', icon: '🔗', pattern: /https?:\/\/[^\s]+/g },
-        { name: 'Numbers/Data', icon: '🔣', pattern: /\b\d+(?:[.,]\d+)?\b/g }
+        { name: 'Code Blocks', desc: 'Extract code snippets', pattern: /```[\s\S]*?```/g },
+        { name: 'Bullet Lists', desc: 'Extract bulleted items', pattern: /^[\s]*[-*•]\s+.+$/gm },
+        { name: 'Numbered Lists', desc: 'Extract numbered items', pattern: /^[\s]*\d+\.\s+.+$/gm },
+        { name: 'URLs & Links', desc: 'Extract web addresses', pattern: /https?:\/\/[^\s<>"{}|\\^`\[\]]+/g },
+        { name: 'Email Addresses', desc: 'Extract email addresses', pattern: /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g },
+        { name: 'Numbers & Stats', desc: 'Extract numerical data', pattern: /\b\d+(?:[.,]\d+)?(?:\s*%|\s*[kKmMbB](?:illion)?|\s*(?:dollars?|USD|EUR|GBP|INR))?\b/g },
+        { name: 'Dates & Times', desc: 'Extract temporal info', pattern: /\b(?:\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4}|\d{4}[\/\-\.]\d{1,2}[\/\-\.]\d{1,2}|(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{1,2}(?:,?\s+\d{4})?|\d{1,2}:\d{2}(?::\d{2})?(?:\s*[APap][Mm])?)\b/gi },
+        { name: 'Key Phrases', desc: 'Important terms', pattern: /\b(?:important|key|note|remember|critical|essential|must|should|recommend|suggest|ensure|warning|caution|tip|best practice)[:\s]+[^.!?\n]+[.!?]/gi },
+        { name: 'Action Items', desc: 'Tasks and todos', pattern: /\b(?:TODO|FIXME|ACTION|TASK|todo|fixme)[:\s]*[^\n]+|\b(?:need to|should|must|have to|will|going to)\s+[^.!?\n]+[.!?]/gi },
+        { name: 'Decisions', desc: 'Conclusions made', pattern: /\b(?:decided|decision|concluded|agreed|chose|selected|will use|going with|opted for)[^.!?\n]+[.!?]/gi }
       ];
+
+      const grid = document.createElement('div');
+      grid.style.cssText = 'display:grid;grid-template-columns:repeat(2,1fr);gap:8px;padding:0 12px;';
 
       types.forEach(type => {
         const btn = document.createElement('button');
-        btn.className = 'cb-btn';
-        btn.style.cssText = 'width:calc(100% - 24px);text-align:left;padding:12px;margin:0 12px 8px 12px;display:flex;align-items:center;gap:10px;';
-        btn.innerHTML = `<span style="font-size:20px;">${type.icon}</span><span style="font-weight:600;">${type.name}</span>`;
+        btn.className = 'cb-btn cb-extract-type';
+        btn.style.cssText = 'text-align:left;padding:12px;display:flex;flex-direction:column;gap:4px;background:linear-gradient(135deg, rgba(16,24,43,0.6), rgba(16,24,43,0.4));border:1px solid rgba(255,255,255,0.06);border-left:2px solid rgba(0,212,255,0.4);border-radius:8px;transition:all 0.2s;';
+        btn.innerHTML = `<span style="font-weight:600;font-size:11px;color:var(--cb-white);">${type.name}</span><span style="font-size:9px;color:var(--cb-subtext);opacity:0.7;">${type.desc}</span>`;
+
+        btn.addEventListener('mouseenter', () => {
+          btn.style.borderLeftColor = 'rgba(0,212,255,0.8)';
+          btn.style.background = 'linear-gradient(135deg, rgba(0,212,255,0.08), rgba(124,58,237,0.06))';
+        });
+        btn.addEventListener('mouseleave', () => {
+          btn.style.borderLeftColor = 'rgba(0,212,255,0.4)';
+          btn.style.background = 'linear-gradient(135deg, rgba(16,24,43,0.6), rgba(16,24,43,0.4))';
+        });
+
         btn.addEventListener('click', async () => {
           const text = lastScannedText || '';
           if (!text || text.length < 10) {
@@ -8885,34 +9293,31 @@ Respond with JSON only:
             return;
           }
           let matches = text.match(type.pattern) || [];
-          // Basic dedupe for URL/list-like extractions
-          try {
-            if (type.name === 'URLs' || type.name === 'Lists' || type.name === 'Ordered Lists') {
-              const seen = new Set();
-              matches = matches.filter(m => {
-                const k = String(m).trim();
-                if (!k || seen.has(k)) return false; seen.add(k); return true;
-              });
-            }
-          } catch (_) { }
+          // Dedupe
+          const seen = new Set();
+          matches = matches.filter(m => {
+            const k = String(m).trim();
+            if (!k || seen.has(k)) return false; seen.add(k); return true;
+          });
 
           if (!matches.length) {
             toast(`No ${type.name.toLowerCase()} found`);
             return;
           }
 
-          const output = matches.join('\n\n');
-          showOutputWithSendButton(output, `${type.icon} ${type.name} (${matches.length} found)`);
-          toast(`Extracted ${matches.length} ${type.name.toLowerCase()}`);
+          showExtractResults(matches, type.name);
+          toast(`Found ${matches.length} ${type.name.toLowerCase()}`);
         });
-        insightsContent.appendChild(btn);
+        grid.appendChild(btn);
       });
 
-      // Images & Media extraction from last scan (attachments)
+      insightsContent.appendChild(grid);
+
+      // Media extraction button
       const mediaBtn = document.createElement('button');
       mediaBtn.className = 'cb-btn';
-      mediaBtn.style.cssText = 'width:calc(100% - 24px);text-align:left;padding:12px;margin:0 12px 8px 12px;display:flex;align-items:center;gap:10px;';
-      mediaBtn.innerHTML = `<span style="font-size:20px;">🖼️</span><span style="font-weight:600;">Images & Media</span>`;
+      mediaBtn.style.cssText = 'width:calc(100% - 24px);text-align:left;padding:12px 14px;margin:12px 12px 0;display:flex;flex-direction:column;gap:4px;background:linear-gradient(135deg, rgba(16,24,43,0.6), rgba(16,24,43,0.4));border:1px solid rgba(255,255,255,0.06);border-left:3px solid rgba(124,58,237,0.6);border-radius:8px;';
+      mediaBtn.innerHTML = `<span style="font-weight:600;font-size:12px;color:var(--cb-white);">Images & Media</span><span style="font-size:10px;color:var(--cb-subtext);opacity:0.7;">Extract media attachments from conversation</span>`;
       mediaBtn.addEventListener('click', async () => {
         try {
           const ls = (window.ChatBridge && typeof window.ChatBridge.getLastScan === 'function') ? window.ChatBridge.getLastScan() : null;
@@ -8920,29 +9325,100 @@ Respond with JSON only:
           if (!msgs.length) { toast('Scan a conversation first'); return; }
           const all = [];
           msgs.forEach(m => { if (Array.isArray(m.attachments)) all.push(...m.attachments); });
-          // Dedupe by URL
           const seen = new Set();
           const uniq = all.filter(a => { if (!a || !a.url) return false; if (seen.has(a.url)) return false; seen.add(a.url); return true; });
           if (!uniq.length) { toast('No images or media found'); return; }
-          const grouped = uniq.reduce((acc, a) => { const k = a.kind || 'file'; (acc[k] = acc[k] || []).push(a); return acc; }, {});
-          const lines = [];
-          Object.keys(grouped).forEach(k => {
-            lines.push(`# ${k.toUpperCase()} (${grouped[k].length})`);
-            grouped[k].forEach((a, i) => {
-              const name = a.name || a.alt || a.url.split('?')[0].split('#')[0].split('/').pop() || 'file';
-              lines.push(`- ${name}: ${a.url}`);
-            });
-            lines.push('');
-          });
-          const textOut = lines.join('\n');
-          showOutputWithSendButton(textOut, `🖼️ Images & Media (${uniq.length} found)`);
-          toast(`Extracted ${uniq.length} media items`);
+          const lines = uniq.map(a => a.url);
+          showExtractResults(lines, 'Images & Media');
+          toast(`Found ${uniq.length} media items`);
         } catch (e) {
           debugLog('Media extract error', e);
           toast('Extract failed');
         }
       });
       insightsContent.appendChild(mediaBtn);
+    }
+
+    // Helper: Show extract results with click-to-copy, double-click-to-insert
+    function showExtractResults(matches, typeName) {
+      if (!insightsContent) return;
+      insightsContent.innerHTML = '';
+
+      const header = document.createElement('div');
+      header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;padding:0 12px;';
+      header.innerHTML = `<div style="font-weight:700;font-size:13px;">${typeName} <span style="font-size:11px;opacity:0.6;">(${matches.length})</span></div><button class="cb-btn cb-view-close"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>Back</button>`;
+      header.querySelector('.cb-view-close').addEventListener('click', () => showExtractView());
+      insightsContent.appendChild(header);
+
+      const hint = document.createElement('div');
+      hint.style.cssText = 'font-size:10px;color:var(--cb-subtext);margin:0 12px 10px;opacity:0.7;';
+      hint.textContent = 'Click = copy • Double-click = insert to chat';
+      insightsContent.appendChild(hint);
+
+      const list = document.createElement('div');
+      list.style.cssText = 'display:flex;flex-direction:column;gap:6px;padding:0 12px;max-height:calc(100vh - 350px);overflow-y:auto;';
+
+      matches.forEach((match, i) => {
+        const item = document.createElement('div');
+        item.style.cssText = 'padding:10px 12px;background:rgba(16,24,43,0.5);border:1px solid rgba(255,255,255,0.06);border-radius:6px;font-size:11px;line-height:1.5;color:var(--cb-white);cursor:pointer;transition:all 0.2s;white-space:pre-wrap;word-break:break-word;';
+        item.textContent = String(match).trim();
+
+        item.addEventListener('mouseenter', () => {
+          item.style.borderColor = 'rgba(0,212,255,0.4)';
+          item.style.background = 'rgba(0,212,255,0.08)';
+        });
+        item.addEventListener('mouseleave', () => {
+          item.style.borderColor = 'rgba(255,255,255,0.06)';
+          item.style.background = 'rgba(16,24,43,0.5)';
+        });
+
+        // Click to copy
+        item.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          try {
+            await navigator.clipboard.writeText(String(match).trim());
+            toast('Copied!');
+            item.style.borderColor = 'rgba(0,255,100,0.5)';
+            setTimeout(() => { item.style.borderColor = 'rgba(255,255,255,0.06)'; }, 500);
+          } catch (_) { toast('Copy failed'); }
+        });
+
+        // Double-click to insert to chat
+        item.addEventListener('dblclick', async (e) => {
+          e.stopPropagation();
+          try {
+            const inserted = insertTextToChat(String(match).trim());
+            if (inserted) {
+              toast('Inserted to chat!');
+              item.style.borderColor = 'rgba(124,58,237,0.8)';
+              setTimeout(() => { item.style.borderColor = 'rgba(255,255,255,0.06)'; }, 500);
+            } else {
+              await navigator.clipboard.writeText(String(match).trim());
+              toast('Copied! (Paste into chat)');
+            }
+          } catch (_) { toast('Insert failed'); }
+        });
+
+        list.appendChild(item);
+      });
+
+      insightsContent.appendChild(list);
+
+      // Copy All button
+      const copyAllBtn = document.createElement('button');
+      copyAllBtn.className = 'cb-btn cb-btn-primary';
+      copyAllBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copy All';
+      copyAllBtn.style.cssText = 'margin:12px;width:calc(100% - 24px);';
+      copyAllBtn.addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(matches.join('\n\n'));
+          toast('All items copied!');
+        } catch (_) { toast('Copy failed'); }
+      });
+      insightsContent.appendChild(copyAllBtn);
+
+      // Scroll to top
+      insightsContent.scrollTop = 0;
     }
 
     // Helper: Show output with Send to Chat button
@@ -8952,7 +9428,7 @@ Respond with JSON only:
 
       const header = document.createElement('div');
       header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding:0 12px;';
-      header.innerHTML = `<div style="font-weight:700;font-size:14px;">${title}</div><button class="cb-btn cb-view-close">← Back</button>`;
+      header.innerHTML = `<div style="font-weight:700;font-size:14px;">${title}</div><button class="cb-btn cb-view-close"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>Back</button>`;
       header.querySelector('.cb-view-close').addEventListener('click', () => renderSmartWorkspace());
       insightsContent.appendChild(header);
 
@@ -12590,6 +13066,9 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         closeAllViews();
         insightsView.classList.add('cb-view-active');
         await renderInsightsHub();
+        // Scroll to top when opening
+        const contentEl = document.getElementById('cb-insights-content');
+        if (contentEl) contentEl.scrollTop = 0;
       } catch (e) {
         toast('Failed to open Smart Workspace');
         debugLog('Insights open error', e);
