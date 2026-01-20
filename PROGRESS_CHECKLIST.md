@@ -467,7 +467,7 @@ This comprehensive checklist tracks the implementation progress of ALL ChatBridg
 ## 🔔 Floating Avatar
 - [x] Avatar button (CB badge)
 - [x] Click to open sidebar
-- [ ] Drag/drop functionality
+- [x] Drag/drop functionality
 - [x] Hover effects
 - [x] Contextual positioning
 

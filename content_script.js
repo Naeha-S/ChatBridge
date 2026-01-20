@@ -918,7 +918,204 @@
     avatar.style.cssText = 'position:fixed;bottom:22px;right:26px;width:52px;height:52px;border-radius:50%;z-index:2147483647;display:flex;align-items:center;justify-content:center;cursor:pointer;background:transparent;box-shadow:none;transition: transform .15s ease, filter .15s ease;overflow:visible;';
     avatar.addEventListener('mouseenter', () => { try { avatar.style.transform = 'translateY(-3px) scale(1.08)'; avatar.querySelector('img').style.filter = 'drop-shadow(0 0 12px rgba(0, 212, 255, 0.7)) drop-shadow(0 0 24px rgba(124, 58, 237, 0.6))'; } catch (e) { } });
     avatar.addEventListener('mouseleave', () => { try { avatar.style.transform = ''; avatar.querySelector('img').style.filter = 'drop-shadow(0 0 8px rgba(0, 212, 255, 0.5)) drop-shadow(0 0 16px rgba(124, 58, 237, 0.4))'; } catch (e) { } });
-    const host = document.createElement('div'); host.id = 'cb-host'; host.setAttribute('data-cb-ignore', 'true'); host.style.cssText = 'display:none;position:fixed;top:0;right:0;z-index:2147483646;pointer-events:none;';
+
+    // ========== DRAG AND DROP FUNCTIONALITY ==========
+    let isDragging = false;
+    let dragStartX = 0;
+    let dragStartY = 0;
+    let avatarStartX = 0;
+    let avatarStartY = 0;
+    let hasMoved = false;
+    const DRAG_THRESHOLD = 5; // pixels to move before considering it a drag
+
+    // Get saved position or default to right side
+    let avatarSide = localStorage.getItem('chatbridge:avatar-side') || 'right';
+
+    // Function to update all UI positions based on avatar side
+    function updatePositionsForSide(side, animate = true) {
+      avatarSide = side;
+      localStorage.setItem('chatbridge:avatar-side', side);
+
+      const transition = animate ? 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)' : 'none';
+
+      // Update avatar position
+      if (side === 'left') {
+        avatar.style.transition = transition;
+        avatar.style.left = '26px';
+        avatar.style.right = 'auto';
+      } else {
+        avatar.style.transition = transition;
+        avatar.style.right = '26px';
+        avatar.style.left = 'auto';
+      }
+
+      // Update host/panel position (will be applied when panel is created or exists)
+      try {
+        const hostEl = document.getElementById('cb-host');
+        if (hostEl) {
+          if (side === 'left') {
+            hostEl.style.right = 'auto';
+            hostEl.style.left = '0';
+          } else {
+            hostEl.style.left = 'auto';
+            hostEl.style.right = '0';
+          }
+          // Update panel class inside shadow DOM
+          const shadowPanel = hostEl.shadowRoot?.querySelector('.cb-panel');
+          if (shadowPanel) {
+            if (side === 'left') {
+              shadowPanel.classList.add('cb-panel-left');
+            } else {
+              shadowPanel.classList.remove('cb-panel-left');
+            }
+          }
+        }
+      } catch (e) { debugLog('updatePositionsForSide panel update failed', e); }
+    }
+
+    // Apply initial position from localStorage
+    if (avatarSide === 'left') {
+      avatar.style.left = '26px';
+      avatar.style.right = 'auto';
+    }
+
+    // Restore saved vertical position
+    const savedY = localStorage.getItem('chatbridge:avatar-y');
+    if (savedY) {
+      const yPos = parseInt(savedY, 10);
+      if (!isNaN(yPos) && yPos >= 0) {
+        avatar.style.top = yPos + 'px';
+        avatar.style.bottom = 'auto';
+      }
+    }
+
+    // Drag start handler
+    function handleDragStart(e) {
+      if (e.button !== undefined && e.button !== 0) return; // Only left mouse button
+
+      isDragging = true;
+      hasMoved = false;
+
+      const clientX = e.clientX || (e.touches && e.touches[0]?.clientX) || 0;
+      const clientY = e.clientY || (e.touches && e.touches[0]?.clientY) || 0;
+
+      dragStartX = clientX;
+      dragStartY = clientY;
+
+      const rect = avatar.getBoundingClientRect();
+      avatarStartX = rect.left;
+      avatarStartY = rect.top;
+
+      avatar.style.transition = 'none';
+      avatar.style.cursor = 'grabbing';
+
+      e.preventDefault();
+    }
+
+    // Drag move handler
+    function handleDragMove(e) {
+      if (!isDragging) return;
+
+      const clientX = e.clientX || (e.touches && e.touches[0]?.clientX) || 0;
+      const clientY = e.clientY || (e.touches && e.touches[0]?.clientY) || 0;
+
+      const deltaX = clientX - dragStartX;
+      const deltaY = clientY - dragStartY;
+
+      // Check if we've moved enough to be considered a drag
+      if (!hasMoved && (Math.abs(deltaX) > DRAG_THRESHOLD || Math.abs(deltaY) > DRAG_THRESHOLD)) {
+        hasMoved = true;
+      }
+
+      if (!hasMoved) return;
+
+      // Calculate new position
+      let newX = avatarStartX + deltaX;
+      let newY = avatarStartY + deltaY;
+
+      // Constrain to viewport
+      const avatarWidth = avatar.offsetWidth;
+      const avatarHeight = avatar.offsetHeight;
+      newX = Math.max(0, Math.min(window.innerWidth - avatarWidth, newX));
+      newY = Math.max(0, Math.min(window.innerHeight - avatarHeight, newY));
+
+      // Position avatar
+      avatar.style.left = newX + 'px';
+      avatar.style.right = 'auto';
+      avatar.style.top = newY + 'px';
+      avatar.style.bottom = 'auto';
+
+      // Add visual feedback
+      avatar.style.transform = 'scale(1.1)';
+      avatar.style.boxShadow = '0 8px 32px rgba(0, 212, 255, 0.4)';
+
+      e.preventDefault();
+    }
+
+    // Drag end handler
+    function handleDragEnd(e) {
+      if (!isDragging) return;
+      isDragging = false;
+
+      avatar.style.cursor = 'pointer';
+      avatar.style.transform = '';
+      avatar.style.boxShadow = 'none';
+
+      // If we didn't actually drag, let the click event handle it
+      if (!hasMoved) {
+        return;
+      }
+
+      // Set flag on avatar element to prevent click handler from opening sidebar
+      // This flag is checked directly by the click handler
+      avatar._wasDragged = true;
+      setTimeout(() => { avatar._wasDragged = false; }, 300);
+
+      // Get current position to preserve vertical position
+      const rect = avatar.getBoundingClientRect();
+      const centerX = rect.left + rect.width / 2;
+      const screenMidpoint = window.innerWidth / 2;
+      const newSide = centerX < screenMidpoint ? 'left' : 'right';
+
+      // Calculate the Y position to keep (as distance from top)
+      // Constrain to be at least 22px from top and bottom edges
+      const avatarHeight = avatar.offsetHeight;
+      let newY = Math.max(22, Math.min(window.innerHeight - avatarHeight - 22, rect.top));
+
+      // Save vertical position
+      localStorage.setItem('chatbridge:avatar-y', newY.toString());
+
+      // Apply vertical position using top (not bottom)
+      avatar.style.transition = 'left 0.3s cubic-bezier(0.4, 0, 0.2, 1), right 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+      avatar.style.top = newY + 'px';
+      avatar.style.bottom = 'auto';
+
+      // Animate horizontal snap to edge
+      updatePositionsForSide(newSide, true);
+
+      // Prevent click event from firing
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
+    // Attach drag event listeners
+    avatar.addEventListener('mousedown', handleDragStart);
+    document.addEventListener('mousemove', handleDragMove);
+    document.addEventListener('mouseup', handleDragEnd);
+
+    // Touch support
+    avatar.addEventListener('touchstart', handleDragStart, { passive: false });
+    document.addEventListener('touchmove', handleDragMove, { passive: false });
+    document.addEventListener('touchend', handleDragEnd);
+
+    // ========== END DRAG AND DROP ==========
+
+    const host = document.createElement('div'); host.id = 'cb-host'; host.setAttribute('data-cb-ignore', 'true');
+    // Set initial host position based on saved side
+    const hostPositionStyle = avatarSide === 'left'
+      ? 'display:none;position:fixed;top:0;left:0;z-index:2147483646;pointer-events:none;'
+      : 'display:none;position:fixed;top:0;right:0;z-index:2147483646;pointer-events:none;';
+    host.style.cssText = hostPositionStyle;
     document.body.appendChild(avatar); document.body.appendChild(host);
     const shadow = host.attachShadow({ mode: 'open' });
 
@@ -1081,6 +1278,13 @@
   .cb-mini-btn[data-tooltip]:hover::before { content: ''; position: absolute; left: 54px; top: 50%; transform: translateY(-50%); border: 7px solid transparent; border-right-color: var(--cb-bg); z-index: 9999; }
   .cb-mini-btn[data-tooltip]:hover::after { content: attr(data-tooltip); position: absolute; left: 68px; top: 50%; transform: translateY(-50%); background: var(--cb-bg); border: 1px solid rgba(0,212,255,0.4); border-radius: 8px; padding: 10px 14px; font-size: 12px; font-weight: 600; white-space: nowrap; color: var(--cb-white); z-index: 10000; box-shadow: 0 8px 32px rgba(0,0,0,0.5); animation: cb-tooltip-fade 0.15s ease-out; }
   @keyframes cb-tooltip-fade { from { opacity: 0; transform: translateY(-50%) translateX(-10px); } to { opacity: 1; transform: translateY(-50%) translateX(0); } }
+  
+  /* Left-side panel positioning */
+  .cb-panel.cb-panel-left { right: auto !important; left: var(--cb-space-md); }
+  .cb-panel.cb-panel-left.cb-minimized .cb-mini-btn[data-tooltip]:hover::before { left: auto; right: 54px; border-right-color: transparent; border-left-color: var(--cb-bg); }
+  .cb-panel.cb-panel-left.cb-minimized .cb-mini-btn[data-tooltip]:hover::after { left: auto; right: 68px; transform: translateY(-50%); animation: cb-tooltip-fade-right 0.15s ease-out; }
+  @keyframes cb-tooltip-fade-right { from { opacity: 0; transform: translateY(-50%) translateX(10px); } to { opacity: 1; transform: translateY(-50%) translateX(0); } }
+  
   .cb-mini-expand { margin-top: auto; background: linear-gradient(135deg, rgba(0,212,255,0.12), rgba(124,58,237,0.1)) !important; border-color: rgba(0,212,255,0.25) !important; }
   .cb-mini-expand:hover { background: linear-gradient(135deg, rgba(0,212,255,0.25), rgba(124,58,237,0.18)) !important; }
   .cb-mini-logo { width: 44px; height: 44px; border-radius: 12px; overflow: hidden; margin-bottom: 8px; cursor: pointer; transition: transform 0.25s ease, box-shadow 0.25s ease; }
@@ -1332,6 +1536,10 @@
     } catch (e) { }
 
     const panel = document.createElement('div'); panel.className = 'cb-panel';
+    // Apply left-side positioning if saved
+    if (avatarSide === 'left') {
+      panel.classList.add('cb-panel-left');
+    }
 
     // Load saved panel width
     try {
@@ -17213,6 +17421,10 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
     avatar.onclick = (e) => {
       e.preventDefault();
       e.stopPropagation();
+      // Don't toggle if we just finished dragging
+      if (avatar._wasDragged) {
+        return;
+      }
       toggleSidebar();
     };
 
