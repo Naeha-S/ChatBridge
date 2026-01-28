@@ -320,25 +320,15 @@ This comprehensive checklist tracks the implementation progress of ALL ChatBridg
     - [x] "Insert to Chat" button
 
 ---
-## ✨ Prompt Optimizer View
-- [ ] **Header**
-    - [ ] ✨ Emoji
-    - [ ] "Prompt Optimizer" title
-    - [ ] ✕ Close button
-- [ ] **Intro Card**
-    - [ ] Description text
-- [ ] **Input Section**
-    - [ ] "Your Raw Prompt" label
-    - [ ] Textarea input with placeholder
-- [ ] **Action Row**
-    - [ ] "✨ Optimize" primary button
-    - [ ] Progress indicator
-- [ ] **Output Section**
-    - [ ] "Optimized Prompt" label
-    - [ ] Result display area
-- [ ] **Action Buttons**
-    - [ ] "📋 Copy" button
-    - [ ] "↩ Insert to Chat" button
+## ✨ Prompt Optimizer (Inline)
+- [x] **Quick Action Button** (maximized mode)
+    - [x] Optimizes text in chat input box
+    - [x] Expert prompt engineer system prompt
+    - [x] Replaces input with optimized version
+    - [x] Toast notifications for progress/success
+- [x] **Mini Toolbar Button** (minimized mode)
+    - [x] Same inline optimization behavior
+    - [x] Visual loading/success states
 
 ---
 
@@ -594,14 +584,14 @@ This comprehensive checklist tracks the implementation progress of ALL ChatBridg
 ---
 
 ## ⌨️ Keyboard Shortcuts
-- [ ] `Ctrl+Shift+S` / `Cmd+Shift+S` - Quick scan
-- [ ] `Ctrl+Shift+H` / `Cmd+Shift+H` - Toggle sidebar
-- [ ] `Ctrl+Shift+I` / `Cmd+Shift+I` - Insert to chat
-- [ ] `Ctrl+Shift+F` / `Cmd+Shift+F` - Insight Finder
-- [ ] `S` - Scan (when sidebar focused)
-- [ ] `R` - Restore (when sidebar focused)
-- [ ] `C` - Copy (when sidebar focused)
-- [ ] `Esc` - Close sidebar/views
+- [x] `Ctrl+Shift+S` / `Cmd+Shift+S` - Quick scan
+- [x] `Ctrl+Shift+H` / `Cmd+Shift+H` - Toggle sidebar
+- [x] `Ctrl+Shift+I` / `Cmd+Shift+I` - Insert to chat
+- [x] `Ctrl+Shift+F` / `Cmd+Shift+F` - Insight Finder
+- [x] `S` - Scan (when sidebar focused)
+- [x] `R` - Restore (when sidebar focused)
+- [x] `C` - Copy (when sidebar focused)
+- [x] `Esc` - Close sidebar/views
 
 ---
 
@@ -617,36 +607,16 @@ This comprehensive checklist tracks the implementation progress of ALL ChatBridg
 - [ ] CSS variables system
 - [ ] Theme persistence in storage
 
----
-
-## 📊 Smart Queries Page (`smartQueries.html`)
-- [ ] Demo page container
-- [ ] Theme toggle button (🌙 Dark / ☀️ Light)
-- [ ] Header with 🧠 Smart Queries title
-- [ ] Feature badges row
-    - [ ] ✨ AI Synthesis badge
-    - [ ] 🔍 Memory Search badge
-    - [ ] 📋 Query History badge
-    - [ ] ⚙️ Advanced Filters badge
-    - [ ] 📖 Expandable Previews badge
-    - [ ] ⚡ Smart Suggestions badge
-- [ ] Smart Queries demo container
-- [ ] Footer with instructions
-- [ ] Mock chrome runtime for demo
-- [ ] Mock MemoryRetrieval for demo
-
----
-
 ## 📝 Content Extraction Features
-- [ ] URL extraction
-- [ ] Email extraction
-- [ ] Number/statistics extraction
-- [ ] Date extraction
-- [ ] List extraction (bullets, numbered)
-- [ ] Code block extraction
-- [ ] Inline command extraction
-- [ ] Table extraction
-- [ ] Key phrase extraction
+- [x] URL extraction
+- [x] Email extraction
+- [x] Number/statistics extraction
+- [x] Date extraction
+- [x] List extraction (bullets, numbered)
+- [x] Code block extraction
+- [x] Inline command extraction
+- [x] Table extraction
+- [x] Key phrase extraction
 
 ---
 
@@ -659,10 +629,10 @@ This comprehensive checklist tracks the implementation progress of ALL ChatBridg
 ---
 
 ## 📱 Responsive Design
-- [ ] Mobile-friendly views
-- [ ] Flexible grid layouts
-- [ ] Touch-friendly buttons
-- [ ] Scroll containers with proper overflow
+- [x] Mobile-friendly views
+- [x] Flexible grid layouts
+- [x] Touch-friendly buttons
+- [x] Scroll containers with proper overflow
 
 ---
 

@@ -99,56 +99,110 @@
         if (!filteredConversations.length) {
             conversationList.innerHTML = `
         <div style="text-align: center; padding: 40px; color: var(--text-secondary);">
-          <div style="font-size: 13px;">No conversations found</div>
+          <div style="font-size: 13px;">${window.t ? window.t('noConversations', currentLang) : 'No conversations found'}</div>
         </div>
       `;
             return;
         }
 
-        // Helper: Generate 3-word title from conversation
-        function generateShortTitle(conv) {
-            const msgs = conv.conversation || [];
-            const firstUser = msgs.find(m => m.role === 'user' || m.type === 'human');
-            const text = firstUser?.content || firstUser?.text || msgs[0]?.content || msgs[0]?.text || '';
+        // Grouping logic
+        const groups = {
+            today: [],
+            yesterday: [],
+            thisWeek: [],
+            older: []
+        };
 
-            const stopWords = ['the', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been', 'i', 'you', 'we', 'they', 'it', 'this', 'that', 'what', 'how', 'can', 'do', 'please', 'help', 'me', 'my'];
-            const words = text.toLowerCase()
-                .replace(/[^a-z0-9\s]/g, '')
-                .split(/\s+/)
-                .filter(w => w.length > 2 && !stopWords.includes(w));
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+        const yesterday = today - 86400000;
+        const thisWeek = today - (now.getDay() * 86400000);
 
-            if (words.length === 0) return formatPlatform(conv.platform || conv.host || 'Chat');
+        filteredConversations.forEach(conv => {
+            const date = new Date(conv.ts || conv.timestamp || Date.now()).getTime();
+            if (date >= today) groups.today.push(conv);
+            else if (date >= yesterday) groups.yesterday.push(conv);
+            else if (date >= thisWeek) groups.thisWeek.push(conv);
+            else groups.older.push(conv);
+        });
 
-            return words.slice(0, 3)
-                .map(w => w.charAt(0).toUpperCase() + w.slice(1))
-                .join(' ');
+        const groupLabels = {
+            today: window.t ? window.t('today', currentLang) : 'Today',
+            yesterday: window.t ? window.t('yesterday', currentLang) : 'Yesterday',
+            thisWeek: window.t ? window.t('thisWeek', currentLang) : 'This Week',
+            older: window.t ? window.t('older', currentLang) : 'Older'
+        };
+
+        let html = '';
+        for (const [key, items] of Object.entries(groups)) {
+            if (items.length > 0) {
+                html += `<div class="date-group-header">${groupLabels[key]}</div>`;
+                html += `<div class="date-group">`;
+                items.forEach(conv => {
+                    html += createConversationCard(conv);
+                });
+                html += `</div>`;
+            }
         }
 
-        conversationList.innerHTML = filteredConversations.map((conv, i) => {
-            const title = generateShortTitle(conv);
-            const date = new Date(conv.ts || conv.timestamp || Date.now());
-            const timeAgo = getTimeAgo(date);
-            const msgCount = conv.conversation ? conv.conversation.length : 0;
-            const isActive = conversations.indexOf(conv) === selectedIndex;
+        conversationList.innerHTML = html;
 
-            return `
-        <div class="list-item ${isActive ? 'active' : ''}" data-index="${conversations.indexOf(conv)}">
-          <div class="item-header">
-            <div class="item-platform">${title}</div>
-            <div class="item-time">${timeAgo}</div>
-          </div>
-          <div class="item-preview">${msgCount} msgs</div>
-        </div>
-      `;
-        }).join('');
+        // Re-apply translations for static elements if needed
+        applyTranslations(currentLang);
+    }
 
-        // Re-apply translations for "All" chip if list re-render triggered it
-        if (window.t) {
-            document.querySelectorAll('[data-i18n]').forEach(el => {
-                const key = el.getAttribute('data-i18n');
-                el.textContent = window.t(key, currentLang);
-            });
-        }
+    function createConversationCard(conv) {
+        const platform = (conv.platform || conv.host || 'Unknown').toLowerCase();
+        const platformEmoji = getPlatformEmoji(platform);
+        const msgCount = conv.conversation ? conv.conversation.length : 0;
+        const date = new Date(conv.ts || conv.timestamp || Date.now());
+        const timeAgo = getTimeAgo(date);
+        const previewText = getPreviewText(conv);
+        const isActive = conversations.indexOf(conv) === selectedIndex;
+        const index = conversations.indexOf(conv);
+
+        return `
+            <div class="list-item ${isActive ? 'active' : ''}" data-index="${index}">
+                <div class="item-header">
+                    <div class="item-platform-wrap">
+                        <span class="platform-icon">${platformEmoji}</span>
+                        <div class="item-platform">${formatPlatform(platform)}</div>
+                    </div>
+                    <div class="item-time">${timeAgo}</div>
+                </div>
+                <div class="item-preview">${previewText}</div>
+                <div class="item-footer">
+                    <span class="msg-count-badge">${msgCount} msg${msgCount !== 1 ? 's' : ''}</span>
+                    <div class="item-actions">
+                        <button class="item-action-btn btn-load" data-index="${index}" title="Load">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                            </svg>
+                        </button>
+                        <button class="item-action-btn delete btn-item-delete" data-index="${index}" title="Delete">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="3 6 5 6 21 6"></polyline>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    function getPlatformEmoji(p) {
+        const emojis = {
+            'chatgpt': '🤖',
+            'claude': '🧠',
+            'gemini': '✨',
+            'perplexity': '🔍',
+            'poe': '🐝',
+            'copilot': '🪟',
+            'deepseek': '🌊',
+            'mistral': '🌪️'
+        };
+        return emojis[p] || '💬';
     }
 
     function formatPlatform(p) {
@@ -212,6 +266,11 @@
 
         // Update active state in list
         document.querySelectorAll('.list-item').forEach(el => el.classList.remove('active'));
+
+        // Reset mobile view
+        document.querySelector('.sidebar').style.display = '';
+        document.querySelector('.main').classList.remove('active');
+        btnClose.style.display = 'none';
     }
 
     // ============================================
@@ -236,19 +295,49 @@
             filterConversations(searchInput.value.toLowerCase(), filter);
         });
 
-        // List Selection
+        // List Item Selection & Actions (using delegation)
         conversationList.addEventListener('click', (e) => {
-            const item = e.target.closest('.list-item');
-            if (!item) return;
+            const deleteBtn = e.target.closest('.btn-item-delete');
+            if (deleteBtn) {
+                e.stopPropagation();
+                const index = parseInt(deleteBtn.dataset.index);
+                deleteConversationByIndex(index);
+                return;
+            }
 
-            const index = parseInt(item.dataset.index);
-            selectConversation(index);
+            const loadBtn = e.target.closest('.btn-load');
+            if (loadBtn) {
+                e.stopPropagation();
+                const index = parseInt(loadBtn.dataset.index);
+                selectConversation(index);
+                return;
+            }
+
+            const item = e.target.closest('.list-item');
+            if (item) {
+                const index = parseInt(item.dataset.index);
+                selectConversation(index);
+            }
         });
 
         // Actions
         btnCopy.addEventListener('click', copyConversation);
         btnDelete.addEventListener('click', deleteConversation);
         btnClose.addEventListener('click', clearDetail);
+
+        const btnClearAll = document.getElementById('btn-clear-all');
+        if (btnClearAll) {
+            btnClearAll.addEventListener('click', clearAllHistory);
+        }
+
+        // Resize listener for responsive reset
+        window.addEventListener('resize', () => {
+            if (window.innerWidth >= 768) {
+                document.querySelector('.sidebar').style.display = '';
+                document.querySelector('.main').classList.remove('active');
+                btnClose.style.display = 'none';
+            }
+        });
     }
 
     function filterConversations(query, platformFilter) {
@@ -278,28 +367,60 @@
         renderList(); // Re-render to update active class logic
 
         // Mobile view handling (if we add responsive styles)
+        // Mobile view handling
         if (window.innerWidth < 768) {
             document.querySelector('.sidebar').style.display = 'none';
-            document.querySelector('.main').style.display = 'flex';
+            document.querySelector('.main').classList.add('active');
             btnClose.style.display = 'flex';
         }
     }
 
     async function deleteConversation() {
         if (selectedIndex === -1) return;
+        deleteConversationByIndex(selectedIndex);
+    }
+
+    async function deleteConversationByIndex(index) {
+        if (index < 0 || index >= conversations.length) return;
         if (!confirm('Delete this conversation?')) return;
 
-        conversations.splice(selectedIndex, 1);
+        conversations.splice(index, 1);
 
         // Save to all keys
         const updates = {};
-        STORAGE_KEYS.forEach(key => updates[key] = conversations);
+        for (const key of STORAGE_KEYS) {
+            updates[key] = conversations;
+        }
+
+        await new Promise(r => chrome.storage.local.set(updates, r));
+
+        if (selectedIndex === index) {
+            clearDetail();
+        } else if (selectedIndex > index) {
+            selectedIndex--; // Adjust for item removed before selection
+        }
+
+        filterConversations(searchInput.value.toLowerCase(), document.querySelector('.chip.active').dataset.filter);
+        renderFilters();
+    }
+
+    async function clearAllHistory() {
+        if (!conversations.length) return;
+        if (!confirm('Are you sure you want to clear ALL history? This cannot be undone.')) return;
+
+        conversations = [];
+        filteredConversations = [];
+
+        const updates = {};
+        for (const key of STORAGE_KEYS) {
+            updates[key] = [];
+        }
 
         await new Promise(r => chrome.storage.local.set(updates, r));
 
         clearDetail();
-        filterConversations(searchInput.value.toLowerCase(), document.querySelector('.chip.active').dataset.filter);
-        renderFilters(); // Update chips if platform removed
+        renderFilters();
+        renderList();
     }
 
     function copyConversation() {

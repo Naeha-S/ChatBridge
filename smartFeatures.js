@@ -1,6 +1,6 @@
 // smartFeatures.js - Smart Context Injection, AI Summaries, Universal Clipboard, Knowledge Base
 
-(function() {
+(function () {
   'use strict';
 
   // ============================================
@@ -18,22 +18,22 @@
     // Initialize context injection for a given input element
     init(inputElement, shadowRoot) {
       if (!inputElement || !shadowRoot) return;
-      
+
       // Create floating suggestion panel
       this.panel = this.createSuggestionPanel(shadowRoot);
-      
+
       // Listen to input changes
       inputElement.addEventListener('input', (e) => {
         this.handleInput(e.target);
       });
-      
+
       // Listen to focus/blur
       inputElement.addEventListener('focus', () => {
         if (this.suggestions.length > 0) {
           this.showPanel();
         }
       });
-      
+
       inputElement.addEventListener('blur', () => {
         // Delay hiding to allow click on suggestions
         setTimeout(() => this.hidePanel(), 200);
@@ -59,7 +59,7 @@
         z-index: 2147483646;
         padding: 12px;
       `;
-      
+
       shadowRoot.appendChild(panel);
       return panel;
     }
@@ -67,12 +67,12 @@
     handleInput(input) {
       clearTimeout(this.debounceTimer);
       const query = input.value || input.textContent || '';
-      
+
       if (query.length < 3) {
         this.hidePanel();
         return;
       }
-      
+
       // Debounce for 300ms
       this.debounceTimer = setTimeout(async () => {
         await this.fetchSuggestions(query);
@@ -88,7 +88,7 @@
     async fetchSuggestions(query) {
       this.lastQuery = query;
       this.suggestions = [];
-      
+
       try {
         // Use RAG engine to find relevant past chats
         if (typeof window.RAGEngine !== 'undefined' && window.RAGEngine.search) {
@@ -101,23 +101,23 @@
             data: r
           }));
         }
-        
+
         // Add code snippets from localStorage if available
         try {
           const clipboardData = JSON.parse(localStorage.getItem('chatbridge:clipboard') || '[]');
-          const codeSnippets = clipboardData.filter(item => 
-            item.type === 'code' && 
+          const codeSnippets = clipboardData.filter(item =>
+            item.type === 'code' &&
             item.content.toLowerCase().includes(query.toLowerCase())
           ).slice(0, 3);
-          
+
           this.suggestions.push(...codeSnippets.map(s => ({
             type: 'code',
             title: 'Code snippet',
             snippet: s.content.slice(0, 100) + '...',
             data: s
           })));
-        } catch (e) {}
-        
+        } catch (e) { }
+
         // Sort by relevance
         this.suggestions.sort((a, b) => (b.score || 0) - (a.score || 0));
       } catch (e) {
@@ -127,7 +127,7 @@
 
     renderSuggestions() {
       if (!this.panel) return;
-      
+
       const html = `
         <div style="font-size: 12px; color: var(--cb-subtext); margin-bottom: 8px; font-weight: 600;">
           💡 Suggested Context
@@ -154,9 +154,9 @@
           </div>
         `).join('')}
       `;
-      
+
       this.panel.innerHTML = html;
-      
+
       // Add click handlers
       this.panel.querySelectorAll('.cb-suggestion-item').forEach(item => {
         item.addEventListener('mouseenter', (e) => {
@@ -177,13 +177,13 @@
     insertSuggestion(index) {
       const suggestion = this.suggestions[index];
       if (!suggestion) return;
-      
+
       // Find the active input and insert
       const input = this.findActiveInput();
       if (!input) return;
-      
+
       const textToInsert = suggestion.data.text || suggestion.data.content || suggestion.snippet;
-      
+
       if (input.isContentEditable) {
         input.focus();
         const currentText = input.textContent || '';
@@ -195,7 +195,7 @@
         input.value = currentValue + '\n\n' + textToInsert;
         input.dispatchEvent(new Event('input', { bubbles: true }));
       }
-      
+
       this.hidePanel();
       this.showToast('Context inserted');
     }
@@ -208,8 +208,8 @@
           const input = adapter.getInput();
           if (input) return input;
         }
-      } catch (e) {}
-      
+      } catch (e) { }
+
       // Fallback to document query
       const inputs = document.querySelectorAll('textarea, [contenteditable="true"]');
       for (const inp of inputs) {
@@ -317,7 +317,7 @@
       const followUps = [];
       const lastUserMsg = messages.filter(m => m.role === 'user').slice(-1)[0];
       const lastAssistantMsg = messages.filter(m => m.role === 'assistant').slice(-1)[0];
-      
+
       if (!lastUserMsg || !lastAssistantMsg) return [];
 
       // Pattern-based follow-up generation
@@ -350,7 +350,7 @@
       const links = [];
       const urlPattern = /(https?:\/\/[^\s]+)/g;
       const matches = text.matchAll(urlPattern);
-      
+
       for (const match of matches) {
         links.push(match[1]);
       }
@@ -371,7 +371,7 @@
       }
 
       const commonWords = new Set(['about', 'would', 'could', 'should', 'there', 'their', 'where', 'which', 'these', 'those']);
-      
+
       return Object.entries(frequency)
         .filter(([word]) => !commonWords.has(word))
         .sort((a, b) => b[1] - a[1])
@@ -457,7 +457,7 @@
       `;
 
       container.innerHTML = html;
-      
+
       // Add click handlers for follow-up questions
       container.querySelectorAll('.cb-followup-btn').forEach(btn => {
         btn.addEventListener('click', async (e) => {
@@ -693,7 +693,7 @@
       const date = new Date(timestamp);
       const now = Date.now();
       const diff = now - timestamp;
-      
+
       if (diff < 60000) return 'Just now';
       if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
       if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
@@ -803,7 +803,7 @@
 
       if (query) {
         const lowerQuery = query.toLowerCase();
-        results = results.filter(item => 
+        results = results.filter(item =>
           item.title.toLowerCase().includes(lowerQuery) ||
           item.content.toLowerCase().includes(lowerQuery) ||
           item.tags.some(tag => tag.toLowerCase().includes(lowerQuery))
@@ -930,7 +930,7 @@
       // Event listeners
       const searchInput = container.querySelector('#cb-kb-search');
       const tagFilter = container.querySelector('#cb-kb-tag-filter');
-      
+
       const applyFilters = () => {
         const query = searchInput.value;
         const tag = tagFilter.value;
@@ -978,15 +978,15 @@
       // TODO: Implement modal dialog for adding entries
       const title = prompt('Entry title:');
       if (!title) return;
-      
+
       const content = prompt('Entry content:');
       if (!content) return;
-      
+
       const tagsInput = prompt('Tags (comma-separated):');
       const tags = tagsInput ? tagsInput.split(',').map(t => t.trim()).filter(Boolean) : [];
-      
+
       this.addEntry({ title, content, tags });
-      
+
       // Re-render to show new entry
       const container = document.querySelector('#cb-agent-content');
       if (container) {
@@ -998,15 +998,15 @@
       // TODO: Implement modal dialog for editing entries
       const title = prompt('Entry title:', entry.title);
       if (!title) return;
-      
+
       const content = prompt('Entry content:', entry.content);
       if (content === null) return;
-      
+
       const tagsInput = prompt('Tags (comma-separated):', entry.tags.join(', '));
       const tags = tagsInput ? tagsInput.split(',').map(t => t.trim()).filter(Boolean) : [];
-      
+
       this.updateEntry(entry.id, { title, content, tags });
-      
+
       // Re-render
       const container = document.querySelector('#cb-agent-content');
       if (container) {
@@ -1041,6 +1041,105 @@
     window.AISummaryEngine = AISummaryEngine;
     window.UniversalClipboard = UniversalClipboard;
     window.KnowledgeBase = KnowledgeBase;
+  }
+
+  // ============================================
+  // CONTENT EXTRACTION UTILITIES
+  // ============================================
+  const ContentExtractor = {
+    // Regex Patterns
+    PATTERNS: {
+      URL: /(https?:\/\/[^\s<]+)/g,
+      EMAIL: /([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9._-]+)/gi,
+      NUMBER: /\b\d+(?:,\d{3})*(?:\.\d+)?\b/g,
+      DATE: /\b(?:\d{1,2}[-/]\d{1,2}[-/]\d{2,4}|(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]* \d{1,2}(?:, \d{4})?)\b/gi,
+      CODE_BLOCK: /```(\w*)\n([\s\S]*?)```/g,
+      INLINE_CODE: /`([^`]+)`/g,
+      LIST_BULLET: /^[\s]*[-*+]\s+(.+)$/gm,
+      LIST_NUMBER: /^[\s]*\d+\.\s+(.+)$/gm,
+      TABLE: /\|.+?\|.+?\|\n\|[-:| ]+\|\n((?:\|.+?\|\n)+)/g,
+      COMMAND: /^[/$!]([a-zA-Z0-9_-]+)/gm // e.g., /slash-commands
+    },
+
+    extract(messages) {
+      if (!messages || !Array.isArray(messages)) return {};
+
+      const results = {
+        urls: new Set(),
+        emails: new Set(),
+        numbers: [],
+        dates: new Set(),
+        codeBlocks: [],
+        inlineCode: new Set(),
+        lists: [],
+        tables: [],
+        uniqueStats: {
+          wordCount: 0,
+          charCount: 0
+        }
+      };
+
+      const fullText = messages.map(m => m.text || '').join('\n');
+
+      // 1. URLs
+      const urls = fullText.match(this.PATTERNS.URL);
+      if (urls) urls.forEach(u => results.urls.add(u));
+
+      // 2. Emails
+      const emails = fullText.match(this.PATTERNS.EMAIL);
+      if (emails) emails.forEach(e => results.emails.add(e));
+
+      // 3. Dates
+      const dates = fullText.match(this.PATTERNS.DATE);
+      if (dates) dates.forEach(d => results.dates.add(d));
+
+      // 4. Code Blocks
+      let match;
+      while ((match = this.PATTERNS.CODE_BLOCK.exec(fullText)) !== null) {
+        results.codeBlocks.push({
+          language: match[1] || 'text',
+          code: match[2].trim()
+        });
+      }
+
+      // 5. Lists (Bullet & Numbered)
+      const visibleLists = [];
+      let listMatch;
+      // Combine list regexes manually or iterate matching lines
+      const bulletMatches = fullText.match(this.PATTERNS.LIST_BULLET);
+      if (bulletMatches) visibleLists.push(...bulletMatches.map(l => l.trim()));
+
+      const numberMatches = fullText.match(this.PATTERNS.LIST_NUMBER);
+      if (numberMatches) visibleLists.push(...numberMatches.map(l => l.trim()));
+
+      if (visibleLists.length > 0) results.lists = visibleLists;
+
+      // 6. Inline Code / Commands
+      const inlineMatches = fullText.match(this.PATTERNS.INLINE_CODE);
+      if (inlineMatches) inlineMatches.forEach(c => results.inlineCode.add(c));
+
+      // 7. Stats
+      results.uniqueStats.charCount = fullText.length;
+      results.uniqueStats.wordCount = fullText.trim().split(/\s+/).length;
+
+      return {
+        urls: Array.from(results.urls),
+        emails: Array.from(results.emails),
+        dates: Array.from(results.dates),
+        codeBlocks: results.codeBlocks,
+        inlineCode: Array.from(results.inlineCode),
+        lists: results.lists,
+        stats: results.uniqueStats
+      };
+    }
+  };
+
+  // Expose to ChatBridge global
+  if (typeof window !== 'undefined') {
+    window.ChatBridge = window.ChatBridge || {};
+    window.ChatBridge.extractContentFromMessages = (messages) => {
+      return ContentExtractor.extract(messages);
+    };
   }
 
 })();

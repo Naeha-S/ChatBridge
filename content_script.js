@@ -10,6 +10,9 @@
     window.__CHATBRIDGE = window.__CHATBRIDGE || {};
     // allow previously stored value to persist
     window.__CHATBRIDGE.MAX_MESSAGES = window.__CHATBRIDGE.MAX_MESSAGES || 200;
+
+    // Initialize global ChatBridge early to ensure scoped functions can be attached
+    window.ChatBridge = window.ChatBridge || {};
   }
 
   const APPROVED_SITES = [
@@ -69,6 +72,42 @@
   }
 
   console.log('[ChatBridge] Injecting on approved site:', window.location.hostname);
+
+  // Fix: Polyfill missing Rewrite functions referenced in UI
+  async function rewriteText(style, text, options) {
+    // Try using the sophisticated Rewriter utility if available
+    if (window.ChatBridgeRewriter && window.ChatBridgeRewriter.rewriteWithStyle) {
+      if (options && options.onProgress) options.onProgress({ phase: 'processing', percent: 50 });
+      try {
+        const res = await window.ChatBridgeRewriter.rewriteWithStyle(text, style, options?.styleHint);
+        if (options && options.onProgress) options.onProgress({ phase: 'complete', percent: 100 });
+        return res;
+      } catch (e) {
+        console.warn('ChatBridgeRewriter failed, falling back to direct message:', e);
+      }
+    }
+    // Fallback: Direct background call
+    return new Promise((resolve, reject) => {
+      try {
+        chrome.runtime.sendMessage({
+          type: 'rewrite_text',
+          text: text,
+          rewriteStyle: style, // background expects rewriteStyle key
+          action: 'rewrite',   // ensure action is set
+          styleHint: options?.styleHint
+        }, (response) => {
+          if (chrome.runtime.lastError) return reject(chrome.runtime.lastError);
+          if (response && response.ok) resolve(response.result);
+          else reject(new Error(response?.error || 'Rewrite failed'));
+        });
+      } catch (e) { reject(e); }
+    });
+  }
+
+  // Polyfill for hierarchicalProcess (sync tone) -> fallback to standard rewrite
+  async function hierarchicalProcess(text, mode, options) {
+    return await rewriteText('professional', text, options);
+  }
 
   // AUTO-INSERT: Check if we arrived from "Continue With" and should auto-insert context
   (async function checkContinueWithAutoInsert() {
@@ -4748,6 +4787,7 @@
         try { if (typeof agentView !== 'undefined' && agentView) agentView.classList.remove('cb-view-active'); } catch (_) { }
         try { if (typeof settingsPanel !== 'undefined' && settingsPanel) settingsPanel.classList.remove('cb-view-active'); } catch (_) { }
         try { if (typeof syncView !== 'undefined' && syncView) syncView.classList.remove('cb-view-active'); } catch (_) { }
+        try { if (typeof optimizerView !== 'undefined' && optimizerView) optimizerView.classList.remove('cb-view-active'); } catch (_) { }
 
         // Close dynamically created views (Smart Queries, etc.)
         try {
@@ -7345,40 +7385,35 @@
       return context;
     }
 
-    // Generate smart prompts using Llama
+    // Generate smart prompts using Llama (primary) + Gemini (fallback)
     async function generateSmartPrompts(messages) {
       try {
         const context = extractConversationContext(messages);
 
-        // Build compact prompt for Llama (optimized tokens)
-        const conversationText = messages.slice(-6).map(m => `${m.role}: ${m.text.substring(0, 200)}`).join('\n');
-        const prompt = `Analyze this conversation and give 5 follow-up questions (one per category):
+        // Build prompt for AI
+        const conversationText = messages.slice(-6).map(m => `${m.role}: ${m.text.substring(0, 300)}`).join('\n');
 
+        debugLog('[Smart Prompts] Processing', messages.length, 'messages');
+        debugLog('[Smart Prompts] Conversation preview:', conversationText.slice(0, 200));
+
+        const prompt = `Analyze this conversation and generate 5 follow-up questions, one per category. Each question MUST be SPECIFIC to the actual content discussed - reference specific topics, technologies, terms, or concepts from the conversation.
+
+Conversation:
 ${conversationText}
 
-Format exactly as:
-1. CLARIFICATION: [question about something unclear]
-2. IMPROVEMENT: [how to make it better]
-3. EXPANSION: [explore related topic]
-4. CRITICAL: [challenge an assumption]
-5. CREATIVE: [alternative approach]
+Generate exactly 5 questions in this exact format (one per line):
+1. CLARIFICATION: [specific question about something unclear in THIS conversation]
+2. IMPROVEMENT: [specific suggestion to improve what was discussed]
+3. EXPANSION: [specific related topic to explore based on what was discussed]
+4. CRITICAL: [specific assumption made in this conversation to challenge]
+5. CREATIVE: [specific alternative approach for the topic discussed]
 
-Output ONLY the 5 numbered questions.`;
+CRITICAL: Each question MUST directly reference topics, terms, or concepts from the conversation above. Generic questions are NOT acceptable.
 
-        const result = await new Promise((resolve) => {
-          chrome.runtime.sendMessage({
-            type: 'call_llama',
-            payload: { action: 'generate', text: prompt }
-          }, (res) => {
-            if (chrome.runtime.lastError) {
-              resolve({ ok: false, error: chrome.runtime.lastError.message });
-            } else {
-              resolve(res || { ok: false });
-            }
-          });
-        });
+Output ONLY the 5 numbered questions, no other text.`;
 
-        if (result && result.ok && result.result) {
+        // Helper to parse AI response
+        function parseQuestions(resultText) {
           const questions = [];
           const categoryMap = {
             'clarification': 'clarification',
@@ -7388,13 +7423,13 @@ Output ONLY the 5 numbered questions.`;
             'creative': 'creative'
           };
 
-          const lines = result.result.split('\n');
+          const lines = resultText.split('\n');
           lines.forEach(line => {
             const match = line.match(/^\d+[\.\)]\s*(?:(\w+):?\s*)?(.+)/i);
             if (match) {
               const catWord = (match[1] || '').toLowerCase();
               const text = match[2]?.trim() || match[0].replace(/^\d+[\.\)]\s*/, '').trim();
-              if (text && text.length > 5) {
+              if (text && text.length > 10) {
                 let category = 'expansion';
                 for (const [key, val] of Object.entries(categoryMap)) {
                   if (catWord.includes(key) || line.toLowerCase().includes(key)) {
@@ -7406,17 +7441,79 @@ Output ONLY the 5 numbered questions.`;
               }
             }
           });
-
-          if (questions.length > 0) {
-            return { questions: questions.slice(0, 5) };
-          }
+          return questions;
         }
 
-        // Fallback to generic prompts
+        // Try Llama first (via HuggingFace)
+        console.log('[ChatBridge Smart Prompts] Trying Llama API with', messages.length, 'messages');
+        debugLog('[Smart Prompts] Trying Llama API...');
+        try {
+          const llamaResult = await callLlamaAsync({
+            action: 'generate',
+            text: prompt
+          });
+
+          console.log('[ChatBridge Smart Prompts] Llama result:', llamaResult?.ok, llamaResult?.error);
+
+          if (llamaResult && llamaResult.ok && llamaResult.result) {
+            console.log('[ChatBridge Smart Prompts] Llama success! Result:', llamaResult.result.slice(0, 150));
+            debugLog('[Smart Prompts] Llama success:', llamaResult.result.slice(0, 100));
+            const questions = parseQuestions(llamaResult.result);
+            if (questions.length > 0) {
+              console.log('[ChatBridge Smart Prompts] Parsed', questions.length, 'questions from Llama');
+              debugLog('[Smart Prompts] Parsed', questions.length, 'questions from Llama');
+              return { questions: questions.slice(0, 5), source: 'llama' };
+            } else {
+              console.log('[ChatBridge Smart Prompts] Llama returned but parsing failed');
+            }
+          } else {
+            console.log('[ChatBridge Smart Prompts] Llama failed:', llamaResult?.error || 'no result');
+            debugLog('[Smart Prompts] Llama failed:', llamaResult?.error || 'no result');
+          }
+        } catch (llamaErr) {
+          console.log('[ChatBridge Smart Prompts] Llama exception:', llamaErr);
+          debugLog('[Smart Prompts] Llama error:', llamaErr);
+        }
+
+        // Fallback to Gemini
+        console.log('[ChatBridge Smart Prompts] Trying Gemini API (fallback)...');
+        debugLog('[Smart Prompts] Trying Gemini API...');
+        try {
+          const geminiResult = await callGeminiAsync({
+            action: 'prompt',
+            text: prompt,
+            systemPrompt: 'You are a conversation analyst. Generate thought-provoking follow-up questions that are SPECIFIC to the conversation content. Never use generic placeholder questions.',
+            length: 'short'
+          });
+
+          console.log('[ChatBridge Smart Prompts] Gemini result:', geminiResult?.ok, geminiResult?.error);
+
+          if (geminiResult && geminiResult.ok && geminiResult.result) {
+            console.log('[ChatBridge Smart Prompts] Gemini success! Result:', geminiResult.result.slice(0, 150));
+            debugLog('[Smart Prompts] Gemini success:', geminiResult.result.slice(0, 100));
+            const questions = parseQuestions(geminiResult.result);
+            if (questions.length > 0) {
+              console.log('[ChatBridge Smart Prompts] Parsed', questions.length, 'questions from Gemini');
+              debugLog('[Smart Prompts] Parsed', questions.length, 'questions from Gemini');
+              return { questions: questions.slice(0, 5), source: 'gemini' };
+            } else {
+              console.log('[ChatBridge Smart Prompts] Gemini returned but parsing failed');
+            }
+          } else {
+            console.log('[ChatBridge Smart Prompts] Gemini failed:', geminiResult?.error || 'no result');
+            debugLog('[Smart Prompts] Gemini failed:', geminiResult?.error || 'no result');
+          }
+        } catch (geminiErr) {
+          console.log('[ChatBridge Smart Prompts] Gemini exception:', geminiErr);
+          debugLog('[Smart Prompts] Gemini error:', geminiErr);
+        }
+
+        // Both failed - use fallback
+        debugLog('[Smart Prompts] Both APIs failed, using fallback prompts');
         return generateFallbackPrompts(context);
 
       } catch (e) {
-        debugLog('generateSmartPrompts error:', e);
+        debugLog('[Smart Prompts] generateSmartPrompts error:', e);
         return generateFallbackPrompts({});
       }
     }
@@ -15591,14 +15688,12 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
     });
 
     // ======================== PROMPT OPTIMIZER HANDLERS ========================
-    // Quick action button click - grabs text from chat textarea, optimizes, and reinserts
+    // Quick action button click - inline optimization of text in chat input
     try {
       const qaOptimize = panel.querySelector('#qa-sidebar-optimize');
       if (qaOptimize) {
         qaOptimize.addEventListener('click', async () => {
           try {
-            toast('Optimizing prompt...');
-
             // Find the chat input (textarea or contenteditable)
             let input = null;
             let originalText = '';
@@ -15635,56 +15730,33 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
               return;
             }
 
-            // Optimization system prompt - humanized, no meta-analysis
-            const systemPrompt = `You are an optimization and rewrite assistant.
+            toast('⚡ Optimizing prompt...');
 
-Your job is NOT to analyze the user.
-Your job is to improve the text.
+            // Expert prompt engineer system prompt
+            const systemPrompt = `You are an expert prompt engineer whose sole task is to transform raw user input into a clear, high-performance prompt for advanced AI models.
 
-When given input text, do the following internally:
-1. Identify concrete problems in the text (clarity, structure, redundancy, tone).
-2. Decide how to improve it with minimal expansion.
-3. Rewrite or guide improvements directly.
+Your goal is to improve precision, structure, and outcome quality while preserving the user's original intent, tone, and constraints.
 
-DO NOT:
-- Explain your reasoning
-- Write essays about intent or enthusiasm
-- Describe what the user "is trying to do"
-- Overuse headings or meta commentary
-- Inflate length unless explicitly asked
+Core Rules (non-negotiable):
+- Do not answer the prompt — Only rewrite it
+- Preserve intent, upgrade clarity — Do not change what the user wants
+- Do not invent requirements — Infer carefully if something is missing
+- Do not sound like marketing — The output must feel like a serious, expert-written prompt
+- No fluff, no hype, no emojis
 
-HUMANIZATION RULES (CRITICAL):
-- Write like a thoughtful human editor.
-- Natural sentence rhythm.
-- No academic analysis tone.
-- No list-heavy over-structuring unless it adds clarity.
-- Avoid phrases like: "Let's break this down", "Key patterns observed", "This reveals that the user…"
+Transformation Strategy:
+- Identify the true objective
+- Clarify scope and output expectations
+- Add structure only when it improves results
+- Convert vague requests into actionable instructions
+- Preserve the user's voice level (casual stays casual, technical stays technical)
 
-If it sounds like an AI explaining itself, rewrite internally.
+Output Format Rules:
+- Output only the optimized prompt
+- No preamble, no explanation, no headings unless they meaningfully improve clarity
+- The optimized prompt must be immediately usable in ChatGPT, Claude, or Gemini
 
-OUTPUT RULES:
-- Be concise and practical.
-- Focus on actionable improvements.
-- If a rewrite is better, rewrite.
-
-IMPROVEMENT MODE:
-- Prefer clarity over cleverness.
-- Remove redundancy before adding detail.
-- Replace vague phrasing with precise language.
-- Tighten structure instead of expanding explanations.
-
-If the input is messy or overlong: Simplify it. Reorder ideas logically. Remove unnecessary meta commentary.
-If the input already has strong intent: Preserve the voice. Refine flow and coherence. Do not overwrite personality.
-
-AVOID AT ALL COSTS:
-- Meta-analysis of the user
-- Explaining AI limitations
-- Academic or diagnostic tone
-- Excessive bullet lists
-- Repeating the same insight in different words
-- "Let's break this down" style phrasing
-
-Return ONLY the improved text. No explanations. No commentary.`;
+Quality Bar: After optimization, the prompt should feel like "This was written by someone who knows exactly how to talk to AI."`;
 
             debugLog('[Prompt Optimizer] Optimizing inline:', originalText.slice(0, 50) + '...');
 
@@ -17121,134 +17193,130 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
       loadConversationsAsync().then(list => {
         const arr = Array.isArray(list) ? list : [];
         if (!arr.length) {
-          historyEl.textContent = 'History: (none)';
+          historyEl.innerHTML = '<div style="padding:16px;text-align:center;font-size:12px;opacity:0.6;">No history found</div>';
           preview.textContent = 'Preview: (none)';
           return;
         }
-        // History: virtual list when large; compact text when small
+
         try {
-          const LARGE_THRESHOLD = 30;
-          if (arr.length > LARGE_THRESHOLD) {
-            const ITEM_H = 44;
-            historyEl.innerHTML = '';
-            historyEl.style.maxHeight = '280px';
-            historyEl.style.overflowY = 'auto';
-            const full = document.createElement('div');
-            full.style.position = 'relative';
-            full.style.height = (arr.length * ITEM_H) + 'px';
-            full.style.width = '100%';
-            full.id = 'cb-history-virt';
-            historyEl.appendChild(full);
-            const render = () => {
-              const scrollTop = historyEl.scrollTop || 0;
-              const viewportH = historyEl.clientHeight || 280;
-              const start = Math.max(0, Math.floor(scrollTop / ITEM_H) - 2);
-              const end = Math.min(arr.length, start + Math.ceil(viewportH / ITEM_H) + 6);
-              while (full.firstChild) full.removeChild(full.firstChild);
-              for (let i = start; i < end; i++) {
-                const s = arr[i];
-                let host = s.platform || 'chat';
-                try { host = new URL(s.url || location.href).hostname; } catch (_) { }
-                if (host.length > 18) host = host.slice(0, 16) + '…';
-                const date = new Date(s.ts);
-                const timeStr = date.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-                const count = (s.conversation || []).length;
-                const row = document.createElement('div');
-                row.style.cssText = `position:absolute;left:0;right:0;top:${i * ITEM_H}px;height:${ITEM_H - 4}px;display:flex;align-items:center;gap:8px;padding:6px 10px;border-bottom:1px solid rgba(230,207,159,0.08);cursor:pointer;`;
-                row.setAttribute('role', 'button');
-                row.setAttribute('aria-label', `Open ${host} with ${count} messages from ${timeStr}`);
-                const dot = document.createElement('span');
-                dot.style.cssText = 'display:inline-block;width:6px;height:6px;border-radius:50%;background:rgba(230,207,159,0.6)';
-                row.appendChild(dot);
-                const txt = document.createElement('div');
-                txt.style.cssText = 'flex:1 1 auto;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:0.92';
+          // ALWAYS use rich virtual list logic (removed LARGE_THRESHOLD)
+          const ITEM_H = 44;
+          historyEl.innerHTML = '';
+          historyEl.style.maxHeight = '280px';
+          historyEl.style.overflowY = 'auto';
+          const full = document.createElement('div');
+          full.style.position = 'relative';
+          full.style.height = (arr.length * ITEM_H) + 'px';
+          full.style.width = '100%';
+          full.id = 'cb-history-virt';
+          historyEl.appendChild(full);
 
-                // Get first message as preview (5-6 words max)
-                let preview = '';
-                try {
-                  if (s.conversation && s.conversation.length > 0) {
-                    const firstMsg = s.conversation[0];
-                    preview = (firstMsg.text || '').replace(/\n/g, ' ').trim().split(' ').slice(0, 6).join(' ');
-                    if (preview.length > 0) preview += '...';
-                  }
-                } catch (e) { }
+          const render = () => {
+            const scrollTop = historyEl.scrollTop || 0;
+            const viewportH = historyEl.clientHeight || 280;
+            const start = Math.max(0, Math.floor(scrollTop / ITEM_H) - 2);
+            const end = Math.min(arr.length, start + Math.ceil(viewportH / ITEM_H) + 6);
+            while (full.firstChild) full.removeChild(full.firstChild);
 
-                txt.textContent = preview || `${count} messages  ${timeStr}`;
-                row.appendChild(txt);
-                // Open button
-                const openBtn = document.createElement('button');
-                openBtn.className = 'cb-btn';
-                openBtn.style.cssText = 'padding:4px 8px;font-size:11px;border-radius:8px;margin-left:8px;';
-                openBtn.textContent = 'Open';
-                row.appendChild(openBtn);
-                // Delete button
-                const delBtn = document.createElement('button');
-                delBtn.className = 'cb-btn';
-                delBtn.style.cssText = 'padding:4px 8px;font-size:11px;border-radius:8px;margin-left:4px;background:#ff4d4f;color:#fff;';
-                delBtn.textContent = 'Delete';
-                row.appendChild(delBtn);
-                // Open handler
-                const open = () => {
-                  try {
-                    // Show only first 5-6 words of first message
-                    const firstMsg = (s.conversation && s.conversation[0]) ? s.conversation[0].text : '';
-                    const words = firstMsg.split(' ').slice(0, 6).join(' ');
-                    preview.textContent = 'Preview: ' + (words || '(empty)');
-                    announce('Viewing conversation from ' + timeStr);
-                  } catch (e) { }
-                };
-                row.addEventListener('click', open);
-                openBtn.addEventListener('click', (ev) => { ev.stopPropagation(); open(); });
-                // Delete handler
-                delBtn.addEventListener('click', (ev) => {
-                  ev.stopPropagation();
-                  if (confirm('Delete this conversation?')) {
-                    // Remove from storage and refresh
-                    try {
-                      const convs = (window.ChatBridge.getConversations && window.ChatBridge.getConversations()) || [];
-                      const idx = convs.findIndex(c => c.ts === s.ts);
-                      if (idx >= 0) {
-                        convs.splice(idx, 1);
-                        if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-                          chrome.storage.local.set({ cb_conversations: convs }, () => window.ChatBridge.refreshHistory());
-                        } else {
-                          localStorage.setItem('cb_conversations', JSON.stringify(convs));
-                          window.ChatBridge.refreshHistory();
-                        }
-                      }
-                    } catch (e) { toast('Delete failed'); }
-                  }
-                });
-                full.appendChild(row);
-              }
-            };
-            try { historyEl.__virtRender = render; historyEl.__virtItems = arr; } catch (_) { }
-            historyEl.removeEventListener('scroll', historyEl.__virtScroll || (() => { }), { passive: true });
-            historyEl.__virtScroll = () => render();
-            // Mark scroll listener as passive to avoid main-thread blocking warnings
-            historyEl.addEventListener('scroll', historyEl.__virtScroll, { passive: true });
-            render();
-          } else {
-            historyEl.textContent = arr.slice(0, 6).map(s => {
-              let host = s.platform || 'chat';
-              try { host = new URL(s.url || location.href).hostname; } catch (_) { }
+            for (let i = start; i < end; i++) {
+              const s = arr[i];
               const date = new Date(s.ts);
               const timeStr = date.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-              return `${host} • ${(s.conversation || []).length} msgs • ${timeStr}`;
-            }).join('\n\n');
-          }
-        } catch (e) { /* noop */ }
-        // Default preview from first conversation (only 5-6 words)
+
+              // DERIVE DESCRIPTIVE PHRASE (8-10 words max)
+              let descriptivePhrase = "Untitled conversation";
+              try {
+                if (s.conversation && s.conversation.length > 0) {
+                  const firstMsg = s.conversation.find(m => m.role === 'user' || m.type === 'human') || s.conversation[0];
+                  const rawText = (firstMsg.text || firstMsg.content || "").replace(/\n/g, ' ').trim();
+                  if (rawText) {
+                    const words = rawText.split(/\s+/).slice(0, 10);
+                    descriptivePhrase = words.join(' ');
+                    if (rawText.split(/\s+/).length > 10) descriptivePhrase += '...';
+                  }
+                }
+              } catch (e) { }
+
+              const row = document.createElement('div');
+              row.style.cssText = `position:absolute;left:0;right:0;top:${i * ITEM_H}px;height:${ITEM_H - 4}px;display:flex;align-items:center;gap:8px;padding:6px 10px;border-bottom:1px solid rgba(255,255,255,0.05);cursor:pointer;transition:background 0.2s;`;
+              row.setAttribute('role', 'button');
+              row.className = 'cb-history-item';
+              row.onmouseenter = () => row.style.background = 'rgba(255,255,255,0.03)';
+              row.onmouseleave = () => row.style.background = '';
+
+              const txt = document.createElement('div');
+              txt.style.cssText = 'flex:1 1 auto;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:0.92;';
+              txt.textContent = descriptivePhrase;
+              row.appendChild(txt);
+
+              // Open button (Icon)
+              const openBtn = document.createElement('button');
+              openBtn.className = 'cb-btn-icon';
+              openBtn.title = 'Open chat';
+              openBtn.style.cssText = 'background:none;border:none;color:rgba(230,207,159,0.7);cursor:pointer;padding:4px;display:flex;align-items:center;transition:color 0.2s;';
+              openBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>`;
+              openBtn.onmouseenter = () => openBtn.style.color = 'var(--accent-1, #00D4FF)';
+              openBtn.onmouseleave = () => openBtn.style.color = 'rgba(230,207,159,0.7)';
+              row.appendChild(openBtn);
+
+              // Delete button (Icon)
+              const delBtn = document.createElement('button');
+              delBtn.className = 'cb-btn-icon';
+              delBtn.title = 'Delete chat';
+              delBtn.style.cssText = 'background:none;border:none;color:rgba(255,77,79,0.6);cursor:pointer;padding:4px;display:flex;align-items:center;transition:color 0.2s;';
+              delBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>`;
+              delBtn.onmouseenter = () => delBtn.style.color = '#ff4d4f';
+              delBtn.onmouseleave = () => delBtn.style.color = 'rgba(255,77,79,0.6)';
+              row.appendChild(delBtn);
+
+              const handleOpen = () => {
+                try {
+                  if (preview) preview.textContent = 'Preview: ' + descriptivePhrase;
+                  if (typeof announce === 'function') announce('Viewing conversation');
+                } catch (e) { }
+              };
+
+              row.onclick = handleOpen;
+              openBtn.onclick = (e) => { e.stopPropagation(); handleOpen(); };
+              delBtn.onclick = (e) => {
+                e.stopPropagation();
+                if (confirm('Delete this conversation?')) {
+                  const key = 'chatbridge:conversations';
+                  chrome.storage.local.get([key], (data) => {
+                    let convs = data[key] || [];
+                    const idx = convs.findIndex(c => c.ts === s.ts);
+                    if (idx >= 0) {
+                      convs.splice(idx, 1);
+                      chrome.storage.local.set({ [key]: convs }, () => refreshHistory());
+                    }
+                  });
+                }
+              };
+              full.appendChild(row);
+            }
+          };
+          try { historyEl.__virtRender = render; historyEl.__virtItems = arr; } catch (_) { }
+          historyEl.onscroll = () => render();
+          render();
+        } catch (e) {
+          console.error('[ChatBridge] History render error:', e);
+        }
+
+        // Update global preview if needed
         const firstConv = arr[0];
         if (firstConv && firstConv.conversation && firstConv.conversation.length > 0) {
           const firstMsg = firstConv.conversation[0].text || '';
-          const words = firstMsg.split(' ').slice(0, 6).join(' ');
+          const words = firstMsg.split(' ').slice(0, 10).join(' ');
           preview.textContent = 'Preview: ' + (words || '(empty)');
-        } else {
-          preview.textContent = 'Preview: (none)';
         }
       });
     }
+
+    // Expose globally
+    window.ChatBridge.refreshHistory = refreshHistory;
+
+    // Initial load
+    setTimeout(refreshHistory, 200);
 
     // chatSelect removed - preview is now updated directly when clicking history items
 
@@ -17439,6 +17507,52 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
 
     // Expose toggle for keyboard shortcuts
     avatar.toggle = toggleSidebar;
+
+    // Keyboard shortcuts (when sidebar is open)
+    document.addEventListener('keydown', (e) => {
+      // Only active if sidebar is OPEN
+      if (!host || host.style.display === 'none') return;
+
+      // Ignore if user is typing in an input field
+      const target = e.target;
+      const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
+      if (isInput && target !== host) return;
+
+      // Ignore modifiers
+      if (e.ctrlKey || e.altKey || e.metaKey) return;
+
+      const key = e.key.toLowerCase();
+
+      // S - Scan
+      if (key === 's') {
+        const btnScan = shadow.querySelector('#btnScan');
+        if (btnScan) {
+          e.preventDefault();
+          btnScan.click();
+          // Visual feedback
+          btnScan.style.transform = 'scale(0.95)';
+          setTimeout(() => btnScan.style.transform = '', 150);
+        }
+      }
+      // R - Restore (Insert to chat)
+      else if (key === 'r') {
+        const btnInsert = shadow.querySelector('#btnInsert') || shadow.querySelector('[id^="btnInsert"]');
+        if (btnInsert) { e.preventDefault(); btnInsert.click(); }
+      }
+      // C - Copy
+      else if (key === 'c') {
+        const btnCopy = shadow.querySelector('#btnCopy');
+        if (btnCopy) {
+          e.preventDefault();
+          btnCopy.click();
+        }
+      }
+      // Esc - Close
+      else if (e.key === 'Escape') {
+        e.preventDefault();
+        toggleSidebar();
+      }
+    });
 
     return { host, avatar, panel };
   }
@@ -17886,7 +18000,12 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
           const data = await new Promise(r => chrome.storage.local.get([key], d => r(d[key])));
           const cur = Array.isArray(data) ? data.slice(0) : [];
           cur.unshift(conv);
-          await new Promise(r => chrome.storage.local.set({ [key]: cur }, () => r()));
+          await new Promise(r => chrome.storage.local.set({ [key]: cur }, () => {
+            if (window.ChatBridge && typeof window.ChatBridge.refreshHistory === 'function') {
+              window.ChatBridge.refreshHistory();
+            }
+            r();
+          }));
           debugLog('saved to chrome.storage.local', conv.ts);
         }
       } catch (e) { debugLog('save error (chrome.storage.local)', e); }

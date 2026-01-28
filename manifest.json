@@ -73,6 +73,7 @@
         "utils/translator.js",
         "utils/rewriter.js",
         "translatePanel.js",
+        "rewritePanel.js",
         "security.js",
         "adapters.js",
         "storage.js",

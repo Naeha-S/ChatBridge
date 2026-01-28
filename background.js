@@ -60,7 +60,19 @@ const REWRITE_TEMPLATES = {
   professional: ({ text }) => `Rewrite the following text in a polished, professional tone suitable for workplace communication. Keep it respectful, clear, and accurate. Output ONLY the rewritten text. No summaries.\n\n${text}`,
   simple: ({ text }) => `Rewrite the following text in simple, easy-to-read language. Reduce complexity while preserving important details and meaning. Output ONLY the rewritten text. No headers or summaries.\n\n${text}`,
   friendly: ({ text }) => `Rewrite the following text in a friendly, warm tone while remaining clear and respectful. Keep the original meaning intact. Output ONLY the rewritten text. No summaries or headers.\n\n${text}`,
-  customStyle: ({ text, styleHint = '' }) => `Rewrite the following text in this personalized style: "${(styleHint || '').slice(0, 160)}". Maintain original meaning and facts. Do not use detector-evasion tricks or academic-integrity violations. Output ONLY the rewritten text. No summaries or headers.\n\n${text}`
+  customStyle: ({ text, styleHint = '' }) => `Rewrite the following text in this personalized style: "${(styleHint || '').slice(0, 160)}". Maintain original meaning and facts. Do not use detector-evasion tricks or academic-integrity violations. Output ONLY the rewritten text. No summaries or headers.\n\n${text}`,
+  project_summary: ({ text }) => `Refine this chat log into a professional project summary.
+  1. Remove raw chat logs, timestamps, speaker labels, and conversational filler.
+  2. Eliminate certificates, signatures, and verbatim large blocks of code (unless critical one-liners).
+  3. Focus strictly on intent, actions taken, and outcomes achieved (Problem → Solution → Result).
+  4. Use clear, professional, academic language.
+  5. Structure the summary into 2–3 concise paragraphs.
+  6. Preserve factual accuracy without adding assumptions.
+  
+  Output ONLY the refined summary. Keep it under 500 words.
+  
+  Text to refine:
+  ${text}`
 };
 
 // Get next available model, skipping those with too many failures

@@ -208,3 +208,27 @@ html, body { font-family: 'Bebas Neue', system-ui, -apple-system, "Segoe UI", Ro
 
 /* Small utility */
 .cb-view-result { white-space:pre-wrap; color:inherit; font-size:13px; }
+
+/* Responsive adjustments for injected UI */
+@media (max-width: 480px) {
+  #cb-panel, #ai-extractor-menu {
+    width: calc(100vw - 32px) !important;
+    right: 16px !important;
+    bottom: 90px !important;
+    max-width: none !important;
+  }
+
+  .cb-btn, .cb-select {
+    padding: 12px 14px; /* Larger touch targets */
+    font-size: 14px;
+    height: 44px; /* Min height for touch */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  #cb-toggle, #ai-extractor-avatar {
+     bottom: 16px; 
+     right: 16px;
+  }
+}
