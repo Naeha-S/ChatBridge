@@ -4050,6 +4050,16 @@
     historySearchInput.style.cssText = 'flex: 1; background: var(--cb-bg3); border: 1px solid var(--cb-border); color: var(--cb-white); padding: 8px 12px; border-radius: 6px; font-size: 12px; outline: none;';
     historySearchInput.addEventListener('focus', () => historySearchInput.style.borderColor = 'var(--cb-accent-primary)');
     historySearchInput.addEventListener('blur', () => historySearchInput.style.borderColor = 'var(--cb-border)');
+
+    let historyTimeout = null;
+    historySearchInput.addEventListener('input', () => {
+      clearTimeout(historyTimeout);
+      historyTimeout = setTimeout(() => {
+        if (typeof window.ChatBridge.refreshHistory === 'function') {
+          window.ChatBridge.refreshHistory(historySearchInput.value);
+        }
+      }, 300);
+    });
     historySearchWrap.appendChild(historySearchInput);
     historyWrapper.appendChild(historySearchWrap);
 
@@ -4088,182 +4098,9 @@
       return 'Older';
     }
 
-    // Enhanced refresh history with search, grouping, and relative times
-    async function refreshHistory(filterText = '') {
-      try {
-        const convs = await loadConversationsAsync();
-        historyEl.innerHTML = '';
 
-        if (!convs || !convs.length) {
-          historyEl.innerHTML = '<div style="text-align:center;padding:20px;opacity:0.7;">No saved conversations yet.<br/><span style="font-size:11px;">Click "Scan Chat" to save your first conversation!</span></div>';
-          return;
-        }
 
-        // Sort by timestamp (newest first)
-        const sorted = convs.sort((a, b) => (b.ts || 0) - (a.ts || 0));
 
-        // Filter if search text provided
-        const filter = (filterText || '').toLowerCase().trim();
-        const filtered = filter ? sorted.filter(c => {
-          const platform = (c.platform || '').toLowerCase();
-          const model = (c.model || '').toLowerCase();
-          const text = (c.conversation || []).map(m => m.text || '').join(' ').toLowerCase();
-          return platform.includes(filter) || model.includes(filter) || text.includes(filter);
-        }) : sorted;
-
-        if (filtered.length === 0) {
-          historyEl.innerHTML = `<div style="text-align:center;padding:20px;opacity:0.7;">No results for "${filterText}"</div>`;
-          return;
-        }
-
-        // Group by date
-        const groups = { 'Today': [], 'Yesterday': [], 'This Week': [], 'Older': [] };
-        filtered.forEach(c => {
-          const group = getDateGroup(c.ts || Date.now());
-          groups[group].push(c);
-        });
-
-        // Render groups
-        Object.entries(groups).forEach(([groupName, convList]) => {
-          if (convList.length === 0) return;
-
-          // Group header
-          const groupHeader = document.createElement('div');
-          groupHeader.style.cssText = 'font-size: 10px; font-weight: 600; color: var(--cb-subtext); text-transform: uppercase; letter-spacing: 0.5px; padding: 10px 0 6px; border-bottom: 1px solid var(--cb-border); margin-bottom: 6px;';
-          groupHeader.textContent = `${groupName} (${convList.length})`;
-          historyEl.appendChild(groupHeader);
-
-          // Render conversations in group
-          convList.forEach((conv, idx) => {
-            const row = document.createElement('div');
-            row.className = 'cb-history-row';
-            row.style.cssText = 'padding:8px 10px;margin-bottom:6px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:8px;cursor:pointer;transition:all 0.2s;';
-
-            const totalMsgs = (conv.conversation || []).length;
-            const time = relativeTime(conv.ts || Date.now());
-
-            // Generate 3-word title
-            const msgs = conv.conversation || [];
-            const firstUser = msgs.find(m => m.role === 'user');
-            const titleText = firstUser?.text || msgs[0]?.text || '';
-            const stopWords = ['the', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been', 'i', 'you', 'we', 'they', 'it', 'this', 'that', 'what', 'how', 'can', 'do', 'please', 'help', 'me', 'my'];
-            const words = titleText.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(w => w.length > 2 && !stopWords.includes(w));
-            const title = words.length > 0 ? words.slice(0, 3).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : (conv.platform || 'Chat');
-
-            row.innerHTML = `
-              <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
-                <div style="flex:1;min-width:0;">
-                  <div style="font-size:11px;font-weight:600;color:var(--cb-white);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${title}</div>
-                  <div style="font-size:9px;color:var(--cb-subtext);margin-top:2px;">${totalMsgs} msgs · ${time}</div>
-                </div>
-                <div style="display:flex;gap:4px;flex-shrink:0;">
-                  <button class="cb-history-open" style="padding:4px 8px;font-size:9px;background:rgba(96,165,250,0.15);border:1px solid rgba(96,165,250,0.3);border-radius:5px;color:#60a5fa;cursor:pointer;">Open</button>
-                  <button class="cb-history-delete" style="padding:4px 6px;font-size:9px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.25);border-radius:5px;color:#ef4444;cursor:pointer;">✕</button>
-                </div>
-              </div>
-            `;
-
-            // Hover effects
-            row.addEventListener('mouseenter', () => {
-              row.style.background = 'rgba(0, 180, 255, 0.1)';
-              row.style.borderColor = 'rgba(0, 180, 255, 0.3)';
-            });
-            row.addEventListener('mouseleave', () => {
-              row.style.background = 'rgba(0, 180, 255, 0.05)';
-              row.style.borderColor = 'rgba(0, 180, 255, 0.15)';
-            });
-
-            // Open button
-            const openBtn = row.querySelector('.cb-history-open');
-            if (openBtn) {
-              openBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                try {
-                  // Set this session as the "Active" session for all modules
-                  window.ChatBridge.setLastScan({
-                    ts: conv.ts,
-                    platform: platform,
-                    model: model,
-                    messages: conv.conversation,
-                    text: (conv.conversation || []).map(m => `${m.role === 'user' ? 'User' : 'AI'}: ${m.text}`).join('\n\n')
-                  });
-
-                  // Clear previous active state from all rows
-                  historyEl.querySelectorAll('.cb-history-row').forEach(r => {
-                    r.style.background = 'rgba(0, 180, 255, 0.05)';
-                    r.style.borderColor = 'rgba(0, 180, 255, 0.15)';
-                    r.classList.remove('cb-active-session');
-                  });
-
-                  // Mark this row as active
-                  row.classList.add('cb-active-session');
-                  row.style.background = 'rgba(16, 185, 129, 0.15)';
-                  row.style.borderColor = 'rgba(16, 185, 129, 0.4)';
-
-                  // Update the preview text in main panel
-                  try {
-                    const mainPreview = shadow.querySelector('.cb-preview');
-                    if (mainPreview) mainPreview.textContent = `📂 Active: ${platform} (${totalMsgs} msgs)`;
-                  } catch (e) { }
-
-                  toast(`✓ Loaded: ${totalMsgs} messages ready for Summarize/Rewrite/Translate`);
-                } catch (err) { debugLog('open history error', err); toast('Failed to load session'); }
-              });
-            }
-
-            // Delete button
-            const deleteBtn = row.querySelector('.cb-history-delete');
-            if (deleteBtn) {
-              deleteBtn.addEventListener('click', async (e) => {
-                e.stopPropagation();
-                if (!confirm('🗑️ Permanently delete this conversation?\n\nThis cannot be undone.')) return;
-                try {
-                  // Fade out animation
-                  row.style.transition = 'opacity 0.3s, transform 0.3s';
-                  row.style.opacity = '0';
-                  row.style.transform = 'translateX(20px)';
-
-                  // Delete from conversations DB
-                  await new Promise(resolve => {
-                    chrome.runtime.sendMessage({ type: 'delete_conversation', payload: { id: String(conv.ts) } }, resolve);
-                  });
-
-                  // Also delete from vector store
-                  await new Promise(resolve => {
-                    chrome.runtime.sendMessage({ type: 'vector_delete', payload: { id: String(conv.ts) } }, resolve);
-                  });
-
-                  // Wait for animation then refresh
-                  setTimeout(() => {
-                    toast('🗑️ Deleted permanently');
-                    refreshHistory(filter);
-                  }, 300);
-                } catch (err) {
-                  debugLog('delete error', err);
-                  toast('Delete failed');
-                  row.style.opacity = '1';
-                  row.style.transform = 'translateX(0)';
-                }
-              });
-            }
-
-            historyEl.appendChild(row);
-          });
-        });
-      } catch (e) {
-        debugLog('refreshHistory error', e);
-        historyEl.innerHTML = '<div style="padding:12px;opacity:0.7;">Failed to load history</div>';
-      }
-    }
-
-    // Search input handler
-    let historySearchTimeout = null;
-    historySearchInput.addEventListener('input', () => {
-      clearTimeout(historySearchTimeout);
-      historySearchTimeout = setTimeout(() => {
-        refreshHistory(historySearchInput.value);
-      }, 300);
-    });
 
     const footer = document.createElement('div'); footer.className = 'cb-footer'; panel.appendChild(footer);
 
@@ -17189,17 +17026,27 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
       }
     });
 
-    function refreshHistory() {
+    function refreshHistory(filterText = '') {
       loadConversationsAsync().then(list => {
-        const arr = Array.isArray(list) ? list : [];
+        let arr = Array.isArray(list) ? list : [];
+        const filter = (filterText || '').toLowerCase().trim();
+
+        if (filter) {
+          arr = arr.filter(c => {
+            const platform = (c.platform || '').toLowerCase();
+            const model = (c.model || '').toLowerCase();
+            const text = (c.conversation || []).map(m => m.text || '').join(' ').toLowerCase();
+            return platform.includes(filter) || model.includes(filter) || text.includes(filter);
+          });
+        }
+
         if (!arr.length) {
-          historyEl.innerHTML = '<div style="padding:16px;text-align:center;font-size:12px;opacity:0.6;">No history found</div>';
-          preview.textContent = 'Preview: (none)';
+          historyEl.innerHTML = `<div style="padding:16px;text-align:center;font-size:12px;opacity:0.6;">${filter ? 'No results found' : 'No history found'}</div>`;
+          if (!filter) preview.textContent = 'Preview: (none)';
           return;
         }
 
         try {
-          // ALWAYS use rich virtual list logic (removed LARGE_THRESHOLD)
           const ITEM_H = 44;
           historyEl.innerHTML = '';
           historyEl.style.maxHeight = '280px';
@@ -17223,7 +17070,6 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
               const date = new Date(s.ts);
               const timeStr = date.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 
-              // DERIVE DESCRIPTIVE PHRASE (8-10 words max)
               let descriptivePhrase = "Untitled conversation";
               try {
                 if (s.conversation && s.conversation.length > 0) {
@@ -17238,42 +17084,66 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
               } catch (e) { }
 
               const row = document.createElement('div');
-              row.style.cssText = `position:absolute;left:0;right:0;top:${i * ITEM_H}px;height:${ITEM_H - 4}px;display:flex;align-items:center;gap:8px;padding:6px 10px;border-bottom:1px solid rgba(255,255,255,0.05);cursor:pointer;transition:background 0.2s;`;
+              const isActive = window.ChatBridge.selectedConversation && window.ChatBridge.selectedConversation.ts === s.ts;
+
+              row.style.cssText = `position:absolute;left:0;right:0;top:${i * ITEM_H}px;height:${ITEM_H - 4}px;display:flex;align-items:center;gap:8px;padding:6px 10px;border-bottom:1px solid rgba(255,255,255,0.05);cursor:pointer;transition:background 0.2s;border-radius:6px;`;
+              if (isActive) {
+                row.style.background = 'rgba(0, 180, 255, 0.1)';
+                row.style.borderLeft = '3px solid var(--cb-accent-primary)';
+              }
+
               row.setAttribute('role', 'button');
-              row.className = 'cb-history-item';
-              row.onmouseenter = () => row.style.background = 'rgba(255,255,255,0.03)';
-              row.onmouseleave = () => row.style.background = '';
+              row.className = 'cb-history-item' + (isActive ? ' cb-active' : '');
+              row.onmouseenter = () => { if (!isActive) row.style.background = 'rgba(255,255,255,0.03)'; };
+              row.onmouseleave = () => { if (!isActive) row.style.background = ''; };
 
               const txt = document.createElement('div');
               txt.style.cssText = 'flex:1 1 auto;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:0.92;';
               txt.textContent = descriptivePhrase;
               row.appendChild(txt);
 
-              // Open button (Icon)
+              const timeDisplay = document.createElement('div');
+              timeDisplay.style.cssText = 'font-size:9px;opacity:0.5;margin-right:4px;';
+              timeDisplay.textContent = relativeTime(s.ts);
+              row.appendChild(timeDisplay);
+
               const openBtn = document.createElement('button');
               openBtn.className = 'cb-btn-icon';
               openBtn.title = 'Open chat';
-              openBtn.style.cssText = 'background:none;border:none;color:rgba(230,207,159,0.7);cursor:pointer;padding:4px;display:flex;align-items:center;transition:color 0.2s;';
+              openBtn.style.cssText = `background:none;border:none;color:${isActive ? 'var(--cb-accent-primary)' : 'rgba(230,207,159,0.7)'};cursor:pointer;padding:4px;display:flex;align-items:center;transition:color 0.2s;`;
               openBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>`;
-              openBtn.onmouseenter = () => openBtn.style.color = 'var(--accent-1, #00D4FF)';
-              openBtn.onmouseleave = () => openBtn.style.color = 'rgba(230,207,159,0.7)';
+              openBtn.onmouseenter = () => openBtn.style.color = 'var(--cb-accent-primary)';
+              openBtn.onmouseleave = () => { if (!isActive) openBtn.style.color = 'rgba(230,207,159,0.7)'; };
               row.appendChild(openBtn);
 
-              // Delete button (Icon)
               const delBtn = document.createElement('button');
               delBtn.className = 'cb-btn-icon';
               delBtn.title = 'Delete chat';
               delBtn.style.cssText = 'background:none;border:none;color:rgba(255,77,79,0.6);cursor:pointer;padding:4px;display:flex;align-items:center;transition:color 0.2s;';
               delBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>`;
               delBtn.onmouseenter = () => delBtn.style.color = '#ff4d4f';
-              delBtn.onmouseleave = () => delBtn.style.color = 'rgba(255,77,79,0.6)';
               row.appendChild(delBtn);
 
               const handleOpen = () => {
                 try {
+                  window.ChatBridge.selectedConversation = s;
+                  window.ChatBridge.setLastScan({
+                    ts: s.ts,
+                    platform: s.platform || 'unknown',
+                    model: s.model || 'unknown',
+                    messages: s.conversation || [],
+                    conversation: s,
+                    text: (s.conversation || []).map(m => `${m.role === 'user' ? 'User' : 'AI'}: ${m.text || m.content || ''}`).join('\n\n')
+                  });
+
                   if (preview) preview.textContent = 'Preview: ' + descriptivePhrase;
-                  if (typeof announce === 'function') announce('Viewing conversation');
-                } catch (e) { }
+                  if (typeof announce === 'function') announce(`Viewing conversation: ${descriptivePhrase}`);
+
+                  toast(`✓ Loaded: ${(s.conversation || []).length} messages`);
+
+                  // Re-render to show active state
+                  render();
+                } catch (e) { debugLog('handleOpen error', e); }
               };
 
               row.onclick = handleOpen;
@@ -17287,7 +17157,10 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
                     const idx = convs.findIndex(c => c.ts === s.ts);
                     if (idx >= 0) {
                       convs.splice(idx, 1);
-                      chrome.storage.local.set({ [key]: convs }, () => refreshHistory());
+                      chrome.storage.local.set({ [key]: convs }, () => {
+                        toast('Conversation deleted');
+                        refreshHistory(filterText);
+                      });
                     }
                   });
                 }
@@ -17302,12 +17175,17 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
           console.error('[ChatBridge] History render error:', e);
         }
 
-        // Update global preview if needed
-        const firstConv = arr[0];
-        if (firstConv && firstConv.conversation && firstConv.conversation.length > 0) {
-          const firstMsg = firstConv.conversation[0].text || '';
-          const words = firstMsg.split(' ').slice(0, 10).join(' ');
-          preview.textContent = 'Preview: ' + (words || '(empty)');
+        // Auto-update preview if it's the very first load and we have items
+        if (!filterText && arr.length > 0 && (!window.ChatBridge.selectedConversation)) {
+          // Optional: automatically select the first one? Better not to surprise users.
+          // Just update the preview text if it's currently empty.
+          if (preview.textContent.includes('(none)')) {
+            const first = arr[0];
+            const msgs = first.conversation || [];
+            const firstUser = msgs.find(m => m.role === 'user');
+            const summary = (firstUser?.text || msgs[0]?.text || '').split(' ').slice(0, 8).join(' ');
+            preview.textContent = 'Preview: ' + (summary || '(empty chat)') + '...';
+          }
         }
       });
     }
