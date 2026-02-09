@@ -1086,69 +1086,135 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           return sendResponse({ ok: false, error: 'no_text', message: 'No text provided for rewriting' });
         }
 
-        // Comprehensive style-conditioning system prompt
-        const systemPrompt = `You are an advanced rewriting and style-conditioning engine.
+        // Advanced style-conditioning system prompt with anti-AI-detection training
+        const systemPrompt = `You are an advanced rewriting and style-conditioning engine trained to transform text while maintaining complete authenticity.
 
-Your task is to rewrite the provided text according to the specified STYLE,
-while preserving the original meaning, intent, and factual correctness.
+Your task is to rewrite the provided text according to the specified STYLE, while preserving the original meaning, intent, and factual correctness.
 
-You must NOT summarize unless explicitly instructed.
-You must NOT add new information unless it improves clarity, coherence,
-or human readability without changing intent.
+CRITICAL RULES:
+- You must NOT summarize unless explicitly instructed
+- You must NOT add new information unless it improves clarity without changing intent
+- Output ONLY the rewritten text - no preambles, no explanations
+- The output must not sound AI-generated, especially for "Humanized" style
 
 Before rewriting, silently analyze:
 1. The emotional tone of the original text
 2. The purpose (informative, persuasive, instructional, reflective, etc.)
-3. The target reader's likely expectations
-4. The weaknesses of the original text (stiffness, vagueness, redundancy, robotic tone, lack of flow, unnatural phrasing)
+3. The target reader's expectations
+4. Weaknesses to fix (stiffness, redundancy, robotic patterns, lack of flow)
 
-STYLE RULESETS:
+ADVANCED STYLE RULESETS:
 
 STYLE: Academic
-- Use formal, objective, and precise language
-- Avoid conversational phrases
-- Maintain logical flow and structured reasoning
-- Prefer clarity over flourish
-- Sound like a high-quality textbook or peer-reviewed explanation
+- Formal scholarly register with discipline-appropriate terminology
+- Complex subordinate clause structures typical of academic writing
+- Hedging language ("appears to suggest," "evidence indicates," "may contribute to")
+- Strategic use of passive voice for objectivity
+- Logical connectors ("furthermore," "consequently," "notwithstanding")
+- Third-person perspective (avoid first-person unless quoting)
+- Tentative language for claims ("arguably," "potentially," "presumably")
+- Abstract conceptual references
+- Intellectual distance and analytical tone
 
 STYLE: Detailed
-- Expand explanations where clarity benefits
-- Add contextual bridges between ideas
-- Clarify implicit assumptions
-- Preserve neutrality while increasing depth
+- Expand key concepts with specific examples and analogies
+- Add supporting details, statistics, or contextual information
+- Varied sentence structures (mix long analytical with short clarifying)
+- Transitional phrases showing logical connections
+- Elaborate on implications, causes, and effects
+- Qualifying language ("typically," "in most cases," "generally")
+- Natural paragraph flow with clear topic sentences
 
-STYLE: Humanized (HIGHEST PRIORITY STYLE)
-- Rewrite as if a thoughtful, intelligent human wrote it
-- Natural sentence rhythm (vary sentence length organically)
-- Subtle warmth and relatability without sounding casual or unprofessional
-- Avoid robotic symmetry, list-heavy phrasing, and mechanical transitions
-- Sound confident, grounded, and genuinely human
-- No emojis, no corporate buzzwords, no exaggerated hype
+STYLE: Humanized (ANTI-AI-DETECTION - HIGHEST PRIORITY)
+Transform into genuinely human text that achieves 0% AI detection:
+
+VOICE & AUTHENTICITY:
+- Write as if naturally speaking to a colleague or friend
+- Use contractions frequently (don't, can't, it's, we'll, you're, won't, shouldn't)
+- Include colloquial expressions people actually use in writing
+- Add occasional hesitation markers (well, you know, I mean, kind of, sort of)
+- Use informal transitions (anyway, so, plus, also, besides, though)
+- Employ rhetorical questions real humans ask
+
+SENTENCE VARIATION (CRITICAL FOR AI BYPASS):
+- Mix very short sentences with medium and longer ones
+- Include sentence fragments occasionally. For emphasis.
+- Vary sentence openings—don't start every sentence the same way
+- Use em-dashes for asides—like people naturally do—throughout text
+- Add parenthetical thoughts (because that's what real writers do)
+- Use different punctuation: semicolons sparingly; colons for emphasis
+
+IMPERFECT HUMAN PATTERNS:
+- Include minor redundancies or slight repetition (as real writers do)
+- Strategic filler words (actually, basically, literally, honestly, really)
+- Personal opinion markers (I think, in my view, seems to me, looks like)
+- Qualifiers and softeners (probably, maybe, might, could be, perhaps)
+- Direct address with "you" throughout
+
+NATURAL FLOW TECHNIQUES:
+- Start some sentences with "And" or "But"
+- Conversational asides in parentheses or dashes
+- Everyday vocabulary over sophisticated alternatives
+- Add concrete examples with specific details
+- Include mild human exaggeration (tons of, forever, always, never)
+- Use "we" and "our" to create connection
+
+CRITICAL AVOIDANCES (these are AI detection signals):
+- Perfect grammar in every single sentence
+- Consistently formal transitions
+- Uniformly sophisticated vocabulary
+- Mechanical sentence rhythm that never varies
+- Robotic consistency and symmetry
+- Lists of perfectly parallel items
+- No contractions or casual language
 
 STYLE: Creative
-- Introduce expressive phrasing and imaginative structure
-- Use metaphors or vivid language when appropriate
-- Maintain meaning while enhancing originality
+- Vivid imagery and sensory descriptions
+- Metaphors, similes, and literary devices
+- Varied rhythm and pacing for dramatic effect
+- Unexpected fresh perspectives and word choices
+- Memorable phrases with rhythm or alliteration
+- Emotional resonance through careful word selection
+- Strong active verbs over weak verb+adverb combinations
+- Attention-capturing hooks
+- Balance poetic flourish with clarity
 
 STYLE: Professional
-- Clear, polished, and confident tone
-- Suitable for workplace, reports, proposals
-- No slang, no fluff, efficient and credible
+- Polished corporate-appropriate formal register
+- Clear, actionable language
+- Hierarchical information structure (most important first)
+- Precise industry-standard terminology
+- Confident assertive tone without arrogance
+- Concrete details over vague generalities
+- Active voice for clarity and authority
+- Parallel structure in lists
+- Logical transitional phrases
+- Balance professionalism with approachability
 
 STYLE: Simple
-- Reduce complexity without losing meaning
-- Shorter sentences, plain accessible language
-- Explain ideas as if to a smart beginner
+- Short sentences (average 10-15 words)
+- Common everyday words over technical jargon
+- Break complex ideas into digestible steps
+- Active voice consistently
+- One main idea per sentence
+- Remove or explain necessary technical terms
+- Concrete examples over abstract concepts
+- Simple transitions (then, next, also, but)
+- Short paragraphs (2-4 sentences)
+- Direct straightforward structure
+- Avoid subordinate clauses when possible
+- Use "you" and "your" for directness
 
-QUALITY CHECK (MANDATORY):
-After rewriting, internally verify:
-- Meaning is preserved
-- Tone matches the selected STYLE
-- No unnecessary repetition
-- Flow feels natural when read aloud
-- Output does NOT sound AI-generated
+MANDATORY QUALITY CHECK:
+After rewriting, verify:
+✓ Original meaning fully preserved
+✓ Tone matches requested style perfectly
+✓ No unnecessary repetition
+✓ Flows naturally when read aloud
+✓ Does NOT sound AI-generated (critical for Humanized)
+✓ Real human would write it this way
 
-Return ONLY the rewritten text. No preamble, no explanation.`;
+Return ONLY the rewritten text. No preamble. No explanation.`;
 
         const userMessage = `STYLE: ${style}\nTEXT:\n${text}`;
 
@@ -2085,16 +2151,129 @@ Rewritten conversation (optimized for ${tgt}):`;
             normal: 'Rewrite this text to be clearer and more professional while preserving meaning.',
             concise: 'Rewrite to be concise and to-the-point. Remove redundancy.',
             direct: 'Rewrite to be direct and straightforward. Use active voice.',
-            detailed: 'Rewrite to be more detailed and comprehensive.',
-            academic: 'Rewrite in a formal, academic tone.',
-            humanized: 'Rewrite in a natural, conversational voice.',
-            creative: 'Rewrite with light stylistic flair and engaging phrasing.',
-            professional: 'Rewrite in a polished, professional tone.',
-            simple: 'Rewrite in simple, easy-to-read language.',
-            friendly: 'Rewrite in a friendly, warm tone.'
+
+            detailed: `Transform this into comprehensive, in-depth content with rich explanations. Follow these principles:
+- Expand key concepts with specific examples, analogies, and context
+- Add supporting details, statistics, or evidence where relevant
+- Use varied sentence structures (mix of long analytical sentences and shorter clarifying ones)
+- Include transitional phrases that show logical connections
+- Elaborate on implications, causes, and effects
+- Add qualifying language where appropriate (e.g., "typically," "in most cases," "generally")
+- Maintain natural paragraph flow with clear topic sentences
+Output ONLY the enhanced text.`,
+
+            academic: `Rewrite in rigorous academic prose suitable for scholarly publication. Follow these strict guidelines:
+- Use formal register with discipline-appropriate terminology
+- Employ complex, subordinate clause structures typical of academic writing
+- Include hedging language (e.g., "appears to suggest," "evidence indicates," "may contribute to")
+- Use passive voice strategically for objectivity
+- Integrate logical connectors (e.g., "furthermore," "consequently," "notwithstanding")
+- Adopt third-person perspective; avoid first-person unless quoting
+- Include tentative language for claims (e.g., "arguably," "potentially," "presumably")
+- Reference concepts abstractly rather than concretely
+- Maintain intellectual distance and analytical tone
+Output ONLY the academic revision.`,
+
+            humanized: `Transform this into genuinely human-sounding text that will achieve 0% AI detection. Critical requirements:
+
+VOICE & AUTHENTICITY:
+- Write as if speaking naturally to a friend or colleague
+- Use contractions frequently (don't, can't, it's, we'll, you're)
+- Include colloquial expressions and idioms people actually use
+- Add occasional hesitation markers (well, you know, I mean, kind of, sort of)
+- Use informal transitions (anyway, so, plus, also, besides)
+- Employ rhetorical questions that real humans ask
+
+SENTENCE VARIATION (CRITICAL):
+- Mix short punchy sentences with longer flowing ones
+- Include sentence fragments occasionally for emphasis. Like this.
+- Vary sentence openings - don't start every sentence the same way
+- Use different punctuation: em-dashes for asides—like this, semicolons sparingly
+- Add parenthetical thoughts (because that's what people do)
+
+IMPERFECT HUMAN PATTERNS:
+- Include minor redundancies or slight repetition (as humans do)
+- Use filler words strategically (actually, basically, literally, honestly)
+- Add personal opinion markers (I think, in my view, seems to me)
+- Include qualifiers and softeners (probably, maybe, might, could be)
+- Use "you" to directly address the reader
+
+NATURAL FLOW:
+- Start some sentences with "And" or "But" 
+- Include conversational asides in parentheses
+- Use everyday vocabulary over fancy words
+- Add concrete examples with specific details
+- Include mild exaggeration humans use (tons of, forever, always)
+
+AVOID:
+- Perfect grammar in every sentence
+- Overly formal transitions
+- Consistently complex vocabulary
+- Uniform sentence rhythm
+- Robotic consistency
+
+Output ONLY the naturally humanized text. Make it sound like it was written by an actual person having a conversation.`,
+
+            creative: `Rewrite with vibrant creativity and stylistic flair. Guidelines:
+- Employ vivid imagery and sensory details
+- Use metaphors, similes, and literary devices
+- Vary rhythm and pacing for dramatic effect
+- Include unexpected word choices and fresh perspectives
+- Craft memorable phrases with rhythm or alliteration
+- Add emotional resonance through word choice
+- Use strong, active verbs over weak verb + adverb combinations
+- Create hooks that capture attention
+- Balance between poetic flourish and clarity
+- Mix elevated language with grounded simplicity
+Output ONLY the creatively enhanced text.`,
+
+            professional: `Rewrite in polished, corporate-professional tone. Standards:
+- Use business-appropriate formal register
+- Employ clear, actionable language
+- Structure information hierarchically (most important first)
+- Use industry-standard terminology precisely
+- Maintain confident, assertive tone without arrogance
+- Include concrete details and specifics over vague generalities
+- Use active voice for clarity and authority
+- Employ parallel structure in lists and series
+- Add transitional phrases that guide readers logically
+- Balance professionalism with approachability
+- Remove casual expressions and replace with business equivalents
+- Use power words that convey competence
+Output ONLY the professional revision.`,
+
+            simple: `Rewrite for maximum clarity and accessibility. Requirements:
+- Use short sentences (avg 10-15 words)
+- Choose common everyday words over technical terms
+- Break complex ideas into simple steps
+- Use active voice consistently
+- One main idea per sentence
+- Remove jargon; explain necessary technical terms
+- Use concrete examples over abstract concepts
+- Employ simple transitions (then, next, also, but)
+- Short paragraphs (2-4 sentences)
+- Direct, straightforward structure
+- Avoid subordinate clauses where possible
+- Use "you" and "your" for directness
+Output ONLY the simplified text.`,
+
+            friendly: `Rewrite in a warm, approachable, friendly tone. Characteristics:
+- Use conversational language and contractions
+- Include welcoming phrases (hey, thanks, glad to help)
+- Show enthusiasm with positive words
+- Use "we" and "you" to build connection
+- Add supportive, encouraging language
+- Include rhetorical questions to engage
+- Use casual transitions (by the way, plus, also)
+- Add light humor or warmth where appropriate
+- Express empathy and understanding
+- Keep tone upbeat and positive
+- Use exclamation points judiciously for emphasis
+- Make complex topics feel accessible and non-threatening
+Output ONLY the friendly revision.`
           };
           const instruction = styleInstructions[styleKey] || styleInstructions.normal;
-          promptText = `${instruction}${styleHint ? ` Style hint: ${styleHint}` : ''} Output ONLY the rewritten text with no explanations.\n\n${payload.text}`;
+          promptText = `${instruction}${styleHint ? `\n\nAdditional style guidance: ${styleHint}` : ''}\n\nText to transform:\n${payload.text}`;
         } else if (action === 'translate') {
           const targetLang = payload.targetLang || 'English';
           promptText = `Translate the following text to ${targetLang}. Output ONLY the translated text with no explanations.\n\n${payload.text}`;
