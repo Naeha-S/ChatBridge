@@ -333,29 +333,29 @@ This comprehensive checklist tracks the implementation progress of ALL ChatBridg
 ---
 
 ## 🔍 Smart Query View
-- [ ] **Header**
-    - [ ] Title ("Smart Archive + Query")
-    - [ ] ✕ Close button
-- [ ] **Intro Text**
-    - [ ] Description of semantic search
-- [ ] **Suggestions Row**
-    - [ ] Pre-populated query chips
-- [ ] **Filters Row**
-    - [ ] Host selector dropdown
-    - [ ] Tag selector dropdown
-    - [ ] Date range selector (All time, Last 7 days, Last 30 days)
-- [ ] **Query Row**
-    - [ ] Search input field
-    - [ ] "Search" button
-- [ ] **Results Display**
-    - [ ] Results list with scores
-    - [ ] Expandable excerpts
-- [ ] **Ask AI Row**
-    - [ ] "Ask AI" button
-    - [ ] "Index all saved chats" button
-- [ ] **Answer Display**
-    - [ ] AI synthesis answer
-    - [ ] Provenance/source citations
+- [x] **Header**
+    - [x] Title ("Smart Query") with gradient icon
+    - [x] ✕ Close button with SVG
+- [x] **Intro Text**
+    - [x] Description of semantic search with glass-morphism styling
+- [x] **Suggestions Row**
+    - [x] Pre-populated query chips (Key decisions, Unresolved questions, Code examples, Important dates)
+- [x] **Filters Row**
+    - [x] Host selector dropdown with emoji icons
+    - [x] Tag selector dropdown with emoji icons
+    - [x] Date range selector (All time, Last 7 days, Last 30 days)
+- [x] **Query Row**
+    - [x] Search input field with premium styling
+    - [x] "Search" button with gradient and search icon
+- [x] **Results Display**
+    - [x] Results container with glass-morphism background
+    - [x] Expandable excerpts
+- [x] **Ask AI Row**
+    - [x] "Ask AI" button with green accent styling
+    - [x] "Index Chats" button with secondary styling
+- [x] **Answer Display**
+    - [x] AI synthesis answer with gradient border
+    - [x] Provenance/source citations container
 
 ---
 

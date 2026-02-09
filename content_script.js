@@ -534,12 +534,27 @@
   function removeLoadingFromButton(btn, restoreLabel) {
     try {
       if (!btn) return;
-      btn.disabled = false;
-      btn.classList.remove('cb-loading');
+      // Force enable button even if other operations fail
+      try { btn.disabled = false; } catch (_) { }
+      try { btn.classList.remove('cb-loading'); } catch (_) { }
+
       const orig = btn.getAttribute('data-orig-text');
-      if (restoreLabel) btn.textContent = restoreLabel;
-      else if (orig !== null) btn.innerHTML = orig;
-    } catch (e) { debugLog('removeLoadingFromButton failed', e); }
+      if (restoreLabel) {
+        try { btn.textContent = restoreLabel; } catch (_) { }
+      } else if (orig !== null) {
+        try { btn.innerHTML = orig; } catch (_) { }
+      }
+
+      // Force style reset as fallback
+      try {
+        btn.style.pointerEvents = '';
+        btn.style.opacity = '';
+      } catch (_) { }
+    } catch (e) {
+      debugLog('removeLoadingFromButton failed', e);
+      // Last resort - make button clickable again
+      try { if (btn) btn.disabled = false; } catch (_) { }
+    }
   }
 
   // Platform detection helper
@@ -1965,7 +1980,8 @@
         if (msgs && msgs.length) {
           lastScannedText = msgs.map(m => `${m.role}: ${m.text}`).join('\n\n');
           const final = normalizeMessages(msgs);
-          const conv = { platform: location.hostname, url: location.href, ts: Date.now(), id: String(Date.now()), model: detectCurrentModel(), conversation: final };
+          const currentModel = detectCurrentModel();
+          const conv = { platform: location.hostname, url: location.href, ts: Date.now(), id: String(Date.now()), model: currentModel, conversation: final };
           await saveConversation(conv);
           setMiniState(miniScan, 'success');
           toast(`✓ Saved ${final.length} messages`);
@@ -1977,6 +1993,11 @@
         setMiniState(miniScan, 'idle');
         toast('Scan failed - try again');
         debugLog('miniScan error', e);
+      } finally {
+        // Ensure success state has time to show before reverting to idle
+        if (!miniScan.classList.contains('cb-mini-success')) {
+          setMiniState(miniScan, 'idle');
+        }
       }
     });
 
@@ -3599,59 +3620,164 @@
 
     panel.appendChild(optimizerView);
 
-    // Smart Query view
-    const smartView = document.createElement('div'); smartView.className = 'cb-internal-view'; smartView.id = 'cb-smart-view'; smartView.setAttribute('data-cb-ignore', 'true');
-    const smartTop = document.createElement('div'); smartTop.className = 'cb-view-top';
-    const smartTitle = document.createElement('div'); smartTitle.className = 'cb-view-title'; smartTitle.textContent = 'Smart Archive + Query';
-    const btnCloseSmart = document.createElement('button'); btnCloseSmart.className = 'cb-view-close'; btnCloseSmart.textContent = '✕';
+    // ============================================
+    // SMART QUERY VIEW - Matching Translate/Summarize Style
+    // ============================================
+    const smartView = document.createElement('div');
+    smartView.className = 'cb-internal-view';
+    smartView.id = 'cb-smart-view';
+    smartView.setAttribute('data-cb-ignore', 'true');
+    smartView.style.cssText = 'overflow-x: hidden;';
+
+    // Header with gradient title (matching Translate style exactly)
+    const smartTop = document.createElement('div');
+    smartTop.className = 'cb-view-top';
+    const smartTitle = document.createElement('div');
+    smartTitle.className = 'cb-view-title';
+    smartTitle.innerHTML = '<span style="background: linear-gradient(135deg, #00D4FF, #7C3AED); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">Smart Query</span>';
+    const btnCloseSmart = document.createElement('button');
+    btnCloseSmart.className = 'cb-view-close';
+    btnCloseSmart.textContent = '✕';
     btnCloseSmart.setAttribute('aria-label', 'Close Smart Query view');
-    smartTop.appendChild(smartTitle); smartTop.appendChild(btnCloseSmart);
+    smartTop.appendChild(smartTitle);
+    smartTop.appendChild(btnCloseSmart);
     smartView.appendChild(smartTop);
 
-    const smartIntro = document.createElement('div'); smartIntro.className = 'cb-view-intro'; smartIntro.textContent = 'Ask questions across all your saved conversations using natural language. Find insights, patterns, and connections you might have missed.';
+    // Premium glassmorphic intro card (matching translate style exactly)
+    const smartIntro = document.createElement('div');
+    smartIntro.className = 'cb-view-intro';
+    smartIntro.style.cssText = 'font-size: 12px; color: var(--cb-subtext); margin: 16px 0; line-height: 1.6; padding: 14px 16px; background: linear-gradient(135deg, rgba(0, 212, 255, 0.06), rgba(124, 58, 237, 0.04)); border-left: 3px solid var(--cb-accent-primary); border-radius: 8px; backdrop-filter: blur(8px);';
+    smartIntro.innerHTML = '<span style="color: var(--cb-white); font-weight: 600;">Search your conversations</span> using natural language. Find <span style="color: var(--cb-accent-tertiary);">insights</span>, <span style="color: var(--cb-accent-tertiary);">patterns</span>, and <span style="color: var(--cb-accent-tertiary);">key decisions</span> across all saved chats.';
     smartView.appendChild(smartIntro);
-    // Suggestions row: pre-populated chips based on recent scans
-    const smartSuggestRow = document.createElement('div'); smartSuggestRow.className = 'cb-view-controls'; smartSuggestRow.id = 'cb-smart-suggest-row';
+
+    // Section label for suggestions
+    const suggestLabel = document.createElement('div');
+    suggestLabel.style.cssText = 'font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--cb-subtext); margin-bottom: 10px; opacity: 0.8;';
+    suggestLabel.textContent = 'Quick Search';
+    smartView.appendChild(suggestLabel);
+
+    // Quick Suggestion Chips (matching translate language chips style)
+    const smartSuggestRow = document.createElement('div');
+    smartSuggestRow.id = 'cb-smart-suggest-row';
+    smartSuggestRow.style.cssText = 'display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px;';
+
+    const defaultSuggestions = ['Key decisions', 'Unresolved questions', 'Code examples', 'Action items'];
+    defaultSuggestions.forEach(text => {
+      const chip = document.createElement('button');
+      chip.className = 'cb-lang-chip';
+      chip.textContent = text;
+      chip.style.cssText = 'padding: 8px 14px; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--cb-border); border-radius: 20px; color: var(--cb-white); font-size: 11px; font-weight: 500; cursor: pointer; transition: all 0.2s ease;';
+      chip.onmouseenter = () => { chip.style.borderColor = 'var(--cb-accent-primary)'; chip.style.background = 'rgba(0, 212, 255, 0.1)'; };
+      chip.onmouseleave = () => { chip.style.borderColor = 'var(--cb-border)'; chip.style.background = 'rgba(255, 255, 255, 0.03)'; };
+      chip.onclick = () => {
+        const input = smartView.querySelector('#cb-smart-query');
+        if (input) { input.value = text; input.focus(); }
+      };
+      smartSuggestRow.appendChild(chip);
+    });
     smartView.appendChild(smartSuggestRow);
-    // Filters row: host, tag, date-range
-    const smartFilterRow = document.createElement('div'); smartFilterRow.className = 'cb-view-controls';
-    const hostSelect = document.createElement('select'); hostSelect.className = 'cb-select'; hostSelect.id = 'cb-smart-host';
-    const tagSelect = document.createElement('select'); tagSelect.className = 'cb-select'; tagSelect.id = 'cb-smart-tag';
-    const dateSelect = document.createElement('select'); dateSelect.className = 'cb-select'; dateSelect.id = 'cb-smart-date';
+
+    // Section label for filters
+    const filterLabel = document.createElement('div');
+    filterLabel.style.cssText = 'font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--cb-subtext); margin-bottom: 10px; opacity: 0.8;';
+    filterLabel.textContent = 'Filters';
+    smartView.appendChild(filterLabel);
+
+    // Filters row (simple flex-wrap, no container box)
+    const smartFilterRow = document.createElement('div');
+    smartFilterRow.style.cssText = 'display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px;';
+
+    const hostSelect = document.createElement('select');
+    hostSelect.className = 'cb-select';
+    hostSelect.id = 'cb-smart-host';
+    const tagSelect = document.createElement('select');
+    tagSelect.className = 'cb-select';
+    tagSelect.id = 'cb-smart-tag';
+    const dateSelect = document.createElement('select');
+    dateSelect.className = 'cb-select';
+    dateSelect.id = 'cb-smart-date';
+
     // Default options
     const ho = document.createElement('option'); ho.value = ''; ho.textContent = 'All hosts'; hostSelect.appendChild(ho);
     const to = document.createElement('option'); to.value = ''; to.textContent = 'All tags'; tagSelect.appendChild(to);
-    ['All time', 'Last 7 days', 'Last 30 days'].forEach(v => { const o = document.createElement('option'); o.value = v; o.textContent = v; dateSelect.appendChild(o); });
+    ['All time', 'Last 7 days', 'Last 30 days'].forEach(v => {
+      const o = document.createElement('option');
+      o.value = v;
+      o.textContent = v;
+      dateSelect.appendChild(o);
+    });
     dateSelect.value = 'All time';
-    smartFilterRow.appendChild(hostSelect); smartFilterRow.appendChild(tagSelect); smartFilterRow.appendChild(dateSelect);
+
+    smartFilterRow.appendChild(hostSelect);
+    smartFilterRow.appendChild(tagSelect);
+    smartFilterRow.appendChild(dateSelect);
     smartView.appendChild(smartFilterRow);
 
-    const smartQueryRow = document.createElement('div'); smartQueryRow.className = 'cb-view-controls';
-    const smartInput = document.createElement('input'); smartInput.type = 'text'; smartInput.className = 'cb-select'; smartInput.id = 'cb-smart-query'; smartInput.placeholder = 'e.g. What did Gemini say about API rate limits?';
+    // Query input row
+    const smartQueryRow = document.createElement('div');
+    smartQueryRow.style.cssText = 'display: flex; gap: 10px; margin-bottom: 16px;';
+
+    const smartInput = document.createElement('input');
+    smartInput.type = 'text';
+    smartInput.className = 'cb-select';
+    smartInput.id = 'cb-smart-query';
+    smartInput.placeholder = 'e.g. What did Gemini say about rate limits?';
+    smartInput.style.cssText = 'flex: 1; min-width: 0;';
     smartInput.setAttribute('aria-label', 'Smart query input');
-    const btnSmartSearch = document.createElement('button'); btnSmartSearch.className = 'cb-btn'; btnSmartSearch.id = 'btnSmartSearch'; btnSmartSearch.textContent = 'Search';
+
+    const btnSmartSearch = document.createElement('button');
+    btnSmartSearch.className = 'cb-btn cb-btn-primary';
+    btnSmartSearch.id = 'btnSmartSearch';
+    btnSmartSearch.textContent = 'Search';
     btnSmartSearch.setAttribute('aria-label', 'Search saved chats');
-    smartQueryRow.appendChild(smartInput); smartQueryRow.appendChild(btnSmartSearch);
+
+    smartQueryRow.appendChild(smartInput);
+    smartQueryRow.appendChild(btnSmartSearch);
     smartView.appendChild(smartQueryRow);
 
-    const smartResults = document.createElement('div'); smartResults.id = 'cb-smart-results'; smartResults.className = 'cb-view-text'; smartResults.textContent = '(No results yet)';
+    // Results container
+    const smartResults = document.createElement('div');
+    smartResults.id = 'cb-smart-results';
+    smartResults.className = 'cb-view-text';
+    smartResults.style.cssText = 'min-height: 100px; max-height: 200px; overflow-x: hidden;';
+    smartResults.textContent = '(No results yet)';
     smartView.appendChild(smartResults);
 
-    const smartAskRow = document.createElement('div'); smartAskRow.className = 'cb-view-controls';
-    const btnSmartAsk = document.createElement('button'); btnSmartAsk.className = 'cb-btn cb-view-go'; btnSmartAsk.id = 'btnSmartAsk'; btnSmartAsk.textContent = 'Ask AI';
+    // Action buttons row
+    const smartAskRow = document.createElement('div');
+    smartAskRow.style.cssText = 'display: flex; gap: 10px; margin-top: 16px;';
+
+    const btnSmartAsk = document.createElement('button');
+    btnSmartAsk.className = 'cb-btn cb-btn-primary cb-view-go';
+    btnSmartAsk.id = 'btnSmartAsk';
+    btnSmartAsk.textContent = 'Ask AI';
+    btnSmartAsk.style.cssText = 'flex: 1;';
     btnSmartAsk.setAttribute('aria-label', 'Ask AI about selected results');
-    smartAskRow.appendChild(btnSmartAsk);
-    const btnIndexAll = document.createElement('button'); btnIndexAll.className = 'cb-btn'; btnIndexAll.id = 'btnIndexAll'; btnIndexAll.textContent = 'Index all saved chats'; btnIndexAll.title = 'Create embeddings and index all saved chats (requires API key)';
+
+    const btnIndexAll = document.createElement('button');
+    btnIndexAll.className = 'cb-btn';
+    btnIndexAll.id = 'btnIndexAll';
+    btnIndexAll.textContent = 'Index Chats';
+    btnIndexAll.title = 'Create embeddings and index all saved chats';
     btnIndexAll.setAttribute('aria-label', 'Index all saved chats');
+
+    smartAskRow.appendChild(btnSmartAsk);
     smartAskRow.appendChild(btnIndexAll);
     smartView.appendChild(smartAskRow);
 
-    const smartAnswer = document.createElement('div'); smartAnswer.id = 'cb-smart-answer'; smartAnswer.className = 'cb-view-result'; smartAnswer.textContent = '';
+    // AI Answer Display
+    const smartAnswer = document.createElement('div');
+    smartAnswer.id = 'cb-smart-answer';
+    smartAnswer.className = 'cb-view-result';
+    smartAnswer.textContent = '';
     smartView.appendChild(smartAnswer);
-    const smartProvenance = document.createElement('div'); smartProvenance.id = 'cb-smart-provenance'; smartProvenance.style.fontSize = '12px'; smartProvenance.style.marginTop = '8px'; smartProvenance.style.color = 'rgba(200,200,200,0.9)'; smartProvenance.textContent = '';
-    smartView.appendChild(smartProvenance);
 
-    // Connections panel removed - not needed for basic functionality
+    // Provenance/Source Citations
+    const smartProvenance = document.createElement('div');
+    smartProvenance.id = 'cb-smart-provenance';
+    smartProvenance.style.cssText = 'font-size: 12px; margin-top: 8px; color: var(--cb-subtext);';
+    smartProvenance.textContent = '';
+    smartView.appendChild(smartProvenance);
 
     panel.appendChild(smartView);
 
@@ -12891,8 +13017,11 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
             await saveConversation(conv);
             const totalDuration = Date.now() - scanStartTime;
 
+            // IMMEDIATELY update UI to show completion
+            removeLoadingFromButton(btnScan, '🔍 Scan Chat');
+
             // Show success with detailed count
-            const successMsg = `✓ Saved ${final.length} messages (${userMsgs} user, ${aiMsgs} AI) in ${totalDuration}ms`;
+            const successMsg = `✓ Saved ${final.length} messages (${userMsgs} user, ${aiMsgs} AI)`;
             toast(successMsg);
             status.textContent = `Status: ${final.length} msgs saved`;
 
@@ -12925,6 +13054,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
             announce('Scan complete, conversation saved');
           } catch (saveError) {
             debugLog('Save failed', saveError);
+            removeLoadingFromButton(btnScan, '🔍 Scan Chat');
             toast('Save failed: ' + (saveError.message || 'unknown error'));
             status.textContent = `Status: save failed`;
             preview.textContent = 'Preview: Save failed - ' + (saveError.message || 'unknown error');
@@ -14913,16 +15043,17 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       const targetLang = options.targetLang || 'English';
       const shorten = !!options.shorten;
       const deepThinking = !!options.deepThinking; // Use 22B model for higher quality
-      const chunkSize = options.chunkSize || 4000;
-      const maxParallel = options.maxParallel || 4; // Increased to 4 for better throughput
+      const chunkSize = options.chunkSize || 12000; // Larger chunks = fewer API calls
+      const maxParallel = options.maxParallel || 15; // High parallelism for speed
 
       if (!text || typeof text !== 'string') return '';
 
       let workText = text.trim();
 
-      // OPTIMIZATION: If shorten is true, summarize first to reduce tokens
-      if (shorten && workText.length > 500) {
-        debugLog('[Translation] Pre-summarizing to save tokens...');
+      // OPTIMIZATION: Skip pre-summarization entirely unless text is massive (>20k chars)
+      // This saves a full AI call for most translations
+      if (shorten && workText.length > 20000) {
+        debugLog('[Translation] Pre-summarizing massive text...');
         try {
           const summary = await hierarchicalSummarize(workText, { length: 'medium', summaryType: 'paragraph' });
           if (summary) workText = summary;
@@ -14937,7 +15068,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       debugLog(`[Translation] Using ${modelName} model`);
 
       if (workText.length <= chunkSize) {
-        // Single call for small text
+        // Single call for small/medium text - fastest path
         const euroRes = await translateFn({ action: 'translate', text: workText, targetLang });
         if (euroRes && euroRes.ok) return euroResultPreFilter(euroRes.result);
 
@@ -14963,27 +15094,29 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       if (cur) chunks.push(cur);
 
       const translatedChunks = new Array(chunks.length);
+      debugLog(`[Translation] Processing ${chunks.length} chunks with ${maxParallel} parallel workers...`);
 
-      // Batch parallel processing
+      // Show single toast at start, not during processing
+      toast(`Translating ${chunks.length} parts...`);
+
+      // Ultra-fast batch parallel processing - no progress updates mid-stream
       for (let i = 0; i < chunks.length; i += maxParallel) {
         const batch = chunks.slice(i, i + maxParallel);
         const batchPromises = batch.map(async (chunkText, idx) => {
           const globalIdx = i + idx;
           try {
-            // Use the selected model (fast or deep)
+            // Use the selected model (fast or deep) with primary + fallbacks
             const res = await (async () => {
               const e = await translateFn({ action: 'translate', text: chunkText, targetLang });
               if (e && e.ok) return euroResultPreFilter(e.result);
-              // Fallback to Llama then Gemini
+              // Fast fallback - only try Llama, skip Gemini for speed
               const l = await callLlamaAsync({ action: 'translate', text: chunkText, targetLang });
               if (l && l.ok) return l.result;
-              const g = await callGeminiAsync({ action: 'translate', text: chunkText, targetLang });
-              if (g && g.ok) return g.result;
-              return '[translation-failed]';
+              return '[chunk-failed]';
             })();
             translatedChunks[globalIdx] = res;
           } catch (e) {
-            translatedChunks[globalIdx] = '[translation-error]';
+            translatedChunks[globalIdx] = '[chunk-error]';
           }
         });
         await Promise.all(batchPromises);
@@ -17853,12 +17986,14 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
       try {
         if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
           const ok = await new Promise((resolve) => {
+            const timeout = setTimeout(() => resolve(false), 5000); // 5s timeout for background save
             try {
               chrome.runtime.sendMessage({ type: 'save_conversation', payload: conv }, (res) => {
+                clearTimeout(timeout);
                 if (chrome.runtime.lastError) return resolve(false);
                 resolve(res && res.ok);
               });
-            } catch (e) { resolve(false); }
+            } catch (e) { clearTimeout(timeout); resolve(false); }
           });
           debugLog('background save_conversation ack', ok);
         }
@@ -17875,15 +18010,22 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
       // 3) Mirror to chrome.storage.local (extension-wide) — newest first
       try {
         if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-          const data = await new Promise(r => chrome.storage.local.get([key], d => r(d[key])));
+          const data = await new Promise(resolve => {
+            const t = setTimeout(() => resolve([]), 3000); // 3s timeout
+            chrome.storage.local.get([key], d => { clearTimeout(t); resolve(d[key]); });
+          });
           const cur = Array.isArray(data) ? data.slice(0) : [];
           cur.unshift(conv);
-          await new Promise(r => chrome.storage.local.set({ [key]: cur }, () => {
-            if (window.ChatBridge && typeof window.ChatBridge.refreshHistory === 'function') {
-              window.ChatBridge.refreshHistory();
-            }
-            r();
-          }));
+          await new Promise(resolve => {
+            const t = setTimeout(() => resolve(), 3000); // 3s timeout
+            chrome.storage.local.set({ [key]: cur }, () => {
+              clearTimeout(t);
+              if (window.ChatBridge && typeof window.ChatBridge.refreshHistory === 'function') {
+                window.ChatBridge.refreshHistory();
+              }
+              resolve();
+            });
+          });
           debugLog('saved to chrome.storage.local', conv.ts);
         }
       } catch (e) { debugLog('save error (chrome.storage.local)', e); }
