@@ -2904,7 +2904,7 @@
         if (mode === 'lastUser') {
           // Find last user message
           if (lastScan) {
-            const msgs = lastScan.conversation || lastScan.messages || (Array.isArray(lastScan) ? lastScan : []);
+            const msgs = lastScan.messages || lastScan.conversation || (Array.isArray(lastScan) ? lastScan : []);
             if (msgs.length > 0) {
               for (let i = msgs.length - 1; i >= 0; i--) {
                 if (msgs[i].role === 'user') {
@@ -2918,7 +2918,7 @@
         } else if (mode === 'lastAI') {
           // Find last AI message
           if (lastScan) {
-            const msgs = lastScan.conversation || lastScan.messages || (Array.isArray(lastScan) ? lastScan : []);
+            const msgs = lastScan.messages || lastScan.conversation || (Array.isArray(lastScan) ? lastScan : []);
             if (msgs.length > 0) {
               for (let i = msgs.length - 1; i >= 0; i--) {
                 if (msgs[i].role !== 'user') {
@@ -2932,7 +2932,7 @@
         } else {
           // All
           let msgs = [];
-          if (lastScan) msgs = lastScan.conversation || lastScan.messages || (Array.isArray(lastScan) ? lastScan : []);
+          if (lastScan) msgs = lastScan.messages || lastScan.conversation || (Array.isArray(lastScan) ? lastScan : []);
           text = msgs.map(m => `${m.role === 'user' ? 'User' : 'AI'}: ${m.text} `).join('\n\n');
         }
 
@@ -2974,11 +2974,12 @@
 3. Follow the requested length(${length}) and style(${style}).
 4. Ensure the output is ready to be pasted directly into a chat.`;
 
+        debugLog('[Summarize] Starting with options:', { length, style, deep, textLength: text.length });
         const result = await hierarchicalProcess(text, 'summarize', {
           length: length,
           deepThinking: deep,
           mergePrompt: cleanPrompt, // Override default merge prompt
-          extraPayload: { style: style, length: length },
+          extraPayload: { summaryType: style, length: length },
           onProgress: (p) => {
             if (typeof p === 'string') {
               summProg.lastChild.textContent = p;
@@ -2993,23 +2994,25 @@
         if (result) {
           // Extra cleanup just in case
           const clean = result.replace(/^(Here is|This is) a (comprehensive )?summary.*?:\s*/i, '').trim();
-          summResult.textContent = clean;
+          // Replace source text with summary result
+          summSourceText.textContent = clean;
 
-          // Force layout update/display
-          summResult.style.display = 'block';
+          // Hide the separate result div (not needed)
+          summResult.style.display = 'none';
           btnInsertSumm.style.display = 'block';
           summProg.style.display = 'none';
 
           // Ensure visible
           setTimeout(() => {
-            summResult.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            summSourceText.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
           }, 50);
         } else {
           toast('Summarization returned empty result');
           summProg.style.display = 'none';
         }
       } catch (e) {
-        console.error('Summarize error:', e);
+        console.error('[Summarize] Error:', e);
+        debugLog('[Summarize] Full error details:', e);
         toast('Summarization failed: ' + (e.message || 'Unknown error'));
         summProg.style.display = 'none';
       } finally {
@@ -3026,7 +3029,7 @@
     }
 
     btnInsertSumm.addEventListener('click', async () => {
-      const text = summResult.textContent;
+      const text = summSourceText.textContent;
       if (text) {
         const success = await restoreToChat(text);
         if (success) toast('Inserted into chat');
@@ -15139,14 +15142,15 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       options = options || {};
       const onProgress = typeof options.onProgress === 'function' ? options.onProgress : null;
       try { onProgress && onProgress({ phase: 'preparing' }); } catch (e) { }
-      const chunkSize = options.chunkSize || 12000;
-      const maxParallel = options.maxParallel || 3;
+      const chunkSize = options.chunkSize || 24000; // Increased from 18K for fewer API calls
+      const maxParallel = options.maxParallel || 10; // Increased from 6 for maximum speed
       const mergePrompt = options.mergePrompt || `Combine the following pieces into a single coherent output that preserves context, style, and important details.`;
       const perChunkExtra = options.extraPayload || {};
       if (!text || typeof text !== 'string') return '';
       if (text.length <= chunkSize) {
         const res = await callGeminiAsync(Object.assign({ action, text }, perChunkExtra));
         if (res && res.ok) { try { onProgress && onProgress({ phase: 'done' }); } catch (e) { }; return res.result; }
+        debugLog('[hierarchicalProcess] Single chunk call failed:', res?.error);
         throw new Error(res && res.error ? res.error : `${action}-failed`);
       }
       const paragraphs = text.split(/\n\s*\n/);
@@ -15324,42 +15328,6 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
 
     btnCloseSumm.addEventListener('click', () => {
       try { summView.classList.remove('cb-view-active'); } catch (e) { }
-    });
-
-    btnGoSumm.addEventListener('click', async () => {
-      try {
-        btnGoSumm.disabled = true; addLoadingToButton(btnGoSumm, 'Summarizing'); summResult.textContent = ''; btnInsertSumm.style.display = 'none';
-        summProg.style.display = 'inline'; updateProgress(summProg, 'summarize', { phase: 'preparing' });
-        const chatText = (summSourceText && summSourceText.textContent) ? summSourceText.textContent : '';
-        if (!chatText || chatText.trim().length < 10) { toast('No conversation to summarize'); btnGoSumm.disabled = false; btnGoSumm.textContent = '✨ Summarize'; return; }
-
-        // Calculate original stats
-        const origWords = chatText.trim().split(/\s+/).filter(w => w.length > 0).length;
-        const origChars = chatText.length;
-        updateSummStats(chatText);
-
-        const length = (summLengthSelect && summLengthSelect.value) || 'medium';
-        const summaryType = (summTypeSelect && summTypeSelect.value) || 'paragraph';
-        const opts = { chunkSize: 14000, maxParallel: 3, length, summaryType, onProgress: (ev) => updateProgress(summProg, 'summarize', ev) };
-        const result = await hierarchicalSummarize(chatText, opts);
-
-        // Update text area with result and show Insert button
-        summSourceText.textContent = result || '(no result)';
-
-        // Calculate result stats and show comparison
-        const resultWords = result ? result.trim().split(/\s+/).filter(w => w.length > 0).length : 0;
-        const resultChars = result ? result.length : 0;
-        const reduction = origWords > 0 ? Math.round((1 - resultWords / origWords) * 100) : 0;
-
-        updateSummStats(result);
-        summResult.textContent = `✅ Reduced from ${origWords.toLocaleString()} → ${resultWords.toLocaleString()} words (${reduction}% smaller)`;
-        btnInsertSumm.style.display = 'inline-block';
-        summProg.style.display = 'none';
-        toast(`Summarized: ${reduction}% reduction`);
-      } catch (err) {
-        toast('Summarize failed: ' + (err && err.message ? err.message : err));
-        debugLog('hierarchicalSummarize error', err);
-      } finally { removeLoadingFromButton(btnGoSumm, '✨ Summarize'); }
     });
 
     // Insert buttons: inject current text area content into the page chat input

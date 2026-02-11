@@ -36,16 +36,16 @@ function recordRequest(limiter) {
 
 // Gemini model priority: Best to worst based on rate limits
 const GEMINI_MODEL_PRIORITY = [
-  'gemini-2.5-pro',           // Best quality, 2 RPM
-  'gemini-2.0-flash',         // 15 RPM, 1M TPM
-  'gemini-2.5-flash',         // 10 RPM, 250K TPM
-  'gemini-2.5-flash-lite',    // 15 RPM, 250K TPM
+  'gemini-2.0-flash',         // FASTEST: 15 RPM, 1M TPM - try first for speed
+  'gemini-2.5-flash',         // Fast: 10 RPM, 250K TPM  
+  'gemini-2.5-flash-lite',    // Fast: 15 RPM, 250K TPM
+  'gemini-2.5-pro',           // Best quality fallback, 2 RPM (slower but higher quality)
   'gemini-2.0-flash-exp'      // Experimental, 50 RPD
 ];
 
 let currentModelIndex = 0; // Track which model we're using
 let modelFailureCount = {}; // Track failures per model
-const MAX_MODEL_FAILURES = 3; // Switch models after 3 consecutive failures
+const MAX_MODEL_FAILURES = 1; // Switch models after 1 failure (was 3, reduced to fix first-click issues)
 
 // Centralized rewrite templates map
 // Safe, meaning-preserving prompts. No detector evasion or academic-integrity bypass.
@@ -101,11 +101,11 @@ function markModelFailed(model, statusCode) {
   }
 }
 
-// Mark model as successful, reset failure count
+// Mark model as successful, reset ALL failure counts for clean slate
 function markModelSuccess(model) {
-  if (modelFailureCount[model]) {
-    modelFailureCount[model] = 0;
-  }
+  // Reset all models on any success
+  modelFailureCount = {};
+  console.log(`[Gemini] ✓ Success with ${model}, reset all failure counts`);
 }
 
 chrome.runtime.onInstalled.addListener(() => {
@@ -1884,7 +1884,7 @@ Return ONLY the rewritten text. No preamble. No explanation.`;
           systemInstruction = 'You are an expert conversation analyst. Provide insightful, actionable analysis focusing on key patterns, decisions, and next steps.';
           promptText = `Analyze this conversation and provide helpful insights or suggestions:\n\n${payload.text}`;
         } else if (payload.action === 'summarize') {
-          systemInstruction = 'You are an expert at creating clear, comprehensive summaries that preserve critical context and actionable details. Focus on accuracy and completeness.';
+          systemInstruction = 'You are an elite summarization specialist trained to distill complex information into clear, actionable summaries. You adapt your output style precisely to the requested format while preserving all critical information. Never add meta-commentary like "Here is a summary" - output ONLY the summary itself.';
           // Use summary length/type if provided
           let opts = '';
           if (payload.length === 'comprehensive') {
@@ -1899,10 +1899,9 @@ Return ONLY the rewritten text. No preamble. No explanation.`;
 
 Make this summary as thorough as needed to capture the full context - prioritize completeness and clarity over brevity.\n\n${payload.text}`;
           } else {
-            // Enforce formatting based on summaryType
+            // Advanced style-specific prompting
             if (payload.summaryType === 'transfer') {
               // Optimized AI-to-AI handoff schema
-              // The model should reconstruct identity, goals, relationships, causal links, status, and next actions.
               const lenHint = payload.length ? `Aim for a ${payload.length} length.` : '';
               promptText = `Generate a summary optimized for AI-to-AI context transfer. ${lenHint}
 
@@ -1918,7 +1917,7 @@ Follow this exact structure with section headers (do not add extra commentary ou
 - 5–10 concise bullets describing what was discussed, in order. Include technical keywords and short details. Keep them brief.
 
 4) Causal Links and Relationships:
-- Explain how topics connect (e.g., “X led to Y because Z”). Mention dependencies, constraints, or design decisions.
+- Explain how topics connect (e.g., "X led to Y because Z"). Mention dependencies, constraints, or design decisions.
 
 5) Current Status:
 - What is completed vs ongoing vs blocked. Use labels [done], [ongoing], [blocked].
@@ -1937,16 +1936,214 @@ Constraints:
 Source conversation:
 ${payload.text}`;
             } else if (payload.summaryType === 'bullet') {
-              promptText = `Summarize the following text as a bullet-point list. Use actual bullet points (•) or numbered list format. Each key point should be on its own line. ${payload.length ? `Keep it ${payload.length} in length.` : ''}\n\n${payload.text}`;
+              const lengthGuide = {
+                concise: '3-5 bullets maximum, ultra-brief',
+                short: '5-8 key bullets',
+                medium: '8-12 comprehensive bullets',
+                comprehensive: '12-15 detailed bullets',
+                detailed: '15-20 in-depth bullets covering all aspects'
+              };
+              const lenInstr = lengthGuide[payload.length] || '8-12 bullets';
+
+              promptText = `Transform this text into a ${lenInstr} bullet-point summary.
+
+FORMATTING REQUIREMENTS:
+- Use actual bullet symbols (•) or dashes (-)
+- Each bullet is self-contained and actionable
+- Start each bullet with a strong verb or noun when possible
+- Order bullets by importance (most critical first)
+- Use sub-bullets (  - ) for supporting details when needed
+
+CONTENT REQUIREMENTS:
+- Capture ALL key decisions, outcomes, and action items
+- Preserve important technical details or numbers
+- Include context for why things matter
+- Highlight any blockers or unresolved issues
+- Distill complex ideas into scannable insights
+
+STYLE:  
+- Concise but complete - every word earns its place
+- Active voice, strong language
+- Avoid fluffy transitions - get to the point
+- Use specifics over generalities (numbers, names, concrete examples)
+
+OUTPUT ONLY THE BULLETS. No preamble like "Here are the key points" - start directly with the first bullet.
+
+Text to summarize:
+${payload.text}`;
             } else if (payload.summaryType === 'executive') {
-              promptText = `Create an executive summary of the following text: a high-level overview focusing on key decisions, outcomes, and actionable insights. ${payload.length ? `Length: ${payload.length}.` : ''}\n\n${payload.text}`;
+              const lengthGuide = {
+                concise: '1 short paragraph (3-4 sentences)',
+                short: '1-2 paragraphs with key highlights',
+                medium: '2-3 paragraphs covering major points',
+                comprehensive: '3-4 paragraphs with strategic depth',
+                detailed: '4-5 paragraphs with comprehensive coverage'
+              };
+              const lenInstr = lengthGuide[payload.length] || '2-3 paragraphs';
+
+              promptText = `Create an executive summary (${lenInstr}) for senior leadership.
+
+EXECUTIVE SUMMARY STRUCTURE:
+1. Lead: Open with the single most important takeaway or decision
+2. Strategic Context: Why this matters to the organization/project
+3. Key Outcomes: Critical results, decisions, or conclusions reached
+4. Business Impact: Resources, timelines, risks, or opportunities
+5. Next Steps: Clear, specific actions with owners/deadlines when mentioned
+
+EXECUTIVE WRITING STANDARDS:
+- Bottom-line-up-front: Most important information first
+- Strategic lens: Focus on impact, not process details
+- Quantify when possible: Use metrics, percentages, timeframes
+- Confident tone: Assertive, decisive language
+- Crisp sentences: Average 15-20 words per sentence
+- Eliminate: Jargon, filler words, obvious statements
+- Emphasize: Risks, opportunities, trade-offs, recommendations
+
+AVOID:
+- Technical minutiae unless strategy-critical  
+- Play-by-play of discussions
+- Hedging language ("maybe," "possibly," "might consider")
+- Meta-commentary ("This summary covers...")
+
+OUTPUT: Start directly with the executive summary. No title, no preamble.
+
+Content to summarize:
+${payload.text}`;
             } else if (payload.summaryType === 'technical') {
-              promptText = `Create a technical summary of the following text: focus on technical details, specifications, code snippets, and implementation notes. ${payload.length ? `Length: ${payload.length}.` : ''}\n\n${payload.text}`;
+              const lengthGuide = {
+                concise: 'Core technical facts only (5-8 sentences)',
+                short: 'Key technical points with brief explanations',
+                medium: 'Comprehensive technical coverage',
+                comprehensive: 'Deep technical analysis with context',
+                detailed: 'Exhaustive technical documentation'
+              };
+              const lenInstr = lengthGuide[payload.length] || 'comprehensive technical coverage';
+
+              promptText = `Create a technical summary (${lenInstr}) for engineers and technical stakeholders.
+
+TECHNICAL SUMMARY REQUIREMENTS:
+1. Precision: Exact terminology, specifications, version numbers
+2. Architecture: System design, components, data flows
+3. Implementation: Technologies, frameworks, libraries, languages used
+4. Code/Algorithms: Key logic, formulas, or pseudocode snippets when discussed
+5. Technical Decisions: Why specific approaches were chosen
+6. Constraints: Performance, scalability, compatibility limitations
+7. Dependencies: External systems, APIs, databases
+8. Issues: Bugs encountered, error messages, stack traces if mentioned
+9. Configuration: Settings, environment variables, deployment details
+
+TECHNICAL WRITING STYLE:
+- Use precise technical vocabulary - don't simplify
+- Include code snippets in backticks when relevant: \`functionName()\`
+- Specify versions: "React 18.2" not just "React"
+- Include error codes or HTTP status codes when mentioned
+- Structure with clear sections (Architecture, Implementation, Configuration, etc.) if length allows
+- Monospace font indication for commands: \`npm install\`
+- Preserve technical acronyms (API, REST, JWT, SQL, etc.)
+
+PRIORITIZE:
+- How it works (technical mechanisms)
+- What broke and how it was fixed  
+- Configuration and setup steps
+- Security considerations
+- Performance characteristics
+
+OUTPUT: Start directly with technical content. Assume reader has technical background.
+
+Source material:
+${payload.text}`;
             } else if (payload.summaryType === 'detailed') {
-              promptText = `Create a detailed summary of the following text with comprehensive coverage of all topics discussed. ${payload.length ? `Length: ${payload.length}.` : ''}\n\n${payload.text}`;
+              const lengthGuide = {
+                concise: '2-3 paragraphs covering main points',
+                short: '3-4 paragraphs with supporting details',
+                medium: '4-6 paragraphs with comprehensive coverage',
+                comprehensive: '6-8 paragraphs with full context',
+                detailed: '8-12 paragraphs with exhaustive analysis'
+              };
+              const lenInstr = lengthGuide[payload.length] || '4-6 well-developed paragraphs';
+
+              promptText = `Create a detailed summary (${lenInstr}) that comprehensively covers the content.
+
+DETAILED SUMMARY STRUCTURE:
+1. Opening: Set context and scope - what is this about and why it matters
+2. Main Content: Organize by themes or chronology, covering:
+   - All major topics and subtopics discussed
+   - Arguments, evidence, and reasoning presented
+   - Different perspectives or approaches considered
+   - Key examples or case studies mentioned
+   - Decisions made and rationale behind them
+3. Supporting Elements: Include relevant:
+   - Statistics, data points, or metrics cited
+   - Technical details or specifications
+   - Quotes or important statements (paraphrase in quotes if needed)
+   - Challenges encountered and solutions applied
+4. Implications: Discuss consequences, impacts, or future considerations
+5. Conclusion: Synthesize main takeaways and unresolved questions
+
+WRITING REQUIREMENTS:
+- Rich, nuanced language that captures complexity
+- Varied sentence structure (mix short/medium/long)
+- Clear topic sentences for each paragraph
+- Smooth transitions between ideas
+- Concrete examples to illustrate abstract concepts
+- Logical flow that builds understanding progressively
+- Qualifying language where appropriate ("generally," "typically," "often")
+
+BALANCE:
+- Depth vs. Clarity: Go deep but stay comprehensible
+- Coverage vs. Coherence: Include details but maintain narrative flow
+- Objectivity vs. Insight: Report faithfully but synthesize intelligently
+
+OUTPUT: Begin directly with the summary. Use paragraph breaks for readability.
+
+Content:
+${payload.text}`;
             } else {
-              // paragraph format
-              promptText = `Summarize this text as a clear, coherent paragraph. ${payload.length ? `Length: ${payload.length}.` : ''}\n\n${payload.text}`;
+              // Default: Paragraph format with enhanced training
+              const lengthGuide = {
+                concise: '1 concise paragraph (4-6 sentences)',
+                short: '1-2 brief paragraphs',
+                medium: '2-3 well-developed paragraphs',
+                comprehensive: '3-4 comprehensive paragraphs',
+                detailed: '4-5 thorough paragraphs'
+              };
+              const lenInstr = lengthGuide[payload.length] || '2-3 paragraphs';
+
+              promptText = `Summarize this text as ${lenInstr} with clear, coherent narrative flow.
+
+PARAGRAPH SUMMARY GUIDELINES:
+
+STRUCTURE:
+- Opening: Lead with the most important point or central theme
+- Body: Develop key ideas in logical order
+- Supporting details: Include critical context, decisions, or outcomes
+- Closing: End with conclusions, implications, or next steps if mentioned
+
+WRITING QUALITY:
+- Natural flow: Connect ideas with smooth transitions
+- Varied sentences: Mix lengths and structures for readability
+- Strong verbs: Use active voice and concrete language
+- Specificity: Include names, numbers, technical terms when relevant
+- Coherence: Each sentence builds on the previous one
+
+LENGTH CALIBRATION:
+- Concise: Dense with information, no filler (50-80 words)
+- Short: Key points with brief context (100-150 words)
+- Medium: Comprehensive with supporting details (200-300 words)
+- Comprehensive: Rich detail and nuance (350-500 words)
+- Detailed: Thorough exploration (500-700 words)
+
+AVOID:
+- Meta-commentary ("This text discusses..." or "In summary...")
+- Bullet points (use narrative prose)
+- Robotic listing of facts without connections
+- Unnecessary introductions or conclusions
+- Over-formal academic language
+
+OUTPUT: Start directly with the summary content in paragraph form.
+
+Text:
+${payload.text}`;
             }
           }
         } else if (payload.action === 'rewrite') {
@@ -2107,7 +2304,7 @@ Rewritten conversation (optimized for ${tgt}):`;
           // Cache successful result (5min TTL)
           try {
             const cacheKey = hashString(stableStringify({ type: 'call_gemini', action: payload.action || 'unknown', prompt: promptText, length: payload.length || '', summaryType: payload.summaryType || '' }));
-            await cachePut({ id: cacheKey, ts: Date.now(), ttl: 1000 * 60 * 5, response: { ok: true, result, model: currentModel } });
+            await cachePut({ id: cacheKey, ts: Date.now(), ttl: 1000 * 60 * 30, response: { ok: true, result, model: currentModel } }); // 30min cache (was 5min)
             cacheCleanExpired();
           } catch (e) { /* ignore */ }
 
