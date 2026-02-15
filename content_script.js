@@ -1171,6 +1171,28 @@
       : 'display:none;position:fixed;top:0;right:0;z-index:2147483646;pointer-events:none;';
     host.style.cssText = hostPositionStyle;
     document.body.appendChild(avatar); document.body.appendChild(host);
+
+    // Periodic check to ensure avatar stays visible (every 3 seconds)
+    setInterval(() => {
+      try {
+        const existingAvatar = document.getElementById('cb-avatar');
+        if (!existingAvatar || !document.body.contains(existingAvatar)) {
+          console.log('[ChatBridge] Avatar missing, re-injecting...');
+          if (existingAvatar) existingAvatar.remove();
+          document.body.appendChild(avatar);
+        }
+        // Ensure visibility
+        if (existingAvatar && existingAvatar.style.display === 'none') {
+          existingAvatar.style.display = 'flex';
+        }
+      } catch (e) {
+        console.error('[ChatBridge] Avatar visibility check failed:', e);
+      }
+    }, 3000);
+
+    // Debug log to confirm avatar injection
+    console.log('[ChatBridge] Avatar injected at:', avatarSide, '| Element:', avatar);
+
     const shadow = host.attachShadow({ mode: 'open' });
 
     // High-end Dark Neon theme inside shadow DOM (Bebas Neue font)
@@ -2238,8 +2260,8 @@
     const qaButtons = [
       { id: 'qa-sidebar-optimize', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v5m0 4v8m-4-4l4-4 4 4"/><circle cx="12" cy="12" r="10"/></svg>', label: 'Optimize', title: 'Transform raw prompts into high-performance AI prompts' },
       { id: 'qa-sidebar-stats', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>', label: 'Stats', title: 'Show word count, read time & saved count' },
-      { id: 'qa-sidebar-archive', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>', label: 'Done', title: 'Mark this conversation as complete' },
-      { id: 'qa-sidebar-star', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>', label: 'Star', title: 'Star/unstar this conversation' }
+      { id: 'qa-sidebar-clean', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>', label: 'Clean', title: 'Remove duplicates and organize saved conversations' },
+      { id: 'qa-sidebar-export', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>', label: 'Export', title: 'Export all conversations as JSON or Markdown' }
     ];
 
     qaButtons.forEach(qa => {
@@ -13673,60 +13695,395 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
     // ⚡ Sidebar Quick Actions Event Listeners
     // Note: Summary removed - was redundant with Summarize button
 
-    shadow.getElementById('qa-sidebar-export')?.addEventListener('click', async () => {
-      try {
-        const convs = await loadConversationsAsync();
-        if (!convs || convs.length === 0) { toast('No conversations to export'); return; }
-        const recent = convs.slice(0, 5);
-        const exportData = JSON.stringify(recent, null, 2);
-        const blob = new Blob([exportData], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `chatbridge-export-${Date.now()}.json`;
-        a.click();
-        URL.revokeObjectURL(url);
-        toast('📤 Exported ' + recent.length + ' conversations');
-      } catch (e) { toast('Export failed'); }
-    });
-
     shadow.getElementById('qa-sidebar-stats')?.addEventListener('click', async () => {
       try {
+        // Check if stats panel already exists
+        let statsPanel = shadow.getElementById('cb-stats-panel');
+        if (statsPanel) {
+          statsPanel.remove();
+          return; // Toggle off
+        }
+
+        // Get stats data
         const chatText = await getConversationText();
         const words = chatText ? chatText.split(/\s+/).length : 0;
         const chars = chatText ? chatText.length : 0;
         const readTime = Math.ceil(words / 200);
         const convs = await loadConversationsAsync();
-        toast(`📊 ${words.toLocaleString()} words • ${chars.toLocaleString()} chars • ~${readTime} min read • ${convs.length} saved`);
-      } catch (e) { toast('Stats failed'); }
-    });
 
-    shadow.getElementById('qa-sidebar-archive')?.addEventListener('click', async () => {
-      try {
-        const chatText = await getConversationText();
-        if (!chatText) { toast('No conversation to archive'); return; }
-        const archived = JSON.parse(localStorage.getItem('chatbridge:archived') || '[]');
-        archived.push({ url: window.location.href, ts: Date.now(), preview: chatText.slice(0, 100) });
-        localStorage.setItem('chatbridge:archived', JSON.stringify(archived));
-        toast('✅ Marked as complete');
-      } catch (e) { toast('Archive failed'); }
-    });
+        // Create inline stats panel - DARK NEON THEME
+        statsPanel = document.createElement('div');
+        statsPanel.id = 'cb-stats-panel';
+        statsPanel.style.cssText = 'margin-top:16px;padding:16px;background:rgba(6,20,32,0.6);border-radius:12px;border:1px solid rgba(230,207,159,0.15);box-shadow:0 4px 12px rgba(0,0,0,0.3);';
 
-    shadow.getElementById('qa-sidebar-star')?.addEventListener('click', async () => {
-      try {
-        const starred = JSON.parse(localStorage.getItem('chatbridge:starred') || '[]');
-        const url = window.location.href;
-        const isStarred = starred.some(s => s.url === url);
-        if (isStarred) {
-          const updated = starred.filter(s => s.url !== url);
-          localStorage.setItem('chatbridge:starred', JSON.stringify(updated));
-          toast('⭐ Unstarred');
-        } else {
-          starred.push({ url, ts: Date.now() });
-          localStorage.setItem('chatbridge:starred', JSON.stringify(starred));
-          toast('⭐ Starred!');
+        statsPanel.innerHTML = `
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+            <h4 style="margin:0;font-size:14px;font-weight:600;color:#e6cf9f;">📊 Conversation Stats</h4>
+            <button id="close-stats-panel" style="background:none;border:none;color:rgba(230,207,159,0.5);cursor:pointer;font-size:16px;padding:4px;transition:color 0.2s;" onmouseover="this.style.color='#e6cf9f'" onmouseout="this.style.color='rgba(230,207,159,0.5)'">✕</button>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div style="padding:14px;background:rgba(230,207,159,0.05);border:1px solid rgba(230,207,159,0.15);border-radius:8px;text-align:center;">
+              <div style="font-size:24px;font-weight:700;color:#e6cf9f;margin-bottom:4px;">${words.toLocaleString()}</div>
+              <div style="font-size:10px;color:rgba(230,207,159,0.6);text-transform:uppercase;letter-spacing:1px;">Words</div>
+            </div>
+            <div style="padding:14px;background:rgba(230,207,159,0.05);border:1px solid rgba(230,207,159,0.15);border-radius:8px;text-align:center;">
+              <div style="font-size:24px;font-weight:700;color:#e6cf9f;margin-bottom:4px;">${chars.toLocaleString()}</div>
+              <div style="font-size:10px;color:rgba(230,207,159,0.6);text-transform:uppercase;letter-spacing:1px;">Characters</div>
+            </div>
+            <div style="padding:14px;background:rgba(230,207,159,0.05);border:1px solid rgba(230,207,159,0.15);border-radius:8px;text-align:center;">
+              <div style="font-size:24px;font-weight:700;color:#e6cf9f;margin-bottom:4px;">~${readTime}</div>
+              <div style="font-size:10px;color:rgba(230,207,159,0.6);text-transform:uppercase;letter-spacing:1px;">Min Read</div>
+            </div>
+            <div style="padding:14px;background:rgba(230,207,159,0.05);border:1px solid rgba(230,207,159,0.15);border-radius:8px;text-align:center;">
+              <div style="font-size:24px;font-weight:700;color:#e6cf9f;margin-bottom:4px;">${convs.length}</div>
+              <div style="font-size:10px;color:rgba(230,207,159,0.6);text-transform:uppercase;letter-spacing:1px;">Saved</div>
+            </div>
+          </div>
+        `;
+
+        // Insert after quick actions row
+        const quickActionsRow = shadow.querySelector('.cb-quick-actions-row');
+        if (quickActionsRow && quickActionsRow.parentNode) {
+          quickActionsRow.parentNode.insertBefore(statsPanel, quickActionsRow.nextSibling);
         }
-      } catch (e) { toast('Star failed'); }
+
+        // Close button
+        shadow.getElementById('close-stats-panel')?.addEventListener('click', () => {
+          statsPanel.remove();
+        });
+      } catch (e) {
+        toast('Stats failed');
+        console.error('[ChatBridge] Stats error:', e);
+      }
+    });
+
+
+    shadow.getElementById('qa-sidebar-clean')?.addEventListener('click', async () => {
+      try {
+        // Check if clean panel already exists
+        let cleanPanel = shadow.getElementById('cb-clean-panel');
+        if (cleanPanel) {
+          cleanPanel.remove();
+          return; // Toggle off
+        }
+
+        // Show analyzing panel
+        cleanPanel = document.createElement('div');
+        cleanPanel.id = 'cb-clean-panel';
+        cleanPanel.style.cssText = 'margin-top:16px;padding:16px;background:var(--cb-card);border-radius:12px;border:1px solid rgba(255,255,255,0.08);';
+        cleanPanel.innerHTML = `
+          <div style="text-align:center;padding:20px;">
+            <div class="cb-spinner"></div>
+            <div style="margin-top:8px;color:var(--cb-subtext);font-size:12px;">Analyzing saved conversations...</div>
+          </div>
+        `;
+
+        // Insert after quick actions row
+        const quickActionsRow = shadow.querySelector('.cb-quick-actions-row');
+        if (quickActionsRow && quickActionsRow.parentNode) {
+          quickActionsRow.parentNode.insertBefore(cleanPanel, quickActionsRow.nextSibling);
+        }
+
+        // Run deduplication analysis (EXACT SAME AS SMART WORKSPACE)
+        const result = await deduplicateSavedConversations();
+        const stats = result.stats;
+
+        // No issues found
+        if (stats.duplicates === 0 && stats.overlaps === 0) {
+          cleanPanel.innerHTML = `
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+              <h4 style="margin:0;font-size:14px;font-weight:600;color:var(--cb-white);">🧹 Clean & Organize</h4>
+              <button id="close-clean-panel" style="background:none;border:none;color:var(--cb-subtext);cursor:pointer;font-size:16px;padding:4px;">✕</button>
+            </div>
+            <div style="text-align:center;padding:20px;">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2" style="margin-bottom:12px;"><circle cx="12" cy="12" r="10"/><polyline points="9 12 12 15 16 10"/></svg>
+              <div style="color:var(--cb-white);font-weight:600;margin-bottom:8px;">All Clean!</div>
+              <div style="color:var(--cb-subtext);font-size:11px;">No duplicate or overlapping conversations found in your ${stats.originalCount} saved chats.</div>
+            </div>
+          `;
+          shadow.getElementById('close-clean-panel')?.addEventListener('click', () => cleanPanel.remove());
+          return;
+        }
+
+        // Show issues found
+        const totalToRemove = stats.duplicates + stats.overlaps;
+        cleanPanel.innerHTML = `
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+            <h4 style="margin:0;font-size:14px;font-weight:600;color:var(--cb-white);">🧹 Clean & Organize</h4>
+            <button id="close-clean-panel" style="background:none;border:none;color:var(--cb-subtext);cursor:pointer;font-size:16px;padding:4px;">✕</button>
+          </div>
+          <div style="font-size:11px;color:var(--cb-white);margin-bottom:12px;font-weight:500;">Found issues in saved conversations:</div>
+          
+          <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px;">
+            <div style="text-align:center;padding:10px;background:rgba(255,100,100,0.1);border:1px solid rgba(255,100,100,0.3);border-radius:8px;">
+              <div style="font-size:20px;font-weight:700;color:#ff6b6b;">${stats.duplicates}</div>
+              <div style="font-size:9px;color:var(--cb-subtext);">Exact Duplicates</div>
+            </div>
+            <div style="text-align:center;padding:10px;background:rgba(255,180,100,0.1);border:1px solid rgba(255,180,100,0.3);border-radius:8px;">
+              <div style="font-size:20px;font-weight:700;color:#ffb347;">${stats.overlaps}</div>
+              <div style="font-size:9px;color:var(--cb-subtext);">Overlapping Chats</div>
+            </div>
+          </div>
+          
+          <div style="padding:10px;background:rgba(255,255,255,0.03);border-radius:8px;margin-bottom:12px;">
+            <div style="font-size:10px;color:var(--cb-subtext);line-height:1.5;">
+              <strong style="color:var(--cb-white);">This will:</strong><br>
+              • Remove ${stats.duplicates} duplicate conversations<br>
+              • Merge ${stats.overlaps} overlapping chats<br>
+              • Reduce from ${stats.originalCount} → ${stats.finalCount} saved chats
+            </div>
+          </div>
+          
+          <div style="display:flex;gap:8px;">
+            <button id="cb-clean-cancel-inline" style="flex:1;padding:8px;background:rgba(255,255,255,0.05);border:1px solid var(--cb-border);border-radius:8px;color:var(--cb-white);cursor:pointer;font-size:11px;">Cancel</button>
+            <button id="cb-clean-confirm-inline" style="flex:1;padding:8px;background:linear-gradient(135deg,rgba(255,100,100,0.2),rgba(255,150,100,0.2));border:1px solid rgba(255,100,100,0.4);border-radius:8px;color:var(--cb-white);cursor:pointer;font-size:11px;font-weight:500;">Clean Storage</button>
+          </div>
+        `;
+
+        // Close button
+        shadow.getElementById('close-clean-panel')?.addEventListener('click', () => cleanPanel.remove());
+
+        // Cancel button
+        shadow.getElementById('cb-clean-cancel-inline')?.addEventListener('click', () => cleanPanel.remove());
+
+        // Confirm button (EXACT SAME AS SMART WORKSPACE + REFRESH HISTORY/INSIGHTS)
+        shadow.getElementById('cb-clean-confirm-inline')?.addEventListener('click', async () => {
+          const confirmBtn = shadow.getElementById('cb-clean-confirm-inline');
+          if (confirmBtn) {
+            confirmBtn.disabled = true;
+            confirmBtn.textContent = 'Cleaning...';
+          }
+
+          try {
+            // Save cleaned conversations - SAME FUNCTION AS SMART WORKSPACE
+            const success = await saveCleannedConversations(result.cleaned);
+
+            if (success) {
+              // Invalidate the conversation cache to force reload
+              try {
+                if (typeof __cbConvCache !== 'undefined') {
+                  __cbConvCache.data = null;
+                  __cbConvCache.ts = 0;
+                }
+              } catch (_) { }
+
+              cleanPanel.innerHTML = `
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+                  <h4 style="margin:0;font-size:14px;font-weight:600;color:var(--cb-white);">🧹 Clean & Organize</h4>
+                  <button id="close-clean-panel-final" style="background:none;border:none;color:var(--cb-subtext);cursor:pointer;font-size:16px;padding:4px;">✕</button>
+                </div>
+                <div style="text-align:center;padding:20px;">
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2" style="margin-bottom:12px;"><circle cx="12" cy="12" r="10"/><polyline points="9 12 12 15 16 10"/></svg>
+                  <div style="color:var(--cb-white);font-weight:600;margin-bottom:8px;">Storage Cleaned!</div>
+                  <div style="color:var(--cb-subtext);font-size:11px;line-height:1.6;">
+                    Removed ${stats.duplicates} duplicates<br>
+                    Merged ${stats.overlaps} overlapping chats<br>
+                    Now: ${stats.finalCount} saved conversations
+                  </div>
+                  <div style="margin-top:12px;font-size:10px;color:var(--cb-subtext);opacity:0.7;">
+                    <span class="cb-spinner" style="display:inline-block;width:10px;height:10px;"></span> Refreshing...
+                  </div>
+                </div>
+              `;
+
+              shadow.getElementById('close-clean-panel-final')?.addEventListener('click', () => cleanPanel.remove());
+              toast(`✅ Cleaned! ${totalToRemove} conversations removed`);
+
+              // REFRESH HISTORY AND INSIGHTS (same as Smart Workspace)
+              setTimeout(async () => {
+                try {
+                  // Refresh history panel
+                  if (typeof refreshHistory === 'function') {
+                    await refreshHistory();
+                  }
+                } catch (e) { console.log('refreshHistory error:', e); }
+
+                try {
+                  // Refresh insights if it's open
+                  if (typeof renderInsightsHub === 'function') {
+                    await renderInsightsHub();
+                  }
+                } catch (e) { console.log('renderInsightsHub error:', e); }
+
+                cleanPanel.remove();
+                toast('Data refreshed!');
+              }, 1500);
+
+            } else {
+              toast('Failed to save cleaned data');
+              if (confirmBtn) {
+                confirmBtn.disabled = false;
+                confirmBtn.textContent = 'Clean Storage';
+              }
+            }
+          } catch (e) {
+            console.error('[ChatBridge] Clean failed:', e);
+            toast('Clean operation failed');
+            cleanPanel.remove();
+          }
+        });
+
+      } catch (e) {
+        toast('Clean & Organize failed');
+        console.error('[ChatBridge] Clean error:', e);
+        const panel = shadow.getElementById('cb-clean-panel');
+        if (panel) panel.remove();
+      }
+    });
+
+    shadow.getElementById('qa-sidebar-export')?.addEventListener('click', async () => {
+      try {
+        const convs = await loadConversationsAsync();
+        if (!convs || convs.length === 0) {
+          toast('No conversations to export');
+          return;
+        }
+
+        // Check if export panel already exists
+        let exportPanel = shadow.getElementById('cb-export-panel');
+        if (exportPanel) {
+          exportPanel.remove();
+          return; // Toggle off
+        }
+
+        // Create inline export panel - STEP 1: Choose what to export
+        exportPanel = document.createElement('div');
+        exportPanel.id = 'cb-export-panel';
+        exportPanel.style.cssText = 'margin-top:16px;padding:16px;background:var(--cb-card);border-radius:12px;border:1px solid rgba(255,255,255,0.08);';
+
+        exportPanel.innerHTML = `
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+            <h4 style="margin:0;font-size:14px;font-weight:600;color:var(--cb-white);">📦 Export Conversations</h4>
+            <button id="close-export-panel" style="background:none;border:none;color:var(--cb-subtext);cursor:pointer;font-size:16px;padding:4px;">✕</button>
+          </div>
+          <div style="font-size:11px;color:var(--cb-subtext);margin-bottom:12px;">Choose what to export:</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+            <button id="export-all" style="padding:10px;background:rgba(0,212,255,0.1);border:1px solid rgba(0,212,255,0.3);border-radius:8px;color:#00D4FF;cursor:pointer;font-size:11px;font-weight:500;transition:all 0.2s;">
+              📚 All (${convs.length})
+            </button>
+            <button id="export-last" style="padding:10px;background:rgba(124,58,237,0.1);border:1px solid rgba(124,58,237,0.3);border-radius:8px;color:#7C3AED;cursor:pointer;font-size:11px;font-weight:500;transition:all 0.2s;">
+              💬 Last Chat
+            </button>
+            <button id="export-ai-only" style="padding:10px;background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);border-radius:8px;color:#22c55e;cursor:pointer;font-size:11px;font-weight:500;transition:all 0.2s;">
+              🤖 AI Only
+            </button>
+            <button id="export-user-only" style="padding:10px;background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.3);border-radius:8px;color:#fbbf24;cursor:pointer;font-size:11px;font-weight:500;transition:all 0.2s;">
+              👤 User Only
+            </button>
+          </div>
+        `;
+
+        // Insert after quick actions row
+        const quickActionsRow = shadow.querySelector('.cb-quick-actions-row');
+        if (quickActionsRow && quickActionsRow.parentNode) {
+          quickActionsRow.parentNode.insertBefore(exportPanel, quickActionsRow.nextSibling);
+        }
+
+        // Close button
+        shadow.getElementById('close-export-panel')?.addEventListener('click', () => {
+          exportPanel.remove();
+        });
+
+        // Helper to show format selection
+        const showFormatSelection = (dataToExport, label) => {
+          exportPanel.innerHTML = `
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+              <h4 style="margin:0;font-size:14px;font-weight:600;color:var(--cb-white);">📦 Export ${label}</h4>
+              <button id="export-back" style="background:none;border:none;color:var(--cb-subtext);cursor:pointer;font-size:12px;padding:4px;">← Back</button>
+            </div>
+            <div style="font-size:11px;color:var(--cb-subtext);margin-bottom:12px;">Choose format:</div>
+            <div style="display:flex;gap:8px;">
+              <button id="format-json" style="flex:1;background:linear-gradient(135deg,#00D4FF,#0099CC);color:#fff;border:none;padding:10px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;">JSON</button>
+              <button id="format-md" style="flex:1;background:linear-gradient(135deg,#7C3AED,#5B21B6);color:#fff;border:none;padding:10px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;">Markdown</button>
+            </div>
+          `;
+
+          // Back button
+          shadow.getElementById('export-back')?.addEventListener('click', () => {
+            shadow.getElementById('qa-sidebar-export')?.click(); // Re-open
+          });
+
+          // JSON Export
+          shadow.getElementById('format-json')?.addEventListener('click', () => {
+            const blob = new Blob([JSON.stringify(dataToExport, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `chatbridge-${label.toLowerCase().replace(/ /g, '-')}-${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            toast(`📦 Exported as JSON`);
+            exportPanel.remove();
+          });
+
+          // Markdown Export
+          shadow.getElementById('format-md')?.addEventListener('click', () => {
+            let markdown = `# ChatBridge Export - ${label}\n\n**Date**: ${new Date().toLocaleString()}\n\n---\n\n`;
+
+            dataToExport.forEach((conv, i) => {
+              markdown += `## Conversation ${i + 1}\n\n`;
+              markdown += `**Platform**: ${conv.platform || 'Unknown'}\n`;
+              markdown += `**Timestamp**: ${conv.ts ? new Date(conv.ts).toLocaleString() : 'N/A'}\n\n`;
+
+              (conv.conversation || conv.messages || []).forEach(msg => {
+                const role = msg.role || msg.type || 'user';
+                const text = msg.text || msg.content || '';
+                markdown += `**${role.toUpperCase()}**: ${text}\n\n`;
+              });
+
+              markdown += `---\n\n`;
+            });
+
+            const blob = new Blob([markdown], { type: 'text/markdown' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `chatbridge-${label.toLowerCase().replace(/ /g, '-')}-${new Date().toISOString().split('T')[0]}.md`;
+            a.click();
+            URL.revokeObjectURL(url);
+            toast(`📝 Exported as Markdown`);
+            exportPanel.remove();
+          });
+        };
+
+        // Export All button
+        shadow.getElementById('export-all')?.addEventListener('click', () => {
+          showFormatSelection(convs, 'All Conversations');
+        });
+
+        // Export Last Chat button
+        shadow.getElementById('export-last')?.addEventListener('click', () => {
+          const lastConv = convs.length > 0 ? [convs[0]] : [];
+          showFormatSelection(lastConv, 'Last Chat');
+        });
+
+        // Export AI Only button
+        shadow.getElementById('export-ai-only')?.addEventListener('click', () => {
+          const aiOnly = convs.map(conv => ({
+            ...conv,
+            conversation: (conv.conversation || conv.messages || []).filter(msg => {
+              const role = (msg.role || msg.type || '').toLowerCase();
+              return role === 'assistant' || role === 'ai' || role === 'bot';
+            })
+          })).filter(conv => (conv.conversation || []).length > 0);
+          showFormatSelection(aiOnly, 'AI Messages Only');
+        });
+
+        // Export User Only button
+        shadow.getElementById('export-user-only')?.addEventListener('click', () => {
+          const userOnly = convs.map(conv => ({
+            ...conv,
+            conversation: (conv.conversation || conv.messages || []).filter(msg => {
+              const role = (msg.role || msg.type || '').toLowerCase();
+              return role === 'user' || role === 'human';
+            })
+          })).filter(conv => (conv.conversation || []).length > 0);
+          showFormatSelection(userOnly, 'User Messages Only');
+        });
+      } catch (e) {
+        toast('Export failed');
+        console.error('[ChatBridge] Export error:', e);
+      }
     });
 
     // Clear History button - remove all saved conversations
