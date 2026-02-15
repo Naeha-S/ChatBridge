@@ -3935,73 +3935,105 @@
     // Insert image into current AI chat
     async function insertImageToChat(imgData) {
       try {
-        console.log('[ChatBridge] Inserting image to chat:', imgData.src.substring(0, 50) + '...');
+        console.log('[ChatBridge] Uploading image to chat as file:', imgData.src.substring(0, 50) + '...');
 
-        // Try to find the input field for the current platform
+        // Try to find the file input element
+        let fileInput = null;
+
+        // Try using adapter first
         const adapter = (typeof window.pickAdapter === 'function') ? window.pickAdapter() : null;
-        let input = null;
-
-        if (adapter && typeof adapter.getInput === 'function') {
-          input = adapter.getInput();
+        if (adapter && typeof adapter.getFileInput === 'function') {
+          fileInput = adapter.getFileInput();
         }
 
-        if (!input) {
-          // Fallback: try common selectors
-          input = document.querySelector('textarea[placeholder], textarea[data-testid], div[contenteditable="true"], input[type="text"]');
-        }
-
-        if (input) {
-          // For data URLs or short URLs, try to paste directly
-          if (imgData.src.startsWith('data:image') || imgData.src.length < 500) {
-            // Insert as markdown image
-            const markdownImg = `![Image](${imgData.src})`;
-
-            if (input.tagName === 'TEXTAREA' || input.tagName === 'INPUT') {
-              const start = input.selectionStart || 0;
-              const end = input.selectionEnd || 0;
-              const text = input.value;
-              input.value = text.slice(0, start) + markdownImg + text.slice(end);
-              input.focus();
-              // Trigger input event
-              input.dispatchEvent(new Event('input', { bubbles: true }));
-            } else if (input.contentEditable === 'true') {
-              // For contenteditable divs
-              const selection = window.getSelection();
-              const range = selection.getRangeAt(0);
-              range.deleteContents();
-              range.insertNode(document.createTextNode(markdownImg));
-              input.dispatchEvent(new Event('input', { bubbles: true }));
-            }
-
-            toast('Image inserted! (Markdown format)');
-          } else {
-            // For external URLs, just insert the URL
-            const url = imgData.src;
-
-            if (input.tagName === 'TEXTAREA' || input.tagName === 'INPUT') {
-              const start = input.selectionStart || 0;
-              const end = input.selectionEnd || 0;
-              const text = input.value;
-              input.value = text.slice(0, start) + url + text.slice(end);
-              input.focus();
-              input.dispatchEvent(new Event('input', { bubbles: true }));
-            } else if (input.contentEditable === 'true') {
-              input.focus();
-              document.execCommand('insertText', false, url);
-            }
-
-            toast('Image URL inserted!');
+        // Fallback: find file input manually
+        if (!fileInput) {
+          const fileInputs = Array.from(document.querySelectorAll('input[type="file"]'));
+          for (const fi of fileInputs) {
+            try {
+              const cs = window.getComputedStyle(fi);
+              if (cs.display !== 'none' && cs.visibility !== 'hidden') {
+                fileInput = fi;
+                break;
+              }
+            } catch (e) { }
           }
+          // Use first one if no visible one found
+          if (!fileInput && fileInputs.length > 0) {
+            fileInput = fileInputs[0];
+          }
+        }
+
+        // If we found a file input, upload the image as a file
+        if (fileInput) {
+          console.log('[ChatBridge] Found file input, uploading as file...');
+
+          // Fetch the image and convert to blob
+          let blob;
+          if (imgData.src.startsWith('data:')) {
+            // Data URL - convert directly
+            const response = await fetch(imgData.src);
+            blob = await response.blob();
+          } else {
+            // External URL - use background script proxy to avoid CORS
+            const res = await new Promise((resolve) => {
+              chrome.runtime.sendMessage({ type: 'fetch_blob', url: imgData.src }, resolve);
+            });
+
+            if (!res || !res.ok) {
+              throw new Error(res?.error || 'Failed to fetch image');
+            }
+
+            const response = await fetch(res.data);
+            blob = await response.blob();
+          }
+
+          // Create a File object
+          const filename = imgData.filename || `image-${Date.now()}.${blob.type.split('/')[1] || 'png'}`;
+          const file = new File([blob], filename, { type: blob.type || 'image/png' });
+
+          // Use DataTransfer to set the file
+          const dt = new DataTransfer();
+          dt.items.add(file);
+          fileInput.files = dt.files;
+
+          // Trigger change event
+          fileInput.dispatchEvent(new Event('change', { bubbles: true }));
+
+          toast('Image uploaded as file! ✨');
+          console.log('[ChatBridge] Image uploaded successfully as:', filename);
         } else {
-          // Copy to clipboard as fallback
-          await navigator.clipboard.writeText(imgData.src);
-          toast('Image URL copied to clipboard!');
+          // No file input found - fallback to clipboard
+          console.log('[ChatBridge] No file input found, using clipboard fallback...');
+
+          let blob;
+          if (imgData.src.startsWith('data:')) {
+            const response = await fetch(imgData.src);
+            blob = await response.blob();
+          } else {
+            const res = await new Promise((resolve) => {
+              chrome.runtime.sendMessage({ type: 'fetch_blob', url: imgData.src }, resolve);
+            });
+
+            if (!res || !res.ok) {
+              throw new Error(res?.error || 'Failed to fetch image');
+            }
+
+            const response = await fetch(res.data);
+            blob = await response.blob();
+          }
+
+          const item = new ClipboardItem({ [blob.type || 'image/png']: blob });
+          await navigator.clipboard.write([item]);
+          toast('Image copied to clipboard! Press Ctrl+V to paste. 📋');
+          console.log('[ChatBridge] Image copied to clipboard');
         }
       } catch (e) {
         console.error('[ChatBridge] insertImageToChat error:', e);
         try {
+          // Final fallback - copy URL to clipboard
           await navigator.clipboard.writeText(imgData.src);
-          toast('Image URL copied to clipboard!');
+          toast('Error uploading image. URL copied to clipboard.');
         } catch (_) {
           toast('Failed to insert image');
         }
@@ -5187,7 +5219,12 @@
         keyPhrases: [],
         emails: [],
         dates: [],
-        commands: []
+        commands: [],
+        // NEW EXTRACTIONS
+        phones: [],
+        prices: [],
+        mentions: [],
+        hashtags: []
       };
 
       if (!messages || !messages.length) return extracted;
@@ -5305,6 +5342,64 @@
             });
           }
         }
+
+        // Extract phone numbers (US format and international)
+        const phoneRegex = /\b(?:\+?1[-.]?)?\(?([0-9]{3})\)?[-.]?([0-9]{3})[-.]?([0-9]{4})\b/g;
+        const phones = text.match(phoneRegex) || [];
+        phones.forEach(phone => {
+          const cleaned = phone.replace(/[^0-9+]/g, '');
+          if (!extracted.phones.some(p => p.value === cleaned)) {
+            extracted.phones.push({
+              value: phone, // Keep original formatting
+              cleaned: cleaned,
+              msgIndex: i,
+              role
+            });
+          }
+        });
+
+        // Extract prices and currency values
+        const priceRegex = /\$\d+(?:,\d{3})*(?:\.\d{2})?|\d+(?:,\d{3})*(?:\.\d{2})?\s*(?:USD|EUR|GBP|CAD|AUD|INR|CNY)/gi;
+        const prices = text.match(priceRegex) || [];
+        prices.forEach(price => {
+          if (!extracted.prices.some(p => p.value === price)) {
+            extracted.prices.push({
+              value: price,
+              msgIndex: i,
+              role
+            });
+          }
+        });
+
+        // Extract @mentions
+        const mentionRegex = /@([a-zA-Z0-9_-]+)/g;
+        const mentions = [...text.matchAll(mentionRegex)];
+        mentions.forEach(match => {
+          const mention = match[0];
+          if (!extracted.mentions.some(m => m.value === mention)) {
+            extracted.mentions.push({
+              value: mention,
+              username: match[1],
+              msgIndex: i,
+              role
+            });
+          }
+        });
+
+        // Extract #hashtags
+        const hashtagRegex = /#([a-zA-Z0-9_]+)/g;
+        const hashtags = [...text.matchAll(hashtagRegex)];
+        hashtags.forEach(match => {
+          const hashtag = match[0];
+          if (!extracted.hashtags.some(h => h.value === hashtag)) {
+            extracted.hashtags.push({
+              value: hashtag,
+              tag: match[1],
+              msgIndex: i,
+              role
+            });
+          }
+        });
 
         // Detect tables (simple markdown tables)
         const tableLines = [];
@@ -8164,6 +8259,44 @@ Output ONLY the 5 numbered questions, no other text.`;
           return card;
         }
 
+        // Global image lightbox function
+        function showImageLightbox(imageUrl) {
+          const overlay = document.createElement('div');
+          overlay.style.cssText = `
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.95); z-index: 999999;
+            display: flex; align-items: center; justify-content: center;
+            animation: fadeIn 0.2s; cursor: zoom-out;
+          `;
+
+          const img = document.createElement('img');
+          img.src = imageUrl;
+          img.style.cssText = 'max-width: 90%; max-height: 90%; border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,0.5); animation: scaleIn 0.2s;';
+
+          // Close button
+          const closeBtn = document.createElement('button');
+          closeBtn.innerHTML = '✕';
+          closeBtn.style.cssText = 'position: absolute; top: 20px; right: 20px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; font-size: 24px; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; transition: all 0.2s;';
+          closeBtn.onmouseenter = () => { closeBtn.style.background = 'rgba(255,255,255,0.2)'; };
+          closeBtn.onmouseleave = () => { closeBtn.style.background = 'rgba(255,255,255,0.1)'; };
+
+          overlay.appendChild(img);
+          overlay.appendChild(closeBtn);
+
+          const close = () => {
+            overlay.style.animation = 'fadeOut 0.2s';
+            setTimeout(() => overlay.remove(), 200);
+          };
+
+          overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+          closeBtn.addEventListener('click', close);
+          document.addEventListener('keydown', function escHandler(e) {
+            if (e.key === 'Escape') { close(); document.removeEventListener('keydown', escHandler); }
+          });
+
+          document.body.appendChild(overlay);
+        }
+
         // 1. Media Vault
         const mediaCard = createToolCard('<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00D4FF" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>', 'Media Vault', 'View images from conversation');
         mediaCard.addEventListener('click', async () => {
@@ -8176,13 +8309,51 @@ Output ONLY the 5 numbered questions, no other text.`;
           }
 
           if (allMedia.length === 0) {
-            showToolResult('<div style="text-align:center;padding:20px;color:var(--cb-subtext);">No media found in this conversation.<br><br>Scan a chat with images first.</div>', 'Media Vault');
+            showToolResult(`
+              <div style="text-align:center;padding:30px 20px;">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(0,212,255,0.3)" stroke-width="1.5" style="margin-bottom:16px;">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                  <circle cx="8.5" cy="8.5" r="1.5"/>
+                  <polyline points="21 15 16 10 5 21"/>
+                </svg>
+                <div style="color:var(--cb-white);font-weight:600;font-size:13px;margin-bottom:8px;">No Media Found</div>
+                <div style="color:var(--cb-subtext);font-size:11px;line-height:1.6;margin-bottom:16px;max-width:200px;margin-left:auto;margin-right:auto;">
+                  This conversation doesn't have any images or videos yet.
+                </div>
+                <button id="cb-media-scan-btn" style="padding:10px 20px;background:linear-gradient(135deg,rgba(0,212,255,0.2),rgba(124,58,237,0.15));border:1px solid rgba(0,212,255,0.4);border-radius:8px;color:var(--cb-white);cursor:pointer;font-size:11px;font-weight:500;transition:all 0.2s;">
+                  Scan Current Chat
+                </button>
+                <div style="margin-top:12px;font-size:10px;color:var(--cb-subtext);opacity:0.6;">
+                  💡 Tip: Media Vault shows images from scanned chats
+                </div>
+              </div>
+            `, 'Media Vault');
+
+            // Add scan button handler
+            const scanBtn = toolResultArea.querySelector('#cb-media-scan-btn');
+            if (scanBtn) {
+              scanBtn.addEventListener('click', async () => {
+                scanBtn.textContent = 'Scanning...';
+                scanBtn.disabled = true;
+                const msgs = await scanChat();
+                // Retry the media vault logic
+                mediaCard.click();
+              });
+            }
             return;
           }
 
-          const imageGrid = allMedia.filter(m => m.type === 'image').map(img =>
-            `<div style="border-radius:6px;overflow:hidden;background:var(--cb-bg);border:1px solid var(--cb-border);">
-              <img src="${img.url}" alt="" style="width:100%;height:80px;object-fit:cover;cursor:pointer;" onclick="window.open('${img.url}', '_blank')">
+          const imageGrid = allMedia.filter(m => m.type === 'image').map((img, idx) =>
+            `<div style="position:relative;border-radius:6px;overflow:hidden;background:var(--cb-bg);border:1px solid var(--cb-border);group;" class="cb-media-item" data-img-url="${img.url}" data-img-name="${img.name || 'image'}" data-img-idx="${idx}">
+              <img src="${img.url}" alt="" style="width:100%;height:80px;object-fit:cover;cursor:pointer;" class="cb-lightbox-trigger">
+              <div class="cb-media-actions" style="position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0);display:flex;align-items:center;justify-content:center;gap:4px;opacity:0;transition:all 0.2s;pointer-events:none;">
+                <button class="cb-media-download" style="padding:6px 8px;background:rgba(96,165,250,0.9);border:none;border-radius:4px;color:white;font-size:9px;cursor:pointer;pointer-events:all;" title="Download">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                </button>
+                <button class="cb-media-insert" style="padding:6px 8px;background:rgba(52,211,153,0.9);border:none;border-radius:4px;color:white;font-size:9px;cursor:pointer;pointer-events:all;" title="Insert to Chat">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                </button>
+              </div>
               <div style="padding:4px;font-size:9px;color:var(--cb-subtext);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${img.name || 'image'}</div>
             </div>`
           ).join('');
@@ -8192,6 +8363,90 @@ Output ONLY the 5 numbered questions, no other text.`;
             <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">${imageGrid}</div>
             <button id="cb-media-copy-urls" style="margin-top:12px;width:100%;padding:8px;background:rgba(0,180,255,0.2);border:1px solid rgba(0,180,255,0.4);border-radius:6px;color:var(--cb-white);cursor:pointer;">Copy All URLs</button>
           `, 'Media Vault');
+
+          // Add hover effects and action button handlers
+          toolResultArea.querySelectorAll('.cb-media-item').forEach(item => {
+            const actionsDiv = item.querySelector('.cb-media-actions');
+            const lightboxTrigger = item.querySelector('.cb-lightbox-trigger');
+            const downloadBtn = item.querySelector('.cb-media-download');
+            const insertBtn = item.querySelector('.cb-media-insert');
+
+            // Hover effect - show action buttons
+            item.addEventListener('mouseenter', () => {
+              actionsDiv.style.background = 'rgba(0,0,0,0.7)';
+              actionsDiv.style.opacity = '1';
+            });
+            item.addEventListener('mouseleave', () => {
+              actionsDiv.style.background = 'rgba(0,0,0,0)';
+              actionsDiv.style.opacity = '0';
+            });
+
+            // Lightbox on image click (only if not clicking buttons)
+            lightboxTrigger.addEventListener('click', (e) => {
+              // Don't open lightbox if clicking action buttons
+              if (e.target.closest('.cb-media-actions')) return;
+              showImageLightbox(item.dataset.imgUrl);
+            });
+
+            // Download button
+            if (downloadBtn) {
+              downloadBtn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const url = item.dataset.imgUrl;
+                const name = item.dataset.imgName;
+                try {
+                  const response = await fetch(url);
+                  const blob = await response.blob();
+                  const downloadUrl = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = downloadUrl;
+                  a.download = name || 'image.jpg';
+                  a.click();
+                  URL.revokeObjectURL(downloadUrl);
+                  toast('Downloading image...');
+                } catch (err) {
+                  console.error('Download failed:', err);
+                  toast('Download failed');
+                }
+              });
+            }
+
+            // Insert to chat button
+            if (insertBtn) {
+              insertBtn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const url = item.dataset.imgUrl;
+
+                // Try to find chat input
+                const adapter = pickAdapter ? pickAdapter() : null;
+                let input = adapter && adapter.getInput ? adapter.getInput() : null;
+
+                if (!input) {
+                  input = document.querySelector('textarea, [contenteditable="true"], [role="textbox"]');
+                }
+
+                if (input) {
+                  // Insert image URL
+                  const imageMarkdown = `![image](${url})`;
+                  if (input.isContentEditable || input.contentEditable === 'true') {
+                    input.focus();
+                    const current = input.textContent || input.innerHTML || '';
+                    input.innerHTML = current + (current ? '\n\n' : '') + imageMarkdown;
+                    input.dispatchEvent(new InputEvent('input', { bubbles: true }));
+                  } else {
+                    input.focus();
+                    input.value = (input.value || '') + (input.value ? '\n\n' : '') + imageMarkdown;
+                    input.dispatchEvent(new Event('input', { bubbles: true }));
+                  }
+                  toast('Image URL inserted!');
+                } else {
+                  // Fallback: copy URL
+                  await navigator.clipboard.writeText(url);
+                  toast('No input found - URL copied to clipboard');
+                }
+              });
+            }
+          });
 
           const copyBtn = toolResultArea.querySelector('#cb-media-copy-urls');
           if (copyBtn) {
@@ -8209,7 +8464,36 @@ Output ONLY the 5 numbered questions, no other text.`;
         mergeCard.addEventListener('click', async () => {
           const saved = await loadConversationsAsync();
           if (!saved || saved.length === 0) {
-            showToolResult('<div style="text-align:center;padding:20px;color:var(--cb-subtext);">No saved conversations to merge.<br><br>Scan and save some chats first.</div>', 'Merge Chats');
+            showToolResult(`
+              <div style="text-align:center;padding:30px 20px;">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(0,212,255,0.3)" stroke-width="1.5" style="margin-bottom:16px;">
+                  <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                  <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                </svg>
+                <div style="color:var(--cb-white);font-weight:600;font-size:13px;margin-bottom:8px;">No Saved Conversations</div>
+                <div style="color:var(--cb-subtext);font-size:11px;line-height:1.6;margin-bottom:16px;max-width:220px;margin-left:auto;margin-right:auto;">
+                  Save some conversations first, then return here to merge them together.
+                </div>
+                <button id="cb-merge-goto-history" style="padding:10px 20px;background:linear-gradient(135deg,rgba(0,212,255,0.2),rgba(124,58,237,0.15));border:1px solid rgba(0,212,255,0.4);border-radius:8px;color:var(--cb-white);cursor:pointer;font-size:11px;font-weight:500;transition:all 0.2s;">
+                  View History Tab
+                </button>
+                <div style="margin-top:12px;font-size:10px;color:var(--cb-subtext);opacity:0.6;">
+                  💡 Tip: Scan chats and save them to merge later
+                </div>
+              </div>
+            `, 'Merge Chats');
+
+            // Add history button handler
+            const historyBtn = toolResultArea.querySelector('#cb-merge-goto-history');
+            if (historyBtn) {
+              historyBtn.addEventListener('click', () => {
+                toolResultArea.style.display = 'none';
+                // Trigger history view (find and click history button)
+                const histBtn = document.querySelector('[aria-label="View saved conversations"]') || document.querySelector('button:has([d*="M12 2"])');
+                if (histBtn) histBtn.click();
+                else toast('Find the History tab in the sidebar');
+              });
+            }
             return;
           }
 
@@ -8473,8 +8757,20 @@ Output ONLY the 5 numbered questions, no other text.`;
         // 5. Extract Content - REDESIGNED PREMIUM UI
         const extractCard = createToolCard('<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00D4FF" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>', 'Extract Content', 'URLs, numbers, code, lists');
         extractCard.addEventListener('click', async () => {
-          // Get extracted content from last scan or extract now
-          let extracted = window.ChatBridge?._extractedContent || window.ChatBridge?._lastScanData?.extracted;
+          // PERFORMANCE CACHING - Check if we can use cached extraction
+          let extracted = null;
+          const currentMsgs = window.ChatBridge?._lastScanData?.messages;
+          const cacheKey = currentMsgs ? JSON.stringify(currentMsgs.slice(0, 5).map(m => m.text?.substring(0, 50))).substring(0, 100) : null;
+          const cachedData = window.ChatBridge?._extractCache;
+
+          // Use cache if available and matches current conversation
+          if (cachedData && cachedData.cacheKey === cacheKey && cachedData.extracted) {
+            console.log('[ChatBridge] Using cached extraction');
+            extracted = cachedData.extracted;
+          } else {
+            // Get extracted content from last scan or extract now
+            extracted = window.ChatBridge?._extractedContent || window.ChatBridge?._lastScanData?.extracted;
+          }
 
           if (!extracted || Object.values(extracted).every(arr => !arr || arr.length === 0)) {
             // Need to scan first
@@ -8485,6 +8781,12 @@ Output ONLY the 5 numbered questions, no other text.`;
               return;
             }
             extracted = window.ChatBridge?._extractedContent || {};
+
+            // Cache the extraction for next time
+            if (cacheKey && extracted) {
+              window.ChatBridge._extractCache = { cacheKey, extracted, ts: Date.now() };
+              console.log('[ChatBridge] Cached extraction results');
+            }
           }
 
           // Define all categories with colors (no emoji icons - text only)
@@ -8496,7 +8798,12 @@ Output ONLY the 5 numbered questions, no other text.`;
             commands: { label: 'Commands', color: '#ec4899', gradient: 'linear-gradient(135deg, rgba(236,72,153,0.15), rgba(219,39,119,0.08))' },
             emails: { label: 'Emails', color: '#06b6d4', gradient: 'linear-gradient(135deg, rgba(6,182,212,0.15), rgba(8,145,178,0.08))' },
             dates: { label: 'Dates', color: '#f472b6', gradient: 'linear-gradient(135deg, rgba(244,114,182,0.15), rgba(236,72,153,0.08))' },
-            tables: { label: 'Tables', color: '#8b5cf6', gradient: 'linear-gradient(135deg, rgba(139,92,246,0.15), rgba(124,58,237,0.08))' }
+            tables: { label: 'Tables', color: '#8b5cf6', gradient: 'linear-gradient(135deg, rgba(139,92,246,0.15), rgba(124,58,237,0.08))' },
+            // NEW CATEGORIES
+            phones: { label: 'Phone Numbers', color: '#10b981', gradient: 'linear-gradient(135deg, rgba(16,185,129,0.15), rgba(5,150,105,0.08))' },
+            prices: { label: 'Prices', color: '#fbbf24', gradient: 'linear-gradient(135deg, rgba(251,191,36,0.15), rgba(245,158,11,0.08))' },
+            mentions: { label: '@Mentions', color: '#3b82f6', gradient: 'linear-gradient(135deg, rgba(59,130,246,0.15), rgba(37,99,235,0.08))' },
+            hashtags: { label: '#Hashtags', color: '#14b8a6', gradient: 'linear-gradient(135deg, rgba(20,184,166,0.15), rgba(13,148,136,0.08))' }
           };
 
           // Build categories with counts
@@ -8534,7 +8841,12 @@ Output ONLY the 5 numbered questions, no other text.`;
             <div style="margin-bottom:12px;">
               <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
                 <span style="font-size:11px;color:var(--cb-subtext);">Found <span style="color:var(--cb-white);font-weight:600;">${totalItems}</span> items</span>
-                <span id="cb-extract-copy-all" style="font-size:10px;color:#60a5fa;cursor:pointer;padding:4px 8px;background:rgba(96,165,250,0.1);border-radius:6px;">Copy All</span>
+                <div style="display:flex;gap:4px;">
+                  <span id="cb-extract-copy-all" style="font-size:10px;color:#60a5fa;cursor:pointer;padding:4px 8px;background:rgba(96,165,250,0.1);border-radius:6px;border:1px solid rgba(96,165,250,0.2);" onmouseenter="this.style.background='rgba(96,165,250,0.2)'" onmouseleave="this.style.background='rgba(96,165,250,0.1)'">Copy All</span>
+                  <span id="cb-extract-export-md" style="font-size:10px;color:#a78bfa;cursor:pointer;padding:4px 8px;background:rgba(167,139,250,0.1);border-radius:6px;border:1px solid rgba(167,139,250,0.2);" onmouseenter="this.style.background='rgba(167,139,250,0.2)'" onmouseleave="this.style.background='rgba(167,139,250,0.1)'">MD</span>
+                  <span id="cb-extract-export-csv" style="font-size:10px;color:#34d399;cursor:pointer;padding:4px 8px;background:rgba(52,211,153,0.1);border-radius:6px;border:1px solid rgba(52,211,153,0.2);" onmouseenter="this.style.background='rgba(52,211,153,0.2)'" onmouseleave="this.style.background='rgba(52,211,153,0.1)'">CSV</span>
+                  <span id="cb-extract-open-urls" style="font-size:10px;color:#f59e0b;cursor:pointer;padding:4px 8px;background:rgba(245,158,11,0.1);border-radius:6px;border:1px solid rgba(245,158,11,0.2);" onmouseenter="this.style.background='rgba(245,158,11,0.2)'" onmouseleave="this.style.background='rgba(245,158,11,0.1)'">URLs</span>
+                </div>
               </div>
               <div style="display:flex;flex-wrap:wrap;gap:6px;">${categoryPillsHTML}</div>
             </div>
@@ -8621,14 +8933,51 @@ Output ONLY the 5 numbered questions, no other text.`;
                 content = `
                   <div>
                     <div style="font-size:10px;color:${config.color};font-weight:500;margin-bottom:4px;">${item.rows} rows</div>
-                    <div style="font-size:9px;color:var(--cb-subtext);background:rgba(0,0,0,0.2);padding:6px;border-radius:4px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">${item.preview || 'Table data'}</div>
+                    <pre style="font-size:9px;color:var(--cb-subtext);background:rgba(0,0,0,0.25);padding:5px;border-radius:5px;margin:0;overflow:auto;max-height:60px;font-family:ui-monospace,monospace;">${(item.content || '').substring(0, 200)}</pre>
                   </div>`;
-                copyValue = item.content || '';
+                copyValue = item.content;
+                extraStyles = 'flex-direction:column;align-items:flex-start;';
+              } else if (key === 'phones') {
+                content = `
+                  <div style="display:flex;align-items:center;gap:6px;">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="${config.color}" stroke-width="2" style="flex-shrink:0;"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                    <span style="color:${config.color};font-size:11px;font-family:ui-monospace,monospace;">${item.value}</span>
+                  </div>`;
+                copyValue = item.value;
+              } else if (key === 'prices') {
+                content = `
+                  <div style="display:flex;align-items:center;gap:6px;">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="${config.color}" stroke-width="2" style="flex-shrink:0;"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                    <span style="color:${config.color};font-size:11px;font-weight:600;">${item.value}</span>
+                  </div>`;
+                copyValue = item.value;
+              } else if (key === 'mentions') {
+                content = `
+                  <div style="display:flex;align-items:center;gap:6px;">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="${config.color}" stroke-width="2" style="flex-shrink:0;"><circle cx="12" cy="12" r="4"/><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-3.92 7.94"/></svg>
+                    <span style="color:${config.color};font-size:11px;font-weight:500;">${item.value}</span>
+                  </div>`;
+                copyValue = item.value;
+              } else if (key === 'hashtags') {
+                content = `
+                  <div style="display:flex;align-items:center;gap:6px;">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="${config.color}" stroke-width="2" style="flex-shrink:0;"><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/><line x1="10" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="14" y2="21"/></svg>
+                    <span style="color:${config.color};font-size:11px;font-weight:500;">${item.value}</span>
+                  </div>`;
+                copyValue = item.value;
+              } else {
+                content = `
+                  <div style="font-size:11px;color:${config.color};">${item.value || item.content || item.text || 'N/A'}</div>
+                  <div style="font-size:10px;color:var(--cb-subtext);">${item.context || ''}</div>`;
+                copyValue = item.value || item.content || item.text || '';
               }
 
               html += `
-                <div class="cb-extract-item" data-copy="${encodeURIComponent(copyValue)}" style="padding:10px 12px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:8px;margin-bottom:8px;cursor:pointer;transition:all 0.15s;${extraStyles}" onmouseenter="this.style.background='rgba(255,255,255,0.05)';this.style.borderColor='${config.color}35'" onmouseleave="this.style.background='rgba(255,255,255,0.02)';this.style.borderColor='rgba(255,255,255,0.06)'">
-                  ${content}
+                <div class="cb-extract-item" data-copy="${encodeURIComponent(copyValue)}" style="padding:10px 12px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:8px;margin-bottom:8px;transition:all 0.15s;${extraStyles};display:flex;align-items:center;gap:8px;" onmouseenter="this.style.background='rgba(255,255,255,0.05)';this.style.borderColor='${config.color}35'" onmouseleave="this.style.background='rgba(255,255,255,0.02)';this.style.borderColor='rgba(255,255,255,0.06)'">
+                  <div style="flex:1;cursor:pointer;">${content}</div>
+                  <button class="cb-extract-insert" style="padding:4px 8px;background:rgba(52,211,153,0.15);border:1px solid rgba(52,211,153,0.3);border-radius:5px;color:#34d399;font-size:9px;cursor:pointer;white-space:nowrap;transition:all 0.15s;" onmouseenter="this.style.background='rgba(52,211,153,0.25)'" onmouseleave="this.style.background='rgba(52,211,153,0.15)'">
+                    Insert
+                  </button>
                 </div>`;
             });
 
@@ -8638,14 +8987,51 @@ Output ONLY the 5 numbered questions, no other text.`;
                 <div style="font-size:11px;">No items in this category</div>
               </div>`;
 
-            // Add click handlers
+            // Add click handlers - Copy on item click, Insert on button click
             itemsContainer.querySelectorAll('.cb-extract-item').forEach(el => {
-              el.addEventListener('click', async () => {
-                const val = decodeURIComponent(el.dataset.copy);
+              const itemDiv = el.querySelector('div[style*="flex:1"]');
+              const insertBtn = el.querySelector('.cb-extract-insert');
+              const val = decodeURIComponent(el.dataset.copy);
+
+              // Copy on item content click
+              itemDiv.addEventListener('click', async () => {
                 await navigator.clipboard.writeText(val);
-                el.style.background = 'rgba(52,211,153,0.15)';
+                el.style.background = 'rgba(96,165,250,0.15)';
                 setTimeout(() => el.style.background = 'rgba(255,255,255,0.02)', 300);
                 toast('Copied!');
+              });
+
+              // Insert on button click
+              insertBtn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+
+                // Try to find chat input
+                const adapter = pickAdapter ? pickAdapter() : null;
+                let input = adapter && adapter.getInput ? adapter.getInput() : null;
+
+                if (!input) {
+                  input = document.querySelector('textarea, [contenteditable="true"], [role="textbox"]');
+                }
+
+                if (input) {
+                  if (input.isContentEditable || input.contentEditable === 'true') {
+                    input.focus();
+                    const current = input.textContent || input.innerHTML || '';
+                    input.innerHTML = current + (current ? '\n' : '') + val;
+                    input.dispatchEvent(new InputEvent('input', { bubbles: true }));
+                  } else {
+                    input.focus();
+                    input.value = (input.value || '') + (input.value ? '\n' : '') + val;
+                    input.dispatchEvent(new Event('input', { bubbles: true }));
+                  }
+                  el.style.background = 'rgba(52,211,153,0.15)';
+                  setTimeout(() => el.style.background = 'rgba(255,255,255,0.02)', 300);
+                  toast('Inserted to chat!');
+                } else {
+                  // Fallback: copy
+                  await navigator.clipboard.writeText(val);
+                  toast('No input found - copied instead');
+                }
               });
             });
           };
@@ -8686,6 +9072,83 @@ Output ONLY the 5 numbered questions, no other text.`;
               });
               await navigator.clipboard.writeText(allText.trim());
               toast('All content copied!');
+            });
+          }
+
+          // Export as Markdown handler
+          const exportMdBtn = toolResultArea.querySelector('#cb-extract-export-md');
+          if (exportMdBtn) {
+            exportMdBtn.addEventListener('click', async () => {
+              let mdContent = '# Extracted Content\n\n';
+              categories.forEach(c => {
+                const items = extracted[c.key] || [];
+                if (items.length > 0) {
+                  mdContent += `## ${c.label} (${items.length})\n\n`;
+                  items.forEach(item => {
+                    if (c.key === 'urls') mdContent += `- [${item.domain || 'Link'}](${item.value})\n`;
+                    else if (c.key === 'lists') mdContent += item.items.map((li, i) => `${i + 1}. ${li}`).join('\n') + '\n\n';
+                    else if (c.key === 'codeBlocks') mdContent += '```' + (item.language || '') + '\n' + item.code + '\n```\n\n';
+                    else mdContent += `- ${item.value || item.context || ''}\n`;
+                  });
+                  mdContent += '\n';
+                }
+              });
+
+              const blob = new Blob([mdContent], { type: 'text/markdown' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `extracted-content-${new Date().toISOString().slice(0, 10)}.md`;
+              a.click();
+              URL.revokeObjectURL(url);
+              toast('Exported as Markdown!');
+            });
+          }
+
+          // Export as CSV handler
+          const exportCsvBtn = toolResultArea.querySelector('#cb-extract-export-csv');
+          if (exportCsvBtn) {
+            exportCsvBtn.addEventListener('click', async () => {
+              let csvContent = 'Category,Value,Type,Context\n';
+              categories.forEach(c => {
+                const items = extracted[c.key] || [];
+                items.forEach(item => {
+                  const value = (item.value || item.code || '').replace(/"/g, '""').replace(/\n/g, ' ');
+                  const context = (item.context || item.language || item.domain || '').replace(/"/g, '""');
+                  csvContent += `"${c.label}","${value}","${c.key}","${context}"\n`;
+                });
+              });
+
+              const blob = new Blob([csvContent], { type: 'text/csv' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `extracted-content-${new Date().toISOString().slice(0, 10)}.csv`;
+              a.click();
+              URL.revokeObjectURL(url);
+              toast('Exported as CSV!');
+            });
+          }
+
+          // Open All URLs handler
+          const openUrlsBtn = toolResultArea.querySelector('#cb-extract-open-urls');
+          if (openUrlsBtn) {
+            openUrlsBtn.addEventListener('click', async () => {
+              const urls = extracted.urls || [];
+              if (urls.length === 0) {
+                toast('No URLs found');
+                return;
+              }
+
+              if (urls.length > 10) {
+                const confirmed = confirm(`This will open ${urls.length} tabs. Continue?`);
+                if (!confirmed) return;
+              }
+
+              urls.forEach(item => {
+                window.open(item.value, '_blank');
+              });
+              toast(`Opened ${urls.length} URLs!`);
             });
           }
 

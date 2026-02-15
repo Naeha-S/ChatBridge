@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "ChatBridge",
-  "version": "0.2.0",
+  "version": "1.0.0",
   "description": "Manually scan your visible AI chat session and paste it into another AI chat. Local-only by default.",
   "permissions": [
     "storage",
