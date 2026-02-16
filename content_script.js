@@ -8177,25 +8177,30 @@ Output ONLY the 5 numbered questions, no other text.`;
         const totalConvs = convs.length;
         const totalMsgs = convs.reduce((sum, c) => sum + (c.conversation?.length || c.messages?.length || 0), 0);
         const platforms = [...new Set(convs.map(c => c.platform || 'Unknown'))];
-
+        const storedMedia = await getImageVault();
+        const totalImages = storedMedia.length;
         const statsSection = document.createElement('div');
-        statsSection.style.cssText = 'display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:0 8px;margin-bottom:18px;';
+        statsSection.style.cssText = 'display:grid;grid-template-columns:repeat(5,1fr);gap:8px;padding:0 8px;margin-bottom:18px;';
         statsSection.innerHTML = `
-          <div style="background:linear-gradient(135deg, rgba(0,212,255,0.06), rgba(124,58,237,0.04));border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:14px 10px;text-align:center;transition:all 0.25s;">
-            <div style="font-size:22px;font-weight:700;color:var(--cb-white);background:linear-gradient(135deg, #00D4FF, #7C3AED);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">${totalConvs}</div>
-            <div style="font-size:9px;color:var(--cb-subtext);text-transform:uppercase;letter-spacing:0.5px;margin-top:4px;">Chats</div>
+          <div style="background:linear-gradient(135deg, rgba(0,212,255,0.06), rgba(124,58,237,0.04));border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px 8px;text-align:center;transition:all 0.25s;">
+            <div style="font-size:20px;font-weight:700;color:var(--cb-white);background:linear-gradient(135deg, #00D4FF, #7C3AED);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">${totalConvs}</div>
+            <div style="font-size:8px;color:var(--cb-subtext);text-transform:uppercase;letter-spacing:0.5px;margin-top:4px;">Chats</div>
           </div>
-          <div style="background:linear-gradient(135deg, rgba(0,212,255,0.06), rgba(124,58,237,0.04));border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:14px 10px;text-align:center;transition:all 0.25s;">
-            <div style="font-size:22px;font-weight:700;color:var(--cb-white);background:linear-gradient(135deg, #00D4FF, #7C3AED);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">${totalMsgs}</div>
-            <div style="font-size:9px;color:var(--cb-subtext);text-transform:uppercase;letter-spacing:0.5px;margin-top:4px;">Messages</div>
+          <div style="background:linear-gradient(135deg, rgba(0,212,255,0.06), rgba(124,58,237,0.04));border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px 8px;text-align:center;transition:all 0.25s;">
+            <div style="font-size:20px;font-weight:700;color:var(--cb-white);background:linear-gradient(135deg, #00D4FF, #7C3AED);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">${totalMsgs}</div>
+            <div style="font-size:8px;color:var(--cb-subtext);text-transform:uppercase;letter-spacing:0.5px;margin-top:4px;">Messages</div>
           </div>
-          <div style="background:linear-gradient(135deg, rgba(0,212,255,0.06), rgba(124,58,237,0.04));border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:14px 10px;text-align:center;transition:all 0.25s;">
-            <div style="font-size:22px;font-weight:700;color:var(--cb-white);background:linear-gradient(135deg, #00D4FF, #7C3AED);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">${platforms.length}</div>
-            <div style="font-size:9px;color:var(--cb-subtext);text-transform:uppercase;letter-spacing:0.5px;margin-top:4px;">Platforms</div>
+          <div style="background:linear-gradient(135deg, rgba(0,212,255,0.06), rgba(124,58,237,0.04));border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px 8px;text-align:center;transition:all 0.25s;">
+            <div style="font-size:20px;font-weight:700;color:var(--cb-white);background:linear-gradient(135deg, #34d399, #10b981);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">${totalImages}</div>
+            <div style="font-size:8px;color:var(--cb-subtext);text-transform:uppercase;letter-spacing:0.5px;margin-top:4px;">Images</div>
           </div>
-          <div style="background:linear-gradient(135deg, rgba(0,212,255,0.06), rgba(124,58,237,0.04));border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:14px 10px;text-align:center;transition:all 0.25s;">
-            <div style="font-size:22px;font-weight:700;color:var(--cb-white);background:linear-gradient(135deg, #00D4FF, #7C3AED);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">${Math.round(totalMsgs / Math.max(1, totalConvs))}</div>
-            <div style="font-size:9px;color:var(--cb-subtext);text-transform:uppercase;letter-spacing:0.5px;margin-top:4px;">Avg/Chat</div>
+          <div style="background:linear-gradient(135deg, rgba(0,212,255,0.06), rgba(124,58,237,0.04));border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px 8px;text-align:center;transition:all 0.25s;">
+            <div style="font-size:20px;font-weight:700;color:var(--cb-white);background:linear-gradient(135deg, #00D4FF, #7C3AED);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">${platforms.length}</div>
+            <div style="font-size:8px;color:var(--cb-subtext);text-transform:uppercase;letter-spacing:0.5px;margin-top:4px;">Platforms</div>
+          </div>
+          <div style="background:linear-gradient(135deg, rgba(0,212,255,0.06), rgba(124,58,237,0.04));border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px 8px;text-align:center;transition:all 0.25s;">
+            <div style="font-size:20px;font-weight:700;color:var(--cb-white);background:linear-gradient(135deg, #00D4FF, #7C3AED);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">${Math.round(totalMsgs / Math.max(1, totalConvs))}</div>
+            <div style="font-size:8px;color:var(--cb-subtext);text-transform:uppercase;letter-spacing:0.5px;margin-top:4px;">Avg/Chat</div>
           </div>
         `;
         insightsContent.appendChild(statsSection);
@@ -8204,7 +8209,7 @@ Output ONLY the 5 numbered questions, no other text.`;
         const toolsHeader = document.createElement('div');
         toolsHeader.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:0 8px;margin-bottom:12px;';
         toolsHeader.innerHTML = `
-          <div style="font-size:11px;font-weight:600;color:var(--cb-white);display:flex;align-items:center;gap:6px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="url(#toolsGrad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/><defs><linearGradient id="toolsGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00D4FF"/><stop offset="100%" stop-color="#7C3AED"/></linearGradient></defs></svg>Workspace Tools</div>
+          <div style="font-size:13px;font-weight:600;color:var(--cb-white);display:flex;align-items:center;gap:6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="url(#toolsGrad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/><defs><linearGradient id="toolsGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00D4FF"/><stop offset="100%" stop-color="#7C3AED"/></linearGradient></defs></svg>Workspace Tools</div>
           <button id="cb-insights-refresh" style="background:linear-gradient(135deg, rgba(0,212,255,0.1), rgba(124,58,237,0.08));border:1px solid rgba(0,212,255,0.2);border-radius:8px;padding:6px 12px;font-size:10px;color:var(--cb-white);cursor:pointer;display:flex;align-items:center;gap:4px;transition:all 0.2s;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>Refresh</button>
         `;
         insightsContent.appendChild(toolsHeader);
@@ -8320,15 +8325,10 @@ Output ONLY the 5 numbered questions, no other text.`;
         }
 
         // 1. Media Vault
-        const mediaCard = createToolCard('<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00D4FF" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>', 'Media Vault', 'View images from conversation');
+        const mediaCard = createToolCard('<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00D4FF" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>', 'Media Vault', 'All scanned images');
         mediaCard.addEventListener('click', async () => {
-          const msgs = await scanChat();
-          const allMedia = [];
-          for (const msg of (msgs || [])) {
-            if (msg.attachments && msg.attachments.length > 0) {
-              allMedia.push(...msg.attachments.filter(a => a.type === 'image' || a.type === 'video'));
-            }
-          }
+          // Load all stored media from vault
+          const allMedia = await getImageVault();
 
           if (allMedia.length === 0) {
             showToolResult(`
@@ -8340,13 +8340,13 @@ Output ONLY the 5 numbered questions, no other text.`;
                 </svg>
                 <div style="color:var(--cb-white);font-weight:600;font-size:13px;margin-bottom:8px;">No Media Found</div>
                 <div style="color:var(--cb-subtext);font-size:11px;line-height:1.6;margin-bottom:16px;max-width:200px;margin-left:auto;margin-right:auto;">
-                  This conversation doesn't have any images or videos yet.
+                  Scan chats to collect images in your Media Vault.
                 </div>
                 <button id="cb-media-scan-btn" style="padding:10px 20px;background:linear-gradient(135deg,rgba(0,212,255,0.2),rgba(124,58,237,0.15));border:1px solid rgba(0,212,255,0.4);border-radius:8px;color:var(--cb-white);cursor:pointer;font-size:11px;font-weight:500;transition:all 0.2s;">
                   Scan Current Chat
                 </button>
                 <div style="margin-top:12px;font-size:10px;color:var(--cb-subtext);opacity:0.6;">
-                  💡 Tip: Media Vault shows images from scanned chats
+                  💡 Tip: Images are saved across all scanned chats
                 </div>
               </div>
             `, 'Media Vault');
@@ -8357,7 +8357,7 @@ Output ONLY the 5 numbered questions, no other text.`;
               scanBtn.addEventListener('click', async () => {
                 scanBtn.textContent = 'Scanning...';
                 scanBtn.disabled = true;
-                const msgs = await scanChat();
+                await scanChat();
                 // Retry the media vault logic
                 mediaCard.click();
               });
@@ -8365,26 +8365,92 @@ Output ONLY the 5 numbered questions, no other text.`;
             return;
           }
 
-          const imageGrid = allMedia.filter(m => m.type === 'image').map((img, idx) =>
-            `<div style="position:relative;border-radius:6px;overflow:hidden;background:var(--cb-bg);border:1px solid var(--cb-border);group;" class="cb-media-item" data-img-url="${img.url}" data-img-name="${img.name || 'image'}" data-img-idx="${idx}">
-              <img src="${img.url}" alt="" style="width:100%;height:80px;object-fit:cover;cursor:pointer;" class="cb-lightbox-trigger">
+          // Filter to images only
+          const images = allMedia.filter(m => m.src && !m.src.includes('video'));
+
+          if (images.length === 0) {
+            showToolResult(`
+              <div style="text-align:center;padding:30px 20px;">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(0,212,255,0.3)" stroke-width="1.5" style="margin-bottom:16px;">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                  <circle cx="8.5" cy="8.5" r="1.5"/>
+                  <polyline points="21 15 16 10 5 21"/>
+                </svg>
+                <div style="color:var(--cb-white);font-weight:600;font-size:13px;margin-bottom:8px;">No Images Found</div>
+                <div style="color:var(--cb-subtext);font-size:11px;line-height:1.6;margin-bottom:16px;max-width:200px;margin-left:auto;margin-right:auto;">
+                  Scan chats to collect images in your Media Vault.
+                </div>
+              </div>
+            `, 'Media Vault');
+            return;
+          }
+
+          const imageGrid = images.map((img, idx) =>
+            `<div style="position:relative;border-radius:6px;overflow:hidden;background:var(--cb-bg);border:1px solid var(--cb-border);group;" class="cb-media-item" data-img-url="${img.src}" data-img-name="image_${idx + 1}.jpg" data-img-idx="${idx}">
+              <img src="${img.src}" alt="" style="width:100%;height:80px;object-fit:cover;cursor:pointer;" class="cb-lightbox-trigger">
               <div class="cb-media-actions" style="position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0);display:flex;align-items:center;justify-content:center;gap:4px;opacity:0;transition:all 0.2s;pointer-events:none;">
                 <button class="cb-media-download" style="padding:6px 8px;background:rgba(96,165,250,0.9);border:none;border-radius:4px;color:white;font-size:9px;cursor:pointer;pointer-events:all;" title="Download">
                   <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                 </button>
-                <button class="cb-media-insert" style="padding:6px 8px;background:rgba(52,211,153,0.9);border:none;border-radius:4px;color:white;font-size:9px;cursor:pointer;pointer-events:all;" title="Insert to Chat">
+                <button class="cb-media-insert" style="padding:6px 8px;background:rgba(52,211,153,0.9);border:none;border-radius:4px;color:white;font-size:9px;cursor:pointer;pointer-events:all;" title="Download & Attach">
                   <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
                 </button>
               </div>
-              <div style="padding:4px;font-size:9px;color:var(--cb-subtext);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${img.name || 'image'}</div>
             </div>`
           ).join('');
 
           showToolResult(`
-            <div style="margin-bottom:10px;font-size:12px;color:var(--cb-subtext);">${allMedia.length} media items found</div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+              <div style="font-size:12px;color:var(--cb-subtext);">${images.length} images</div>
+              <button id="cb-media-clean" style="padding:6px 12px;background:linear-gradient(135deg,rgba(251,191,36,0.2),rgba(245,158,11,0.15));border:1px solid rgba(251,191,36,0.4);border-radius:6px;color:#fbbf24;cursor:pointer;font-size:10px;font-weight:500;">🧹 Clean Duplicates</button>
+            </div>
             <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">${imageGrid}</div>
-            <button id="cb-media-copy-urls" style="margin-top:12px;width:100%;padding:8px;background:rgba(0,180,255,0.2);border:1px solid rgba(0,180,255,0.4);border-radius:6px;color:var(--cb-white);cursor:pointer;">Copy All URLs</button>
           `, 'Media Vault');
+
+          // Clean Duplicates button handler
+          const cleanBtn = toolResultArea.querySelector('#cb-media-clean');
+          if (cleanBtn) {
+            cleanBtn.addEventListener('click', async () => {
+              cleanBtn.textContent = '🧹 Cleaning...';
+              cleanBtn.disabled = true;
+
+              try {
+                // Get all images
+                const allImages = await getImageVault();
+
+                // Deduplicate by src (URL)
+                const seen = new Set();
+                const unique = [];
+                for (const img of allImages) {
+                  if (!img.src || seen.has(img.src)) continue;
+                  seen.add(img.src);
+                  unique.push(img);
+                }
+
+                const removed = allImages.length - unique.length;
+
+                if (removed > 0) {
+                  // Clear vault and re-save unique images
+                  await clearImageVault();
+                  if (unique.length > 0) {
+                    await saveImagesToVault(unique);
+                  }
+                  toast(`✨ Removed ${removed} duplicate${removed > 1 ? 's' : ''}!`);
+                  // Refresh the view
+                  setTimeout(() => mediaCard.click(), 500);
+                } else {
+                  toast('✓ No duplicates found');
+                  cleanBtn.textContent = '🧹 Clean Duplicates';
+                  cleanBtn.disabled = false;
+                }
+              } catch (err) {
+                console.error('Clean failed:', err);
+                toast('❌ Clean failed');
+                cleanBtn.textContent = '🧹 Clean Duplicates';
+                cleanBtn.disabled = false;
+              }
+            });
+          }
 
           // Add hover effects and action button handlers
           toolResultArea.querySelectorAll('.cb-media-item').forEach(item => {
@@ -8433,38 +8499,29 @@ Output ONLY the 5 numbered questions, no other text.`;
               });
             }
 
-            // Insert to chat button
+            // Insert to chat button - Changed to download file
             if (insertBtn) {
               insertBtn.addEventListener('click', async (e) => {
                 e.stopPropagation();
                 const url = item.dataset.imgUrl;
+                const name = item.dataset.imgName;
 
-                // Try to find chat input
-                const adapter = pickAdapter ? pickAdapter() : null;
-                let input = adapter && adapter.getInput ? adapter.getInput() : null;
-
-                if (!input) {
-                  input = document.querySelector('textarea, [contenteditable="true"], [role="textbox"]');
-                }
-
-                if (input) {
-                  // Insert image URL
-                  const imageMarkdown = `![image](${url})`;
-                  if (input.isContentEditable || input.contentEditable === 'true') {
-                    input.focus();
-                    const current = input.textContent || input.innerHTML || '';
-                    input.innerHTML = current + (current ? '\n\n' : '') + imageMarkdown;
-                    input.dispatchEvent(new InputEvent('input', { bubbles: true }));
-                  } else {
-                    input.focus();
-                    input.value = (input.value || '') + (input.value ? '\n\n' : '') + imageMarkdown;
-                    input.dispatchEvent(new Event('input', { bubbles: true }));
-                  }
-                  toast('Image URL inserted!');
-                } else {
+                try {
+                  // Download the image as a file
+                  const response = await fetch(url);
+                  const blob = await response.blob();
+                  const downloadUrl = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = downloadUrl;
+                  a.download = name || 'image.jpg';
+                  a.click();
+                  URL.revokeObjectURL(downloadUrl);
+                  toast('📥 Image downloaded - attach it to your chat!');
+                } catch (err) {
+                  console.error('Download failed:', err);
                   // Fallback: copy URL
                   await navigator.clipboard.writeText(url);
-                  toast('No input found - URL copied to clipboard');
+                  toast('Download failed - URL copied to clipboard');
                 }
               });
             }
@@ -8598,7 +8655,6 @@ Output ONLY the 5 numbered questions, no other text.`;
             copyBtn.addEventListener('click', async () => {
               const merged = getMergedText();
               if (!merged) { toast('Select at least one conversation'); return; }
-
               await navigator.clipboard.writeText(merged);
               toast('Merged content copied!');
             });
@@ -8606,177 +8662,9 @@ Output ONLY the 5 numbered questions, no other text.`;
         });
         toolsGrid.appendChild(mergeCard);
 
-        // 3. Clean & Organize - Enhanced with storage deduplication
-        const cleanCard = createToolCard('<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00D4FF" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>', 'Clean & Organize', 'Remove duplicate saved chats');
-        cleanCard.addEventListener('click', async () => {
-          // First, analyze saved conversations for duplicates
-          showToolResult('<div style="text-align:center;padding:20px;"><div class="cb-spinner"></div><div style="margin-top:8px;color:var(--cb-subtext);">Analyzing saved conversations...</div></div>', 'Clean & Organize');
+        // (Clean & Organize and Export moved to Quick Actions)
 
-          try {
-            const result = await deduplicateSavedConversations();
-            const stats = result.stats;
-
-            // No issues found
-            if (stats.duplicates === 0 && stats.overlaps === 0) {
-              showToolResult(`
-                <div style="text-align:center;padding:20px;">
-                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2" style="margin-bottom:12px;"><circle cx="12" cy="12" r="10"/><polyline points="9 12 12 15 16 10"/></svg>
-                  <div style="color:var(--cb-white);font-weight:600;margin-bottom:8px;">All Clean!</div>
-                  <div style="color:var(--cb-subtext);font-size:11px;">No duplicate or overlapping conversations found in your ${stats.originalCount} saved chats.</div>
-                </div>
-              `, 'Clean & Organize');
-              return;
-            }
-
-            // Show confirmation with what will be cleaned
-            const totalToRemove = stats.duplicates + stats.overlaps;
-
-            showToolResult(`
-              <div style="margin-bottom:16px;">
-                <div style="font-size:12px;color:var(--cb-white);margin-bottom:12px;font-weight:500;">Found issues in saved conversations:</div>
-                
-                <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px;">
-                  <div style="text-align:center;padding:12px;background:rgba(255,100,100,0.1);border:1px solid rgba(255,100,100,0.3);border-radius:8px;">
-                    <div style="font-size:24px;font-weight:700;color:#ff6b6b;">${stats.duplicates}</div>
-                    <div style="font-size:10px;color:var(--cb-subtext);">Exact Duplicates</div>
-                    <div style="font-size:9px;color:var(--cb-subtext);opacity:0.7;margin-top:2px;">Same chat scanned twice</div>
-                  </div>
-                  <div style="text-align:center;padding:12px;background:rgba(255,180,100,0.1);border:1px solid rgba(255,180,100,0.3);border-radius:8px;">
-                    <div style="font-size:24px;font-weight:700;color:#ffb347;">${stats.overlaps}</div>
-                    <div style="font-size:10px;color:var(--cb-subtext);">Overlapping Chats</div>
-                    <div style="font-size:9px;color:var(--cb-subtext);opacity:0.7;margin-top:2px;">10 msgs → 20 msgs</div>
-                  </div>
-                </div>
-                
-                <div style="padding:12px;background:rgba(255,255,255,0.03);border-radius:8px;margin-bottom:14px;">
-                  <div style="font-size:11px;color:var(--cb-subtext);line-height:1.5;">
-                    <strong style="color:var(--cb-white);">This will:</strong><br>
-                    • Remove ${stats.duplicates} duplicate conversations<br>
-                    • Merge ${stats.overlaps} overlapping chats (keeping the longer version)<br>
-                    • Reduce from ${stats.originalCount} → ${stats.finalCount} saved chats
-                  </div>
-                </div>
-                
-                <div style="display:flex;gap:8px;">
-                  <button id="cb-clean-cancel" style="flex:1;padding:10px;background:rgba(255,255,255,0.05);border:1px solid var(--cb-border);border-radius:8px;color:var(--cb-white);cursor:pointer;font-size:11px;">Cancel</button>
-                  <button id="cb-clean-confirm" style="flex:1;padding:10px;background:linear-gradient(135deg,rgba(255,100,100,0.2),rgba(255,150,100,0.2));border:1px solid rgba(255,100,100,0.4);border-radius:8px;color:var(--cb-white);cursor:pointer;font-size:11px;font-weight:500;">Clean Storage</button>
-                </div>
-              </div>
-            `, 'Clean & Organize');
-
-            // Cancel handler
-            const cancelBtn = toolResultArea.querySelector('#cb-clean-cancel');
-            if (cancelBtn) {
-              cancelBtn.addEventListener('click', () => {
-                toolResultArea.style.display = 'none';
-              });
-            }
-
-            // Confirm handler
-            const confirmBtn = toolResultArea.querySelector('#cb-clean-confirm');
-            if (confirmBtn) {
-              confirmBtn.addEventListener('click', async () => {
-                confirmBtn.disabled = true;
-                confirmBtn.textContent = 'Cleaning...';
-
-                try {
-                  // Save the cleaned conversations
-                  const success = await saveCleannedConversations(result.cleaned);
-
-                  if (success) {
-                    // Invalidate the conversation cache to force reload
-                    try {
-                      if (typeof __cbConvCache !== 'undefined') {
-                        __cbConvCache.data = null;
-                        __cbConvCache.ts = 0;
-                      }
-                    } catch (_) { }
-
-                    showToolResult(`
-                      <div style="text-align:center;padding:20px;">
-                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2" style="margin-bottom:12px;"><circle cx="12" cy="12" r="10"/><polyline points="9 12 12 15 16 10"/></svg>
-                        <div style="color:var(--cb-white);font-weight:600;margin-bottom:8px;">Storage Cleaned!</div>
-                        <div style="color:var(--cb-subtext);font-size:11px;line-height:1.6;">
-                          Removed ${stats.duplicates} duplicates<br>
-                          Merged ${stats.overlaps} overlapping chats<br>
-                          Now: ${stats.finalCount} saved conversations
-                        </div>
-                        <div style="margin-top:12px;font-size:10px;color:var(--cb-subtext);opacity:0.7;">
-                          <span class="cb-spinner" style="display:inline-block;width:12px;height:12px;margin-right:6px;vertical-align:middle;"></span>Refreshing stats...
-                        </div>
-                      </div>
-                    `, 'Clean & Organize');
-
-                    toast(`Cleaned! ${totalToRemove} conversations removed`);
-
-                    // Auto-refresh the Insights Hub to update stats and history
-                    setTimeout(async () => {
-                      toolResultArea.style.display = 'none';
-
-                      // Clear the conversation cache to force fresh load
-                      try {
-                        if (typeof __cbConvCache !== 'undefined') {
-                          __cbConvCache.data = [];
-                          __cbConvCache.ts = 0;
-                        }
-                      } catch (_) { }
-
-                      // Re-render the insights hub to update stats
-                      try {
-                        if (typeof renderInsightsHub === 'function') {
-                          await renderInsightsHub();
-                        }
-                      } catch (e) { console.log('renderInsightsHub error:', e); }
-
-                      // Also refresh the history panel (use global exposure)
-                      try {
-                        if (typeof refreshHistory === 'function') {
-                          await refreshHistory();
-                        } else if (window.ChatBridge && typeof window.ChatBridge.refreshHistory === 'function') {
-                          await window.ChatBridge.refreshHistory();
-                        }
-                      } catch (e) { console.log('refreshHistory error:', e); }
-
-                      toast('Stats & history refreshed!');
-                    }, 1500);
-                  } else {
-                    toast('Failed to save cleaned data');
-                  }
-                } catch (e) {
-                  console.error('[ChatBridge] Clean failed:', e);
-                  toast('Clean operation failed');
-                }
-              });
-            }
-
-          } catch (e) {
-            console.error('[ChatBridge] Clean & Organize error:', e);
-            showToolResult('<div style="text-align:center;padding:20px;color:var(--cb-subtext);">Failed to analyze conversations.</div>', 'Clean & Organize');
-          }
-        });
-        toolsGrid.appendChild(cleanCard);
-
-        // 4. Export All
-        const exportCard = createToolCard('<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00D4FF" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>', 'Export All', 'Download all saved chats');
-        exportCard.addEventListener('click', async () => {
-          const convs = await loadConversationsAsync();
-          if (!convs || convs.length === 0) {
-            toast('No conversations to export');
-            return;
-          }
-          const data = JSON.stringify(convs, null, 2);
-          const blob = new Blob([data], { type: 'application/json' });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = `chatbridge-export-${new Date().toISOString().slice(0, 10)}.json`;
-          a.click();
-          URL.revokeObjectURL(url);
-          toast(`Exported ${convs.length} conversations`);
-        });
-        toolsGrid.appendChild(exportCard);
-
-        // 5. Extract Content - REDESIGNED PREMIUM UI
+        // 3. Extract Content - REDESIGNED PREMIUM UI
         const extractCard = createToolCard('<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00D4FF" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>', 'Extract Content', 'URLs, numbers, code, lists');
         extractCard.addEventListener('click', async () => {
           // PERFORMANCE CACHING - Check if we can use cached extraction
@@ -13711,32 +13599,32 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         const readTime = Math.ceil(words / 200);
         const convs = await loadConversationsAsync();
 
-        // Create inline stats panel - DARK NEON THEME
+        // Create inline stats panel - DARK NEON THEME (cyan/purple)
         statsPanel = document.createElement('div');
         statsPanel.id = 'cb-stats-panel';
-        statsPanel.style.cssText = 'margin-top:16px;padding:16px;background:rgba(6,20,32,0.6);border-radius:12px;border:1px solid rgba(230,207,159,0.15);box-shadow:0 4px 12px rgba(0,0,0,0.3);';
+        statsPanel.style.cssText = 'margin-top:16px;padding:16px;background:rgba(6,20,32,0.6);border-radius:12px;border:1px solid rgba(0,212,255,0.2);box-shadow:0 4px 12px rgba(0,0,0,0.3);';
 
         statsPanel.innerHTML = `
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
-            <h4 style="margin:0;font-size:14px;font-weight:600;color:#e6cf9f;">📊 Conversation Stats</h4>
-            <button id="close-stats-panel" style="background:none;border:none;color:rgba(230,207,159,0.5);cursor:pointer;font-size:16px;padding:4px;transition:color 0.2s;" onmouseover="this.style.color='#e6cf9f'" onmouseout="this.style.color='rgba(230,207,159,0.5)'">✕</button>
+            <h4 style="margin:0;font-size:14px;font-weight:600;color:#00D4FF;">📊 Conversation Stats</h4>
+            <button id="close-stats-panel" style="background:none;border:none;color:rgba(255,255,255,0.5);cursor:pointer;font-size:16px;padding:4px;transition:color 0.2s;" onmouseover="this.style.color='#00D4FF'" onmouseout="this.style.color='rgba(255,255,255,0.5)'">✕</button>
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-            <div style="padding:14px;background:rgba(230,207,159,0.05);border:1px solid rgba(230,207,159,0.15);border-radius:8px;text-align:center;">
-              <div style="font-size:24px;font-weight:700;color:#e6cf9f;margin-bottom:4px;">${words.toLocaleString()}</div>
-              <div style="font-size:10px;color:rgba(230,207,159,0.6);text-transform:uppercase;letter-spacing:1px;">Words</div>
+            <div style="padding:14px;background:rgba(0,212,255,0.08);border:1px solid rgba(0,212,255,0.25);border-radius:8px;text-align:center;">
+              <div style="font-size:24px;font-weight:700;color:#00D4FF;margin-bottom:4px;">${words.toLocaleString()}</div>
+              <div style="font-size:10px;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:1px;">Words</div>
             </div>
-            <div style="padding:14px;background:rgba(230,207,159,0.05);border:1px solid rgba(230,207,159,0.15);border-radius:8px;text-align:center;">
-              <div style="font-size:24px;font-weight:700;color:#e6cf9f;margin-bottom:4px;">${chars.toLocaleString()}</div>
-              <div style="font-size:10px;color:rgba(230,207,159,0.6);text-transform:uppercase;letter-spacing:1px;">Characters</div>
+            <div style="padding:14px;background:rgba(124,58,237,0.08);border:1px solid rgba(124,58,237,0.25);border-radius:8px;text-align:center;">
+              <div style="font-size:24px;font-weight:700;color:#7C3AED;margin-bottom:4px;">${chars.toLocaleString()}</div>
+              <div style="font-size:10px;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:1px;">Characters</div>
             </div>
-            <div style="padding:14px;background:rgba(230,207,159,0.05);border:1px solid rgba(230,207,159,0.15);border-radius:8px;text-align:center;">
-              <div style="font-size:24px;font-weight:700;color:#e6cf9f;margin-bottom:4px;">~${readTime}</div>
-              <div style="font-size:10px;color:rgba(230,207,159,0.6);text-transform:uppercase;letter-spacing:1px;">Min Read</div>
+            <div style="padding:14px;background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.25);border-radius:8px;text-align:center;">
+              <div style="font-size:24px;font-weight:700;color:#22c55e;margin-bottom:4px;">~${readTime}</div>
+              <div style="font-size:10px;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:1px;">Min Read</div>
             </div>
-            <div style="padding:14px;background:rgba(230,207,159,0.05);border:1px solid rgba(230,207,159,0.15);border-radius:8px;text-align:center;">
-              <div style="font-size:24px;font-weight:700;color:#e6cf9f;margin-bottom:4px;">${convs.length}</div>
-              <div style="font-size:10px;color:rgba(230,207,159,0.6);text-transform:uppercase;letter-spacing:1px;">Saved</div>
+            <div style="padding:14px;background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.25);border-radius:8px;text-align:center;">
+              <div style="font-size:24px;font-weight:700;color:#fbbf24;margin-bottom:4px;">${convs.length}</div>
+              <div style="font-size:10px;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:1px;">Saved</div>
             </div>
           </div>
         `;
