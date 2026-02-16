@@ -2343,267 +2343,46 @@
     promptDesignerView.setAttribute('data-cb-ignore', 'true');
 
     const pdTop = document.createElement('div');
-    pdTop.className = 'cb-view-top';
-    pdTop.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid rgba(255,255,255,0.04);';
+    pdTop.className = 'cb-pd-top';
 
     const pdTitle = document.createElement('div');
-    pdTitle.className = 'cb-view-title';
-    pdTitle.style.cssText = 'font-size:18px;font-weight:600;color:var(--cb-white);display:flex;align-items:center;gap:10px;letter-spacing:-0.01em;';
-    pdTitle.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="url(#gradient-pd-stroke)" stroke-width="1.5"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/><defs><linearGradient id="gradient-pd-stroke" x1="2" y1="2" x2="22" y2="21"><stop stop-color="#00D4FF"/><stop offset="1" stop-color="#7C3AED"/></linearGradient></defs></svg><span style="background:linear-gradient(135deg, #00D4FF, #7C3AED);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">Smart Prompts</span>';
+    pdTitle.className = 'cb-pd-title';
+    pdTitle.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="url(#gradient-pd-stroke)" stroke-width="1.5"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/><defs><linearGradient id="gradient-pd-stroke" x1="2" y1="2" x2="22" y2="21"><stop stop-color="#00D4FF"/><stop offset="1" stop-color="#7C3AED"/></linearGradient></defs></svg><span class="cb-gradient-text">Smart Prompts</span>';
 
     const btnClosePD = document.createElement('button');
-    btnClosePD.className = 'cb-view-close';
+    btnClosePD.className = 'cb-pd-close-btn';
     btnClosePD.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
-    btnClosePD.style.cssText = 'background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);color:var(--cb-subtext);cursor:pointer;padding:8px;border-radius:8px;transition:all 0.2s ease;display:flex;align-items:center;justify-content:center;';
     btnClosePD.setAttribute('aria-label', 'Close Prompt Designer view');
-    btnClosePD.addEventListener('mouseenter', () => { btnClosePD.style.background = 'rgba(255,255,255,0.08)'; btnClosePD.style.borderColor = 'rgba(255,255,255,0.1)'; btnClosePD.style.color = 'var(--cb-white)'; });
-    btnClosePD.addEventListener('mouseleave', () => { btnClosePD.style.background = 'rgba(255,255,255,0.03)'; btnClosePD.style.borderColor = 'rgba(255,255,255,0.06)'; btnClosePD.style.color = 'var(--cb-subtext)'; });
-    btnClosePD.addEventListener('click', () => {
-      promptDesignerView.classList.remove('cb-view-active');
-    });
+    // Click handler registered once below at line ~12430
 
     pdTop.appendChild(pdTitle);
     pdTop.appendChild(btnClosePD);
     promptDesignerView.appendChild(pdTop);
 
     const pdIntro = document.createElement('div');
-    pdIntro.className = 'cb-view-intro';
-    pdIntro.style.cssText = 'font-size:12px;line-height:1.7;color:var(--cb-subtext);margin-bottom:24px;padding:16px 18px;background:linear-gradient(135deg, rgba(0,212,255,0.03), rgba(124,58,237,0.02));border:1px solid rgba(255,255,255,0.05);border-left:2px solid rgba(0,212,255,0.4);border-radius:10px;';
-    pdIntro.innerHTML = '<span style="color:var(--cb-white);font-weight:500;">AI-crafted prompts</span> designed to deepen your conversation and uncover new insights.';
+    pdIntro.className = 'cb-pd-intro';
+    pdIntro.innerHTML = '<span class="cb-pd-intro-highlight">AI-crafted prompts</span> designed to deepen your conversation and uncover new insights.';
     promptDesignerView.appendChild(pdIntro);
 
-    // Prompt Designer content container - DROPDOWN CATEGORIES
+    // Prompt Designer content container - populated by renderPromptDesignerWidget
     const pdContent = document.createElement('div');
     pdContent.id = 'cb-pd-content';
-    pdContent.style.cssText = 'display:flex;flex-direction:column;gap:12px;';
+    pdContent.className = 'cb-pd-content';
 
-    // Category definitions - 5 types with minimalist elegance
-    const promptCategories = [
-      { id: 'followup', name: 'Follow-up', color: '#60a5fa', desc: 'Continue the flow' },
-      { id: 'deepdive', name: 'Deep Dive', color: '#a78bfa', desc: 'Expand details' },
-      { id: 'clarify', name: 'Clarify', color: '#34d399', desc: 'Resolve ambiguity' },
-      { id: 'alternatives', name: 'Alternatives', color: '#f59e0b', desc: 'New perspectives' },
-      { id: 'creative', name: 'Creative', color: '#ec4899', desc: 'Think different' }
-    ];
-
-    // Build category accordions
-    promptCategories.forEach(cat => {
-      const catDiv = document.createElement('div');
-      catDiv.className = 'cb-prompt-cat';
-      catDiv.style.cssText = 'background:rgba(255,255,255,0.015);border:1px solid rgba(255,255,255,0.04);border-radius:10px;overflow:hidden;transition:all 0.25s ease;';
-
-      const catHeader = document.createElement('div');
-      catHeader.style.cssText = 'display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer;transition:all 0.2s ease;';
-      catHeader.innerHTML = `
-        <div style="width:6px;height:6px;border-radius:50%;background:${cat.color};box-shadow:0 0 8px ${cat.color}60;"></div>
-        <span style="flex:1;font-size:12px;font-weight:500;color:var(--cb-white);">${cat.name}</span>
-        <span style="font-size:9px;color:var(--cb-subtext);opacity:0.4;text-transform:uppercase;letter-spacing:0.5px;">${cat.desc}</span>
-        <div class="cb-arrow" style="color:rgba(255,255,255,0.25);transition:transform 0.2s ease;margin-left:4px;">
-            <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
-        </div>
-      `;
-
-      const catContent = document.createElement('div');
-      catContent.style.cssText = 'display:none;padding:4px 16px 16px;';
-
-      catHeader.addEventListener('mouseenter', () => {
-        catDiv.style.borderColor = 'rgba(255,255,255,0.1)';
-        catDiv.style.background = 'rgba(255,255,255,0.04)';
-      });
-      catHeader.addEventListener('mouseleave', () => {
-        const isOpen = catContent.style.display !== 'none';
-        if (!isOpen) {
-          catDiv.style.borderColor = 'rgba(255,255,255,0.05)';
-          catDiv.style.background = 'rgba(255,255,255,0.02)';
-        }
-      });
-
-      catHeader.addEventListener('click', async () => {
-        const arrow = catHeader.querySelector('.cb-arrow');
-        const isOpen = catContent.style.display !== 'none';
-
-        // Close all others
-        pdContent.querySelectorAll('.cb-prompt-cat > div:last-child').forEach(c => {
-          if (c !== catContent) {
-            c.style.display = 'none';
-            c.parentElement.querySelector('.cb-arrow').style.transform = 'rotate(0deg)';
-            c.parentElement.style.borderColor = 'rgba(255,255,255,0.05)';
-            c.parentElement.style.background = 'rgba(255,255,255,0.02)';
-          }
-        });
-
-        if (isOpen) {
-          catContent.style.display = 'none';
-          arrow.style.transform = 'rotate(0deg)';
-          catDiv.style.borderColor = 'rgba(255,255,255,0.05)';
-          catDiv.style.background = 'rgba(255,255,255,0.04)'; // Keep slight hover state if mouse is there
-          return;
-        }
-
-        // Open
-        catContent.style.display = 'block';
-        catContent.style.animation = 'cbSlideDown 0.3s ease-out';
-        arrow.style.transform = 'rotate(90deg)';
-        catDiv.style.borderColor = `${cat.color}40`;
-        catDiv.style.background = 'rgba(255,255,255,0.04)';
-
-        if (catContent.querySelector('.cb-sp')) return; // Already generated
-
-        catContent.innerHTML = `
-            <div style="display:flex;align-items:center;gap:8px;padding:20px;justify-content:center;opacity:0.7;">
-                <div class="cb-spinner" style="width:14px;height:14px;border-width:2px;border-color:${cat.color} transparent ${cat.color} transparent;"></div>
-                <span style="font-size:11px;color:var(--cb-subtext);">Crafting prompts...</span>
-            </div>`;
-
-
-        try {
-          // Robustly get messages from cache or scan
-          let messages = [];
-          const last = window.ChatBridge?.getLastScan?.() || null;
-          if (last) {
-            if (Array.isArray(last)) messages = last;
-            else if (last.conversation) messages = last.conversation;
-            else if (last.messages) messages = last.messages;
-          }
-
-          if (!messages.length) {
-            try {
-              const res = await scanChat();
-              if (res) {
-                if (Array.isArray(res)) messages = res;
-                else if (res.conversation) messages = res.conversation;
-              }
-            } catch (e) { }
-          }
-
-          if (!messages.length) {
-            catContent.innerHTML = '<div style="padding:15px;font-size:11px;color:var(--cb-subtext);text-align:center;font-style:italic;">Please scan a chat first to generate prompts.</div>';
-            return;
-          }
-
-          // Compact context (last 4 msgs, 120 chars)
-          const ctx = messages.slice(-4).map(m => `${m.role}:${m.text.substring(0, 120)}`).join('|');
-
-          // Enhanced prompts for more thought-provoking output
-          const prompts = {
-            followup: `Based on this conversation: ${ctx}\n\nGenerate 3 incisive follow-up questions that:\n- Challenge assumptions made\n- Uncover hidden implications\n- Push the discussion deeper\n\nFormat as numbered list, each question should be provocative yet respectful.`,
-            deepdive: `Based on this conversation: ${ctx}\n\nGenerate 3 deep exploration prompts that:\n- Reveal underlying principles or mechanisms\n- Connect to broader concepts or frameworks\n- Invite expert-level analysis\n\nFormat as numbered list.`,
-            clarify: `Based on this conversation: ${ctx}\n\nGenerate 3 clarification prompts that:\n- Expose potential logical gaps\n- Request concrete examples or evidence\n- Distinguish between similar concepts\n\nFormat as numbered list.`,
-            alternatives: `Based on this conversation: ${ctx}\n\nGenerate 3 contrarian perspectives that:\n- Challenge the dominant viewpoint\n- Offer paradigm-shifting alternatives\n- Consider edge cases or exceptions\n\nFormat as numbered list.`,
-            creative: `Based on this conversation: ${ctx}\n\nGenerate 3 highly creative "what if" scenarios that:\n- Combine unexpected elements\n- Explore unconventional applications\n- Spark lateral thinking\n\nFormat as numbered list.`
-          };
-
-          const response = await new Promise(r => {
-            chrome.runtime.sendMessage({ type: 'call_llama', payload: { action: 'generate', text: prompts[cat.id] } }, res => {
-              r(chrome.runtime.lastError ? { ok: false } : (res || { ok: false }));
-            });
-          });
-
-          if (response?.ok && response.result) {
-            const items = [];
-            response.result.split('\n').forEach(line => {
-              const m = line.match(/^\d+[\.\)]\s*(.+)/);
-              if (m && m[1]) items.push(m[1].trim());
-            });
-
-            if (items.length) {
-              catContent.innerHTML = items.slice(0, 3).map(p => `
-                <div class="cb-sp" data-p="${encodeURIComponent(p)}" style="
-                    padding:14px 16px;
-                    background:rgba(255,255,255,0.02);
-                    border:1px solid rgba(255,255,255,0.06);
-                    border-left:2px solid ${cat.color}40;
-                    border-radius:8px;
-                    margin-bottom:10px;
-                    cursor:pointer;
-                    font-size:12px;
-                    color:var(--cb-white);
-                    line-height:1.6;
-                    transition:all 0.25s cubic-bezier(0.4,0,0.2,1);
-                    position:relative;
-                ">
-                    <div style="position:relative;z-index:2;">${p}</div>
-                    <div style="position:absolute;top:8px;right:10px;opacity:0.3;font-size:9px;color:var(--cb-subtext);pointer-events:none;">click to copy</div>
-                </div>
-              `).join('');
-
-              catContent.querySelectorAll('.cb-sp').forEach(el => {
-                el.addEventListener('mouseenter', () => {
-                  el.style.transform = 'translateY(-1px)';
-                  el.style.borderColor = 'rgba(255,255,255,0.1)';
-                  el.style.background = 'rgba(255,255,255,0.06)';
-                  el.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
-                });
-                el.addEventListener('mouseleave', () => {
-                  el.style.transform = 'translateY(0)';
-                  el.style.borderColor = 'rgba(255,255,255,0.04)';
-                  el.style.background = 'linear-gradient(90deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)';
-                  el.style.boxShadow = 'none';
-                });
-                el.addEventListener('click', async () => {
-                  const t = decodeURIComponent(el.dataset.p);
-                  await navigator.clipboard.writeText(t);
-
-                  // Flash effect
-                  el.style.borderColor = '#34d399';
-                  el.style.background = 'rgba(52,211,153,0.1)';
-
-                  setTimeout(() => {
-                    el.style.borderColor = 'rgba(255,255,255,0.1)';
-                    el.style.background = 'rgba(255,255,255,0.06)';
-                  }, 300);
-
-                  toast('Copied to clipboard');
-                });
-                el.addEventListener('dblclick', async () => {
-                  const t = decodeURIComponent(el.dataset.p);
-                  const inp = document.querySelector('textarea,[contenteditable="true"],[role="textbox"]');
-                  if (inp) {
-                    inp.focus();
-                    if (inp.isContentEditable) { inp.textContent = t; inp.dispatchEvent(new InputEvent('input', { bubbles: true })); }
-                    else { inp.value = t; inp.dispatchEvent(new Event('input', { bubbles: true })); }
-                    toast('Inserted into chat');
-                  }
-                });
-              });
-            } else {
-              catContent.innerHTML = '<div style="padding:15px;font-size:11px;color:var(--cb-subtext);text-align:center;">No prompts generated.</div>';
-            }
-          } else {
-            catContent.innerHTML = '<div style="padding:15px;font-size:11px;color:#f87171;text-align:center;">Generation failed. Check connection.</div>';
-          }
-        } catch (e) {
-          catContent.innerHTML = `<div style="padding:15px;font-size:11px;color:#f87171;text-align:center;">${e.message || 'Error'}</div>`;
-        }
-      });
-
-      catDiv.appendChild(catHeader);
-      catDiv.appendChild(catContent);
-      pdContent.appendChild(catDiv);
-    });
+    // Accordion categories removed — content populated by renderPromptDesignerWidget via handler at line ~12416
 
     promptDesignerView.appendChild(pdContent);
 
     // Footer
     const pdFooter = document.createElement('div');
-    pdFooter.style.cssText = 'margin-top:24px;font-size:9px;color:var(--cb-subtext);text-align:center;opacity:0.4;letter-spacing:0.5px;text-transform:uppercase;';
+    pdFooter.className = 'cb-pd-footer';
     pdFooter.innerHTML = 'Click to copy &nbsp;•&nbsp; Double-click to insert';
     promptDesignerView.appendChild(pdFooter);
 
     // Append to panel
     panel.appendChild(promptDesignerView);
 
-    // Prompt Designer Open Handler
-    btnPromptDesigner.addEventListener('click', () => {
-      // Use closeAllViews if available, otherwise manually hide views
-      if (typeof closeAllViews === 'function') {
-        closeAllViews();
-      } else {
-        panel.querySelectorAll('.cb-internal-view').forEach(v => v.classList.remove('cb-view-active'));
-      }
-      // Show Prompt Designer
-      promptDesignerView.classList.add('cb-view-active');
-    });
+    // Prompt Designer click handler registered once below at line ~12416
 
     // Summarize view - Premium Luxury UI (matching Translate/Rewrite style)
     const summView = document.createElement('div'); summView.className = 'cb-internal-view'; summView.id = 'cb-summ-view'; summView.setAttribute('data-cb-ignore', 'true');
@@ -7473,8 +7252,8 @@
       try {
         const context = extractConversationContext(messages);
 
-        // Build prompt for AI
-        const conversationText = messages.slice(-6).map(m => `${m.role}: ${m.text.substring(0, 300)}`).join('\n');
+        // Build prompt for AI - use more context for better results
+        const conversationText = messages.slice(-8).map(m => `${m.role}: ${m.text.substring(0, 400)}`).join('\n');
 
         debugLog('[Smart Prompts] Processing', messages.length, 'messages');
         debugLog('[Smart Prompts] Conversation preview:', conversationText.slice(0, 200));
@@ -7527,68 +7306,58 @@ Output ONLY the 5 numbered questions, no other text.`;
           return questions;
         }
 
+        // Helper: wrap API call with timeout
+        const withTimeout = (promise, ms = 15000) => {
+          return Promise.race([
+            promise,
+            new Promise((_, reject) => setTimeout(() => reject(new Error('API timeout')), ms))
+          ]);
+        };
+
         // Try Llama first (via HuggingFace)
-        console.log('[ChatBridge Smart Prompts] Trying Llama API with', messages.length, 'messages');
-        debugLog('[Smart Prompts] Trying Llama API...');
+        debugLog('[Smart Prompts] Trying Llama API with', messages.length, 'messages');
         try {
-          const llamaResult = await callLlamaAsync({
+          const llamaResult = await withTimeout(callLlamaAsync({
             action: 'generate',
             text: prompt
-          });
-
-          console.log('[ChatBridge Smart Prompts] Llama result:', llamaResult?.ok, llamaResult?.error);
+          }));
 
           if (llamaResult && llamaResult.ok && llamaResult.result) {
-            console.log('[ChatBridge Smart Prompts] Llama success! Result:', llamaResult.result.slice(0, 150));
             debugLog('[Smart Prompts] Llama success:', llamaResult.result.slice(0, 100));
             const questions = parseQuestions(llamaResult.result);
             if (questions.length > 0) {
-              console.log('[ChatBridge Smart Prompts] Parsed', questions.length, 'questions from Llama');
               debugLog('[Smart Prompts] Parsed', questions.length, 'questions from Llama');
               return { questions: questions.slice(0, 5), source: 'llama' };
-            } else {
-              console.log('[ChatBridge Smart Prompts] Llama returned but parsing failed');
             }
           } else {
-            console.log('[ChatBridge Smart Prompts] Llama failed:', llamaResult?.error || 'no result');
             debugLog('[Smart Prompts] Llama failed:', llamaResult?.error || 'no result');
           }
         } catch (llamaErr) {
-          console.log('[ChatBridge Smart Prompts] Llama exception:', llamaErr);
-          debugLog('[Smart Prompts] Llama error:', llamaErr);
+          debugLog('[Smart Prompts] Llama error:', llamaErr.message || llamaErr);
         }
 
         // Fallback to Gemini
-        console.log('[ChatBridge Smart Prompts] Trying Gemini API (fallback)...');
-        debugLog('[Smart Prompts] Trying Gemini API...');
+        debugLog('[Smart Prompts] Trying Gemini API (fallback)...');
         try {
-          const geminiResult = await callGeminiAsync({
+          const geminiResult = await withTimeout(callGeminiAsync({
             action: 'prompt',
             text: prompt,
             systemPrompt: 'You are a conversation analyst. Generate thought-provoking follow-up questions that are SPECIFIC to the conversation content. Never use generic placeholder questions.',
             length: 'short'
-          });
-
-          console.log('[ChatBridge Smart Prompts] Gemini result:', geminiResult?.ok, geminiResult?.error);
+          }));
 
           if (geminiResult && geminiResult.ok && geminiResult.result) {
-            console.log('[ChatBridge Smart Prompts] Gemini success! Result:', geminiResult.result.slice(0, 150));
             debugLog('[Smart Prompts] Gemini success:', geminiResult.result.slice(0, 100));
             const questions = parseQuestions(geminiResult.result);
             if (questions.length > 0) {
-              console.log('[ChatBridge Smart Prompts] Parsed', questions.length, 'questions from Gemini');
               debugLog('[Smart Prompts] Parsed', questions.length, 'questions from Gemini');
               return { questions: questions.slice(0, 5), source: 'gemini' };
-            } else {
-              console.log('[ChatBridge Smart Prompts] Gemini returned but parsing failed');
             }
           } else {
-            console.log('[ChatBridge Smart Prompts] Gemini failed:', geminiResult?.error || 'no result');
             debugLog('[Smart Prompts] Gemini failed:', geminiResult?.error || 'no result');
           }
         } catch (geminiErr) {
-          console.log('[ChatBridge Smart Prompts] Gemini exception:', geminiErr);
-          debugLog('[Smart Prompts] Gemini error:', geminiErr);
+          debugLog('[Smart Prompts] Gemini error:', geminiErr.message || geminiErr);
         }
 
         // Both failed - use fallback
@@ -7601,15 +7370,17 @@ Output ONLY the 5 numbered questions, no other text.`;
       }
     }
 
-    // Fallback prompts when Gemini fails
+    // Fallback prompts — extract keywords from messages for semi-relevant suggestions
     function generateFallbackPrompts(context) {
+      // Try to extract topic keywords for less-generic fallback prompts
+      const topicHint = context?.topics?.slice(0, 3)?.join(', ') || 'the topics discussed';
       return {
         questions: [
-          { text: "What edge cases or error scenarios should we consider?", category: "clarification", sourceIndexes: [] },
-          { text: "How can we make this solution more maintainable or scalable?", category: "improvement", sourceIndexes: [] },
-          { text: "What related aspects of this problem should we explore?", category: "expansion", sourceIndexes: [] },
-          { text: "What assumptions are we making that might not hold true?", category: "critical", sourceIndexes: [] },
-          { text: "Is there a completely different approach we should consider?", category: "creative", sourceIndexes: [] }
+          { text: `What edge cases or error scenarios should we consider regarding ${topicHint}?`, category: 'clarification', sourceIndexes: [] },
+          { text: `How can we make this solution involving ${topicHint} more maintainable or scalable?`, category: 'improvement', sourceIndexes: [] },
+          { text: `What related aspects of ${topicHint} should we explore further?`, category: 'expansion', sourceIndexes: [] },
+          { text: `What assumptions are we making about ${topicHint} that might not hold true?`, category: 'critical', sourceIndexes: [] },
+          { text: `Is there a completely different approach we should consider for ${topicHint}?`, category: 'creative', sourceIndexes: [] }
         ]
       };
     }
@@ -7618,31 +7389,27 @@ Output ONLY the 5 numbered questions, no other text.`;
     async function renderPromptDesignerWidget(container) {
       try {
         container.innerHTML = '';
-        container.style.cssText = 'padding: 0; margin: 0; display: flex; flex-direction: column; gap: 12px;';
+        container.className = 'cb-pd-content';
 
         // Action bar at top
         const actionBar = document.createElement('div');
-        actionBar.className = 'cb-view-controls';
-        actionBar.style.cssText = 'display: grid; grid-template-columns: 1fr auto auto; gap: 8px; margin-bottom: 4px;';
+        actionBar.className = 'cb-pd-action-bar';
 
         const btnGenerate = document.createElement('button');
         btnGenerate.id = 'cb-prompts-generate';
-        btnGenerate.className = 'cb-btn cb-btn-primary';
-        btnGenerate.style.cssText = 'background: linear-gradient(135deg, #00D4FF, #7C3AED); border: none; padding: 11px 18px; font-weight: 500; font-size: 12px; border-radius: 8px; color: var(--cb-white); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s; letter-spacing: 0.3px;';
+        btnGenerate.className = 'cb-pd-btn-generate';
         btnGenerate.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg> Generate';
 
         const btnRefresh = document.createElement('button');
         btnRefresh.id = 'cb-prompts-refresh';
-        btnRefresh.className = 'cb-btn';
+        btnRefresh.className = 'cb-pd-icon-btn';
         btnRefresh.title = 'Refresh Context';
-        btnRefresh.style.cssText = 'width: 36px; height: 36px; padding: 0; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; cursor: pointer; transition: all 0.2s; color: var(--cb-subtext);';
         btnRefresh.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>';
 
         const btnHistory = document.createElement('button');
         btnHistory.id = 'cb-prompts-history';
-        btnHistory.className = 'cb-btn';
+        btnHistory.className = 'cb-pd-icon-btn';
         btnHistory.title = 'History';
-        btnHistory.style.cssText = 'width: 36px; height: 36px; padding: 0; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; cursor: pointer; transition: all 0.2s; color: var(--cb-subtext);';
         btnHistory.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>';
 
         actionBar.appendChild(btnGenerate);
@@ -7653,42 +7420,21 @@ Output ONLY the 5 numbered questions, no other text.`;
         // Prompts container
         const promptsList = document.createElement('div');
         promptsList.id = 'cb-prompts-list';
-        promptsList.style.cssText = 'display: flex; flex-direction: column; gap: 10px;';
+        promptsList.className = 'cb-pd-prompts-list';
 
         // Empty state
         promptsList.innerHTML = `
-          <div style="text-align: center; padding: 32px 20px; background: linear-gradient(135deg, rgba(0,212,255,0.02), rgba(124,58,237,0.01)); border-radius: 10px; border: 1px solid rgba(255,255,255,0.04);">
-            <div style="width:40px;height:40px;margin:0 auto 14px;border-radius:10px;background:linear-gradient(135deg, rgba(0,212,255,0.1), rgba(124,58,237,0.08));display:flex;align-items:center;justify-content:center;">
+          <div class="cb-pd-empty-state">
+            <div class="cb-pd-empty-icon">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="url(#emptyGrad)" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/><defs><linearGradient id="emptyGrad" x1="4" y1="4" x2="20" y2="20"><stop stop-color="#00D4FF"/><stop offset="1" stop-color="#7C3AED"/></linearGradient></defs></svg>
             </div>
-            <div style="font-size: 13px; font-weight: 500; color: var(--cb-white); margin-bottom: 6px;">Ready to Generate</div>
-            <div style="font-size: 11px; color: var(--cb-subtext); line-height: 1.6; opacity: 0.7;">Select a category above to generate<br>thought-provoking prompts</div>
+            <div class="cb-pd-empty-title">Ready to Generate</div>
+            <div class="cb-pd-empty-desc">Click Generate to create<br>thought-provoking prompts</div>
           </div>
         `;
         container.appendChild(promptsList);
 
-        // Hover effects
-        btnGenerate.addEventListener('mouseenter', () => {
-          btnGenerate.style.transform = 'translateY(-1px)';
-          btnGenerate.style.boxShadow = '0 4px 20px rgba(0,212,255,0.25)';
-        });
-        btnGenerate.addEventListener('mouseleave', () => {
-          btnGenerate.style.transform = 'translateY(0)';
-          btnGenerate.style.boxShadow = 'none';
-        });
-
-        [btnRefresh, btnHistory].forEach(btn => {
-          btn.addEventListener('mouseenter', () => {
-            btn.style.background = 'rgba(255,255,255,0.06)';
-            btn.style.borderColor = 'rgba(255,255,255,0.1)';
-            btn.style.color = 'var(--cb-white)';
-          });
-          btn.addEventListener('mouseleave', () => {
-            btn.style.background = 'rgba(255,255,255,0.02)';
-            btn.style.borderColor = 'rgba(255,255,255,0.06)';
-            btn.style.color = 'var(--cb-subtext)';
-          });
-        });
+        // Hover effects handled by CSS :hover on .cb-pd-btn-generate, .cb-pd-icon-btn
 
         // Generate prompts handler
         const generateHandler = async () => {
@@ -7701,6 +7447,7 @@ Output ONLY the 5 numbered questions, no other text.`;
             const msgs = await scanChat();
             if (!msgs || msgs.length === 0) {
               toast('No messages to analyze');
+              promptsList.innerHTML = '<div class="cb-pd-error">No prompts generated</div>';
               return;
             }
 
@@ -7711,11 +7458,11 @@ Output ONLY the 5 numbered questions, no other text.`;
           } catch (e) {
             debugLog('Generate prompts error:', e);
             toast('Generation failed');
-            promptsList.innerHTML = `<div style="text-align:center;padding:20px;color:#f87171;font-size:11px;">Failed to generate. Please try again.</div>`;
+            promptsList.innerHTML = '<div class="cb-pd-error cb-pd-error--fail">Failed to generate. Please try again.</div>';
           } finally {
             btnGenerate.innerHTML = originalHTML;
             btnGenerate.disabled = false;
-            btnGenerate.style.opacity = '1';
+            btnGenerate.classList.remove('cb-pd-btn-generate--loading');
           }
         };
 
@@ -7745,72 +7492,32 @@ Output ONLY the 5 numbered questions, no other text.`;
           // Category colors only - icons replaced with colored dots in template
 
           listContainer.innerHTML = promptData.questions.map((q, i) => `
-            <div class="cb-prompt-item" data-text="${encodeURIComponent(q.text)}" data-index="${i}" style="padding:14px 16px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-left:2px solid ${categoryColors[q.category] || '#60a5fa'};border-radius:8px;cursor:pointer;transition:all 0.25s ease;opacity:0;transform:translateY(8px);animation:cbFadeSlideIn 0.3s ease forwards;animation-delay:${i * 0.06}s;">
-              <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-                <div style="width:6px;height:6px;border-radius:50%;background:${categoryColors[q.category] || '#60a5fa'};box-shadow:0 0 8px ${categoryColors[q.category] || '#60a5fa'}60;"></div>
-                <span style="font-size:12px;text-transform:uppercase;color:${categoryColors[q.category] || '#60a5fa'};font-weight:500;letter-spacing:0.5px;">${q.category}</span>
+            <div class="cb-prompt-item" data-text="${encodeURIComponent(q.text)}" data-index="${i}" data-cat-color="${categoryColors[q.category] || '#60a5fa'}" style="border-left-color:${categoryColors[q.category] || '#60a5fa'};animation-delay:${i * 0.06}s;">
+              <div class="cb-prompt-item-header">
+                <div class="cb-prompt-dot" style="background:${categoryColors[q.category] || '#60a5fa'};box-shadow:0 0 8px ${categoryColors[q.category] || '#60a5fa'}60;"></div>
+                <span class="cb-prompt-category" style="color:${categoryColors[q.category] || '#60a5fa'};">${q.category}</span>
               </div>
-              <div style="font-size:12px;color:var(--cb-white);line-height:1.6;">${q.text}</div>
+              <div class="cb-prompt-text">${q.text}</div>
             </div>
           `).join('');
 
           // Add click handlers
           listContainer.querySelectorAll('.cb-prompt-item').forEach(item => {
-            item.addEventListener('mouseenter', () => {
-              item.style.background = 'rgba(255,255,255,0.04)';
-              item.style.borderColor = 'rgba(255,255,255,0.1)';
-              item.style.transform = 'translateX(2px)';
-            });
-            item.addEventListener('mouseleave', () => {
-              item.style.background = 'rgba(255,255,255,0.02)';
-              item.style.borderColor = 'rgba(255,255,255,0.05)';
-              item.style.transform = 'translateX(0)';
-            });
+            // Hover effects handled by CSS :hover on .cb-prompt-item
             item.addEventListener('click', async (e) => {
               if (e.detail === 2) return; // Skip if double-click
               const text = decodeURIComponent(item.dataset.text);
               await navigator.clipboard.writeText(text);
-              item.style.background = 'rgba(0,212,255,0.1)';
-              item.style.borderLeftColor = '#00D4FF';
-              setTimeout(() => {
-                item.style.background = 'rgba(255,255,255,0.02)';
-                item.style.borderLeftColor = '';
-              }, 300);
+              item.classList.add('cb-prompt-item--copied');
+              setTimeout(() => item.classList.remove('cb-prompt-item--copied'), 300);
               toast('Copied');
             });
             item.addEventListener('dblclick', async () => {
               const text = decodeURIComponent(item.dataset.text);
-              // Try multiple selectors for different AI chat sites
-              const selectors = [
-                'textarea[placeholder*="Message"]',
-                'textarea[placeholder*="message"]',
-                'div[contenteditable="true"][data-placeholder]',
-                'div[contenteditable="true"]',
-                '[role="textbox"]',
-                'textarea',
-                '#prompt-textarea'
-              ];
-              let inp = null;
-              for (const sel of selectors) {
-                inp = document.querySelector(sel);
-                if (inp) break;
-              }
-              if (inp) {
-                inp.focus();
-                if (inp.isContentEditable) {
-                  inp.innerHTML = '';
-                  inp.textContent = text;
-                  inp.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText' }));
-                } else {
-                  inp.value = text;
-                  inp.dispatchEvent(new Event('input', { bubbles: true }));
-                }
-                item.style.background = 'rgba(52,211,153,0.1)';
-                item.style.borderLeftColor = '#34d399';
-                setTimeout(() => {
-                  item.style.background = 'rgba(255,255,255,0.02)';
-                  item.style.borderLeftColor = '';
-                }, 300);
+              const inserted = insertTextToChat(text);
+              if (inserted) {
+                item.classList.add('cb-prompt-item--inserted');
+                setTimeout(() => item.classList.remove('cb-prompt-item--inserted'), 300);
                 toast('Inserted');
               } else {
                 toast('No input found');
