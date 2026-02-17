@@ -1198,6 +1198,8 @@
     // High-end Dark Neon theme inside shadow DOM (Bebas Neue font)
     const style = document.createElement('style');
     style.textContent = `
+      @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');
+
       @font-face {
         font-family: 'Inter';
         src: url('${chrome.runtime.getURL('fonts/Inter-Regular.woff2')}') format('woff2');
@@ -1584,8 +1586,65 @@
   .cb-section-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--cb-subtext); opacity: 0.6; }
   
   /* Toast animations */
-  @keyframes cb-toast-in { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
   @keyframes cb-toast-out { from { transform: translateY(0); opacity: 1; } to { transform: translateY(10px); opacity: 0; } }
+
+  /* ========== Prompt Designer (Smart Prompts) ========== */
+  .cb-pd-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; padding-bottom: 12px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); }
+  .cb-pd-title { font-family: 'Bebas Neue', system-ui, -apple-system, sans-serif !important; font-size: 22px; font-weight: 400; color: var(--cb-white); display: flex; align-items: center; gap: 12px; letter-spacing: 1px; }
+  .cb-gradient-text { background: linear-gradient(135deg, #00D4FF 0%, #7C3AED 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1)); }
+  .cb-pd-close-btn { background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.08); color: var(--cb-subtext); cursor: pointer; padding: 8px; border-radius: 10px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); display: flex; align-items: center; justify-content: center; }
+  .cb-pd-close-btn:hover { background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.12); color: var(--cb-white); transform: rotate(90deg); }
+  .cb-pd-intro { font-family: system-ui, -apple-system, sans-serif !important; font-size: 13px; line-height: 1.6; color: var(--cb-subtext); margin-bottom: 28px; padding: 14px 18px; background: rgba(255, 255, 255, 0.01); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.04); border-radius: 12px; }
+  .cb-pd-intro-highlight { color: #00D4FF; font-weight: 500; letter-spacing: 0.01em; }
+  .cb-pd-content { display: flex; flex-direction: column; gap: 16px; padding: 0; margin: 0; }
+  .cb-pd-footer { margin-top: 32px; font-size: 10px; color: var(--cb-subtext); text-align: center; opacity: 0.3; letter-spacing: 1.2px; text-transform: uppercase; font-weight: 500; }
+  .cb-pd-action-bar { display: flex; gap: 12px; margin-bottom: 8px; }
+  .cb-pd-btn-generate { flex: 1; background: linear-gradient(135deg, rgba(0, 212, 255, 0.1) 0%, rgba(124, 58, 237, 0.1) 100%); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid rgba(0, 212, 255, 0.2); padding: 12px 20px; font-weight: 500; font-size: 13px; border-radius: 12px; color: #00D4FF; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); letter-spacing: 0.5px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1); }
+  .cb-pd-btn-generate:hover { background: linear-gradient(135deg, rgba(0, 212, 255, 0.15) 0%, rgba(124, 58, 237, 0.15) 100%); border-color: rgba(0, 212, 255, 0.4); transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0, 212, 255, 0.2); }
+  .cb-pd-btn-generate:active { transform: translateY(0); }
+  .cb-pd-btn-generate--loading { opacity: 0.7; pointer-events: none; animation: cbPulse 1.5s infinite ease-in-out; }
+  .cb-pd-btn-generate svg { width: 16px; height: 16px; stroke: currentColor; }
+  @keyframes cbPulse { 0% { transform: scale(1); opacity: 0.7; } 50% { transform: scale(0.98); opacity: 0.5; } 100% { transform: scale(1); opacity: 0.7; } }
+  .cb-pd-icon-btn { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; background: rgba(255, 255, 255, 0.02); backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 12px; cursor: pointer; transition: all 0.3s ease; color: var(--cb-subtext); }
+  .cb-pd-icon-btn svg { width: 18px; height: 18px; stroke: currentColor; }
+  .cb-pd-icon-btn:hover { background: rgba(255, 255, 255, 0.05); border-color: rgba(255, 255, 255, 0.12); color: var(--cb-white); transform: scale(1.05); }
+  .cb-pd-prompts-list { display: flex; flex-direction: column; gap: 12px; max-height: 450px; overflow-y: auto; padding-right: 4px; }
+  .cb-pd-prompts-list::-webkit-scrollbar { width: 4px; }
+  .cb-pd-prompts-list::-webkit-scrollbar-track { background: transparent; }
+  .cb-pd-prompts-list::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.05); border-radius: 10px; }
+  .cb-pd-prompts-list::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.1); }
+  .cb-pd-empty-state { text-align: center; padding: 48px 24px; background: rgba(255, 255, 255, 0.01); border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.03); }
+  .cb-pd-empty-icon { width: 48px; height: 48px; margin: 0 auto 20px; border-radius: 14px; background: linear-gradient(135deg, rgba(0, 212, 255, 0.05), rgba(124, 58, 237, 0.05)); display: flex; align-items: center; justify-content: center; opacity: 0.8; }
+  .cb-pd-empty-title { font-family: system-ui, -apple-system, sans-serif !important; font-size: 18px; color: var(--cb-white); margin-bottom: 8px; letter-spacing: 0.5px; opacity: 0.9; font-weight: 600; }
+  .cb-pd-empty-desc { font-size: 12px; color: var(--cb-subtext); line-height: 1.6; opacity: 0.5; }
+  .cb-prompt-item { padding: 14px 18px; background: rgba(255, 255, 255, 0.02); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.05); border-left: 3px solid transparent; border-radius: 14px; cursor: pointer; transition: all 0.6s cubic-bezier(0.19, 1, 0.22, 1); opacity: 0; transform: translateY(12px); animation: cbFadeSlideIn 0.5s ease forwards; position: relative; overflow: hidden; max-height: 52px; display: flex; flex-direction: column; gap: 14px; }
+  .cb-prompt-item::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.01) 50%, transparent 100%); transform: translateX(-100%); transition: transform 0.6s ease; }
+  .cb-prompt-item:hover { background: rgba(255, 255, 255, 0.04); border-color: rgba(255, 255, 255, 0.1); transform: translateY(-1px); box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2); }
+  .cb-prompt-item:hover::before { transform: translateX(100%); }
+  
+  .cb-prompt-item--expanded { max-height: 1000px; padding: 20px 22px; background: rgba(255, 255, 255, 0.035); border-color: rgba(255, 255, 255, 0.12); cursor: default; }
+  .cb-prompt-item--expanded .cb-prompt-text { opacity: 1; transform: translateY(0); display: block; }
+  .cb-prompt-item--expanded .cb-prompt-actions { opacity: 1; display: flex; transform: translateY(0); pointer-events: auto; }
+  .cb-prompt-item--expanded .cb-prompt-category { opacity: 0.9; letter-spacing: 0.5px; font-weight: 600; }
+
+  .cb-prompt-item--copied { background: rgba(0, 212, 255, 0.08) !important; border-color: rgba(0, 212, 255, 0.2) !important; border-left-color: #00D4FF !important; }
+  .cb-prompt-item--inserted { background: rgba(52, 211, 153, 0.08) !important; border-color: rgba(52, 211, 153, 0.2) !important; border-left-color: #34d399 !important; }
+  
+  .cb-prompt-item-header { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+  .cb-prompt-dot { width: 6px; height: 6px; border-radius: 50%; filter: blur(0.5px); }
+  .cb-prompt-category { display: block; font-family: system-ui, -apple-system, sans-serif !important; font-size: 14px; font-weight: 500; letter-spacing: 0.3px; opacity: 0.6; flex: 1; transition: all 0.3s ease; text-transform: capitalize; }
+  
+  .cb-prompt-text { font-size: 13.5px; color: rgba(255, 255, 255, 0.9); line-height: 1.65; font-weight: 400; opacity: 0; transform: translateY(4px); transition: all 0.4s ease 0.1s; display: none; -webkit-user-select: text; user-select: text; }
+  
+  .cb-prompt-actions { opacity: 0; transform: translateY(8px); transition: all 0.4s ease 0.2s; display: none; align-items: center; gap: 12px; margin-top: 4px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 16px; }
+  .cb-prompt-copy-btn { padding: 8px 16px; font-size: 10px; font-weight: 600; color: #00D4FF; border-radius: 10px; border: 1px solid rgba(0, 212, 255, 0.2); background: rgba(0, 212, 255, 0.05); display: flex; align-items: center; gap: 8px; cursor: pointer; transition: all 0.3s ease; }
+  .cb-prompt-copy-btn:hover { background: rgba(0, 212, 255, 0.12); border-color: rgba(0, 212, 255, 0.4); transform: translateY(-1px); }
+  .cb-prompt-copy-btn svg { width: 14px; height: 14px; stroke: currentColor; }
+
+  .cb-pd-error { text-align: center; padding: 32px; color: var(--cb-subtext); font-size: 12px; font-style: italic; opacity: 0.6; }
+  .cb-pd-error--fail { color: #f87171; opacity: 0.8; }
+  @keyframes cbFadeSlideIn { to { opacity: 1; transform: translateY(0); } }
+  #cb-pd-view { background: radial-gradient(circle at top left, rgba(0, 212, 255, 0.05), transparent 40%), radial-gradient(circle at bottom right, rgba(124, 58, 237, 0.05), transparent 40%), linear-gradient(180deg, var(--cb-bg), var(--cb-bg2)); }
   `;
     shadow.appendChild(style);
     // Apply saved theme preference - DEFAULT TO DARK
@@ -7244,6 +7303,11 @@
         }
       });
 
+      // Extract key technical topics/entities (basic approach for fallback hint)
+      const allText = messages.slice(-10).map(m => m.text).join(' ');
+      const words = allText.match(/\b[A-Z][a-zA-Z]{3,}\b|\b(?:api|json|auth|css|html|react|js|node|sql)\b/gi) || [];
+      context.topics = [...new Set(words.map(w => w.toLowerCase()))].slice(0, 5);
+
       return context;
     }
 
@@ -7258,19 +7322,23 @@
         debugLog('[Smart Prompts] Processing', messages.length, 'messages');
         debugLog('[Smart Prompts] Conversation preview:', conversationText.slice(0, 200));
 
-        const prompt = `Analyze this conversation and generate 5 follow-up questions, one per category. Each question MUST be SPECIFIC to the actual content discussed - reference specific topics, technologies, terms, or concepts from the conversation.
+        const prompt = `Act as an elite technical consultant and deep-thinking strategist. Analyze this conversation and generate exactly 5 intricate, multi-layered follow-up questions that challenge assumptions and explore deep technical or conceptual relationships.
+
+Each question MUST:
+1. Be theoretically deep and move beyond surface-level "what" or "how".
+2. Directly reference specific terms, logic, or paradoxical points from the conversation.
+3. Be phrased as a high-level probe (e.g., "Given the trade-offs between X and Y mentioned, how does the architecture handle Z...").
+4. NOT use generic templates.
 
 Conversation:
 ${conversationText}
 
-Generate exactly 5 questions in this exact format (one per line):
-1. CLARIFICATION: [specific question about something unclear in THIS conversation]
-2. IMPROVEMENT: [specific suggestion to improve what was discussed]
-3. EXPANSION: [specific related topic to explore based on what was discussed]
-4. CRITICAL: [specific assumption made in this conversation to challenge]
-5. CREATIVE: [specific alternative approach for the topic discussed]
-
-CRITICAL: Each question MUST directly reference topics, terms, or concepts from the conversation above. Generic questions are NOT acceptable.
+Generate exactly 5 questions in this format:
+1. CLARIFICATION: [A deep probe into the underlying logic or missing technical bridge]
+2. IMPROVEMENT: [An optimization strategy that considers specific constraints mentioned]
+3. EXPANSION: [A theoretical leap into how these concepts intersect with related advanced domains]
+4. CRITICAL: [A rigorous challenge to a specific assumption or potential bottleneck]
+5. CREATIVE: [A radical alternative paradigm for the specific solution being discussed]
 
 Output ONLY the 5 numbered questions, no other text.`;
 
@@ -7342,8 +7410,8 @@ Output ONLY the 5 numbered questions, no other text.`;
           const geminiResult = await withTimeout(callGeminiAsync({
             action: 'prompt',
             text: prompt,
-            systemPrompt: 'You are a conversation analyst. Generate thought-provoking follow-up questions that are SPECIFIC to the conversation content. Never use generic placeholder questions.',
-            length: 'short'
+            systemPrompt: 'You are an elite technical strategist. Generate exactly 5 intricate, deep-thinking follow-up questions that challenge underlying logic and explore complex technical intersections. Avoid all generic phrasing; reference specific entities and paradoxical relationships discussed in the input.',
+            length: 'medium'
           }));
 
           if (geminiResult && geminiResult.ok && geminiResult.result) {
@@ -7376,11 +7444,11 @@ Output ONLY the 5 numbered questions, no other text.`;
       const topicHint = context?.topics?.slice(0, 3)?.join(', ') || 'the topics discussed';
       return {
         questions: [
-          { text: `What edge cases or error scenarios should we consider regarding ${topicHint}?`, category: 'clarification', sourceIndexes: [] },
-          { text: `How can we make this solution involving ${topicHint} more maintainable or scalable?`, category: 'improvement', sourceIndexes: [] },
-          { text: `What related aspects of ${topicHint} should we explore further?`, category: 'expansion', sourceIndexes: [] },
-          { text: `What assumptions are we making about ${topicHint} that might not hold true?`, category: 'critical', sourceIndexes: [] },
-          { text: `Is there a completely different approach we should consider for ${topicHint}?`, category: 'creative', sourceIndexes: [] }
+          { text: `Given the constraints of ${topicHint}, what are the specific architectural trade-offs we're accepting in this implementation?`, category: 'clarification', sourceIndexes: [] },
+          { text: `How could we optimize the logic of ${topicHint} to prevent potential scalability bottlenecks or latency issues?`, category: 'improvement', sourceIndexes: [] },
+          { text: `How does our approach to ${topicHint} intersect with broader industry standards or advanced theoretical models?`, category: 'expansion', sourceIndexes: [] },
+          { text: `Which foundational assumptions about ${topicHint} are we making that might fail in a production environment?`, category: 'critical', sourceIndexes: [] },
+          { text: `What is a radical alternative paradigm for ${topicHint} that would completely eliminate current dependencies?`, category: 'creative', sourceIndexes: [] }
         ]
       };
     }
@@ -7441,7 +7509,7 @@ Output ONLY the 5 numbered questions, no other text.`;
           const originalHTML = btnGenerate.innerHTML;
           btnGenerate.innerHTML = '<span class="cb-spinner" style="width:12px;height:12px;border-width:2px;"></span> Generating';
           btnGenerate.disabled = true;
-          btnGenerate.style.opacity = '0.7';
+          btnGenerate.classList.add('cb-pd-btn-generate--loading');
 
           try {
             const msgs = await scanChat();
@@ -7495,34 +7563,71 @@ Output ONLY the 5 numbered questions, no other text.`;
             <div class="cb-prompt-item" data-text="${encodeURIComponent(q.text)}" data-index="${i}" data-cat-color="${categoryColors[q.category] || '#60a5fa'}" style="border-left-color:${categoryColors[q.category] || '#60a5fa'};animation-delay:${i * 0.06}s;">
               <div class="cb-prompt-item-header">
                 <div class="cb-prompt-dot" style="background:${categoryColors[q.category] || '#60a5fa'};box-shadow:0 0 8px ${categoryColors[q.category] || '#60a5fa'}60;"></div>
-                <span class="cb-prompt-category" style="color:${categoryColors[q.category] || '#60a5fa'};">${q.category}</span>
+                <span class="cb-prompt-category" style="color:${categoryColors[q.category] || '#60a5fa'};">${q.category.toLowerCase()}</span>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="opacity:0.3; margin-left:4px;"><path d="M6 9l6 6 6-6"/></svg>
               </div>
               <div class="cb-prompt-text">${q.text}</div>
+              <div class="cb-prompt-actions">
+                <button class="cb-prompt-copy-btn">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
+                  Copy
+                </button>
+                <div style="font-size:10px; color:var(--cb-subtext); opacity:0.3; margin-left:auto;">Double-click to insert</div>
+              </div>
             </div>
           `).join('');
 
           // Add click handlers
           listContainer.querySelectorAll('.cb-prompt-item').forEach(item => {
-            // Hover effects handled by CSS :hover on .cb-prompt-item
-            item.addEventListener('click', async (e) => {
-              if (e.detail === 2) return; // Skip if double-click
-              const text = decodeURIComponent(item.dataset.text);
-              await navigator.clipboard.writeText(text);
-              item.classList.add('cb-prompt-item--copied');
-              setTimeout(() => item.classList.remove('cb-prompt-item--copied'), 300);
-              toast('Copied');
+            let clickTimeout;
+
+            item.addEventListener('click', (e) => {
+              // detail counts consecutive clicks; only act on true single click
+              if (e.detail > 1) return;
+
+              clearTimeout(clickTimeout);
+              clickTimeout = setTimeout(() => {
+                const isExpanded = item.classList.contains('cb-prompt-item--expanded');
+                // Opt-in: close others on open
+                if (!isExpanded) {
+                  listContainer.querySelectorAll('.cb-prompt-item--expanded').forEach(el => el.classList.remove('cb-prompt-item--expanded'));
+                }
+                item.classList.toggle('cb-prompt-item--expanded');
+              }, 200);
             });
-            item.addEventListener('dblclick', async () => {
+
+            // Double click to insert
+            item.addEventListener('dblclick', async (e) => {
+              clearTimeout(clickTimeout);
+              e.stopPropagation();
               const text = decodeURIComponent(item.dataset.text);
               const inserted = insertTextToChat(text);
               if (inserted) {
                 item.classList.add('cb-prompt-item--inserted');
-                setTimeout(() => item.classList.remove('cb-prompt-item--inserted'), 300);
-                toast('Inserted');
+                setTimeout(() => item.classList.remove('cb-prompt-item--inserted'), 400);
+                toast('Inserted to chat');
               } else {
-                toast('No input found');
+                toast('No active input found');
               }
             });
+
+            // Internal copy button
+            const copyBtn = item.querySelector('.cb-prompt-copy-btn');
+            if (copyBtn) {
+              copyBtn.addEventListener('click', async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const text = decodeURIComponent(item.dataset.text);
+                try {
+                  await navigator.clipboard.writeText(text);
+                  item.classList.add('cb-prompt-item--copied');
+                  setTimeout(() => item.classList.remove('cb-prompt-item--copied'), 400);
+                  toast('Copied to clipboard');
+                } catch (err) {
+                  toast('Failed to copy');
+                }
+              });
+            }
           });
         }
 
