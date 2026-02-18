@@ -3,33 +3,6 @@
 This comprehensive checklist tracks the implementation progress of ALL ChatBridge features, UI components, buttons, and pages. ✅ indicates completed items.
 
 ---
-## 🎯 Prompt Designer View
-- [x] **Header**
-    - [x] ⭐ Icon with gradient
-    - [x] "Smart Prompts" title
-    - [x] ✕ Close button
-- [x] **Intro Card**
-    - [x] Instructions text (Minimal glass design)
-- [x] **Prompt Categories (Accordion Style)**
-    - [x] 🎯 **Follow-up** category
-        - [x] Accordion header with icon/color
-        - [x] Generated prompts list (3 prompts)
-        - [x] Click-to-copy functionality
-        - [x] Double-click to insert
-    - [x] 🔍 **Deep Dive** category
-        - [x] Accordion header with icon/color
-        - [x] Generated prompts list
-    - [x] 💡 **Clarify** category
-        - [x] Accordion header with icon/color
-        - [x] Generated prompts list
-    - [x] 🔄 **Alternatives** category
-        - [x] Accordion header with icon/color
-        - [x] Generated prompts list
-    - [x] ✨ **Creative** category
-        - [x] Accordion header with icon/color
-        - [x] Generated prompts list
-- [x] **Footer**
-    - [x] Usage hints ("Click = copy • Double-click = insert")
 
 ## ✨ Prompt Optimizer (Inline)
 - [x] **Quick Action Button** (maximized mode)
@@ -91,12 +64,6 @@ This comprehensive checklist tracks the implementation progress of ALL ChatBridg
 - [ ] **Theme Section**
     - [ ] 🎨 Theme label
     - [ ] Theme grid (6 themes)
-        - [ ] 🌙 Dark button
-        - [ ] ☀️ Light button
-        - [ ] 🌃 Synthwave button
-        - [ ] 🌅 Aurora button
-        - [ ] 🌌 Nebula button
-        - [ ] 🌸 Rose button
 - [ ] **API Keys Section**
     - [ ] 🔑 API Keys label
     - [ ] **Gemini API Key**
@@ -257,28 +224,6 @@ This comprehensive checklist tracks the implementation progress of ALL ChatBridg
 
 ---
 
-## ⌨️ Keyboard Shortcuts
-- [x] `Ctrl+Shift+S` / `Cmd+Shift+S` - Quick scan
-- [x] `Ctrl+Shift+H` / `Cmd+Shift+H` - Toggle sidebar
-- [x] `Ctrl+Shift+I` / `Cmd+Shift+I` - Insert to chat
-- [x] `Ctrl+Shift+F` / `Cmd+Shift+F` - Insight Finder
-- [x] `S` - Scan (when sidebar focused)
-- [x] `R` - Restore (when sidebar focused)
-- [x] `C` - Copy (when sidebar focused)
-- [x] `Esc` - Close sidebar/views
-
----
-
-## 🎨 Theming System
-- [ ] Dark theme (default)
-- [ ] Light theme
-- [ ] Synthwave theme
-- [ ] Aurora theme
-- [ ] Nebula theme
-- [ ] Rose theme
-- [ ] Ocean theme (options page)
-- [ ] Sunset theme (options page)
-- [ ] CSS variables system
 - [ ] Theme persistence in storage
 
 
@@ -287,10 +232,6 @@ This comprehensive checklist tracks the implementation progress of ALL ChatBridg
 - [ ] Input validation
 - [ ] Secure API key storage
 - [ ] Content Security Policy compliance
-
-
-
-**Last Updated:** January 14, 2026
 
 **Legend:**
 - [ ] = Not started / In progress

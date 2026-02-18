@@ -39,8 +39,7 @@ ChatBridge.getLastScan()
 **Solutions:**
 1. **Click input first**: Click the chat input box before restoring
 2. **Wait for page load**: Ensure target page fully loaded
-3. **Check permissions**: Verify extension has scripting permission
-4. **Try manual paste**: Copy from scan and paste manually
+3. **Try manual paste**: Copy from scan and paste manually
 5. **Check adapter support**: Some sites may need adapter updates
 
 **Debug restore:**

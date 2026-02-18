@@ -185,43 +185,6 @@ chrome.runtime.sendMessage(
 )
 ```
 
-### Vector Indexing
-
-```javascript
-chrome.runtime.sendMessage(
-  {
-    type: 'vector_index',
-    payload: {
-      id: 'conv-123',
-      text: 'Conversation text for embedding...',
-      metadata: { platform: 'chatgpt', ts: Date.now() }
-    }
-  },
-  response => console.log('Indexed:', response.ok)
-)
-```
-
-### Semantic Suggestions
-
-```javascript
-chrome.runtime.sendMessage(
-  {
-    type: 'embed_suggest',
-    payload: {
-      text: 'Query text...',
-      topK: 6
-    }
-  },
-  response => {
-    if (response.ok) {
-      response.suggestions.forEach(s => {
-        console.log(s.phrase, s.confidence)
-      })
-    }
-  }
-)
-```
-
 ### Continue With (Open and Restore)
 
 ```javascript
@@ -321,23 +284,6 @@ chrome.storage.local.set({
 }
 ```
 
-### Vector Index Entry
-
-```javascript
-{
-  id: string,                    // Unique ID
-  vector: number[],              // Embedding (768 dims)
-  metadata: {
-    platform?: string,
-    url?: string,
-    ts?: number,
-    topics?: string[],
-    type?: string
-  },
-  ts: number                     // Index timestamp
-}
-```
-
 ## Error Codes
 
 | Code | Meaning |
@@ -345,13 +291,11 @@ chrome.storage.local.set({
 | `no_api_key` | API key not configured |
 | `rate_limited` | Too many requests |
 | `no_text` | Empty input text |
-| `no_embedding` | Embedding generation failed |
 | `gemini_http_error` | HTTP error from Gemini API |
 | `gemini_parse_error` | Failed to parse API response |
 | `gemini_fetch_error` | Network error calling API |
 | `restore_timeout` | Restore took too long |
 | `tab_not_found` | Target tab closed |
-| `embed_suggest_error` | Suggestion generation failed |
 
 ## Events
 

@@ -220,10 +220,11 @@ cd ChatBridge
 
 **Backend / Processing:**
 
-* Google Gemini API
+* Google Gemini API (summarize, rewrite, translate)
+* HuggingFace Inference API (EuroLLM, Gemma, Llama)
+* OpenAI API (optional fallback)
 * Hierarchical chunking & parallel processing
-* Retry & fallback logic
-* Hugging face models
+* Retry, caching & fallback logic
 
 **Storage:**
 
@@ -238,17 +239,28 @@ Adapter • Observer • Strategy • Singleton
 
 ```
 ChatBridge/
-├── manifest.json              # Extension manifest (V3)
-├── content_script.js          # Core logic and UI
-├── background.js              # API calls and events
-├── adapters.js                # Platform-specific extractors
-├── storage.js                 # Data layer
-├── sidebar.html/js            # Sidebar interface
+├── manifest.json              # Extension manifest (MV3)
+├── content_script.js          # Core logic, UI, and sidebar injection
+├── background.js              # API calls, rate limiting, events
+├── adapters.js                # Platform-specific message extractors
+├── storage.js                 # Chrome storage abstraction
+├── config.js                  # Runtime configuration
+├── security.js                # Input sanitization & data detection
+├── smartFeatures.js           # Smart context injection
+├── SegmentEngine.js           # Text segmentation engine
+├── IntentAnalyzer.js          # Intent classification
+├── MemoryRetrieval.js         # Memory retrieval pipeline
+├── smartQueries.js/html/css   # Smart Query UI & logic
+├── sidebar.html/js            # History sidebar interface
 ├── popup.html/js              # Popup menu
-├── options.html/js            # Settings
+├── options.html/js            # Settings page
+├── translations.js            # i18n translations
+├── summarize_tab.html/js      # Standalone summarize tab
+├── utils/constants.js         # Shared constants
+├── utils/rewriter.js          # Rewrite utility (code-block-safe)
 ├── icons/                     # Toolbar icons
-├── tests/                     # E2E & adapter tests
-├── documentation/             # Deep-dive technical docs
+├── fonts/                     # Inter font files
+├── documentation/             # Technical docs
 └── README.md
 ```
 
@@ -280,16 +292,17 @@ Default = 1 request/sec; add personal Gemini key for more.
 
 ---
 
-## 📚 Documentation Index
+## 📚 Documentation
 
-- Agentic features: Agentic_Features.md
-- ONNX: ONNX_OVERVIEW.md
-- UI/UX: UI_UX_Guide.md
-- API Reference: documentation/API_REFERENCE.md
-- Architecture: documentation/ARCHITECTURE.md
-- Quick Start: documentation/QUICK_START.md
-- Security: documentation/SECURITY.md
-- Troubleshooting: documentation/TROUBLESHOOTING.md
+- [Architecture](documentation/ARCHITECTURE.md) — System design and data flows
+- [API Reference](documentation/API_REFERENCE.md) — Public API, message types, storage schema
+- [API Endpoints](documentation/API_ENDPOINTS.md) — External APIs used
+- [Developer Guide](documentation/DEVELOPER_GUIDE.md) — How to extend & debug
+- [Features](documentation/FEATURES.md) — Full feature overview
+- [Quick Start](documentation/QUICK_START.md) — Installation & first use
+- [Security](documentation/SECURITY.md) — Privacy & security model
+- [Troubleshooting](documentation/TROUBLESHOOTING.md) — Common issues & fixes
+- [How It Works](documentation/HOW_IT_WORKS.md) — Scanning & restoring deep dive
 
 ---
 

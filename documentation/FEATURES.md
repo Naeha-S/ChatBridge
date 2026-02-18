@@ -12,10 +12,17 @@ Works seamlessly across 10+ AI platforms without vendor lock-in.
 - Microsoft Copilot (copilot.microsoft.com)
 - Perplexity (perplexity.ai)
 - Poe (poe.com)
-- Grok / X.AI (x.ai)
-- DeepSeek (deepseek.ai)
+- Grok / X.AI (x.ai, grok.com)
+- DeepSeek (chat.deepseek.com)
 - Mistral AI (chat.mistral.ai)
 - Meta AI (meta.ai)
+- HuggingChat (huggingface.co/chat)
+- You.com (you.com)
+- Pi (pi.ai)
+- Cohere (coral.cohere.com)
+- Phind (phind.com)
+- Together AI (api.together.xyz)
+- Inflection (inflection.ai)
 
 ### 📝 AI-Powered Transformations
 
@@ -104,10 +111,11 @@ Supports 20+ languages including:
 - Finds related content intelligently
 - Filter by platform, date, topics
 
-### Knowledge Graph (Coming Soon)
-- Visual network of conversation connections
-- Discover relationships between topics
-- Interactive exploration
+### Knowledge Graph
+- Visual force-directed graph of conversation connections
+- Auto-built from scanned conversations
+- Discover relationships between topics across platforms
+- Interactive canvas-based exploration
 
 ## Use Cases
 

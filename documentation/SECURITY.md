@@ -20,8 +20,7 @@ Note: In this build, a development fallback key may be hardcoded for convenience
 ## Permissions
 
 - storage: save settings and conversations locally
-- activeTab/scripting: inject UI only on approved domains
-- clipboardWrite: optional restore to chat conveniences
+- activeTab: inject UI only on approved domains
 
 ## Data Flow (High level)
 

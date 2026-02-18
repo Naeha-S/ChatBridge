@@ -80,9 +80,9 @@ ChatBridge follows a Chrome Extension Manifest V3 architecture with clear separa
 
 **Message Handlers:**
 - `call_gemini`: Summarize, rewrite, translate
-- `generate_image`: Image generation (optional)
+- `call_gemma_rewrite`: Gemma-based rewriting via HuggingFace
+- `rewrite_text`: Unified rewrite dispatcher
 - `open_and_restore`: Continue With flow
-- `vector_index`: Embedding operations
 - `self_test`: Built-in diagnostics
 
 ### 3. Adapters (`adapters.js`)
@@ -201,8 +201,6 @@ Responds success
 ### Permissions
 - `storage`: Local data persistence
 - `activeTab`: Inject into active tab only
-- `scripting`: Content script injection
-- `clipboardWrite`: Copy functionality
 
 ### Data Isolation
 - Shadow DOM prevents CSS/JS conflicts
@@ -308,7 +306,7 @@ chrome.storage.local.set({
 - **Caching**: API responses (5 min), API key (60 sec), config (60 sec)
 - **Lazy loading**: UI rendered only when avatar clicked
 - **Debouncing**: DOM stability checks with timeout
-- **Batch operations**: Embedding API supports batch requests
+- **Batch operations**: Chunked summarization for long texts
 - **Shadow DOM**: Isolated styles prevent reflow
 
 ## Testing

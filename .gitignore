@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+package-lock.json
+
+# ONNX model binaries (large)
+onnx/*.wasm
+models/
+
+# Bundled vendor libs (re-downloadable)
+vendor/transformers.min.js
+
+# OS files
+Thumbs.db
+Desktop.ini
+.DS_Store
+ehthumbs.db
+
+# IDE / Editor
+*.swp
+*.swo
+*~
+*.sublime-workspace
+*.sublime-project
+
+# Chrome Extension build output
+*.crx
+*.pem
+*.zip
+web-ext-artifacts/
+
+# Environment / secrets
+.env
+.env.*
+
+# Wrangler
+.wrangler/
+
+# Misc
+*.log
+*.tmp
