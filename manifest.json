@@ -5,17 +5,12 @@
   "description": "Manually scan your visible AI chat session and paste it into another AI chat. Local-only by default.",
   "permissions": [
     "storage",
-    "activeTab",
-    "scripting",
-    "clipboardWrite"
+    "activeTab"
   ],
   "host_permissions": [
     "https://generativelanguage.googleapis.com/*",
     "https://api.openai.com/*",
     "https://api-inference.huggingface.co/*"
-  ],
-  "trial_tokens": [
-    "A0+TzJqk1JecJ3NCv256jrsJPr5BJVRZXEeXI/XQrwkRP7NH8QFo+JaL+ptsnb6FeHJcyI+TetN2reqjZv1ZYAQAAACPeyJvcmlnaW4iOiJjaHJvbWUtZXh0ZW5zaW9uOi8vb21qZGNla2dqamFnbm5hYWdjZmxvZGZqbWltcGJwanAiLCJmZWF0dXJlIjoiQUlQcm9tcHRBUElNdWx0aW1vZGFsSW5wdXQiLCJleHBpcnkiOjE3NzQzMTA0MDAsImlzVGhpcmRQYXJ0eSI6dHJ1ZX0="
   ],
   "action": {
     "default_popup": "popup.html",
@@ -28,7 +23,7 @@
     "type": "module"
   },
   "content_security_policy": {
-    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
+    "extension_pages": "script-src 'self'; object-src 'self'"
   },
   "content_scripts": [
     {
@@ -64,27 +59,15 @@
       "js": [
         "config.js",
         "utils/constants.js",
-        "utils/logger.js",
-        "utils/validation.js",
-        "utils/domUtils.js",
-        "utils/textUtils.js",
-        "utils/messageUtils.js",
-        "utils/translator.js",
         "utils/rewriter.js",
-        "translatePanel.js",
-        "rewritePanel.js",
         "security.js",
         "adapters.js",
         "storage.js",
-        "embeddings.js",
-        "ragEngine.js",
-        "mcpBridge.js",
         "smartFeatures.js",
         "SegmentEngine.js",
         "IntentAnalyzer.js",
         "MemoryRetrieval.js",
         "smartQueries.js",
-        "luxuryMode.js",
         "content_script.js"
       ],
       "css": [
@@ -105,17 +88,6 @@
         "logo.png",
         "fonts/Inter-Regular.woff2",
         "fonts/Inter-Bold.woff2"
-      ],
-      "matches": [
-        "<all_urls>"
-      ]
-    },
-    {
-      "resources": [
-        "vendor/*",
-        "models/*",
-        "onnx/*",
-        "onnx/**/*.wasm"
       ],
       "matches": [
         "<all_urls>"
