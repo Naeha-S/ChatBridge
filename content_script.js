@@ -1,4 +1,4 @@
-// wrap everything in an IIFE and exit early if already injected to avoid redeclaration
+﻿// wrap everything in an IIFE and exit early if already injected to avoid redeclaration
 (function () {
   'use strict';
   if (typeof window !== 'undefined' && window.__CHATBRIDGE_INJECTED) {
@@ -1342,6 +1342,10 @@
     background: #f8f9fa;
     border: 1px solid rgba(0, 0, 0, 0.06);
   }
+  :host(.cb-theme-light) .cb-history-item:hover { background: rgba(0,0,0,0.04); }
+  :host(.cb-theme-light) .cb-history-item.cb-active { background: rgba(37,99,235,0.08); }
+  :host(.cb-theme-light) .cb-hi-text { color: #1f2937; }
+  :host(.cb-theme-light) .cb-history-date-group { color: #6b7280; }
   :host(.cb-theme-light) .cb-header-btn {
     background: #ffffff;
     border: 1px solid rgba(0, 0, 0, 0.08);
@@ -1360,6 +1364,38 @@
     background: #f8f9fa;
     border: 1px solid rgba(0, 0, 0, 0.06);
     border-left: 3px solid #2563eb;
+  }
+  :host(.cb-theme-light) .cb-quick-pill {
+    background: #f3f4f6;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+  }
+  :host(.cb-theme-light) .cb-quick-pill:hover {
+    background: rgba(37, 99, 235, 0.08);
+    border-color: rgba(37, 99, 235, 0.25);
+  }
+  :host(.cb-theme-light) .cb-quick-pill.cb-active {
+    background: rgba(37, 99, 235, 0.1);
+    border-color: rgba(37, 99, 235, 0.3);
+    color: #2563eb;
+  }
+  :host(.cb-theme-light) .cb-inline-panel {
+    background: #ffffff;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  }
+  :host(.cb-theme-light) .cb-inline-panel .cb-stat-card {
+    background: #f8f9fa;
+    border: 1px solid rgba(0, 0, 0, 0.06);
+  }
+  :host(.cb-theme-light) .cb-export-btn {
+    background: #f3f4f6 !important;
+    border: 1px solid rgba(0, 0, 0, 0.1) !important;
+    color: #374151 !important;
+  }
+  :host(.cb-theme-light) .cb-export-btn:hover {
+    background: rgba(37, 99, 235, 0.08) !important;
+    border-color: #2563eb !important;
+    color: #2563eb !important;
   }
   :host(.cb-theme-light) .cb-scan-premium {
     background: #2563eb;
@@ -1416,6 +1452,12 @@
     border: 1px solid rgba(37, 99, 235, 0.2) !important;
     color: #2563eb !important;
   }
+  :host(.cb-theme-light) .cb-gradient-text {
+    background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
   :host(.cb-theme-light) .cb-row-result {
     background: #ffffff;
     border: 1px solid rgba(0, 0, 0, 0.06);
@@ -1427,9 +1469,9 @@
     color: #1a1a1a;
   }
   :host(.cb-theme-skeuomorphic) {
-    --cb-bg: #c8c8c8;
-    --cb-bg2: #d6d6d6;
-    --cb-bg3: #b8b8b8;
+    --cb-bg: #d2d2d2;
+    --cb-bg2: #dedede;
+    --cb-bg3: #c5c5c5;
     --cb-white: #1a1a1a;
     --cb-subtext: #4a4a4a;
     --cb-accent-primary: #4a90d9;
@@ -1522,10 +1564,10 @@
 
   /* ===== Skeuomorphic Theme Structural Overrides ===== */
   :host(.cb-theme-skeuomorphic) .cb-panel {
-    background: linear-gradient(180deg, #d6d6d6 0%, #bfbfbf 100%);
-    border: 2px solid #a0a0a0;
-    border-top-color: #e8e8e8;
-    border-left-color: #e0e0e0;
+    background: linear-gradient(180deg, #e0e0e0 0%, #cccccc 100%);
+    border: 2px solid #aaaaaa;
+    border-top-color: #eeeeee;
+    border-left-color: #e8e8e8;
     box-shadow: var(--cb-shadow-xl);
     backdrop-filter: none;
   }
@@ -1556,14 +1598,14 @@
     box-shadow: inset 0 1px 0 rgba(255,255,255,0.3), 0 2px 6px rgba(0,0,0,0.2);
   }
   :host(.cb-theme-skeuomorphic) .cb-action-card {
-    background: linear-gradient(180deg, #e2e2e2 0%, #cccccc 100%);
+    background: linear-gradient(180deg, #ececec 0%, #d8d8d8 100%);
     border: 1px solid #aaa;
     border-top-color: #ddd;
     box-shadow: inset 0 1px 0 rgba(255,255,255,0.6), 0 1px 3px rgba(0,0,0,0.12);
     backdrop-filter: none;
   }
   :host(.cb-theme-skeuomorphic) .cb-action-card:hover {
-    background: linear-gradient(180deg, #ececec 0%, #d6d6d6 100%);
+    background: linear-gradient(180deg, #f2f2f2 0%, #e0e0e0 100%);
     box-shadow: inset 0 1px 0 rgba(255,255,255,0.7), 0 2px 6px rgba(0,0,0,0.18);
   }
   :host(.cb-theme-skeuomorphic) .cb-select {
@@ -1585,6 +1627,10 @@
     border: 2px inset #bbb;
     box-shadow: inset 0 2px 6px rgba(0,0,0,0.15);
   }
+  :host(.cb-theme-skeuomorphic) .cb-history-item:hover { background: rgba(0,0,0,0.04); }
+  :host(.cb-theme-skeuomorphic) .cb-history-item.cb-active { background: rgba(93,160,224,0.12); }
+  :host(.cb-theme-skeuomorphic) .cb-hi-text { color: #333; }
+  :host(.cb-theme-skeuomorphic) .cb-history-date-group { color: #666; }
   :host(.cb-theme-skeuomorphic) .cb-badge {
     background: linear-gradient(180deg, #5da0e0, #3a7cc0);
     box-shadow: inset 0 1px 0 rgba(255,255,255,0.3), 0 2px 6px rgba(0,0,0,0.25);
@@ -1595,7 +1641,7 @@
     text-shadow: 0 1px 0 rgba(255,255,255,0.7);
   }
   :host(.cb-theme-skeuomorphic) .cb-header-btn {
-    background: linear-gradient(180deg, #e0e0e0, #c8c8c8);
+    background: linear-gradient(180deg, #e8e8e8, #d2d2d2);
     border: 1px solid #999;
     border-top-color: #ddd;
     box-shadow: inset 0 1px 0 rgba(255,255,255,0.6);
@@ -1603,7 +1649,7 @@
     color: #555;
   }
   :host(.cb-theme-skeuomorphic) .cb-insight-block {
-    background: linear-gradient(180deg, #ddd 0%, #c8c8c8 100%);
+    background: linear-gradient(180deg, #e6e6e6 0%, #d4d4d4 100%);
     border: 1px solid #aaa;
     box-shadow: inset 0 1px 0 rgba(255,255,255,0.5);
   }
@@ -1611,15 +1657,15 @@
     background: linear-gradient(180deg, #4a90d9, #6a7b8a);
   }
   :host(.cb-theme-skeuomorphic) .cb-mini-toolbar {
-    background: linear-gradient(180deg, #d0d0d0, #b8b8b8);
+    background: linear-gradient(180deg, #dadada, #c5c5c5);
   }
   :host(.cb-theme-skeuomorphic) .cb-mini-btn {
-    background: linear-gradient(180deg, #e0e0e0, #c8c8c8);
+    background: linear-gradient(180deg, #e8e8e8, #d2d2d2);
     border: 1px solid #999;
     box-shadow: inset 0 1px 0 rgba(255,255,255,0.6), 0 1px 3px rgba(0,0,0,0.12);
   }
   :host(.cb-theme-skeuomorphic) .cb-prompt-item {
-    background: linear-gradient(180deg, #e0e0e0 0%, #d0d0d0 100%);
+    background: linear-gradient(180deg, #e8e8e8 0%, #dadada 100%);
     border: 1px solid #aaa;
     box-shadow: inset 0 1px 0 rgba(255,255,255,0.5);
     backdrop-filter: none;
@@ -1627,6 +1673,43 @@
   :host(.cb-theme-skeuomorphic) .cb-view-intro {
     background: linear-gradient(180deg, #ddd, #ccc);
     border-left: 3px solid #4a90d9;
+  }
+  :host(.cb-theme-skeuomorphic) .cb-quick-pill {
+    background: linear-gradient(180deg, #e0e0e0, #d0d0d0);
+    border: 1px solid #bbb;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.6), 0 1px 2px rgba(0,0,0,0.15);
+  }
+  :host(.cb-theme-skeuomorphic) .cb-quick-pill:hover {
+    background: linear-gradient(180deg, #e8e8e8, #d8d8d8);
+    border-color: #4a90d9;
+    color: #333;
+  }
+  :host(.cb-theme-skeuomorphic) .cb-quick-pill.cb-active {
+    background: linear-gradient(180deg, #d8e8f4, #c8d8e8);
+    border-color: #4a90d9;
+    color: #4a90d9;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.15);
+  }
+  :host(.cb-theme-skeuomorphic) .cb-inline-panel {
+    background: linear-gradient(180deg, #e2e2e2, #d2d2d2);
+    border: 1px solid #bbb;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.5), 0 2px 4px rgba(0,0,0,0.15);
+  }
+  :host(.cb-theme-skeuomorphic) .cb-inline-panel .cb-stat-card {
+    background: linear-gradient(180deg, #ddd, #ccc);
+    border: 1px solid #bbb;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.4);
+  }
+  :host(.cb-theme-skeuomorphic) .cb-export-btn {
+    background: linear-gradient(180deg, #e0e0e0, #d0d0d0) !important;
+    border: 1px solid #bbb !important;
+    color: #333 !important;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.5), 0 1px 2px rgba(0,0,0,0.1) !important;
+  }
+  :host(.cb-theme-skeuomorphic) .cb-export-btn:hover {
+    background: linear-gradient(180deg, #d8e8f4, #c8d8e8) !important;
+    border-color: #4a90d9 !important;
+    color: #4a90d9 !important;
   }
   :host(.cb-theme-skeuomorphic) .cb-gradient-text {
     background: none;
@@ -1637,7 +1720,7 @@
     backdrop-filter: none;
   }
   :host(.cb-theme-skeuomorphic) .cb-status-bar {
-    background: linear-gradient(180deg, #c8c8c8, #b8b8b8);
+    background: linear-gradient(180deg, #d4d4d4, #c5c5c5);
     border-top: 1px solid #aaa;
   }
   :host(.cb-theme-skeuomorphic) .cb-preview-card {
@@ -1731,6 +1814,11 @@
     box-shadow: inset 2px 2px 0 rgba(0,0,0,0.05);
     border-radius: 0;
   }
+  :host(.cb-theme-brutalism) .cb-history-item { border-radius: 0; }
+  :host(.cb-theme-brutalism) .cb-history-item:hover { background: rgba(0,0,0,0.06); }
+  :host(.cb-theme-brutalism) .cb-history-item.cb-active { background: rgba(255,225,86,0.3); }
+  :host(.cb-theme-brutalism) .cb-hi-text { color: #000; }
+  :host(.cb-theme-brutalism) .cb-history-date-group { color: #444; }
   :host(.cb-theme-brutalism) .cb-badge {
     background: #FFE156;
     color: #000;
@@ -1798,6 +1886,56 @@
     border: 2px solid #000;
     border-left: 4px solid #FF6B9D;
     border-radius: 0;
+  }
+  :host(.cb-theme-brutalism) .cb-quick-pill {
+    background: #fff;
+    border: 2px solid #000;
+    box-shadow: 2px 2px 0 #000;
+    border-radius: 0;
+  }
+  :host(.cb-theme-brutalism) .cb-quick-pill:hover {
+    background: #FEF3C7;
+    transform: translate(-1px, -1px);
+    box-shadow: 3px 3px 0 #000;
+    color: #000;
+  }
+  :host(.cb-theme-brutalism) .cb-quick-pill.cb-active {
+    background: #FF6B9D;
+    color: #fff;
+    border-color: #000;
+    box-shadow: 2px 2px 0 #000;
+  }
+  :host(.cb-theme-brutalism) .cb-inline-panel {
+    background: #FFF;
+    border: 3px solid #000;
+    box-shadow: 4px 4px 0 #000;
+    border-radius: 0;
+  }
+  :host(.cb-theme-brutalism) .cb-inline-panel h4 {
+    color: #000;
+    font-weight: 800;
+  }
+  :host(.cb-theme-brutalism) .cb-inline-panel .cb-stat-card {
+    background: #FEF3C7;
+    border: 2px solid #000;
+    box-shadow: 2px 2px 0 #000;
+    border-radius: 0;
+  }
+  :host(.cb-theme-brutalism) .cb-inline-panel .cb-stat-value {
+    color: #FF6B9D;
+  }
+  :host(.cb-theme-brutalism) .cb-export-btn {
+    background: #fff !important;
+    border: 2px solid #000 !important;
+    box-shadow: 2px 2px 0 #000 !important;
+    border-radius: 0 !important;
+    color: #000 !important;
+    font-weight: 700 !important;
+  }
+  :host(.cb-theme-brutalism) .cb-export-btn:hover {
+    background: #FEF3C7 !important;
+    transform: translate(-1px, -1px) !important;
+    box-shadow: 3px 3px 0 #000 !important;
   }
   :host(.cb-theme-brutalism) .cb-gradient-text {
     background: none;
@@ -1967,6 +2105,9 @@
     background: rgba(26, 10, 46, 0.5);
     border: 1px solid rgba(255, 45, 149, 0.2);
   }
+  :host(.cb-theme-synthwave) .cb-history-item:hover { background: rgba(255,45,149,0.08); }
+  :host(.cb-theme-synthwave) .cb-history-item.cb-active { background: rgba(255,45,149,0.15); }
+  :host(.cb-theme-synthwave) .cb-history-date-group { color: #b794f6; }
   :host(.cb-theme-synthwave) .cb-header-btn {
     border: 1px solid rgba(255, 45, 149, 0.25);
     background: rgba(45, 27, 105, 0.4);
@@ -1992,6 +2133,49 @@
   :host(.cb-theme-synthwave) .cb-view-intro {
     background: rgba(45, 27, 105, 0.3);
     border-left: 3px solid #FF2D95;
+  }
+  :host(.cb-theme-synthwave) .cb-quick-pill {
+    background: rgba(45, 27, 105, 0.4);
+    border: 1px solid rgba(255, 45, 149, 0.2);
+  }
+  :host(.cb-theme-synthwave) .cb-quick-pill:hover {
+    background: rgba(255, 45, 149, 0.15);
+    border-color: rgba(255, 45, 149, 0.5);
+    color: #FF2D95;
+    text-shadow: 0 0 6px rgba(255, 45, 149, 0.4);
+  }
+  :host(.cb-theme-synthwave) .cb-quick-pill.cb-active {
+    background: rgba(255, 45, 149, 0.2);
+    border-color: #FF2D95;
+    color: #FF2D95;
+    box-shadow: 0 0 8px rgba(255, 45, 149, 0.3);
+  }
+  :host(.cb-theme-synthwave) .cb-inline-panel {
+    background: rgba(26, 10, 46, 0.9);
+    border: 1px solid rgba(255, 45, 149, 0.2);
+    box-shadow: 0 0 20px rgba(255, 45, 149, 0.1), inset 0 0 30px rgba(45, 27, 105, 0.3);
+  }
+  :host(.cb-theme-synthwave) .cb-inline-panel h4 {
+    color: #FF2D95;
+    text-shadow: 0 0 10px rgba(255, 45, 149, 0.4);
+  }
+  :host(.cb-theme-synthwave) .cb-inline-panel .cb-stat-card {
+    background: rgba(45, 27, 105, 0.5);
+    border: 1px solid rgba(255, 45, 149, 0.15);
+  }
+  :host(.cb-theme-synthwave) .cb-inline-panel .cb-stat-value {
+    text-shadow: 0 0 8px currentColor;
+  }
+  :host(.cb-theme-synthwave) .cb-export-btn {
+    background: rgba(45, 27, 105, 0.5) !important;
+    border: 1px solid rgba(255, 45, 149, 0.25) !important;
+    color: #b794f6 !important;
+  }
+  :host(.cb-theme-synthwave) .cb-export-btn:hover {
+    background: rgba(255, 45, 149, 0.15) !important;
+    border-color: #FF2D95 !important;
+    color: #FF2D95 !important;
+    box-shadow: 0 0 10px rgba(255, 45, 149, 0.3) !important;
   }
   :host(.cb-theme-synthwave) .cb-gradient-text {
     background: linear-gradient(135deg, #FF2D95, #00F0FF);
@@ -2166,6 +2350,9 @@
     box-shadow: inset 3px 3px 8px rgba(0,0,0,0.3), inset -2px -2px 6px rgba(60,50,90,0.1);
     border-radius: 14px;
   }
+  :host(.cb-theme-glass) .cb-history-item:hover { background: rgba(180,142,255,0.06); }
+  :host(.cb-theme-glass) .cb-history-item.cb-active { background: rgba(180,142,255,0.12); }
+  :host(.cb-theme-glass) .cb-history-date-group { color: rgba(180,142,255,0.6); }
   :host(.cb-theme-glass) .cb-header-btn {
     background: linear-gradient(145deg, #302a4a, #252038);
     border: 1px solid rgba(180, 142, 255, 0.06);
@@ -2194,6 +2381,50 @@
     border-left: 3px solid #b48eff;
     box-shadow: 4px 4px 10px rgba(0,0,0,0.3), -2px -2px 8px rgba(60,50,90,0.15);
     border-radius: 14px;
+  }
+  :host(.cb-theme-glass) .cb-quick-pill {
+    background: linear-gradient(145deg, #2a2445, #221e38);
+    border: 1px solid rgba(180, 142, 255, 0.1);
+    box-shadow: 3px 3px 8px rgba(0,0,0,0.3), -2px -2px 6px rgba(60,50,90,0.1);
+    border-radius: 10px;
+  }
+  :host(.cb-theme-glass) .cb-quick-pill:hover {
+    background: linear-gradient(145deg, #322c52, #2a2445);
+    border-color: rgba(180, 142, 255, 0.25);
+    color: #e0d4ff;
+  }
+  :host(.cb-theme-glass) .cb-quick-pill.cb-active {
+    background: linear-gradient(145deg, #3d3560, #322c52);
+    border-color: #b48eff;
+    color: #b48eff;
+    box-shadow: 3px 3px 8px rgba(0,0,0,0.3), -2px -2px 6px rgba(107,79,175,0.15);
+  }
+  :host(.cb-theme-glass) .cb-inline-panel {
+    background: linear-gradient(145deg, #2a2445, #1e1a2e);
+    border: 1px solid rgba(180, 142, 255, 0.08);
+    box-shadow: 5px 5px 15px rgba(0,0,0,0.4), -3px -3px 10px rgba(60,50,90,0.15);
+    border-radius: 16px;
+  }
+  :host(.cb-theme-glass) .cb-inline-panel h4 {
+    color: #b48eff;
+  }
+  :host(.cb-theme-glass) .cb-inline-panel .cb-stat-card {
+    background: linear-gradient(145deg, #322c52, #2a2445);
+    border: 1px solid rgba(180, 142, 255, 0.06);
+    box-shadow: 3px 3px 8px rgba(0,0,0,0.25), -2px -2px 5px rgba(60,50,90,0.1);
+    border-radius: 12px;
+  }
+  :host(.cb-theme-glass) .cb-export-btn {
+    background: linear-gradient(145deg, #2a2445, #221e38) !important;
+    border: 1px solid rgba(180, 142, 255, 0.12) !important;
+    color: #e0d4ff !important;
+    box-shadow: 3px 3px 8px rgba(0,0,0,0.3), -2px -2px 5px rgba(60,50,90,0.1) !important;
+    border-radius: 12px !important;
+  }
+  :host(.cb-theme-glass) .cb-export-btn:hover {
+    background: linear-gradient(145deg, #3d3560, #322c52) !important;
+    border-color: rgba(180, 142, 255, 0.3) !important;
+    color: #b48eff !important;
   }
   :host(.cb-theme-glass) .cb-gradient-text {
     background: linear-gradient(135deg, #b48eff, #ff8fa3);
@@ -2305,25 +2536,25 @@
   }
 
   :host * { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important; letter-spacing: -0.01em; }
-  .cb-panel { box-sizing: border-box; position:fixed; top:var(--cb-space-md); right:var(--cb-space-md); width:400px; max-width:calc(100vw - 24px); max-height:calc(100vh - 120px); overflow-y:auto; overflow-x:hidden; border-radius:var(--cb-radius-xl); background: var(--cb-bg2); color:var(--cb-white) !important; z-index:2147483647; box-shadow: var(--cb-shadow-xl), 0 0 40px rgba(96, 165, 250, 0.1); border: 1px solid var(--cb-border); backdrop-filter: blur(12px); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); word-wrap: break-word; pointer-events:auto; }
+  .cb-panel { box-sizing: border-box; position:fixed; top:var(--cb-space-md); right:var(--cb-space-md); width:400px; max-width:calc(100vw - 24px); max-height:calc(100vh - 120px); overflow-y:auto; overflow-x:hidden; border-radius:var(--cb-radius-xl); background: var(--cb-bg2); color:var(--cb-white) !important; z-index:2147483647; box-shadow: var(--cb-shadow-xl), 0 0 40px color-mix(in srgb, var(--cb-accent-primary) 10%, transparent); border: 1px solid var(--cb-border); backdrop-filter: blur(12px); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); word-wrap: break-word; pointer-events:auto; }
   .cb-panel * { max-width: 100%; word-wrap: break-word; overflow-wrap: break-word; }
   .cb-panel::-webkit-scrollbar { width: 10px; }
   .cb-panel::-webkit-scrollbar-track { background: var(--cb-bg); border-radius: 10px; }
   .cb-panel::-webkit-scrollbar-thumb { background: linear-gradient(180deg, var(--cb-accent-primary), var(--cb-accent-secondary)); border-radius: 10px; border: 2px solid var(--cb-bg); }
   .cb-panel::-webkit-scrollbar-thumb:hover { opacity: 0.8; }
   .cb-header { display:flex; flex-direction:row; align-items:flex-start; justify-content:space-between; padding:var(--cb-space-xl) var(--cb-space-xl) var(--cb-space-sm) var(--cb-space-xl); gap:var(--cb-space-md); position: relative; }
-  .cb-title { font-weight:700; font-size:21px; letter-spacing:-0.02em; color: var(--cb-white); background: linear-gradient(135deg, #00D4FF, #7C3AED); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .cb-title { font-weight:700; font-size:21px; letter-spacing:-0.02em; color: var(--cb-white); background: linear-gradient(135deg, var(--cb-accent-primary), var(--cb-accent-secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
   .cb-subtitle { font-size:12px; color: var(--cb-subtext); font-weight:500; margin-top:4px; margin-bottom:2px; letter-spacing:-0.01em; opacity:0.8; }
-  .cb-badge { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, #00D4FF, #7C3AED); color: #ffffff; font-weight: 800; font-size: 15px; letter-spacing: -0.5px; box-shadow: 0 4px 16px rgba(0, 212, 255, 0.3), 0 0 20px rgba(124, 58, 237, 0.2); margin-right: 14px; animation: cb-badge-float 3s ease-in-out infinite; transition: box-shadow 0.3s, transform 0.3s; }
-  .cb-badge:hover { box-shadow: 0 6px 24px rgba(0, 212, 255, 0.5), 0 0 32px rgba(124, 58, 237, 0.4); transform: translateY(-2px); }
+  .cb-badge { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, var(--cb-accent-primary), var(--cb-accent-secondary)); color: #ffffff; font-weight: 800; font-size: 15px; letter-spacing: -0.5px; box-shadow: 0 4px 16px var(--cb-shadow); margin-right: 14px; animation: cb-badge-float 3s ease-in-out infinite; transition: box-shadow 0.3s, transform 0.3s; }
+  .cb-badge:hover { box-shadow: 0 6px 24px color-mix(in srgb, var(--cb-accent-primary) 50%, transparent), 0 0 32px color-mix(in srgb, var(--cb-accent-secondary) 40%, transparent); transform: translateY(-2px); }
   @keyframes cb-badge-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
   .cb-header-controls { display: flex; align-items: center; gap: 8px; }
   .cb-header-btn { width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--cb-border); background: rgba(255,255,255,0.03); color: var(--cb-subtext); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); backdrop-filter: blur(8px); }
-  .cb-header-btn:hover { background: rgba(255,255,255,0.08); color: var(--cb-white); border-color: rgba(0, 212, 255, 0.3); box-shadow: 0 4px 12px rgba(0, 212, 255, 0.15); }
+  .cb-header-btn:hover { background: rgba(255,255,255,0.08); color: var(--cb-white); border-color: color-mix(in srgb, var(--cb-accent-primary) 30%, transparent); box-shadow: 0 4px 12px color-mix(in srgb, var(--cb-accent-primary) 15%, transparent); }
   .cb-header-btn svg { width: 18px; height: 18px; stroke-width: 2; }
   .cb-header-btn.cb-settings-btn:hover { transform: rotate(90deg); }
   .cb-header-btn.cb-close-btn:hover { background: rgba(248, 81, 73, 0.15); color: #f85149; border-color: rgba(248, 81, 73, 0.3); transform: scale(1.05); }
-  .cb-header-btn.cb-minimize-btn:hover { background: rgba(0, 212, 255, 0.15); color: #00D4FF; border-color: rgba(0, 212, 255, 0.3); }
+  .cb-header-btn.cb-minimize-btn:hover { background: color-mix(in srgb, var(--cb-accent-primary) 15%, transparent); color: var(--cb-accent-primary); border-color: color-mix(in srgb, var(--cb-accent-primary) 30%, transparent); }
   
   /* Minimized Toolbar Mode */
   .cb-panel.cb-minimized { width: 68px !important; min-width: 68px !important; padding: 0 !important; transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1), min-width 0.35s cubic-bezier(0.4, 0, 0.2, 1); }
@@ -2332,8 +2563,8 @@
   .cb-mini-toolbar { display: none; flex-direction: column; align-items: center; padding: 14px 10px; gap: 10px; height: 100%; background: linear-gradient(180deg, var(--cb-bg) 0%, var(--cb-bg2) 100%); animation: cb-mini-fadein 0.3s ease-out; }
   @keyframes cb-mini-fadein { from { opacity: 0; } to { opacity: 1; } }
   .cb-panel.cb-minimized .cb-mini-toolbar { display: flex; }
-  .cb-mini-btn { width: 48px; height: 48px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.08); background: linear-gradient(135deg, rgba(0,212,255,0.05), rgba(124,58,237,0.04)); color: var(--cb-subtext); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.25s ease; position: relative; }
-  .cb-mini-btn:hover { background: linear-gradient(135deg, rgba(0,212,255,0.18), rgba(124,58,237,0.12)); color: var(--cb-white); border-color: rgba(0,212,255,0.4); transform: scale(1.1); box-shadow: 0 6px 20px rgba(0,212,255,0.25); }
+  .cb-mini-btn { width: 48px; height: 48px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.08); background: linear-gradient(135deg, color-mix(in srgb, var(--cb-accent-primary) 5%, transparent), color-mix(in srgb, var(--cb-accent-secondary) 4%, transparent)); color: var(--cb-subtext); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.25s ease; position: relative; }
+  .cb-mini-btn:hover { background: linear-gradient(135deg, color-mix(in srgb, var(--cb-accent-primary) 18%, transparent), color-mix(in srgb, var(--cb-accent-secondary) 12%, transparent)); color: var(--cb-white); border-color: color-mix(in srgb, var(--cb-accent-primary) 40%, transparent); transform: scale(1.1); box-shadow: 0 6px 20px color-mix(in srgb, var(--cb-accent-primary) 25%, transparent); }
   .cb-mini-btn svg { width: 24px; height: 24px; stroke-width: 2; }
   .cb-mini-btn.cb-mini-loading { animation: cb-mini-pulse 1s ease-in-out infinite; pointer-events: none; }
   .cb-mini-btn.cb-mini-loading svg { animation: cb-mini-spin 1s linear infinite; }
@@ -2341,7 +2572,7 @@
   @keyframes cb-mini-pulse { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; } }
   @keyframes cb-mini-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
   .cb-mini-btn[data-tooltip]:hover::before { content: ''; position: absolute; left: 54px; top: 50%; transform: translateY(-50%); border: 7px solid transparent; border-right-color: var(--cb-bg); z-index: 9999; }
-  .cb-mini-btn[data-tooltip]:hover::after { content: attr(data-tooltip); position: absolute; left: 68px; top: 50%; transform: translateY(-50%); background: var(--cb-bg); border: 1px solid rgba(0,212,255,0.4); border-radius: 8px; padding: 10px 14px; font-size: 12px; font-weight: 600; white-space: nowrap; color: var(--cb-white); z-index: 10000; box-shadow: 0 8px 32px rgba(0,0,0,0.5); animation: cb-tooltip-fade 0.15s ease-out; }
+  .cb-mini-btn[data-tooltip]:hover::after { content: attr(data-tooltip); position: absolute; left: 68px; top: 50%; transform: translateY(-50%); background: var(--cb-bg); border: 1px solid color-mix(in srgb, var(--cb-accent-primary) 40%, transparent); border-radius: 8px; padding: 10px 14px; font-size: 12px; font-weight: 600; white-space: nowrap; color: var(--cb-white); z-index: 10000; box-shadow: 0 8px 32px rgba(0,0,0,0.5); animation: cb-tooltip-fade 0.15s ease-out; }
   @keyframes cb-tooltip-fade { from { opacity: 0; transform: translateY(-50%) translateX(-10px); } to { opacity: 1; transform: translateY(-50%) translateX(0); } }
   
   /* Left-side panel positioning */
@@ -2350,10 +2581,10 @@
   .cb-panel.cb-panel-left.cb-minimized .cb-mini-btn[data-tooltip]:hover::after { left: auto; right: 68px; transform: translateY(-50%); animation: cb-tooltip-fade-right 0.15s ease-out; }
   @keyframes cb-tooltip-fade-right { from { opacity: 0; transform: translateY(-50%) translateX(10px); } to { opacity: 1; transform: translateY(-50%) translateX(0); } }
   
-  .cb-mini-expand { margin-top: auto; background: linear-gradient(135deg, rgba(0,212,255,0.12), rgba(124,58,237,0.1)) !important; border-color: rgba(0,212,255,0.25) !important; }
-  .cb-mini-expand:hover { background: linear-gradient(135deg, rgba(0,212,255,0.25), rgba(124,58,237,0.18)) !important; }
+  .cb-mini-expand { margin-top: auto; background: linear-gradient(135deg, color-mix(in srgb, var(--cb-accent-primary) 12%, transparent), color-mix(in srgb, var(--cb-accent-secondary) 10%, transparent)) !important; border-color: color-mix(in srgb, var(--cb-accent-primary) 25%, transparent) !important; }
+  .cb-mini-expand:hover { background: linear-gradient(135deg, color-mix(in srgb, var(--cb-accent-primary) 25%, transparent), color-mix(in srgb, var(--cb-accent-secondary) 18%, transparent)) !important; }
   .cb-mini-logo { width: 44px; height: 44px; border-radius: 12px; overflow: hidden; margin-bottom: 8px; cursor: pointer; transition: transform 0.25s ease, box-shadow 0.25s ease; }
-  .cb-mini-logo:hover { transform: scale(1.08); box-shadow: 0 4px 16px rgba(0,212,255,0.25); }
+  .cb-mini-logo:hover { transform: scale(1.08); box-shadow: 0 4px 16px color-mix(in srgb, var(--cb-accent-primary) 25%, transparent); }
   .cb-mini-logo img { width: 100%; height: 100%; object-fit: cover; }
     .cb-actions { padding:var(--cb-space-md) var(--cb-space-xl) var(--cb-space-sm) var(--cb-space-xl); display:flex; flex-direction:column; gap:var(--cb-space-sm); align-items:stretch; justify-content:flex-start; }
   .cb-actions-grid { display:grid; grid-template-columns: repeat(3, 1fr); gap:8px; width:100%; }
@@ -2361,14 +2592,14 @@
     .cb-btn { background: var(--cb-bg3); border:1px solid var(--cb-border); color:var(--cb-white) !important; padding:12px 16px; border-radius:10px; cursor:pointer; font-size:13px; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); font-weight:600; box-shadow: 0 2px 8px var(--cb-shadow); position: relative; overflow: hidden; }
   .cb-btn::before { content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent); transition: left 0.5s ease; pointer-events: none; z-index: 1; }
   .cb-btn:hover::before { left: 100%; }
-  .cb-btn:hover { transform:translateY(-2px); box-shadow: 0 4px 16px var(--cb-shadow), 0 0 24px rgba(0, 180, 255, 0.15); border-color: var(--cb-accent-primary); }
+  .cb-btn:hover { transform:translateY(-2px); box-shadow: 0 4px 16px var(--cb-shadow), 0 0 24px color-mix(in srgb, var(--cb-accent-primary) 15%, transparent); border-color: var(--cb-accent-primary); }
   .cb-btn:focus { outline: none; box-shadow: 0 0 0 3px var(--cb-accent-primary); }
   .cb-btn:active { transform:translateY(0px); }
   .cb-btn.cb-loading { animation: cb-pulse 1.5s ease-in-out infinite; pointer-events: none; opacity: 0.7; }
   .cb-btn.cb-success { animation: cb-success 0.4s ease-out; background: var(--cb-success) !important; border-color: var(--cb-success) !important; }
   .cb-btn.cb-active { background: rgba(var(--cb-accent-primary-rgb, 96, 165, 250), 0.15); border-color: var(--cb-accent-primary); }
   .cb-btn-primary { background: linear-gradient(135deg, var(--cb-accent-primary), var(--cb-accent-secondary)); color:#FFFFFF !important; font-weight:700; border: none; box-shadow: var(--cb-shadow-md); position:relative; overflow:visible; }
-  .cb-btn-primary:hover { box-shadow: var(--cb-shadow-lg), 0 0 20px rgba(96, 165, 250, 0.3); transform: translateY(-2px); }
+  .cb-btn-primary:hover { box-shadow: var(--cb-shadow-lg), 0 0 20px color-mix(in srgb, var(--cb-accent-primary) 30%, transparent); transform: translateY(-2px); }
   .cb-btn-primary:active { transform: translateY(-1px); box-shadow: var(--cb-shadow-sm); }
   .cb-btn-secondary { background: transparent; border: 1px solid var(--cb-border); color: var(--cb-subtext) !important; font-weight:500; }
   .cb-btn-secondary:hover { background: var(--cb-bg3); border-color: var(--cb-accent-primary); color: var(--cb-white) !important; }
@@ -2380,19 +2611,32 @@
       .cb-btn-danger:hover { background: rgba(255,30,86,0.15); border-color: rgba(255,30,86,0.5); color:#FF9CB3 !important; box-shadow: 0 4px 12px rgba(255,30,86,0.2); transform: translateY(-2px); }
       .cb-toolbar { display:flex; align-items:center; gap:var(--cb-space-md); padding:var(--cb-space-lg) var(--cb-space-xl); border-bottom: 1px solid var(--cb-border); }
       .cb-label { font-size:12px; color:var(--cb-subtext) !important; font-weight:600; }
-  .cb-select { flex:1; appearance:none; background:var(--cb-bg); color:var(--cb-white) !important; border:1px solid var(--cb-border); border-radius:10px; padding:10px 12px; font-size:14px; outline:none; font-weight:500; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; transition: all 0.2s ease; }
-      .cb-select:hover { border-color: var(--cb-accent-primary); box-shadow: 0 0 0 3px rgba(0, 180, 255, 0.1); }
-      .cb-select:focus { border-color: var(--cb-accent-primary); box-shadow: 0 0 0 3px rgba(0, 180, 255, 0.15); }
+  .cb-select { flex:1; appearance:none; background:var(--cb-bg); color:var(--cb-white) !important; border:1px solid var(--cb-border); border-radius:10px; padding:8px 10px; font-size:13px; outline:none; font-weight:500; max-width: 100%; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; transition: all 0.2s ease; box-sizing: border-box; }
+      .cb-select:hover { border-color: var(--cb-accent-primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--cb-accent-primary) 10%, transparent); }
+      .cb-select:focus { border-color: var(--cb-accent-primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--cb-accent-primary) 15%, transparent); }
   select.cb-select option { background:var(--cb-bg); color:var(--cb-white); }
       .cb-status { padding:0 20px 12px 20px; font-size:12px; color:var(--cb-subtext) !important; }
       .cb-history-wrapper { position: relative; margin:16px 18px; }
       .cb-history-header { display:flex; align-items:center; justify-content:space-between; padding:0 0 10px 0; }
       .cb-history-title { font-size:12px; color:var(--cb-subtext) !important; font-weight:700; letter-spacing:-0.01em; text-transform: uppercase; }
-      .cb-history { padding:14px 18px; max-height:260px; overflow-x:hidden; overflow-y:auto; font-size:13px; background: var(--cb-bg); border-radius:10px; border:1px solid var(--cb-border); white-space:pre-wrap; color:var(--cb-white) !important; line-height: 1.6; }
-      .cb-history::-webkit-scrollbar { width: 8px; }
-      .cb-history::-webkit-scrollbar-track { background: rgba(10,15,28,0.6); border-radius: 10px; }
-  .cb-history::-webkit-scrollbar-thumb { background: linear-gradient(180deg, rgba(0,180,255,0.6), rgba(140,30,255,0.5)); border-radius: 10px; border: 2px solid rgba(10,15,28,0.6); }
-  .cb-history::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, rgba(0,180,255,0.8), rgba(140,30,255,0.7)); }
+      .cb-history { padding:4px 0; max-height:320px; overflow-x:hidden; overflow-y:auto; font-size:13px; background: var(--cb-bg); border-radius:10px; border:1px solid var(--cb-border); white-space:normal; color:var(--cb-white) !important; line-height: 1.5; }
+      .cb-history::-webkit-scrollbar { width: 6px; }
+      .cb-history::-webkit-scrollbar-track { background: transparent; border-radius: 10px; }
+  .cb-history::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--cb-accent-primary) 30%, transparent); border-radius: 10px; }
+  .cb-history::-webkit-scrollbar-thumb:hover { background: color-mix(in srgb, var(--cb-accent-primary) 50%, transparent); }
+  .cb-history-date-group { padding: 8px 14px 4px; font-size: 11px; font-weight: 600; color: var(--cb-subtext); text-transform: uppercase; letter-spacing: 0.04em; user-select: none; }
+  .cb-history-item { display: flex; align-items: center; padding: 8px 14px; cursor: pointer; transition: background 0.15s ease; border-radius: 8px; margin: 1px 6px; gap: 10px; position: relative; }
+  .cb-history-item:hover { background: rgba(255,255,255,0.04); }
+  .cb-history-item.cb-active { background: color-mix(in srgb, var(--cb-accent-primary) 10%, transparent); }
+  .cb-history-item .cb-hi-text { flex: 1; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--cb-white); opacity: 0.9; line-height: 1.4; }
+  .cb-history-item .cb-hi-actions { display: flex; align-items: center; gap: 2px; opacity: 0; transition: opacity 0.15s ease; flex-shrink: 0; }
+  .cb-history-item:hover .cb-hi-actions { opacity: 1; }
+  .cb-history-item .cb-hi-time { font-size: 11px; color: var(--cb-subtext); opacity: 0.6; flex-shrink: 0; white-space: nowrap; transition: opacity 0.15s ease; }
+  .cb-history-item:hover .cb-hi-time { opacity: 0; width: 0; overflow: hidden; padding: 0; margin: 0; }
+  .cb-hi-action-btn { background: none; border: none; color: var(--cb-subtext); cursor: pointer; padding: 4px; display: flex; align-items: center; border-radius: 4px; transition: all 0.15s ease; }
+  .cb-hi-action-btn:hover { background: rgba(255,255,255,0.08); color: var(--cb-white); }
+  .cb-hi-action-btn.cb-hi-del:hover { background: rgba(248,113,113,0.15); color: #f87171; }
+  .cb-history-empty { padding: 24px 14px; text-align: center; font-size: 13px; color: var(--cb-subtext); opacity: 0.6; }
       .cb-preview { padding:14px 18px; font-size:13px; color:var(--cb-white) !important; border-top:1px solid var(--cb-border); max-height:200px; overflow-x:hidden; overflow-y:auto; line-height: 1.6; background: var(--cb-bg); }
       .cb-preview::-webkit-scrollbar { width: 8px; }
       .cb-preview::-webkit-scrollbar-track { background: var(--cb-bg3); border-radius: 10px; }
@@ -2406,27 +2650,28 @@
       textarea::-webkit-scrollbar-track { background: var(--cb-bg3); border-radius: 10px; }
       textarea::-webkit-scrollbar-thumb { background: linear-gradient(180deg, var(--cb-accent-primary), var(--cb-accent-secondary)); border-radius: 10px; border: 2px solid var(--cb-bg3); }
       textarea::-webkit-scrollbar-thumb:hover { opacity: 0.8; }
-      textarea:focus { outline: none; border-color: var(--cb-accent-primary); box-shadow: 0 0 0 3px rgba(0, 180, 255, 0.15); }
-      select:focus { outline: none; border-color: var(--cb-accent-primary); box-shadow: 0 0 0 3px rgba(0, 180, 255, 0.15); }
+      textarea:focus { outline: none; border-color: var(--cb-accent-primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--cb-accent-primary) 15%, transparent); }
+      select:focus { outline: none; border-color: var(--cb-accent-primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--cb-accent-primary) 15%, transparent); }
       /* Internal view sections - inline in the sidebar */
-      .cb-internal-view { display: none; margin-top: var(--cb-space-lg); padding: var(--cb-space-xl); border-top: 1px solid var(--cb-border); background: var(--cb-bg); animation: slideIn 0.3s ease-out; position: relative; }
+      .cb-internal-view { display: none; margin-top: var(--cb-space-lg); padding: var(--cb-space-lg); border-top: 1px solid var(--cb-border); background: var(--cb-bg); animation: slideIn 0.3s ease-out; position: relative; box-sizing: border-box; overflow-x: hidden; }
+      .cb-internal-view * { box-sizing: border-box; }
       .cb-internal-view.cb-view-active { display: block; z-index: 100; }
       @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
       .cb-view-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
       .cb-view-close { background:transparent; border:1px solid var(--cb-border); color:var(--cb-white); padding:6px 12px; border-radius:8px; cursor:pointer; font-size:12px; font-weight:600; transition: all 0.2s ease; position:relative; z-index:2; }
-      .cb-view-close:hover { background:var(--cb-bg3); border-color: var(--cb-accent-primary); box-shadow: 0 2px 8px rgba(0, 180, 255, 0.2); transform: translateY(-1px); }
+      .cb-view-close:hover { background:var(--cb-bg3); border-color: var(--cb-accent-primary); box-shadow: 0 2px 8px color-mix(in srgb, var(--cb-accent-primary) 20%, transparent); transform: translateY(-1px); }
       .cb-view-title { font-weight:700; font-size:18px; color:var(--cb-white); letter-spacing:-0.01em; }
-      .cb-view-intro { font-size:13px; color:var(--cb-subtext); line-height:1.6; margin:12px 0 16px 0; padding:12px 14px; background:var(--cb-bg3); border-left:3px solid var(--cb-accent-primary); border-radius:8px; }
+      .cb-view-intro { font-size:12px; color:var(--cb-subtext); line-height:1.5; margin:8px 0 10px 0; padding:10px 12px; background:var(--cb-bg3); border-left:3px solid var(--cb-accent-primary); border-radius:8px; }
       .cb-view-select { margin:10px 0 14px 0; width:100%; }
-  .cb-view-text { width:100%; min-height:140px; max-height:200px; resize:vertical; background:var(--cb-bg); color:var(--cb-white); border:1px solid var(--cb-border); padding:12px; border-radius:10px; font-family:inherit; white-space:pre-wrap; overflow-y:auto; overflow-x:hidden; font-size:13px; line-height:1.6; transition: all 0.2s ease; }
-  .cb-view-text:focus { border-color: var(--cb-accent-primary); box-shadow: 0 0 0 3px rgba(0, 180, 255, 0.15); outline: none; }
+  .cb-view-text { width:100%; min-height:60px; max-height:200px; resize:vertical; background:var(--cb-bg); color:var(--cb-white); border:1px solid var(--cb-border); padding:12px; border-radius:10px; font-family:inherit; white-space:pre-wrap; overflow-y:auto; overflow-x:hidden; font-size:13px; line-height:1.6; transition: all 0.2s ease; box-sizing: border-box; }
+  .cb-view-text:focus { border-color: var(--cb-accent-primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--cb-accent-primary) 15%, transparent); outline: none; }
   .cb-view-text::-webkit-scrollbar { width: 8px; }
   .cb-view-text::-webkit-scrollbar-track { background: var(--cb-bg3); border-radius: 10px; }
   .cb-view-text::-webkit-scrollbar-thumb { background: linear-gradient(180deg, var(--cb-accent-primary), var(--cb-accent-secondary)); border-radius: 10px; border: 2px solid var(--cb-bg3); }
   .cb-view-text::-webkit-scrollbar-thumb:hover { opacity: 0.8; }
   /* Smart Query search result rows */
   .cb-row-result { margin-bottom: 12px; padding: 12px; background: var(--cb-bg2); border: 1px solid var(--cb-border); border-radius: 8px; transition: all 0.2s ease; }
-  .cb-row-result:hover { border-color: var(--cb-accent-primary); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0, 180, 255, 0.15); }
+  .cb-row-result:hover { border-color: var(--cb-accent-primary); transform: translateY(-1px); box-shadow: 0 4px 12px color-mix(in srgb, var(--cb-accent-primary) 15%, transparent); }
   .cb-row-hdr { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; gap: 8px; }
   .cb-row-left { font-size: 12px; color: var(--cb-subtext); font-weight: 500; }
   .cb-row-right { display: flex; gap: 6px; }
@@ -2436,20 +2681,20 @@
   .cb-tag-chip { display: inline-block; padding: 3px 8px; background: var(--cb-accent-primary); color: var(--cb-bg); font-size: 10px; font-weight: 600; border-radius: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
   /* AI Insights Styling - Luxury Minimal */
   .cb-insights-section { display: flex; flex-direction: column; gap: 14px; padding: 0 4px; overflow-x: hidden; }
-  .cb-insight-block { padding: 16px 18px; background: linear-gradient(135deg, rgba(0,212,255,0.04), rgba(124,58,237,0.03)); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; transition: all 0.25s ease; position: relative; overflow: hidden; }
-  .cb-insight-block::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: linear-gradient(180deg, #00D4FF, #7C3AED); border-radius: 3px 0 0 3px; }
-  .cb-insight-block:hover { background: linear-gradient(135deg, rgba(0,212,255,0.08), rgba(124,58,237,0.06)); border-color: rgba(0,212,255,0.2); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.15); }
+  .cb-insight-block { padding: 16px 18px; background: var(--cb-bg3); border: 1px solid var(--cb-border); border-radius: 12px; transition: all 0.25s ease; position: relative; overflow: hidden; }
+  .cb-insight-block::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: linear-gradient(180deg, var(--cb-accent-primary), var(--cb-accent-secondary)); border-radius: 3px 0 0 3px; }
+  .cb-insight-block:hover { background: color-mix(in srgb, var(--cb-accent-primary) 8%, var(--cb-bg3)); border-color: color-mix(in srgb, var(--cb-accent-primary) 25%, transparent); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.15); }
   .cb-insight-title { font-weight: 600; font-size: 13px; color: var(--cb-white); margin-bottom: 8px; display: flex; align-items: center; gap: 10px; }
   .cb-insight-title svg { width: 18px; height: 18px; stroke: url(#insightGrad); flex-shrink: 0; }
   .cb-insight-content { font-size: 12px; color: var(--cb-subtext); line-height: 1.6; opacity: 0.85; word-break: break-word; }
   .cb-insight-list { margin: 8px 0 0 20px; padding: 0; font-size: 12px; color: var(--cb-white); }
   .cb-insight-list li { margin-bottom: 6px; line-height: 1.5; }
   /* Insights View Scrollbar - Themed */
-  #cb-insights-content { scrollbar-width: thin; scrollbar-color: rgba(0,212,255,0.4) rgba(16,24,43,0.3); overflow-x: hidden; }
+  #cb-insights-content { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--cb-accent-primary) 40%, transparent) var(--cb-bg3); overflow-x: hidden; }
   #cb-insights-content::-webkit-scrollbar { width: 6px; }
-  #cb-insights-content::-webkit-scrollbar-track { background: rgba(16,24,43,0.3); border-radius: 3px; }
-  #cb-insights-content::-webkit-scrollbar-thumb { background: linear-gradient(180deg, rgba(0,212,255,0.5), rgba(124,58,237,0.5)); border-radius: 3px; }
-  #cb-insights-content::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, rgba(0,212,255,0.7), rgba(124,58,237,0.7)); }
+  #cb-insights-content::-webkit-scrollbar-track { background: var(--cb-bg3); border-radius: 3px; }
+  #cb-insights-content::-webkit-scrollbar-thumb { background: linear-gradient(180deg, color-mix(in srgb, var(--cb-accent-primary) 50%, transparent), color-mix(in srgb, var(--cb-accent-secondary) 50%, transparent)); border-radius: 3px; }
+  #cb-insights-content::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, color-mix(in srgb, var(--cb-accent-primary) 70%, transparent), color-mix(in srgb, var(--cb-accent-secondary) 70%, transparent)); }
   .cb-code-snippet { background: var(--cb-bg); border: 1px solid var(--cb-border); border-radius: 6px; padding: 8px; font-size: 11px; font-family: 'Courier New', monospace; color: var(--cb-accent-tertiary); overflow-x: auto; margin: 6px 0; }
   .cb-code-snippet::-webkit-scrollbar { height: 6px; }
   .cb-code-snippet::-webkit-scrollbar-track { background: var(--cb-bg3); }
@@ -2482,32 +2727,32 @@
   .cb-dots .dot:nth-child(3) { animation-delay: .36s; }
   /* Reply list for assistant messages - compact preview mode */
   .cb-replies-wrap { margin-top: 12px; }
-  .cb-replies-header { display:flex; align-items:center; justify-content:space-between; padding:8px 0 12px 0; border-bottom: 2px solid rgba(0, 180, 255, 0.12); }
+  .cb-replies-header { display:flex; align-items:center; justify-content:space-between; padding:8px 0 12px 0; border-bottom: 2px solid color-mix(in srgb, var(--cb-accent-primary) 12%, transparent); }
   .cb-replies-title { font-size:14px; color:var(--cb-white); font-weight:700; letter-spacing:0.02em; text-transform: uppercase; background: linear-gradient(135deg, var(--cb-accent-primary), var(--cb-accent-secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-  .cb-replies { padding: 16px; max-height: 300px; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; gap: 12px; background: linear-gradient(180deg, rgba(10,15,28,0.4), rgba(16,24,43,0.3)); border: 1px solid rgba(0,180,255,0.15); border-radius: 12px; transition: padding-bottom 0.3s ease; box-shadow: inset 0 2px 8px rgba(0,0,0,0.2); }
+  .cb-replies { padding: 16px; max-height: 300px; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; gap: 12px; background: linear-gradient(180deg, rgba(10,15,28,0.4), rgba(16,24,43,0.3)); border: 1px solid color-mix(in srgb, var(--cb-accent-primary) 15%, transparent); border-radius: 12px; transition: padding-bottom 0.3s ease; box-shadow: inset 0 2px 8px rgba(0,0,0,0.2); }
   .cb-replies.cb-editor-open { padding-bottom: 220px; } /* Prevent overlap when editor is visible */
   .cb-replies::-webkit-scrollbar { width: 8px; }
   .cb-replies::-webkit-scrollbar-track { background: rgba(16,24,43,0.4); border-radius: 10px; }
   .cb-replies::-webkit-scrollbar-thumb { background: linear-gradient(180deg, var(--cb-accent-primary), var(--cb-accent-secondary)); border-radius: 10px; border: 2px solid rgba(10,15,28,0.4); }
-  .cb-reply { background: linear-gradient(135deg, rgba(16,24,43,0.9), rgba(10,15,28,0.85)); border: 1px solid rgba(0,180,255,0.2); border-radius: 12px; padding: 14px 16px; font-size: 13px; line-height: 1.5; cursor: pointer; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); position:relative; min-height: 56px; max-height: 68px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
-  .cb-reply:hover { border-color: rgba(0,180,255,0.6); box-shadow: 0 6px 20px rgba(0, 180, 255, 0.25), 0 0 24px rgba(96, 165, 250, 0.15); transform: translateY(-2px) scale(1.01); background: linear-gradient(135deg, rgba(20,28,50,0.95), rgba(12,18,32,0.9)); }
-  .cb-reply.cb-selected { border-color: var(--cb-accent-primary); background: linear-gradient(135deg, rgba(14,165,233,0.18), rgba(96,165,250,0.12)); box-shadow: 0 8px 24px rgba(14,165,233,0.35), inset 0 1px 0 rgba(255,255,255,0.08); border-width: 2px; }
+  .cb-reply { background: linear-gradient(135deg, rgba(16,24,43,0.9), rgba(10,15,28,0.85)); border: 1px solid color-mix(in srgb, var(--cb-accent-primary) 20%, transparent); border-radius: 12px; padding: 14px 16px; font-size: 13px; line-height: 1.5; cursor: pointer; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); position:relative; min-height: 56px; max-height: 68px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+  .cb-reply:hover { border-color: color-mix(in srgb, var(--cb-accent-primary) 60%, transparent); box-shadow: 0 6px 20px color-mix(in srgb, var(--cb-accent-primary) 25%, transparent), 0 0 24px color-mix(in srgb, var(--cb-accent-primary) 15%, transparent); transform: translateY(-2px) scale(1.01); background: linear-gradient(135deg, rgba(20,28,50,0.95), rgba(12,18,32,0.9)); }
+  .cb-reply.cb-selected { border-color: var(--cb-accent-primary); background: linear-gradient(135deg, color-mix(in srgb, var(--cb-accent-primary) 18%, transparent), color-mix(in srgb, var(--cb-accent-primary) 12%, transparent)); box-shadow: 0 8px 24px color-mix(in srgb, var(--cb-accent-primary) 35%, transparent), inset 0 1px 0 rgba(255,255,255,0.08); border-width: 2px; }
   .cb-reply-preview { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; color: var(--cb-white); font-size: 13px; line-height: 1.5; white-space: normal; word-break: break-word; font-weight: 500; }
   .cb-reply-meta { font-size: 11px; color: rgba(160,167,181,0.8); margin-top: 6px; opacity: 0.85; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
   /* Rewrite editor section (shown when a reply is selected) */
-  .cb-rewrite-editor { display: none; margin-top: 16px; padding: 18px; background: linear-gradient(135deg, rgba(16,24,43,0.95), rgba(10,15,28,0.9)); border: 1px solid rgba(0,180,255,0.25); border-radius: 12px; animation: slideIn 0.3s ease-out; box-shadow: 0 4px 16px rgba(0,0,0,0.25); }
+  .cb-rewrite-editor { display: none; margin-top: 16px; padding: 18px; background: linear-gradient(135deg, rgba(16,24,43,0.95), rgba(10,15,28,0.9)); border: 1px solid color-mix(in srgb, var(--cb-accent-primary) 25%, transparent); border-radius: 12px; animation: slideIn 0.3s ease-out; box-shadow: 0 4px 16px rgba(0,0,0,0.25); }
   .cb-rewrite-editor.cb-active { display: block; }
   .cb-editor-label { font-size: 12px; color: var(--cb-white); font-weight: 700; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.8px; background: linear-gradient(135deg, var(--cb-accent-primary), var(--cb-accent-secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-  .cb-editor-textarea { width: 100%; min-height: 160px; max-height: 240px; resize: vertical; background: rgba(10,15,28,0.6); color: var(--cb-white); border: 1px solid rgba(0,180,255,0.2); padding: 14px; border-radius: 10px; font-family: inherit; font-size: 13px; line-height: 1.7; overflow-y: auto; transition: all 0.25s ease; box-shadow: inset 0 2px 6px rgba(0,0,0,0.2); }
-  .cb-editor-textarea:focus { border-color: var(--cb-accent-primary); box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.18), inset 0 2px 6px rgba(0,0,0,0.2); outline: none; }
+  .cb-editor-textarea { width: 100%; min-height: 160px; max-height: 240px; resize: vertical; background: rgba(10,15,28,0.6); color: var(--cb-white); border: 1px solid color-mix(in srgb, var(--cb-accent-primary) 20%, transparent); padding: 14px; border-radius: 10px; font-family: inherit; font-size: 13px; line-height: 1.7; overflow-y: auto; transition: all 0.25s ease; box-shadow: inset 0 2px 6px rgba(0,0,0,0.2); }
+  .cb-editor-textarea:focus { border-color: var(--cb-accent-primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--cb-accent-primary) 18%, transparent), inset 0 2px 6px rgba(0,0,0,0.2); outline: none; }
   .cb-editor-actions { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
   .cb-editor-actions > .cb-btn { flex: 1 1 auto; min-width: 90px; padding: 10px 16px; font-weight: 600; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
-  .cb-editor-actions > .cb-btn:hover { box-shadow: 0 4px 14px rgba(0,180,255,0.3); transform: translateY(-1px); }
+  .cb-editor-actions > .cb-btn:hover { box-shadow: 0 4px 14px color-mix(in srgb, var(--cb-accent-primary) 30%, transparent); transform: translateY(-1px); }
   .cb-style-hint-wrap { margin-top: 10px; }
   .cb-input { width: 100%; background: var(--cb-bg); color: var(--cb-white); border: 1px solid var(--cb-border); padding: 8px 10px; border-radius: 8px; font-size: 13px; font-family: inherit; transition: all 0.2s ease; }
-  .cb-input:focus { border-color: var(--cb-accent-primary); box-shadow: 0 0 0 3px rgba(0, 180, 255, 0.12); outline: none; }
+  .cb-input:focus { border-color: var(--cb-accent-primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--cb-accent-primary) 12%, transparent); outline: none; }
   /* small inline spinner used with loading buttons */
-  .cb-spinner { display:inline-block; width:14px; height:14px; border-radius:50%; vertical-align:middle; margin-right:8px; background: conic-gradient(var(--cb-progress), rgba(255,255,255,0.9)); box-shadow: 0 0 12px rgba(0, 180, 255, 0.3), 0 0 0 1px rgba(0,0,0,0.08) inset; animation: cb-spin 0.9s linear infinite; }
+  .cb-spinner { display:inline-block; width:14px; height:14px; border-radius:50%; vertical-align:middle; margin-right:8px; background: conic-gradient(var(--cb-progress), rgba(255,255,255,0.9)); box-shadow: 0 0 12px color-mix(in srgb, var(--cb-accent-primary) 30%, transparent), 0 0 0 1px rgba(0,0,0,0.08) inset; animation: cb-spin 0.9s linear infinite; }
   @keyframes cb-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
   @keyframes cb-ellipsis { 0% { opacity:0.25; transform: translateY(0); } 30% { opacity:1; transform: translateY(-2px); } 60% { opacity:0.25; transform: translateY(0); } 100% { opacity:0.25; transform: translateY(0); } }
   @keyframes cb-pulse { 0% { opacity: 1; transform: scale(1); } 50% { opacity: 0.8; transform: scale(0.98); } 100% { opacity: 1; transform: scale(1); } }
@@ -2515,7 +2760,7 @@
   @keyframes cb-shimmer { 0% { background-position: -200% center; } 100% { background-position: 200% center; } }
   @keyframes cb-fade-in { from { opacity: 0; } to { opacity: 1; } }
   @keyframes cb-slide-up { from { transform: translateY(12px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-  @keyframes cb-pulse-glow { 0%, 100% { box-shadow: 0 4px 12px rgba(0, 180, 255, 0.3), 0 0 20px rgba(96, 165, 250, 0.2); } 50% { box-shadow: 0 4px 20px rgba(0, 180, 255, 0.5), 0 0 32px rgba(96, 165, 250, 0.35); } }
+  @keyframes cb-pulse-glow { 0%, 100% { box-shadow: 0 4px 12px color-mix(in srgb, var(--cb-accent-primary) 30%, transparent), 0 0 20px color-mix(in srgb, var(--cb-accent-primary) 20%, transparent); } 50% { box-shadow: 0 4px 20px color-mix(in srgb, var(--cb-accent-primary) 50%, transparent), 0 0 32px color-mix(in srgb, var(--cb-accent-primary) 35%, transparent); } }
   @keyframes cb-pulse-dot { 0%, 100% { opacity: 1; box-shadow: 0 0 8px rgba(63, 185, 80, 0.6); } 50% { opacity: 0.7; box-shadow: 0 0 12px rgba(63, 185, 80, 0.9); } }
   @keyframes cbFadeSlideIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
   
@@ -2536,16 +2781,27 @@
   
   /* Action Grid Premium Buttons - Compact Luxury */
   .cb-action-card { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 4px; padding: 10px 6px; min-height: 52px; background: rgba(255,255,255,0.02); backdrop-filter: blur(6px); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); color: var(--cb-subtext); }
-  .cb-action-card:hover { background: rgba(255,255,255,0.06); border-color: rgba(0, 212, 255, 0.3); box-shadow: 0 2px 10px rgba(0, 212, 255, 0.15); transform: translateY(-1px); color: var(--cb-white); }
+  .cb-action-card:hover { background: rgba(255,255,255,0.06); border-color: color-mix(in srgb, var(--cb-accent-primary) 30%, transparent); box-shadow: 0 2px 10px color-mix(in srgb, var(--cb-accent-primary) 15%, transparent); transform: translateY(-1px); color: var(--cb-white); }
   .cb-action-card svg { width: 18px; height: 18px; opacity: 0.65; transition: all 0.2s; stroke: currentColor; }
   .cb-action-card:hover svg { opacity: 1; }
   .cb-action-card span { font-size: 8px; opacity: 0.85; }
   
   /* Quick Action Pills - Subtle & Refined */
-  .cb-quick-pill { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 5px 3px; min-width: 42px; background: rgba(255,255,255,0.015); border: 1px solid rgba(255,255,255,0.04); border-radius: 8px; font-size: 8px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.02em; color: var(--cb-subtext); transition: all 0.2s ease; opacity: 0.8; }
-  .cb-quick-pill:hover { background: rgba(0, 212, 255, 0.08); border-color: rgba(0, 212, 255, 0.2); color: var(--cb-white); opacity: 1; }
+  .cb-quick-pill { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 5px 3px; min-width: 42px; background: var(--cb-bg3); border: 1px solid var(--cb-border); border-radius: 8px; font-size: 8px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.02em; color: var(--cb-subtext); transition: all 0.2s ease; opacity: 0.8; }
+  .cb-quick-pill:hover { background: color-mix(in srgb, var(--cb-accent-primary) 12%, transparent); border-color: color-mix(in srgb, var(--cb-accent-primary) 30%, transparent); color: var(--cb-white); opacity: 1; }
   .cb-quick-pill svg { width: 12px; height: 12px; stroke: currentColor; }
-  .cb-quick-pill.cb-active { background: rgba(0, 212, 255, 0.12); border-color: rgba(0, 212, 255, 0.3); color: #00D4FF; opacity: 1; }
+  .cb-quick-pill.cb-active { background: color-mix(in srgb, var(--cb-accent-primary) 15%, transparent); border-color: color-mix(in srgb, var(--cb-accent-primary) 35%, transparent); color: var(--cb-accent-primary); opacity: 1; }
+  
+  /* Inline panels (Stats, Clean, Export) */
+  .cb-inline-panel { margin-top:16px; padding:16px; background:var(--cb-bg2); border-radius:12px; border:1px solid var(--cb-border); box-shadow:var(--cb-shadow-md); }
+  .cb-inline-panel h4 { margin:0; font-size:14px; font-weight:600; color:var(--cb-accent-primary); }
+  .cb-inline-panel .cb-stat-card { padding:14px; background:var(--cb-bg3, var(--cb-bg)); border:1px solid var(--cb-border); border-radius:8px; text-align:center; }
+  .cb-inline-panel .cb-stat-value { font-size:24px; font-weight:700; margin-bottom:4px; }
+  .cb-inline-panel .cb-stat-label { font-size:10px; color:var(--cb-subtext); text-transform:uppercase; letter-spacing:1px; }
+  
+  /* Export / action buttons */
+  .cb-export-btn { padding:10px; background:var(--cb-bg3); border:1px solid var(--cb-border); border-radius:8px; color:var(--cb-white); cursor:pointer; font-size:11px; font-weight:500; transition:all 0.2s; }
+  .cb-export-btn:hover { background:color-mix(in srgb, var(--cb-accent-primary) 12%, transparent); border-color:color-mix(in srgb, var(--cb-accent-primary) 30%, transparent); color:var(--cb-accent-primary); }
   
   /* Preview Card */
   .cb-preview-card { margin: 0 var(--cb-space-xl); padding: 14px 16px; background: linear-gradient(135deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01)); border: 1px solid var(--cb-border); border-radius: 12px; position: relative; overflow: hidden; }
@@ -2558,11 +2814,11 @@
   .cb-preview-text { font-size: 13px; line-height: 1.5; color: var(--cb-white); max-height: 80px; overflow: hidden; opacity: 0.9; }
   
   /* Status Bar */
-  .cb-status-bar { display: flex; align-items: center; gap: 10px; padding: 12px var(--cb-space-xl); background: linear-gradient(90deg, rgba(0, 212, 255, 0.05), rgba(124, 58, 237, 0.05)); border-top: 1px solid var(--cb-border); }
+  .cb-status-bar { display: flex; align-items: center; gap: 10px; padding: 12px var(--cb-space-xl); background: linear-gradient(90deg, color-mix(in srgb, var(--cb-accent-primary) 5%, transparent), color-mix(in srgb, var(--cb-accent-secondary) 5%, transparent)); border-top: 1px solid var(--cb-border); }
   .cb-status-indicator { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 500; color: var(--cb-subtext); }
   .cb-status-dot { width: 8px; height: 8px; border-radius: 50%; background: #3fb950; box-shadow: 0 0 8px rgba(63, 185, 80, 0.5); }
   .cb-status-dot.scanning { background: #f59e0b; animation: cb-pulse 1s ease-in-out infinite; box-shadow: 0 0 8px rgba(245, 158, 11, 0.5); }
-  .cb-status-dot.processing { background: #00D4FF; animation: cb-spin 1s linear infinite; box-shadow: 0 0 8px rgba(0, 212, 255, 0.5); }
+  .cb-status-dot.processing { background: var(--cb-accent-primary); animation: cb-spin 1s linear infinite; box-shadow: 0 0 8px color-mix(in srgb, var(--cb-accent-primary) 50%, transparent); }
   .cb-status-text { flex: 1; font-size: 11px; color: var(--cb-subtext); }
   .cb-status-action { font-size: 10px; color: var(--cb-accent-primary); font-weight: 600; cursor: pointer; transition: opacity 0.2s; }
   .cb-status-action:hover { opacity: 0.8; }
@@ -2577,17 +2833,17 @@
 
   /* ========== Prompt Designer (Smart Prompts) ========== */
   .cb-pd-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; padding-bottom: 12px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); }
-  .cb-pd-title { font-family: 'Bebas Neue', system-ui, -apple-system, sans-serif !important; font-size: 22px; font-weight: 400; color: var(--cb-white); display: flex; align-items: center; gap: 12px; letter-spacing: 1px; }
-  .cb-gradient-text { background: linear-gradient(135deg, #00D4FF 0%, #7C3AED 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1)); }
+
+  .cb-gradient-text { background: linear-gradient(135deg, var(--cb-accent-primary) 0%, var(--cb-accent-secondary) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1)); }
   .cb-pd-close-btn { background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.08); color: var(--cb-subtext); cursor: pointer; padding: 8px; border-radius: 10px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); display: flex; align-items: center; justify-content: center; }
   .cb-pd-close-btn:hover { background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.12); color: var(--cb-white); transform: rotate(90deg); }
   .cb-pd-intro { font-family: system-ui, -apple-system, sans-serif !important; font-size: 13px; line-height: 1.6; color: var(--cb-subtext); margin-bottom: 28px; padding: 14px 18px; background: rgba(255, 255, 255, 0.01); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.04); border-radius: 12px; }
-  .cb-pd-intro-highlight { color: #00D4FF; font-weight: 500; letter-spacing: 0.01em; }
+  .cb-pd-intro-highlight { color: var(--cb-accent-primary); font-weight: 500; letter-spacing: 0.01em; }
   .cb-pd-content { display: flex; flex-direction: column; gap: 16px; padding: 0; margin: 0; }
   .cb-pd-footer { margin-top: 32px; font-size: 10px; color: var(--cb-subtext); text-align: center; opacity: 0.3; letter-spacing: 1.2px; text-transform: uppercase; font-weight: 500; }
   .cb-pd-action-bar { display: flex; gap: 12px; margin-bottom: 8px; }
-  .cb-pd-btn-generate { flex: 1; background: linear-gradient(135deg, rgba(0, 212, 255, 0.1) 0%, rgba(124, 58, 237, 0.1) 100%); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid rgba(0, 212, 255, 0.2); padding: 12px 20px; font-weight: 500; font-size: 13px; border-radius: 12px; color: #00D4FF; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); letter-spacing: 0.5px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1); }
-  .cb-pd-btn-generate:hover { background: linear-gradient(135deg, rgba(0, 212, 255, 0.15) 0%, rgba(124, 58, 237, 0.15) 100%); border-color: rgba(0, 212, 255, 0.4); transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0, 212, 255, 0.2); }
+  .cb-pd-btn-generate { flex: 1; background: color-mix(in srgb, var(--cb-accent-primary) 10%, transparent); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid color-mix(in srgb, var(--cb-accent-primary) 20%, transparent); padding: 12px 20px; font-weight: 500; font-size: 13px; border-radius: 12px; color: var(--cb-accent-primary); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); letter-spacing: 0.5px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1); }
+  .cb-pd-btn-generate:hover { background: color-mix(in srgb, var(--cb-accent-primary) 15%, transparent); border-color: color-mix(in srgb, var(--cb-accent-primary) 40%, transparent); transform: translateY(-2px); box-shadow: 0 8px 25px color-mix(in srgb, var(--cb-accent-primary) 20%, transparent); }
   .cb-pd-btn-generate:active { transform: translateY(0); }
   .cb-pd-btn-generate--loading { opacity: 0.7; pointer-events: none; animation: cbPulse 1.5s infinite ease-in-out; }
   .cb-pd-btn-generate svg { width: 16px; height: 16px; stroke: currentColor; }
@@ -2601,7 +2857,7 @@
   .cb-pd-prompts-list::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.05); border-radius: 10px; }
   .cb-pd-prompts-list::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.1); }
   .cb-pd-empty-state { text-align: center; padding: 48px 24px; background: rgba(255, 255, 255, 0.01); border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.03); }
-  .cb-pd-empty-icon { width: 48px; height: 48px; margin: 0 auto 20px; border-radius: 14px; background: linear-gradient(135deg, rgba(0, 212, 255, 0.05), rgba(124, 58, 237, 0.05)); display: flex; align-items: center; justify-content: center; opacity: 0.8; }
+  .cb-pd-empty-icon { width: 48px; height: 48px; margin: 0 auto 20px; border-radius: 14px; background: color-mix(in srgb, var(--cb-accent-primary) 5%, transparent); display: flex; align-items: center; justify-content: center; opacity: 0.8; }
   .cb-pd-empty-title { font-family: system-ui, -apple-system, sans-serif !important; font-size: 18px; color: var(--cb-white); margin-bottom: 8px; letter-spacing: 0.5px; opacity: 0.9; font-weight: 600; }
   .cb-pd-empty-desc { font-size: 12px; color: var(--cb-subtext); line-height: 1.6; opacity: 0.5; }
   .cb-prompt-item { padding: 14px 18px; background: rgba(255, 255, 255, 0.02); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.05); border-left: 3px solid transparent; border-radius: 14px; cursor: pointer; transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1); opacity: 0; transform: translateY(12px); animation: cbFadeSlideIn 0.5s ease forwards; position: relative; overflow: hidden; max-height: 52px; display: flex; flex-direction: column; gap: 16px; box-sizing: border-box; }
@@ -2615,8 +2871,8 @@
   .cb-prompt-item--expanded .cb-prompt-category { opacity: 0.9; letter-spacing: 0.3px; font-weight: 600; color: var(--cb-white) !important; }
   .cb-prompt-item--expanded .cb-prompt-chevron { transform: rotate(180deg); opacity: 0.8 !important; }
 
-  .cb-prompt-item--copied { background: rgba(0, 212, 255, 0.08) !important; border-color: rgba(0, 212, 255, 0.2) !important; border-left-color: #00D4FF !important; }
-  .cb-prompt-item--inserted { background: rgba(52, 211, 153, 0.08) !important; border-color: rgba(52, 211, 153, 0.2) !important; border-left-color: #34d399 !important; }
+  .cb-prompt-item--copied { background: color-mix(in srgb, var(--cb-accent-primary) 8%, transparent) !important; border-color: color-mix(in srgb, var(--cb-accent-primary) 20%, transparent) !important; border-left-color: var(--cb-accent-primary) !important; }
+  .cb-prompt-item--inserted { background: color-mix(in srgb, var(--cb-accent-tertiary) 8%, transparent) !important; border-color: color-mix(in srgb, var(--cb-accent-tertiary) 20%, transparent) !important; border-left-color: var(--cb-accent-tertiary) !important; }
   
   .cb-prompt-item-header { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
   .cb-prompt-dot { width: 6px; height: 6px; border-radius: 50%; filter: blur(0.5px); }
@@ -2626,14 +2882,14 @@
   .cb-prompt-text { font-size: 13.5px; color: rgba(255, 255, 255, 0.9); line-height: 1.65; font-weight: 400; opacity: 0; transform: translateY(4px); transition: all 0.4s ease 0.1s; display: none; -webkit-user-select: text; user-select: text; margin: 4px 0; }
   
   .cb-prompt-actions { opacity: 0; transform: translateY(8px); transition: all 0.4s ease 0.2s; display: none; align-items: center; gap: 12px; margin-top: 4px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 16px; }
-  .cb-prompt-copy-btn { padding: 8px 16px; font-size: 10px; font-weight: 600; color: #00D4FF; border-radius: 10px; border: 1px solid rgba(0, 212, 255, 0.2); background: rgba(0, 212, 255, 0.05); display: flex; align-items: center; gap: 8px; cursor: pointer; transition: all 0.3s ease; }
-  .cb-prompt-copy-btn:hover { background: rgba(0, 212, 255, 0.12); border-color: rgba(0, 212, 255, 0.4); transform: translateY(-1px); }
+  .cb-prompt-copy-btn { padding: 8px 16px; font-size: 10px; font-weight: 600; color: var(--cb-accent-primary); border-radius: 10px; border: 1px solid color-mix(in srgb, var(--cb-accent-primary) 20%, transparent); background: color-mix(in srgb, var(--cb-accent-primary) 5%, transparent); display: flex; align-items: center; gap: 8px; cursor: pointer; transition: all 0.3s ease; }
+  .cb-prompt-copy-btn:hover { background: color-mix(in srgb, var(--cb-accent-primary) 12%, transparent); border-color: color-mix(in srgb, var(--cb-accent-primary) 40%, transparent); transform: translateY(-1px); }
   .cb-prompt-copy-btn svg { width: 14px; height: 14px; stroke: currentColor; }
 
   .cb-pd-error { text-align: center; padding: 32px; color: var(--cb-subtext); font-size: 12px; font-style: italic; opacity: 0.6; }
   .cb-pd-error--fail { color: #f87171; opacity: 0.8; }
   @keyframes cbFadeSlideIn { to { opacity: 1; transform: translateY(0); } }
-  #cb-pd-view { background: radial-gradient(circle at top left, rgba(0, 212, 255, 0.05), transparent 40%), radial-gradient(circle at bottom right, rgba(124, 58, 237, 0.05), transparent 40%), linear-gradient(180deg, var(--cb-bg), var(--cb-bg2)); }
+  #cb-pd-view { background: linear-gradient(180deg, var(--cb-bg), var(--cb-bg2)); }
   `;
     shadow.appendChild(style);
     // Apply saved theme preference - DEFAULT TO DARK
@@ -3390,8 +3646,8 @@
     pdTop.className = 'cb-pd-top';
 
     const pdTitle = document.createElement('div');
-    pdTitle.className = 'cb-pd-title';
-    pdTitle.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="url(#gradient-pd-stroke)" stroke-width="1.5"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/><defs><linearGradient id="gradient-pd-stroke" x1="2" y1="2" x2="22" y2="21"><stop stop-color="#00D4FF"/><stop offset="1" stop-color="#7C3AED"/></linearGradient></defs></svg><span class="cb-gradient-text">Smart Prompts</span>';
+    pdTitle.className = 'cb-view-title';
+    pdTitle.innerHTML = '<span class="cb-gradient-text" style="display: inline-flex; align-items: center; gap: 10px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg>Smart Prompts</span>';
 
     const btnClosePD = document.createElement('button');
     btnClosePD.className = 'cb-pd-close-btn';
@@ -3438,7 +3694,7 @@
 
     const summTitle = document.createElement('div');
     summTitle.className = 'cb-view-title';
-    summTitle.innerHTML = '<span style="background: linear-gradient(135deg, #00D4FF, #7C3AED); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; display: inline-flex; align-items: center; gap: 10px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="url(#summGrad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z"/><path d="M14 2v6h6"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/><defs><linearGradient id="summGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00D4FF"/><stop offset="100%" stop-color="#7C3AED"/></linearGradient></defs></svg>Summarize</span>';
+    summTitle.innerHTML = '<span class="cb-gradient-text" style="display: inline-flex; align-items: center; gap: 10px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z"/><path d="M14 2v6h6"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>Summarize</span>';
 
     const btnCloseSumm = document.createElement('button');
     btnCloseSumm.className = 'cb-view-close';
@@ -3452,7 +3708,6 @@
     // Premium glassmorphic intro card (matching translate style)
     const summIntro = document.createElement('div');
     summIntro.className = 'cb-view-intro';
-    summIntro.style.cssText = 'font-size: 12px; color: var(--cb-subtext); margin: 16px 0; line-height: 1.6; padding: 14px 16px; background: linear-gradient(135deg, rgba(0, 212, 255, 0.06), rgba(124, 58, 237, 0.04)); border-left: 3px solid var(--cb-accent-primary); border-radius: 8px; backdrop-filter: blur(8px);';
     summIntro.innerHTML = '<span style="color: var(--cb-white); font-weight: 600;">Extract Key Insights</span> from your conversations. Create <span style="color: var(--cb-accent-tertiary);">structured summaries</span>, <span style="color: var(--cb-accent-tertiary);">meeting notes</span>, or <span style="color: var(--cb-accent-tertiary);">quick highlights</span>.';
     summView.appendChild(summIntro);
 
@@ -3461,13 +3716,13 @@
     summStats.id = 'cb-summ-stats';
     summStats.style.cssText = 'display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;font-size:10px;';
     summStats.innerHTML = `
-      <div style="background:linear-gradient(135deg, rgba(0,212,255,0.1), rgba(124,58,237,0.05));padding:6px 12px;border-radius:16px;border:1px solid rgba(0,212,255,0.2);color:var(--cb-subtext);display:flex;align-items:center;gap:4px;">
+      <div style="background:var(--cb-bg3);padding:6px 12px;border-radius:16px;border:1px solid var(--cb-border);color:var(--cb-subtext);display:flex;align-items:center;gap:4px;">
         Words: <span id="cb-summ-words" style="color:var(--cb-white);font-weight:600;">--</span>
       </div>
-      <div style="background:linear-gradient(135deg, rgba(0,212,255,0.1), rgba(124,58,237,0.05));padding:6px 12px;border-radius:16px;border:1px solid rgba(0,212,255,0.2);color:var(--cb-subtext);display:flex;align-items:center;gap:4px;">
+      <div style="background:var(--cb-bg3);padding:6px 12px;border-radius:16px;border:1px solid var(--cb-border);color:var(--cb-subtext);display:flex;align-items:center;gap:4px;">
         Chars: <span id="cb-summ-chars" style="color:var(--cb-white);font-weight:600;">--</span>
       </div>
-      <div style="background:linear-gradient(135deg, rgba(0,212,255,0.1), rgba(124,58,237,0.05));padding:6px 12px;border-radius:16px;border:1px solid rgba(0,212,255,0.2);color:var(--cb-subtext);display:flex;align-items:center;gap:4px;">
+      <div style="background:var(--cb-bg3);padding:6px 12px;border-radius:16px;border:1px solid var(--cb-border);color:var(--cb-subtext);display:flex;align-items:center;gap:4px;">
         Est: <span id="cb-summ-time" style="color:var(--cb-white);font-weight:600;">--</span>
       </div>`;
     summView.appendChild(summStats);
@@ -3534,7 +3789,7 @@
     summGearBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>';
     summGearBtn.title = 'Advanced Options';
     summGearBtn.style.cssText = 'background:transparent;border:1px solid var(--cb-border);color:var(--cb-subtext);cursor:pointer;padding:10px;border-radius:8px;transition:all 0.2s ease;display:flex;align-items:center;justify-content:center;';
-    summGearBtn.onmouseenter = () => { summGearBtn.style.background = 'rgba(0, 212, 255, 0.1)'; summGearBtn.style.borderColor = 'rgba(0, 212, 255, 0.4)'; summGearBtn.style.color = '#00D4FF'; summGearBtn.style.transform = 'rotate(45deg)'; };
+    summGearBtn.onmouseenter = () => { summGearBtn.style.background = 'color-mix(in srgb, var(--cb-accent-primary) 12%, transparent)'; summGearBtn.style.borderColor = 'var(--cb-accent-primary)'; summGearBtn.style.color = 'var(--cb-accent-primary)'; summGearBtn.style.transform = 'rotate(45deg)'; };
     summGearBtn.onmouseleave = () => { summGearBtn.style.background = 'transparent'; summGearBtn.style.borderColor = 'var(--cb-border)'; summGearBtn.style.color = 'var(--cb-subtext)'; summGearBtn.style.transform = ''; };
 
     summControlRow.appendChild(lenGroup);
@@ -3555,7 +3810,7 @@
     // Settings Panel (Hidden by default)
     const summOptions = document.createElement('div');
     summOptions.id = 'cb-summ-options';
-    summOptions.style.cssText = 'display:none;background:linear-gradient(135deg, rgba(96,165,250,0.08) 0%, rgba(139,92,246,0.08) 100%);border:1px solid rgba(96,165,250,0.25);border-radius:12px;padding:16px;margin:0 0 16px 0;backdrop-filter:blur(8px);';
+    summOptions.style.cssText = 'display:none;background:var(--cb-bg3);border:1px solid var(--cb-border);border-radius:12px;padding:16px;margin:0 0 16px 0;backdrop-filter:blur(8px);';
 
     const summOptHeader = document.createElement('div');
     summOptHeader.style.cssText = 'display:flex;align-items:center;gap:8px;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,0.08);';
@@ -3584,13 +3839,13 @@
     ['all', 'lastUser', 'lastAI', 'custom'].forEach((mode, idx) => {
       const label = document.createElement('label');
       label.className = 'cb-radio-pill';
-      label.style.cssText = 'display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border:1px solid rgba(96,165,250,0.3);border-radius:20px;background:rgba(255,255,255,0.03);cursor:pointer;transition:all .2s ease;font-size:11px;';
+      label.style.cssText = 'display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border:1px solid var(--cb-border);border-radius:20px;background:var(--cb-bg3);cursor:pointer;transition:all .2s ease;font-size:11px;';
 
       const radio = document.createElement('input');
       radio.type = 'radio';
       radio.name = 'cb-summ-mode';
       radio.value = mode;
-      radio.style.cssText = 'cursor:pointer;accent-color:#60a5fa;width:14px;height:14px;';
+      radio.style.cssText = 'cursor:pointer;accent-color:var(--cb-accent-primary);width:14px;height:14px;';
 
       // Default to stored pref or 'all'
       try {
@@ -3643,7 +3898,7 @@
     summGearBtn.addEventListener('click', () => {
       const isHidden = summOptions.style.display === 'none';
       summOptions.style.display = isHidden ? 'block' : 'none';
-      summGearBtn.style.background = isHidden ? 'rgba(96,165,250,0.2)' : 'rgba(255,255,255,0.05)';
+      summGearBtn.style.background = isHidden ? 'color-mix(in srgb, var(--cb-accent-primary) 20%, transparent)' : 'rgba(255,255,255,0.05)';
     });
 
     // Source Text Preview
@@ -3694,7 +3949,7 @@
     summResult.className = 'cb-view-result';
     summResult.id = 'cb-summ-result';
     summResult.textContent = '';
-    summResult.style.cssText = 'font-size:13px;line-height:1.7;padding:16px;background:linear-gradient(135deg, rgba(0, 212, 255, 0.03), rgba(124, 58, 237, 0.02));border:1px solid rgba(0, 212, 255, 0.15);border-radius:12px;display:none;max-height:250px;overflow-y:auto;box-shadow:inset 0 1px 0 rgba(255,255,255,0.04);';
+    summResult.style.cssText = 'font-size:13px;line-height:1.7;padding:16px;background:var(--cb-bg3);border:1px solid var(--cb-border);border-radius:12px;display:none;max-height:250px;overflow-y:auto;box-shadow:inset 0 1px 0 rgba(255,255,255,0.04);';
     summView.appendChild(summResult);
 
     function updateSummStats(text) {
@@ -3896,7 +4151,7 @@
 
     const rewTitle = document.createElement('div');
     rewTitle.className = 'cb-view-title';
-    rewTitle.innerHTML = '<span style="background: linear-gradient(135deg, #00D4FF, #7C3AED); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; display: inline-flex; align-items: center; gap: 10px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="url(#rewGrad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path><defs><linearGradient id="rewGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00D4FF"/><stop offset="100%" stop-color="#7C3AED"/></linearGradient></defs></svg>Rewrite</span>';
+    rewTitle.innerHTML = '<span class="cb-gradient-text" style="display: inline-flex; align-items: center; gap: 10px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>Rewrite</span>';
 
     const btnCloseRew = document.createElement('button');
     btnCloseRew.className = 'cb-view-close';
@@ -3910,7 +4165,6 @@
     // Premium glassmorphic intro card (matching translate style)
     const rewIntro = document.createElement('div');
     rewIntro.className = 'cb-view-intro';
-    rewIntro.style.cssText = 'font-size: 12px; color: var(--cb-subtext); margin: 16px 0; line-height: 1.6; padding: 14px 16px; background: linear-gradient(135deg, rgba(0, 212, 255, 0.06), rgba(124, 58, 237, 0.04)); border-left: 3px solid var(--cb-accent-primary); border-radius: 8px; backdrop-filter: blur(8px);';
     rewIntro.innerHTML = '<span style="color: var(--cb-white); font-weight: 600;">Polish & Refine</span> your content with AI-powered rewriting. Select <span style="color: var(--cb-accent-tertiary);">style presets</span> or create <span style="color: var(--cb-accent-tertiary);">custom transformations</span>.';
     rewView.appendChild(rewIntro);
     // Section label for controls
@@ -4087,7 +4341,7 @@
     const transTop = document.createElement('div'); transTop.className = 'cb-view-top';
     const transTitle = document.createElement('div');
     transTitle.className = 'cb-view-title';
-    transTitle.innerHTML = '<span style="background: linear-gradient(135deg, #00D4FF, #7C3AED); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">Translate</span>';
+    transTitle.innerHTML = '<span class="cb-gradient-text" style="display: inline-flex; align-items: center; gap: 10px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8l6 6"/><path d="M4 14l6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="M22 22l-5-10-5 10"/><path d="M14 18h6"/></svg>Translate</span>';
     const btnCloseTrans = document.createElement('button'); btnCloseTrans.className = 'cb-view-close'; btnCloseTrans.textContent = '✕';
     btnCloseTrans.setAttribute('aria-label', 'Close Translate view');
     transTop.appendChild(transTitle); transTop.appendChild(btnCloseTrans);
@@ -4096,7 +4350,6 @@
     // Premium glassmorphic intro card
     const transIntro = document.createElement('div');
     transIntro.className = 'cb-view-intro';
-    transIntro.style.cssText = 'font-size: 12px; color: var(--cb-subtext); margin: 16px 0; line-height: 1.6; padding: 14px 16px; background: linear-gradient(135deg, rgba(0, 212, 255, 0.06), rgba(124, 58, 237, 0.04)); border-left: 3px solid var(--cb-accent-primary); border-radius: 8px; backdrop-filter: blur(8px);';
     transIntro.innerHTML = '<span style="color: var(--cb-white); font-weight: 600;">Translate conversations</span> to 30+ languages. <span style="color: var(--cb-accent-tertiary);">Technical terms</span> and <span style="color: var(--cb-accent-tertiary);">code blocks</span> are intelligently preserved.';
     transView.appendChild(transIntro);
 
@@ -4125,11 +4378,11 @@
       chip.innerHTML = `<span>${lang.label}</span>`;
       chip.style.cssText = 'display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; font-size: 11px; font-weight: 500; background: rgba(255,255,255,0.03); border: 1px solid var(--cb-border); border-radius: 20px; color: var(--cb-subtext); cursor: pointer; transition: all 0.2s ease;';
       chip.addEventListener('mouseenter', () => {
-        chip.style.background = 'rgba(0, 212, 255, 0.12)';
-        chip.style.borderColor = 'rgba(0, 212, 255, 0.4)';
+        chip.style.background = 'color-mix(in srgb, var(--cb-accent-primary) 12%, transparent)';
+        chip.style.borderColor = 'color-mix(in srgb, var(--cb-accent-primary) 40%, transparent)';
         chip.style.color = 'var(--cb-white)';
         chip.style.transform = 'translateY(-2px)';
-        chip.style.boxShadow = '0 4px 12px rgba(0, 212, 255, 0.2)';
+        chip.style.boxShadow = '0 4px 12px color-mix(in srgb, var(--cb-accent-primary) 20%, transparent)';
       });
       chip.addEventListener('mouseleave', () => {
         if (!chip.classList.contains('active')) {
@@ -4150,9 +4403,9 @@
         });
         // Set active
         chip.classList.add('active');
-        chip.style.background = 'linear-gradient(135deg, rgba(0, 212, 255, 0.15), rgba(124, 58, 237, 0.1))';
-        chip.style.borderColor = 'rgba(0, 212, 255, 0.5)';
-        chip.style.color = '#00D4FF';
+        chip.style.background = 'color-mix(in srgb, var(--cb-accent-primary) 15%, transparent)';
+        chip.style.borderColor = 'color-mix(in srgb, var(--cb-accent-primary) 50%, transparent)';
+        chip.style.color = 'var(--cb-accent-primary)';
         transLangSelect.value = lang.code;
         try { localStorage.setItem('chatbridge:pref:transLang', lang.code); } catch (e) { }
         toast(`Language set to ${lang.label} `);
@@ -4180,14 +4433,14 @@
     transGearBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>';
     transGearBtn.title = 'Advanced Options';
     transGearBtn.style.cssText = 'background:transparent;border:1px solid var(--cb-border);color:var(--cb-subtext);font-size:1em;cursor:pointer;padding:8px;border-radius:8px;transition:all 0.2s ease;display:flex;align-items:center;justify-content:center;';
-    transGearBtn.onmouseenter = () => { transGearBtn.style.background = 'rgba(0, 212, 255, 0.1)'; transGearBtn.style.borderColor = 'rgba(0, 212, 255, 0.4)'; transGearBtn.style.color = '#00D4FF'; transGearBtn.style.transform = 'rotate(45deg)'; };
+    transGearBtn.onmouseenter = () => { transGearBtn.style.background = 'color-mix(in srgb, var(--cb-accent-primary) 12%, transparent)'; transGearBtn.style.borderColor = 'var(--cb-accent-primary)'; transGearBtn.style.color = 'var(--cb-accent-primary)'; transGearBtn.style.transform = 'rotate(45deg)'; };
     transGearBtn.onmouseleave = () => { transGearBtn.style.background = 'transparent'; transGearBtn.style.borderColor = 'var(--cb-border)'; transGearBtn.style.color = 'var(--cb-subtext)'; transGearBtn.style.transform = ''; };
     transLangRow.appendChild(transLangLabel); transLangRow.appendChild(transLangSelect); transLangRow.appendChild(transGearBtn); transView.appendChild(transLangRow);
 
     // Settings panel with improved styling
     const transOptions = document.createElement('div');
     transOptions.id = 'cb-trans-options';
-    transOptions.style.cssText = 'display:none;background:linear-gradient(135deg, rgba(96,165,250,0.08) 0%, rgba(139,92,246,0.08) 100%);border:1px solid rgba(96,165,250,0.25);border-radius:12px;padding:16px;margin:0 0 14px 0;backdrop-filter:blur(8px);';
+    transOptions.style.cssText = 'display:none;background:var(--cb-bg3);border:1px solid var(--cb-border);border-radius:12px;padding:16px;margin:0 0 14px 0;';
 
     // Section header
     const settingsHeader = document.createElement('div');
@@ -4210,12 +4463,12 @@
     ['all', 'user', 'ai', 'last', 'custom'].forEach((mode, idx) => {
       const label = document.createElement('label');
       label.className = 'cb-radio';
-      label.style.cssText = 'display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border:1px solid rgba(96,165,250,0.3);border-radius:20px;background:rgba(255,255,255,0.03);cursor:pointer;transition:all .2s ease;font-size:12px;';
+      label.style.cssText = 'display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border:1px solid var(--cb-border);border-radius:20px;background:var(--cb-bg3);cursor:pointer;transition:all .2s ease;font-size:12px;';
       const radio = document.createElement('input');
       radio.type = 'radio';
       radio.name = 'cb-trans-mode';
       radio.value = mode;
-      radio.style.cssText = 'cursor:pointer;accent-color:#60a5fa;';
+      radio.style.cssText = 'cursor:pointer;accent-color:var(--cb-accent-primary);';
       if (idx === 0) radio.checked = true;
       const span = document.createElement('span');
       span.textContent = mode === 'all' ? 'All' : mode === 'user' ? 'User' : mode === 'ai' ? 'AI' : mode === 'last' ? 'Last' : 'Custom';
@@ -4241,7 +4494,7 @@
     const transCustomInput = document.createElement('textarea');
     transCustomInput.id = 'cb-trans-custom-input';
     transCustomInput.placeholder = 'Type or paste your text here...';
-    transCustomInput.style.cssText = 'width:100%;min-height:100px;padding:12px;background:rgba(0,0,0,0.2);border:1px solid rgba(96,165,250,0.3);border-radius:8px;color:var(--cb-white);font-size:13px;font-family:inherit;resize:vertical;line-height:1.5;';
+    transCustomInput.style.cssText = 'width:100%;min-height:100px;padding:12px;background:var(--cb-bg3);border:1px solid var(--cb-border);border-radius:8px;color:var(--cb-white);font-size:13px;font-family:inherit;resize:vertical;line-height:1.5;';
     transCustomInput.maxLength = 10000; // Limit input length for safety
     transCustomInputArea.appendChild(transCustomInput);
 
@@ -4327,7 +4580,7 @@
     const transResult = document.createElement('div');
     transResult.className = 'cb-view-result';
     transResult.id = 'cb-trans-result';
-    transResult.style.cssText = 'margin-top:12px;background:linear-gradient(135deg, rgba(0, 212, 255, 0.03), rgba(124, 58, 237, 0.02));border:1px solid rgba(0, 212, 255, 0.15);border-radius:12px;padding:16px;max-height:300px;overflow-y:auto;white-space:pre-wrap;line-height:1.7;font-size:13px;display:none;box-shadow:inset 0 1px 0 rgba(255,255,255,0.04);';
+    transResult.style.cssText = 'margin-top:12px;background:var(--cb-bg3);border:1px solid var(--cb-border);border-radius:12px;padding:16px;max-height:300px;overflow-y:auto;white-space:pre-wrap;line-height:1.7;font-size:13px;display:none;box-shadow:inset 0 1px 0 rgba(255,255,255,0.04);';
     transView.appendChild(transResult);
 
     // Insert button with success styling
@@ -4346,19 +4599,19 @@
         if (!transView.querySelector('#cb-trans-style')) {
           const style = document.createElement('style'); style.id = 'cb-trans-style';
           style.textContent = `
-          .cb-radio:hover { background: rgba(96,165,250,0.15); border-color: rgba(96,165,250,0.5); transform: translateY(-1px); }
-          .cb-radio:has(input:checked) { background: rgba(96,165,250,0.2); border-color: rgba(96,165,250,0.6); }
-          .cb-radio input { accent-color: #60a5fa; }
-          .cb-radio input:checked + .cb-radio-text { font-weight: 600; color: #ffffff; }
+          .cb-radio:hover { background: color-mix(in srgb, var(--cb-accent-primary) 15%, transparent); border-color: color-mix(in srgb, var(--cb-accent-primary) 50%, transparent); transform: translateY(-1px); }
+          .cb-radio:has(input:checked) { background: color-mix(in srgb, var(--cb-accent-primary) 20%, transparent); border-color: color-mix(in srgb, var(--cb-accent-primary) 60%, transparent); }
+          .cb-radio input { accent-color: var(--cb-accent-primary); }
+          .cb-radio input:checked + .cb-radio-text { font-weight: 600; color: var(--cb-white); }
           #cb-trans-options { box-shadow: 0 8px 32px rgba(0,0,0,0.3); }
           #cb-trans-result { box-shadow: inset 0 1px 0 rgba(255,255,255,0.04); }
-          .cb-btn.cb-btn-primary { background: linear-gradient(135deg, #60a5fa 0%, #8b5cf6 100%); border: none; }
+          .cb-btn.cb-btn-primary { background: linear-gradient(135deg, var(--cb-accent-primary) 0%, var(--cb-accent-secondary) 100%); border: none; }
           .cb-btn.cb-btn-primary:hover { filter: brightness(1.1); transform: translateY(-1px); }
           input.cb-toggle { appearance: none; background: rgba(255,255,255,0.2); border-radius: 999px; position: relative; outline: none; transition: background .2s; }
-          input.cb-toggle:checked { background: linear-gradient(135deg, #60a5fa, #8b5cf6); }
+          input.cb-toggle:checked { background: linear-gradient(135deg, var(--cb-accent-primary), var(--cb-accent-secondary)); }
           input.cb-toggle::before { content: ''; position: absolute; top: 3px; left: 4px; width: 18px; height: 18px; background: #fff; border-radius: 50%; transition: transform .2s; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
           input.cb-toggle:checked::before { transform: translateX(18px); }
-          #cb-trans-custom-input:focus { outline: none; border-color: #60a5fa; box-shadow: 0 0 0 3px rgba(96,165,250,0.2); }
+          #cb-trans-custom-input:focus { outline: none; border-color: var(--cb-accent-primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--cb-accent-primary) 20%, transparent); }
         `;
           transView.appendChild(style);
         }
@@ -4383,13 +4636,11 @@
 
     const optTitle = document.createElement('div');
     optTitle.className = 'cb-view-title';
-    optTitle.style.cssText = 'font-size:20px;font-weight:700;color:var(--cb-white);display:flex;align-items:center;gap:10px;';
-    optTitle.innerHTML = '✨ <span>Prompt Optimizer</span>';
+    optTitle.innerHTML = '<span class="cb-gradient-text" style="display: inline-flex; align-items: center; gap: 10px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v5m0 4v8m-4-4l4-4 4 4"/><circle cx="12" cy="12" r="10"/></svg>Prompt Optimizer</span>';
 
     const btnCloseOpt = document.createElement('button');
     btnCloseOpt.className = 'cb-view-close';
     btnCloseOpt.textContent = '✕';
-    btnCloseOpt.style.cssText = 'background:transparent;border:none;color:var(--cb-subtext);cursor:pointer;font-size:20px;padding:4px 8px;border-radius:6px;transition:all 0.2s ease;width:32px;height:32px;display:flex;align-items:center;justify-content:center;';
     btnCloseOpt.setAttribute('aria-label', 'Close Prompt Optimizer');
 
     optTop.appendChild(optTitle);
@@ -4398,7 +4649,6 @@
 
     const optIntro = document.createElement('div');
     optIntro.className = 'cb-view-intro';
-    optIntro.style.cssText = 'font-size:11px;line-height:1.5;color:var(--cb-subtext);margin-bottom:16px;padding:10px 14px;background:linear-gradient(135deg,rgba(167,139,250,0.08),rgba(96,165,250,0.06));border:1px solid rgba(167,139,250,0.15);border-radius:10px;';
     optIntro.innerHTML = 'Transform raw prompts into clear, high-performance AI instructions. Your intent is preserved. Only clarity is upgraded.';
     optimizerView.appendChild(optIntro);
 
@@ -4412,7 +4662,7 @@
     optInput.id = 'cb-opt-input';
     optInput.className = 'cb-view-text';
     optInput.placeholder = 'Paste or type your rough prompt here... e.g. "help me write an essay about climate change"';
-    optInput.style.cssText = 'width:100%;min-height:120px;max-height:180px;resize:vertical;background:rgba(0,0,0,0.2);color:var(--cb-white);border:1px solid rgba(255,255,255,0.1);padding:14px;border-radius:10px;font-family:inherit;font-size:13px;line-height:1.6;';
+    optInput.style.cssText = 'width:100%;min-height:120px;max-height:180px;resize:vertical;background:var(--cb-bg3);color:var(--cb-white);border:1px solid var(--cb-border);padding:14px;border-radius:10px;font-family:inherit;font-size:13px;line-height:1.6;';
     optimizerView.appendChild(optInput);
 
     // Action row
@@ -4423,11 +4673,11 @@
     btnOptimize.className = 'cb-btn cb-btn-primary';
     btnOptimize.id = 'cb-btn-optimize';
     btnOptimize.textContent = '✨ Optimize';
-    btnOptimize.style.cssText = 'padding:12px 24px;font-weight:600;background:linear-gradient(135deg,#a78bfa,#60a5fa);border:none;';
+    btnOptimize.style.cssText = 'padding:12px 24px;font-weight:600;';
 
     const optProg = document.createElement('span');
     optProg.id = 'cb-opt-progress';
-    optProg.style.cssText = 'display:none;font-size:12px;color:#a78bfa;align-items:center;';
+    optProg.style.cssText = 'display:none;font-size:12px;color:var(--cb-accent-primary);align-items:center;';
     optProg.innerHTML = '<span class="cb-spinner"></span><span>Optimizing...</span>';
 
     optActionRow.appendChild(btnOptimize);
@@ -4482,7 +4732,7 @@
     smartTop.className = 'cb-view-top';
     const smartTitle = document.createElement('div');
     smartTitle.className = 'cb-view-title';
-    smartTitle.innerHTML = '<span style="background: linear-gradient(135deg, #00D4FF, #7C3AED); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">Smart Query</span>';
+    smartTitle.innerHTML = '<span class="cb-gradient-text" style="display: inline-flex; align-items: center; gap: 10px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>Smart Query</span>';
     const btnCloseSmart = document.createElement('button');
     btnCloseSmart.className = 'cb-view-close';
     btnCloseSmart.textContent = '✕';
@@ -4494,29 +4744,28 @@
     // Premium glassmorphic intro card (matching translate style exactly)
     const smartIntro = document.createElement('div');
     smartIntro.className = 'cb-view-intro';
-    smartIntro.style.cssText = 'font-size: 12px; color: var(--cb-subtext); margin: 16px 0; line-height: 1.6; padding: 14px 16px; background: linear-gradient(135deg, rgba(0, 212, 255, 0.06), rgba(124, 58, 237, 0.04)); border-left: 3px solid var(--cb-accent-primary); border-radius: 8px; backdrop-filter: blur(8px);';
     smartIntro.innerHTML = '<span style="color: var(--cb-white); font-weight: 600;">Search your conversations</span> using natural language. Find <span style="color: var(--cb-accent-tertiary);">insights</span>, <span style="color: var(--cb-accent-tertiary);">patterns</span>, and <span style="color: var(--cb-accent-tertiary);">key decisions</span> across all saved chats.';
     smartView.appendChild(smartIntro);
 
     // Section label for suggestions
     const suggestLabel = document.createElement('div');
-    suggestLabel.style.cssText = 'font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--cb-subtext); margin-bottom: 10px; opacity: 0.8;';
+    suggestLabel.style.cssText = 'font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--cb-subtext); margin-bottom: 6px; opacity: 0.8;';
     suggestLabel.textContent = 'Quick Search';
     smartView.appendChild(suggestLabel);
 
     // Quick Suggestion Chips (matching translate language chips style)
     const smartSuggestRow = document.createElement('div');
     smartSuggestRow.id = 'cb-smart-suggest-row';
-    smartSuggestRow.style.cssText = 'display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px;';
+    smartSuggestRow.style.cssText = 'display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px;';
 
     const defaultSuggestions = ['Key decisions', 'Unresolved questions', 'Code examples', 'Action items'];
     defaultSuggestions.forEach(text => {
       const chip = document.createElement('button');
       chip.className = 'cb-lang-chip';
       chip.textContent = text;
-      chip.style.cssText = 'padding: 8px 14px; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--cb-border); border-radius: 20px; color: var(--cb-white); font-size: 11px; font-weight: 500; cursor: pointer; transition: all 0.2s ease;';
-      chip.onmouseenter = () => { chip.style.borderColor = 'var(--cb-accent-primary)'; chip.style.background = 'rgba(0, 212, 255, 0.1)'; };
-      chip.onmouseleave = () => { chip.style.borderColor = 'var(--cb-border)'; chip.style.background = 'rgba(255, 255, 255, 0.03)'; };
+      chip.style.cssText = 'padding: 5px 10px; background: var(--cb-bg3); border: 1px solid var(--cb-border); border-radius: 20px; color: var(--cb-white); font-size: 11px; font-weight: 500; cursor: pointer; transition: all 0.2s ease;';
+      chip.onmouseenter = () => { chip.style.borderColor = 'var(--cb-accent-primary)'; chip.style.background = 'color-mix(in srgb, var(--cb-accent-primary) 10%, transparent)'; };
+      chip.onmouseleave = () => { chip.style.borderColor = 'var(--cb-border)'; chip.style.background = 'var(--cb-bg3)'; };
       chip.onclick = () => {
         const input = smartView.querySelector('#cb-smart-query');
         if (input) { input.value = text; input.focus(); }
@@ -4527,13 +4776,13 @@
 
     // Section label for filters
     const filterLabel = document.createElement('div');
-    filterLabel.style.cssText = 'font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--cb-subtext); margin-bottom: 10px; opacity: 0.8;';
+    filterLabel.style.cssText = 'font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--cb-subtext); margin-bottom: 6px; opacity: 0.8;';
     filterLabel.textContent = 'Filters';
     smartView.appendChild(filterLabel);
 
     // Filters row (simple flex-wrap, no container box)
     const smartFilterRow = document.createElement('div');
-    smartFilterRow.style.cssText = 'display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px;';
+    smartFilterRow.style.cssText = 'display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px;';
 
     const hostSelect = document.createElement('select');
     hostSelect.className = 'cb-select';
@@ -4563,7 +4812,7 @@
 
     // Query input row
     const smartQueryRow = document.createElement('div');
-    smartQueryRow.style.cssText = 'display: flex; gap: 10px; margin-bottom: 16px;';
+    smartQueryRow.style.cssText = 'display: flex; gap: 8px; margin-bottom: 10px;';
 
     const smartInput = document.createElement('input');
     smartInput.type = 'text';
@@ -4587,13 +4836,13 @@
     const smartResults = document.createElement('div');
     smartResults.id = 'cb-smart-results';
     smartResults.className = 'cb-view-text';
-    smartResults.style.cssText = 'min-height: 100px; max-height: 200px; overflow-x: hidden;';
+    smartResults.style.cssText = 'min-height: 60px; max-height: 200px; overflow-x: hidden;';
     smartResults.textContent = '(No results yet)';
     smartView.appendChild(smartResults);
 
     // Action buttons row
     const smartAskRow = document.createElement('div');
-    smartAskRow.style.cssText = 'display: flex; gap: 10px; margin-top: 16px;';
+    smartAskRow.style.cssText = 'display: flex; gap: 8px; margin-top: 10px;';
 
     const btnSmartAsk = document.createElement('button');
     btnSmartAsk.className = 'cb-btn cb-btn-primary cb-view-go';
@@ -4632,7 +4881,7 @@
     // Agent Hub view (replaces Knowledge Graph) - Multi-agent system
     const agentView = document.createElement('div'); agentView.className = 'cb-internal-view'; agentView.id = 'cb-agent-view'; agentView.setAttribute('data-cb-ignore', 'true');
     const agentTop = document.createElement('div'); agentTop.className = 'cb-view-top';
-    const agentTitle = document.createElement('div'); agentTitle.className = 'cb-view-title'; agentTitle.textContent = '◈ Agent Utilities';
+    const agentTitle = document.createElement('div'); agentTitle.className = 'cb-view-title'; agentTitle.innerHTML = '<span class="cb-gradient-text" style="display: inline-flex; align-items: center; gap: 10px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a4 4 0 0 1 4 4c0 1.95-1.4 3.58-3.25 3.93"/><path d="M12 2a4 4 0 0 0-4 4c0 1.95 1.4 3.58 3.25 3.93"/><rect x="8" y="14" width="8" height="6" rx="1"/><line x1="9" y1="18" x2="15" y2="18"/><line x1="12" y1="14" x2="12" y2="10"/></svg>Agent Utilities</span>';
     const btnCloseAgent = document.createElement('button'); btnCloseAgent.className = 'cb-view-close'; btnCloseAgent.textContent = '✕';
     btnCloseAgent.setAttribute('aria-label', 'Close Agents');
     agentTop.appendChild(agentTitle); agentTop.appendChild(btnCloseAgent);
@@ -4653,7 +4902,7 @@
     const insightsView = document.createElement('div'); insightsView.className = 'cb-internal-view'; insightsView.id = 'cb-insights-view'; insightsView.setAttribute('data-cb-ignore', 'true');
     const insightsTop = document.createElement('div'); insightsTop.className = 'cb-view-top'; insightsTop.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;';
     const insightsTitle = document.createElement('div'); insightsTitle.className = 'cb-view-title';
-    insightsTitle.innerHTML = '<span style="background: linear-gradient(135deg, #00D4FF, #7C3AED); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; display: inline-flex; align-items: center; gap: 10px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="url(#insightGrad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/><defs><linearGradient id="insightGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00D4FF"/><stop offset="100%" stop-color="#7C3AED"/></linearGradient></defs></svg>Smart Workspace</span>';
+    insightsTitle.innerHTML = '<span class="cb-gradient-text" style="display: inline-flex; align-items: center; gap: 10px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>Smart Workspace</span>';
     const btnCloseInsights = document.createElement('button'); btnCloseInsights.className = 'cb-view-close';
     btnCloseInsights.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
     btnCloseInsights.setAttribute('aria-label', 'Close Smart Workspace view');
@@ -4661,7 +4910,6 @@
     insightsView.appendChild(insightsTop);
 
     const insightsIntro = document.createElement('div'); insightsIntro.className = 'cb-view-intro';
-    insightsIntro.style.cssText = 'font-size:12px;line-height:1.7;color:var(--cb-subtext);margin-bottom:20px;padding:14px 16px;background:linear-gradient(135deg, rgba(0,212,255,0.03), rgba(124,58,237,0.02));border:1px solid rgba(255,255,255,0.05);border-left:2px solid rgba(0,212,255,0.4);border-radius:10px;';
     insightsIntro.textContent = 'Practical tools to help you work smarter: compare models, merge threads, extract content, and stay organized.';
     insightsView.appendChild(insightsIntro);
 
@@ -4672,42 +4920,42 @@
       <div class="cb-insight-block" id="cb-media-library-block">
         <div class="cb-insight-title" style="justify-content:space-between;">
           <span style="display:flex;align-items:center;gap:8px;">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="url(#mediaGrad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/><defs><linearGradient id="mediaGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00D4FF"/><stop offset="100%" stop-color="#7C3AED"/></linearGradient></defs></svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
             Media Library
           </span>
-          <span id="cb-media-library-count" style="font-size:10px;background:linear-gradient(135deg, rgba(0,212,255,0.3), rgba(124,58,237,0.3));padding:3px 10px;border-radius:12px;color:#fff;font-weight:600;">0</span>
+          <span id="cb-media-library-count" style="font-size:10px;background:var(--cb-bg3);border:1px solid var(--cb-border);padding:3px 10px;border-radius:12px;color:var(--cb-accent-primary);font-weight:600;">0</span>
         </div>
         <div class="cb-insight-content">Access images from your scanned conversations. Click to insert into chat.</div>
         <div id="cb-media-library-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(60px,1fr));gap:8px;margin-top:14px;max-height:180px;overflow-y:auto;"></div>
-        <button id="cb-media-library-refresh" class="cb-btn" style="width:100%;margin-top:14px;font-size:11px;padding:10px;background:linear-gradient(135deg, rgba(0,212,255,0.15), rgba(124,58,237,0.1));border:1px solid rgba(0,212,255,0.2);display:flex;align-items:center;justify-content:center;gap:6px;">
+        <button id="cb-media-library-refresh" class="cb-btn" style="width:100%;margin-top:14px;font-size:11px;padding:10px;display:flex;align-items:center;justify-content:center;gap:6px;">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
           Refresh Library
         </button>
       </div>
       <div class="cb-insight-block">
         <div class="cb-insight-title">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="url(#compareGrad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><defs><linearGradient id="compareGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00D4FF"/><stop offset="100%" stop-color="#7C3AED"/></linearGradient></defs></svg>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
           Compare Models
         </div>
         <div class="cb-insight-content">Compare responses from different AI models side-by-side. Spot differences, strengths, and weaknesses.</div>
       </div>
       <div class="cb-insight-block">
         <div class="cb-insight-title">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="url(#mergeGrad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3v12"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/><defs><linearGradient id="mergeGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00D4FF"/><stop offset="100%" stop-color="#7C3AED"/></linearGradient></defs></svg>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3v12"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>
           Merge Threads
         </div>
         <div class="cb-insight-content">Combine multiple chat threads into a unified view. Perfect for project tracking and research.</div>
       </div>
       <div class="cb-insight-block">
         <div class="cb-insight-title">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="url(#extractGrad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><defs><linearGradient id="extractGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00D4FF"/><stop offset="100%" stop-color="#7C3AED"/></linearGradient></defs></svg>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
           Extract Key Content
         </div>
         <div class="cb-insight-content">Extract highlights, action items, and decisions from conversations. Perfect for meeting notes.</div>
       </div>
       <div class="cb-insight-block">
         <div class="cb-insight-title">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="url(#organizeGrad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/><defs><linearGradient id="organizeGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00D4FF"/><stop offset="100%" stop-color="#7C3AED"/></linearGradient></defs></svg>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
           Organize & Tag
         </div>
         <div class="cb-insight-content">Tag, categorize, and search your chats for easy retrieval. Never lose important info.</div>
@@ -4740,7 +4988,7 @@
         // Display up to 12 images
         images.slice(0, 12).forEach(imgData => {
           const thumb = document.createElement('div');
-          thumb.style.cssText = 'position:relative;aspect-ratio:1;border-radius:6px;overflow:hidden;border:1px solid rgba(0,180,255,0.3);cursor:pointer;background:rgba(0,0,0,0.3);transition:all 0.2s;';
+          thumb.style.cssText = 'position:relative;aspect-ratio:1;border-radius:6px;overflow:hidden;border:1px solid color-mix(in srgb, var(--cb-accent-primary) 30%, transparent);cursor:pointer;background:rgba(0,0,0,0.3);transition:all 0.2s;';
 
           const img = document.createElement('img');
           img.src = imgData.src;
@@ -4753,11 +5001,11 @@
           // Hover effect
           thumb.addEventListener('mouseenter', () => {
             thumb.style.transform = 'scale(1.05)';
-            thumb.style.borderColor = 'rgba(0,180,255,0.8)';
+            thumb.style.borderColor = 'color-mix(in srgb, var(--cb-accent-primary) 80%, transparent)';
           });
           thumb.addEventListener('mouseleave', () => {
             thumb.style.transform = 'scale(1)';
-            thumb.style.borderColor = 'rgba(0,180,255,0.3)';
+            thumb.style.borderColor = 'color-mix(in srgb, var(--cb-accent-primary) 30%, transparent)';
           });
 
           // Click to insert into chat
@@ -4768,7 +5016,7 @@
 
         if (images.length > 12) {
           const moreLabel = document.createElement('div');
-          moreLabel.style.cssText = 'grid-column:1/-1;text-align:center;color:rgba(0,180,255,0.8);font-size:11px;padding:8px;cursor:pointer;';
+          moreLabel.style.cssText = 'grid-column:1/-1;text-align:center;color:color-mix(in srgb, var(--cb-accent-primary) 80%, transparent);font-size:11px;padding:8px;cursor:pointer;';
           moreLabel.textContent = `+${images.length - 12} more in Image Vault`;
           grid.appendChild(moreLabel);
         }
@@ -4914,7 +5162,7 @@
     const settingsPanel = document.createElement('div'); settingsPanel.className = 'cb-internal-view'; settingsPanel.id = 'cb-settings-panel'; settingsPanel.style.display = 'none';
     settingsPanel.setAttribute('data-cb-ignore', 'true');
     const settingsTop = document.createElement('div'); settingsTop.className = 'cb-view-top';
-    const settingsTitle = document.createElement('div'); settingsTitle.className = 'cb-view-title'; settingsTitle.textContent = '⚙️ Settings';
+    const settingsTitle = document.createElement('div'); settingsTitle.className = 'cb-view-title'; settingsTitle.innerHTML = '<span class="cb-gradient-text" style="display: inline-flex; align-items: center; gap: 10px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>Settings</span>';
     const btnCloseSettings = document.createElement('button'); btnCloseSettings.className = 'cb-view-close'; btnCloseSettings.textContent = '✕';
     btnCloseSettings.setAttribute('aria-label', 'Close settings');
     settingsTop.appendChild(settingsTitle); settingsTop.appendChild(btnCloseSettings);
@@ -4927,12 +5175,12 @@
     const themeSection = document.createElement('div'); themeSection.style.cssText = 'padding-bottom: 16px; border-bottom: 1px solid var(--cb-border);';
     const themeLabel = document.createElement('div'); themeLabel.style.cssText = 'font-weight: 600; margin-bottom: 10px; color: var(--cb-white);'; themeLabel.textContent = '🎨 Theme';
     const themeButtons = document.createElement('div'); themeButtons.style.cssText = 'display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;';
-    const btnDarkTheme = document.createElement('button'); btnDarkTheme.className = 'cb-btn'; btnDarkTheme.textContent = '🌙 Dark'; btnDarkTheme.dataset.theme = 'dark';
-    const btnLightTheme = document.createElement('button'); btnLightTheme.className = 'cb-btn'; btnLightTheme.textContent = '☀️ Light'; btnLightTheme.dataset.theme = 'light';
-    const btnSynthwaveTheme = document.createElement('button'); btnSynthwaveTheme.className = 'cb-btn'; btnSynthwaveTheme.textContent = '� Synthwave'; btnSynthwaveTheme.dataset.theme = 'synthwave';
-    const btnSkeuomorphicTheme = document.createElement('button'); btnSkeuomorphicTheme.className = 'cb-btn'; btnSkeuomorphicTheme.textContent = '🔩 Skeuomorphic'; btnSkeuomorphicTheme.dataset.theme = 'skeuomorphic';
-    const btnBrutalismTheme = document.createElement('button'); btnBrutalismTheme.className = 'cb-btn'; btnBrutalismTheme.textContent = '🟨 Brutalism'; btnBrutalismTheme.dataset.theme = 'brutalism';
-    const btnGlassTheme = document.createElement('button'); btnGlassTheme.className = 'cb-btn'; btnGlassTheme.textContent = '🫧 Claymorphism'; btnGlassTheme.dataset.theme = 'glass';
+    const btnDarkTheme = document.createElement('button'); btnDarkTheme.className = 'cb-btn'; btnDarkTheme.textContent = '\uD83C\uDF19 Dark'; btnDarkTheme.dataset.theme = 'dark';
+    const btnLightTheme = document.createElement('button'); btnLightTheme.className = 'cb-btn'; btnLightTheme.textContent = '\u2600\uFE0F Light'; btnLightTheme.dataset.theme = 'light';
+    const btnSynthwaveTheme = document.createElement('button'); btnSynthwaveTheme.className = 'cb-btn'; btnSynthwaveTheme.textContent = '\uD83C\uDFB5 Synthwave'; btnSynthwaveTheme.dataset.theme = 'synthwave';
+    const btnSkeuomorphicTheme = document.createElement('button'); btnSkeuomorphicTheme.className = 'cb-btn'; btnSkeuomorphicTheme.textContent = '\uD83D\uDD29 Skeuomorphic'; btnSkeuomorphicTheme.dataset.theme = 'skeuomorphic';
+    const btnBrutalismTheme = document.createElement('button'); btnBrutalismTheme.className = 'cb-btn'; btnBrutalismTheme.textContent = '\uD83D\uDFE8 Brutalism'; btnBrutalismTheme.dataset.theme = 'brutalism';
+    const btnGlassTheme = document.createElement('button'); btnGlassTheme.className = 'cb-btn'; btnGlassTheme.textContent = '\uD83E\uDEE7 Claymorphism'; btnGlassTheme.dataset.theme = 'glass';
     themeButtons.appendChild(btnDarkTheme); themeButtons.appendChild(btnLightTheme); themeButtons.appendChild(btnSynthwaveTheme);
     themeButtons.appendChild(btnSkeuomorphicTheme); themeButtons.appendChild(btnBrutalismTheme); themeButtons.appendChild(btnGlassTheme);
     themeSection.appendChild(themeLabel); themeSection.appendChild(themeButtons);
@@ -5022,12 +5270,14 @@
 
     const historyWrapper = document.createElement('div'); historyWrapper.className = 'cb-history-wrapper';
     const historyHeader = document.createElement('div'); historyHeader.className = 'cb-history-header';
-    const historyTitle = document.createElement('div'); historyTitle.className = 'cb-history-title'; historyTitle.textContent = '📜 History';
+    const historyTitle = document.createElement('div'); historyTitle.className = 'cb-history-title'; historyTitle.textContent = 'History';
     const btnClearHistory = document.createElement('button');
     btnClearHistory.className = 'cb-btn cb-btn-danger cb-tooltip';
     btnClearHistory.title = 'Clear all saved conversation history';
-    btnClearHistory.style.cssText = 'padding: 4px; border: 1px solid rgba(248, 113, 113, 0.2); background: rgba(248, 113, 113, 0.1); border-radius: 6px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;';
+    btnClearHistory.style.cssText = 'padding: 4px; border: none; background: transparent; border-radius: 6px; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; color: var(--cb-subtext); cursor: pointer; transition: all 0.15s ease; opacity: 0.6;';
     btnClearHistory.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>';
+    btnClearHistory.onmouseenter = () => { btnClearHistory.style.opacity = '1'; btnClearHistory.style.color = '#f87171'; };
+    btnClearHistory.onmouseleave = () => { btnClearHistory.style.opacity = '0.6'; btnClearHistory.style.color = 'var(--cb-subtext)'; };
 
     btnClearHistory.addEventListener('click', async () => {
       if (!confirm('Are you sure you want to clear ALL historical conversations? This cannot be undone.')) return;
@@ -5050,7 +5300,7 @@
     historySearchWrap.style.cssText = 'padding: 8px 0; display: flex; gap: 6px;';
     const historySearchInput = document.createElement('input');
     historySearchInput.type = 'text';
-    historySearchInput.placeholder = '🔍 Search history...';
+    historySearchInput.placeholder = 'Search conversations...';
     historySearchInput.className = 'cb-input';
     historySearchInput.id = 'cb-history-search';
     historySearchInput.style.cssText = 'flex: 1; background: var(--cb-bg3); border: 1px solid var(--cb-border); color: var(--cb-white); padding: 8px 12px; border-radius: 6px; font-size: 12px; outline: none;';
@@ -5069,7 +5319,8 @@
     historySearchWrap.appendChild(historySearchInput);
     historyWrapper.appendChild(historySearchWrap);
 
-    const historyEl = document.createElement('div'); historyEl.className = 'cb-history'; historyEl.textContent = 'No sessions yet.';
+    const historyEl = document.createElement('div'); historyEl.className = 'cb-history';
+    historyEl.innerHTML = '<div class="cb-history-empty">No conversations yet</div>';
     historyWrapper.appendChild(historyEl);
     panel.appendChild(historyWrapper);
 
@@ -5114,7 +5365,7 @@
     const subtleSuggest = document.createElement('div');
     subtleSuggest.id = 'cb-subtle-suggestions';
     subtleSuggest.setAttribute('data-cb-ignore', 'true');
-    subtleSuggest.style.cssText = 'margin-top:8px;padding:8px;border-top:1px dashed rgba(0,180,255,0.15);opacity:0.85;font-size:11px;color:var(--cb-subtext);display:none;';
+    subtleSuggest.style.cssText = 'margin-top:8px;padding:8px;border-top:1px dashed color-mix(in srgb, var(--cb-accent-primary) 15%, transparent);opacity:0.85;font-size:11px;color:var(--cb-subtext);display:none;';
     subtleSuggest.innerHTML = '<div style="font-weight:600;opacity:0.8;margin-bottom:6px;">This might help</div><div id="cb-subtle-list" style="display:flex;flex-direction:column;gap:6px;"></div>';
     panel.appendChild(subtleSuggest);
 
@@ -5176,7 +5427,7 @@
         items.slice(0, 3).forEach(it => {
           const btn = document.createElement('button');
           btn.className = 'cb-btn'; btn.type = 'button';
-          btn.style.cssText = 'text-align:left;padding:8px;background:rgba(16,24,43,0.35);border:1px solid rgba(0,180,255,0.15);font-size:11px;display:flex;gap:6px;align-items:center;';
+          btn.style.cssText = 'text-align:left;padding:8px;background:rgba(16,24,43,0.35);border:1px solid color-mix(in srgb, var(--cb-accent-primary) 15%, transparent);font-size:11px;display:flex;gap:6px;align-items:center;';
           btn.innerHTML = `<span style="opacity:0.85;">•</span><span style="opacity:0.9;font-weight:600;">${it.label}:</span><span style="opacity:0.85;">${it.text}</span>`;
           btn.addEventListener('click', () => { try { it.action(); } catch (_) { } });
           list.appendChild(btn);
@@ -5803,15 +6054,15 @@
       `;
       header.innerHTML = `
         <div style="display:flex;align-items:center;gap:12px;">
-          <div style="width:40px;height:40px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg, rgba(0,212,255,0.15), rgba(124,58,237,0.1));border-radius:12px;">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="url(#findGrad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><defs><linearGradient id="findGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00D4FF"/><stop offset="100%" stop-color="#7C3AED"/></linearGradient></defs></svg>
+          <div style="width:40px;height:40px;display:flex;align-items:center;justify-content:center;background:${themeVars.accent}26;border-radius:12px;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           </div>
           <div>
-            <div style="font-weight:700;font-size:18px;color:${themeVars.white};background:linear-gradient(135deg, #00D4FF, #7C3AED);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">Insight Finder</div>
+            <div style="font-weight:700;font-size:18px;color:${themeVars.white};background:linear-gradient(135deg, ${themeVars.accent}, ${themeVars.accent2});-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">Insight Finder</div>
             <div style="font-size:12px;color:${themeVars.subtext};margin-top:2px;">Semantic spotlight on key chat elements</div>
           </div>
         </div>
-        <button id="cb-insight-close" style="background:linear-gradient(135deg, rgba(0,212,255,0.08), rgba(124,58,237,0.05));border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:${themeVars.white}B3;font-size:18px;cursor:pointer;padding:6px 10px;transition:all 0.2s;">×</button>
+        <button id="cb-insight-close" style="background:${themeVars.accent}14;border:1px solid ${themeVars.accent}1A;border-radius:8px;color:${themeVars.white}B3;font-size:18px;cursor:pointer;padding:6px 10px;transition:all 0.2s;">×</button>
       `;
 
       // Main content area (split: categories left, snippets right)
@@ -5925,7 +6176,7 @@
 
           const msgRole = messages[item.sourceIndex]?.role || 'unknown';
           const roleIcon = msgRole === 'user' ? '👤' : '🤖';
-          const roleColor = msgRole === 'user' ? '#4ade80' : '#60a5fa';
+          const roleColor = msgRole === 'user' ? '#4ade80' : 'var(--cb-accent-primary)';
 
           snippetCard.innerHTML = `
             <div style="display:flex;align-items:start;gap:8px;margin-bottom:6px;">
@@ -5974,7 +6225,7 @@
             allMessages[index].scrollIntoView({ behavior: 'smooth', block: 'center' });
             // Highlight briefly
             const originalBg = allMessages[index].style.background;
-            allMessages[index].style.background = 'rgba(0,180,255,0.2)';
+            allMessages[index].style.background = 'color-mix(in srgb, var(--cb-accent-primary) 20%, transparent)';
             setTimeout(() => {
               allMessages[index].style.background = originalBg;
             }, 2000);
@@ -7364,12 +7615,12 @@
 
         // Header with toggle
         const header = document.createElement('div');
-        header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:12px;background:rgba(16,24,43,0.4);border:1px solid rgba(0,180,255,0.25);border-radius:8px 8px 0 0;cursor:pointer;';
+        header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:12px;background:rgba(16,24,43,0.4);border:1px solid color-mix(in srgb, var(--cb-accent-primary) 25%, transparent);border-radius:8px 8px 0 0;cursor:pointer;';
         header.innerHTML = `
           <div style="display:flex;align-items:center;gap:8px;">
             <span style="font-size:16px;">📚</span>
             <span style="font-weight:600;font-size:13px;color:var(--cb-white);">Smart Library</span>
-            <span id="cb-library-count" style="font-size:11px;color:rgba(255,255,255,0.5);background:rgba(0,180,255,0.2);padding:2px 6px;border-radius:10px;">0</span>
+            <span id="cb-library-count" style="font-size:11px;color:rgba(255,255,255,0.5);background:color-mix(in srgb, var(--cb-accent-primary) 20%, transparent);padding:2px 6px;border-radius:10px;">0</span>
           </div>
           <span id="cb-library-toggle" style="font-size:18px;transition:transform 0.2s;">▼</span>
         `;
@@ -7377,7 +7628,7 @@
         // Content area (collapsible)
         const content = document.createElement('div');
         content.id = 'cb-library-content';
-        content.style.cssText = 'display:none;padding:12px;background:rgba(16,24,43,0.4);border:1px solid rgba(0,180,255,0.25);border-top:none;border-radius:0 0 8px 8px;';
+        content.style.cssText = 'display:none;padding:12px;background:rgba(16,24,43,0.4);border:1px solid color-mix(in srgb, var(--cb-accent-primary) 25%, transparent);border-top:none;border-radius:0 0 8px 8px;';
 
         // Search bar
         const searchBar = document.createElement('div');
@@ -7626,7 +7877,7 @@
                     <div style="font-size:9px;color:var(--cb-subtext);margin-top:2px;">${msgCount} msgs · ${timeAgo}</div>
                   </div>
                   <div style="display:flex;gap:4px;flex-shrink:0;">
-                    <button class="cb-lib-open" data-idx="${idx}" style="padding:4px 8px;font-size:9px;background:rgba(96,165,250,0.15);border:1px solid rgba(96,165,250,0.3);border-radius:5px;color:#60a5fa;cursor:pointer;transition:all 0.15s;">Open</button>
+                    <button class="cb-lib-open" data-idx="${idx}" style="padding:4px 8px;font-size:9px;background:color-mix(in srgb, var(--cb-accent-primary) 15%, transparent);border:1px solid color-mix(in srgb, var(--cb-accent-primary) 30%, transparent);border-radius:5px;color:var(--cb-accent-primary);cursor:pointer;transition:all 0.15s;">Open</button>
                     <button class="cb-lib-del" data-idx="${idx}" style="padding:4px 6px;font-size:9px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.25);border-radius:5px;color:#ef4444;cursor:pointer;transition:all 0.15s;">✕</button>
                   </div>
                 </div>
@@ -7635,7 +7886,7 @@
               // Hover effects
               card.addEventListener('mouseenter', () => {
                 card.style.background = 'rgba(255,255,255,0.04)';
-                card.style.borderColor = 'rgba(96,165,250,0.2)';
+                card.style.borderColor = 'color-mix(in srgb, var(--cb-accent-primary) 20%, transparent)';
               });
               card.addEventListener('mouseleave', () => {
                 card.style.background = 'rgba(255,255,255,0.02)';
@@ -7748,12 +7999,12 @@
 
             results.slice(0, 10).forEach(({ conv, similarity }) => {
               const card = document.createElement('div');
-              card.style.cssText = 'padding:10px;background:rgba(0,180,255,0.05);border:1px solid rgba(0,180,255,0.2);border-radius:6px;cursor:pointer;transition:all 0.2s;';
+              card.style.cssText = 'padding:10px;background:color-mix(in srgb, var(--cb-accent-primary) 5%, transparent);border:1px solid color-mix(in srgb, var(--cb-accent-primary) 20%, transparent);border-radius:6px;cursor:pointer;transition:all 0.2s;';
 
               const msgCount = conv.messages?.length || conv.conversation?.length || 0;
               const platform = conv.platform || 'unknown';
               const timestamp = conv.ts ? new Date(conv.ts).toLocaleDateString() : 'Unknown';
-              const topics = conv.topics ? conv.topics.slice(0, 3).map(t => `<span style="font-size:10px;background:rgba(0,180,255,0.2);padding:2px 6px;border-radius:10px;margin-right:4px;">#${t}</span>`).join('') : '';
+              const topics = conv.topics ? conv.topics.slice(0, 3).map(t => `<span style="font-size:10px;background:color-mix(in srgb, var(--cb-accent-primary) 20%, transparent);padding:2px 6px;border-radius:10px;margin-right:4px;">#${t}</span>`).join('') : '';
               const preview = conv.messages?.[0]?.text?.slice(0, 80) || conv.conversation?.[0]?.text?.slice(0, 80) || 'No preview';
               const relevance = Math.round(similarity * 100);
 
@@ -7770,12 +8021,12 @@
               `;
 
               card.addEventListener('mouseenter', () => {
-                card.style.background = 'rgba(0,180,255,0.1)';
-                card.style.borderColor = 'rgba(0,180,255,0.4)';
+                card.style.background = 'color-mix(in srgb, var(--cb-accent-primary) 10%, transparent)';
+                card.style.borderColor = 'color-mix(in srgb, var(--cb-accent-primary) 40%, transparent)';
               });
               card.addEventListener('mouseleave', () => {
-                card.style.background = 'rgba(0,180,255,0.05)';
-                card.style.borderColor = 'rgba(0,180,255,0.2)';
+                card.style.background = 'color-mix(in srgb, var(--cb-accent-primary) 5%, transparent)';
+                card.style.borderColor = 'color-mix(in srgb, var(--cb-accent-primary) 20%, transparent)';
               });
 
               card.addEventListener('click', () => {
@@ -7827,12 +8078,12 @@
 
         // Header with toggle
         const header = document.createElement('div');
-        header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:12px;background:rgba(16,24,43,0.4);border:1px solid rgba(0,180,255,0.25);border-radius:8px 8px 0 0;cursor:pointer;';
+        header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:12px;background:rgba(16,24,43,0.4);border:1px solid color-mix(in srgb, var(--cb-accent-primary) 25%, transparent);border-radius:8px 8px 0 0;cursor:pointer;';
         header.innerHTML = `
           <div style="display:flex;align-items:center;gap:8px;">
             <span style="font-size:16px;">🖼️</span>
             <span style="font-weight:600;font-size:13px;color:#fff;">Image Vault</span>
-            <span id="cb-image-count" style="font-size:11px;color:rgba(255,255,255,0.5);background:rgba(0,180,255,0.2);padding:2px 6px;border-radius:10px;">0</span>
+            <span id="cb-image-count" style="font-size:11px;color:rgba(255,255,255,0.5);background:color-mix(in srgb, var(--cb-accent-primary) 20%, transparent);padding:2px 6px;border-radius:10px;">0</span>
           </div>
           <span id="cb-vault-toggle" style="font-size:18px;transition:transform 0.2s;">▼</span>
         `;
@@ -7840,7 +8091,7 @@
         // Content area (collapsible)
         const content = document.createElement('div');
         content.id = 'cb-vault-content';
-        content.style.cssText = 'display:none;padding:12px;background:rgba(16,24,43,0.4);border:1px solid rgba(0,180,255,0.25);border-top:none;border-radius:0 0 8px 8px;';
+        content.style.cssText = 'display:none;padding:12px;background:rgba(16,24,43,0.4);border:1px solid color-mix(in srgb, var(--cb-accent-primary) 25%, transparent);border-top:none;border-radius:0 0 8px 8px;';
 
         // Thumbnail grid
         const thumbGrid = document.createElement('div');
@@ -7985,7 +8236,7 @@
 
           imgs.slice(0, 6).forEach((img, idx) => {
             const thumb = document.createElement('div');
-            thumb.style.cssText = 'position:relative;aspect-ratio:1;border-radius:6px;overflow:hidden;border:1px solid rgba(0,180,255,0.2);cursor:pointer;background:rgba(0,0,0,0.3);';
+            thumb.style.cssText = 'position:relative;aspect-ratio:1;border-radius:6px;overflow:hidden;border:1px solid color-mix(in srgb, var(--cb-accent-primary) 20%, transparent);cursor:pointer;background:rgba(0,0,0,0.3);';
 
             const imgEl = document.createElement('img');
             imgEl.src = img.src;
@@ -8084,7 +8335,7 @@
       images.forEach(imgData => {
         const thumb = document.createElement('img');
         thumb.src = imgData.src;
-        thumb.style.cssText = 'width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;cursor:pointer;border:2px solid rgba(0,180,255,0.3);';
+        thumb.style.cssText = 'width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;cursor:pointer;border:2px solid color-mix(in srgb, var(--cb-accent-primary) 30%, transparent);';
         thumb.loading = 'lazy';
         thumb.addEventListener('click', () => {
           modal.remove();
@@ -8117,7 +8368,7 @@
 
         // Header
         const header = document.createElement('div');
-        header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:12px;background:rgba(16,24,43,0.4);border:1px solid rgba(0,180,255,0.25);border-radius:8px 8px 0 0;cursor:pointer;';
+        header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:12px;background:rgba(16,24,43,0.4);border:1px solid color-mix(in srgb, var(--cb-accent-primary) 25%, transparent);border-radius:8px 8px 0 0;cursor:pointer;';
         header.innerHTML = `
           <div style="display:flex;align-items:center;gap:8px;">
             <span style="font-size:16px;">📊</span>
@@ -8130,7 +8381,7 @@
         // Content area
         const content = document.createElement('div');
         content.id = 'cb-themes-content';
-        content.style.cssText = 'display:none;padding:12px;background:rgba(16,24,43,0.4);border:1px solid rgba(0,180,255,0.25);border-top:none;border-radius:0 0 8px 8px;';
+        content.style.cssText = 'display:none;padding:12px;background:rgba(16,24,43,0.4);border:1px solid color-mix(in srgb, var(--cb-accent-primary) 25%, transparent);border-top:none;border-radius:0 0 8px 8px;';
 
         // Theme list
         const themeList = document.createElement('div');
@@ -8198,7 +8449,7 @@
 
             evolution.themes.slice(0, 8).forEach(theme => {
               const themeCard = document.createElement('div');
-              themeCard.style.cssText = 'padding:10px;background:rgba(10,15,28,0.5);border:1px solid rgba(0,180,255,0.2);border-radius:6px;';
+              themeCard.style.cssText = 'padding:10px;background:rgba(10,15,28,0.5);border:1px solid color-mix(in srgb, var(--cb-accent-primary) 20%, transparent);border-radius:6px;';
 
               const themeHeader = document.createElement('div');
               themeHeader.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;';
@@ -8208,7 +8459,7 @@
               themeName.textContent = theme.name;
 
               const themeCount = document.createElement('div');
-              themeCount.style.cssText = 'font-size:11px;color:rgba(255,255,255,0.6);background:rgba(0,180,255,0.2);padding:2px 8px;border-radius:10px;';
+              themeCount.style.cssText = 'font-size:11px;color:rgba(255,255,255,0.6);background:color-mix(in srgb, var(--cb-accent-primary) 20%, transparent);padding:2px 8px;border-radius:10px;';
               themeCount.textContent = `${theme.count} mentions`;
 
               themeHeader.appendChild(themeName);
@@ -8223,7 +8474,7 @@
                 theme.sparkline.forEach(val => {
                   const bar = document.createElement('div');
                   const height = (val / max) * 100;
-                  bar.style.cssText = `flex:1;background:rgba(0,180,255,0.6);border-radius:2px 2px 0 0;height:${height}%;min-height:2px;`;
+                  bar.style.cssText = `flex:1;background:color-mix(in srgb, var(--cb-accent-primary) 60%, transparent);border-radius:2px 2px 0 0;height:${height}%;min-height:2px;`;
                   sparkline.appendChild(bar);
                 });
               }
@@ -8479,7 +8730,7 @@ Output ONLY the 5 numbered questions, no other text.`;
         promptsList.innerHTML = `
           <div class="cb-pd-empty-state">
             <div class="cb-pd-empty-icon">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="url(#emptyGrad)" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/><defs><linearGradient id="emptyGrad" x1="4" y1="4" x2="20" y2="20"><stop stop-color="#00D4FF"/><stop offset="1" stop-color="#7C3AED"/></linearGradient></defs></svg>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
             </div>
             <div class="cb-pd-empty-title">Ready to Generate</div>
             <div class="cb-pd-empty-desc">Click Generate to create<br>thought-provoking prompts</div>
@@ -8698,7 +8949,7 @@ Output ONLY the 5 numbered questions, no other text.`;
               <h3 style="margin:0;color:var(--cb-white);font-size:18px;">✓ Fact-Check Results</h3>
               <button id="cb-factcheck-close" class="cb-btn" style="padding:4px 8px;font-size:12px;">✕ Close</button>
             </div>
-            <div style="margin-bottom:16px;padding:12px;background:rgba(0,180,255,0.1);border-radius:8px;font-size:12px;color:var(--cb-subtext);">
+            <div style="margin-bottom:16px;padding:12px;background:color-mix(in srgb, var(--cb-accent-primary) 10%, transparent);border-radius:8px;font-size:12px;color:var(--cb-subtext);">
               Found ${claims.length} factual claim(s) in this conversation. Confidence levels indicate how verifiable each claim is.
             </div>
             <div id="cb-claims-list" style="display:flex;flex-direction:column;gap:12px;"></div>
@@ -8714,7 +8965,7 @@ Output ONLY the 5 numbered questions, no other text.`;
           const icon = confidenceIcons[confidence] || '❌';
 
           const claimCard = document.createElement('div');
-          claimCard.style.cssText = `padding:14px;background:rgba(0,180,255,0.05);border-left:3px solid ${color};border-radius:8px;`;
+          claimCard.style.cssText = `padding:14px;background:color-mix(in srgb, var(--cb-accent-primary) 5%, transparent);border-left:3px solid ${color};border-radius:8px;`;
           claimCard.innerHTML = `
             <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:8px;">
               <div style="font-size:11px;font-weight:600;color:${color};display:flex;align-items:center;gap:6px;">
@@ -8978,29 +9229,23 @@ Output ONLY the 5 numbered questions, no other text.`;
         const totalConvs = convs.length;
         const totalMsgs = convs.reduce((sum, c) => sum + (c.conversation?.length || c.messages?.length || 0), 0);
         const platforms = [...new Set(convs.map(c => c.platform || 'Unknown'))];
-        const storedMedia = await getImageVault();
-        const totalImages = storedMedia.length;
         const statsSection = document.createElement('div');
-        statsSection.style.cssText = 'display:grid;grid-template-columns:repeat(5,1fr);gap:8px;padding:0 8px;margin-bottom:18px;';
+        statsSection.style.cssText = 'display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:0 8px;margin-bottom:18px;';
         statsSection.innerHTML = `
-          <div style="background:linear-gradient(135deg, rgba(0,212,255,0.06), rgba(124,58,237,0.04));border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px 8px;text-align:center;transition:all 0.25s;">
-            <div style="font-size:20px;font-weight:700;color:var(--cb-white);background:linear-gradient(135deg, #00D4FF, #7C3AED);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">${totalConvs}</div>
+          <div style="background:var(--cb-bg2);border:1px solid var(--cb-border);border-radius:12px;padding:12px 8px;text-align:center;transition:all 0.25s;">
+            <div style="font-size:20px;font-weight:700;color:var(--cb-accent-primary);">${totalConvs}</div>
             <div style="font-size:8px;color:var(--cb-subtext);text-transform:uppercase;letter-spacing:0.5px;margin-top:4px;">Chats</div>
           </div>
-          <div style="background:linear-gradient(135deg, rgba(0,212,255,0.06), rgba(124,58,237,0.04));border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px 8px;text-align:center;transition:all 0.25s;">
-            <div style="font-size:20px;font-weight:700;color:var(--cb-white);background:linear-gradient(135deg, #00D4FF, #7C3AED);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">${totalMsgs}</div>
+          <div style="background:var(--cb-bg2);border:1px solid var(--cb-border);border-radius:12px;padding:12px 8px;text-align:center;transition:all 0.25s;">
+            <div style="font-size:20px;font-weight:700;color:var(--cb-accent-primary);">${totalMsgs}</div>
             <div style="font-size:8px;color:var(--cb-subtext);text-transform:uppercase;letter-spacing:0.5px;margin-top:4px;">Messages</div>
           </div>
-          <div style="background:linear-gradient(135deg, rgba(0,212,255,0.06), rgba(124,58,237,0.04));border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px 8px;text-align:center;transition:all 0.25s;">
-            <div style="font-size:20px;font-weight:700;color:var(--cb-white);background:linear-gradient(135deg, #34d399, #10b981);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">${totalImages}</div>
-            <div style="font-size:8px;color:var(--cb-subtext);text-transform:uppercase;letter-spacing:0.5px;margin-top:4px;">Images</div>
-          </div>
-          <div style="background:linear-gradient(135deg, rgba(0,212,255,0.06), rgba(124,58,237,0.04));border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px 8px;text-align:center;transition:all 0.25s;">
-            <div style="font-size:20px;font-weight:700;color:var(--cb-white);background:linear-gradient(135deg, #00D4FF, #7C3AED);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">${platforms.length}</div>
+          <div style="background:var(--cb-bg2);border:1px solid var(--cb-border);border-radius:12px;padding:12px 8px;text-align:center;transition:all 0.25s;">
+            <div style="font-size:20px;font-weight:700;color:var(--cb-accent-secondary);">${platforms.length}</div>
             <div style="font-size:8px;color:var(--cb-subtext);text-transform:uppercase;letter-spacing:0.5px;margin-top:4px;">Platforms</div>
           </div>
-          <div style="background:linear-gradient(135deg, rgba(0,212,255,0.06), rgba(124,58,237,0.04));border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px 8px;text-align:center;transition:all 0.25s;">
-            <div style="font-size:20px;font-weight:700;color:var(--cb-white);background:linear-gradient(135deg, #00D4FF, #7C3AED);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">${Math.round(totalMsgs / Math.max(1, totalConvs))}</div>
+          <div style="background:var(--cb-bg2);border:1px solid var(--cb-border);border-radius:12px;padding:12px 8px;text-align:center;transition:all 0.25s;">
+            <div style="font-size:20px;font-weight:700;color:var(--cb-accent-primary);">${Math.round(totalMsgs / Math.max(1, totalConvs))}</div>
             <div style="font-size:8px;color:var(--cb-subtext);text-transform:uppercase;letter-spacing:0.5px;margin-top:4px;">Avg/Chat</div>
           </div>
         `;
@@ -9010,8 +9255,8 @@ Output ONLY the 5 numbered questions, no other text.`;
         const toolsHeader = document.createElement('div');
         toolsHeader.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:0 8px;margin-bottom:12px;';
         toolsHeader.innerHTML = `
-          <div style="font-size:13px;font-weight:600;color:var(--cb-white);display:flex;align-items:center;gap:6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="url(#toolsGrad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/><defs><linearGradient id="toolsGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00D4FF"/><stop offset="100%" stop-color="#7C3AED"/></linearGradient></defs></svg>Workspace Tools</div>
-          <button id="cb-insights-refresh" style="background:linear-gradient(135deg, rgba(0,212,255,0.1), rgba(124,58,237,0.08));border:1px solid rgba(0,212,255,0.2);border-radius:8px;padding:6px 12px;font-size:10px;color:var(--cb-white);cursor:pointer;display:flex;align-items:center;gap:4px;transition:all 0.2s;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>Refresh</button>
+          <div style="font-size:13px;font-weight:600;color:var(--cb-white);display:flex;align-items:center;gap:6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--cb-accent-primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>Workspace Tools</div>
+          <button id="cb-insights-refresh" style="background:var(--cb-bg2);border:1px solid var(--cb-border);border-radius:8px;padding:6px 12px;font-size:10px;color:var(--cb-accent-primary);cursor:pointer;display:flex;align-items:center;gap:4px;transition:all 0.2s;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>Refresh</button>
         `;
         insightsContent.appendChild(toolsHeader);
 
@@ -9062,9 +9307,9 @@ Output ONLY the 5 numbered questions, no other text.`;
         // Helper to create tool card (WITH SVG ICONS)
         function createToolCard(svgIcon, title, desc) {
           const card = document.createElement('div');
-          card.style.cssText = 'display:flex;align-items:flex-start;gap:10px;background:linear-gradient(135deg, rgba(16,24,43,0.6), rgba(16,24,43,0.4));border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:14px;cursor:pointer;transition:all 0.2s;min-height:60px;';
+          card.style.cssText = 'display:flex;align-items:flex-start;gap:10px;background:var(--cb-bg2);border:1px solid var(--cb-border);border-radius:10px;padding:14px;cursor:pointer;transition:all 0.2s;min-height:60px;';
           card.innerHTML = `
-            <div style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg, rgba(0,212,255,0.15), rgba(124,58,237,0.1));border-radius:8px;flex-shrink:0;">
+            <div style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;background:var(--cb-bg3, var(--cb-bg));border:1px solid var(--cb-border);border-radius:8px;flex-shrink:0;">
               ${svgIcon}
             </div>
             <div style="flex:1;min-width:0;">
@@ -9073,14 +9318,14 @@ Output ONLY the 5 numbered questions, no other text.`;
             </div>
           `;
           card.addEventListener('mouseenter', () => {
-            card.style.background = 'linear-gradient(135deg, rgba(0,212,255,0.1), rgba(124,58,237,0.08))';
-            card.style.borderColor = 'rgba(0,212,255,0.3)';
+            card.style.background = 'var(--cb-bg3, var(--cb-bg2))';
+            card.style.borderColor = 'var(--cb-accent-primary)';
             card.style.transform = 'translateY(-2px)';
-            card.style.boxShadow = '0 6px 20px rgba(0,0,0,0.2)';
+            card.style.boxShadow = '0 6px 20px var(--cb-shadow)';
           });
           card.addEventListener('mouseleave', () => {
-            card.style.background = 'linear-gradient(135deg, rgba(16,24,43,0.6), rgba(16,24,43,0.4))';
-            card.style.borderColor = 'rgba(255,255,255,0.06)';
+            card.style.background = 'var(--cb-bg2)';
+            card.style.borderColor = 'var(--cb-border)';
             card.style.transform = 'translateY(0)';
             card.style.boxShadow = 'none';
           });
@@ -9126,7 +9371,7 @@ Output ONLY the 5 numbered questions, no other text.`;
         }
 
         // 1. Media Vault
-        const mediaCard = createToolCard('<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00D4FF" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>', 'Media Vault', 'All scanned images');
+        const mediaCard = createToolCard('<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>', 'Media Vault', 'All scanned images');
         mediaCard.addEventListener('click', async () => {
           // Load all stored media from vault
           const allMedia = await getImageVault();
@@ -9134,7 +9379,7 @@ Output ONLY the 5 numbered questions, no other text.`;
           if (allMedia.length === 0) {
             showToolResult(`
               <div style="text-align:center;padding:30px 20px;">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(0,212,255,0.3)" stroke-width="1.5" style="margin-bottom:16px;">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.3" style="margin-bottom:16px;">
                   <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
                   <circle cx="8.5" cy="8.5" r="1.5"/>
                   <polyline points="21 15 16 10 5 21"/>
@@ -9143,7 +9388,7 @@ Output ONLY the 5 numbered questions, no other text.`;
                 <div style="color:var(--cb-subtext);font-size:11px;line-height:1.6;margin-bottom:16px;max-width:200px;margin-left:auto;margin-right:auto;">
                   Scan chats to collect images in your Media Vault.
                 </div>
-                <button id="cb-media-scan-btn" style="padding:10px 20px;background:linear-gradient(135deg,rgba(0,212,255,0.2),rgba(124,58,237,0.15));border:1px solid rgba(0,212,255,0.4);border-radius:8px;color:var(--cb-white);cursor:pointer;font-size:11px;font-weight:500;transition:all 0.2s;">
+                <button id="cb-media-scan-btn" style="padding:10px 20px;background:color-mix(in srgb, var(--cb-accent-primary) 20%, transparent);border:1px solid color-mix(in srgb, var(--cb-accent-primary) 40%, transparent);border-radius:8px;color:var(--cb-white);cursor:pointer;font-size:11px;font-weight:500;transition:all 0.2s;">
                   Scan Current Chat
                 </button>
                 <div style="margin-top:12px;font-size:10px;color:var(--cb-subtext);opacity:0.6;">
@@ -9172,7 +9417,7 @@ Output ONLY the 5 numbered questions, no other text.`;
           if (images.length === 0) {
             showToolResult(`
               <div style="text-align:center;padding:30px 20px;">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(0,212,255,0.3)" stroke-width="1.5" style="margin-bottom:16px;">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.3" style="margin-bottom:16px;">
                   <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
                   <circle cx="8.5" cy="8.5" r="1.5"/>
                   <polyline points="21 15 16 10 5 21"/>
@@ -9190,7 +9435,7 @@ Output ONLY the 5 numbered questions, no other text.`;
             `<div style="position:relative;border-radius:6px;overflow:hidden;background:var(--cb-bg);border:1px solid var(--cb-border);group;" class="cb-media-item" data-img-url="${img.src}" data-img-name="image_${idx + 1}.jpg" data-img-idx="${idx}">
               <img src="${img.src}" alt="" style="width:100%;height:80px;object-fit:cover;cursor:pointer;" class="cb-lightbox-trigger">
               <div class="cb-media-actions" style="position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0);display:flex;align-items:center;justify-content:center;gap:4px;opacity:0;transition:all 0.2s;pointer-events:none;">
-                <button class="cb-media-download" style="padding:6px 8px;background:rgba(96,165,250,0.9);border:none;border-radius:4px;color:white;font-size:9px;cursor:pointer;pointer-events:all;" title="Download">
+                <button class="cb-media-download" style="padding:6px 8px;background:color-mix(in srgb, var(--cb-accent-primary) 90%, transparent);border:none;border-radius:4px;color:white;font-size:9px;cursor:pointer;pointer-events:all;" title="Download">
                   <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                 </button>
                 <button class="cb-media-insert" style="padding:6px 8px;background:rgba(52,211,153,0.9);border:none;border-radius:4px;color:white;font-size:9px;cursor:pointer;pointer-events:all;" title="Download & Attach">
@@ -9340,13 +9585,13 @@ Output ONLY the 5 numbered questions, no other text.`;
         toolsGrid.appendChild(mediaCard);
 
         // 2. Merge Chats
-        const mergeCard = createToolCard('<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00D4FF" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>', 'Merge Chats', 'Combine saved conversations');
+        const mergeCard = createToolCard('<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>', 'Merge Chats', 'Combine saved conversations');
         mergeCard.addEventListener('click', async () => {
           const saved = await loadConversationsAsync();
           if (!saved || saved.length === 0) {
             showToolResult(`
               <div style="text-align:center;padding:30px 20px;">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(0,212,255,0.3)" stroke-width="1.5" style="margin-bottom:16px;">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.3" style="margin-bottom:16px;">
                   <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
                   <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
                 </svg>
@@ -9354,7 +9599,7 @@ Output ONLY the 5 numbered questions, no other text.`;
                 <div style="color:var(--cb-subtext);font-size:11px;line-height:1.6;margin-bottom:16px;max-width:220px;margin-left:auto;margin-right:auto;">
                   Save some conversations first, then return here to merge them together.
                 </div>
-                <button id="cb-merge-goto-history" style="padding:10px 20px;background:linear-gradient(135deg,rgba(0,212,255,0.2),rgba(124,58,237,0.15));border:1px solid rgba(0,212,255,0.4);border-radius:8px;color:var(--cb-white);cursor:pointer;font-size:11px;font-weight:500;transition:all 0.2s;">
+                <button id="cb-merge-goto-history" style="padding:10px 20px;background:color-mix(in srgb, var(--cb-accent-primary) 20%, transparent);border:1px solid color-mix(in srgb, var(--cb-accent-primary) 40%, transparent);border-radius:8px;color:var(--cb-white);cursor:pointer;font-size:11px;font-weight:500;transition:all 0.2s;">
                   View History Tab
                 </button>
                 <div style="margin-top:12px;font-size:10px;color:var(--cb-subtext);opacity:0.6;">
@@ -9381,8 +9626,8 @@ Output ONLY the 5 numbered questions, no other text.`;
             const count = conv.conversation?.length || conv.messages?.length || 0;
             const date = new Date(conv.ts || Date.now()).toLocaleDateString();
             const preview = (conv.conversation?.[0]?.text || conv.messages?.[0]?.text || '').substring(0, 30);
-            return `<label style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:rgba(255,255,255,0.03);border-radius:8px;cursor:pointer;margin-bottom:6px;transition:all 0.15s;" onmouseenter="this.style.background='rgba(0,180,255,0.1)'" onmouseleave="this.style.background='rgba(255,255,255,0.03)'">
-              <input type="checkbox" class="merge-check" data-idx="${idx}" style="cursor:pointer;accent-color:#60a5fa;width:16px;height:16px;">
+            return `<label style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--cb-bg3);border:1px solid var(--cb-border);border-radius:8px;cursor:pointer;margin-bottom:6px;transition:all 0.15s;" onmouseenter="this.style.background='color-mix(in srgb, var(--cb-accent-primary) 12%, transparent)'" onmouseleave="this.style.background='var(--cb-bg3)'">
+              <input type="checkbox" class="merge-check" data-idx="${idx}" style="cursor:pointer;accent-color:var(--cb-accent-primary);width:16px;height:16px;">
               <div style="flex:1;overflow:hidden;">
                 <div style="font-size:12px;color:var(--cb-white);font-weight:500;">${conv.platform || 'Chat'} • ${count} msgs</div>
                 <div style="font-size:10px;color:var(--cb-subtext);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${preview || date}</div>
@@ -9394,7 +9639,7 @@ Output ONLY the 5 numbered questions, no other text.`;
             <div style="font-size:12px;color:var(--cb-subtext);margin-bottom:12px;">Select conversations to merge:</div>
             <div style="max-height:180px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(100,100,100,0.5) transparent;padding-right:4px;">${listHTML}</div>
             <div style="display:flex;gap:8px;margin-top:14px;">
-              <button id="cb-merge-insert" style="flex:1;padding:10px;background:linear-gradient(135deg,rgba(96,165,250,0.2),rgba(167,139,250,0.2));border:1px solid rgba(96,165,250,0.4);border-radius:8px;color:var(--cb-white);cursor:pointer;font-size:11px;font-weight:500;">Insert to Chat</button>
+              <button id="cb-merge-insert" style="flex:1;padding:10px;background:color-mix(in srgb, var(--cb-accent-primary) 20%, transparent);border:1px solid color-mix(in srgb, var(--cb-accent-primary) 40%, transparent);border-radius:8px;color:var(--cb-white);cursor:pointer;font-size:11px;font-weight:500;">Insert to Chat</button>
               <button id="cb-merge-copy" style="flex:1;padding:10px;background:rgba(255,255,255,0.05);border:1px solid var(--cb-border);border-radius:8px;color:var(--cb-white);cursor:pointer;font-size:11px;">Copy</button>
             </div>
           `, 'Merge Chats');
@@ -9466,7 +9711,7 @@ Output ONLY the 5 numbered questions, no other text.`;
         // (Clean & Organize and Export moved to Quick Actions)
 
         // 3. Extract Content - REDESIGNED PREMIUM UI
-        const extractCard = createToolCard('<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00D4FF" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>', 'Extract Content', 'URLs, numbers, code, lists');
+        const extractCard = createToolCard('<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>', 'Extract Content', 'URLs, numbers, code, lists');
         extractCard.addEventListener('click', async () => {
           // PERFORMANCE CACHING - Check if we can use cached extraction
           let extracted = null;
@@ -9553,8 +9798,8 @@ Output ONLY the 5 numbered questions, no other text.`;
               <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
                 <span style="font-size:11px;color:var(--cb-subtext);">Found <span style="color:var(--cb-white);font-weight:600;">${totalItems}</span> items</span>
                 <div style="display:flex;gap:4px;">
-                  <span id="cb-extract-copy-all" style="font-size:10px;color:#60a5fa;cursor:pointer;padding:4px 8px;background:rgba(96,165,250,0.1);border-radius:6px;border:1px solid rgba(96,165,250,0.2);" onmouseenter="this.style.background='rgba(96,165,250,0.2)'" onmouseleave="this.style.background='rgba(96,165,250,0.1)'">Copy All</span>
-                  <span id="cb-extract-export-md" style="font-size:10px;color:#a78bfa;cursor:pointer;padding:4px 8px;background:rgba(167,139,250,0.1);border-radius:6px;border:1px solid rgba(167,139,250,0.2);" onmouseenter="this.style.background='rgba(167,139,250,0.2)'" onmouseleave="this.style.background='rgba(167,139,250,0.1)'">MD</span>
+                  <span id="cb-extract-copy-all" style="font-size:10px;color:var(--cb-accent-primary);cursor:pointer;padding:4px 8px;background:color-mix(in srgb, var(--cb-accent-primary) 10%, transparent);border-radius:6px;border:1px solid color-mix(in srgb, var(--cb-accent-primary) 20%, transparent);" onmouseenter="this.style.background='color-mix(in srgb, var(--cb-accent-primary) 20%, transparent)'" onmouseleave="this.style.background='color-mix(in srgb, var(--cb-accent-primary) 10%, transparent)'">Copy All</span>
+                  <span id="cb-extract-export-md" style="font-size:10px;color:var(--cb-accent-secondary);cursor:pointer;padding:4px 8px;background:color-mix(in srgb, var(--cb-accent-secondary) 10%, transparent);border-radius:6px;border:1px solid color-mix(in srgb, var(--cb-accent-secondary) 20%, transparent);" onmouseenter="this.style.background='color-mix(in srgb, var(--cb-accent-secondary) 20%, transparent)'" onmouseleave="this.style.background='color-mix(in srgb, var(--cb-accent-secondary) 10%, transparent)'">MD</span>
                   <span id="cb-extract-export-csv" style="font-size:10px;color:#34d399;cursor:pointer;padding:4px 8px;background:rgba(52,211,153,0.1);border-radius:6px;border:1px solid rgba(52,211,153,0.2);" onmouseenter="this.style.background='rgba(52,211,153,0.2)'" onmouseleave="this.style.background='rgba(52,211,153,0.1)'">CSV</span>
                   <span id="cb-extract-open-urls" style="font-size:10px;color:#f59e0b;cursor:pointer;padding:4px 8px;background:rgba(245,158,11,0.1);border-radius:6px;border:1px solid rgba(245,158,11,0.2);" onmouseenter="this.style.background='rgba(245,158,11,0.2)'" onmouseleave="this.style.background='rgba(245,158,11,0.1)'">URLs</span>
                 </div>
@@ -9707,7 +9952,7 @@ Output ONLY the 5 numbered questions, no other text.`;
               // Copy on item content click
               itemDiv.addEventListener('click', async () => {
                 await navigator.clipboard.writeText(val);
-                el.style.background = 'rgba(96,165,250,0.15)';
+                el.style.background = 'color-mix(in srgb, var(--cb-accent-primary) 15%, transparent)';
                 setTimeout(() => el.style.background = 'rgba(255,255,255,0.02)', 300);
                 toast('Copied!');
               });
@@ -9871,7 +10116,7 @@ Output ONLY the 5 numbered questions, no other text.`;
         toolsGrid.appendChild(extractCard);
 
         // 6. Continue With - ALL 10 PLATFORMS + AUTO-INSERT
-        const continueCard = createToolCard('<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00D4FF" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>', 'Continue With', 'Open chat in another AI');
+        const continueCard = createToolCard('<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>', 'Continue With', 'Open chat in another AI');
         continueCard.addEventListener('click', async () => {
           const msgs = await scanChat();
           if (!msgs || msgs.length === 0) {
@@ -10036,14 +10281,14 @@ Output ONLY the 5 numbered questions, no other text.`;
             const insightsTitle = document.createElement('div');
             insightsTitle.style.cssText = 'font-weight:600;font-size:12px;margin-bottom:10px;color:var(--cb-white);display:flex;align-items:center;justify-content:space-between;';
             insightsTitle.innerHTML = `
-              <span style="display:flex;align-items:center;gap:8px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="url(#aiInsGrad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/><defs><linearGradient id="aiInsGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00D4FF"/><stop offset="100%" stop-color="#7C3AED"/></linearGradient></defs></svg>AI-Generated Insights</span>
-              <button class="cb-btn" style="padding:4px 10px;font-size:10px;background:linear-gradient(135deg, rgba(0,212,255,0.1), rgba(124,58,237,0.08));border:1px solid rgba(0,212,255,0.2);">Refresh</button>
+              <span style="display:flex;align-items:center;gap:8px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>AI-Generated Insights</span>
+              <button class="cb-btn" style="padding:4px 10px;font-size:10px;background:color-mix(in srgb, var(--cb-accent-primary) 10%, transparent);border:1px solid color-mix(in srgb, var(--cb-accent-primary) 20%, transparent);">Refresh</button>
             `;
             insightsSection.appendChild(insightsTitle);
 
             const insightsContainer = document.createElement('div');
             insightsContainer.id = 'cb-ai-insights-container';
-            insightsContainer.style.cssText = 'background:linear-gradient(135deg, rgba(0,212,255,0.04), rgba(124,58,237,0.03));border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:14px;max-height:300px;overflow-y:auto;';
+            insightsContainer.style.cssText = 'background:var(--cb-bg3);border:1px solid var(--cb-border);border-radius:10px;padding:14px;max-height:300px;overflow-y:auto;';
 
             const summaryEngine = new window.AISummaryEngine();
             summaryEngine.renderInsights(insights, insightsContainer);
@@ -10084,8 +10329,8 @@ Output ONLY the 5 numbered questions, no other text.`;
           const msgs = await scanChat();
           if (msgs && msgs.length > 15) {
             const autoSection = document.createElement('div');
-            autoSection.style.cssText = 'margin:12px;padding:14px 16px;background:linear-gradient(135deg, rgba(0,212,255,0.04), rgba(124,58,237,0.03));border:1px solid rgba(255,255,255,0.06);border-radius:10px;';
-            autoSection.innerHTML = '<div style="font-weight:600;font-size:12px;margin-bottom:8px;color:var(--cb-white);display:flex;align-items:center;gap:8px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="url(#autoGrad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 10 10H12V2z"/><path d="M12 2a10 10 0 0 1 10 10"/><circle cx="12" cy="12" r="3"/><defs><linearGradient id="autoGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00D4FF"/><stop offset="100%" stop-color="#7C3AED"/></linearGradient></defs></svg>Auto Summary</div><div id="cb-auto-sum" style="font-size:12px;color:var(--cb-subtext);line-height:1.5;">Summarizing conversation...</div>';
+            autoSection.style.cssText = 'margin:12px;padding:14px 16px;background:var(--cb-bg3);border:1px solid var(--cb-border);border-radius:10px;';
+            autoSection.innerHTML = '<div style="font-weight:600;font-size:12px;margin-bottom:8px;color:var(--cb-white);display:flex;align-items:center;gap:8px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 10 10H12V2z"/><path d="M12 2a10 10 0 0 1 10 10"/><circle cx="12" cy="12" r="3"/></svg>Auto Summary</div><div id="cb-auto-sum" style="font-size:12px;color:var(--cb-subtext);line-height:1.5;">Summarizing conversation...</div>';
             insightsContent.appendChild(autoSection);
             // Generate summary asynchronously without blocking UI
             (async () => {
@@ -10098,7 +10343,7 @@ Output ONLY the 5 numbered questions, no other text.`;
                   const maxLen = 200;
                   if (txt.length > maxLen) {
                     const preview = txt.slice(0, maxLen) + '…';
-                    tgt.innerHTML = `<span>${preview}</span><button style="margin-left:8px;padding:2px 8px;background:rgba(0,180,255,0.2);border:1px solid rgba(0,180,255,0.4);border-radius:4px;color:var(--cb-white);font-size:11px;cursor:pointer;" data-expanded="false">Expand</button>`;
+                    tgt.innerHTML = `<span>${preview}</span><button style="margin-left:8px;padding:2px 8px;background:color-mix(in srgb, var(--cb-accent-primary) 20%, transparent);border:1px solid color-mix(in srgb, var(--cb-accent-primary) 40%, transparent);border-radius:4px;color:var(--cb-white);font-size:11px;cursor:pointer;" data-expanded="false">Expand</button>`;
                     const expandBtn = tgt.querySelector('button');
                     expandBtn.addEventListener('click', () => {
                       const isExpanded = expandBtn.dataset.expanded === 'true';
@@ -10137,7 +10382,7 @@ Output ONLY the 5 numbered questions, no other text.`;
         actionsGrid.style.cssText = 'display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:18px;padding:0 12px;';
 
         // 1. Quick Compare (compare responses from different models)
-        const compareIcon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="url(#cmpGrad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><defs><linearGradient id="cmpGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00D4FF"/><stop offset="100%" stop-color="#7C3AED"/></linearGradient></defs></svg>';
+        const compareIcon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>';
         const compareBtn = createFeatureCard('Compare Models', 'Compare how different AIs answered', compareIcon, async () => {
           try {
             const convs = await loadConversationsAsync();
@@ -10159,7 +10404,7 @@ Output ONLY the 5 numbered questions, no other text.`;
         });
 
         // 2. Smart Merge (merge related conversations)
-        const mergeIcon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="url(#mrgGrad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3v12"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/><defs><linearGradient id="mrgGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00D4FF"/><stop offset="100%" stop-color="#7C3AED"/></linearGradient></defs></svg>';
+        const mergeIcon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3v12"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>';
         const mergeBtn = createFeatureCard('Merge Threads', 'Combine related conversations', mergeIcon, async () => {
           try {
             const convs = await loadConversationsAsync();
@@ -10174,7 +10419,7 @@ Output ONLY the 5 numbered questions, no other text.`;
         });
 
         // 3. Quick Extract (extract code, lists, or key info)
-        const extractIcon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="url(#extGrad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><defs><linearGradient id="extGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00D4FF"/><stop offset="100%" stop-color="#7C3AED"/></linearGradient></defs></svg>';
+        const extractIcon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>';
         const extractBtn = createFeatureCard('Extract Content', 'Pull out code blocks and key info', extractIcon, () => {
           try {
             showExtractView();
@@ -10185,7 +10430,7 @@ Output ONLY the 5 numbered questions, no other text.`;
         });
 
         // 4. Insight Finder (semantic spotlight - CTRL+SHIFT+F)
-        const insightIcon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="url(#insGrad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><defs><linearGradient id="insGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00D4FF"/><stop offset="100%" stop-color="#7C3AED"/></linearGradient></defs></svg>';
+        const insightIcon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>';
         const insightBtn = createFeatureCard('Insight Finder', 'Extract comparisons and requirements', insightIcon, async () => {
           addLoadingToButton(insightBtn, 'Analyzing...');
           try {
@@ -10213,7 +10458,7 @@ Output ONLY the 5 numbered questions, no other text.`;
         });
 
         // 5. Continue Conversation (cross-model handoff)
-        const continueIcon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="url(#conGrad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 14 20 9 15 4"/><path d="M4 20v-7a4 4 0 0 1 4-4h12"/><defs><linearGradient id="conGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00D4FF"/><stop offset="100%" stop-color="#7C3AED"/></linearGradient></defs></svg>';
+        const continueIcon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 14 20 9 15 4"/><path d="M4 20v-7a4 4 0 0 1 4-4h12"/></svg>';
         const continueBtn = createFeatureCard('Continue on...', 'Move to a different AI model', continueIcon, async () => {
           addLoadingToButton(continueBtn, 'Preparing...');
           try {
@@ -10306,7 +10551,7 @@ Output ONLY the 5 numbered questions, no other text.`;
         actionsGrid.appendChild(continueBtn);
 
         // 6. Fact-Check Mode (extract and verify claims)
-        const factIcon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="url(#fctGrad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/><defs><linearGradient id="fctGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00D4FF"/><stop offset="100%" stop-color="#7C3AED"/></linearGradient></defs></svg>';
+        const factIcon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>';
         const factCheckBtn = createFeatureCard('Fact-Check', 'Analyze factual claims', factIcon, async () => {
           addLoadingToButton(factCheckBtn, 'Analyzing...');
           try {
@@ -10385,13 +10630,13 @@ Respond with JSON only:
 
         const outputLabel = document.createElement('div');
         outputLabel.style.cssText = 'font-weight:600;font-size:12px;margin-bottom:8px;color:var(--cb-white);display:flex;align-items:center;gap:6px;';
-        outputLabel.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="url(#outGrad)" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><defs><linearGradient id="outGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00D4FF"/><stop offset="100%" stop-color="#7C3AED"/></linearGradient></defs></svg>Output Preview';
+        outputLabel.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Output Preview';
         outputSection.appendChild(outputLabel);
 
         const outputArea = document.createElement('div');
         outputArea.id = 'cb-insights-output';
         outputArea.className = 'cb-view-text';
-        outputArea.style.cssText = 'min-height:120px;max-height:300px;overflow-y:auto;background:rgba(16,24,43,0.4);border:1px solid rgba(0,180,255,0.2);border-radius:8px;padding:12px;font-size:12px;line-height:1.5;white-space:pre-wrap;';
+        outputArea.style.cssText = 'min-height:120px;max-height:300px;overflow-y:auto;background:rgba(16,24,43,0.4);border:1px solid color-mix(in srgb, var(--cb-accent-primary) 20%, transparent);border-radius:8px;padding:12px;font-size:12px;line-height:1.5;white-space:pre-wrap;';
         outputArea.textContent = '(Results will appear here)';
         outputSection.appendChild(outputArea);
 
@@ -10475,7 +10720,7 @@ Respond with JSON only:
         // Smart Suggestions Section
         const suggestTitle = document.createElement('div');
         suggestTitle.style.cssText = 'font-weight:600;font-size:12px;margin:16px 12px 8px 12px;color:var(--cb-subtext);display:flex;align-items:center;gap:6px;';
-        suggestTitle.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="url(#suggGrad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z"/><defs><linearGradient id="suggGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00D4FF"/><stop offset="100%" stop-color="#7C3AED"/></linearGradient></defs></svg>Suggested Actions';
+        suggestTitle.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z"/></svg>Suggested Actions';
         insightsContent.appendChild(suggestTitle);
 
         // Generate contextual suggestions
@@ -10485,10 +10730,10 @@ Respond with JSON only:
 
         suggestions.forEach(sugg => {
           const suggCard = document.createElement('div');
-          suggCard.style.cssText = 'padding:10px 12px;background:rgba(0,180,255,0.08);border-left:3px solid var(--cb-accent-primary);border-radius:8px;cursor:pointer;transition:all 0.2s;';
+          suggCard.style.cssText = 'padding:10px 12px;background:color-mix(in srgb, var(--cb-accent-primary) 8%, transparent);border-left:3px solid var(--cb-accent-primary);border-radius:8px;cursor:pointer;transition:all 0.2s;';
           suggCard.innerHTML = `<div style="font-weight:600;font-size:12px;margin-bottom:4px;">${sugg.title}</div><div style="font-size:11px;opacity:0.8;">${sugg.description}</div>`;
-          suggCard.addEventListener('mouseenter', () => suggCard.style.background = 'rgba(0,180,255,0.15)');
-          suggCard.addEventListener('mouseleave', () => suggCard.style.background = 'rgba(0,180,255,0.08)');
+          suggCard.addEventListener('mouseenter', () => suggCard.style.background = 'color-mix(in srgb, var(--cb-accent-primary) 15%, transparent)');
+          suggCard.addEventListener('mouseleave', () => suggCard.style.background = 'color-mix(in srgb, var(--cb-accent-primary) 8%, transparent)');
           suggCard.addEventListener('click', () => sugg.action());
           suggestionsList.appendChild(suggCard);
         });
@@ -10509,23 +10754,23 @@ Respond with JSON only:
     function createFeatureCard(title, description, icon, onClick) {
       const card = document.createElement('button');
       card.className = 'cb-btn cb-feature-card';
-      card.style.cssText = 'padding:14px 16px;text-align:left;height:auto;display:flex;flex-direction:column;gap:6px;background:linear-gradient(135deg, rgba(16,24,43,0.6), rgba(16,24,43,0.4));border:1px solid rgba(255,255,255,0.06);border-left:3px solid rgba(0,212,255,0.5);border-radius:10px;transition:all 0.25s ease;position:relative;overflow:hidden;';
+      card.style.cssText = 'padding:14px 16px;text-align:left;height:auto;display:flex;flex-direction:column;gap:6px;background:var(--cb-bg3);border:1px solid var(--cb-border);border-left:3px solid color-mix(in srgb, var(--cb-accent-primary) 50%, transparent);border-radius:10px;transition:all 0.25s ease;position:relative;overflow:hidden;';
       // Minimal text-only design - no icons
       card.innerHTML = `
         <div style="font-weight:600;font-size:12px;color:var(--cb-white);line-height:1.3;">${title}</div>
         <div style="font-size:10px;opacity:0.6;line-height:1.4;color:var(--cb-subtext);">${description}</div>
       `;
       card.addEventListener('mouseenter', () => {
-        card.style.background = 'linear-gradient(135deg, rgba(0,212,255,0.08), rgba(124,58,237,0.06))';
-        card.style.borderColor = 'rgba(0,212,255,0.3)';
-        card.style.borderLeftColor = 'rgba(0,212,255,0.8)';
+        card.style.background = 'color-mix(in srgb, var(--cb-accent-primary) 8%, transparent)';
+        card.style.borderColor = 'color-mix(in srgb, var(--cb-accent-primary) 30%, transparent)';
+        card.style.borderLeftColor = 'color-mix(in srgb, var(--cb-accent-primary) 80%, transparent)';
         card.style.transform = 'translateY(-2px)';
         card.style.boxShadow = '0 6px 20px rgba(0,0,0,0.15)';
       });
       card.addEventListener('mouseleave', () => {
-        card.style.background = 'linear-gradient(135deg, rgba(16,24,43,0.6), rgba(16,24,43,0.4))';
-        card.style.borderColor = 'rgba(255,255,255,0.06)';
-        card.style.borderLeftColor = 'rgba(0,212,255,0.5)';
+        card.style.background = 'var(--cb-bg3)';
+        card.style.borderColor = 'var(--cb-border)';
+        card.style.borderLeftColor = 'color-mix(in srgb, var(--cb-accent-primary) 50%, transparent)';
         card.style.transform = 'translateY(0)';
         card.style.boxShadow = 'none';
       });
@@ -10687,7 +10932,7 @@ Respond with JSON only:
 
       const header = document.createElement('div');
       header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding:0 12px;';
-      header.innerHTML = `<div style="font-weight:700;font-size:14px;display:flex;align-items:center;gap:8px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="url(#extHdrGrad)" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><defs><linearGradient id="extHdrGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00D4FF"/><stop offset="100%" stop-color="#7C3AED"/></linearGradient></defs></svg>Extract Content</div><button class="cb-btn cb-view-close"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>Back</button>`;
+      header.innerHTML = `<div style="font-weight:700;font-size:14px;display:flex;align-items:center;gap:8px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Extract Content</div><button class="cb-btn cb-view-close"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>Back</button>`;
       header.querySelector('.cb-view-close').addEventListener('click', () => renderSmartWorkspace());
       insightsContent.appendChild(header);
 
@@ -10719,16 +10964,16 @@ Respond with JSON only:
       types.forEach(type => {
         const btn = document.createElement('button');
         btn.className = 'cb-btn cb-extract-type';
-        btn.style.cssText = 'text-align:left;padding:12px;display:flex;flex-direction:column;gap:4px;background:linear-gradient(135deg, rgba(16,24,43,0.6), rgba(16,24,43,0.4));border:1px solid rgba(255,255,255,0.06);border-left:2px solid rgba(0,212,255,0.4);border-radius:8px;transition:all 0.2s;';
+        btn.style.cssText = 'text-align:left;padding:12px;display:flex;flex-direction:column;gap:4px;background:var(--cb-bg3);border:1px solid var(--cb-border);border-left:2px solid color-mix(in srgb, var(--cb-accent-primary) 40%, transparent);border-radius:8px;transition:all 0.2s;';
         btn.innerHTML = `<span style="font-weight:600;font-size:11px;color:var(--cb-white);">${type.name}</span><span style="font-size:9px;color:var(--cb-subtext);opacity:0.7;">${type.desc}</span>`;
 
         btn.addEventListener('mouseenter', () => {
-          btn.style.borderLeftColor = 'rgba(0,212,255,0.8)';
-          btn.style.background = 'linear-gradient(135deg, rgba(0,212,255,0.08), rgba(124,58,237,0.06))';
+          btn.style.borderLeftColor = 'color-mix(in srgb, var(--cb-accent-primary) 80%, transparent)';
+          btn.style.background = 'color-mix(in srgb, var(--cb-accent-primary) 8%, transparent)';
         });
         btn.addEventListener('mouseleave', () => {
-          btn.style.borderLeftColor = 'rgba(0,212,255,0.4)';
-          btn.style.background = 'linear-gradient(135deg, rgba(16,24,43,0.6), rgba(16,24,43,0.4))';
+          btn.style.borderLeftColor = 'color-mix(in srgb, var(--cb-accent-primary) 40%, transparent)';
+          btn.style.background = 'var(--cb-bg3)';
         });
 
         btn.addEventListener('click', async () => {
@@ -10805,16 +11050,16 @@ Respond with JSON only:
 
       matches.forEach((match, i) => {
         const item = document.createElement('div');
-        item.style.cssText = 'padding:10px 12px;background:rgba(16,24,43,0.5);border:1px solid rgba(255,255,255,0.06);border-radius:6px;font-size:11px;line-height:1.5;color:var(--cb-white);cursor:pointer;transition:all 0.2s;white-space:pre-wrap;word-break:break-word;';
+        item.style.cssText = 'padding:10px 12px;background:var(--cb-bg3);border:1px solid var(--cb-border);border-radius:6px;font-size:11px;line-height:1.5;color:var(--cb-white);cursor:pointer;transition:all 0.2s;white-space:pre-wrap;word-break:break-word;';
         item.textContent = String(match).trim();
 
         item.addEventListener('mouseenter', () => {
-          item.style.borderColor = 'rgba(0,212,255,0.4)';
-          item.style.background = 'rgba(0,212,255,0.08)';
+          item.style.borderColor = 'color-mix(in srgb, var(--cb-accent-primary) 40%, transparent)';
+          item.style.background = 'color-mix(in srgb, var(--cb-accent-primary) 8%, transparent)';
         });
         item.addEventListener('mouseleave', () => {
-          item.style.borderColor = 'rgba(255,255,255,0.06)';
-          item.style.background = 'rgba(16,24,43,0.5)';
+          item.style.borderColor = 'var(--cb-border)';
+          item.style.background = 'var(--cb-bg3)';
         });
 
         // Click to copy
@@ -10880,7 +11125,7 @@ Respond with JSON only:
       // Output preview area
       const outputArea = document.createElement('div');
       outputArea.id = 'cb-insights-output';
-      outputArea.style.cssText = 'background:rgba(6,20,32,0.6);border:1px solid rgba(0,180,255,0.3);border-radius:8px;padding:12px;margin:0 12px 12px 12px;max-height:300px;overflow-y:auto;font-size:12px;line-height:1.6;white-space:pre-wrap;color:rgba(255,255,255,0.9);';
+      outputArea.style.cssText = 'background:rgba(6,20,32,0.6);border:1px solid color-mix(in srgb, var(--cb-accent-primary) 30%, transparent);border-radius:8px;padding:12px;margin:0 12px 12px 12px;max-height:300px;overflow-y:auto;font-size:12px;line-height:1.6;white-space:pre-wrap;color:rgba(255,255,255,0.9);';
       outputArea.textContent = output;
       insightsContent.appendChild(outputArea);
 
@@ -11145,7 +11390,7 @@ Respond with JSON only:
     function createAgentCard(name, description, icon, details, onClick) {
       const card = document.createElement('button');
       card.className = 'cb-btn';
-      card.style.cssText = 'padding:14px 12px;text-align:left;height:auto;display:flex;flex-direction:column;gap:6px;background:rgba(16,24,43,0.4);border:1px solid rgba(0,180,255,0.2);transition:all 0.2s; position:relative; z-index:1;';
+      card.style.cssText = 'padding:14px 12px;text-align:left;height:auto;display:flex;flex-direction:column;gap:6px;background:rgba(16,24,43,0.4);border:1px solid color-mix(in srgb, var(--cb-accent-primary) 20%, transparent);transition:all 0.2s; position:relative; z-index:1;';
       card.setAttribute('type', 'button');
       card.innerHTML = `
         <div style="font-size:24px;line-height:1;">${icon}</div>
@@ -11154,9 +11399,9 @@ Respond with JSON only:
         <div style="font-size:11px;opacity:0.7;line-height:1.3;margin-top:2px;">${details}</div>
       `;
       card.addEventListener('mouseenter', () => {
-        card.style.background = 'rgba(0,180,255,0.15)';
+        card.style.background = 'color-mix(in srgb, var(--cb-accent-primary) 15%, transparent)';
         card.style.transform = 'translateY(-2px)';
-        card.style.boxShadow = '0 4px 12px rgba(0,180,255,0.2)';
+        card.style.boxShadow = '0 4px 12px color-mix(in srgb, var(--cb-accent-primary) 20%, transparent)';
       });
       card.addEventListener('mouseleave', () => {
         card.style.background = 'rgba(16,24,43,0.4)';
@@ -11644,13 +11889,13 @@ Analyze the conversations and extract structured context in 6 categories. Output
         outputHtml += '<div id="memory-detail-container"></div>';
         outputHtml += `
           <div style="display:flex;gap:8px;align-items:center;padding:8px 0;">
-            <input id="memory-topic-input" class="cb-input" placeholder="Project/topic (e.g., onboarding portal)" style="flex:1;padding:8px;border-radius:6px;border:1px solid rgba(0,180,255,0.25);background:rgba(16,24,43,0.5);color:#E6E9F0;" />
+            <input id="memory-topic-input" class="cb-input" placeholder="Project/topic (e.g., onboarding portal)" style="flex:1;padding:8px;border-radius:6px;border:1px solid color-mix(in srgb, var(--cb-accent-primary) 25%, transparent);background:rgba(16,24,43,0.5);color:#E6E9F0;" />
             <button id="memory-compile" class="cb-btn cb-btn-primary">Compile Context</button>
           </div>
-          <div id="memory-compiled" style="display:none;margin-top:8px;background:rgba(16,24,43,0.5);border:1px solid rgba(0,180,255,0.2);border-radius:8px;">
-            <div style="padding:10px 12px;border-bottom:1px solid rgba(0,180,255,0.15);font-weight:600;">📚 Compiled Project Context</div>
+          <div id="memory-compiled" style="display:none;margin-top:8px;background:rgba(16,24,43,0.5);border:1px solid color-mix(in srgb, var(--cb-accent-primary) 20%, transparent);border-radius:8px;">
+            <div style="padding:10px 12px;border-bottom:1px solid color-mix(in srgb, var(--cb-accent-primary) 15%, transparent);font-weight:600;">📚 Compiled Project Context</div>
             <div id="memory-compiled-body" style="white-space:pre-wrap;line-height:1.5;padding:12px;font-size:12px;"></div>
-            <div style="display:flex;gap:8px;border-top:1px solid rgba(0,180,255,0.15);padding:10px 12px;">
+            <div style="display:flex;gap:8px;border-top:1px solid color-mix(in srgb, var(--cb-accent-primary) 15%, transparent);padding:10px 12px;">
               <button id="memory-copy" class="cb-btn cb-btn-primary" style="flex:1;">📋 Copy Context</button>
               <button id="memory-insert" class="cb-btn" style="flex:1;">➤ Insert to Chat</button>
             </div>
@@ -11673,7 +11918,7 @@ Analyze the conversations and extract structured context in 6 categories. Output
           const topics = (conv.topics || []).slice(0, 3).join(', ') || 'General';
 
           outputHtml += `
-            <div style="background:rgba(16,24,43,0.5);border:1px solid rgba(0,180,255,0.2);border-radius:8px;padding:12px;">
+            <div style="background:rgba(16,24,43,0.5);border:1px solid color-mix(in srgb, var(--cb-accent-primary) 20%, transparent);border-radius:8px;padding:12px;">
               <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:8px;">
                 <div style="font-weight:600;color:var(--cb-accent-primary);font-size:12px;">${platform}</div>
                 <div style="font-size:10px;opacity:0.7;">${date} • ${time}</div>
@@ -12164,7 +12409,7 @@ Enhanced Answer:`;
 
           const followUps = generateFollowUps(userPrompt, finalAnswer);
           const followUpHtml = followUps.length > 0 ? `
-            <div style="margin-top:12px;padding:8px;background:rgba(0,180,255,0.05);border:1px solid rgba(0,180,255,0.2);border-radius:6px;">
+            <div style="margin-top:12px;padding:8px;background:color-mix(in srgb, var(--cb-accent-primary) 5%, transparent);border:1px solid color-mix(in srgb, var(--cb-accent-primary) 20%, transparent);border-radius:6px;">
               <div style="font-size:11px;font-weight:600;margin-bottom:6px;opacity:0.9;">💡 Suggested Follow-Ups:</div>
               ${followUps.map((q, i) => `<button class="cb-btn cb-followup" data-question="${q}" style="display:block;width:100%;text-align:left;margin:4px 0;padding:6px 8px;font-size:11px;">${i + 1}. ${q}</button>`).join('')}
             </div>
@@ -12174,7 +12419,7 @@ Enhanced Answer:`;
             ${refereeAnalysis}
             <div style="font-weight:700;margin-bottom:8px;color:var(--cb-accent-primary);">✨ Synthesized Answer ${ragResultCount > 0 ? '🔍 (RAG-Enhanced)' : ''}</div>
             <div style="white-space:pre-wrap;line-height:1.6;">${finalAnswer || 'No result'}</div>
-            <div style="margin-top:12px;padding:8px;background:rgba(0,180,255,0.1);border-radius:6px;font-size:11px;">
+            <div style="margin-top:12px;padding:8px;background:color-mix(in srgb, var(--cb-accent-primary) 10%, transparent);border-radius:6px;font-size:11px;">
               <strong>Sources:</strong> ${responses.map(r => r.source).join(' + ')}${ragResultCount > 0 ? ` + ${ragResultCount} past conversations (RAG)` : ''} • Synthesized at ${new Date().toLocaleTimeString()}
             </div>
             ${followUpHtml}
@@ -12337,7 +12582,7 @@ Output ONLY valid JSON:`;
       outputArea.innerHTML = `
         <div style="padding:0;">
           <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px;">
-            <button class="cb-draft-type cb-btn" data-type="email" style="flex-direction:column;gap:2px;padding:6px;text-align:center;background:rgba(96,165,250,0.1);border:1px solid #60a5fa;border-radius:6px;height:auto;">
+            <button class="cb-draft-type cb-btn" data-type="email" style="flex-direction:column;gap:2px;padding:6px;text-align:center;background:color-mix(in srgb, var(--cb-accent-primary) 10%, transparent);border:1px solid var(--cb-accent-primary);border-radius:6px;height:auto;">
               <span style="font-size:14px;">📧</span>
               <span style="font-size:9px;font-weight:600;">Email</span>
             </button>
@@ -12373,8 +12618,8 @@ Output ONLY valid JSON:`;
             b.style.background = 'rgba(255,255,255,0.03)';
             b.style.border = '1px solid rgba(255,255,255,0.08)';
           });
-          btn.style.background = 'rgba(96,165,250,0.1)';
-          btn.style.border = '1px solid #60a5fa';
+          btn.style.background = 'color-mix(in srgb, var(--cb-accent-primary) 10%, transparent)';
+          btn.style.border = '1px solid var(--cb-accent-primary)';
           selectedType = btn.dataset.type;
         });
       });
@@ -12596,10 +12841,10 @@ Output ONLY valid JSON:`;
       outputArea.innerHTML = `
         <div style="padding:4px;">
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
-            <div style="width:36px;height:36px;background:linear-gradient(135deg,#8b5cf6,#7c3aed);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;">🧠</div>
+            <div style="width:36px;height:36px;background:linear-gradient(135deg,var(--cb-accent-secondary),var(--cb-accent-primary));border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;">🧠</div>
             <div>
-              <div style="font-weight:700;font-size:14px;color:#fff;">Cognitive Simplifier</div>
-              <div style="font-size:10px;color:rgba(255,255,255,0.5);">Reducing cognitive load...</div>
+              <div style="font-weight:700;font-size:14px;color:var(--cb-white);">Cognitive Simplifier</div>
+              <div style="font-size:10px;color:var(--cb-subtext);">Reducing cognitive load...</div>
             </div>
           </div>
           <div style="display:flex;justify-content:center;padding:30px;"><div class="cb-spinner"></div></div>
@@ -12647,8 +12892,8 @@ Output ONLY valid JSON:`;
           const sectionsHtml = (data.sections || []).map((s, i) => `
             <div style="margin-bottom:8px;">
               <div style="display:flex;align-items:center;gap:4px;margin-bottom:4px;">
-                <div style="width:16px;height:16px;background:linear-gradient(135deg,#8b5cf6,#7c3aed);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:9px;color:#fff;">${i + 1}</div>
-                <span style="font-weight:600;font-size:11px;color:#a78bfa;">${s.title || 'Section'}</span>
+                <div style="width:16px;height:16px;background:linear-gradient(135deg,var(--cb-accent-secondary),var(--cb-accent-primary));border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:9px;color:#fff;">${i + 1}</div>
+                <span style="font-weight:600;font-size:11px;color:var(--cb-accent-secondary);">${s.title || 'Section'}</span>
               </div>
               <div style="font-size:11px;color:var(--cb-white);line-height:1.4;padding-left:20px;">${s.content || ''}</div>
             </div>
@@ -12666,8 +12911,8 @@ Output ONLY valid JSON:`;
               </div>
               
               ${data.summary ? `
-              <div style="background:rgba(139,92,246,0.08);border:1px solid rgba(139,92,246,0.2);border-radius:6px;padding:8px;margin-bottom:10px;">
-                <div style="font-size:9px;color:#a78bfa;font-weight:600;margin-bottom:2px;">TL;DR</div>
+              <div style="background:color-mix(in srgb, var(--cb-accent-secondary) 8%, transparent);border:1px solid color-mix(in srgb, var(--cb-accent-secondary) 20%, transparent);border-radius:6px;padding:8px;margin-bottom:10px;">
+                <div style="font-size:9px;color:var(--cb-accent-secondary);font-weight:600;margin-bottom:2px;">TL;DR</div>
                 <div style="font-size:11px;color:var(--cb-white);line-height:1.4;">${data.summary}</div>
               </div>
               ` : ''}
@@ -12839,7 +13084,7 @@ Output ONLY valid JSON:`;
           </select>
           <button id="quick-agent-run" class="cb-btn cb-btn-primary" style="width:100%;margin-top:4px;">▶ Run Analysis</button>
         </div>
-        <div id="quick-agent-results" style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(0,180,255,0.2);display:none;">
+        <div id="quick-agent-results" style="margin-top:12px;padding-top:12px;border-top:1px solid color-mix(in srgb, var(--cb-accent-primary) 20%, transparent);display:none;">
           <div style="font-weight:600;margin-bottom:8px;color:var(--cb-subtext);">Results</div>
         </div>
       `;
@@ -12909,7 +13154,7 @@ ${chatText.slice(0, 3000)}`;
           </div>
           <button id="threadkeeper-scan" class="cb-btn cb-btn-primary" style="width:100%;margin-top:4px;">🔍 Scan All Threads</button>
         </div>
-        <div id="threadkeeper-results" style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(0,180,255,0.2);display:none;">
+        <div id="threadkeeper-results" style="margin-top:12px;padding-top:12px;border-top:1px solid color-mix(in srgb, var(--cb-accent-primary) 20%, transparent);display:none;">
           <div style="font-weight:600;margin-bottom:8px;color:var(--cb-subtext);">Thread Analysis</div>
         </div>
       `;
@@ -13007,7 +13252,7 @@ Format output as:
         <div style="margin-bottom:12px;">
           <div style="font-weight:700;margin-bottom:4px;font-size:13px;">🎯 Multi-AI Planner</div>
           <div style="font-size:11px;opacity:0.85;margin-bottom:12px;">Break goals into AI-powered steps with orchestrated execution</div>
-          <div style="background:rgba(0,180,255,0.08);border:1px solid rgba(0,180,255,0.25);border-radius:8px;padding:10px;margin-bottom:12px;font-size:11px;line-height:1.5;">
+          <div style="background:color-mix(in srgb, var(--cb-accent-primary) 8%, transparent);border:1px solid color-mix(in srgb, var(--cb-accent-primary) 25%, transparent);border-radius:8px;padding:10px;margin-bottom:12px;font-size:11px;line-height:1.5;">
             <b>Agentic Planning:</b><br/>
             • Breaks goals into actionable steps<br/>
             • Assigns tasks to optimal AI models<br/>
@@ -13022,7 +13267,7 @@ Examples:
 • Write a technical blog post" style="width:100%;min-height:80px;margin-bottom:8px;"></textarea>
           <button id="planner-create" class="cb-btn cb-btn-primary" style="width:100%;margin-top:4px;">🚀 Create AI-Powered Plan</button>
         </div>
-        <div id="planner-results" style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(0,180,255,0.2);display:none;">
+        <div id="planner-results" style="margin-top:12px;padding-top:12px;border-top:1px solid color-mix(in srgb, var(--cb-accent-primary) 20%, transparent);display:none;">
           <div style="font-weight:600;margin-bottom:8px;color:var(--cb-subtext);">Orchestrated Plan</div>
         </div>
       `;
@@ -13632,7 +13877,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           // Show matched details on hover (tooltip-style)
           if (conv.entityDetails && conv.entityDetails.length > 0) {
             const matchDetails = document.createElement('div');
-            matchDetails.style.cssText = 'display:none;font-size:10px;margin-top:6px;padding:6px;background:rgba(11,15,23,0.25);border-radius:4px;border-left:2px solid rgba(0,180,255,0.5);';
+            matchDetails.style.cssText = 'display:none;font-size:10px;margin-top:6px;padding:6px;background:rgba(11,15,23,0.25);border-radius:4px;border-left:2px solid color-mix(in srgb, var(--cb-accent-primary) 50%, transparent);';
             matchDetails.innerHTML = `<strong>Matches:</strong><br>` +
               `Entities: ${conv.matchedEntities} (${conv.entityDetails.slice(0, 3).map(e => e.current).join(', ')})<br>` +
               `Themes: ${conv.matchedThemes} (${conv.themeDetails.slice(0, 3).map(t => t.current).join(', ')})`;
@@ -14400,32 +14645,32 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         const readTime = Math.ceil(words / 200);
         const convs = await loadConversationsAsync();
 
-        // Create inline stats panel - DARK NEON THEME (cyan/purple)
+        // Create inline stats panel - THEMED
         statsPanel = document.createElement('div');
         statsPanel.id = 'cb-stats-panel';
-        statsPanel.style.cssText = 'margin-top:16px;padding:16px;background:rgba(6,20,32,0.6);border-radius:12px;border:1px solid rgba(0,212,255,0.2);box-shadow:0 4px 12px rgba(0,0,0,0.3);';
+        statsPanel.className = 'cb-inline-panel';
 
         statsPanel.innerHTML = `
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
-            <h4 style="margin:0;font-size:14px;font-weight:600;color:#00D4FF;">📊 Conversation Stats</h4>
-            <button id="close-stats-panel" style="background:none;border:none;color:rgba(255,255,255,0.5);cursor:pointer;font-size:16px;padding:4px;transition:color 0.2s;" onmouseover="this.style.color='#00D4FF'" onmouseout="this.style.color='rgba(255,255,255,0.5)'">✕</button>
+            <h4>📊 Conversation Stats</h4>
+            <button id="close-stats-panel" style="background:none;border:none;color:var(--cb-subtext);cursor:pointer;font-size:16px;padding:4px;transition:color 0.2s;" onmouseover="this.style.color='var(--cb-accent-primary)'" onmouseout="this.style.color='var(--cb-subtext)'">✕</button>
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-            <div style="padding:14px;background:rgba(0,212,255,0.08);border:1px solid rgba(0,212,255,0.25);border-radius:8px;text-align:center;">
-              <div style="font-size:24px;font-weight:700;color:#00D4FF;margin-bottom:4px;">${words.toLocaleString()}</div>
-              <div style="font-size:10px;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:1px;">Words</div>
+            <div class="cb-stat-card">
+              <div class="cb-stat-value" style="color:var(--cb-accent-primary);">${words.toLocaleString()}</div>
+              <div class="cb-stat-label">Words</div>
             </div>
-            <div style="padding:14px;background:rgba(124,58,237,0.08);border:1px solid rgba(124,58,237,0.25);border-radius:8px;text-align:center;">
-              <div style="font-size:24px;font-weight:700;color:#7C3AED;margin-bottom:4px;">${chars.toLocaleString()}</div>
-              <div style="font-size:10px;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:1px;">Characters</div>
+            <div class="cb-stat-card">
+              <div class="cb-stat-value" style="color:var(--cb-accent-secondary);">${chars.toLocaleString()}</div>
+              <div class="cb-stat-label">Characters</div>
             </div>
-            <div style="padding:14px;background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.25);border-radius:8px;text-align:center;">
-              <div style="font-size:24px;font-weight:700;color:#22c55e;margin-bottom:4px;">~${readTime}</div>
-              <div style="font-size:10px;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:1px;">Min Read</div>
+            <div class="cb-stat-card">
+              <div class="cb-stat-value" style="color:var(--cb-accent-tertiary);">~${readTime}</div>
+              <div class="cb-stat-label">Min Read</div>
             </div>
-            <div style="padding:14px;background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.25);border-radius:8px;text-align:center;">
-              <div style="font-size:24px;font-weight:700;color:#fbbf24;margin-bottom:4px;">${convs.length}</div>
-              <div style="font-size:10px;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:1px;">Saved</div>
+            <div class="cb-stat-card">
+              <div class="cb-stat-value" style="color:var(--cb-accent-primary);">${convs.length}</div>
+              <div class="cb-stat-label">Saved</div>
             </div>
           </div>
         `;
@@ -14459,7 +14704,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         // Show analyzing panel
         cleanPanel = document.createElement('div');
         cleanPanel.id = 'cb-clean-panel';
-        cleanPanel.style.cssText = 'margin-top:16px;padding:16px;background:var(--cb-card);border-radius:12px;border:1px solid rgba(255,255,255,0.08);';
+        cleanPanel.className = 'cb-inline-panel';
         cleanPanel.innerHTML = `
           <div style="text-align:center;padding:20px;">
             <div class="cb-spinner"></div>
@@ -14504,17 +14749,17 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           <div style="font-size:11px;color:var(--cb-white);margin-bottom:12px;font-weight:500;">Found issues in saved conversations:</div>
           
           <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px;">
-            <div style="text-align:center;padding:10px;background:rgba(255,100,100,0.1);border:1px solid rgba(255,100,100,0.3);border-radius:8px;">
-              <div style="font-size:20px;font-weight:700;color:#ff6b6b;">${stats.duplicates}</div>
-              <div style="font-size:9px;color:var(--cb-subtext);">Exact Duplicates</div>
+            <div class="cb-stat-card" style="padding:10px;">
+              <div class="cb-stat-value" style="font-size:20px;color:var(--cb-accent-tertiary);">${stats.duplicates}</div>
+              <div class="cb-stat-label" style="font-size:9px;">Exact Duplicates</div>
             </div>
-            <div style="text-align:center;padding:10px;background:rgba(255,180,100,0.1);border:1px solid rgba(255,180,100,0.3);border-radius:8px;">
-              <div style="font-size:20px;font-weight:700;color:#ffb347;">${stats.overlaps}</div>
-              <div style="font-size:9px;color:var(--cb-subtext);">Overlapping Chats</div>
+            <div class="cb-stat-card" style="padding:10px;">
+              <div class="cb-stat-value" style="font-size:20px;color:var(--cb-accent-secondary);">${stats.overlaps}</div>
+              <div class="cb-stat-label" style="font-size:9px;">Overlapping Chats</div>
             </div>
           </div>
           
-          <div style="padding:10px;background:rgba(255,255,255,0.03);border-radius:8px;margin-bottom:12px;">
+          <div style="padding:10px;background:var(--cb-bg3);border:1px solid var(--cb-border);border-radius:8px;margin-bottom:12px;">
             <div style="font-size:10px;color:var(--cb-subtext);line-height:1.5;">
               <strong style="color:var(--cb-white);">This will:</strong><br>
               • Remove ${stats.duplicates} duplicate conversations<br>
@@ -14524,8 +14769,8 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           </div>
           
           <div style="display:flex;gap:8px;">
-            <button id="cb-clean-cancel-inline" style="flex:1;padding:8px;background:rgba(255,255,255,0.05);border:1px solid var(--cb-border);border-radius:8px;color:var(--cb-white);cursor:pointer;font-size:11px;">Cancel</button>
-            <button id="cb-clean-confirm-inline" style="flex:1;padding:8px;background:linear-gradient(135deg,rgba(255,100,100,0.2),rgba(255,150,100,0.2));border:1px solid rgba(255,100,100,0.4);border-radius:8px;color:var(--cb-white);cursor:pointer;font-size:11px;font-weight:500;">Clean Storage</button>
+            <button id="cb-clean-cancel-inline" class="cb-export-btn" style="flex:1;padding:8px;cursor:pointer;font-size:11px;">Cancel</button>
+            <button id="cb-clean-confirm-inline" class="cb-btn cb-btn-primary" style="flex:1;padding:8px;font-size:11px;font-weight:500;">Clean Storage</button>
           </div>
         `;
 
@@ -14638,7 +14883,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         // Create inline export panel - STEP 1: Choose what to export
         exportPanel = document.createElement('div');
         exportPanel.id = 'cb-export-panel';
-        exportPanel.style.cssText = 'margin-top:16px;padding:16px;background:var(--cb-card);border-radius:12px;border:1px solid rgba(255,255,255,0.08);';
+        exportPanel.className = 'cb-inline-panel';
 
         exportPanel.innerHTML = `
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
@@ -14647,16 +14892,16 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           </div>
           <div style="font-size:11px;color:var(--cb-subtext);margin-bottom:12px;">Choose what to export:</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
-            <button id="export-all" style="padding:10px;background:rgba(0,212,255,0.1);border:1px solid rgba(0,212,255,0.3);border-radius:8px;color:#00D4FF;cursor:pointer;font-size:11px;font-weight:500;transition:all 0.2s;">
+            <button id="export-all" class="cb-export-btn" style="padding:10px;cursor:pointer;font-size:11px;font-weight:500;transition:all 0.2s;">
               📚 All (${convs.length})
             </button>
-            <button id="export-last" style="padding:10px;background:rgba(124,58,237,0.1);border:1px solid rgba(124,58,237,0.3);border-radius:8px;color:#7C3AED;cursor:pointer;font-size:11px;font-weight:500;transition:all 0.2s;">
+            <button id="export-last" class="cb-export-btn" style="padding:10px;cursor:pointer;font-size:11px;font-weight:500;transition:all 0.2s;">
               💬 Last Chat
             </button>
-            <button id="export-ai-only" style="padding:10px;background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);border-radius:8px;color:#22c55e;cursor:pointer;font-size:11px;font-weight:500;transition:all 0.2s;">
+            <button id="export-ai-only" class="cb-export-btn" style="padding:10px;cursor:pointer;font-size:11px;font-weight:500;transition:all 0.2s;">
               🤖 AI Only
             </button>
-            <button id="export-user-only" style="padding:10px;background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.3);border-radius:8px;color:#fbbf24;cursor:pointer;font-size:11px;font-weight:500;transition:all 0.2s;">
+            <button id="export-user-only" class="cb-export-btn" style="padding:10px;cursor:pointer;font-size:11px;font-weight:500;transition:all 0.2s;">
               👤 User Only
             </button>
           </div>
@@ -14682,8 +14927,8 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
             </div>
             <div style="font-size:11px;color:var(--cb-subtext);margin-bottom:12px;">Choose format:</div>
             <div style="display:flex;gap:8px;">
-              <button id="format-json" style="flex:1;background:linear-gradient(135deg,#00D4FF,#0099CC);color:#fff;border:none;padding:10px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;">JSON</button>
-              <button id="format-md" style="flex:1;background:linear-gradient(135deg,#7C3AED,#5B21B6);color:#fff;border:none;padding:10px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;">Markdown</button>
+              <button id="format-json" class="cb-btn cb-btn-primary" style="flex:1;padding:10px;font-size:12px;font-weight:600;">JSON</button>
+              <button id="format-md" class="cb-export-btn" style="flex:1;padding:10px;font-size:12px;font-weight:600;">Markdown</button>
             </div>
           `;
 
@@ -15779,8 +16024,8 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         el.style.padding = '10px 14px';
         el.style.borderRadius = '12px';
         el.style.zIndex = '2147483647';
-        el.style.border = '1px solid rgba(0,180,255,0.28)';
-        el.style.boxShadow = '0 8px 24px rgba(0,180,255,0.25)';
+        el.style.border = '1px solid color-mix(in srgb, var(--cb-accent-primary) 28%, transparent)';
+        el.style.boxShadow = '0 8px 24px color-mix(in srgb, var(--cb-accent-primary) 25%, transparent)';
         el.style.fontSize = '13px';
         el.style.fontWeight = '600';
         el.style.letterSpacing = '0.2px';
@@ -16959,17 +17204,20 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           // Still load replies to maintain state
           await loadAssistantReplies();
         } else {
-          // First time opening - get text from last scan
-          const lastScan = window.ChatBridge.getLastScan();
+          // Open the view immediately so user sees it
+          rewView.classList.add('cb-view-active');
+
+          // Auto-scan if no prior scan data
+          const lastScan = window.ChatBridge.getLastScan ? window.ChatBridge.getLastScan() : null;
           const hasMessages = (lastScan && lastScan.messages && lastScan.messages.length > 0);
 
           if (!hasMessages) {
-            toast('No conversation to rewrite. Please scan first.');
-            return;
+            // Try auto-scanning first
+            try {
+              toast('Scanning conversation...');
+              await scanChat();
+            } catch (e) { debugLog('Rewrite auto-scan error', e); }
           }
-
-
-          rewView.classList.add('cb-view-active');
 
           // Load replies on open
           await loadAssistantReplies();
@@ -17678,12 +17926,12 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
       if (!container) return;
 
       const toggleHTML = `
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:8px;background:rgba(0,180,255,0.1);border-radius:6px;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:8px;background:color-mix(in srgb, var(--cb-accent-primary) 10%, transparent);border-radius:6px;">
           <span style="font-size:11px;font-weight:600;opacity:0.9;">Detail Level:</span>
           <div class="cb-detail-toggle" style="display:flex;gap:4px;">
-            <button class="cb-detail-btn" data-level="concise" style="padding:4px 10px;font-size:11px;border-radius:4px;border:1px solid rgba(0,180,255,0.3);background:rgba(0,180,255,0.2);color:#E6E9F0;cursor:pointer;">Concise</button>
-            <button class="cb-detail-btn" data-level="detailed" style="padding:4px 10px;font-size:11px;border-radius:4px;border:1px solid rgba(0,180,255,0.3);background:transparent;color:#E6E9F0;cursor:pointer;">Detailed</button>
-            <button class="cb-detail-btn" data-level="expert" style="padding:4px 10px;font-size:11px;border-radius:4px;border:1px solid rgba(0,180,255,0.3);background:transparent;color:#E6E9F0;cursor:pointer;">Expert</button>
+            <button class="cb-detail-btn" data-level="concise" style="padding:4px 10px;font-size:11px;border-radius:4px;border:1px solid color-mix(in srgb, var(--cb-accent-primary) 30%, transparent);background:color-mix(in srgb, var(--cb-accent-primary) 20%, transparent);color:#E6E9F0;cursor:pointer;">Concise</button>
+            <button class="cb-detail-btn" data-level="detailed" style="padding:4px 10px;font-size:11px;border-radius:4px;border:1px solid color-mix(in srgb, var(--cb-accent-primary) 30%, transparent);background:transparent;color:#E6E9F0;cursor:pointer;">Detailed</button>
+            <button class="cb-detail-btn" data-level="expert" style="padding:4px 10px;font-size:11px;border-radius:4px;border:1px solid color-mix(in srgb, var(--cb-accent-primary) 30%, transparent);background:transparent;color:#E6E9F0;cursor:pointer;">Expert</button>
           </div>
         </div>
           `;
@@ -17693,7 +17941,7 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
       // Set initial state
       getDetailLevel().then(level => {
         container.querySelectorAll('.cb-detail-btn').forEach(btn => {
-          btn.style.background = btn.dataset.level === level ? 'rgba(0,180,255,0.4)' : 'transparent';
+          btn.style.background = btn.dataset.level === level ? 'color-mix(in srgb, var(--cb-accent-primary) 40%, transparent)' : 'transparent';
           btn.style.fontWeight = btn.dataset.level === level ? '700' : '400';
         });
       });
@@ -17706,7 +17954,7 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
 
           // Update UI
           container.querySelectorAll('.cb-detail-btn').forEach(b => {
-            b.style.background = b === btn ? 'rgba(0,180,255,0.4)' : 'transparent';
+            b.style.background = b === btn ? 'color-mix(in srgb, var(--cb-accent-primary) 40%, transparent)' : 'transparent';
             b.style.fontWeight = b === btn ? '700' : '400';
           });
 
@@ -18636,6 +18884,33 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
       }
     });
 
+    // Generate a concise descriptive title from conversation content
+    function generateConversationTitle(conversation) {
+      if (!conversation || !conversation.length) return 'Untitled conversation';
+      try {
+        const firstUserMsg = conversation.find(m => m.role === 'user' || m.type === 'human') || conversation[0];
+        const rawText = (firstUserMsg.text || firstUserMsg.content || '').replace(/\n+/g, ' ').replace(/\s+/g, ' ').trim();
+        if (!rawText) return 'Untitled conversation';
+
+        // Try to extract a meaningful phrase (first sentence or first ~8 words)
+        const sentenceMatch = rawText.match(/^[^.!?\n]{8,80}[.!?]/);
+        if (sentenceMatch) {
+          let title = sentenceMatch[0].trim();
+          if (title.length > 60) title = title.slice(0, 57) + '...';
+          return title;
+        }
+
+        // Fallback: first 8 words
+        const words = rawText.split(/\s+/);
+        let title = words.slice(0, 8).join(' ');
+        if (words.length > 8) title += '...';
+        if (title.length > 60) title = title.slice(0, 57) + '...';
+        return title || 'Untitled conversation';
+      } catch (e) {
+        return 'Untitled conversation';
+      }
+    }
+
     function refreshHistory(filterText = '') {
       loadConversationsAsync().then(list => {
         let arr = Array.isArray(list) ? list : [];
@@ -18643,121 +18918,90 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
 
         if (filter) {
           arr = arr.filter(c => {
-            const platform = (c.platform || '').toLowerCase();
-            const model = (c.model || '').toLowerCase();
-            const text = (c.conversation || []).map(m => m.text || '').join(' ').toLowerCase();
-            return platform.includes(filter) || model.includes(filter) || text.includes(filter);
+            const text = (c.conversation || []).map(m => m.text || m.content || '').join(' ').toLowerCase();
+            const title = generateConversationTitle(c.conversation).toLowerCase();
+            return title.includes(filter) || text.includes(filter);
           });
         }
 
         if (!arr.length) {
-          historyEl.innerHTML = `<div style="padding:16px;text-align:center;font-size:12px;opacity:0.6;">${filter ? 'No results found' : 'No history found'}</div>`;
+          historyEl.innerHTML = `<div class="cb-history-empty">${filter ? 'No matching conversations' : 'No conversations yet'}</div>`;
           if (!filter) preview.textContent = 'Preview: (none)';
           return;
         }
 
         try {
-          const ITEM_H = 44;
           historyEl.innerHTML = '';
-          historyEl.style.maxHeight = '280px';
-          historyEl.style.overflowY = 'auto';
-          const full = document.createElement('div');
-          full.style.position = 'relative';
-          full.style.height = (arr.length * ITEM_H) + 'px';
-          full.style.width = '100%';
-          full.id = 'cb-history-virt';
-          historyEl.appendChild(full);
 
-          const render = () => {
-            const scrollTop = historyEl.scrollTop || 0;
-            const viewportH = historyEl.clientHeight || 280;
-            const start = Math.max(0, Math.floor(scrollTop / ITEM_H) - 2);
-            const end = Math.min(arr.length, start + Math.ceil(viewportH / ITEM_H) + 6);
-            while (full.firstChild) full.removeChild(full.firstChild);
+          // Group conversations by date
+          const groups = {};
+          const groupOrder = ['Today', 'Yesterday', 'This Week', 'Older'];
+          for (const s of arr) {
+            const group = getDateGroup(s.ts);
+            if (!groups[group]) groups[group] = [];
+            groups[group].push(s);
+          }
 
-            for (let i = start; i < end; i++) {
-              const s = arr[i];
-              const date = new Date(s.ts);
-              const timeStr = date.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+          for (const groupName of groupOrder) {
+            const items = groups[groupName];
+            if (!items || !items.length) continue;
 
-              let descriptivePhrase = "Untitled conversation";
-              try {
-                if (s.conversation && s.conversation.length > 0) {
-                  const firstMsg = s.conversation.find(m => m.role === 'user' || m.type === 'human') || s.conversation[0];
-                  const rawText = (firstMsg.text || firstMsg.content || "").replace(/\n/g, ' ').trim();
-                  if (rawText) {
-                    const words = rawText.split(/\s+/).slice(0, 10);
-                    descriptivePhrase = words.join(' ');
-                    if (rawText.split(/\s+/).length > 10) descriptivePhrase += '...';
-                  }
-                }
-              } catch (e) { }
+            // Date group header
+            const groupHeader = document.createElement('div');
+            groupHeader.className = 'cb-history-date-group';
+            groupHeader.textContent = groupName;
+            historyEl.appendChild(groupHeader);
 
-              const row = document.createElement('div');
+            for (const s of items) {
+              const descriptivePhrase = generateConversationTitle(s.conversation);
               const isActive = window.ChatBridge.selectedConversation && window.ChatBridge.selectedConversation.ts === s.ts;
 
-              row.style.cssText = `position:absolute;left:0;right:0;top:${i * ITEM_H}px;height:${ITEM_H - 4}px;display:flex;align-items:center;gap:8px;padding:6px 10px;border-bottom:1px solid rgba(255,255,255,0.05);cursor:pointer;transition:background 0.2s;border-radius:6px;`;
-              if (isActive) {
-                row.style.background = 'rgba(0, 180, 255, 0.1)';
-                row.style.borderLeft = '3px solid var(--cb-accent-primary)';
-              }
-
-              row.setAttribute('role', 'button');
+              const row = document.createElement('div');
               row.className = 'cb-history-item' + (isActive ? ' cb-active' : '');
-              row.onmouseenter = () => { if (!isActive) row.style.background = 'rgba(255,255,255,0.03)'; };
-              row.onmouseleave = () => { if (!isActive) row.style.background = ''; };
+              row.setAttribute('role', 'button');
+              row.setAttribute('tabindex', '0');
+              row.setAttribute('aria-label', descriptivePhrase);
 
+              // Chat icon
+              const icon = document.createElement('div');
+              icon.style.cssText = 'flex-shrink:0;display:flex;align-items:center;color:var(--cb-subtext);opacity:0.5;';
+              icon.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>';
+              row.appendChild(icon);
+
+              // Title text
               const txt = document.createElement('div');
-              txt.style.cssText = 'flex:1 1 auto;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:0.92;';
+              txt.className = 'cb-hi-text';
               txt.textContent = descriptivePhrase;
               row.appendChild(txt);
 
+              // Time label (hidden on hover, replaced by action buttons)
               const timeDisplay = document.createElement('div');
-              timeDisplay.style.cssText = 'font-size:9px;opacity:0.5;margin-right:4px;';
+              timeDisplay.className = 'cb-hi-time';
               timeDisplay.textContent = relativeTime(s.ts);
               row.appendChild(timeDisplay);
 
-              const openBtn = document.createElement('button');
-              openBtn.className = 'cb-btn-icon';
-              openBtn.title = 'Open chat';
-              openBtn.style.cssText = `background:none;border:none;color:${isActive ? 'var(--cb-accent-primary)' : 'rgba(230,207,159,0.7)'};cursor:pointer;padding:4px;display:flex;align-items:center;transition:color 0.2s;`;
-              openBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>`;
-              openBtn.onmouseenter = () => openBtn.style.color = 'var(--cb-accent-primary)';
-              openBtn.onmouseleave = () => { if (!isActive) openBtn.style.color = 'rgba(230,207,159,0.7)'; };
-              row.appendChild(openBtn);
+              // Action buttons (visible on hover)
+              const actions = document.createElement('div');
+              actions.className = 'cb-hi-actions';
 
+              // Open in original tab button (only if URL is available)
+              if (s.url) {
+                const openBtn = document.createElement('button');
+                openBtn.className = 'cb-hi-action-btn';
+                openBtn.title = 'Open original chat';
+                openBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>';
+                openBtn.onclick = (e) => {
+                  e.stopPropagation();
+                  try { window.open(s.url, '_blank'); } catch (_) { toast('Could not open URL'); }
+                };
+                actions.appendChild(openBtn);
+              }
+
+              // Delete button
               const delBtn = document.createElement('button');
-              delBtn.className = 'cb-btn-icon';
-              delBtn.title = 'Delete chat';
-              delBtn.style.cssText = 'background:none;border:none;color:rgba(255,77,79,0.6);cursor:pointer;padding:4px;display:flex;align-items:center;transition:color 0.2s;';
-              delBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>`;
-              delBtn.onmouseenter = () => delBtn.style.color = '#ff4d4f';
-              row.appendChild(delBtn);
-
-              const handleOpen = () => {
-                try {
-                  window.ChatBridge.selectedConversation = s;
-                  window.ChatBridge.setLastScan({
-                    ts: s.ts,
-                    platform: s.platform || 'unknown',
-                    model: s.model || 'unknown',
-                    messages: s.conversation || [],
-                    conversation: s,
-                    text: (s.conversation || []).map(m => `${m.role === 'user' ? 'User' : 'AI'}: ${m.text || m.content || ''}`).join('\n\n')
-                  });
-
-                  if (preview) preview.textContent = 'Preview: ' + descriptivePhrase;
-                  if (typeof announce === 'function') announce(`Viewing conversation: ${descriptivePhrase}`);
-
-                  toast(`✓ Loaded: ${(s.conversation || []).length} messages`);
-
-                  // Re-render to show active state
-                  render();
-                } catch (e) { debugLog('handleOpen error', e); }
-              };
-
-              row.onclick = handleOpen;
-              openBtn.onclick = (e) => { e.stopPropagation(); handleOpen(); };
+              delBtn.className = 'cb-hi-action-btn cb-hi-del';
+              delBtn.title = 'Delete';
+              delBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>';
               delBtn.onclick = (e) => {
                 e.stopPropagation();
                 if (confirm('Delete this conversation?')) {
@@ -18775,27 +19019,81 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
                   });
                 }
               };
-              full.appendChild(row);
+              actions.appendChild(delBtn);
+              row.appendChild(actions);
+
+              // Click handler: load conversation as current scan
+              const handleOpen = () => {
+                try {
+                  const msgs = s.conversation || [];
+                  const fullText = msgs.map(m => `${m.role === 'user' ? 'User' : 'AI'}: ${m.text || m.content || ''}`).join('\n\n');
+
+                  // Update lastScannedText so all features (summarize, rewrite, translate, etc.) use this
+                  lastScannedText = fullText;
+
+                  // Set as selected conversation
+                  window.ChatBridge.selectedConversation = s;
+
+                  // Store as last scan data - this is the critical piece that makes all features work
+                  window.ChatBridge.setLastScan({
+                    ts: s.ts,
+                    platform: s.platform || 'unknown',
+                    model: s.model || 'unknown',
+                    messages: msgs,
+                    conversation: s,
+                    text: fullText,
+                    timestamp: Date.now()
+                  });
+
+                  // Also store as _lastScanResult for features that check it directly
+                  try { window.ChatBridge._lastScanResult = msgs; } catch (_) {}
+
+                  // Update status bar
+                  const userMsgs = msgs.filter(m => m.role === 'user').length;
+                  const aiMsgs = msgs.filter(m => m.role === 'assistant').length;
+                  if (status) status.textContent = `Status: ${msgs.length} msgs loaded (${userMsgs} user, ${aiMsgs} AI)`;
+
+                  // Update preview text
+                  const firstUser = msgs.find(m => m.role === 'user');
+                  const previewText = firstUser ? (firstUser.text || firstUser.content || '').slice(0, 150) : ((msgs[0]?.text || msgs[0]?.content || '').slice(0, 150));
+                  if (preview) preview.textContent = `Preview: "${previewText}${previewText.length >= 150 ? '...' : ''}"`;
+
+                  // Update the premium preview card (Active Session indicator, stats, text)
+                  try {
+                    const previewStatsEl = shadow.querySelector('#cb-preview-stats');
+                    const previewTextEl = shadow.querySelector('#cb-preview-text');
+                    const wordCount = msgs.reduce((acc, m) => acc + ((m.text || m.content || '').split(/\s+/).length), 0);
+
+                    if (previewStatsEl) {
+                      previewStatsEl.innerHTML = `<span class="cb-preview-stat">${wordCount.toLocaleString()} words</span><span class="cb-preview-stat">${msgs.length} msgs</span>`;
+                    }
+                    if (previewTextEl) {
+                      previewTextEl.textContent = previewText + (previewText.length >= 150 ? '...' : '');
+                      previewTextEl.style.opacity = '1';
+                    }
+
+                    // Show Active Session badge
+                    if (typeof window.__CB_UPDATE_STATUS === 'function') {
+                      window.__CB_UPDATE_STATUS(`Loaded: ${descriptivePhrase}`, 'active');
+                    }
+                  } catch (_) {}
+
+                  if (typeof announce === 'function') announce(`Loaded conversation: ${descriptivePhrase}`);
+                  toast(`Loaded ${msgs.length} messages`);
+
+                  // Re-render to update active state
+                  refreshHistory(filterText);
+                } catch (e) { debugLog('handleOpen error', e); }
+              };
+
+              row.onclick = handleOpen;
+              row.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleOpen(); } };
+
+              historyEl.appendChild(row);
             }
-          };
-          try { historyEl.__virtRender = render; historyEl.__virtItems = arr; } catch (_) { }
-          historyEl.onscroll = () => render();
-          render();
+          }
         } catch (e) {
           console.error('[ChatBridge] History render error:', e);
-        }
-
-        // Auto-update preview if it's the very first load and we have items
-        if (!filterText && arr.length > 0 && (!window.ChatBridge.selectedConversation)) {
-          // Optional: automatically select the first one? Better not to surprise users.
-          // Just update the preview text if it's currently empty.
-          if (preview.textContent.includes('(none)')) {
-            const first = arr[0];
-            const msgs = first.conversation || [];
-            const firstUser = msgs.find(m => m.role === 'user');
-            const summary = (firstUser?.text || msgs[0]?.text || '').split(' ').slice(0, 8).join(' ');
-            preview.textContent = 'Preview: ' + (summary || '(empty chat)') + '...';
-          }
         }
       });
     }
@@ -18880,8 +19178,8 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
           color: #E6E9F0;
           padding: 10px 16px;
           border-radius: 10px;
-          border: 1px solid rgba(0,180,255,0.25);
-          box-shadow: 0 4px 16px rgba(0,0,0,0.3), 0 0 12px rgba(0,180,255,0.15);
+          border: 1px solid color-mix(in srgb, var(--cb-accent-primary) 25%, transparent);
+          box-shadow: 0 4px 16px rgba(0,0,0,0.3), 0 0 12px color-mix(in srgb, var(--cb-accent-primary) 15%, transparent);
           letter-spacing: 0.3px;
           font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
           font-size: 13px;
