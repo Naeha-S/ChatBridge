@@ -1,238 +1,160 @@
-# ChatBridge Development Checklist
+# ChatBridge — Progress Checklist
 
-This comprehensive checklist tracks the implementation progress of ALL ChatBridge features, UI components, buttons, and pages. ✅ indicates completed items.
+Tracks remaining work to take ChatBridge from working extension to deployable product.
+Last updated: 2026-02-18
 
----
-
-## ✨ Prompt Optimizer (Inline)
-- [x] **Quick Action Button** (maximized mode)
-    - [x] Optimizes text in chat input box
-    - [x] Expert prompt engineer system prompt
-    - [x] Replaces input with optimized version
-    - [x] Toast notifications for progress/success
-- [x] **Mini Toolbar Button** (minimized mode)
-    - [x] Same inline optimization behavior
-    - [x] Visual loading/success states
+**Legend:** `[x]` Done — `[-]` In progress — `[ ]` Not started
 
 ---
 
-## 🔍 Smart Query View
-- [x] **Header**
-    - [x] Title ("Smart Query") with gradient icon
-    - [x] ✕ Close button with SVG
-- [x] **Intro Text**
-    - [x] Description of semantic search with glass-morphism styling
-- [x] **Suggestions Row**
-    - [x] Pre-populated query chips (Key decisions, Unresolved questions, Code examples, Important dates)
-- [x] **Filters Row**
-    - [x] Host selector dropdown with emoji icons
-    - [x] Tag selector dropdown with emoji icons
-    - [x] Date range selector (All time, Last 7 days, Last 30 days)
-- [x] **Query Row**
-    - [x] Search input field with premium styling
-    - [x] "Search" button with gradient and search icon
-- [x] **Results Display**
-    - [x] Results container with glass-morphism background
-    - [x] Expandable excerpts
-- [x] **Ask AI Row**
-    - [x] "Ask AI" button with green accent styling
-    - [x] "Index Chats" button with secondary styling
-- [x] **Answer Display**
-    - [x] AI synthesis answer with gradient border
-    - [x] Provenance/source citations container
+## Phase 1 — Finish Core Features
+
+### 🔍 Smart Query Tab
+- [x] UI shell (header, close button, intro text)
+- [x] Suggestion chips (Key decisions, Unresolved questions, Code examples, Important dates)
+- [x] Filter row (host, tag, date range)
+- [x] Search input + button
+- [x] Results display with expandable excerpts
+- [x] Ask AI button + AI synthesis answer
+- [x] Index Chats button
+- [x] Provenance / source citations
+- [ ] Performance audit — large index sets
+- [ ] Edge cases: no results, partial index, stale index
+- [ ] Accessibility pass (keyboard nav, ARIA labels)
+
+### ◈ Agent Tab
+- [ ] Header ("Agent Utilities" + close)
+- [ ] Intro text
+- [ ] Agent selection cards / buttons
+- [ ] Agent output display area
+- [ ] Loading skeleton states
+- [ ] Error handling + retry
+- [ ] Wire to background API calls
+- [ ] Accessibility pass
+
+### 🔧 Overall Fixes
+- [ ] Deduplicate `call_openai` handler in background.js
+- [ ] Replace `setInterval` in background.js with `chrome.alarms` (MV3 compliance)
+- [ ] Remove dead `window` references in background.js service worker
+- [ ] Add missing `router.huggingface.co` to manifest host_permissions
+- [ ] Audit `idle` / `alarms` / `tabs` permission usage and add to manifest or remove calls
+- [ ] Settings panel — verify all sections render and persist correctly
+- [ ] Toast notification animations (slide-in / slide-out / auto-dismiss)
+- [ ] Theme persistence across sessions
+- [ ] Insight Finder modal polish and theme sync
 
 ---
 
-## ◈ Agent Hub View
-- [ ] **Header**
-    - [ ] "◈ Agent Utilities" title
-    - [ ] ✕ Close button
-- [ ] **Intro Text**
-    - [ ] Description of specialized tools
-- [ ] **Agent Content Container**
-    - [ ] Agent selection cards/buttons
-    - [ ] Agent output display
-    - [ ] Loading states
-    - [ ] Error handling
+## Phase 2 — Core AI Infrastructure
+
+### 🤖 API & Token Management
+- [ ] Token counting system — track usage per call and cumulative
+- [ ] Token budget / cap per user session
+- [ ] Display usage stats in settings or sidebar
+- [ ] Rate limiting hardening — per-key, per-endpoint
+- [ ] Fallback chain tuning (Gemini → HuggingFace → OpenAI)
+
+### ☁️ Cloud & Hosting
+- [ ] Cloud server connection with auth + encryption
+- [ ] Serverless hosting exploration (Cloudflare Workers / Vercel Edge)
+- [ ] Cloudflare environment setup (wrangler config, secrets, routes)
+- [ ] API gateway / proxy to protect raw keys from client
+
+### 📐 API Planning & Optimization
+- [ ] Prompt size optimization — trim context to stay under token limits
+- [ ] Response caching strategy (TTL, invalidation)
+- [ ] Batch request support where applicable
+- [ ] API versioning plan for future endpoints
 
 ---
 
-## ⚙️ Settings Panel (Sidebar)
-- [ ] **Header**
-    - [ ] "⚙️ Settings" title
-    - [ ] ✕ Close button
-- [ ] **Theme Section**
-    - [ ] 🎨 Theme label
-    - [ ] Theme grid (6 themes)
-- [ ] **API Keys Section**
-    - [ ] 🔑 API Keys label
-    - [ ] **Gemini API Key**
-        - [ ] Label
-        - [ ] Password input
-        - [ ] 👁 Show/hide toggle
-    - [ ] **Hugging Face Token**
-        - [ ] Label
-        - [ ] Password input
-        - [ ] 👁 Show/hide toggle
-    - [ ] "💾 Save Keys" button
-- [ ] **Detail Level Section**
-    - [ ] 📊 Response Detail Level label
-    - [ ] ⚡ Concise button
-    - [ ] 📝 Detailed button
-    - [ ] 🎓 Expert button
-- [ ] **Keyboard Shortcuts Section**
-    - [ ] ⌨️ Keyboard Shortcuts label
-    - [ ] Shortcuts grid
-        - [ ] Scan Chat → S
-        - [ ] Restore → R
-        - [ ] Copy → C
-        - [ ] Close → Esc
-- [ ] **About Section**
-    - [ ] 🌉 ChatBridge logo
-    - [ ] Version info
-    - [ ] 📦 GitHub link
-    - [ ] 💬 Feedback link
+## Phase 3 — Reliability & Engineering Quality
+
+### 🧪 Testing
+- [ ] Unit tests for core utilities (storage, adapters, normalizeMessages)
+- [ ] Integration tests for scan → transform → restore flow
+- [ ] Edge case tests (empty chats, single message, 1000+ messages)
+- [ ] Cross-browser smoke tests (Chrome stable, Beta, Canary)
+- [ ] Adapter regression tests per platform
+
+### 🛡️ Error Handling
+- [ ] Global error boundary in content script
+- [ ] Background service worker crash recovery
+- [ ] Empty state handling (no conversations, no API key, no results)
+- [ ] User-facing error banner with retry + report
+- [ ] Structured error logging (severity, context, stack)
+
+### ⚡ Performance
+- [ ] Load balancing / request distribution for higher traffic
+- [ ] Performance profiling (scan time, UI render, API latency)
+- [ ] Lazy-load heavy views (Smart Query, Agent, Knowledge Graph)
+- [ ] Debounce / throttle frequent DOM operations
+- [ ] Memory leak audit on long-running tabs
 
 ---
 
-## 🔔 Floating Avatar
-- [x] Avatar button (CB badge)
-- [x] Click to open sidebar
-- [x] Drag/drop functionality
-- [x] Hover effects
-- [x] Contextual positioning
+## Phase 4 — Analytics & Product Intelligence
+
+### 📊 Analytics
+- [ ] Privacy-respecting analytics integration (opt-in only)
+- [ ] Track feature usage (scan, summarize, rewrite, translate, sync tone)
+- [ ] Monitor token consumption trends per model
+- [ ] Observe user behavior patterns (which platforms, which transforms)
+- [ ] Dashboard or export for usage data
+
+### 📈 Instrumentation
+- [ ] API call success / failure rate tracking
+- [ ] Latency percentiles (p50, p95, p99)
+- [ ] Error rate monitoring with alerting
+- [ ] Session duration and engagement metrics
 
 ---
 
-## 🔔 Toast Notifications
-- [ ] Toast container
-- [ ] Toast styling (gradient background)
-- [ ] Auto-dismiss after timeout
-- [ ] Slide-in animation
-- [ ] Slide-out animation
+## Phase 5 — UX & Product Polish
+
+### 🎨 Interface
+- [ ] Snappy responsive UX — audit all interactions for lag
+- [ ] Skeleton loaders for every async view
+- [ ] Micro-animations (fade-in, slide-up, scale-pop)
+- [ ] Focus-visible outlines + high-contrast mode
+- [ ] ARIA live regions for screen readers
+- [ ] Mobile-friendly sidebar layout (if applicable)
+
+### 🖼️ Branding
+- [ ] Logo finalization (avatar, toolbar icon, options page)
+- [ ] Consistent icon set across all views
+- [ ] Extension store assets (screenshots, promo tiles, description)
+
+### 🚀 Onboarding
+- [ ] On-install explainer page (welcome flow)
+- [ ] First-scan guided walkthrough
+- [ ] Tooltip hints for new users
+- [ ] API key setup wizard with validation
 
 ---
 
-## 🔍 Insight Finder Modal
-- [ ] **Overlay backdrop**
-- [ ] **Modal Container**
-    - [ ] 🔍 Icon
-    - [ ] "Insight Finder" title
-    - [ ] "Semantic spotlight on key chat elements" subtitle
-    - [ ] ✕ Close button
-- [ ] **Left Panel - Categories**
-    - [ ] ⚖️ Comparisons category (with count)
-    - [ ] ⚠️ Contradictions category (with count)
-    - [ ] ✓ Requirements category (with count)
-    - [ ] 📋 Todos category (with count)
-    - [ ] 🗑️ Deprecated category (with count)
-- [ ] **Right Panel - Snippets**
-    - [ ] Snippet cards with:
-        - [ ] Role icon (👤 User / 🤖 AI)
-        - [ ] Message index
-        - [ ] Snippet text
-    - [ ] Click to scroll to message
-    - [ ] Hover effects
-- [ ] **Theme synchronization**
+## Phase 6 — Productization
+
+### 🔐 Auth & Login
+- [ ] Login page UI
+- [ ] Auth provider integration (Google / GitHub OAuth)
+- [ ] Session management (token refresh, logout)
+- [ ] Account settings page
+
+### 💳 Token Management & Freemium
+- [ ] Token quota system (free tier limits, paid tiers)
+- [ ] Usage meter in sidebar / popup
+- [ ] Upgrade prompt when quota approached
+- [ ] Payment integration (Stripe or equivalent)
+- [ ] Server-side quota enforcement
+
+### 📦 Ship It
+- [ ] Chrome Web Store listing preparation
+- [ ] Privacy policy + terms of service pages
+- [ ] Version bump and changelog
+- [ ] CI/CD pipeline (lint, test, build, package .crx)
+- [ ] Staged rollout plan (beta → public)
 
 ---
 
-## 🛡️ Accessibility & UX Features
-- [ ] **Skeleton Loaders**
-    - [ ] Shimmer animation
-- [ ] **Micro-animations**
-    - [ ] Fade-in animation
-    - [ ] Slide-up animation
-    - [ ] Scale-pop animation
-    - [ ] Transition styles
-- [ ] **Focus States**
-    - [ ] Focus-visible outlines
-    - [ ] High-contrast mode support
-- [ ] **ARIA Live Region**
-    - [ ] Announcements for screen readers
-- [ ] **Error Banner**
-    - [ ] Error display
-    - [ ] Retry button
-    - [ ] Report Issue button
-    - [ ] Debug info collection
-
----
-
-## 🔌 Platform Adapters
-- [ ] ChatGPT adapter
-- [ ] Gemini adapter
-- [ ] Claude adapter
-- [ ] Mistral adapter
-- [ ] DeepSeek adapter
-- [ ] Perplexity adapter
-- [ ] Poe adapter
-- [ ] xAI/Grok adapter
-- [ ] Copilot adapter
-- [ ] Bing adapter
-- [ ] Meta AI adapter
-- [ ] HuggingChat adapter
-- [ ] You.com adapter
-- [ ] Phind adapter
-- [ ] Character.AI adapter
-- [ ] Replika adapter
-- [ ] Jasper adapter
-- [ ] Writesonic adapter
-- [ ] Forefront adapter
-- [ ] Open-Assistant adapter
-- [ ] Kuki adapter
-
----
-
-## 🧠 Core Systems
-### RAG Engine
-- [ ] Embedding generation
-- [ ] Vector storage
-- [ ] Semantic search
-- [ ] Caching layer
-- [ ] Lazy initialization
-
-### MCP Bridge
-- [ ] Resource handlers
-- [ ] Method handlers
-- [ ] Lazy initialization
-
-### Segment Engine
-- [ ] Message segmentation
-- [ ] Timestamp handling
-- [ ] Topic extraction
-
-### Memory Retrieval
-- [ ] Search with filters
-- [ ] Deduplication logic
-- [ ] Relevance scoring
-
-### Intent Analyzer
-- [ ] Intent detection
-- [ ] Category classification
-
----
-
-## 🔄 Background Service
-- [ ] Message handlers
-- [ ] API key storage
-- [ ] Conversation persistence
-- [ ] Vector store management
-- [ ] LLM API calls (Llama, Gemini)
-- [ ] Translation API calls (EuroLLM)
-- [ ] Issue reporting
-- [ ] Migration handlers
-
----
-
-- [ ] Theme persistence in storage
-
-
-## 🔒 Security Features
-- [ ] XSS sanitization
-- [ ] Input validation
-- [ ] Secure API key storage
-- [ ] Content Security Policy compliance
-
-**Legend:**
-- [ ] = Not started / In progress
-- [x] = Completed
+_Keep this file updated as items are completed. Mark `[-]` when actively working on something._
