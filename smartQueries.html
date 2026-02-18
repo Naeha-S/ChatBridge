@@ -141,41 +141,111 @@
             border-color: rgba(59, 130, 246, 0.6);
         }
 
-        body.light-mode {
+        body.sq-theme-light {
             background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 50%, #f8fafc 100%);
         }
 
-        body.light-mode .demo-header h1 {
+        body.sq-theme-light .demo-header h1 {
             background: linear-gradient(135deg, #2563eb 0%, #7c3aed 50%, #2563eb 100%);
             -webkit-background-clip: text;
             background-clip: text;
             -webkit-text-fill-color: transparent;
         }
 
-        body.light-mode .demo-header p {
+        body.sq-theme-light .demo-header p {
             color: #64748b;
         }
 
-        body.light-mode #smartQueriesDemo {
+        body.sq-theme-light #smartQueriesDemo {
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.08);
             border: 1px solid #e2e8f0;
         }
 
-        body.light-mode .theme-toggle {
+        body.sq-theme-light .theme-toggle {
             background: rgba(30, 58, 138, 0.1);
             border-color: rgba(30, 58, 138, 0.3);
             color: #1e3a8a;
         }
 
-        body.light-mode .theme-toggle:hover {
+        body.sq-theme-light .theme-toggle:hover {
             background: rgba(30, 58, 138, 0.2);
             border-color: rgba(30, 58, 138, 0.5);
+        }
+
+        body.sq-theme-skeuomorphic {
+            background: linear-gradient(180deg, #c8c8c8, #b0b0b0);
+        }
+        body.sq-theme-skeuomorphic .demo-header h1 {
+            background: none; -webkit-text-fill-color: #333;
+            text-shadow: 0 1px 0 rgba(255,255,255,0.7);
+        }
+        body.sq-theme-skeuomorphic .demo-header p { color: #555; }
+        body.sq-theme-skeuomorphic #smartQueriesDemo {
+            box-shadow: inset 1px 1px 0 rgba(255,255,255,0.4), 0 4px 12px rgba(0,0,0,0.2);
+            border: 2px solid #aaa;
+        }
+        body.sq-theme-skeuomorphic .theme-toggle {
+            background: linear-gradient(180deg, #e0e0e0, #c8c8c8);
+            border: 1px solid #999; color: #333;
+        }
+
+        body.sq-theme-brutalism {
+            background: #FFFBEB;
+        }
+        body.sq-theme-brutalism .demo-header h1 {
+            background: none; -webkit-text-fill-color: #000; font-weight: 900;
+        }
+        body.sq-theme-brutalism .demo-header p { color: #1a1a1a; }
+        body.sq-theme-brutalism #smartQueriesDemo {
+            border: 3px solid #000; box-shadow: 8px 8px 0 #000; border-radius: 4px;
+        }
+        body.sq-theme-brutalism .theme-toggle {
+            background: #fff; border: 2px solid #000; color: #000;
+            box-shadow: 2px 2px 0 #000; border-radius: 0;
+        }
+        body.sq-theme-brutalism .theme-toggle:hover {
+            background: #FFE156; transform: translate(-2px,-2px); box-shadow: 4px 4px 0 #000;
+        }
+
+        body.sq-theme-synthwave {
+            background: linear-gradient(180deg, #1a0a2e, #0d0520);
+        }
+        body.sq-theme-synthwave .demo-header h1 {
+            background: linear-gradient(135deg, #FF2D95, #00F0FF);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 0 8px rgba(255,45,149,0.5));
+        }
+        body.sq-theme-synthwave .demo-header p { color: #b794f6; }
+        body.sq-theme-synthwave #smartQueriesDemo {
+            border: 1px solid rgba(255,45,149,0.25);
+            box-shadow: 0 0 30px rgba(255,45,149,0.15);
+        }
+        body.sq-theme-synthwave .theme-toggle {
+            background: rgba(255,45,149,0.1); border-color: rgba(255,45,149,0.3); color: #f0e6ff;
+        }
+
+        body.sq-theme-glass {
+            background: linear-gradient(135deg, #eef2f7, #f8fafc);
+        }
+        body.sq-theme-glass .demo-header h1 {
+            background: linear-gradient(135deg, #7dd3fc, #c4b5fd, #a5f3fc);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        body.sq-theme-glass .demo-header p { color: #475569; }
+        body.sq-theme-glass #smartQueriesDemo {
+            border: 1px solid rgba(255,255,255,0.3);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.06);
+            backdrop-filter: blur(16px);
+        }
+        body.sq-theme-glass .theme-toggle {
+            background: rgba(255,255,255,0.2); border-color: rgba(255,255,255,0.3); color: #475569;
+            backdrop-filter: blur(8px);
         }
     </style>
 </head>
 
 <body>
-    <button class="theme-toggle" onclick="toggleTheme()">🌙 Dark</button>
+    <button class="theme-toggle" id="sq-theme-toggle">🎨 Theme</button>
 
     <div class="demo-container">
         <div class="demo-header">
@@ -202,18 +272,39 @@
 
     <script src="smartQueries.js"></script>
     <script>
-        // Theme toggle
-        function toggleTheme() {
-            document.body.classList.toggle('light-mode');
-            const isDark = !document.body.classList.contains('light-mode');
-            localStorage.setItem('sq-theme-dark', isDark);
-            document.querySelector('.theme-toggle').textContent = isDark ? '🌙 Dark' : '☀️ Light';
+        // Theme cycling via cb_theme storage
+        const SQ_THEMES = ['dark', 'light', 'synthwave', 'skeuomorphic', 'brutalism', 'glass'];
+        const SQ_THEME_LABELS = { dark: '🌙 Dark', light: '☀️ Light', synthwave: '🌆 Synthwave', skeuomorphic: '🔩 Skeuomorphic', brutalism: '🧱 Brutalism', glass: '💎 Glass' };
+        let sqCurrentTheme = 'dark';
+
+        function applySqTheme(theme) {
+            SQ_THEMES.forEach(t => document.body.classList.remove('sq-theme-' + t));
+            if (theme !== 'dark') document.body.classList.add('sq-theme-' + theme);
+            sqCurrentTheme = theme;
+            const btn = document.getElementById('sq-theme-toggle');
+            if (btn) btn.textContent = SQ_THEME_LABELS[theme] || '🎨 Theme';
         }
 
-        // Load theme preference
-        if (localStorage.getItem('sq-theme-dark') === 'false') {
-            document.body.classList.add('light-mode');
-            document.querySelector('.theme-toggle').textContent = '☀️ Light';
+        document.getElementById('sq-theme-toggle').addEventListener('click', function() {
+            const idx = SQ_THEMES.indexOf(sqCurrentTheme);
+            const next = SQ_THEMES[(idx + 1) % SQ_THEMES.length];
+            applySqTheme(next);
+            try { chrome.storage.local.set({ cb_theme: next }); } catch(e) {
+                localStorage.setItem('sq-theme', next);
+            }
+        });
+
+        // Load theme from cb_theme storage
+        try {
+            chrome.storage.local.get(['cb_theme'], r => {
+                if (r && r.cb_theme) applySqTheme(r.cb_theme);
+            });
+            chrome.storage.onChanged.addListener((changes) => {
+                if (changes.cb_theme) applySqTheme(changes.cb_theme.newValue || 'dark');
+            });
+        } catch(e) {
+            const saved = localStorage.getItem('sq-theme');
+            if (saved) applySqTheme(saved);
         }
 
         // Mock chrome.runtime for demo

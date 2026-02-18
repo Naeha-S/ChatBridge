@@ -44,6 +44,215 @@
       --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.05);
     }
 
+    /* ===== Skeuomorphic Theme ===== */
+    .theme-skeuomorphic {
+      --bg-base: #c0c0c0;
+      --bg-elevated: #d4d4d4;
+      --bg-card: #d0d0d0;
+      --bg-card-hover: #dcdcdc;
+      --bg-input: #ffffff;
+      --text-primary: #1a1a1a;
+      --text-secondary: #4a4a4a;
+      --text-muted: #777;
+      --border: rgba(0, 0, 0, 0.2);
+      --accent-1: #4a90d9;
+      --accent-2: #6a7b8a;
+      --glass: linear-gradient(180deg, #d0d0d0, #c0c0c0);
+      --glass: #c8c8c8;
+      --glass-border: rgba(0, 0, 0, 0.15);
+      --shadow-sm: inset 1px 1px 0 rgba(255,255,255,0.5), 0 2px 6px rgba(0,0,0,0.15);
+      --gradient: linear-gradient(135deg, #5a9bd5, #6a7b8a);
+    }
+    .theme-skeuomorphic .sidebar {
+      background: linear-gradient(180deg, #c8c8c8 0%, #b8b8b8 100%);
+      backdrop-filter: none;
+    }
+    .theme-skeuomorphic .list-item {
+      background: linear-gradient(180deg, #d6d6d6 0%, #c8c8c8 100%);
+      border: 1px solid #aaa;
+      border-top-color: #e0e0e0;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.6), 0 1px 3px rgba(0,0,0,0.12);
+    }
+    .theme-skeuomorphic .list-item:hover {
+      background: linear-gradient(180deg, #e0e0e0 0%, #d4d4d4 100%);
+    }
+    .theme-skeuomorphic .chip {
+      background: linear-gradient(180deg, #d0d0d0, #bbb);
+      border: 1px solid #999;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.5);
+      color: #333;
+    }
+    .theme-skeuomorphic .search-input {
+      background: #fff;
+      border: 2px solid #aaa;
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+      color: #333;
+    }
+    .theme-skeuomorphic .bubble {
+      background: linear-gradient(180deg, #e0e0e0, #ccc);
+      border: 1px solid #aaa;
+    }
+
+    /* ===== Neo Brutalism Theme ===== */
+    .theme-brutalism {
+      --bg-base: #FFFBEB;
+      --bg-elevated: #FFFFFF;
+      --bg-card: #FFFFFF;
+      --bg-card-hover: #FEF3C7;
+      --bg-input: #FFFFFF;
+      --text-primary: #000000;
+      --text-secondary: #1a1a1a;
+      --text-muted: #555;
+      --border: #000000;
+      --accent-1: #FF6B9D;
+      --accent-2: #4ECDC4;
+      --glass: #FEF3C7;
+      --glass-border: #000;
+      --shadow-sm: 3px 3px 0 #000;
+      --gradient: linear-gradient(135deg, #FF6B9D, #4ECDC4);
+    }
+    .theme-brutalism .sidebar {
+      background: #FEF3C7;
+      border-right: 3px solid #000;
+      backdrop-filter: none;
+    }
+    .theme-brutalism .list-item {
+      background: #fff;
+      border: 2px solid #000;
+      box-shadow: 3px 3px 0 #000;
+      border-radius: 0;
+    }
+    .theme-brutalism .list-item:hover {
+      background: #FFE156;
+      transform: translate(-2px, -2px);
+      box-shadow: 5px 5px 0 #000;
+    }
+    .theme-brutalism .chip {
+      background: #4ECDC4;
+      color: #000;
+      border: 1px solid #000;
+      border-radius: 0;
+      font-weight: 800;
+    }
+    .theme-brutalism .search-input {
+      background: #fff;
+      border: 2px solid #000;
+      color: #000;
+      border-radius: 0;
+    }
+    .theme-brutalism .bubble {
+      background: #fff;
+      border: 2px solid #000;
+      box-shadow: 2px 2px 0 #000;
+      border-radius: 4px;
+    }
+
+    /* ===== Synthwave Theme ===== */
+    .theme-synthwave {
+      --bg-base: #1a0a2e;
+      --bg-elevated: #2d1b69;
+      --bg-card: rgba(45, 27, 105, 0.6);
+      --bg-card-hover: rgba(45, 27, 105, 0.8);
+      --bg-input: rgba(26, 10, 46, 0.8);
+      --text-primary: #f0e6ff;
+      --text-secondary: #b794f6;
+      --text-muted: #7c5cbf;
+      --border: rgba(255, 45, 149, 0.25);
+      --accent-1: #FF2D95;
+      --accent-2: #00F0FF;
+      --glass: rgba(45, 27, 105, 0.5);
+      --glass-border: rgba(255, 45, 149, 0.2);
+      --shadow-sm: 0 0 15px rgba(255, 45, 149, 0.1);
+      --gradient: linear-gradient(135deg, #FF2D95, #00F0FF);
+    }
+    .theme-synthwave .sidebar {
+      background: linear-gradient(180deg, #1a0a2e 0%, #16082b 100%);
+      backdrop-filter: none;
+    }
+    .theme-synthwave .list-item {
+      background: rgba(45, 27, 105, 0.4);
+      border: 1px solid rgba(255, 45, 149, 0.15);
+    }
+    .theme-synthwave .list-item:hover {
+      background: rgba(255, 45, 149, 0.1);
+      border-color: rgba(255, 45, 149, 0.4);
+      box-shadow: 0 0 15px rgba(255, 45, 149, 0.15);
+    }
+    .theme-synthwave .chip {
+      background: rgba(255, 45, 149, 0.1);
+      border: 1px solid rgba(255, 45, 149, 0.25);
+      color: #FF2D95;
+    }
+    .theme-synthwave .search-input {
+      background: rgba(26, 10, 46, 0.6);
+      border: 1px solid rgba(255, 45, 149, 0.25);
+      color: #f0e6ff;
+    }
+    .theme-synthwave .search-input:focus {
+      border-color: #FF2D95;
+      box-shadow: 0 0 15px rgba(255, 45, 149, 0.3);
+    }
+    .theme-synthwave .bubble {
+      background: rgba(45, 27, 105, 0.5);
+      border: 1px solid rgba(255, 45, 149, 0.2);
+    }
+
+    /* ===== Liquid Glass Theme ===== */
+    .theme-glass {
+      --bg-base: #eef2f7;
+      --bg-elevated: rgba(255, 255, 255, 0.6);
+      --bg-card: rgba(255, 255, 255, 0.3);
+      --bg-card-hover: rgba(255, 255, 255, 0.45);
+      --bg-input: rgba(255, 255, 255, 0.3);
+      --text-primary: #0f172a;
+      --text-secondary: #475569;
+      --text-muted: #94a3b8;
+      --border: rgba(255, 255, 255, 0.3);
+      --accent-1: #7dd3fc;
+      --accent-2: #c4b5fd;
+      --glass: rgba(255, 255, 255, 0.2);
+      --glass-border: rgba(255, 255, 255, 0.25);
+      --shadow-sm: 0 4px 16px rgba(0,0,0,0.04), inset 0 1px 0 rgba(255,255,255,0.4);
+      --gradient: linear-gradient(135deg, #7dd3fc, #c4b5fd, #a5f3fc);
+    }
+    .theme-glass .sidebar {
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(24px) saturate(1.8);
+      -webkit-backdrop-filter: blur(24px) saturate(1.8);
+      border-right: 1px solid rgba(255, 255, 255, 0.25);
+    }
+    .theme-glass .list-item {
+      background: rgba(255, 255, 255, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      backdrop-filter: blur(10px);
+    }
+    .theme-glass .list-item:hover {
+      background: rgba(255, 255, 255, 0.25);
+      border-color: rgba(125, 211, 252, 0.3);
+      box-shadow: 0 4px 16px rgba(125, 211, 252, 0.12);
+    }
+    .theme-glass .chip {
+      background: rgba(255, 255, 255, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      color: #475569;
+      backdrop-filter: blur(8px);
+    }
+    .theme-glass .search-input {
+      background: rgba(255, 255, 255, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      color: #1e293b;
+      backdrop-filter: blur(8px);
+    }
+    .theme-glass .search-input:focus {
+      border-color: rgba(125, 211, 252, 0.5);
+      box-shadow: 0 0 0 3px rgba(125, 211, 252, 0.15);
+    }
+    .theme-glass .bubble {
+      background: rgba(255, 255, 255, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      backdrop-filter: blur(10px);
+    }
+
     * {
       box-sizing: border-box;
       margin: 0;

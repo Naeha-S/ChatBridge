@@ -60,8 +60,10 @@
   function loadTheme() {
     try {
       chrome.storage.local.get(['cb_theme'], (result) => {
-        if (result && result.cb_theme === 'light') {
-          document.body.classList.add('cb-theme-light');
+        const theme = result && result.cb_theme ? result.cb_theme : 'dark';
+        document.body.classList.remove('cb-theme-light', 'cb-theme-synthwave', 'cb-theme-skeuomorphic', 'cb-theme-brutalism', 'cb-theme-glass');
+        if (theme !== 'dark') {
+          document.body.classList.add('cb-theme-' + theme);
         }
       });
     } catch (e) {

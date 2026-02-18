@@ -50,6 +50,360 @@
       --glow-2: rgba(124, 58, 237, 0.08);
     }
 
+    /* ===== Skeuomorphic Theme ===== */
+    .theme-skeuomorphic {
+      --bg-base: #c0c0c0;
+      --bg-elevated: #d4d4d4;
+      --bg-card: linear-gradient(180deg, #d6d6d6 0%, #c0c0c0 100%);
+      --bg-card: #d0d0d0;
+      --bg-card-hover: #dcdcdc;
+      --bg-input: #ffffff;
+      --text-primary: #1a1a1a;
+      --text-secondary: #4a4a4a;
+      --text-muted: #777;
+      --border: rgba(0, 0, 0, 0.2);
+      --border-focus: rgba(74, 144, 217, 0.6);
+      --accent-1: #4a90d9;
+      --accent-2: #6a7b8a;
+      --success: #27ae60;
+      --warning: #e67e22;
+      --error: #c0392b;
+      --gradient: linear-gradient(135deg, #5a9bd5, #6a7b8a);
+      --glow-1: rgba(74, 144, 217, 0.08);
+      --glow-2: rgba(106, 123, 138, 0.08);
+    }
+    .theme-skeuomorphic .sidebar {
+      background: linear-gradient(180deg, #c8c8c8 0%, #b8b8b8 100%);
+      border-right: 2px ridge #aaa;
+    }
+    .theme-skeuomorphic .card {
+      background: linear-gradient(180deg, #d6d6d6 0%, #c5c5c5 100%);
+      border: 1px solid #aaa;
+      border-top-color: #e0e0e0;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.5), 0 2px 6px rgba(0,0,0,0.15);
+      backdrop-filter: none;
+    }
+    .theme-skeuomorphic .card:hover {
+      background: linear-gradient(180deg, #e0e0e0 0%, #d0d0d0 100%);
+    }
+    .theme-skeuomorphic .btn {
+      background: linear-gradient(180deg, #e0e0e0, #c8c8c8);
+      border: 1px solid #999;
+      border-top-color: #ddd;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.7), 0 1px 3px rgba(0,0,0,0.15);
+      text-shadow: 0 1px 0 rgba(255,255,255,0.5);
+      color: #333;
+    }
+    .theme-skeuomorphic .btn:hover { background: linear-gradient(180deg, #eee, #d8d8d8); }
+    .theme-skeuomorphic .btn:active {
+      background: linear-gradient(180deg, #bbb, #ccc);
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+    }
+    .theme-skeuomorphic .btn.primary {
+      background: linear-gradient(180deg, #5da0e0, #3a7cc0);
+      border-color: #2e6da4;
+      color: #fff;
+      text-shadow: 0 -1px 0 rgba(0,0,0,0.3);
+    }
+    .theme-skeuomorphic input, .theme-skeuomorphic select, .theme-skeuomorphic textarea {
+      background: #fff;
+      border: 2px solid #aaa;
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+      color: #333;
+    }
+    .theme-skeuomorphic .nav-item.active {
+      background: linear-gradient(180deg, #d0d0d0, #c0c0c0);
+      box-shadow: inset 0 1px 3px rgba(0,0,0,0.15), inset 0 0 0 1px rgba(0,0,0,0.05);
+      border: 1px solid #aaa;
+    }
+    .theme-skeuomorphic .stat-item {
+      background: linear-gradient(180deg, #d4d4d4, #c4c4c4);
+      border: 1px solid #aaa;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.5);
+    }
+    .theme-skeuomorphic .theme-pill {
+      background: linear-gradient(180deg, #d0d0d0, #bbb);
+      border: 1px solid #999;
+    }
+    .theme-skeuomorphic .toggle-track {
+      background: linear-gradient(180deg, #aaa, #999);
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+    }
+
+    /* ===== Neo Brutalism Theme ===== */
+    .theme-brutalism {
+      --bg-base: #FFFBEB;
+      --bg-elevated: #FFFFFF;
+      --bg-card: #FFFFFF;
+      --bg-card-hover: #FEF3C7;
+      --bg-input: #FFFFFF;
+      --text-primary: #000000;
+      --text-secondary: #1a1a1a;
+      --text-muted: #555555;
+      --border: #000000;
+      --border-focus: #FF6B9D;
+      --accent-1: #FF6B9D;
+      --accent-2: #4ECDC4;
+      --success: #00CC00;
+      --warning: #FF8800;
+      --error: #FF0000;
+      --gradient: linear-gradient(135deg, #FF6B9D, #4ECDC4);
+      --glow-1: transparent;
+      --glow-2: transparent;
+    }
+    .theme-brutalism .sidebar {
+      background: #FEF3C7;
+      border-right: 3px solid #000;
+      backdrop-filter: none;
+    }
+    .theme-brutalism .card {
+      background: #fff;
+      border: 3px solid #000;
+      box-shadow: 6px 6px 0 #000;
+      border-radius: 4px;
+      backdrop-filter: none;
+    }
+    .theme-brutalism .card:hover {
+      transform: translate(-2px, -2px);
+      box-shadow: 8px 8px 0 #000;
+    }
+    .theme-brutalism .btn {
+      background: #fff;
+      border: 2px solid #000 !important;
+      box-shadow: 3px 3px 0 #000;
+      color: #000 !important;
+      font-weight: 800;
+      text-transform: uppercase;
+      border-radius: 0;
+    }
+    .theme-brutalism .btn:hover {
+      background: #FFE156;
+      transform: translate(-2px, -2px);
+      box-shadow: 5px 5px 0 #000;
+    }
+    .theme-brutalism .btn:active {
+      transform: translate(2px, 2px);
+      box-shadow: 1px 1px 0 #000;
+    }
+    .theme-brutalism .btn.primary {
+      background: #FF6B9D !important;
+      color: #000 !important;
+      box-shadow: 4px 4px 0 #000;
+    }
+    .theme-brutalism .btn.primary:hover {
+      background: #ff85b1 !important;
+      box-shadow: 6px 6px 0 #000;
+    }
+    .theme-brutalism input, .theme-brutalism select, .theme-brutalism textarea {
+      border: 2px solid #000;
+      background: #fff;
+      color: #000;
+      border-radius: 0;
+      box-shadow: inset 2px 2px 0 rgba(0,0,0,0.06);
+    }
+    .theme-brutalism .nav-item {
+      border-radius: 0;
+    }
+    .theme-brutalism .nav-item.active {
+      background: #FFE156;
+      border: 2px solid #000;
+      box-shadow: 2px 2px 0 #000;
+    }
+    .theme-brutalism .stat-item {
+      background: #fff;
+      border: 2px solid #000;
+      box-shadow: 3px 3px 0 #000;
+      border-radius: 0;
+    }
+    .theme-brutalism .theme-pill {
+      border: 2px solid #000;
+      box-shadow: 2px 2px 0 #000;
+      border-radius: 0;
+    }
+    .theme-brutalism .theme-pill.active {
+      background: #4ECDC4;
+      box-shadow: 3px 3px 0 #000;
+    }
+    .theme-brutalism .toggle-track {
+      border: 2px solid #000;
+      border-radius: 4px;
+    }
+    .theme-brutalism .logo-glow { display: none; }
+    .theme-brutalism body::before { display: none; }
+
+    /* ===== Synthwave Theme ===== */
+    .theme-synthwave {
+      --bg-base: #1a0a2e;
+      --bg-elevated: #2d1b69;
+      --bg-card: rgba(45, 27, 105, 0.6);
+      --bg-card-hover: rgba(45, 27, 105, 0.8);
+      --bg-input: rgba(26, 10, 46, 0.8);
+      --text-primary: #f0e6ff;
+      --text-secondary: #b794f6;
+      --text-muted: #7c5cbf;
+      --border: rgba(255, 45, 149, 0.25);
+      --border-focus: rgba(255, 45, 149, 0.6);
+      --accent-1: #FF2D95;
+      --accent-2: #00F0FF;
+      --success: #7bed9f;
+      --warning: #ffa502;
+      --error: #ff4757;
+      --gradient: linear-gradient(135deg, #FF2D95, #00F0FF);
+      --glow-1: rgba(255, 45, 149, 0.12);
+      --glow-2: rgba(0, 240, 255, 0.08);
+    }
+    .theme-synthwave .sidebar {
+      background: linear-gradient(180deg, #1a0a2e 0%, #16082b 100%);
+      border-right: 1px solid rgba(255, 45, 149, 0.25);
+      backdrop-filter: none;
+    }
+    .theme-synthwave .card {
+      background: rgba(45, 27, 105, 0.5);
+      border: 1px solid rgba(255, 45, 149, 0.2);
+      box-shadow: 0 0 15px rgba(255, 45, 149, 0.08);
+      backdrop-filter: none;
+    }
+    .theme-synthwave .card:hover {
+      border-color: rgba(255, 45, 149, 0.4);
+      box-shadow: 0 0 25px rgba(255, 45, 149, 0.15);
+    }
+    .theme-synthwave .btn {
+      background: rgba(255, 45, 149, 0.1);
+      border: 1px solid rgba(255, 45, 149, 0.3);
+      color: #f0e6ff;
+      box-shadow: 0 0 8px rgba(255, 45, 149, 0.15);
+    }
+    .theme-synthwave .btn:hover {
+      background: rgba(255, 45, 149, 0.2);
+      box-shadow: 0 0 20px rgba(255, 45, 149, 0.3), 0 0 10px rgba(0, 240, 255, 0.2);
+      text-shadow: 0 0 8px rgba(255, 45, 149, 0.5);
+    }
+    .theme-synthwave .btn.primary {
+      background: linear-gradient(135deg, #FF2D95, #ff6ec7);
+      border: 1px solid rgba(255, 45, 149, 0.5);
+      box-shadow: 0 0 20px rgba(255, 45, 149, 0.4), 0 0 40px rgba(255, 45, 149, 0.2);
+      color: #fff;
+    }
+    .theme-synthwave input, .theme-synthwave select, .theme-synthwave textarea {
+      background: rgba(26, 10, 46, 0.6);
+      border: 1px solid rgba(255, 45, 149, 0.25);
+      color: #f0e6ff;
+    }
+    .theme-synthwave input:focus, .theme-synthwave select:focus, .theme-synthwave textarea:focus {
+      border-color: #FF2D95;
+      box-shadow: 0 0 15px rgba(255, 45, 149, 0.3);
+    }
+    .theme-synthwave .nav-item.active {
+      background: rgba(255, 45, 149, 0.12);
+      border-color: rgba(255, 45, 149, 0.3);
+      box-shadow: 0 0 12px rgba(255, 45, 149, 0.15);
+    }
+    .theme-synthwave .stat-item {
+      background: rgba(45, 27, 105, 0.4);
+      border: 1px solid rgba(255, 45, 149, 0.15);
+    }
+    .theme-synthwave .theme-pill {
+      border-color: rgba(255, 45, 149, 0.2);
+    }
+    .theme-synthwave .theme-pill.active {
+      border-color: rgba(255, 45, 149, 0.5);
+      box-shadow: 0 0 15px rgba(255, 45, 149, 0.25);
+    }
+    .theme-synthwave .toggle-track {
+      background: rgba(45, 27, 105, 0.6);
+      border: 1px solid rgba(255, 45, 149, 0.3);
+    }
+
+    /* ===== Liquid Glass Theme ===== */
+    .theme-glass {
+      --bg-base: #eef2f7;
+      --bg-elevated: rgba(255, 255, 255, 0.6);
+      --bg-card: rgba(255, 255, 255, 0.35);
+      --bg-card-hover: rgba(255, 255, 255, 0.5);
+      --bg-input: rgba(255, 255, 255, 0.3);
+      --text-primary: #0f172a;
+      --text-secondary: #475569;
+      --text-muted: #94a3b8;
+      --border: rgba(255, 255, 255, 0.3);
+      --border-focus: rgba(125, 211, 252, 0.5);
+      --accent-1: #7dd3fc;
+      --accent-2: #c4b5fd;
+      --success: #34d399;
+      --warning: #fbbf24;
+      --error: #f87171;
+      --gradient: linear-gradient(135deg, #7dd3fc, #c4b5fd, #a5f3fc);
+      --glow-1: rgba(125, 211, 252, 0.12);
+      --glow-2: rgba(196, 181, 253, 0.12);
+    }
+    .theme-glass .sidebar {
+      background: rgba(255, 255, 255, 0.2);
+      border-right: 1px solid rgba(255, 255, 255, 0.3);
+      backdrop-filter: blur(24px) saturate(1.8);
+      -webkit-backdrop-filter: blur(24px) saturate(1.8);
+    }
+    .theme-glass .card {
+      background: rgba(255, 255, 255, 0.25);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.04), inset 0 1px 0 rgba(255,255,255,0.5);
+      backdrop-filter: blur(16px) saturate(1.5);
+      -webkit-backdrop-filter: blur(16px) saturate(1.5);
+    }
+    .theme-glass .card:hover {
+      background: rgba(255, 255, 255, 0.35);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.6);
+    }
+    .theme-glass .btn {
+      background: rgba(255, 255, 255, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      color: #1e293b;
+      backdrop-filter: blur(12px);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.4), 0 2px 8px rgba(0,0,0,0.04);
+    }
+    .theme-glass .btn:hover {
+      background: rgba(255, 255, 255, 0.35);
+      border-color: rgba(125, 211, 252, 0.4);
+      box-shadow: 0 4px 16px rgba(125, 211, 252, 0.15);
+    }
+    .theme-glass .btn.primary {
+      background: linear-gradient(135deg, rgba(125, 211, 252, 0.5), rgba(196, 181, 253, 0.5));
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      color: #0f172a;
+      box-shadow: 0 4px 16px rgba(125, 211, 252, 0.2);
+    }
+    .theme-glass input, .theme-glass select, .theme-glass textarea {
+      background: rgba(255, 255, 255, 0.25);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      color: #1e293b;
+      backdrop-filter: blur(8px);
+    }
+    .theme-glass input:focus, .theme-glass select:focus, .theme-glass textarea:focus {
+      border-color: rgba(125, 211, 252, 0.5);
+      box-shadow: 0 0 0 3px rgba(125, 211, 252, 0.15);
+    }
+    .theme-glass .nav-item.active {
+      background: rgba(255, 255, 255, 0.2);
+      border-color: rgba(125, 211, 252, 0.3);
+      backdrop-filter: blur(12px);
+    }
+    .theme-glass .stat-item {
+      background: rgba(255, 255, 255, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      backdrop-filter: blur(10px);
+    }
+    .theme-glass .theme-pill {
+      background: rgba(255, 255, 255, 0.15);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+    .theme-glass .theme-pill.active {
+      border-color: rgba(125, 211, 252, 0.4);
+      box-shadow: 0 2px 12px rgba(125, 211, 252, 0.15);
+    }
+    .theme-glass .toggle-track {
+      background: rgba(255, 255, 255, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      backdrop-filter: blur(8px);
+    }
+
     html,
     body {
       height: 100%;
@@ -585,11 +939,25 @@
     }
 
     .theme-preview.synthwave {
-      background: linear-gradient(135deg, #2d1b4e, #ff6ec7);
+      background: linear-gradient(135deg, #1a0a2e, #FF2D95);
     }
 
-    .theme-preview.aurora {
-      background: linear-gradient(135deg, #0f3443, #34e89e);
+    .theme-preview.skeuomorphic {
+      background: linear-gradient(180deg, #d8d8d8, #b0b0b0);
+      border-color: rgba(0, 0, 0, 0.2);
+    }
+
+    .theme-preview.brutalism {
+      background: #FFFBEB;
+      border: 2px solid #000;
+      box-shadow: 2px 2px 0 #000;
+      border-radius: 2px;
+    }
+
+    .theme-preview.glass {
+      background: linear-gradient(135deg, rgba(125,211,252,0.3), rgba(196,181,253,0.3));
+      backdrop-filter: blur(4px);
+      border-color: rgba(255,255,255,0.4);
     }
 
     .theme-name {
@@ -1099,10 +1467,20 @@
               <div class="theme-preview synthwave"></div>
               <span class="theme-name">Synthwave</span>
             </label>
-            <label class="theme-pill" data-theme="aurora">
-              <input type="radio" name="cb-theme" value="aurora" />
-              <div class="theme-preview aurora"></div>
-              <span class="theme-name">Aurora</span>
+            <label class="theme-pill" data-theme="skeuomorphic">
+              <input type="radio" name="cb-theme" value="skeuomorphic" />
+              <div class="theme-preview skeuomorphic"></div>
+              <span class="theme-name">Skeuomorphic</span>
+            </label>
+            <label class="theme-pill" data-theme="brutalism">
+              <input type="radio" name="cb-theme" value="brutalism" />
+              <div class="theme-preview brutalism"></div>
+              <span class="theme-name">Brutalism</span>
+            </label>
+            <label class="theme-pill" data-theme="glass">
+              <input type="radio" name="cb-theme" value="glass" />
+              <div class="theme-preview glass"></div>
+              <span class="theme-name">Glass</span>
             </label>
           </div>
         </div>

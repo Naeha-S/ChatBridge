@@ -496,8 +496,10 @@
   });
 
   function applyPageTheme(theme) {
-    document.body.classList.remove('theme-light', 'theme-synthwave', 'theme-aurora');
-    if (theme === 'light') document.body.classList.add('theme-light');
+    document.body.classList.remove('theme-light', 'theme-synthwave', 'theme-skeuomorphic', 'theme-brutalism', 'theme-glass');
+    if (theme !== 'dark') {
+      document.body.classList.add('theme-' + theme);
+    }
   }
 
   // ============================================

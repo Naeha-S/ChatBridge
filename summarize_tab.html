@@ -8,6 +8,24 @@
     :root { --cb-bg: #0A0F1C; --cb-bg2: #10182B; --cb-white: #E6E9F0; --cb-subtext: #A0A7B5; --cb-accent-primary: #00B4FF; --cb-accent-secondary: #8C1EFF; }
     body { font-family: 'Bebas Neue', system-ui, -apple-system, "Segoe UI", Roboto, Arial; letter-spacing:0.5px; margin:0; padding:16px; width:340px; background: linear-gradient(145deg, var(--cb-bg), var(--cb-bg2)); color: var(--cb-white); }
     body.cb-theme-light { --cb-bg: #FFFFFF; --cb-bg2: #F5F7FB; --cb-white: #0F1720; --cb-subtext: #334155; }
+    body.cb-theme-skeuomorphic { --cb-bg: #c0c0c0; --cb-bg2: #d4d4d4; --cb-white: #1a1a1a; --cb-subtext: #4a4a4a; --cb-accent-primary: #4a90d9; --cb-accent-secondary: #6a7b8a; }
+    body.cb-theme-skeuomorphic select, body.cb-theme-skeuomorphic button { background: linear-gradient(180deg, #e0e0e0, #c8c8c8); border: 1px solid #999; color: #333; box-shadow: inset 0 1px 0 rgba(255,255,255,0.6); }
+    body.cb-theme-skeuomorphic .preview { background: #fff; border: 2px inset #bbb; box-shadow: inset 0 2px 4px rgba(0,0,0,0.1); color: #333; }
+    body.cb-theme-skeuomorphic .restore-btn { background: linear-gradient(180deg, #5da0e0, #3a7cc0); box-shadow: inset 0 1px 0 rgba(255,255,255,0.3), 0 2px 6px rgba(0,0,0,0.2); color: #fff; }
+    body.cb-theme-brutalism { --cb-bg: #FFFBEB; --cb-bg2: #FEF3C7; --cb-white: #000; --cb-subtext: #1a1a1a; --cb-accent-primary: #FF6B9D; --cb-accent-secondary: #4ECDC4; }
+    body.cb-theme-brutalism select, body.cb-theme-brutalism button { background: #fff; border: 2px solid #000; color: #000; box-shadow: 3px 3px 0 #000; border-radius: 0; font-weight: 800; text-transform: uppercase; }
+    body.cb-theme-brutalism select:hover, body.cb-theme-brutalism button:hover { background: #FFE156; transform: translate(-2px,-2px); box-shadow: 5px 5px 0 #000; }
+    body.cb-theme-brutalism .preview { background: #FEF3C7; border: 2px solid #000; box-shadow: inset 2px 2px 0 rgba(0,0,0,0.05); border-radius: 0; color: #000; }
+    body.cb-theme-brutalism .restore-btn { background: #FF6B9D; border: 3px solid #000; box-shadow: 4px 4px 0 #000; color: #000; border-radius: 0; }
+    body.cb-theme-synthwave { --cb-bg: #1a0a2e; --cb-bg2: #16082b; --cb-white: #f0e6ff; --cb-subtext: #b794f6; --cb-accent-primary: #FF2D95; --cb-accent-secondary: #00F0FF; }
+    body.cb-theme-synthwave select, body.cb-theme-synthwave button { background: rgba(45,27,105,0.5); border: 1px solid rgba(255,45,149,0.3); color: #f0e6ff; box-shadow: 0 0 8px rgba(255,45,149,0.15); }
+    body.cb-theme-synthwave select:hover, body.cb-theme-synthwave button:hover { background: rgba(255,45,149,0.15); box-shadow: 0 0 20px rgba(255,45,149,0.3); }
+    body.cb-theme-synthwave .preview { background: rgba(26,10,46,0.5); border: 1px solid rgba(255,45,149,0.2); color: #f0e6ff; }
+    body.cb-theme-synthwave .restore-btn { background: linear-gradient(135deg, #FF2D95, #00F0FF); box-shadow: 0 0 20px rgba(255,45,149,0.4); color: #fff; }
+    body.cb-theme-glass { --cb-bg: #eef2f7; --cb-bg2: rgba(255,255,255,0.4); --cb-white: #0f172a; --cb-subtext: #475569; --cb-accent-primary: #7dd3fc; --cb-accent-secondary: #c4b5fd; }
+    body.cb-theme-glass select, body.cb-theme-glass button { background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.25); color: #1e293b; backdrop-filter: blur(8px); box-shadow: inset 0 1px 0 rgba(255,255,255,0.4); }
+    body.cb-theme-glass .preview { background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2); color: #1e293b; backdrop-filter: blur(10px); }
+    body.cb-theme-glass .restore-btn { background: linear-gradient(135deg, rgba(125,211,252,0.5), rgba(196,181,253,0.5)); border: 1px solid rgba(255,255,255,0.3); color: #0f172a; box-shadow: 0 4px 16px rgba(125,211,252,0.2); }
     h3 { margin:0 0 8px 0; font-weight:700; letter-spacing:0.6px; filter: drop-shadow(0 0 10px rgba(30,242,247,0.2)); }
     .option-group { margin: 16px 0; }
     label { display:block; margin-bottom:6px; font-weight:600; color: var(--cb-subtext); }
@@ -43,7 +61,10 @@
     // Apply saved theme class to the summarize tab body
     try {
       chrome.storage.local.get(['cb_theme'], r => {
-        try { if (r && r.cb_theme === 'light') document.body.classList.add('cb-theme-light'); } catch(e){}
+        try {
+          const t = r && r.cb_theme;
+          if (t && t !== 'dark') document.body.classList.add('cb-theme-' + t);
+        } catch(e){}
       });
     } catch (e) {}
   </script>

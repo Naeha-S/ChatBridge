@@ -48,6 +48,188 @@
       --cb-glow-2: rgba(124, 58, 237, 0.2);
     }
 
+    /* ===== Skeuomorphic Theme ===== */
+    body.cb-theme-skeuomorphic {
+      --cb-bg: #c0c0c0;
+      --cb-bg2: #d4d4d4;
+      --cb-surface: rgba(0, 0, 0, 0.06);
+      --cb-surface-hover: rgba(0, 0, 0, 0.1);
+      --cb-glass: linear-gradient(180deg, #d0d0d0, #c0c0c0);
+      --cb-glass: #c8c8c8;
+      --cb-glass-border: rgba(0, 0, 0, 0.15);
+      --cb-white: #1a1a1a;
+      --cb-subtext: #4a4a4a;
+      --cb-muted: #777;
+      --cb-accent-1: #4a90d9;
+      --cb-accent-2: #6a7b8a;
+      --cb-glow-1: rgba(74, 144, 217, 0.06);
+      --cb-glow-2: rgba(106, 123, 138, 0.06);
+      --cb-gradient: linear-gradient(135deg, #5a9bd5, #6a7b8a);
+    }
+    body.cb-theme-skeuomorphic .container { backdrop-filter: none; }
+    body.cb-theme-skeuomorphic .status-card {
+      background: linear-gradient(180deg, #d6d6d6, #c5c5c5);
+      border: 1px solid #aaa;
+      border-top-color: #e0e0e0;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.5), 0 2px 6px rgba(0,0,0,0.15);
+    }
+    body.cb-theme-skeuomorphic .stat-card {
+      background: linear-gradient(180deg, #d0d0d0, #c0c0c0);
+      border: 1px solid #aaa;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.5);
+    }
+    body.cb-theme-skeuomorphic .btn-primary {
+      background: linear-gradient(180deg, #5da0e0, #3a7cc0) !important;
+      border: 1px solid #2e6da4;
+      color: #fff !important;
+      text-shadow: 0 -1px 0 rgba(0,0,0,0.3);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.3), 0 2px 6px rgba(0,0,0,0.2);
+    }
+    body.cb-theme-skeuomorphic .settings-btn {
+      background: linear-gradient(180deg, #e0e0e0, #c8c8c8);
+      border: 1px solid #999;
+      color: #333;
+    }
+
+    /* ===== Neo Brutalism Theme ===== */
+    body.cb-theme-brutalism {
+      --cb-bg: #FFFBEB;
+      --cb-bg2: #FFFFFF;
+      --cb-surface: #FFFFFF;
+      --cb-surface-hover: #FEF3C7;
+      --cb-glass: #FEF3C7;
+      --cb-glass-border: #000000;
+      --cb-white: #000000;
+      --cb-subtext: #1a1a1a;
+      --cb-muted: #555;
+      --cb-accent-1: #FF6B9D;
+      --cb-accent-2: #4ECDC4;
+      --cb-glow-1: transparent;
+      --cb-glow-2: transparent;
+      --cb-gradient: linear-gradient(135deg, #FF6B9D, #4ECDC4);
+    }
+    body.cb-theme-brutalism .logo-mark {
+      border: 2px solid #000;
+      box-shadow: 3px 3px 0 #000;
+      border-radius: 4px;
+    }
+    body.cb-theme-brutalism .status-card {
+      background: #fff;
+      border: 3px solid #000;
+      box-shadow: 5px 5px 0 #000;
+      border-radius: 4px;
+      backdrop-filter: none;
+    }
+    body.cb-theme-brutalism .stat-card {
+      background: #fff;
+      border: 2px solid #000;
+      box-shadow: 3px 3px 0 #000;
+      border-radius: 0;
+    }
+    body.cb-theme-brutalism .btn-primary {
+      background: #FF6B9D !important;
+      border: 2px solid #000 !important;
+      box-shadow: 3px 3px 0 #000;
+      color: #000 !important;
+      font-weight: 800;
+      text-transform: uppercase;
+      border-radius: 0;
+    }
+    body.cb-theme-brutalism .btn-primary:hover {
+      transform: translate(-2px, -2px);
+      box-shadow: 5px 5px 0 #000;
+    }
+    body.cb-theme-brutalism .settings-btn {
+      background: #fff;
+      border: 2px solid #000;
+      box-shadow: 2px 2px 0 #000;
+      color: #000;
+      border-radius: 0;
+    }
+    body.cb-theme-brutalism::before { display: none; }
+
+    /* ===== Synthwave Theme ===== */
+    body.cb-theme-synthwave {
+      --cb-bg: #1a0a2e;
+      --cb-bg2: #16082b;
+      --cb-surface: rgba(45, 27, 105, 0.5);
+      --cb-surface-hover: rgba(45, 27, 105, 0.7);
+      --cb-glass: rgba(45, 27, 105, 0.4);
+      --cb-glass-border: rgba(255, 45, 149, 0.2);
+      --cb-white: #f0e6ff;
+      --cb-subtext: #b794f6;
+      --cb-muted: #7c5cbf;
+      --cb-accent-1: #FF2D95;
+      --cb-accent-2: #00F0FF;
+      --cb-glow-1: rgba(255, 45, 149, 0.3);
+      --cb-glow-2: rgba(0, 240, 255, 0.2);
+      --cb-gradient: linear-gradient(135deg, #FF2D95, #00F0FF);
+    }
+    body.cb-theme-synthwave .status-card {
+      background: rgba(45, 27, 105, 0.5);
+      border: 1px solid rgba(255, 45, 149, 0.2);
+      box-shadow: 0 0 15px rgba(255, 45, 149, 0.1);
+      backdrop-filter: none;
+    }
+    body.cb-theme-synthwave .stat-card {
+      background: rgba(45, 27, 105, 0.4);
+      border: 1px solid rgba(255, 45, 149, 0.15);
+    }
+    body.cb-theme-synthwave .btn-primary {
+      background: linear-gradient(135deg, #FF2D95, #ff6ec7) !important;
+      border: 1px solid rgba(255, 45, 149, 0.5);
+      box-shadow: 0 0 20px rgba(255, 45, 149, 0.4);
+      color: #fff !important;
+    }
+    body.cb-theme-synthwave .settings-btn {
+      background: rgba(255, 45, 149, 0.08);
+      border: 1px solid rgba(255, 45, 149, 0.25);
+      color: #b794f6;
+    }
+
+    /* ===== Liquid Glass Theme ===== */
+    body.cb-theme-glass {
+      --cb-bg: #eef2f7;
+      --cb-bg2: rgba(255, 255, 255, 0.5);
+      --cb-surface: rgba(255, 255, 255, 0.2);
+      --cb-surface-hover: rgba(255, 255, 255, 0.35);
+      --cb-glass: rgba(255, 255, 255, 0.2);
+      --cb-glass-border: rgba(255, 255, 255, 0.25);
+      --cb-white: #0f172a;
+      --cb-subtext: #475569;
+      --cb-muted: #94a3b8;
+      --cb-accent-1: #7dd3fc;
+      --cb-accent-2: #c4b5fd;
+      --cb-glow-1: rgba(125, 211, 252, 0.2);
+      --cb-glow-2: rgba(196, 181, 253, 0.2);
+      --cb-gradient: linear-gradient(135deg, #7dd3fc, #c4b5fd, #a5f3fc);
+    }
+    body.cb-theme-glass .status-card {
+      background: rgba(255, 255, 255, 0.25);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      backdrop-filter: blur(16px) saturate(1.5);
+      -webkit-backdrop-filter: blur(16px) saturate(1.5);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.04), inset 0 1px 0 rgba(255,255,255,0.5);
+    }
+    body.cb-theme-glass .stat-card {
+      background: rgba(255, 255, 255, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      backdrop-filter: blur(10px);
+    }
+    body.cb-theme-glass .btn-primary {
+      background: linear-gradient(135deg, rgba(125,211,252,0.5), rgba(196,181,253,0.5)) !important;
+      border: 1px solid rgba(255,255,255,0.3);
+      color: #0f172a !important;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 4px 16px rgba(125,211,252,0.2);
+    }
+    body.cb-theme-glass .settings-btn {
+      background: rgba(255, 255, 255, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      color: #475569;
+      backdrop-filter: blur(8px);
+    }
+
     html,
     body {
       width: 340px;
