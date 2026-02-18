@@ -225,21 +225,21 @@
         }
 
         body.sq-theme-glass {
-            background: linear-gradient(135deg, #eef2f7, #f8fafc);
+            background: linear-gradient(145deg, #1e1a2e, #16132a);
         }
         body.sq-theme-glass .demo-header h1 {
-            background: linear-gradient(135deg, #7dd3fc, #c4b5fd, #a5f3fc);
+            background: linear-gradient(135deg, #b48eff, #ff8fa3);
             -webkit-background-clip: text; -webkit-text-fill-color: transparent;
         }
-        body.sq-theme-glass .demo-header p { color: #475569; }
+        body.sq-theme-glass .demo-header p { color: #a89ec0; }
         body.sq-theme-glass #smartQueriesDemo {
-            border: 1px solid rgba(255,255,255,0.3);
-            box-shadow: 0 8px 32px rgba(0,0,0,0.06);
-            backdrop-filter: blur(16px);
+            border: 1px solid rgba(180,142,255,0.08);
+            box-shadow: 8px 8px 20px rgba(0,0,0,0.45), -5px -5px 14px rgba(60,50,90,0.2);
+            border-radius: 22px;
         }
         body.sq-theme-glass .theme-toggle {
-            background: rgba(255,255,255,0.2); border-color: rgba(255,255,255,0.3); color: #475569;
-            backdrop-filter: blur(8px);
+            background: linear-gradient(145deg, #302a4a, #252038); border-color: rgba(180,142,255,0.08); color: #a89ec0;
+            box-shadow: 3px 3px 8px rgba(0,0,0,0.3), -2px -2px 6px rgba(60,50,90,0.15);
         }
     </style>
 </head>
@@ -274,7 +274,7 @@
     <script>
         // Theme cycling via cb_theme storage
         const SQ_THEMES = ['dark', 'light', 'synthwave', 'skeuomorphic', 'brutalism', 'glass'];
-        const SQ_THEME_LABELS = { dark: '🌙 Dark', light: '☀️ Light', synthwave: '🌆 Synthwave', skeuomorphic: '🔩 Skeuomorphic', brutalism: '🧱 Brutalism', glass: '💎 Glass' };
+        const SQ_THEME_LABELS = { dark: '🌙 Dark', light: '☀️ Light', synthwave: '🌆 Synthwave', skeuomorphic: '🔩 Skeuomorphic', brutalism: '🧱 Brutalism', glass: '🫧 Claymorphism' };
         let sqCurrentTheme = 'dark';
 
         function applySqTheme(theme) {

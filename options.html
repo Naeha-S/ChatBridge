@@ -38,16 +38,36 @@
 
     .theme-light {
       --bg-base: #f6f8fa;
-      --bg-elevated: rgba(255, 255, 255, 0.8);
-      --bg-card: rgba(255, 255, 255, 0.9);
-      --bg-card-hover: rgba(255, 255, 255, 1);
-      --bg-input: rgba(0, 0, 0, 0.04);
+      --bg-elevated: #ffffff;
+      --bg-card: #ffffff;
+      --bg-card-hover: #f8f9fa;
+      --bg-input: #ffffff;
       --text-primary: #1f2328;
-      --text-secondary: #656d76;
-      --text-muted: #8b949e;
-      --border: rgba(0, 0, 0, 0.1);
+      --text-secondary: #4b5563;
+      --text-muted: #6b7280;
+      --border: rgba(0, 0, 0, 0.12);
       --glow-1: rgba(0, 180, 255, 0.08);
       --glow-2: rgba(124, 58, 237, 0.08);
+    }
+    .theme-light .card {
+      background: #ffffff;
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .theme-light .btn {
+      background: #ffffff;
+      border: 1px solid rgba(0, 0, 0, 0.1);
+      color: #1f2328;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+    }
+    .theme-light input, .theme-light select, .theme-light textarea {
+      background: #ffffff;
+      border: 1px solid rgba(0, 0, 0, 0.12);
+      color: #1f2328;
+    }
+    .theme-light .stat-item {
+      background: #ffffff;
+      border: 1px solid rgba(0, 0, 0, 0.06);
     }
 
     /* ===== Skeuomorphic Theme ===== */
@@ -314,94 +334,93 @@
       border: 1px solid rgba(255, 45, 149, 0.3);
     }
 
-    /* ===== Liquid Glass Theme ===== */
+    /* ===== Claymorphism Dark Theme ===== */
     .theme-glass {
-      --bg-base: #eef2f7;
-      --bg-elevated: rgba(255, 255, 255, 0.6);
-      --bg-card: rgba(255, 255, 255, 0.35);
-      --bg-card-hover: rgba(255, 255, 255, 0.5);
-      --bg-input: rgba(255, 255, 255, 0.3);
-      --text-primary: #0f172a;
-      --text-secondary: #475569;
-      --text-muted: #94a3b8;
-      --border: rgba(255, 255, 255, 0.3);
-      --border-focus: rgba(125, 211, 252, 0.5);
-      --accent-1: #7dd3fc;
-      --accent-2: #c4b5fd;
-      --success: #34d399;
+      --bg-base: #1e1a2e;
+      --bg-elevated: #252038;
+      --bg-card: #2a2445;
+      --bg-card-hover: #332d52;
+      --bg-input: #221e38;
+      --text-primary: #e8e4f0;
+      --text-secondary: #d0c8e8;
+      --text-muted: #a89ec0;
+      --border: rgba(180, 142, 255, 0.08);
+      --border-focus: rgba(180, 142, 255, 0.3);
+      --accent-1: #b48eff;
+      --accent-2: #ff8fa3;
+      --success: #7ecbff;
       --warning: #fbbf24;
       --error: #f87171;
-      --gradient: linear-gradient(135deg, #7dd3fc, #c4b5fd, #a5f3fc);
-      --glow-1: rgba(125, 211, 252, 0.12);
-      --glow-2: rgba(196, 181, 253, 0.12);
+      --gradient: linear-gradient(135deg, #b48eff, #ff8fa3);
+      --glow-1: rgba(180, 142, 255, 0.08);
+      --glow-2: rgba(255, 143, 163, 0.08);
     }
     .theme-glass .sidebar {
-      background: rgba(255, 255, 255, 0.2);
-      border-right: 1px solid rgba(255, 255, 255, 0.3);
-      backdrop-filter: blur(24px) saturate(1.8);
-      -webkit-backdrop-filter: blur(24px) saturate(1.8);
+      background: linear-gradient(145deg, #252038, #1e1a2e);
+      border-right: 1px solid rgba(180, 142, 255, 0.06);
+      box-shadow: 6px 0 18px rgba(0,0,0,0.3);
     }
     .theme-glass .card {
-      background: rgba(255, 255, 255, 0.25);
-      border: 1px solid rgba(255, 255, 255, 0.3);
-      box-shadow: 0 4px 16px rgba(0,0,0,0.04), inset 0 1px 0 rgba(255,255,255,0.5);
-      backdrop-filter: blur(16px) saturate(1.5);
-      -webkit-backdrop-filter: blur(16px) saturate(1.5);
+      background: linear-gradient(145deg, #2d2748, #23203a);
+      border: 1px solid rgba(180, 142, 255, 0.08);
+      box-shadow: 5px 5px 12px rgba(0,0,0,0.35), -3px -3px 8px rgba(60,50,90,0.18), inset 0 1px 0 rgba(255,255,255,0.03);
+      border-radius: 16px;
     }
     .theme-glass .card:hover {
-      background: rgba(255, 255, 255, 0.35);
-      box-shadow: 0 8px 24px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.6);
+      background: linear-gradient(145deg, #352f55, #2a2445);
+      box-shadow: 6px 6px 14px rgba(0,0,0,0.4), -3px -3px 10px rgba(60,50,90,0.22), inset 0 1px 0 rgba(255,255,255,0.04);
     }
     .theme-glass .btn {
-      background: rgba(255, 255, 255, 0.2);
-      border: 1px solid rgba(255, 255, 255, 0.25);
-      color: #1e293b;
-      backdrop-filter: blur(12px);
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.4), 0 2px 8px rgba(0,0,0,0.04);
+      background: linear-gradient(145deg, #302a4a, #252038);
+      border: 1px solid rgba(180, 142, 255, 0.08);
+      color: #d0c8e8;
+      box-shadow: 4px 4px 10px rgba(0,0,0,0.35), -2px -2px 6px rgba(60,50,90,0.2), inset 0 1px 0 rgba(255,255,255,0.04);
+      border-radius: 12px;
     }
     .theme-glass .btn:hover {
-      background: rgba(255, 255, 255, 0.35);
-      border-color: rgba(125, 211, 252, 0.4);
-      box-shadow: 0 4px 16px rgba(125, 211, 252, 0.15);
+      background: linear-gradient(145deg, #3a3260, #2d2745);
+      box-shadow: 5px 5px 12px rgba(0,0,0,0.4), -3px -3px 8px rgba(60,50,90,0.25), inset 0 1px 0 rgba(255,255,255,0.05);
     }
     .theme-glass .btn.primary {
-      background: linear-gradient(135deg, rgba(125, 211, 252, 0.5), rgba(196, 181, 253, 0.5));
-      border: 1px solid rgba(255, 255, 255, 0.3);
-      color: #0f172a;
-      box-shadow: 0 4px 16px rgba(125, 211, 252, 0.2);
+      background: linear-gradient(145deg, #6b4faf, #523d8c);
+      border: 1px solid rgba(180, 142, 255, 0.15);
+      color: #f0ecff;
+      box-shadow: 5px 5px 12px rgba(0,0,0,0.4), -3px -3px 8px rgba(107,79,175,0.2), inset 0 1px 0 rgba(255,255,255,0.08);
     }
     .theme-glass input, .theme-glass select, .theme-glass textarea {
-      background: rgba(255, 255, 255, 0.25);
-      border: 1px solid rgba(255, 255, 255, 0.25);
-      color: #1e293b;
-      backdrop-filter: blur(8px);
+      background: linear-gradient(145deg, #221e38, #1c1830);
+      border: 1px solid rgba(180, 142, 255, 0.08);
+      color: #d0c8e8;
+      box-shadow: inset 3px 3px 8px rgba(0,0,0,0.3), inset -2px -2px 6px rgba(60,50,90,0.12);
+      border-radius: 12px;
     }
     .theme-glass input:focus, .theme-glass select:focus, .theme-glass textarea:focus {
-      border-color: rgba(125, 211, 252, 0.5);
-      box-shadow: 0 0 0 3px rgba(125, 211, 252, 0.15);
+      border-color: rgba(180, 142, 255, 0.3);
+      box-shadow: inset 3px 3px 8px rgba(0,0,0,0.3), inset -2px -2px 6px rgba(60,50,90,0.12), 0 0 0 2px rgba(180, 142, 255, 0.08);
     }
     .theme-glass .nav-item.active {
-      background: rgba(255, 255, 255, 0.2);
-      border-color: rgba(125, 211, 252, 0.3);
-      backdrop-filter: blur(12px);
+      background: linear-gradient(145deg, #3a3260, #2d2745);
+      border-color: rgba(180, 142, 255, 0.15);
+      box-shadow: 4px 4px 10px rgba(0,0,0,0.3), -2px -2px 8px rgba(60,50,90,0.18);
     }
     .theme-glass .stat-item {
-      background: rgba(255, 255, 255, 0.15);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      backdrop-filter: blur(10px);
+      background: linear-gradient(145deg, #2a2445, #221e38);
+      border: 1px solid rgba(180, 142, 255, 0.06);
+      box-shadow: 4px 4px 10px rgba(0,0,0,0.3), -2px -2px 6px rgba(60,50,90,0.15);
+      border-radius: 14px;
     }
     .theme-glass .theme-pill {
-      background: rgba(255, 255, 255, 0.15);
-      border-color: rgba(255, 255, 255, 0.2);
+      background: linear-gradient(145deg, #2a2445, #221e38);
+      border-color: rgba(180, 142, 255, 0.08);
     }
     .theme-glass .theme-pill.active {
-      border-color: rgba(125, 211, 252, 0.4);
-      box-shadow: 0 2px 12px rgba(125, 211, 252, 0.15);
+      border-color: rgba(180, 142, 255, 0.25);
+      box-shadow: 4px 4px 10px rgba(0,0,0,0.3), -2px -2px 8px rgba(60,50,90,0.2);
     }
     .theme-glass .toggle-track {
-      background: rgba(255, 255, 255, 0.2);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      backdrop-filter: blur(8px);
+      background: linear-gradient(145deg, #221e38, #1c1830);
+      border: 1px solid rgba(180, 142, 255, 0.06);
+      box-shadow: inset 3px 3px 8px rgba(0,0,0,0.3), inset -2px -2px 6px rgba(60,50,90,0.12);
     }
 
     html,
@@ -955,9 +974,9 @@
     }
 
     .theme-preview.glass {
-      background: linear-gradient(135deg, rgba(125,211,252,0.3), rgba(196,181,253,0.3));
-      backdrop-filter: blur(4px);
-      border-color: rgba(255,255,255,0.4);
+      background: linear-gradient(145deg, #2d2748, #1e1a2e);
+      box-shadow: 3px 3px 8px rgba(0,0,0,0.4), -2px -2px 6px rgba(60,50,90,0.2);
+      border-color: rgba(180, 142, 255, 0.15);
     }
 
     .theme-name {
@@ -1480,7 +1499,7 @@
             <label class="theme-pill" data-theme="glass">
               <input type="radio" name="cb-theme" value="glass" />
               <div class="theme-preview glass"></div>
-              <span class="theme-name">Glass</span>
+              <span class="theme-name">Claymorphism</span>
             </label>
           </div>
         </div>

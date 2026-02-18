@@ -32,16 +32,34 @@
     .theme-light {
       --bg-base: #f0f4f8;
       --bg-elevated: #ffffff;
-      --bg-card: rgba(255, 255, 255, 0.7);
-      --bg-card-hover: rgba(255, 255, 255, 0.9);
-      --bg-input: rgba(0, 0, 0, 0.05);
+      --bg-card: #ffffff;
+      --bg-card-hover: #f8f9fa;
+      --bg-input: #ffffff;
       --text-primary: #0f172a;
-      --text-secondary: #475569;
-      --text-muted: #94a3b8;
-      --border: rgba(0, 0, 0, 0.08);
-      --glass: rgba(255, 255, 255, 0.7);
+      --text-secondary: #4b5563;
+      --text-muted: #6b7280;
+      --border: rgba(0, 0, 0, 0.1);
+      --glass: #ffffff;
       --glass-border: rgba(0, 0, 0, 0.08);
-      --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.05);
+      --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06);
+    }
+    .theme-light .list-item {
+      background: #ffffff;
+      border: 1px solid rgba(0, 0, 0, 0.06);
+    }
+    .theme-light .chip {
+      background: #f1f3f5;
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      color: #4b5563;
+    }
+    .theme-light .search-input {
+      background: #ffffff;
+      border: 1px solid rgba(0, 0, 0, 0.12);
+      color: #0f172a;
+    }
+    .theme-light .bubble {
+      background: #ffffff;
+      border: 1px solid rgba(0, 0, 0, 0.06);
     }
 
     /* ===== Skeuomorphic Theme ===== */
@@ -197,60 +215,63 @@
       border: 1px solid rgba(255, 45, 149, 0.2);
     }
 
-    /* ===== Liquid Glass Theme ===== */
+    /* ===== Claymorphism Dark Theme ===== */
     .theme-glass {
-      --bg-base: #eef2f7;
-      --bg-elevated: rgba(255, 255, 255, 0.6);
-      --bg-card: rgba(255, 255, 255, 0.3);
-      --bg-card-hover: rgba(255, 255, 255, 0.45);
-      --bg-input: rgba(255, 255, 255, 0.3);
-      --text-primary: #0f172a;
-      --text-secondary: #475569;
-      --text-muted: #94a3b8;
-      --border: rgba(255, 255, 255, 0.3);
-      --accent-1: #7dd3fc;
-      --accent-2: #c4b5fd;
-      --glass: rgba(255, 255, 255, 0.2);
-      --glass-border: rgba(255, 255, 255, 0.25);
-      --shadow-sm: 0 4px 16px rgba(0,0,0,0.04), inset 0 1px 0 rgba(255,255,255,0.4);
-      --gradient: linear-gradient(135deg, #7dd3fc, #c4b5fd, #a5f3fc);
+      --bg-base: #1e1a2e;
+      --bg-elevated: #252038;
+      --bg-card: #2a2445;
+      --bg-card-hover: #332d52;
+      --bg-input: #221e38;
+      --text-primary: #e8e4f0;
+      --text-secondary: #d0c8e8;
+      --text-muted: #a89ec0;
+      --border: rgba(180, 142, 255, 0.08);
+      --accent-1: #b48eff;
+      --accent-2: #ff8fa3;
+      --glass: #2a2445;
+      --glass-border: rgba(180, 142, 255, 0.08);
+      --shadow-sm: 4px 4px 10px rgba(0,0,0,0.35), -2px -2px 6px rgba(60,50,90,0.2);
+      --gradient: linear-gradient(135deg, #b48eff, #ff8fa3);
     }
     .theme-glass .sidebar {
-      background: rgba(255, 255, 255, 0.15);
-      backdrop-filter: blur(24px) saturate(1.8);
-      -webkit-backdrop-filter: blur(24px) saturate(1.8);
-      border-right: 1px solid rgba(255, 255, 255, 0.25);
+      background: linear-gradient(145deg, #252038, #1e1a2e);
+      border-right: 1px solid rgba(180, 142, 255, 0.06);
+      box-shadow: 6px 0 18px rgba(0,0,0,0.3);
     }
     .theme-glass .list-item {
-      background: rgba(255, 255, 255, 0.15);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      backdrop-filter: blur(10px);
+      background: linear-gradient(145deg, #2d2748, #23203a);
+      border: 1px solid rgba(180, 142, 255, 0.06);
+      box-shadow: 4px 4px 10px rgba(0,0,0,0.3), -2px -2px 6px rgba(60,50,90,0.15);
+      border-radius: 14px;
     }
     .theme-glass .list-item:hover {
-      background: rgba(255, 255, 255, 0.25);
-      border-color: rgba(125, 211, 252, 0.3);
-      box-shadow: 0 4px 16px rgba(125, 211, 252, 0.12);
+      background: linear-gradient(145deg, #352f55, #2a2445);
+      border-color: rgba(180, 142, 255, 0.12);
+      box-shadow: 5px 5px 12px rgba(0,0,0,0.35), -3px -3px 8px rgba(60,50,90,0.2);
     }
     .theme-glass .chip {
-      background: rgba(255, 255, 255, 0.2);
-      border: 1px solid rgba(255, 255, 255, 0.25);
-      color: #475569;
-      backdrop-filter: blur(8px);
+      background: linear-gradient(145deg, #302a4a, #252038);
+      border: 1px solid rgba(180, 142, 255, 0.08);
+      color: #a89ec0;
+      box-shadow: 3px 3px 8px rgba(0,0,0,0.25), -2px -2px 6px rgba(60,50,90,0.12);
+      border-radius: 10px;
     }
     .theme-glass .search-input {
-      background: rgba(255, 255, 255, 0.2);
-      border: 1px solid rgba(255, 255, 255, 0.25);
-      color: #1e293b;
-      backdrop-filter: blur(8px);
+      background: linear-gradient(145deg, #221e38, #1c1830);
+      border: 1px solid rgba(180, 142, 255, 0.08);
+      color: #d0c8e8;
+      box-shadow: inset 3px 3px 8px rgba(0,0,0,0.3), inset -2px -2px 6px rgba(60,50,90,0.12);
+      border-radius: 12px;
     }
     .theme-glass .search-input:focus {
-      border-color: rgba(125, 211, 252, 0.5);
-      box-shadow: 0 0 0 3px rgba(125, 211, 252, 0.15);
+      border-color: rgba(180, 142, 255, 0.3);
+      box-shadow: inset 3px 3px 8px rgba(0,0,0,0.3), inset -2px -2px 6px rgba(60,50,90,0.12), 0 0 0 2px rgba(180, 142, 255, 0.08);
     }
     .theme-glass .bubble {
-      background: rgba(255, 255, 255, 0.15);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      backdrop-filter: blur(10px);
+      background: linear-gradient(145deg, #2a2445, #221e38);
+      border: 1px solid rgba(180, 142, 255, 0.06);
+      box-shadow: 4px 4px 10px rgba(0,0,0,0.3), -2px -2px 6px rgba(60,50,90,0.15);
+      border-radius: 14px;
     }
 
     * {
