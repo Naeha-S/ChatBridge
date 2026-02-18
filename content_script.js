@@ -1608,7 +1608,7 @@
   .cb-pd-icon-btn { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; background: rgba(255, 255, 255, 0.02); backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 12px; cursor: pointer; transition: all 0.3s ease; color: var(--cb-subtext); }
   .cb-pd-icon-btn svg { width: 18px; height: 18px; stroke: currentColor; }
   .cb-pd-icon-btn:hover { background: rgba(255, 255, 255, 0.05); border-color: rgba(255, 255, 255, 0.12); color: var(--cb-white); transform: scale(1.05); }
-  .cb-pd-prompts-list { display: flex; flex-direction: column; gap: 12px; max-height: 450px; overflow-y: auto; padding-right: 4px; }
+  .cb-pd-prompts-list { display: flex; flex-direction: column; gap: 12px; max-height: 60vh; overflow-y: auto; padding-right: 8px; padding-bottom: 20px; }
   .cb-pd-prompts-list::-webkit-scrollbar { width: 4px; }
   .cb-pd-prompts-list::-webkit-scrollbar-track { background: transparent; }
   .cb-pd-prompts-list::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.05); border-radius: 10px; }
@@ -1617,15 +1617,16 @@
   .cb-pd-empty-icon { width: 48px; height: 48px; margin: 0 auto 20px; border-radius: 14px; background: linear-gradient(135deg, rgba(0, 212, 255, 0.05), rgba(124, 58, 237, 0.05)); display: flex; align-items: center; justify-content: center; opacity: 0.8; }
   .cb-pd-empty-title { font-family: system-ui, -apple-system, sans-serif !important; font-size: 18px; color: var(--cb-white); margin-bottom: 8px; letter-spacing: 0.5px; opacity: 0.9; font-weight: 600; }
   .cb-pd-empty-desc { font-size: 12px; color: var(--cb-subtext); line-height: 1.6; opacity: 0.5; }
-  .cb-prompt-item { padding: 14px 18px; background: rgba(255, 255, 255, 0.02); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.05); border-left: 3px solid transparent; border-radius: 14px; cursor: pointer; transition: all 0.6s cubic-bezier(0.19, 1, 0.22, 1); opacity: 0; transform: translateY(12px); animation: cbFadeSlideIn 0.5s ease forwards; position: relative; overflow: hidden; max-height: 52px; display: flex; flex-direction: column; gap: 14px; }
+  .cb-prompt-item { padding: 14px 18px; background: rgba(255, 255, 255, 0.02); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.05); border-left: 3px solid transparent; border-radius: 14px; cursor: pointer; transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1); opacity: 0; transform: translateY(12px); animation: cbFadeSlideIn 0.5s ease forwards; position: relative; overflow: hidden; max-height: 52px; display: flex; flex-direction: column; gap: 16px; box-sizing: border-box; }
   .cb-prompt-item::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.01) 50%, transparent 100%); transform: translateX(-100%); transition: transform 0.6s ease; }
   .cb-prompt-item:hover { background: rgba(255, 255, 255, 0.04); border-color: rgba(255, 255, 255, 0.1); transform: translateY(-1px); box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2); }
   .cb-prompt-item:hover::before { transform: translateX(100%); }
   
-  .cb-prompt-item--expanded { max-height: 1000px; padding: 20px 22px; background: rgba(255, 255, 255, 0.035); border-color: rgba(255, 255, 255, 0.12); cursor: default; }
+  .cb-prompt-item--expanded { max-height: 2000px; padding: 20px 22px 24px; background: rgba(255, 255, 255, 0.05); border-color: rgba(255, 255, 255, 0.15); cursor: default; }
   .cb-prompt-item--expanded .cb-prompt-text { opacity: 1; transform: translateY(0); display: block; }
   .cb-prompt-item--expanded .cb-prompt-actions { opacity: 1; display: flex; transform: translateY(0); pointer-events: auto; }
-  .cb-prompt-item--expanded .cb-prompt-category { opacity: 0.9; letter-spacing: 0.5px; font-weight: 600; }
+  .cb-prompt-item--expanded .cb-prompt-category { opacity: 0.9; letter-spacing: 0.3px; font-weight: 600; color: var(--cb-white) !important; }
+  .cb-prompt-item--expanded .cb-prompt-chevron { transform: rotate(180deg); opacity: 0.8 !important; }
 
   .cb-prompt-item--copied { background: rgba(0, 212, 255, 0.08) !important; border-color: rgba(0, 212, 255, 0.2) !important; border-left-color: #00D4FF !important; }
   .cb-prompt-item--inserted { background: rgba(52, 211, 153, 0.08) !important; border-color: rgba(52, 211, 153, 0.2) !important; border-left-color: #34d399 !important; }
@@ -1633,8 +1634,9 @@
   .cb-prompt-item-header { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
   .cb-prompt-dot { width: 6px; height: 6px; border-radius: 50%; filter: blur(0.5px); }
   .cb-prompt-category { display: block; font-family: system-ui, -apple-system, sans-serif !important; font-size: 14px; font-weight: 500; letter-spacing: 0.3px; opacity: 0.6; flex: 1; transition: all 0.3s ease; text-transform: capitalize; }
+  .cb-prompt-chevron { transition: transform 0.4s ease; opacity: 0.3; }
   
-  .cb-prompt-text { font-size: 13.5px; color: rgba(255, 255, 255, 0.9); line-height: 1.65; font-weight: 400; opacity: 0; transform: translateY(4px); transition: all 0.4s ease 0.1s; display: none; -webkit-user-select: text; user-select: text; }
+  .cb-prompt-text { font-size: 13.5px; color: rgba(255, 255, 255, 0.9); line-height: 1.65; font-weight: 400; opacity: 0; transform: translateY(4px); transition: all 0.4s ease 0.1s; display: none; -webkit-user-select: text; user-select: text; margin: 4px 0; }
   
   .cb-prompt-actions { opacity: 0; transform: translateY(8px); transition: all 0.4s ease 0.2s; display: none; align-items: center; gap: 12px; margin-top: 4px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 16px; }
   .cb-prompt-copy-btn { padding: 8px 16px; font-size: 10px; font-weight: 600; color: #00D4FF; border-radius: 10px; border: 1px solid rgba(0, 212, 255, 0.2); background: rgba(0, 212, 255, 0.05); display: flex; align-items: center; gap: 8px; cursor: pointer; transition: all 0.3s ease; }
@@ -7564,7 +7566,7 @@ Output ONLY the 5 numbered questions, no other text.`;
               <div class="cb-prompt-item-header">
                 <div class="cb-prompt-dot" style="background:${categoryColors[q.category] || '#60a5fa'};box-shadow:0 0 8px ${categoryColors[q.category] || '#60a5fa'}60;"></div>
                 <span class="cb-prompt-category" style="color:${categoryColors[q.category] || '#60a5fa'};">${q.category.toLowerCase()}</span>
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="opacity:0.3; margin-left:4px;"><path d="M6 9l6 6 6-6"/></svg>
+                <svg class="cb-prompt-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="margin-left:8px;"><path d="M6 9l6 6 6-6"/></svg>
               </div>
               <div class="cb-prompt-text">${q.text}</div>
               <div class="cb-prompt-actions">
@@ -7582,17 +7584,21 @@ Output ONLY the 5 numbered questions, no other text.`;
             let clickTimeout;
 
             item.addEventListener('click', (e) => {
-              // detail counts consecutive clicks; only act on true single click
               if (e.detail > 1) return;
 
               clearTimeout(clickTimeout);
               clickTimeout = setTimeout(() => {
                 const isExpanded = item.classList.contains('cb-prompt-item--expanded');
-                // Opt-in: close others on open
+
                 if (!isExpanded) {
-                  listContainer.querySelectorAll('.cb-prompt-item--expanded').forEach(el => el.classList.remove('cb-prompt-item--expanded'));
+                  // Close others
+                  listContainer.querySelectorAll('.cb-prompt-item--expanded').forEach(el => {
+                    el.classList.remove('cb-prompt-item--expanded');
+                  });
+                  item.classList.add('cb-prompt-item--expanded');
+                } else {
+                  item.classList.remove('cb-prompt-item--expanded');
                 }
-                item.classList.toggle('cb-prompt-item--expanded');
               }, 200);
             });
 

@@ -9,32 +9,33 @@
   // ==========================================
   const UI_STYLES = `
 /* ============================================
-   SMART QUERIES - LUXURY PREMIUM DESIGN
-   Glassmorphism + Gradient Accents + Micro-interactions
+   SMART QUERIES - LUXURY MINIMALIST DESIGN
+   Refined Glassmorphism + Soft Gradients
    ============================================ */
 
-/* Design Tokens */
 .sq-wrapper {
-  --sq-bg: #07090f;
-  --sq-bg2: #0d1117;
-  --sq-bg3: #161b22;
-  --sq-surface: rgba(22, 27, 34, 0.85);
-  --sq-white: #f0f6fc;
-  --sq-subtext: #8b949e;
-  --sq-accent: #58a6ff;
-  --sq-accent2: #a371f7;
-  --sq-accent3: #7ee787;
-  --sq-success: #3fb950;
-  --sq-error: #f85149;
-  --sq-border: rgba(48, 54, 61, 0.8);
-  --sq-border-glow: rgba(88, 166, 255, 0.4);
-  --sq-gradient: linear-gradient(135deg, #58a6ff 0%, #a371f7 100%);
-  --sq-shadow-lg: 0 10px 40px rgba(0, 0, 0, 0.5);
-  --sq-radius: 14px;
+  --sq-bg: #070912;
+  --sq-bg2: #0a0e16;
+  --sq-bg3: #121822;
+  --sq-surface: rgba(18, 24, 34, 0.7);
+  --sq-surface-elevated: rgba(30, 41, 59, 0.85);
+  --sq-white: #f8fafc;
+  --sq-subtext: #94a3b8;
+  --sq-accent: #3b82f6;
+  --sq-accent2: #8b5cf6;
+  --sq-accent3: #10b981;
+  --sq-success: #22c55e;
+  --sq-error: #ef4444;
+  --sq-border: rgba(51, 65, 85, 0.5);
+  --sq-border-accent: rgba(59, 130, 246, 0.3);
+  --sq-gradient: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+  --sq-shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.2);
+  --sq-shadow-lg: 0 12px 48px rgba(0, 0, 0, 0.4);
+  --sq-radius: 12px;
   --sq-font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --sq-transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Base Wrapper */
 .sq-wrapper {
   font-family: var(--sq-font);
   color: var(--sq-white);
@@ -44,670 +45,430 @@
   background: linear-gradient(145deg, var(--sq-bg) 0%, var(--sq-bg2) 100%);
   box-sizing: border-box;
   -webkit-font-smoothing: antialiased;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 .sq-wrapper * { box-sizing: border-box; }
 
 /* Premium Scrollbars */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { 
-  background: linear-gradient(180deg, var(--sq-accent), var(--sq-accent2)); 
-  border-radius: 3px; 
+.sq-wrapper ::-webkit-scrollbar { width: 5px; height: 5px; }
+.sq-wrapper ::-webkit-scrollbar-track { background: transparent; }
+.sq-wrapper ::-webkit-scrollbar-thumb { 
+  background: var(--sq-border); 
+  border-radius: 10px; 
 }
-::-webkit-scrollbar-thumb:hover { opacity: 0.8; }
+.sq-wrapper ::-webkit-scrollbar-thumb:hover { background: var(--sq-accent); }
 
-/* Header with Glass Effect */
+/* Layout Structure */
+.sq-main-layout {
+  display: flex;
+  height: 100%;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+/* Header */
 .sq-header {
-  background: linear-gradient(135deg, rgba(88, 166, 255, 0.06), rgba(163, 113, 247, 0.06));
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  padding: 12px 16px;
+  background: rgba(18, 24, 34, 0.4);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  padding: 14px 20px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  flex-shrink: 0;
-  gap: 10px;
+  gap: 12px;
   border-bottom: 1px solid var(--sq-border);
+  flex-shrink: 0;
+  width: 100%;
 }
 
-.sq-title { display: none; }
+.sq-title-icon { font-size: 20px; }
+
+/* Tabs */
+.sq-tabs {
+  display: flex;
+  background: rgba(15, 23, 42, 0.6);
+  padding: 3px;
+  border-radius: 10px;
+  border: 1px solid var(--sq-border);
+  gap: 2px;
+}
+
+.sq-tab {
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--sq-subtext);
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: var(--sq-transition);
+  position: relative;
+}
+
+.sq-tab.active {
+  color: white;
+  background: rgba(59, 130, 246, 0.15);
+  box-shadow: inset 0 0 0 1px var(--sq-border-accent);
+}
+
+.sq-tab:hover:not(.active) {
+  color: var(--sq-white);
+  background: rgba(255, 255, 255, 0.05);
+}
 
 /* Helper Text */
 .sq-helper-text {
   font-size: 12px;
   color: var(--sq-subtext);
-  margin-bottom: 12px;
-  padding: 10px 14px;
-  background: rgba(88, 166, 255, 0.06);
-  border-left: 3px solid var(--sq-accent);
-  border-radius: 0 8px 8px 0;
-  font-weight: 500;
-  animation: fadeIn 0.3s ease;
-}
-.sq-helper-text:empty { display: none; }
-
-@keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
-
-/* Premium Tab Pills */
-.sq-tabs {
-  display: flex;
-  background: rgba(22, 27, 34, 0.6);
-  backdrop-filter: blur(8px);
-  padding: 4px;
-  border-radius: 12px;
-  border: 1px solid var(--sq-border);
-  gap: 4px;
+  padding: 8px 20px;
+  background: rgba(59, 130, 246, 0.04);
+  border-bottom: 1px solid var(--sq-border);
+  font-weight: 400;
+  animation: fadeIn 0.4s ease-out;
 }
 
-.sq-tab {
-  padding: 8px 16px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--sq-subtext);
-  border: none;
-  background: transparent;
-  border-radius: 10px;
-  cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
-  overflow: hidden;
-}
-
-.sq-tab::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: var(--sq-gradient);
-  opacity: 0;
-  transition: opacity 0.25s;
-  border-radius: 10px;
-}
-
-.sq-tab.active {
-  color: white;
-  box-shadow: 0 4px 12px rgba(88, 166, 255, 0.3);
-}
-
-.sq-tab.active::before { opacity: 1; }
-.sq-tab.active span, .sq-tab.active { position: relative; z-index: 1; }
-
-.sq-tab:hover:not(.active) { 
-  color: var(--sq-white); 
-  background: rgba(255, 255, 255, 0.05);
-}
-
-/* Content Area */
+/* Body */
 .sq-body {
+  flex: 1;
   overflow-y: auto;
-  padding: 16px;
+  overflow-x: hidden;
+  padding: 20px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 20px;
+  min-width: 0;
 }
 
-/* Suggestions with Glow */
-.sq-suggestions { display: none; }
-.sq-suggestions.active {
+/* Suggestions */
+.sq-suggestions {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  margin-bottom: 8px;
-  animation: fadeIn 0.3s ease;
+  gap: 8px;
+  animation: slideUp 0.4s ease-out;
 }
 
 .sq-suggestion-chip {
-  padding: 10px 18px;
-  background: linear-gradient(135deg, rgba(88, 166, 255, 0.1), rgba(163, 113, 247, 0.08));
-  border: 1px solid var(--sq-border-glow);
-  border-radius: 24px;
-  font-size: 13px;
-  color: var(--sq-white);
+  padding: 8px 16px;
+  background: var(--sq-surface);
+  border: 1px solid var(--sq-border);
+  border-radius: 20px;
+  font-size: 12px;
+  color: var(--sq-subtext);
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  font-weight: 500;
-  backdrop-filter: blur(8px);
+  transition: var(--sq-transition);
+  white-space: nowrap;
 }
 
 .sq-suggestion-chip:hover {
-  background: linear-gradient(135deg, rgba(88, 166, 255, 0.2), rgba(163, 113, 247, 0.15));
   border-color: var(--sq-accent);
-  transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(88, 166, 255, 0.25);
-}
-
-/* Advanced Filters Panel - Glass */
-.sq-filters-panel {
-  display: none;
-  background: rgba(22, 27, 34, 0.7);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border-radius: var(--sq-radius);
-  padding: 16px;
-  border: 1px solid var(--sq-border);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-}
-.sq-filters-panel.active {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  animation: fadeIn 0.3s ease;
-}
-
-.sq-filter-group {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.sq-filter-label {
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--sq-subtext);
-  min-width: 80px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.sq-filter-select, .sq-filter-input {
-  padding: 10px 14px;
-  background: rgba(7, 9, 15, 0.6);
-  border: 1px solid var(--sq-border);
-  border-radius: 10px;
   color: var(--sq-white);
-  font-size: 13px;
-  flex: 1;
-  min-width: 100px;
-  transition: all 0.2s;
+  background: rgba(59, 130, 246, 0.1);
+  transform: translateY(-1px);
 }
 
-.sq-filter-select:focus, .sq-filter-input:focus {
-  outline: none;
-  border-color: var(--sq-accent);
-  box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.15);
-}
-
-/* Input Card - Premium Glass */
+/* Input Card */
 .sq-input-card {
-  background: rgba(22, 27, 34, 0.6);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  background: var(--sq-surface);
   border-radius: var(--sq-radius);
   border: 1px solid var(--sq-border);
-  padding: 18px;
-  box-shadow: var(--sq-shadow-lg);
-  transition: all 0.3s ease;
+  padding: 4px; /* Reduced to focus on the textarea */
+  transition: var(--sq-transition);
+  box-shadow: var(--sq-shadow-sm);
 }
 
 .sq-input-card:focus-within {
-  border-color: var(--sq-border-glow);
-  box-shadow: var(--sq-shadow-lg), 0 0 30px rgba(88, 166, 255, 0.1);
+  border-color: var(--sq-accent);
+  box-shadow: 0 0 0 1px var(--sq-accent), var(--sq-shadow-lg);
 }
 
 .sq-textarea {
   width: 100%;
-  padding: 14px 16px;
-  border: 1px solid var(--sq-border);
-  border-radius: 12px;
-  font-family: var(--sq-font);
-  font-size: 14px;
+  padding: 16px;
+  border: none;
+  background: transparent;
   color: var(--sq-white);
-  background: rgba(7, 9, 15, 0.5);
+  font-family: inherit;
+  font-size: 14px;
   resize: none;
-  height: 100px;
-  margin-bottom: 14px;
-  transition: all 0.25s;
+  height: 80px;
+  outline: none;
   line-height: 1.6;
 }
 
-.sq-textarea::placeholder { color: var(--sq-subtext); }
+.sq-textarea::placeholder { color: var(--sq-subtext); opacity: 0.6; }
 
-.sq-textarea:focus {
-  outline: none;
-  border-color: var(--sq-accent);
-  box-shadow: 0 0 0 4px rgba(88, 166, 255, 0.12);
-  background: rgba(7, 9, 15, 0.7);
-}
-
-.sq-input-wrapper { position: relative; }
-
-.sq-input-badge {
-  position: absolute;
-  bottom: 20px;
-  right: 14px;
-  font-size: 10px;
-  padding: 4px 10px;
-  border-radius: 20px;
-  background: var(--sq-gradient);
-  color: white;
-  opacity: 0;
-  transition: all 0.3s;
-  pointer-events: none;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-.sq-input-badge.visible { opacity: 1; }
-
-/* Controls Row */
 .sq-controls {
+  padding: 12px 16px;
+  border-top: 1px solid var(--sq-border);
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 12px;
 }
 
-.sq-options {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.sq-checkbox-label {
-  font-size: 13px;
-  color: var(--sq-subtext);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  transition: color 0.2s;
-}
-.sq-checkbox-label:hover { color: var(--sq-white); }
-
-/* Premium Buttons */
+/* Buttons */
 .sq-btn {
-  padding: 12px 22px;
-  border-radius: 12px;
-  font-size: 14px;
+  padding: 8px 18px;
+  border-radius: 8px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   border: none;
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
-  overflow: hidden;
+  transition: var(--sq-transition);
 }
-
-.sq-btn::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-  transition: left 0.5s;
-}
-
-.sq-btn:hover::before { left: 100%; }
-
-.sq-btn-sm { padding: 8px 14px; font-size: 12px; }
 
 .sq-btn-primary {
-  background: var(--sq-gradient);
+  background: var(--sq-accent);
   color: white;
-  box-shadow: 0 4px 14px rgba(88, 166, 255, 0.35);
 }
 
-.sq-btn-primary:hover { 
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(88, 166, 255, 0.45);
+.sq-btn-primary:hover {
+  background: #2563eb;
+  transform: translateY(-1px);
 }
 
 .sq-btn-secondary {
   background: rgba(255, 255, 255, 0.05);
-  color: var(--sq-subtext);
+  color: var(--sq-white);
   border: 1px solid var(--sq-border);
-  backdrop-filter: blur(8px);
 }
 
-.sq-btn-secondary:hover { 
+.sq-btn-secondary:hover {
   background: rgba(255, 255, 255, 0.08);
+  border-color: var(--sq-subtext);
+}
+
+.sq-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Filters Component */
+.sq-filters-panel {
+  display: none;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  padding: 16px;
+  background: rgba(15, 23, 42, 0.4);
+  border-radius: var(--sq-radius);
+  border: 1px solid var(--sq-border);
+  animation: fadeIn 0.3s ease;
+}
+
+.sq-filters-panel.active { display: grid; }
+
+.sq-filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sq-filter-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--sq-subtext);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.sq-filter-select, .sq-filter-input {
+  background: var(--sq-bg);
+  border: 1px solid var(--sq-border);
+  padding: 8px 12px;
+  border-radius: 6px;
   color: var(--sq-white);
+  font-size: 13px;
+  outline: none;
+}
+
+.sq-filter-select:focus, .sq-filter-input:focus {
   border-color: var(--sq-accent);
 }
-
-.sq-btn:disabled { opacity: 0.5; cursor: wait; pointer-events: none; }
 
 /* Response Section */
 .sq-response-section {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  flex: 1;
-  min-height: 0;
+  min-width: 0;
 }
-.sq-response-section:empty { display: none; }
 
-/* AI Synthesis Card - Premium Glass */
-.sq-synthesis-card {
-  background: linear-gradient(135deg, rgba(88, 166, 255, 0.08), rgba(163, 113, 247, 0.06));
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(88, 166, 255, 0.25);
+/* Cards */
+.sq-synthesis-card, .sq-result {
+  background: var(--sq-surface);
+  border: 1px solid var(--sq-border);
   border-radius: var(--sq-radius);
   overflow: hidden;
-  box-shadow: 0 8px 32px rgba(88, 166, 255, 0.1);
+  transition: var(--sq-transition);
+  min-width: 0;
+}
+
+.sq-synthesis-card {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(139, 92, 246, 0.05) 100%);
+  border-color: var(--sq-border-accent);
 }
 
 .sq-card-header {
-  padding: 14px 18px;
-  background: linear-gradient(135deg, rgba(88, 166, 255, 0.12), rgba(163, 113, 247, 0.08));
-  border-bottom: 1px solid rgba(88, 166, 255, 0.2);
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--sq-border);
   display: flex;
   justify-content: space-between;
   align-items: center;
+  background: rgba(255, 255, 255, 0.02);
 }
 
 .sq-card-title-text {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
-  background: var(--sq-gradient);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 0.1em;
+  color: var(--sq-accent);
 }
 
 .sq-card-content {
   padding: 18px;
   font-size: 14px;
-  color: var(--sq-white);
   line-height: 1.7;
-}
-
-/* Result Items - Glass Cards */
-.sq-result {
-  background: rgba(22, 27, 34, 0.6);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--sq-border);
-  border-radius: var(--sq-radius);
-  padding: 18px;
-  margin-bottom: 12px;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  color: #e2e8f0;
 }
 
 .sq-result:hover {
-  border-color: var(--sq-border-glow);
-  box-shadow: 0 12px 32px rgba(88, 166, 255, 0.15);
-  transform: translateY(-3px);
+  transform: translateY(-2px);
+  border-color: var(--sq-accent);
+  box-shadow: var(--sq-shadow-sm);
 }
 
 .sq-res-meta {
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
+  padding-bottom: 12px;
   font-size: 12px;
   color: var(--sq-subtext);
 }
 
-.sq-res-score {
-  font-weight: 700;
-  color: var(--sq-success);
-  background: rgba(63, 185, 80, 0.15);
-  padding: 4px 12px;
-  border-radius: 20px;
-  font-size: 11px;
-}
-
-.sq-res-tags {
-  display: flex;
-  gap: 6px;
-  margin-bottom: 8px;
-}
-
 .sq-res-tag {
-  font-size: 9px;
-  font-weight: 700;
-  text-transform: uppercase;
-  padding: 3px 8px;
-  border-radius: 6px;
-  background: rgba(255,255,255,0.08);
-  color: var(--sq-subtext);
-  letter-spacing: 0.5px;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.05);
 }
-.sq-res-tag.decision { color: var(--sq-accent3); background: rgba(126, 231, 135, 0.12); }
-.sq-res-tag.unresolved { color: var(--sq-error); background: rgba(248, 81, 73, 0.12); }
-.sq-res-tag.change { color: var(--sq-accent); background: rgba(88, 166, 255, 0.12); }
 
-.sq-res-content {
-  font-size: 14px;
-  color: var(--sq-white);
-  line-height: 1.6;
+.sq-res-tag.decision { color: #10b981; background: rgba(16, 185, 129, 0.1); }
+.sq-res-tag.unresolved { color: #f59e0b; background: rgba(245, 158, 11, 0.1); }
+.sq-res-tag.change { color: #3b82f6; background: rgba(59, 130, 246, 0.1); }
+
+.sq-res-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sq-res-msg {
+  display: flex;
+  gap: 8px;
 }
 
 .sq-res-role {
   font-weight: 700;
-  background: var(--sq-gradient);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  margin-right: 6px;
-}
-
-.sq-res-preview {
-  max-height: 140px;
-  overflow: hidden;
-  transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.sq-result.expanded .sq-res-preview { max-height: 600px; }
-
-.sq-expand-btn {
-  padding: 6px 12px;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--sq-accent);
-  background: rgba(88, 166, 255, 0.1);
-  border: 1px solid rgba(88, 166, 255, 0.3);
-  border-radius: 8px;
-  cursor: pointer;
-  margin-top: 12px;
-  transition: all 0.2s;
-}
-.sq-expand-btn:hover {
-  background: rgba(88, 166, 255, 0.2);
-  border-color: var(--sq-accent);
+  min-width: 32px;
 }
 
-.sq-result.expanded .sq-expand-btn::after { content: ' ▲'; }
-.sq-result:not(.expanded) .sq-expand-btn::after { content: ' ▼'; }
-
-/* Loading/Empty/Error States */
-.sq-empty, .sq-loading, .sq-error {
-  text-align: center;
-  padding: 50px 20px;
-  color: var(--sq-subtext);
-  font-size: 14px;
-}
-.sq-error { color: var(--sq-error); }
-
-.sq-loading-spinner {
-  display: inline-block;
-  width: 24px;
-  height: 24px;
-  border: 3px solid var(--sq-border);
-  border-top-color: var(--sq-accent);
-  border-radius: 50%;
-  animation: sq-spin 0.8s linear infinite;
-  margin-bottom: 14px;
-}
-@keyframes sq-spin { to { transform: rotate(360deg); } }
-
-.sq-dedupe-notice {
-  font-size: 11px;
-  color: var(--sq-subtext);
-  text-align: center;
-  margin: -8px 0 14px;
-  opacity: 0.6;
-  font-style: italic;
-}
-
-/* History Sidebar - Premium Glass */
+/* History Sidebar */
 .sq-history-sidebar {
   width: 0;
-  background: rgba(13, 17, 23, 0.95);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: var(--sq-bg2);
   border-right: 1px solid var(--sq-border);
-  overflow-y: auto;
-  transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
+  overflow: hidden;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
 }
-.sq-history-sidebar.open { width: 260px; }
+
+.sq-history-sidebar.open { width: 280px; }
 
 .sq-history-header {
-  padding: 16px 18px;
+  padding: 18px 20px;
   border-bottom: 1px solid var(--sq-border);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
-  color: var(--sq-subtext);
-  text-transform: uppercase;
-  letter-spacing: 1px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: rgba(88, 166, 255, 0.04);
+}
+
+.sq-history-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px;
 }
 
 .sq-history-item {
-  padding: 14px 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
-  cursor: pointer;
+  padding: 12px 14px;
+  border-radius: 8px;
   font-size: 13px;
-  color: var(--sq-white);
-  transition: all 0.2s;
-  word-break: break-word;
+  color: var(--sq-subtext);
+  cursor: pointer;
+  transition: var(--sq-transition);
+  margin-bottom: 4px;
 }
-.sq-history-item:hover { background: rgba(88, 166, 255, 0.08); }
-.sq-history-item.active {
-  background: linear-gradient(90deg, rgba(88, 166, 255, 0.15), transparent);
-  border-left: 3px solid var(--sq-accent);
-  color: var(--sq-accent);
+
+.sq-history-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--sq-white);
 }
 
 .sq-history-item-time {
   font-size: 10px;
-  color: var(--sq-subtext);
-  margin-top: 6px;
+  margin-top: 4px;
   opacity: 0.6;
 }
-
-.sq-history-toggle {
-  padding: 8px 12px;
-  font-size: 14px;
-  border: none;
-  background: transparent;
-  color: var(--sq-subtext);
-  cursor: pointer;
-  transition: all 0.2s;
-  border-radius: 8px;
-}
-.sq-history-toggle:hover { color: var(--sq-accent); background: rgba(88, 166, 255, 0.1); }
 
 /* Pagination */
 .sq-pagination {
   display: flex;
   justify-content: center;
-  gap: 10px;
-  margin-top: 24px;
-  padding-top: 24px;
-  border-top: 1px solid var(--sq-border);
+  align-items: center;
+  gap: 16px;
+  padding-top: 20px;
+  margin-top: auto;
 }
-
-.sq-pagination-btn {
-  padding: 10px 16px;
-  border: 1px solid var(--sq-border);
-  border-radius: 10px;
-  background: rgba(22, 27, 34, 0.6);
-  color: var(--sq-subtext);
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.25s;
-  backdrop-filter: blur(8px);
-}
-.sq-pagination-btn:hover:not(:disabled) {
-  border-color: var(--sq-accent);
-  color: var(--sq-accent);
-  box-shadow: 0 4px 12px rgba(88, 166, 255, 0.2);
-}
-.sq-pagination-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
 .sq-pagination-info {
-  display: flex;
-  align-items: center;
-  color: var(--sq-subtext);
   font-size: 12px;
-  font-weight: 500;
-}
-
-/* Related Queries */
-.sq-related-section {
-  margin-top: 24px;
-  padding-top: 24px;
-  border-top: 1px solid var(--sq-border);
-}
-
-.sq-related-title {
-  font-size: 11px;
-  font-weight: 700;
   color: var(--sq-subtext);
-  margin-bottom: 12px;
-  text-transform: uppercase;
-  letter-spacing: 1px;
 }
 
-/* Tag System */
-.sq-tag {
-  display: inline-block;
-  background: linear-gradient(135deg, rgba(88, 166, 255, 0.12), rgba(163, 113, 247, 0.08));
-  color: var(--sq-accent);
-  padding: 5px 12px;
-  border-radius: 20px;
-  font-size: 11px;
-  font-weight: 600;
-  margin-right: 8px;
-  margin-bottom: 6px;
-  border: 1px solid rgba(88, 166, 255, 0.2);
-}
+/* Animations */
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-/* Saved Searches */
-.sq-saved-search {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 14px 16px;
-  background: rgba(22, 27, 34, 0.5);
-  border: 1px solid var(--sq-border);
-  border-radius: 10px;
-  margin-bottom: 10px;
-  font-size: 13px;
-  color: var(--sq-white);
-  transition: all 0.2s;
-}
-.sq-saved-search:hover { border-color: var(--sq-border-glow); }
+/* No-scroll utilities */
+.sq-no-hscroll { overflow-x: hidden !important; }
 
-.sq-saved-search-btn {
-  padding: 6px 12px;
-  background: rgba(88, 166, 255, 0.1);
-  border: 1px solid rgba(88, 166, 255, 0.3);
-  border-radius: 8px;
-  font-size: 11px;
-  color: var(--sq-accent);
-  cursor: pointer;
-  transition: all 0.2s;
-  font-weight: 600;
-}
-.sq-saved-search-btn:hover {
-  background: rgba(88, 166, 255, 0.2);
-  border-color: var(--sq-accent);
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .sq-history-sidebar.open {
+    position: absolute;
+    height: 100%;
+    z-index: 100;
+    box-shadow: 20px 0 50px rgba(0,0,0,0.5);
+  }
 }
 `;
+  ;
 
   // ==========================================
   // UI CLASS
@@ -793,13 +554,16 @@
       }
     }
 
-    addToHistory(query) {
+    addToHistory(query, mode = this.mode) {
+      if (!query.trim()) return;
       this.history.unshift({
         text: query.length > 50 ? query.slice(0, 50) + '...' : query,
         fullText: query,
         timestamp: new Date().toISOString(),
-        mode: this.mode
+        mode: mode
       });
+      // Limit history to 50 items
+      if (this.history.length > 50) this.history.pop();
       this.saveHistory();
     }
 
@@ -809,89 +573,91 @@
       this.injectStyles(container.getRootNode());
 
       container.innerHTML = `
-        <div class="sq-wrapper">
-          <div style="display: flex; height: 100%; width: 100%;">
+        <div class="sq-wrapper sq-no-hscroll">
+          <div class="sq-main-layout">
             <!-- History Sidebar -->
             <div class="sq-history-sidebar" id="sq-sidebar">
               <div class="sq-history-header">
-                📋 History
+                <span>📋 History</span>
                 <button class="sq-history-toggle" id="sq-sidebar-toggle">✕</button>
               </div>
-              <div id="sq-history-list"></div>
+              <div id="sq-history-list" class="sq-history-list"></div>
             </div>
 
             <!-- Main Content -->
-            <div style="flex: 1; display: flex; flex-direction: column; overflow-x: hidden;">
+            <div style="flex: 1; display: flex; flex-direction: column; min-width: 0; overflow: hidden;">
               <!-- Header -->
               <div class="sq-header">
                 <div class="sq-tabs">
-                    <button class="sq-history-toggle" id="sq-open-history" title="History" style="margin-right:8px; font-size:16px;">📋</button>
                     <button class="sq-tab active" data-mode="live">Current Chat</button>
                     <button class="sq-tab" data-mode="memory">Search Memory</button>
-                    <button class="sq-btn sq-btn-secondary sq-btn-sm" id="btn-index-now" style="margin-left: 8px;" title="Train your AI memory on saved conversions">
+                </div>
+                <div style="display:flex; gap:8px; align-items:center;">
+                  <button class="sq-btn sq-btn-secondary sq-btn-sm" id="sq-open-history" title="History">📋 History</button>
+                  <button class="sq-btn sq-btn-secondary sq-btn-sm" id="btn-index-now" title="Train your AI memory on saved conversions">
                     ↻ Train
-                    </button>
+                  </button>
                 </div>
               </div>
+              
               <div id="sq-mode-helper" class="sq-helper-text">Reason only over this conversation</div>
 
-            <!-- Body -->
-            <div class="sq-body">
-              
-              <!-- Suggestions -->
-              <div id="sq-suggestions-area" class="sq-suggestions" style="display:none;"></div>
-
-              <!-- Input Card -->
-              <div class="sq-input-card">
-                <div class="sq-input-wrapper">
-                  <textarea 
-                    class="sq-textarea" 
-                    id="sq-query-input"
-                    placeholder="Ask about decisions, confusions, patterns..."
-                  ></textarea>
-                  <div id="sq-input-badge" class="sq-input-badge">Keyword assist</div>
-                </div>
+              <!-- Body -->
+              <div class="sq-body">
                 
-                <div class="sq-controls">
-                  <div class="sq-options">
-                     <label class="sq-checkbox-label" style="display:none" id="chk-synthesis-wrapper">
-                       <input type="checkbox" checked id="chk-synthesis">
-                       <span>Generate AI Summary</span>
-                     </label>
-                     <button class="sq-history-toggle" id="sq-toggle-filters" title="Advanced filters">⚙️</button>
+                <!-- Suggestions -->
+                <div id="sq-suggestions-area" class="sq-suggestions" style="display:none;"></div>
+
+                <!-- Input Card -->
+                <div class="sq-input-card">
+                  <div class="sq-input-wrapper">
+                    <textarea 
+                      class="sq-textarea" 
+                      id="sq-query-input"
+                      placeholder="Ask about decisions, confusions, patterns..."
+                    ></textarea>
                   </div>
-                  <div style="display:flex; gap:8px;">
-                     <button class="sq-btn sq-btn-secondary" id="btn-clear">Clear</button>
-                     <button class="sq-btn sq-btn-primary" id="btn-ask">
-                       ✨ <span>Ask AI</span>
-                     </button>
+                  
+                  <div class="sq-controls">
+                    <div class="sq-options">
+                       <label class="sq-checkbox-label" style="display:none" id="chk-synthesis-wrapper">
+                         <input type="checkbox" checked id="chk-synthesis">
+                         <span>Synthesis</span>
+                       </label>
+                       <button class="sq-btn sq-btn-secondary sq-btn-sm" id="sq-toggle-filters" title="Advanced filters">⚙️ Filters</button>
+                       <button class="sq-btn sq-btn-secondary sq-btn-sm" id="btn-clear">Clear</button>
+                    </div>
+                    <button class="sq-btn sq-btn-primary" id="btn-ask">
+                      ✨ <span>Ask AI</span>
+                    </button>
                   </div>
                 </div>
-              </div>
 
-              <!-- Advanced Filters -->
-              <div class="sq-filters-panel" id="sq-filters-panel">
-                <div class="sq-filter-group">
-                  <label class="sq-filter-label">Sort:</label>
-                  <select class="sq-filter-select" id="sq-sort-by">
-                    <option value="relevance">Relevance</option>
-                    <option value="recent">Most Recent</option>
-                    <option value="oldest">Oldest</option>
-                  </select>
+                <!-- Advanced Filters -->
+                <div class="sq-filters-panel" id="sq-filters-panel">
+                  <div class="sq-filter-group">
+                    <label class="sq-filter-label">Sort By</label>
+                    <select class="sq-filter-select" id="sq-sort-by">
+                      <option value="relevance">Relevance</option>
+                      <option value="recent">Most Recent</option>
+                      <option value="oldest">Oldest</option>
+                    </select>
+                  </div>
+                  <div class="sq-filter-group">
+                    <label class="sq-filter-label">Date Range</label>
+                    <div style="display:flex; gap:8px; align-items:center;">
+                      <input type="date" class="sq-filter-input" id="sq-date-from">
+                      <span style="color: var(--sq-subtext);">to</span>
+                      <input type="date" class="sq-filter-input" id="sq-date-to">
+                    </div>
+                  </div>
                 </div>
-                <div class="sq-filter-group">
-                  <label class="sq-filter-label">Date Range:</label>
-                  <input type="date" class="sq-filter-input" id="sq-date-from" placeholder="From">
-                  <span style="color: #9ca3af;">—</span>
-                  <input type="date" class="sq-filter-input" id="sq-date-to" placeholder="To">
-                </div>
+
+                <!-- Response Area -->
+                <div id="sq-results-area" class="sq-response-section" style="display:none;"></div>
+
               </div>
-
-              <!-- Response Area -->
-              <div id="sq-results-area" class="sq-response-section" style="display:none;"></div>
-
             </div>
-          </div>
           </div>
         </div>
       `;
@@ -899,7 +665,6 @@
       this.attachEvents();
       this.updateHistoryList();
 
-      // Show keyword suggestions on initial load if in live mode
       if (this.mode === 'live') {
         this.showKeywordSuggestions();
       }
@@ -1025,23 +790,11 @@
         });
       });
 
-      // Input logic (Re-added subtle badge)
+      // Input logic
       textarea.addEventListener('input', () => {
-        const val = textarea.value.trim();
-        const badge = this.container.querySelector('#sq-input-badge');
-        if (!val) {
-          badge.classList.remove('visible');
-        } else {
-          badge.classList.add('visible');
-          // Simple heuristic: > 3 words = Intent
-          if (val.split(/\s+/).length > 3) {
-            badge.textContent = 'Intent-based';
-            badge.classList.add('intent');
-          } else {
-            badge.textContent = 'Keyword-assisted';
-            badge.classList.remove('intent');
-          }
-        }
+        // Handle auto-resize if needed
+        textarea.style.height = 'auto';
+        textarea.style.height = (textarea.scrollHeight) + 'px';
       });
 
       // Summary Checkbox Logic
@@ -1063,52 +816,42 @@
         this.updateHistoryList();
 
         askBtn.disabled = true;
+        const origBtn = askBtn.innerHTML;
+        askBtn.innerHTML = '✨ Processing...';
+
         resultsArea.style.display = 'block';
         resultsArea.innerHTML = `
-           <div class="sq-loading">
-             <div class="sq-loading-spinner"></div>
-             <div>${this.mode === 'live' ? 'Thinking...' : 'Scanning memories...'}</div>
-             <button class="sq-btn sq-btn-secondary sq-btn-sm" id="sq-stop-gen" style="margin-top:10px;">Stop Generation</button>
-           </div>
-         `;
-
-        // Bind Stop Button (Mock)
-        setTimeout(() => {
-          const stopBtn = resultsArea.querySelector('#sq-stop-gen');
-          if (stopBtn) {
-            stopBtn.addEventListener('click', () => {
-              resultsArea.innerHTML = '<div class="sq-error">Generation stopped by user</div>';
-              askBtn.disabled = false;
-            });
-          }
-        }, 100);
+          <div style="display:flex; flex-direction:column; align-items:center; gap:16px; padding:40px;">
+            <div class="sq-loading-spinner"></div>
+            <div style="font-size: 14px; color: var(--sq-subtext);">Querying Intelligence...</div>
+          </div>
+        `;
 
         try {
           if (this.mode === 'live') {
             await this.runLiveQuery(query, resultsArea);
           } else {
-            const synthesize = this.container.querySelector('#chk-synthesis').checked;
-            const sortBy = this.container.querySelector('#sq-sort-by').value;
-            const dateFrom = this.container.querySelector('#sq-date-from').value;
-            const dateTo = this.container.querySelector('#sq-date-to').value;
-            await this.runMemorySearch(query, resultsArea, synthesize, { sortBy, dateFrom, dateTo });
+            const synth = this.container.querySelector('#chk-synthesis')?.checked ?? true;
+            const sortBy = this.container.querySelector('#sq-sort-by')?.value || 'relevance';
+            const dateFrom = this.container.querySelector('#sq-date-from')?.value;
+            const dateTo = this.container.querySelector('#sq-date-to')?.value;
+
+            await this.runMemorySearch(query, resultsArea, synth, { sortBy, dateFrom, dateTo });
           }
         } catch (e) {
-          if (!resultsArea.innerHTML.includes('Generation stopped')) {
-            resultsArea.innerHTML = `<div class="sq-error">Error: ${this.escapeHTML(e.message)}</div>`;
-          }
+          resultsArea.innerHTML = `
+            <div class="sq-error" style="text-align:center; padding:20px;">
+              <div style="font-size:24px; margin-bottom:10px;">⚠️</div>
+              <div>${e.message || 'Error occurred'}</div>
+            </div>
+          `;
         } finally {
           askBtn.disabled = false;
+          askBtn.innerHTML = origBtn;
         }
       });
 
-      // Clear
-      clearBtn.addEventListener('click', () => {
-        textarea.value = '';
-        resultsArea.innerHTML = '';
-        resultsArea.style.display = 'none';
-        // Badge removed
-      });
+      // Keyboard shortcuts
 
       // Keyboard shortcuts
       document.addEventListener('keydown', (e) => {
@@ -1225,21 +968,42 @@
     }
 
     async runLiveQuery(query, container) {
-      // Fetch context
+      if (!query.trim()) return;
       const context = this.getContext();
       const prompt = `Context:\n${context}\n\nQuestion: ${query}\n\nAnswer concisely:`;
 
       const response = await this.callLlama(prompt);
 
+      // Add result to history
+      this.history.unshift({ query, timestamp: Date.now(), mode: 'live' });
+      this.saveHistory();
+      this.updateHistoryList();
+
       container.innerHTML = `
         <div class="sq-synthesis-card">
           <div class="sq-card-header">
-            <span class="sq-card-title-text">AI Answer</span>
-            <button class="sq-btn sq-btn-secondary" style="padding:4px 8px;font-size:12px;" onclick="navigator.clipboard.writeText(this.parentElement.nextElementSibling.innerText)">Copy</button>
+            <span class="sq-card-title-text">✨ AI Answer</span>
+            <button class="sq-btn sq-btn-secondary sq-btn-sm" id="btn-copy-live">📋 Copy</button>
           </div>
           <div class="sq-card-content">${this.formatText(response)}</div>
         </div>
       `;
+
+      const copyBtn = container.querySelector('#btn-copy-live');
+      if (copyBtn) {
+        copyBtn.addEventListener('click', () => {
+          const content = container.querySelector('.sq-card-content').innerText;
+          navigator.clipboard.writeText(content).then(() => {
+            const orig = copyBtn.innerHTML;
+            copyBtn.innerHTML = '✅ Copied!';
+            copyBtn.style.color = 'var(--sq-success)';
+            setTimeout(() => {
+              copyBtn.innerHTML = orig;
+              copyBtn.style.color = '';
+            }, 2000);
+          });
+        });
+      }
     }
 
     async runMemorySearch(query, container, synthesize, filters = {}) {
@@ -1250,6 +1014,8 @@
         container.innerHTML = `<div class="sq-empty">No relevant memories found.</div>`;
         return;
       }
+
+      this.rawResultsCount = rawResults.length;
 
       // 1. Deduplication (String Similarity/Exact Check)
       const uniqueResults = [];
@@ -1306,48 +1072,39 @@
         html += `
           <div class="sq-synthesis-card" style="margin-bottom:20px;">
             <div class="sq-card-header">
-              <span class="sq-card-title-text">✨ Answer</span>
-              <button class="sq-btn sq-btn-secondary" style="padding:4px 8px;font-size:12px;" onclick="navigator.clipboard.writeText(this.parentElement.nextElementSibling.innerText)">📋 Copy</button>
+              <span class="sq-card-title-text">✨ AI Synthesis</span>
+              <button class="sq-btn sq-btn-secondary sq-btn-sm" id="btn-copy-memory">📋 Copy</button>
             </div>
             <div class="sq-card-content" id="sq-synthesis-content">
-              <div class="sq-loading-spinner" style="margin: 20px auto;"></div>
-              <div style="text-align: center; font-size: 12px; color: #6b7280;">Thinking...</div>
+              <div style="display:flex; flex-direction:column; align-items:center; gap:12px; padding:20px;">
+                <div class="sq-loading-spinner"></div>
+                <div style="font-size: 13px; color: var(--sq-subtext);">Synthesizing findings...</div>
+              </div>
             </div>
           </div>
         `;
 
-        // Output Governance Prompt
-        const prompt = `You are the Smart Query reasoning engine for ChatBridge.
-
-Your job is to extract insight, not explain the system, not summarize conversations, and not describe user intent.
-
-Core Rules (non-negotiable):
-- Never describe the user’s request ("The user is asking...")
-- Do not say “Based on the provided conversation...”
-- Do not explain why the query was asked
-- Do not mention "segments", "matches", "percentages", or "timestamps" unless citing a specific event date.
-- Never summarize the conversation as a whole.
-- Extract only what directly answers the query.
-
-Task:
-User Question: "${this.currentResults[0].fullQuery || ''}"
-
-Relevant Memory Segments:
-${context}
-
-Instructions:
-1. Identify explicit decision moments or key facts.
-2. Ignore brainstorming, speculation, and repetition.
-3. Collapse duplicates into one decision.
-4. Phrase decisions as outcomes, not dialogue.
-5. If decisions are weak, say "No firm decisions were finalized" and list tentative directions.
-
-Answer directly:`;
+        // Output Governance Prompt (same as before)
+        const prompt = `You are the Smart Query reasoning engine for ChatBridge.\n\nYour job is to extract insight, not explain the system, not summarize conversations, and not describe user intent.\n\nCore Rules (non-negotiable):\n- Never describe the user’s request ("The user is asking...")\n- Do not say “Based on the provided conversation...”\n- Do not explain why the query was asked\n- Do not mention "segments", "matches", "percentages", or "timestamps" unless citing a specific event date.\n- Never summarize the conversation as a whole.\n- Extract only what directly answers the query.\n\nTask:\nUser Question: "${this.currentResults[0].fullQuery || ''}"\n\nRelevant Memory Segments:\n${context}\n\nInstructions:\n1. Identify explicit decision moments or key facts.\n2. Ignore brainstorming, speculation, and repetition.\n3. Collapse duplicates into one decision.\n4. Phrase decisions as outcomes, not dialogue.\n5. If decisions are weak, say "No firm decisions were finalized" and list tentative directions.\n\nAnswer directly:`;
 
         this.callLlama(prompt).then(summary => {
           const syntContent = container.querySelector('#sq-synthesis-content');
           if (syntContent) {
             syntContent.innerHTML = this.formatText(summary);
+            const copyBtn = container.querySelector('#btn-copy-memory');
+            if (copyBtn) {
+              copyBtn.addEventListener('click', () => {
+                navigator.clipboard.writeText(summary).then(() => {
+                  const orig = copyBtn.innerHTML;
+                  copyBtn.innerHTML = '✅ Copied!';
+                  copyBtn.style.color = 'var(--sq-success)';
+                  setTimeout(() => {
+                    copyBtn.innerHTML = orig;
+                    copyBtn.style.color = '';
+                  }, 2000);
+                });
+              });
+            }
           }
         });
       }
@@ -1358,15 +1115,17 @@ Answer directly:`;
       const pagedResults = this.currentResults.slice(start, end);
 
       // Dedupe notice
-      if (rawResults.length > this.currentResults.length) {
-        const mergedCount = rawResults.length - this.currentResults.length;
+      if (this.rawResultsCount > this.currentResults.length) {
+        const mergedCount = this.rawResultsCount - this.currentResults.length;
         html += `<div class="sq-dedupe-notice">Merged ${mergedCount} similar segments</div>`;
       }
 
-      html += `<div style="font-size:11px;color:#6b7280;margin-bottom:10px;text-transform:uppercase;font-weight:600;letter-spacing:0.5px;">Found ${this.currentResults.length} Memories</div>`;
+      html += `<div style="font-size:11px; color:var(--sq-subtext); margin-bottom:12px; text-transform:uppercase; font-weight:700; letter-spacing:0.1em; display:flex; justify-content:space-between; align-items:center;">
+        <span>Found ${this.currentResults.length} Memories</span>
+        ${this.currentResults.length > pagedResults.length ? `<span style="opacity:0.7">Page ${this.currentPage}</span>` : ''}
+      </div>`;
 
       html += pagedResults.map((r, idx) => {
-        // Mock tag logic for demo - replace with real NLP tag if available
         let tags = '';
         const txt = r.excerpt.map(m => m.text).join(' ').toLowerCase();
         if (txt.includes('decide') || txt.includes('agreed') || txt.includes('plan')) tags += `<span class="sq-res-tag decision">Decision</span>`;
@@ -1374,60 +1133,68 @@ Answer directly:`;
         else if (txt.includes('change') || txt.includes('instead')) tags += `<span class="sq-res-tag change">Shift</span>`;
 
         return `
-        <div class="sq-result" data-result-index="${start + idx}">
-          <div class="sq-res-meta">
-             ${tags ? `<div class="sq-res-tags">${tags}</div>` : ''}
-             <span style="margin-left:auto;">${new Date(r.segment.timestamp).toLocaleDateString()}</span>
-             <button class="sq-expand-btn" style="margin-left: 8px; padding: 0; border: none; background: none; color: #6b7280; cursor: pointer;"></button>
-          </div>
-          <div class="sq-res-preview">
-            <div class="sq-res-content">
-              ${r.excerpt.slice(0, 2).map(m => `
-                <div style="margin-bottom:6px;">
-                  <span class="sq-res-role">${m.role === 'user' ? 'You' : 'AI'}:</span>
-                  <span>${m.text.length > 150 ? m.text.slice(0, 150) + '...' : m.text}</span>
-                </div>
-              `).join('')}
+          <div class="sq-result" data-result-index="${start + idx}">
+            <div class="sq-res-meta">
+               <div style="display:flex; gap:6px; align-items:center;">
+                 ${tags}
+                 <span style="font-size:11px; opacity:0.8;">${new Date(r.segment.timestamp).toLocaleDateString()}</span>
+               </div>
+               <button class="sq-btn sq-btn-secondary sq-btn-sm sq-expand-btn" style="padding:2px 8px; height:24px;">View Details</button>
+            </div>
+            <div class="sq-res-preview">
+              <div class="sq-res-content">
+                ${r.excerpt.slice(0, 2).map(m => `
+                  <div class="sq-res-msg">
+                    <span class="sq-res-role">${m.role === 'user' ? 'You' : 'AI'}</span>
+                    <div style="flex:1; min-width:0; overflow-wrap:break-word;">${this.escapeHTML(m.text.length > 180 ? m.text.slice(0, 180) + '...' : m.text)}</div>
+                  </div>
+                `).join('')}
+              </div>
             </div>
           </div>
-        </div>
-      `}).join('');
+        `;
+      }).join('');
 
       // Pagination
       if (this.currentResults.length > this.resultsPerPage) {
         const totalPages = Math.ceil(this.currentResults.length / this.resultsPerPage);
         html += `
           <div class="sq-pagination">
-            <button class="sq-pagination-btn" id="sq-prev-page" ${this.currentPage === 1 ? 'disabled' : ''}>← Previous</button>
-            <div class="sq-pagination-info">${this.currentPage} / ${totalPages}</div>
-            <button class="sq-pagination-btn" id="sq-next-page" ${this.currentPage === totalPages ? 'disabled' : ''}>Next →</button>
+            <button class="sq-btn sq-btn-secondary sq-btn-sm" id="sq-prev-page" ${this.currentPage === 1 ? 'disabled' : ''}>← Prev</button>
+            <div class="sq-pagination-info">${this.currentPage} of ${totalPages}</div>
+            <button class="sq-btn sq-btn-secondary sq-btn-sm" id="sq-next-page" ${this.currentPage === totalPages ? 'disabled' : ''}>Next →</button>
           </div>
         `;
       }
 
       container.innerHTML = html;
 
-      // Add expandable preview listeners
+      // Expandable preview items
       container.querySelectorAll('.sq-result').forEach(el => {
-        el.querySelector('.sq-expand-btn').addEventListener('click', () => {
+        const btn = el.querySelector('.sq-expand-btn');
+        btn.addEventListener('click', () => {
           el.classList.toggle('expanded');
+          btn.textContent = el.classList.contains('expanded') ? 'Hide Details' : 'View Details';
         });
       });
 
-      // Pagination listeners
-      container.querySelector('#sq-prev-page')?.addEventListener('click', () => {
+      // Pagination Listeners
+      const prevBtn = container.querySelector('#sq-prev-page');
+      const nextBtn = container.querySelector('#sq-next-page');
+
+      if (prevBtn) prevBtn.addEventListener('click', () => {
         if (this.currentPage > 1) {
           this.currentPage--;
-          const textarea = this.container.querySelector('#sq-query-input');
           this.renderMemoryResults(container, false);
+          container.scrollIntoView({ behavior: 'smooth' });
         }
       });
-
-      container.querySelector('#sq-next-page')?.addEventListener('click', () => {
+      if (nextBtn) nextBtn.addEventListener('click', () => {
         const totalPages = Math.ceil(this.currentResults.length / this.resultsPerPage);
         if (this.currentPage < totalPages) {
           this.currentPage++;
           this.renderMemoryResults(container, false);
+          container.scrollIntoView({ behavior: 'smooth' });
         }
       });
     }
