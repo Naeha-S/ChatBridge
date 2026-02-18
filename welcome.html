@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ChatBridge</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="welcome.css">
+</head>
+<body>
+
+  <nav class="nav">
+    <div class="nav-inner">
+      <div class="nav-brand">
+        <img src="icons/icon128.png" alt="" width="28" height="28" class="nav-icon">
+        <span class="nav-name">ChatBridge</span>
+      </div>
+      <div class="nav-links">
+        <a href="#how">How it works</a>
+        <a href="#tools">Tools</a>
+        <a href="#agents">Agents</a>
+        <a href="#workspace">Workspace</a>
+        <a href="#setup">Setup</a>
+        <button class="nav-cta" id="btn-options-nav">Settings</button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ── Hero ── -->
+  <header class="hero">
+    <div class="hero-inner">
+      <p class="hero-eyebrow">You just installed ChatBridge.</p>
+      <h1>Stop copying and pasting<br>between AI chats.</h1>
+      <p class="hero-body">
+        ChatBridge sits inside every AI platform you use. Scan conversations, summarize them,
+        rewrite for clarity, translate into 20+ languages, search across your entire chat history,
+        and move conversations between AI models — all without leaving the page.
+        Everything stays in your browser. No accounts. No servers.
+      </p>
+      <div class="hero-stats">
+        <div class="hero-stat"><span class="hero-stat-num">50+</span><span class="hero-stat-label">features</span></div>
+        <div class="hero-stat"><span class="hero-stat-num">25+</span><span class="hero-stat-label">AI platforms</span></div>
+        <div class="hero-stat"><span class="hero-stat-num">20+</span><span class="hero-stat-label">languages</span></div>
+        <div class="hero-stat"><span class="hero-stat-num">6</span><span class="hero-stat-label">themes</span></div>
+      </div>
+      <div class="hero-actions">
+        <button class="btn" id="btn-go-chat">Try it on ChatGPT</button>
+        <a href="#how" class="btn btn-ghost">See how it works</a>
+      </div>
+      <p class="hero-platforms">
+        Works on
+        <span>ChatGPT</span>
+        <span>Claude</span>
+        <span>Gemini</span>
+        <span>Copilot</span>
+        <span>Perplexity</span>
+        <span>DeepSeek</span>
+        <span>Mistral</span>
+        <span>Grok</span>
+        <span>Poe</span>
+        <span>HuggingChat</span>
+        <span>Meta AI</span>
+        <span>Character AI</span>
+        <span class="more">+ 12 more</span>
+      </p>
+    </div>
+  </header>
+
+  <!-- ── How it works ── -->
+  <section class="section" id="how">
+    <div class="section-inner">
+      <h2>Three moves. That's it.</h2>
+      <div class="flow">
+        <div class="flow-step">
+          <div class="flow-num">1</div>
+          <div>
+            <h3>Scan the chat</h3>
+            <p>
+              Click the floating <strong>⚡</strong> icon on any supported site and hit
+              <strong>Scan</strong>. ChatBridge reads every message on the page — user, assistant,
+              attachments, code blocks — using adapters built for each platform.
+            </p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-num">2</div>
+          <div>
+            <h3>Transform it</h3>
+            <p>
+              Summarize it. Rewrite the tone. Translate it. Or optimize the prompt for a
+              different AI model. Pick a tool from the sidebar and the result shows up in seconds.
+            </p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-num">3</div>
+          <div>
+            <h3>Send it somewhere else</h3>
+            <p>
+              Hit <strong>Insert to Chat</strong>, pick a target (Claude, Gemini, ChatGPT, etc.),
+              and ChatBridge opens a new tab with your text already in the input box. No clipboard needed.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Tools ── -->
+  <section class="section section-dark" id="tools">
+    <div class="section-inner">
+      <p class="section-eyebrow">Core tools</p>
+      <h2>What you can do with a scanned conversation</h2>
+      <p class="section-sub">Click ⚡ on any AI chat to open the panel. These tools work on any conversation, from any platform.</p>
+      <div class="tools-grid">
+        <div class="tool">
+          <div class="tool-icon">📝</div>
+          <h3>Summarize</h3>
+          <p>Short, detailed, executive, or technical. Four output formats so you get exactly the density you need. Insert the result back into chat or copy it.</p>
+        </div>
+        <div class="tool">
+          <div class="tool-icon">✏️</div>
+          <h3>Rewrite</h3>
+          <p>Concise, academic, creative, professional, humanized — 10+ tones. Preserves meaning, changes delivery. Multi-select which messages to transform.</p>
+        </div>
+        <div class="tool">
+          <div class="tool-icon">🌍</div>
+          <h3>Translate</h3>
+          <p>20+ languages. Powered by EuroLLM for European languages and Gemini for everything else. Full conversation or individual messages.</p>
+        </div>
+        <div class="tool">
+          <div class="tool-icon">🔄</div>
+          <h3>Sync Tone</h3>
+          <p>Reformats your prompt for a specific model. What works on ChatGPT doesn't always work on Claude — this fixes that.</p>
+        </div>
+        <div class="tool">
+          <div class="tool-icon">🔍</div>
+          <h3>Smart Query</h3>
+          <p>Search across every conversation you've ever saved. Filter by platform, date, or topic. AI synthesizes answers from your entire history.</p>
+        </div>
+        <div class="tool">
+          <div class="tool-icon">➡️</div>
+          <h3>Continue With</h3>
+          <p>One click opens the target AI and auto-types your content into the chat box. Works across any pair of platforms — no copy-paste needed.</p>
+        </div>
+        <div class="tool">
+          <div class="tool-icon">🎯</div>
+          <h3>Prompt Optimizer</h3>
+          <p>Transform a rough prompt into a high-performance one. The AI restructures your input for better results on any model.</p>
+        </div>
+        <div class="tool">
+          <div class="tool-icon">💡</div>
+          <h3>Follow-Up Prompts</h3>
+          <p>Generates 5 categorized follow-up questions: clarification, improvement, expansion, critical, and creative. Copy or insert directly.</p>
+        </div>
+      </div>
+
+      <!-- Quick actions row -->
+      <div class="quick-row">
+        <p class="quick-label">Quick actions always available:</p>
+        <div class="quick-pills">
+          <span class="pill">📊 Stats — word count, read time, message count</span>
+          <span class="pill">🧹 Clean — remove duplicate conversations</span>
+          <span class="pill">📋 Copy — export conversation to clipboard</span>
+          <span class="pill">📥 Export — download as JSON or Markdown</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Smart Workspace ── -->
+  <section class="section" id="workspace">
+    <div class="section-inner">
+      <p class="section-eyebrow">Smart Workspace</p>
+      <h2>Cross-platform intelligence tools</h2>
+      <p class="section-sub">Saved conversations aren't just storage — they're a searchable, analyzable knowledge base. These tools work across your entire history.</p>
+      <div class="workspace-grid">
+        <div class="ws-card">
+          <h3>⚖️ Compare Models</h3>
+          <p>Compare how different AIs answered the same question across saved conversations. See where they agree, disagree, or hallucinate.</p>
+        </div>
+        <div class="ws-card">
+          <h3>🔗 Merge Threads</h3>
+          <p>Combine related conversations from different platforms into one unified thread. Connect fragments across ChatGPT, Claude, and Gemini.</p>
+        </div>
+        <div class="ws-card">
+          <h3>📦 Extract Content</h3>
+          <p>Pull out code blocks, URLs, emails, phone numbers, prices, dates, @mentions, #hashtags, tables, and commands from any conversation.</p>
+        </div>
+        <div class="ws-card">
+          <h3>🔬 Insight Finder</h3>
+          <p>Semantic spotlight — extracts comparisons, contradictions, requirements, TODOs, and decision points from a conversation automatically.</p>
+        </div>
+        <div class="ws-card">
+          <h3>🏗️ Continue On…</h3>
+          <p>Move the conversation to a different AI model (Claude → ChatGPT, Gemini → Copilot, etc.) with auto-insert. One click, no clipboard.</p>
+        </div>
+        <div class="ws-card">
+          <h3>✅ Fact-Check</h3>
+          <p>Analyzes factual claims in the conversation and flags potential issues. Helps catch AI hallucinations and unsupported statements.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Agent Hub ── -->
+  <section class="section section-dark" id="agents">
+    <div class="section-inner">
+      <p class="section-eyebrow">Agent Hub</p>
+      <h2>AI agents that work on your conversations</h2>
+      <p class="section-sub">Four cognitive instruments — plus seven specialized agents — that analyze, restructure, and act on your chat data.</p>
+
+      <div class="agent-grid">
+        <div class="agent-card agent-primary">
+          <div class="agent-badge">Instrument</div>
+          <h3>Extractor</h3>
+          <p class="agent-tagline">Surface action items</p>
+          <p>Extracts tasks, deadlines, and person-assignments from conversation. Returns structured, actionable output you can drop into a project tracker.</p>
+        </div>
+        <div class="agent-card agent-primary">
+          <div class="agent-badge">Instrument</div>
+          <h3>Reduce</h3>
+          <p class="agent-tagline">Distill complexity</p>
+          <p>Cognitive Simplifier — breaks complex AI responses into numbered sections with TL;DR and shows reduction percentage. Makes long threads scannable.</p>
+        </div>
+        <div class="agent-card agent-primary">
+          <div class="agent-badge">Instrument</div>
+          <h3>Compose</h3>
+          <p class="agent-tagline">Generate structured outputs</p>
+          <p>Draft Generator — creates emails, status updates, meeting notes, or replies from your conversation. Turns chat into deliverables.</p>
+        </div>
+        <div class="agent-card agent-primary">
+          <div class="agent-badge">Instrument</div>
+          <h3>Synthesizer</h3>
+          <p class="agent-tagline">Cross-model integration</p>
+          <p>EchoSynth — queries multiple AI models, applies referee analysis, multi-stage synthesis with RAG context. Get a unified answer from several AIs at once.</p>
+        </div>
+      </div>
+
+      <h3 class="sub-heading">Specialized agents</h3>
+      <div class="agent-list">
+        <div class="agent-mini">
+          <strong>Continuum</strong>
+          <span>RAG-powered cross-platform context reconstruction. Finds related conversations across all platforms and rebuilds state.</span>
+        </div>
+        <div class="agent-mini">
+          <strong>Memory Architect</strong>
+          <span>Builds a knowledge map of all saved conversations with topic clustering and retrieval stats.</span>
+        </div>
+        <div class="agent-mini">
+          <strong>Session Closer</strong>
+          <span>End-of-chat clarity — identifies what changed, what's unresolved, and the recommended next move.</span>
+        </div>
+        <div class="agent-mini">
+          <strong>Auto Continue</strong>
+          <span>Detects truncated AI responses and inserts a "continue" prompt automatically.</span>
+        </div>
+        <div class="agent-mini">
+          <strong>Quick Agent</strong>
+          <span>Analyze current conversation for a chosen goal: improve answer, extract tasks, debug plan, follow-ups, or executive summary.</span>
+        </div>
+        <div class="agent-mini">
+          <strong>Threadkeeper</strong>
+          <span>Autonomous conversation tracking — identifies returning topics, detects missing context, and auto-injects relevant history.</span>
+        </div>
+        <div class="agent-mini">
+          <strong>Multi-AI Planner</strong>
+          <span>Breaks project goals into AI-powered steps, assigns tasks to optimal AI models, and builds a unified execution plan.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── History & Export ── -->
+  <section class="section" id="history">
+    <div class="section-inner">
+      <p class="section-eyebrow">History & Export</p>
+      <h2>Your conversations, organized</h2>
+      <div class="two-col">
+        <div class="col-text">
+          <h3>History Sidebar</h3>
+          <p>
+            Every scanned conversation is saved locally and accessible from the sidebar.
+            Search full-text across all chats, filter by AI platform, browse date-grouped lists,
+            and view full message threads with copy and delete actions.
+          </p>
+          <h3>Export Anywhere</h3>
+          <p>
+            Download your entire conversation library as <strong>JSON</strong> (machine-readable)
+            or <strong>Markdown</strong> (human-readable). Extracted content can be exported
+            separately. Your data is always portable.
+          </p>
+          <h3>Media Vault</h3>
+          <p>
+            All images from scanned conversations are collected in a browsable gallery.
+            View, expand, and manage media from any platform in one place.
+          </p>
+        </div>
+        <div class="col-visual">
+          <div class="feature-list-visual">
+            <div class="flv-item"><span class="flv-icon">🔍</span> Full-text search across all chats</div>
+            <div class="flv-item"><span class="flv-icon">🏷️</span> Filter by platform (ChatGPT, Claude, etc.)</div>
+            <div class="flv-item"><span class="flv-icon">📅</span> Date-grouped conversation list</div>
+            <div class="flv-item"><span class="flv-icon">📄</span> Export as JSON or Markdown</div>
+            <div class="flv-item"><span class="flv-icon">🖼️</span> Media vault for images</div>
+            <div class="flv-item"><span class="flv-icon">🧹</span> One-click cleanup &amp; dedup</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Customization ── -->
+  <section class="section section-dark" id="customize">
+    <div class="section-inner">
+      <p class="section-eyebrow">Customization</p>
+      <h2>Make it yours</h2>
+      <div class="customize-grid">
+        <div class="cust-card">
+          <h3>6 Themes</h3>
+          <p>Dark (default), Light, Synthwave, Skeuomorphic, Brutalism, and Claymorphism (Glass). Switch instantly from the dashboard.</p>
+          <div class="theme-dots">
+            <span class="dot" style="background:#1e1e23" title="Dark"></span>
+            <span class="dot" style="background:#f0f0f0" title="Light"></span>
+            <span class="dot" style="background:#2b1055" title="Synthwave"></span>
+            <span class="dot" style="background:#c9b99a" title="Skeuomorphic"></span>
+            <span class="dot" style="background:#ff6b6b" title="Brutalism"></span>
+            <span class="dot" style="background:linear-gradient(135deg,#667eea,#764ba2)" title="Claymorphism"></span>
+          </div>
+        </div>
+        <div class="cust-card">
+          <h3>9 Languages</h3>
+          <p>The entire UI translates into English, Español, Français, Deutsch, 日本語, 中文, 한국어, Português, and हिन्दी.</p>
+        </div>
+        <div class="cust-card">
+          <h3>3 Detail Levels</h3>
+          <p>Set summaries and analysis to Concise, Detailed, or Expert. Controls output depth across all AI-powered features.</p>
+        </div>
+        <div class="cust-card">
+          <h3>Draggable Avatar</h3>
+          <p>The floating ⚡ button can be dragged to any position on the page. It remembers where you leave it.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Under the Hood ── -->
+  <section class="section" id="engine">
+    <div class="section-inner">
+      <p class="section-eyebrow">Under the hood</p>
+      <h2>Built-in RAG pipeline</h2>
+      <p class="section-sub">ChatBridge doesn't just store conversations — it understands them. A three-layer retrieval pipeline powers Smart Query, Insight Finder, and the Agent Hub.</p>
+      <div class="engine-steps">
+        <div class="engine-step">
+          <div class="engine-num">1</div>
+          <div>
+            <h3>Segment Engine</h3>
+            <p>Breaks conversations into meaning-based segments — questions, answers, context, code blocks — so retrieval is precise, not page-level.</p>
+          </div>
+        </div>
+        <div class="engine-step">
+          <div class="engine-num">2</div>
+          <div>
+            <h3>Intent Analyzer</h3>
+            <p>Classifies what you're looking for: decisions, contradictions, breakthroughs, patterns, or comparisons. Shapes the search strategy.</p>
+          </div>
+        </div>
+        <div class="engine-step">
+          <div class="engine-num">3</div>
+          <div>
+            <h3>Memory Retrieval</h3>
+            <p>Three-layer hybrid search: semantic similarity → intent-alignment scoring → reasoning filter. Finds what matters, not just what matches.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Privacy callout ── -->
+  <section class="section section-dark">
+    <div class="section-inner callout">
+      <div class="callout-text">
+        <h2>Nothing leaves your browser unless you say so.</h2>
+        <p>
+          Conversations are stored locally in Chrome. API calls go directly from your browser to
+          the model provider (Google, HuggingFace, OpenAI) — there's no ChatBridge server in between.
+          No accounts, no telemetry, no tracking.
+        </p>
+        <div class="trust-row">
+          <div class="trust-item">
+            <svg class="trust-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <div>
+              <strong>Local storage only</strong>
+              <p>All data lives in Chrome's local storage. Nothing syncs to any server.</p>
+            </div>
+          </div>
+          <div class="trust-item">
+            <svg class="trust-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            <div>
+              <strong>Only activates on AI sites</strong>
+              <p>Runs only on 25+ supported AI chat domains. Never touches your bank, email, or social media.</p>
+            </div>
+          </div>
+          <div class="trust-item">
+            <svg class="trust-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            <div>
+              <strong>Zero telemetry</strong>
+              <p>No analytics, no tracking pixels, no usage reporting.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Setup ── -->
+  <section class="section" id="setup">
+    <div class="section-inner">
+      <h2>Get started in two minutes</h2>
+
+      <div class="setup">
+        <div class="setup-block">
+          <div class="setup-label">Step 1 — API keys</div>
+          <h3>Connect your AI providers</h3>
+          <p>
+            ChatBridge calls AI models on your behalf using your own API keys.
+            Both are free-tier eligible. You can add one or both.
+          </p>
+          <div class="keys-grid">
+            <div class="key-card">
+              <h4>Gemini <span class="key-rec">Recommended</span></h4>
+              <div class="key-what">Powers: Summarize, Rewrite, Sync Tone, Translate, Agents, Follow-ups, Fact-Check</div>
+              <p>Create a free key at Google AI Studio. Generous free tier — 15 requests/min.</p>
+              <a href="https://makersuite.google.com/app/apikey" target="_blank" rel="noopener" class="key-link">Get Gemini key →</a>
+            </div>
+            <div class="key-card">
+              <h4>HuggingFace</h4>
+              <div class="key-what">Powers: EuroLLM translation, Llama rewrite, Gemma models</div>
+              <p>Create a free access token. Used as a fallback and for specialized models.</p>
+              <a href="https://huggingface.co/settings/tokens" target="_blank" rel="noopener" class="key-link">Get HuggingFace token →</a>
+            </div>
+          </div>
+          <button class="btn btn-sm" id="btn-options" style="margin-top:16px">Open extension settings to paste keys</button>
+        </div>
+        <div class="setup-block">
+          <div class="setup-label">Step 2 — Use it</div>
+          <h3>Go to any AI chat</h3>
+          <p>
+            Navigate to ChatGPT, Claude, Gemini, or any supported platform. The
+            <strong>⚡</strong> floating button appears in the bottom corner. Click it, scan,
+            and you're in. No page refresh needed.
+          </p>
+        </div>
+        <div class="setup-block">
+          <div class="setup-label">Step 3 — Your Dashboard</div>
+          <h3>Manage everything from one place</h3>
+          <p>
+            The extension dashboard shows your stats (saved chats, total messages, platforms used),
+            lets you configure API keys, browse conversation history, switch themes and languages,
+            and check keyboard shortcuts. Access it anytime from the extension popup or settings.
+          </p>
+          <button class="btn btn-sm btn-ghost" id="btn-dashboard">Open Dashboard</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Shortcuts ── -->
+  <section class="section section-dark">
+    <div class="section-inner">
+      <h2>Keyboard shortcuts</h2>
+      <p class="section-sub">All shortcuts are remappable at <code>chrome://extensions/shortcuts</code>.</p>
+      <div class="shortcuts">
+        <div class="sc"><kbd>Ctrl+Shift+S</kbd> <span>Scan chat</span></div>
+        <div class="sc"><kbd>Ctrl+Shift+H</kbd> <span>History sidebar</span></div>
+        <div class="sc"><kbd>Ctrl+Shift+I</kbd> <span>Insert to chat</span></div>
+        <div class="sc"><kbd>Ctrl+Shift+F</kbd> <span>Insight Finder</span></div>
+      </div>
+      <p class="shortcuts-note">In-panel shortcuts: <kbd>S</kbd> Scan &nbsp; <kbd>R</kbd> Restore &nbsp; <kbd>C</kbd> Copy &nbsp; <kbd>Esc</kbd> Close</p>
+    </div>
+  </section>
+
+  <!-- ── FAQ ── -->
+  <section class="section" id="faq">
+    <div class="section-inner">
+      <h2>Common questions</h2>
+      <div class="faq-list">
+        <details class="faq-item">
+          <summary>Do I need API keys to use ChatBridge?</summary>
+          <p>Yes — ChatBridge uses your own API keys to call AI models. Both Gemini and HuggingFace have generous free tiers. You can also add an OpenAI key for additional features.</p>
+        </details>
+        <details class="faq-item">
+          <summary>Which AI platform should I start with?</summary>
+          <p>Any of them. ChatBridge works on 25+ AI chat sites. Just navigate to one, click the ⚡ button, and you're in. ChatGPT and Claude are good starting points.</p>
+        </details>
+        <details class="faq-item">
+          <summary>Is my data sent to ChatBridge servers?</summary>
+          <p>No. There are no ChatBridge servers. All data is stored locally in your browser. API calls go directly from your browser to the AI providers (Google, HuggingFace, OpenAI).</p>
+        </details>
+        <details class="faq-item">
+          <summary>Can I export my conversation history?</summary>
+          <p>Yes. You can export all saved conversations as JSON or Markdown at any time. The data is always yours to take with you.</p>
+        </details>
+        <details class="faq-item">
+          <summary>Does it work on mobile?</summary>
+          <p>ChatBridge is a Chrome desktop extension. It does not work on mobile browsers since they don't support extensions.</p>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <p>ChatBridge v1.0.0</p>
+    <div class="footer-links">
+      <a href="https://github.com/Naeha-S/ChatBridge" target="_blank" rel="noopener">GitHub</a>
+      <a href="#setup">Settings</a>
+      <a href="#tools">Tools</a>
+      <a href="#agents">Agents</a>
+      <a href="#faq">FAQ</a>
+    </div>
+  </footer>
+
+  <script src="welcome.js"></script>
+</body>
+</html>

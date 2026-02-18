@@ -126,7 +126,7 @@ Last updated: 2026-02-18
 - [ ] Extension store assets (screenshots, promo tiles, description)
 
 ### 🚀 Onboarding
-- [ ] On-install explainer page (welcome flow)
+- [x] On-install explainer page (welcome flow)
 - [ ] First-scan guided walkthrough
 - [ ] Tooltip hints for new users
 - [ ] API key setup wizard with validation

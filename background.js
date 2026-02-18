@@ -108,11 +108,13 @@ function markModelSuccess(model) {
   console.log(`[Gemini] ✓ Success with ${model}, reset all failure counts`);
 }
 
-chrome.runtime.onInstalled.addListener(() => {
+chrome.runtime.onInstalled.addListener((details) => {
   console.log("ChatBridge installed/updated");
 
-  // MCP Bridge is only available in content scripts (which have DOM/window access)
-  // Service workers don't have window, so MCP init is handled in content_script.js
+  // Open the welcome page on first install only
+  if (details.reason === 'install') {
+    chrome.tabs.create({ url: chrome.runtime.getURL('welcome.html') });
+  }
 });
 
 // Migration endpoint: content script can send stored conversations to background for persistent storage
