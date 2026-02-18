@@ -111,15 +111,8 @@ function markModelSuccess(model) {
 chrome.runtime.onInstalled.addListener(() => {
   console.log("ChatBridge installed/updated");
 
-  // Initialize MCP Bridge in background
-  try {
-    if (typeof window.MCPBridge !== 'undefined') {
-      window.MCPBridge.init();
-      console.log('[ChatBridge] MCP Bridge initialized in background');
-    }
-  } catch (e) {
-    console.error('[ChatBridge] Failed to initialize MCP:', e);
-  }
+  // MCP Bridge is only available in content scripts (which have DOM/window access)
+  // Service workers don't have window, so MCP init is handled in content_script.js
 });
 
 // Migration endpoint: content script can send stored conversations to background for persistent storage
