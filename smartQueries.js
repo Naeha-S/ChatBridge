@@ -14,23 +14,23 @@
    ============================================ */
 
 .sq-wrapper {
-  --sq-bg: #070912;
-  --sq-bg2: #0a0e16;
-  --sq-bg3: #121822;
-  --sq-surface: rgba(18, 24, 34, 0.7);
-  --sq-surface-elevated: rgba(30, 41, 59, 0.85);
-  --sq-white: #f8fafc;
-  --sq-subtext: #94a3b8;
-  --sq-accent: #3b82f6;
-  --sq-accent2: #8b5cf6;
-  --sq-accent3: #10b981;
-  --sq-success: #22c55e;
+  --sq-bg: #0A0F1C;
+  --sq-bg2: #0f1629;
+  --sq-bg3: #141d30;
+  --sq-surface: rgba(255, 255, 255, 0.03);
+  --sq-surface-elevated: rgba(255, 255, 255, 0.06);
+  --sq-white: #F0F2F5;
+  --sq-subtext: #8B95A5;
+  --sq-accent: #00D4FF;
+  --sq-accent2: #7C3AED;
+  --sq-accent3: #06B6D4;
+  --sq-success: #10B981;
   --sq-error: #ef4444;
-  --sq-border: rgba(51, 65, 85, 0.5);
-  --sq-border-accent: rgba(59, 130, 246, 0.3);
-  --sq-gradient: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
-  --sq-shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.2);
-  --sq-shadow-lg: 0 12px 48px rgba(0, 0, 0, 0.4);
+  --sq-border: rgba(255, 255, 255, 0.06);
+  --sq-border-accent: rgba(0, 212, 255, 0.25);
+  --sq-gradient: linear-gradient(135deg, #00D4FF 0%, #7C3AED 100%);
+  --sq-shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.25);
+  --sq-shadow-lg: 0 12px 48px rgba(0, 0, 0, 0.45);
   --sq-radius: 12px;
   --sq-font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   --sq-transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -38,21 +38,21 @@
 
 /* ===== Theme Overrides (inherit from host theme classes) ===== */
 :host(.cb-theme-light) .sq-wrapper {
-  --sq-bg: #f8f9fa;
-  --sq-bg2: #ffffff;
+  --sq-bg: #F8FAFC;
+  --sq-bg2: #FFFFFF;
   --sq-bg3: #f1f3f5;
   --sq-surface: rgba(255, 255, 255, 0.9);
   --sq-surface-elevated: rgba(255, 255, 255, 0.95);
-  --sq-white: #1a1a1a;
+  --sq-white: #0F172A;
   --sq-subtext: #4b5563;
-  --sq-accent: #2563eb;
+  --sq-accent: #0891b2;
   --sq-accent2: #7c3aed;
   --sq-accent3: #059669;
   --sq-success: #16a34a;
   --sq-error: #dc2626;
-  --sq-border: rgba(0, 0, 0, 0.1);
-  --sq-border-accent: rgba(37, 99, 235, 0.25);
-  --sq-gradient: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+  --sq-border: rgba(0, 0, 0, 0.08);
+  --sq-border-accent: rgba(8, 145, 178, 0.25);
+  --sq-gradient: linear-gradient(135deg, #0891b2 0%, #7c3aed 100%);
   --sq-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.06);
   --sq-shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.1);
 }
@@ -149,19 +149,35 @@
   -webkit-font-smoothing: antialiased;
   width: 100%;
   max-width: 100%;
+  height: 100%;
   overflow-x: hidden;
+  overflow-y: hidden;
 }
 
 .sq-wrapper * { box-sizing: border-box; }
 
 /* Premium Scrollbars */
-.sq-wrapper ::-webkit-scrollbar { width: 5px; height: 5px; }
+.sq-wrapper ::-webkit-scrollbar { width: 4px; height: 4px; }
 .sq-wrapper ::-webkit-scrollbar-track { background: transparent; }
 .sq-wrapper ::-webkit-scrollbar-thumb { 
-  background: var(--sq-border); 
+  background: rgba(0, 212, 255, 0.12); 
   border-radius: 10px; 
 }
-.sq-wrapper ::-webkit-scrollbar-thumb:hover { background: var(--sq-accent); }
+.sq-wrapper ::-webkit-scrollbar-thumb:hover { background: rgba(0, 212, 255, 0.25); }
+
+/* Shimmer loading animation */
+@keyframes sq-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.sq-shimmer {
+  background: linear-gradient(90deg, transparent 25%, rgba(0, 212, 255, 0.06) 50%, transparent 75%);
+  background-size: 200% 100%;
+  animation: sq-shimmer 1.5s infinite;
+  border-radius: 6px;
+  height: 14px;
+  margin: 4px 0;
+}
 
 /* Layout Structure */
 .sq-main-layout {
@@ -174,14 +190,14 @@
 
 /* Header */
 .sq-header {
-  background: rgba(18, 24, 34, 0.4);
+  background: linear-gradient(180deg, rgba(0, 212, 255, 0.03) 0%, transparent 100%);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  padding: 14px 20px;
+  padding: 10px 16px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 8px;
   border-bottom: 1px solid var(--sq-border);
   flex-shrink: 0;
   width: 100%;
@@ -200,9 +216,9 @@
 }
 
 .sq-tab {
-  padding: 6px 14px;
-  font-size: 13px;
-  font-weight: 500;
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 600;
   color: var(--sq-subtext);
   border: none;
   background: transparent;
@@ -210,28 +226,31 @@
   cursor: pointer;
   transition: var(--sq-transition);
   position: relative;
+  letter-spacing: -0.01em;
 }
 
 .sq-tab.active {
-  color: white;
-  background: rgba(59, 130, 246, 0.15);
-  box-shadow: inset 0 0 0 1px var(--sq-border-accent);
+  color: var(--sq-accent);
+  background: rgba(0, 212, 255, 0.1);
+  box-shadow: inset 0 0 0 1px rgba(0, 212, 255, 0.2);
 }
 
 .sq-tab:hover:not(.active) {
   color: var(--sq-white);
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.04);
 }
 
 /* Helper Text */
 .sq-helper-text {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--sq-subtext);
-  padding: 8px 20px;
-  background: rgba(59, 130, 246, 0.04);
+  padding: 6px 16px;
+  background: rgba(0, 212, 255, 0.03);
   border-bottom: 1px solid var(--sq-border);
-  font-weight: 400;
+  font-weight: 500;
+  letter-spacing: 0.03em;
   animation: fadeIn 0.4s ease-out;
+  flex-shrink: 0;
 }
 
 /* Body */
@@ -239,65 +258,75 @@
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 20px;
+  padding: 12px 16px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 10px;
   min-width: 0;
+  min-height: 0;
 }
 
 /* Suggestions */
 .sq-suggestions {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+  flex-wrap: nowrap;
+  gap: 6px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
   animation: slideUp 0.4s ease-out;
 }
+.sq-suggestions::-webkit-scrollbar { display: none; }
 
 .sq-suggestion-chip {
-  padding: 8px 16px;
-  background: var(--sq-surface);
+  padding: 5px 12px;
+  background: rgba(255, 255, 255, 0.03);
   border: 1px solid var(--sq-border);
   border-radius: 20px;
-  font-size: 12px;
+  font-size: 11px;
   color: var(--sq-subtext);
   cursor: pointer;
   transition: var(--sq-transition);
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .sq-suggestion-chip:hover {
   border-color: var(--sq-accent);
-  color: var(--sq-white);
-  background: rgba(59, 130, 246, 0.1);
-  transform: translateY(-1px);
+  color: var(--sq-accent);
+  background: rgba(0, 212, 255, 0.06);
 }
 
 /* Input Card */
 .sq-input-card {
-  background: var(--sq-surface);
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border-radius: var(--sq-radius);
-  border: 1px solid var(--sq-border);
-  padding: 4px; /* Reduced to focus on the textarea */
+  border: 1px solid transparent;
+  padding: 4px;
   transition: var(--sq-transition);
-  box-shadow: var(--sq-shadow-sm);
 }
 
 .sq-input-card:focus-within {
-  border-color: var(--sq-accent);
-  box-shadow: 0 0 0 1px var(--sq-accent), var(--sq-shadow-lg);
+  border-color: rgba(0, 212, 255, 0.25);
+  box-shadow: 0 0 0 2px rgba(0, 212, 255, 0.06);
 }
 
 .sq-textarea {
   width: 100%;
-  padding: 16px;
+  padding: 10px 14px;
   border: none;
   background: transparent;
   color: var(--sq-white);
   font-family: inherit;
-  font-size: 14px;
+  font-size: 13px;
   resize: none;
-  height: 80px;
+  height: 56px;
+  max-height: 120px;
+  overflow-y: auto;
   outline: none;
   line-height: 1.6;
 }
@@ -305,36 +334,38 @@
 .sq-textarea::placeholder { color: var(--sq-subtext); opacity: 0.6; }
 
 .sq-controls {
-  padding: 12px 16px;
+  padding: 8px 12px;
   border-top: 1px solid var(--sq-border);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
 }
 
 /* Buttons */
 .sq-btn {
-  padding: 8px 18px;
+  padding: 6px 14px;
   border-radius: 8px;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
   border: none;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   transition: var(--sq-transition);
+  letter-spacing: -0.01em;
 }
 
 .sq-btn-primary {
-  background: var(--sq-accent);
+  background: var(--sq-gradient);
   color: white;
+  box-shadow: 0 4px 14px rgba(0, 212, 255, 0.2);
 }
 
 .sq-btn-primary:hover {
-  background: #2563eb;
   transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(0, 212, 255, 0.3);
 }
 
 .sq-btn-secondary {
@@ -356,10 +387,10 @@
 /* Filters Component */
 .sq-filters-panel {
   display: none;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px;
-  padding: 16px;
-  background: rgba(15, 23, 42, 0.4);
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.02);
   border-radius: var(--sq-radius);
   border: 1px solid var(--sq-border);
   animation: fadeIn 0.3s ease;
@@ -405,7 +436,9 @@
 
 /* Cards */
 .sq-synthesis-card, .sq-result {
-  background: var(--sq-surface);
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--sq-border);
   border-radius: var(--sq-radius);
   overflow: hidden;
@@ -414,12 +447,12 @@
 }
 
 .sq-synthesis-card {
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(139, 92, 246, 0.05) 100%);
+  background: linear-gradient(135deg, rgba(0, 212, 255, 0.04) 0%, rgba(124, 58, 237, 0.04) 100%);
   border-color: var(--sq-border-accent);
 }
 
 .sq-card-header {
-  padding: 12px 18px;
+  padding: 8px 14px;
   border-bottom: 1px solid var(--sq-border);
   display: flex;
   justify-content: space-between;
@@ -428,32 +461,42 @@
 }
 
 .sq-card-title-text {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   color: var(--sq-accent);
 }
 
 .sq-card-content {
-  padding: 18px;
-  font-size: 14px;
-  line-height: 1.7;
-  color: #e2e8f0;
+  padding: 12px 14px;
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--sq-white);
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.sq-result {
+  border-left: 2px solid transparent;
 }
 
 .sq-result:hover {
-  transform: translateY(-2px);
-  border-color: var(--sq-accent);
+  transform: translateY(-1px);
+  border-color: var(--sq-border-accent);
   box-shadow: var(--sq-shadow-sm);
 }
+
+.sq-result[data-tag='decision'] { border-left-color: var(--sq-success); }
+.sq-result[data-tag='unresolved'] { border-left-color: #f59e0b; }
+.sq-result[data-tag='change'] { border-left-color: var(--sq-accent); }
 
 .sq-res-meta {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-bottom: 12px;
-  font-size: 12px;
+  padding-bottom: 8px;
+  font-size: 11px;
   color: var(--sq-subtext);
 }
 
@@ -487,24 +530,31 @@
   min-width: 32px;
 }
 
-/* History Sidebar */
+/* History Sidebar — now an overlay dropdown */
 .sq-history-sidebar {
-  width: 0;
+  position: absolute;
+  top: 44px;
+  right: 12px;
+  width: 260px;
+  max-height: 300px;
   background: var(--sq-bg2);
-  border-right: 1px solid var(--sq-border);
+  border: 1px solid var(--sq-border);
+  border-radius: var(--sq-radius);
   overflow: hidden;
-  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  display: flex;
+  display: none;
   flex-direction: column;
-  flex-shrink: 0;
+  z-index: 200;
+  box-shadow: var(--sq-shadow-lg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
 }
 
-.sq-history-sidebar.open { width: 280px; }
+.sq-history-sidebar.open { display: flex; }
 
 .sq-history-header {
-  padding: 18px 20px;
+  padding: 10px 14px;
   border-bottom: 1px solid var(--sq-border);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
   display: flex;
   justify-content: space-between;
@@ -514,17 +564,18 @@
 .sq-history-list {
   flex: 1;
   overflow-y: auto;
-  padding: 10px;
+  padding: 6px;
+  max-height: 240px;
 }
 
 .sq-history-item {
-  padding: 12px 14px;
-  border-radius: 8px;
-  font-size: 13px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 12px;
   color: var(--sq-subtext);
   cursor: pointer;
   transition: var(--sq-transition);
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 .sq-history-item:hover {
@@ -543,14 +594,14 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 16px;
-  padding-top: 20px;
-  margin-top: auto;
+  gap: 12px;
+  padding-top: 10px;
 }
 
 .sq-pagination-info {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--sq-subtext);
+  font-variant-numeric: tabular-nums;
 }
 
 /* Animations */
@@ -582,7 +633,7 @@
       this.savedSearches = [];
       this.currentResults = [];
       this.currentPage = 1;
-      this.resultsPerPage = 8;
+      this.resultsPerPage = 5;
       this.debounceTimer = null;
       this.lastQueryTime = 0; // Rate limiting
       this.loadHistory();
@@ -677,29 +728,27 @@
       container.innerHTML = `
         <div class="sq-wrapper sq-no-hscroll">
           <div class="sq-main-layout">
-            <!-- History Sidebar -->
-            <div class="sq-history-sidebar" id="sq-sidebar">
-              <div class="sq-history-header">
-                <span>📋 History</span>
-                <button class="sq-history-toggle" id="sq-sidebar-toggle">✕</button>
-              </div>
-              <div id="sq-history-list" class="sq-history-list"></div>
-            </div>
-
             <!-- Main Content -->
-            <div style="flex: 1; display: flex; flex-direction: column; min-width: 0; overflow: hidden;">
+            <div style="flex: 1; display: flex; flex-direction: column; min-width: 0; overflow: hidden; position: relative;">
               <!-- Header -->
               <div class="sq-header">
                 <div class="sq-tabs">
                     <button class="sq-tab active" data-mode="live">Current Chat</button>
                     <button class="sq-tab" data-mode="memory">Search Memory</button>
                 </div>
-                <div style="display:flex; gap:8px; align-items:center;">
-                  <button class="sq-btn sq-btn-secondary sq-btn-sm" id="sq-open-history" title="History">📋 History</button>
-                  <button class="sq-btn sq-btn-secondary sq-btn-sm" id="btn-index-now" title="Train your AI memory on saved conversions">
-                    ↻ Train
-                  </button>
+                <div style="display:flex; gap:6px; align-items:center;">
+                  <button class="sq-btn sq-btn-secondary sq-btn-sm" id="sq-open-history" title="History">📋</button>
+                  <button class="sq-btn sq-btn-secondary sq-btn-sm" id="btn-index-now" title="Train your AI memory on saved conversations">↻ Train</button>
                 </div>
+              </div>
+
+              <!-- History Dropdown Overlay -->
+              <div class="sq-history-sidebar" id="sq-sidebar">
+                <div class="sq-history-header">
+                  <span>📋 Query History</span>
+                  <button class="sq-history-toggle" id="sq-sidebar-toggle" style="background:none;border:none;color:var(--sq-subtext);cursor:pointer;font-size:14px;">✕</button>
+                </div>
+                <div id="sq-history-list" class="sq-history-list"></div>
               </div>
               
               <div id="sq-mode-helper" class="sq-helper-text">Reason only over this conversation</div>
@@ -721,12 +770,12 @@
                   </div>
                   
                   <div class="sq-controls">
-                    <div class="sq-options">
-                       <label class="sq-checkbox-label" style="display:none" id="chk-synthesis-wrapper">
-                         <input type="checkbox" checked id="chk-synthesis">
+                    <div class="sq-options" style="display:flex;gap:6px;align-items:center;">
+                       <label class="sq-checkbox-label" style="display:none;font-size:11px;color:var(--sq-subtext);gap:4px;align-items:center;" id="chk-synthesis-wrapper">
+                         <input type="checkbox" checked id="chk-synthesis" style="accent-color:var(--sq-accent);">
                          <span>Synthesis</span>
                        </label>
-                       <button class="sq-btn sq-btn-secondary sq-btn-sm" id="sq-toggle-filters" title="Advanced filters">⚙️ Filters</button>
+                       <button class="sq-btn sq-btn-secondary sq-btn-sm" id="sq-toggle-filters" title="Advanced filters">⚙️</button>
                        <button class="sq-btn sq-btn-secondary sq-btn-sm" id="btn-clear">Clear</button>
                     </div>
                     <button class="sq-btn sq-btn-primary" id="btn-ask">
@@ -747,10 +796,10 @@
                   </div>
                   <div class="sq-filter-group">
                     <label class="sq-filter-label">Date Range</label>
-                    <div style="display:flex; gap:8px; align-items:center;">
-                      <input type="date" class="sq-filter-input" id="sq-date-from">
-                      <span style="color: var(--sq-subtext);">to</span>
-                      <input type="date" class="sq-filter-input" id="sq-date-to">
+                    <div style="display:flex; gap:6px; align-items:center;">
+                      <input type="date" class="sq-filter-input" id="sq-date-from" style="font-size:11px;padding:6px 8px;">
+                      <span style="color: var(--sq-subtext); font-size:11px;">to</span>
+                      <input type="date" class="sq-filter-input" id="sq-date-to" style="font-size:11px;padding:6px 8px;">
                     </div>
                   </div>
                 </div>
@@ -892,11 +941,10 @@
         });
       });
 
-      // Input logic
+      // Input logic — auto-resize capped at 120px
       textarea.addEventListener('input', () => {
-        // Handle auto-resize if needed
         textarea.style.height = 'auto';
-        textarea.style.height = (textarea.scrollHeight) + 'px';
+        textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
       });
 
       // Summary Checkbox Logic
@@ -923,9 +971,11 @@
 
         resultsArea.style.display = 'block';
         resultsArea.innerHTML = `
-          <div style="display:flex; flex-direction:column; align-items:center; gap:16px; padding:40px;">
-            <div class="sq-loading-spinner"></div>
-            <div style="font-size: 14px; color: var(--sq-subtext);">Querying Intelligence...</div>
+          <div style="display:flex; flex-direction:column; align-items:center; gap:12px; padding:24px;">
+            <div class="sq-shimmer" style="width:80%;height:12px;"></div>
+            <div class="sq-shimmer" style="width:60%;height:12px;"></div>
+            <div class="sq-shimmer" style="width:70%;height:12px;"></div>
+            <div style="font-size: 12px; color: var(--sq-subtext); margin-top:4px;">Querying Intelligence...</div>
           </div>
         `;
 
@@ -1070,16 +1120,16 @@
     }
 
     async runLiveQuery(query, container) {
+      const rateError = this.checkRateLimit();
+      if (rateError) {
+        container.innerHTML = `<div class="sq-error" style="text-align:center;padding:16px;color:var(--sq-subtext);font-size:13px;">${rateError}</div>`;
+        return;
+      }
       if (!query.trim()) return;
       const context = this.getContext();
       const prompt = `Context:\n${context}\n\nQuestion: ${query}\n\nAnswer concisely:`;
 
       const response = await this.callLlama(prompt);
-
-      // Add result to history
-      this.history.unshift({ query, timestamp: Date.now(), mode: 'live' });
-      this.saveHistory();
-      this.updateHistoryList();
 
       container.innerHTML = `
         <div class="sq-synthesis-card">
@@ -1087,7 +1137,7 @@
             <span class="sq-card-title-text">✨ AI Answer</span>
             <button class="sq-btn sq-btn-secondary sq-btn-sm" id="btn-copy-live">📋 Copy</button>
           </div>
-          <div class="sq-card-content">${this.formatText(response)}</div>
+          <div class="sq-card-content">${this.formatText(this.escapeHTML(response))}</div>
         </div>
       `;
 
@@ -1109,6 +1159,11 @@
     }
 
     async runMemorySearch(query, container, synthesize, filters = {}) {
+      const rateError = this.checkRateLimit();
+      if (rateError) {
+        container.innerHTML = `<div class="sq-error" style="text-align:center;padding:16px;color:var(--sq-subtext);font-size:13px;">${rateError}</div>`;
+        return;
+      }
       if (!this.memoryRetrieval) await this.initialize();
       const rawResults = await this.memoryRetrieval.search(query, { limit: 50 });
 
@@ -1172,15 +1227,16 @@
         const context = topResults.map(r => `[Date: ${new Date(r.segment.timestamp).toLocaleDateString()}] ${r.excerpt.map(m => m.text).join(' ')}`).join('\n---\n');
 
         html += `
-          <div class="sq-synthesis-card" style="margin-bottom:20px;">
+          <div class="sq-synthesis-card" style="margin-bottom:10px;">
             <div class="sq-card-header">
               <span class="sq-card-title-text">✨ AI Synthesis</span>
               <button class="sq-btn sq-btn-secondary sq-btn-sm" id="btn-copy-memory">📋 Copy</button>
             </div>
             <div class="sq-card-content" id="sq-synthesis-content">
-              <div style="display:flex; flex-direction:column; align-items:center; gap:12px; padding:20px;">
-                <div class="sq-loading-spinner"></div>
-                <div style="font-size: 13px; color: var(--sq-subtext);">Synthesizing findings...</div>
+              <div style="display:flex; flex-direction:column; gap:6px; padding:8px;">
+                <div class="sq-shimmer" style="width:90%;height:10px;"></div>
+                <div class="sq-shimmer" style="width:70%;height:10px;"></div>
+                <div class="sq-shimmer" style="width:80%;height:10px;"></div>
               </div>
             </div>
           </div>
@@ -1222,33 +1278,34 @@
         html += `<div class="sq-dedupe-notice">Merged ${mergedCount} similar segments</div>`;
       }
 
-      html += `<div style="font-size:11px; color:var(--sq-subtext); margin-bottom:12px; text-transform:uppercase; font-weight:700; letter-spacing:0.1em; display:flex; justify-content:space-between; align-items:center;">
-        <span>Found ${this.currentResults.length} Memories</span>
-        ${this.currentResults.length > pagedResults.length ? `<span style="opacity:0.7">Page ${this.currentPage}</span>` : ''}
+      html += `<div style="font-size:10px; color:var(--sq-subtext); text-transform:uppercase; font-weight:700; letter-spacing:0.08em; display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+        <span>${this.currentResults.length} Memories</span>
+        ${this.currentResults.length > pagedResults.length ? `<span style="opacity:0.6;">Page ${this.currentPage}</span>` : ''}
       </div>`;
 
       html += pagedResults.map((r, idx) => {
         let tags = '';
+        let tagType = '';
         const txt = r.excerpt.map(m => m.text).join(' ').toLowerCase();
-        if (txt.includes('decide') || txt.includes('agreed') || txt.includes('plan')) tags += `<span class="sq-res-tag decision">Decision</span>`;
-        else if (txt.includes('unsure') || txt.includes('maybe') || txt.includes('?')) tags += `<span class="sq-res-tag unresolved">Unresolved</span>`;
-        else if (txt.includes('change') || txt.includes('instead')) tags += `<span class="sq-res-tag change">Shift</span>`;
+        if (txt.includes('decide') || txt.includes('agreed') || txt.includes('plan')) { tags += `<span class="sq-res-tag decision">Decision</span>`; tagType = 'decision'; }
+        else if (txt.includes('unsure') || txt.includes('maybe') || txt.includes('?')) { tags += `<span class="sq-res-tag unresolved">Unresolved</span>`; tagType = 'unresolved'; }
+        else if (txt.includes('change') || txt.includes('instead')) { tags += `<span class="sq-res-tag change">Shift</span>`; tagType = 'change'; }
 
         return `
-          <div class="sq-result" data-result-index="${start + idx}">
+          <div class="sq-result" data-result-index="${start + idx}" data-tag="${tagType}" style="padding:10px 14px;">
             <div class="sq-res-meta">
-               <div style="display:flex; gap:6px; align-items:center;">
+               <div style="display:flex; gap:5px; align-items:center;">
                  ${tags}
-                 <span style="font-size:11px; opacity:0.8;">${new Date(r.segment.timestamp).toLocaleDateString()}</span>
+                 <span style="font-size:10px; opacity:0.7;">${new Date(r.segment.timestamp).toLocaleDateString()}</span>
                </div>
-               <button class="sq-btn sq-btn-secondary sq-btn-sm sq-expand-btn" style="padding:2px 8px; height:24px;">View Details</button>
+               <button class="sq-btn sq-btn-secondary sq-btn-sm sq-expand-btn" style="padding:2px 8px; height:22px; font-size:10px;">Details</button>
             </div>
-            <div class="sq-res-preview">
+            <div class="sq-res-preview" style="font-size:12px;">
               <div class="sq-res-content">
                 ${r.excerpt.slice(0, 2).map(m => `
-                  <div class="sq-res-msg">
-                    <span class="sq-res-role">${m.role === 'user' ? 'You' : 'AI'}</span>
-                    <div style="flex:1; min-width:0; overflow-wrap:break-word;">${this.escapeHTML(m.text.length > 180 ? m.text.slice(0, 180) + '...' : m.text)}</div>
+                  <div class="sq-res-msg" style="gap:8px;">
+                    <span class="sq-res-role" style="font-size:10px;min-width:22px;">${m.role === 'user' ? 'You' : 'AI'}</span>
+                    <div style="flex:1; min-width:0; overflow-wrap:break-word; line-height:1.5;">${this.escapeHTML(m.text.length > 120 ? m.text.slice(0, 120) + '...' : m.text)}</div>
                   </div>
                 `).join('')}
               </div>
@@ -1311,88 +1368,6 @@
       }
       this.lastQueryTime = now;
       return null;
-    }
-
-    async runLiveQuery(query, container) {
-      const rateError = this.checkRateLimit();
-      if (rateError) {
-        container.innerHTML = `<div class="sq-error">${rateError}</div>`;
-        return;
-      }
-
-      const context = this.getContext();
-      // ... (rest of logic handles sanitization in display)
-      // Ensure prompt logic (not fully unified yet) uses this.
-
-      // Mock implementation for now as original code was not fully shown in previous view
-      // But we inject the check.
-      const response = await this.callLlama(`
-Context: ${context}
-Question: ${query}
-Answer nicely and concisely.
-`);
-
-      // Render result safely
-      container.innerHTML = `
-          <div class="sq-synthesis-card">
-            <div class="sq-card-header">
-              <span class="sq-card-title-text">✨ AI Answer</span>
-            </div>
-            <div class="sq-card-content">
-              ${this.formatText(this.escapeHTML(response))}
-            </div>
-          </div>
-        `;
-    }
-
-    async runMemorySearch(query, container, synthesize, filters) {
-      const rateError = this.checkRateLimit();
-      if (rateError) {
-        container.innerHTML = `<div class="sq-error">${rateError}</div>`;
-        return;
-      }
-
-      // Search logic
-      let results = [];
-      if (this.memoryRetrieval) {
-        // Mock filter usage
-        results = await this.memoryRetrieval.search(query, 20);
-      }
-
-      this.currentResults = results;
-
-      // Improved System Prompt for Synthesis
-      let synthesisHTML = '';
-      if (synthesize && results.length > 0) {
-        const contextText = results.map((r, i) => `[Connection ${i + 1}] ${r.content}`).join('\n\n');
-        const systemPrompt = `You are ChatBridge's Expert Analyst. 
-Your goal is to answer the user's question by synthesizing the provided memory connections.
-- Be analytical and precise.
-- Cite your sources using [Connection X] format where appropriate.
-- If the connections don't fully answer the question, state what is known and what is missing.
-- Use the user's preferred detail level (default to Detailed if unknown).`;
-
-        const aiRes = await this.callLlama(`
-${systemPrompt}
-
-User Question: ${query}
-
-Memory Connections:
-${contextText}
-`);
-        synthesisHTML = `
-              <div class="sq-synthesis-card" style="margin-bottom:20px;">
-                <div class="sq-card-header">
-                  <span class="sq-card-title-text">🧠 Knowledge Base Insight</span>
-                </div>
-                <div class="sq-card-content">
-                  ${this.formatText(this.escapeHTML(aiRes))}
-                </div>
-              </div>
-            `;
-      }
-
-      this.renderMemoryResults(container, synthesisHTML);
     }
 
     formatTime(isoString) {

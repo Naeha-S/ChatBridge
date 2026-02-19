@@ -17,7 +17,7 @@
 
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+            background: linear-gradient(135deg, #0A0F1C 0%, #0f1629 50%, #0A0F1C 100%);
             min-height: 100vh;
         }
 
@@ -45,9 +45,9 @@
         }
 
         .demo-header h1 {
-            font-size: 52px;
+            font-size: 48px;
             font-weight: 800;
-            background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 50%, #60a5fa 100%);
+            background: linear-gradient(135deg, #00D4FF 0%, #7C3AED 50%, #00D4FF 100%);
             -webkit-background-clip: text;
             background-clip: text;
             -webkit-text-fill-color: transparent;
@@ -56,37 +56,37 @@
         }
 
         .demo-header p {
-            font-size: 18px;
-            color: #94a3b8;
-            margin-bottom: 24px;
+            font-size: 16px;
+            color: #8B95A5;
+            margin-bottom: 20px;
         }
 
         .demo-features {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 16px;
-            margin-bottom: 40px;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin-bottom: 30px;
         }
 
         .feature-badge {
-            background: rgba(59, 130, 246, 0.1);
-            border: 1px solid rgba(59, 130, 246, 0.3);
-            border-radius: 12px;
-            padding: 12px 16px;
-            font-size: 13px;
-            color: #60a5fa;
+            background: rgba(0, 212, 255, 0.06);
+            border: 1px solid rgba(0, 212, 255, 0.15);
+            border-radius: 10px;
+            padding: 10px 14px;
+            font-size: 12px;
+            color: #00D4FF;
             font-weight: 500;
             text-align: center;
             backdrop-filter: blur(10px);
         }
 
         #smartQueriesDemo {
-            background: white;
+            background: #0A0F1C;
             border-radius: 16px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
             overflow: hidden;
-            height: 700px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            height: 600px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
             animation: fadeIn 0.6s ease-out 0.2s both;
         }
 
@@ -109,7 +109,7 @@
         }
 
         .demo-footer a {
-            color: #60a5fa;
+            color: #00D4FF;
             text-decoration: none;
             font-weight: 500;
         }
@@ -123,13 +123,13 @@
             position: fixed;
             top: 20px;
             right: 20px;
-            background: rgba(59, 130, 246, 0.2);
-            border: 1px solid rgba(59, 130, 246, 0.4);
-            color: white;
-            padding: 10px 16px;
+            background: rgba(0, 212, 255, 0.1);
+            border: 1px solid rgba(0, 212, 255, 0.25);
+            color: #F0F2F5;
+            padding: 8px 14px;
             border-radius: 8px;
             cursor: pointer;
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 500;
             transition: all 0.3s;
             backdrop-filter: blur(10px);
@@ -137,56 +137,43 @@
         }
 
         .theme-toggle:hover {
-            background: rgba(59, 130, 246, 0.3);
-            border-color: rgba(59, 130, 246, 0.6);
+            background: rgba(0, 212, 255, 0.18);
+            border-color: rgba(0, 212, 255, 0.4);
         }
 
         body.sq-theme-light {
             background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 50%, #f8fafc 100%);
         }
-
         body.sq-theme-light .demo-header h1 {
-            background: linear-gradient(135deg, #2563eb 0%, #7c3aed 50%, #2563eb 100%);
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
+            background: linear-gradient(135deg, #0891b2, #7c3aed);
+            -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
         }
-
-        body.sq-theme-light .demo-header p {
-            color: #64748b;
-        }
-
+        body.sq-theme-light .demo-header p { color: #64748b; }
         body.sq-theme-light #smartQueriesDemo {
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.08);
-            border: 1px solid #e2e8f0;
+            background: #F8FAFC; box-shadow: 0 20px 60px rgba(0,0,0,0.06); border: 1px solid #e2e8f0;
         }
-
+        body.sq-theme-light .feature-badge {
+            background: rgba(8, 145, 178, 0.06); border-color: rgba(8, 145, 178, 0.2); color: #0891b2;
+        }
         body.sq-theme-light .theme-toggle {
-            background: rgba(30, 58, 138, 0.1);
-            border-color: rgba(30, 58, 138, 0.3);
-            color: #1e3a8a;
-        }
-
-        body.sq-theme-light .theme-toggle:hover {
-            background: rgba(30, 58, 138, 0.2);
-            border-color: rgba(30, 58, 138, 0.5);
+            background: rgba(8, 145, 178, 0.08); border-color: rgba(8, 145, 178, 0.2); color: #0891b2;
         }
 
         body.sq-theme-skeuomorphic {
             background: linear-gradient(180deg, #c8c8c8, #b0b0b0);
         }
         body.sq-theme-skeuomorphic .demo-header h1 {
-            background: none; -webkit-text-fill-color: #333;
-            text-shadow: 0 1px 0 rgba(255,255,255,0.7);
+            background: none; -webkit-text-fill-color: #333; text-shadow: 0 1px 0 rgba(255,255,255,0.7);
         }
         body.sq-theme-skeuomorphic .demo-header p { color: #555; }
         body.sq-theme-skeuomorphic #smartQueriesDemo {
-            box-shadow: inset 1px 1px 0 rgba(255,255,255,0.4), 0 4px 12px rgba(0,0,0,0.2);
-            border: 2px solid #aaa;
+            background: #c8c8c8; box-shadow: inset 1px 1px 0 rgba(255,255,255,0.4), 0 4px 12px rgba(0,0,0,0.2); border: 2px solid #aaa;
+        }
+        body.sq-theme-skeuomorphic .feature-badge {
+            background: rgba(74, 144, 217, 0.1); border-color: rgba(74, 144, 217, 0.3); color: #4a90d9;
         }
         body.sq-theme-skeuomorphic .theme-toggle {
-            background: linear-gradient(180deg, #e0e0e0, #c8c8c8);
-            border: 1px solid #999; color: #333;
+            background: linear-gradient(180deg, #e0e0e0, #c8c8c8); border: 1px solid #999; color: #333;
         }
 
         body.sq-theme-brutalism {
@@ -197,11 +184,13 @@
         }
         body.sq-theme-brutalism .demo-header p { color: #1a1a1a; }
         body.sq-theme-brutalism #smartQueriesDemo {
-            border: 3px solid #000; box-shadow: 8px 8px 0 #000; border-radius: 4px;
+            background: #FFFBEB; border: 3px solid #000; box-shadow: 8px 8px 0 #000; border-radius: 4px;
+        }
+        body.sq-theme-brutalism .feature-badge {
+            background: #fff; border: 2px solid #000; color: #000; border-radius: 0;
         }
         body.sq-theme-brutalism .theme-toggle {
-            background: #fff; border: 2px solid #000; color: #000;
-            box-shadow: 2px 2px 0 #000; border-radius: 0;
+            background: #fff; border: 2px solid #000; color: #000; box-shadow: 2px 2px 0 #000; border-radius: 0;
         }
         body.sq-theme-brutalism .theme-toggle:hover {
             background: #FFE156; transform: translate(-2px,-2px); box-shadow: 4px 4px 0 #000;
@@ -217,8 +206,10 @@
         }
         body.sq-theme-synthwave .demo-header p { color: #b794f6; }
         body.sq-theme-synthwave #smartQueriesDemo {
-            border: 1px solid rgba(255,45,149,0.25);
-            box-shadow: 0 0 30px rgba(255,45,149,0.15);
+            background: #1a0a2e; border: 1px solid rgba(255,45,149,0.25); box-shadow: 0 0 30px rgba(255,45,149,0.15);
+        }
+        body.sq-theme-synthwave .feature-badge {
+            background: rgba(255, 45, 149, 0.08); border-color: rgba(255, 45, 149, 0.3); color: #FF2D95;
         }
         body.sq-theme-synthwave .theme-toggle {
             background: rgba(255,45,149,0.1); border-color: rgba(255,45,149,0.3); color: #f0e6ff;
@@ -233,9 +224,11 @@
         }
         body.sq-theme-glass .demo-header p { color: #a89ec0; }
         body.sq-theme-glass #smartQueriesDemo {
-            border: 1px solid rgba(180,142,255,0.08);
-            box-shadow: 8px 8px 20px rgba(0,0,0,0.45), -5px -5px 14px rgba(60,50,90,0.2);
-            border-radius: 22px;
+            background: #1e1a2e; border: 1px solid rgba(180,142,255,0.08);
+            box-shadow: 8px 8px 20px rgba(0,0,0,0.45), -5px -5px 14px rgba(60,50,90,0.2); border-radius: 22px;
+        }
+        body.sq-theme-glass .feature-badge {
+            background: rgba(180, 142, 255, 0.06); border-color: rgba(180, 142, 255, 0.15); color: #b48eff;
         }
         body.sq-theme-glass .theme-toggle {
             background: linear-gradient(145deg, #302a4a, #252038); border-color: rgba(180,142,255,0.08); color: #a89ec0;
@@ -408,77 +401,6 @@
             await ui.initialize();
             ui.render(container);
         });
-    </script>
-</body>
-
-</html>
-                };
-            };
-        }
-
-        // Mock window.toast
-        window.toast = function (message) {
-            console.log('[Toast]', message);
-            const toast = document.createElement('div');
-            toast.textContent = message;
-            toast.style.cssText = `
-        position: fixed;
-        bottom: 24px;
-        right: 24px;
-        background: #111827;
-        color: white;
-        padding: 12px 20px;
-        border-radius: 8px;
-        font-size: 14px;
-        font-weight: 500;
-        z-index: 10000;
-        animation: slideIn 0.3s ease;
-      `;
-            document.body.appendChild(toast);
-            setTimeout(() => {
-                toast.style.animation = 'slideOut 0.3s ease';
-                setTimeout(() => toast.remove(), 300);
-            }, 2000);
-        };
-
-        const style = document.createElement('style');
-        style.textContent = `
-      @keyframes slideIn {
-        from { transform: translateY(100px); opacity: 0; }
-        to { transform: translateY(0); opacity: 1; }
-      }
-      @keyframes slideOut {
-        from { transform: translateY(0); opacity: 1; }
-        to { transform: translateY(100px); opacity: 0; }
-      }
-    `;
-        document.head.appendChild(style);
-
-        // Initialize the Smart Queries tab
-        const assistant = new window.LiveAIAssistant();
-        const container = document.getElementById('smartQueriesDemo');
-
-        // Render the full interface
-        const layout = `
-      <div class="sq-container">
-        <div class="sq-header">
-          <h2 class="sq-main-title">
-            <span class="sq-title-icon">🔮</span>
-            Smart Queries
-          </h2>
-          <p class="sq-subtitle">AI-powered insights and search for your conversations</p>
-        </div>
-
-        <div class="sq-grid">
-          <div class="sq-col-full" id="sq-assistant-container"></div>
-        </div>
-      </div>
-    `;
-
-        container.innerHTML = layout;
-        assistant.renderAssistant(document.getElementById('sq-assistant-container'));
-
-        console.log('✅ Smart Queries Demo loaded successfully!');
     </script>
 </body>
 

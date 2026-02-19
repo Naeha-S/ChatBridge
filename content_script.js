@@ -17766,14 +17766,6 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
             // Render the new UI
             __cbSmartQueryUI.render(sqContainer);
 
-            // Open settings/filters panel by default
-            setTimeout(() => {
-              try {
-                const filtersPanel = sqContainer.querySelector('#sq-filters-panel');
-                if (filtersPanel) filtersPanel.classList.add('active');
-              } catch (e) { }
-            }, 100);
-
             // Attach close handler
             const closeBtn = smartView.querySelector('#btnCloseSmart2');
             if (closeBtn) {
