@@ -14515,7 +14515,23 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
                   try {
                     debugLog('[Background] Starting segment extraction...');
                     const segmentEngine = new window.SegmentEngine();
-                    const segments = segmentEngine.extractSegments(conv);
+
+                    // Resolve adapter for platform-aware segmentation
+                    const currentAdapter = (typeof window.pickAdapter === 'function') ? window.pickAdapter() : null;
+                    const platformId = currentAdapter ? currentAdapter.id : (conv.platform || 'unknown');
+
+                    // Run fingerprint analysis to incrementally learn platform behavior
+                    if (currentAdapter && segmentEngine.fingerprinter && final.length >= 3) {
+                      try {
+                        const hints = currentAdapter.responseStructureHints || {};
+                        segmentEngine.fingerprinter.analyze(platformId, final, hints);
+                        debugLog('[Background] Platform fingerprint updated for', platformId);
+                      } catch (fpErr) {
+                        debugLog('[Background] Fingerprint analysis skipped:', fpErr.message);
+                      }
+                    }
+
+                    const segments = segmentEngine.extractSegments(conv, platformId);
 
                     // Store segments in localStorage for persistence
                     const segmentKey = 'chatbridge:segments';
@@ -14538,6 +14554,70 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
                     debugLog('[Background] Segment extraction complete -', segments.length, 'segments from', final.length, 'messages');
                   } catch (e) {
                     debugLog('[Background] Segment extraction failed:', e);
+                  }
+                }
+
+                // Knowledge Graph: Entity extraction + cross-platform resolution
+                if (final.length >= 3 && typeof window.EntityExtractor !== 'undefined' && typeof window.EntityResolver !== 'undefined') {
+                  try {
+                    debugLog('[Background] Starting knowledge graph extraction...');
+                    const extractor = new window.EntityExtractor();
+                    const resolver = new window.EntityResolver();
+
+                    // Step 1: Fast client-side pattern extraction
+                    const localResult = extractor.extractLocal(final);
+                    debugLog('[Background] Local extraction:', localResult.entities.length, 'entities,', localResult.relationships.length, 'relationships');
+
+                    // Step 2: Deep AI extraction via Gemini (async, non-blocking)
+                    const convText = final.slice(0, 40).map(m =>
+                      `${m.role === 'user' ? 'User' : 'Assistant'}: ${(m.text || '').slice(0, 300)}`
+                    ).join('\n\n');
+
+                    let mergedResult = localResult;
+                    try {
+                      const aiResult = await new Promise((resolve) => {
+                        chrome.runtime.sendMessage({
+                          type: 'extract_entities',
+                          payload: { text: convText }
+                        }, (res) => {
+                          if (chrome.runtime.lastError) return resolve({ ok: false });
+                          resolve(res || { ok: false });
+                        });
+                      });
+
+                      if (aiResult && aiResult.ok && aiResult.entities) {
+                        mergedResult = extractor.mergeExtractions(localResult, {
+                          entities: aiResult.entities,
+                          relationships: aiResult.relationships || []
+                        });
+                        debugLog('[Background] AI extraction merged:', mergedResult.entities.length, 'entities');
+                      }
+                    } catch (aiErr) {
+                      debugLog('[Background] AI entity extraction skipped:', aiErr.message);
+                    }
+
+                    // Step 3: Index into knowledge graph
+                    const platform = conv.platform || location.hostname;
+                    const conversationId = conv.id || String(conv.ts);
+                    resolver.indexConversation(mergedResult, conversationId, platform);
+
+                    // Step 4: Run entity resolution (fuzzy + canonical matching)
+                    const resolutions = resolver.resolveEntities();
+                    if (resolutions.length > 0) {
+                      debugLog('[Background] Entity resolution merged', resolutions.length, 'duplicate entities');
+                    }
+
+                    const stats = resolver.getStats();
+                    debugLog('[Background] Knowledge graph updated:', stats.totalEntities, 'entities,', stats.totalRelationships, 'relationships,', stats.crossPlatformEntities, 'cross-platform');
+
+                    // Step 5: Async embedding-based resolution (best-effort, non-blocking)
+                    resolver.resolveWithEmbeddings().then(embRes => {
+                      if (embRes && embRes.length > 0) {
+                        debugLog('[Background] Embedding resolution merged', embRes.length, 'entities');
+                      }
+                    }).catch(() => {});
+                  } catch (e) {
+                    debugLog('[Background] Knowledge graph extraction failed:', e);
                   }
                 }
 
@@ -15999,12 +16079,307 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
             restoreLog('Processing queued restore message, text length:', queued.text ? queued.text.length : 0);
             const result = await restoreToChat(queued.text, queued.attachments);
             if (queued.sendResponse) queued.sendResponse({ ok: result });
+
+            // ─── Drift Detection: start monitoring after successful restore ───
+            if (result && queued.text && queued.text.length > 50) {
+              try {
+                startDriftMonitoring(queued.text);
+              } catch (driftErr) {
+                console.warn('[ChatBridge] Drift monitoring init error:', driftErr);
+              }
+            }
           } catch (e) {
             console.error('[ChatBridge] Error processing queued restore message:', e);
             if (queued.sendResponse) queued.sendResponse({ ok: false, error: e && e.message });
           }
         }
       }, 100); // Small delay to ensure DOM is ready
+    }
+
+    // ─── Conversation Drift Detection & Cross-Platform Context Repair ─────────
+    // After a "Continue With" restore, monitors for the first assistant response,
+    // computes drift score, and if drift exceeds threshold, injects a repair prompt.
+
+    /**
+     * Start drift monitoring after a successful restoreToChat.
+     * Polls for the first new assistant response, then runs the drift detection loop.
+     * @param {string} sourceText - The original conversation text that was restored
+     */
+    function startDriftMonitoring(sourceText) {
+      // Check if drift detection infrastructure is available
+      const drift = window.ChatBridgeDrift;
+      if (!drift || !drift.detector || !drift.profileManager) {
+        console.log('[ChatBridge] Drift detection not available (drift_profiles.js not loaded)');
+        return;
+      }
+
+      // Detect current platform via adapter
+      let targetPlatform = 'unknown';
+      try {
+        const pick = (typeof window.pickAdapter === 'function') ? window.pickAdapter : null;
+        const adapter = pick ? pick() : null;
+        if (adapter && adapter.id) targetPlatform = adapter.id;
+        else if (adapter && adapter.label) targetPlatform = adapter.label;
+      } catch (_) { }
+
+      console.log('[ChatBridge] Drift monitoring started for platform:', targetPlatform);
+
+      // Snapshot current messages so we can detect new ones
+      let baselineMessageCount = 0;
+      try {
+        const pick = (typeof window.pickAdapter === 'function') ? window.pickAdapter : null;
+        const adapter = pick ? pick() : null;
+        if (adapter && typeof adapter.getMessages === 'function') {
+          const msgs = adapter.getMessages();
+          baselineMessageCount = Array.isArray(msgs) ? msgs.length : 0;
+        }
+      } catch (_) { }
+
+      // Poll for first assistant response (max 60s, check every 2s)
+      let pollCount = 0;
+      const maxPolls = 30;
+      const pollInterval = 2000;
+
+      const pollTimer = setInterval(async () => {
+        pollCount++;
+        if (pollCount > maxPolls) {
+          clearInterval(pollTimer);
+          console.log('[ChatBridge] Drift monitoring: timeout waiting for response');
+          return;
+        }
+
+        try {
+          const pick = (typeof window.pickAdapter === 'function') ? window.pickAdapter : null;
+          const adapter = pick ? pick() : null;
+          if (!adapter || typeof adapter.getMessages !== 'function') return;
+
+          const currentMsgs = adapter.getMessages();
+          if (!Array.isArray(currentMsgs)) return;
+
+          // Look for a new assistant message beyond our baseline
+          const newMsgs = currentMsgs.slice(baselineMessageCount);
+          const firstAssistantResponse = newMsgs.find(m => m.role === 'assistant' && m.text && m.text.length > 30);
+
+          if (!firstAssistantResponse) return; // Keep polling
+
+          // Found the first assistant response — stop polling
+          clearInterval(pollTimer);
+          console.log('[ChatBridge] Drift monitoring: first response detected, length:', firstAssistantResponse.text.length);
+
+          // Run drift detection
+          await runDriftDetectionLoop(sourceText, firstAssistantResponse.text, targetPlatform, adapter);
+        } catch (e) {
+          console.warn('[ChatBridge] Drift poll error:', e);
+        }
+      }, pollInterval);
+    }
+
+    /**
+     * Run the full drift detection → assessment → repair → re-score loop.
+     * @param {string} sourceText - Source conversation context
+     * @param {string} targetResponse - First assistant response on target platform
+     * @param {string} targetPlatform - Target platform identifier
+     * @param {Object} adapter - The site adapter for the target platform
+     */
+    async function runDriftDetectionLoop(sourceText, targetResponse, targetPlatform, adapter) {
+      const drift = window.ChatBridgeDrift;
+      if (!drift) return;
+
+      const { detector, profileManager, ui, DRIFT_THRESHOLD: threshold, MAX_REPAIR_ATTEMPTS: maxRepairs, REPAIR_IMPROVEMENT_THRESHOLD: repairThreshold } = drift;
+
+      try {
+        // Step 1: Compute initial drift score via background.js
+        console.log('[ChatBridge] Computing drift score...');
+        const driftResult = await new Promise((resolve) => {
+          chrome.runtime.sendMessage({
+            type: 'measure_drift',
+            payload: {
+              sourceContext: sourceText.slice(-3000),
+              targetResponse: targetResponse.slice(0, 1500)
+            }
+          }, (res) => {
+            if (chrome.runtime.lastError) resolve({ ok: false });
+            else resolve(res || { ok: false });
+          });
+        });
+
+        if (!driftResult.ok) {
+          console.warn('[ChatBridge] Drift measurement failed:', driftResult.error);
+          return;
+        }
+
+        const initialScore = driftResult.driftScore;
+        console.log('[ChatBridge] Initial drift score:', initialScore.toFixed(4));
+
+        // Step 2: Assess drift severity
+        const assessment = detector.assessDrift(initialScore, targetPlatform);
+        console.log('[ChatBridge] Drift assessment:', assessment);
+
+        // Step 3: Record in profile
+        profileManager.recordDriftScore(targetPlatform, initialScore, assessment.driftDetected);
+
+        if (!assessment.driftDetected) {
+          // No drift — log and done
+          console.log('[ChatBridge] No significant drift detected (score:', initialScore.toFixed(4), ')');
+          profileManager.logDriftEvent({
+            sourcePlatform: 'transfer_source', // We don't always know the source
+            targetPlatform,
+            driftScore: initialScore,
+            driftDetected: false,
+            repairAttempted: false,
+            sourceContextLength: sourceText.length,
+            targetResponseLength: targetResponse.length
+          });
+          await profileManager.save();
+          return;
+        }
+
+        // Step 4: Drift detected — notify user and generate repair
+        console.log('[ChatBridge] Drift detected! Severity:', assessment.severity, 'Score:', initialScore.toFixed(4));
+        ui.showDriftNotification(initialScore, assessment.severity, true);
+
+        // Step 5: Generate repair prompt
+        const repairPrompt = await new Promise((resolve) => {
+          chrome.runtime.sendMessage({
+            type: 'generate_repair_prompt',
+            payload: {
+              sourceContext: sourceText.slice(-3000),
+              targetResponse: targetResponse.slice(0, 800),
+              driftScore: initialScore,
+              severity: assessment.severity
+            }
+          }, (res) => {
+            if (chrome.runtime.lastError) resolve(null);
+            else resolve(res && res.ok ? res.repairPrompt : null);
+          });
+        });
+
+        if (!repairPrompt) {
+          console.warn('[ChatBridge] Could not generate repair prompt');
+          profileManager.logDriftEvent({
+            sourcePlatform: 'transfer_source',
+            targetPlatform,
+            driftScore: initialScore,
+            driftDetected: true,
+            repairAttempted: false,
+            sourceContextLength: sourceText.length,
+            targetResponseLength: targetResponse.length
+          });
+          await profileManager.save();
+          return;
+        }
+
+        // Step 6: Inject repair prompt via restoreToChat
+        console.log('[ChatBridge] Injecting repair prompt (', repairPrompt.length, 'chars)');
+        const repairInjected = await restoreToChat(repairPrompt);
+
+        if (!repairInjected) {
+          console.warn('[ChatBridge] Failed to inject repair prompt');
+          profileManager.logDriftEvent({
+            sourcePlatform: 'transfer_source',
+            targetPlatform,
+            driftScore: initialScore,
+            driftDetected: true,
+            repairAttempted: true,
+            sourceContextLength: sourceText.length,
+            targetResponseLength: targetResponse.length
+          });
+          await profileManager.save();
+          return;
+        }
+
+        // Step 7: Wait for post-repair response and re-score
+        console.log('[ChatBridge] Waiting for post-repair response...');
+        const postRepairResponse = await waitForNextAssistantResponse(adapter, 45000);
+
+        if (postRepairResponse) {
+          // Re-measure drift
+          const postResult = await new Promise((resolve) => {
+            chrome.runtime.sendMessage({
+              type: 'measure_drift',
+              payload: {
+                sourceContext: sourceText.slice(-3000),
+                targetResponse: postRepairResponse.slice(0, 1500)
+              }
+            }, (res) => {
+              if (chrome.runtime.lastError) resolve({ ok: false });
+              else resolve(res || { ok: false });
+            });
+          });
+
+          const postScore = postResult.ok ? postResult.driftScore : initialScore;
+          const repairSuccess = (postScore - initialScore) >= repairThreshold;
+
+          console.log('[ChatBridge] Post-repair drift score:', postScore.toFixed(4),
+            'Improvement:', (postScore - initialScore).toFixed(4),
+            'Success:', repairSuccess);
+
+          // Record repair result
+          profileManager.recordRepairResult(targetPlatform, initialScore, postScore);
+          ui.showRepairResult(initialScore, postScore, repairSuccess);
+
+          // Log complete event
+          profileManager.logDriftEvent({
+            sourcePlatform: 'transfer_source',
+            targetPlatform,
+            driftScore: initialScore,
+            driftDetected: true,
+            repairAttempted: true,
+            postRepairScore: postScore,
+            repairSuccess,
+            sourceContextLength: sourceText.length,
+            targetResponseLength: targetResponse.length
+          });
+        } else {
+          // Couldn't get post-repair response; log what we have
+          profileManager.logDriftEvent({
+            sourcePlatform: 'transfer_source',
+            targetPlatform,
+            driftScore: initialScore,
+            driftDetected: true,
+            repairAttempted: true,
+            sourceContextLength: sourceText.length,
+            targetResponseLength: targetResponse.length
+          });
+        }
+
+        await profileManager.save();
+      } catch (e) {
+        console.error('[ChatBridge] Drift detection loop error:', e);
+      }
+    }
+
+    /**
+     * Wait for the next assistant response by polling the adapter.
+     * @param {Object} adapter - Site adapter
+     * @param {number} timeoutMs - Max wait time
+     * @returns {Promise<string|null>} The assistant response text, or null
+     */
+    async function waitForNextAssistantResponse(adapter, timeoutMs = 45000) {
+      if (!adapter || typeof adapter.getMessages !== 'function') return null;
+
+      // Snapshot current count
+      let currentMsgs;
+      try {
+        currentMsgs = adapter.getMessages();
+      } catch (_) { return null; }
+      const baseCount = Array.isArray(currentMsgs) ? currentMsgs.length : 0;
+
+      const pollMs = 2000;
+      const startTime = Date.now();
+
+      while (Date.now() - startTime < timeoutMs) {
+        await new Promise(r => setTimeout(r, pollMs));
+        try {
+          const msgs = adapter.getMessages();
+          if (!Array.isArray(msgs)) continue;
+
+          const newMsgs = msgs.slice(baseCount);
+          const assistantMsg = newMsgs.find(m => m.role === 'assistant' && m.text && m.text.length > 30);
+          if (assistantMsg) return assistantMsg.text;
+        } catch (_) { }
+      }
+      return null;
     }
 
     // Persistent Restore Status helpers (visible until restore completes)
@@ -19206,6 +19581,7 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
       window.ChatBridge = window.ChatBridge || {};
       window.ChatBridge._renderLastScan = renderLastScan;
       window.ChatBridge.refreshHistory = refreshHistory;
+      window.__cbToast = toast;
     } catch (e) { }
 
     // Initialize Smart Context Injection

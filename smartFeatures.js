@@ -742,6 +742,749 @@
   // ============================================
   // KNOWLEDGE BASE ENHANCEMENTS
   // ============================================
+
+  // ─── Entity Extractor ──────────────────────────────────────────────────
+  // Extracts entities and relationships from AI chat messages using
+  // both pattern-based extraction and Gemini API for deep extraction.
+  class EntityExtractor {
+    constructor() {
+      this.ENTITY_TYPES = {
+        PERSON: 'person',
+        TECHNOLOGY: 'technology',
+        CONCEPT: 'concept',
+        LIBRARY: 'library',
+        PRODUCT: 'product',
+        ORGANIZATION: 'organization',
+        LANGUAGE: 'language',
+        FRAMEWORK: 'framework',
+        TOOL: 'tool'
+      };
+
+      // High-confidence pattern matchers for fast client-side extraction
+      this.TECH_PATTERNS = /\b(React|Vue|Angular|Svelte|Next\.?js|Nuxt|Remix|Gatsby|Express|Django|Flask|FastAPI|Spring|Rails|Laravel|ASP\.NET|Node\.?js|Deno|Bun|TypeScript|JavaScript|Python|Java|Kotlin|Swift|Rust|Go|Ruby|PHP|C\+\+|C#|Scala|Elixir|Haskell|Dart|Flutter|React Native|Electron|Tauri|Docker|Kubernetes|Terraform|AWS|Azure|GCP|Firebase|Supabase|MongoDB|PostgreSQL|MySQL|Redis|SQLite|GraphQL|REST|gRPC|WebSocket|OAuth|JWT|WASM|WebAssembly|TensorFlow|PyTorch|Keras|scikit-learn|pandas|NumPy|Hugging\s?Face|LangChain|LlamaIndex|OpenAI|GPT-[34o]|Claude|Gemini|Llama|Mistral|Anthropic|Vercel|Netlify|Cloudflare|Nginx|Apache|Linux|Windows|macOS|iOS|Android|Git|GitHub|GitLab|VS\s?Code|Webpack|Vite|esbuild|Rollup|Babel|ESLint|Prettier|Jest|Vitest|Cypress|Playwright|Storybook|Tailwind(?:\s?CSS)?|Bootstrap|Material\s?UI|Chakra\s?UI|Figma|Sketch|Notion|Slack|Jira|Confluence)\b/gi;
+
+      this.CONCEPT_PATTERNS = /\b(machine learning|deep learning|neural network|transformer|attention mechanism|fine-tuning|prompt engineering|RAG|retrieval augmented generation|vector database|embeddings?|tokenization|inference|training|backpropagation|gradient descent|reinforcement learning|supervised learning|unsupervised learning|NLP|natural language processing|computer vision|generative AI|LLM|large language model|API|microservices?|serverless|CI\/CD|DevOps|agile|scrum|kanban|TDD|test-driven development|DDD|domain-driven design|SOLID|design pattern|refactoring|code review|pull request|deployment|containerization|orchestration|load balancing|caching|rate limiting|authentication|authorization|encryption|hashing|middleware|webhook|SSR|SSG|SPA|PWA|accessibility|responsive design|mobile-first|SEO|performance optimization|lazy loading|code splitting|tree shaking|hot module replacement)\b/gi;
+
+      this.RELATIONSHIP_VERBS = /\b(uses|depends on|integrates with|replaces|compared to|similar to|better than|alternative to|built with|built on|extends|implements|wraps|connects to|migrated? (?:from|to)|combined with|works with|powered by|compatible with|supports|requires|conflicts with)\b/gi;
+    }
+
+    /**
+     * Fast pattern-based entity extraction (no API call needed).
+     * Returns entities with types and positions.
+     */
+    extractLocal(messages) {
+      if (!messages || !Array.isArray(messages)) return { entities: [], relationships: [] };
+
+      const fullText = messages.map(m => `${m.role || 'unknown'}: ${m.text || ''}`).join('\n\n');
+      const entityMap = new Map(); // name_lower -> { name, type, mentions, contexts }
+
+      // 1. Technology/framework extraction
+      let match;
+      const techRegex = new RegExp(this.TECH_PATTERNS.source, 'gi');
+      while ((match = techRegex.exec(fullText)) !== null) {
+        const name = match[1];
+        const key = name.toLowerCase().replace(/\s+/g, '');
+        if (!entityMap.has(key)) {
+          entityMap.set(key, {
+            name: name,
+            type: this._classifyTech(name),
+            mentions: 0,
+            contexts: [],
+            firstSeen: match.index
+          });
+        }
+        const ent = entityMap.get(key);
+        ent.mentions++;
+        // Capture surrounding context (±80 chars)
+        const ctxStart = Math.max(0, match.index - 80);
+        const ctxEnd = Math.min(fullText.length, match.index + name.length + 80);
+        if (ent.contexts.length < 3) {
+          ent.contexts.push(fullText.slice(ctxStart, ctxEnd).replace(/\n/g, ' ').trim());
+        }
+      }
+
+      // 2. Concept extraction
+      const conceptRegex = new RegExp(this.CONCEPT_PATTERNS.source, 'gi');
+      while ((match = conceptRegex.exec(fullText)) !== null) {
+        const name = match[1];
+        const key = name.toLowerCase().replace(/\s+/g, '');
+        if (!entityMap.has(key)) {
+          entityMap.set(key, {
+            name: name,
+            type: this.ENTITY_TYPES.CONCEPT,
+            mentions: 0,
+            contexts: [],
+            firstSeen: match.index
+          });
+        }
+        const ent = entityMap.get(key);
+        ent.mentions++;
+        if (ent.contexts.length < 3) {
+          const ctxStart = Math.max(0, match.index - 80);
+          const ctxEnd = Math.min(fullText.length, match.index + name.length + 80);
+          ent.contexts.push(fullText.slice(ctxStart, ctxEnd).replace(/\n/g, ' ').trim());
+        }
+      }
+
+      // 3. Capitalized proper nouns (potential people/orgs/products)
+      const properNounRegex = /\b([A-Z][a-z]{2,})(?:\s+([A-Z][a-z]{2,})){0,2}\b/g;
+      const stopWords = new Set([
+        'The', 'This', 'That', 'These', 'Those', 'There', 'Then', 'When', 'Where',
+        'What', 'Which', 'Who', 'How', 'Here', 'However', 'Therefore', 'Furthermore',
+        'Additionally', 'Moreover', 'Although', 'Because', 'Since', 'While', 'Before',
+        'After', 'During', 'About', 'Above', 'Below', 'Between', 'Through', 'Into',
+        'From', 'With', 'Without', 'Against', 'Within', 'Along', 'Until', 'Upon',
+        'Also', 'Just', 'Only', 'Even', 'Still', 'Already', 'Always', 'Never',
+        'Often', 'Sometimes', 'Usually', 'Perhaps', 'Maybe', 'Sure', 'Yes', 'Well',
+        'First', 'Second', 'Third', 'Next', 'Last', 'Finally', 'User', 'Assistant',
+        'Note', 'Example', 'Step', 'Summary', 'Output', 'Input', 'Result', 'Error'
+      ]);
+      while ((match = properNounRegex.exec(fullText)) !== null) {
+        const fullMatch = match[0];
+        if (fullMatch.length < 3 || stopWords.has(fullMatch)) continue;
+        const key = fullMatch.toLowerCase().replace(/\s+/g, '');
+        if (entityMap.has(key)) continue; // Already captured by tech/concept patterns
+        entityMap.set(key, {
+          name: fullMatch,
+          type: this.ENTITY_TYPES.PERSON, // Default; will be refined by AI extraction
+          mentions: 1,
+          contexts: [],
+          firstSeen: match.index
+        });
+        const ent = entityMap.get(key);
+        const ctxStart = Math.max(0, match.index - 60);
+        const ctxEnd = Math.min(fullText.length, match.index + fullMatch.length + 60);
+        ent.contexts.push(fullText.slice(ctxStart, ctxEnd).replace(/\n/g, ' ').trim());
+      }
+
+      // 4. Extract relationships between entities
+      const relationships = this._extractRelationships(fullText, entityMap);
+
+      // Convert to array, sort by mentions, limit
+      const entities = Array.from(entityMap.values())
+        .sort((a, b) => b.mentions - a.mentions)
+        .slice(0, 50) // Cap at 50 entities per conversation
+        .map(e => ({
+          name: e.name,
+          type: e.type,
+          mentions: e.mentions,
+          contexts: e.contexts,
+          firstSeen: e.firstSeen
+        }));
+
+      return { entities, relationships };
+    }
+
+    /**
+     * Deep extraction using Gemini API (called from background.js).
+     * Produces richer entity/relationship data than pattern matching.
+     */
+    static buildExtractionPrompt(conversationText) {
+      return `You are an expert knowledge analyst. Extract entities and relationships from this AI conversation.
+
+Conversation:
+${conversationText}
+
+Return ONLY a JSON object (no commentary):
+{
+  "entities": [
+    {"name": "exact name", "type": "person|technology|concept|library|product|organization|language|framework|tool", "description": "one-sentence description in context"}
+  ],
+  "relationships": [
+    {"source": "entity name", "target": "entity name", "relation": "uses|depends_on|integrates_with|replaces|compared_to|similar_to|alternative_to|built_with|extends|implements|wraps|connects_to|migrated_from|migrated_to|combined_with|works_with|powered_by|compatible_with|supports|requires|conflicts_with", "context": "brief explanation"}
+  ]
+}
+
+Rules:
+- Max 30 entities, 20 relationships
+- Entity names should be canonical (e.g., "React" not "ReactJS" or "react.js")
+- Include ONLY entities actually discussed, not just mentioned in passing
+- Relationships must reference entities in the entities array
+- Focus on technical entities, frameworks, concepts, and people`;
+    }
+
+    /**
+     * Merge local (pattern) extraction with AI (Gemini) extraction.
+     * AI results take priority for type classification; local results
+     * fill in missing entities and provide mention counts.
+     */
+    mergeExtractions(localResult, aiResult) {
+      const merged = new Map(); // key -> entity
+
+      // Start with local entities (they have mention counts)
+      for (const ent of (localResult.entities || [])) {
+        const key = this._normalizeEntityKey(ent.name);
+        merged.set(key, { ...ent });
+      }
+
+      // Overlay AI entities (better type classification, descriptions)
+      for (const ent of (aiResult.entities || [])) {
+        const key = this._normalizeEntityKey(ent.name);
+        if (merged.has(key)) {
+          const existing = merged.get(key);
+          // AI type is more accurate
+          existing.type = ent.type || existing.type;
+          existing.description = ent.description || existing.description || '';
+        } else {
+          merged.set(key, {
+            name: ent.name,
+            type: ent.type || 'concept',
+            mentions: 1,
+            contexts: [],
+            description: ent.description || ''
+          });
+        }
+      }
+
+      // Merge relationships (dedupe by source+target+relation)
+      const relSet = new Map();
+      for (const rel of [...(localResult.relationships || []), ...(aiResult.relationships || [])]) {
+        const relKey = `${this._normalizeEntityKey(rel.source)}|${rel.relation}|${this._normalizeEntityKey(rel.target)}`;
+        if (!relSet.has(relKey)) {
+          relSet.set(relKey, rel);
+        }
+      }
+
+      return {
+        entities: Array.from(merged.values()),
+        relationships: Array.from(relSet.values())
+      };
+    }
+
+    _normalizeEntityKey(name) {
+      return (name || '').toLowerCase()
+        .replace(/[.\-_\s]+/g, '')
+        .replace(/js$/, '')  // "nodejs" == "node"
+        .replace(/css$/, '') // "tailwindcss" == "tailwind"
+        .trim();
+    }
+
+    _classifyTech(name) {
+      const lower = name.toLowerCase();
+      const frameworks = ['react', 'vue', 'angular', 'svelte', 'next', 'nuxt', 'remix', 'gatsby', 'express', 'django', 'flask', 'fastapi', 'spring', 'rails', 'laravel', 'asp.net', 'flutter', 'react native', 'electron', 'tauri'];
+      const languages = ['typescript', 'javascript', 'python', 'java', 'kotlin', 'swift', 'rust', 'go', 'ruby', 'php', 'c++', 'c#', 'scala', 'elixir', 'haskell', 'dart'];
+      const tools = ['docker', 'kubernetes', 'terraform', 'git', 'github', 'gitlab', 'webpack', 'vite', 'esbuild', 'rollup', 'babel', 'eslint', 'prettier', 'jest', 'vitest', 'cypress', 'playwright', 'storybook', 'figma', 'sketch', 'notion', 'slack', 'jira', 'confluence', 'vs code'];
+      const libraries = ['tensorflow', 'pytorch', 'keras', 'scikit-learn', 'pandas', 'numpy', 'langchain', 'llamaindex', 'tailwind', 'bootstrap', 'material ui', 'chakra ui'];
+      const products = ['aws', 'azure', 'gcp', 'firebase', 'supabase', 'vercel', 'netlify', 'cloudflare', 'nginx', 'apache'];
+
+      if (frameworks.some(f => lower.includes(f))) return this.ENTITY_TYPES.FRAMEWORK;
+      if (languages.some(l => lower.includes(l))) return this.ENTITY_TYPES.LANGUAGE;
+      if (tools.some(t => lower.includes(t))) return this.ENTITY_TYPES.TOOL;
+      if (libraries.some(l => lower.includes(l))) return this.ENTITY_TYPES.LIBRARY;
+      if (products.some(p => lower.includes(p))) return this.ENTITY_TYPES.PRODUCT;
+      return this.ENTITY_TYPES.TECHNOLOGY;
+    }
+
+    _extractRelationships(text, entityMap) {
+      const relationships = [];
+      const entityNames = Array.from(entityMap.values()).map(e => e.name);
+      if (entityNames.length < 2) return relationships;
+
+      // Find sentences containing relationship verbs + multiple entities
+      const sentences = text.split(/[.!?\n]+/).filter(s => s.trim().length > 10);
+      const relSet = new Set();
+
+      for (const sentence of sentences) {
+        const verbMatch = sentence.match(this.RELATIONSHIP_VERBS);
+        if (!verbMatch) continue;
+
+        // Find which entities appear in this sentence
+        const presentEntities = entityNames.filter(name =>
+          sentence.toLowerCase().includes(name.toLowerCase())
+        );
+
+        if (presentEntities.length >= 2) {
+          // Create relationships between co-occurring entities
+          for (let i = 0; i < presentEntities.length - 1; i++) {
+            for (let j = i + 1; j < presentEntities.length; j++) {
+              const relKey = `${presentEntities[i]}|${verbMatch[0]}|${presentEntities[j]}`;
+              if (relSet.has(relKey)) continue;
+              relSet.add(relKey);
+              relationships.push({
+                source: presentEntities[i],
+                target: presentEntities[j],
+                relation: verbMatch[0].toLowerCase().replace(/\s+/g, '_'),
+                context: sentence.trim().slice(0, 200)
+              });
+              if (relationships.length >= 30) return relationships;
+            }
+          }
+        }
+      }
+
+      return relationships;
+    }
+  }
+
+  // ─── Entity Resolver ───────────────────────────────────────────────────
+  // Cross-platform entity resolution: links the same entity discussed
+  // in ChatGPT and Claude conversations, even if described differently.
+  class EntityResolver {
+    constructor() {
+      this.storageKey = 'chatbridge:entity_graph';
+      this.graph = { nodes: {}, edges: [], meta: { lastUpdated: 0, version: 1 } };
+      this._loadGraph();
+    }
+
+    _loadGraph() {
+      try {
+        const stored = localStorage.getItem(this.storageKey);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (parsed && parsed.nodes) {
+            this.graph = parsed;
+          }
+        }
+      } catch (e) {
+        console.error('[EntityResolver] Failed to load graph:', e);
+      }
+    }
+
+    _saveGraph() {
+      try {
+        this.graph.meta.lastUpdated = Date.now();
+        const json = JSON.stringify(this.graph);
+        // Cap storage at ~2MB to avoid localStorage quota issues
+        if (json.length > 2 * 1024 * 1024) {
+          this._pruneGraph();
+        }
+        localStorage.setItem(this.storageKey, JSON.stringify(this.graph));
+      } catch (e) {
+        console.error('[EntityResolver] Failed to save graph:', e);
+      }
+    }
+
+    /**
+     * Index entities and relationships from a conversation into the graph.
+     * @param {Object} extraction - { entities: [], relationships: [] }
+     * @param {string} conversationId - Unique conversation identifier
+     * @param {string} platform - Platform hostname (e.g., "chatgpt.com")
+     */
+    indexConversation(extraction, conversationId, platform) {
+      if (!extraction || !extraction.entities) return;
+
+      const timestamp = Date.now();
+
+      // Index entities as graph nodes
+      for (const entity of extraction.entities) {
+        const canonicalKey = this._canonicalize(entity.name);
+        if (!canonicalKey) continue;
+
+        if (!this.graph.nodes[canonicalKey]) {
+          this.graph.nodes[canonicalKey] = {
+            canonical: entity.name,
+            type: entity.type,
+            aliases: [],
+            platforms: {},
+            mentions: 0,
+            description: entity.description || '',
+            firstSeen: timestamp,
+            lastSeen: timestamp,
+            conversations: []
+          };
+        }
+
+        const node = this.graph.nodes[canonicalKey];
+        node.mentions += (entity.mentions || 1);
+        node.lastSeen = timestamp;
+
+        // Track per-platform occurrence
+        if (!node.platforms[platform]) {
+          node.platforms[platform] = { count: 0, firstSeen: timestamp, lastSeen: timestamp };
+        }
+        node.platforms[platform].count += (entity.mentions || 1);
+        node.platforms[platform].lastSeen = timestamp;
+
+        // Track conversation references (cap at 50)
+        if (!node.conversations.includes(conversationId)) {
+          node.conversations.push(conversationId);
+          if (node.conversations.length > 50) {
+            node.conversations = node.conversations.slice(-50);
+          }
+        }
+
+        // Update description if AI provided a better one
+        if (entity.description && entity.description.length > (node.description || '').length) {
+          node.description = entity.description;
+        }
+
+        // Update type if more specific
+        if (entity.type && entity.type !== 'concept' && node.type === 'concept') {
+          node.type = entity.type;
+        }
+      }
+
+      // Index relationships as graph edges
+      for (const rel of (extraction.relationships || [])) {
+        const sourceKey = this._canonicalize(rel.source);
+        const targetKey = this._canonicalize(rel.target);
+        if (!sourceKey || !targetKey || sourceKey === targetKey) continue;
+        if (!this.graph.nodes[sourceKey] || !this.graph.nodes[targetKey]) continue;
+
+        // Deduplicate edges
+        const existingEdge = this.graph.edges.find(e =>
+          e.source === sourceKey && e.target === targetKey && e.relation === rel.relation
+        );
+        if (existingEdge) {
+          existingEdge.weight = (existingEdge.weight || 1) + 1;
+          existingEdge.lastSeen = timestamp;
+          if (!existingEdge.platforms.includes(platform)) {
+            existingEdge.platforms.push(platform);
+          }
+        } else {
+          this.graph.edges.push({
+            source: sourceKey,
+            target: targetKey,
+            relation: rel.relation,
+            context: rel.context || '',
+            weight: 1,
+            platforms: [platform],
+            firstSeen: timestamp,
+            lastSeen: timestamp
+          });
+        }
+      }
+
+      this._saveGraph();
+    }
+
+    /**
+     * Cross-platform entity resolution.
+     * Finds entities that refer to the same thing across different platforms
+     * using fuzzy matching + embedding similarity.
+     */
+    resolveEntities() {
+      const nodes = Object.entries(this.graph.nodes);
+      const merged = [];
+
+      // Pass 1: Exact canonical match (already handled by _canonicalize)
+      // Pass 2: Fuzzy match on aliases and similar names
+      for (let i = 0; i < nodes.length; i++) {
+        for (let j = i + 1; j < nodes.length; j++) {
+          const [keyA, nodeA] = nodes[i];
+          const [keyB, nodeB] = nodes[j];
+
+          const similarity = this._computeSimilarity(keyA, keyB, nodeA, nodeB);
+          if (similarity >= 0.8) {
+            merged.push({ keyA, keyB, similarity, reason: this._getSimilarityReason(keyA, keyB, nodeA, nodeB) });
+          }
+        }
+      }
+
+      // Apply merges (merge smaller into larger)
+      for (const merge of merged) {
+        this._mergeNodes(merge.keyA, merge.keyB);
+      }
+
+      if (merged.length > 0) {
+        this._saveGraph();
+      }
+
+      return merged;
+    }
+
+    /**
+     * Resolve entities using embedding similarity from background.js.
+     * Called asynchronously — sends entities to background for vector comparison.
+     */
+    async resolveWithEmbeddings() {
+      const nodeEntries = Object.entries(this.graph.nodes);
+      if (nodeEntries.length < 2) return [];
+
+      const resolutions = [];
+
+      // Only compare entities that appear on different platforms
+      const multiPlatformNodes = nodeEntries.filter(([_, node]) =>
+        Object.keys(node.platforms).length >= 1
+      );
+
+      // Build comparison pairs (limit to prevent API overload)
+      const pairs = [];
+      for (let i = 0; i < multiPlatformNodes.length && pairs.length < 100; i++) {
+        for (let j = i + 1; j < multiPlatformNodes.length && pairs.length < 100; j++) {
+          const [keyA, nodeA] = multiPlatformNodes[i];
+          const [keyB, nodeB] = multiPlatformNodes[j];
+
+          // Skip if already same type and very different names
+          if (this._computeSimilarity(keyA, keyB, nodeA, nodeB) < 0.3) continue;
+
+          // Only send for embedding comparison if fuzzy match is ambiguous (0.3–0.8)
+          const fuzzySim = this._computeSimilarity(keyA, keyB, nodeA, nodeB);
+          if (fuzzySim >= 0.3 && fuzzySim < 0.8) {
+            pairs.push({ keyA, keyB, nodeA, nodeB, fuzzySim });
+          }
+        }
+      }
+
+      // Request embedding comparisons from background
+      for (const pair of pairs) {
+        try {
+          const textA = `${pair.nodeA.canonical}: ${pair.nodeA.description || pair.nodeA.type}`;
+          const textB = `${pair.nodeB.canonical}: ${pair.nodeB.description || pair.nodeB.type}`;
+
+          const result = await new Promise((resolve) => {
+            chrome.runtime.sendMessage({
+              type: 'resolve_entities',
+              payload: { textA, textB }
+            }, resolve);
+          });
+
+          if (result && result.ok && result.similarity >= 0.85) {
+            resolutions.push({
+              keyA: pair.keyA,
+              keyB: pair.keyB,
+              similarity: result.similarity,
+              reason: 'embedding_similarity'
+            });
+            this._mergeNodes(pair.keyA, pair.keyB);
+          }
+        } catch (e) {
+          // Embedding resolution is best-effort
+        }
+      }
+
+      if (resolutions.length > 0) {
+        this._saveGraph();
+      }
+
+      return resolutions;
+    }
+
+    /**
+     * Query the knowledge graph.
+     * @param {string} query - Natural language query
+     * @param {Object} options - { limit, platform, entityType }
+     * @returns {Object} { entities: [], relationships: [], summary: string }
+     */
+    queryGraph(query, options = {}) {
+      const queryLower = query.toLowerCase();
+      const queryTerms = queryLower.split(/\s+/).filter(t => t.length > 2);
+      const limit = options.limit || 20;
+
+      // Score each node by relevance to query
+      const scoredNodes = Object.entries(this.graph.nodes).map(([key, node]) => {
+        let score = 0;
+
+        // Name match
+        if (node.canonical.toLowerCase().includes(queryLower)) score += 5;
+        for (const term of queryTerms) {
+          if (key.includes(term)) score += 2;
+          if ((node.description || '').toLowerCase().includes(term)) score += 1.5;
+          if (node.aliases.some(a => a.toLowerCase().includes(term))) score += 1;
+        }
+
+        // Boost by mentions (log scale)
+        score += Math.log2(node.mentions + 1) * 0.5;
+
+        // Boost cross-platform entities (they're more significant)
+        const platformCount = Object.keys(node.platforms).length;
+        if (platformCount > 1) score += platformCount * 1.5;
+
+        // Platform filter
+        if (options.platform && !node.platforms[options.platform]) score *= 0.1;
+
+        // Entity type filter
+        if (options.entityType && node.type !== options.entityType) score *= 0.2;
+
+        return { key, node, score };
+      }).filter(n => n.score > 0)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, limit);
+
+      // Find relevant edges
+      const relevantKeys = new Set(scoredNodes.map(n => n.key));
+      const relevantEdges = this.graph.edges.filter(e =>
+        relevantKeys.has(e.source) || relevantKeys.has(e.target)
+      );
+
+      // Build response
+      return {
+        entities: scoredNodes.map(n => ({
+          name: n.node.canonical,
+          type: n.node.type,
+          description: n.node.description,
+          mentions: n.node.mentions,
+          platforms: Object.keys(n.node.platforms),
+          platformDetails: n.node.platforms,
+          conversations: n.node.conversations,
+          relevanceScore: n.score
+        })),
+        relationships: relevantEdges.map(e => ({
+          source: this.graph.nodes[e.source]?.canonical || e.source,
+          target: this.graph.nodes[e.target]?.canonical || e.target,
+          relation: e.relation,
+          context: e.context,
+          weight: e.weight,
+          platforms: e.platforms
+        })),
+        stats: {
+          totalNodes: Object.keys(this.graph.nodes).length,
+          totalEdges: this.graph.edges.length,
+          matchedNodes: scoredNodes.length,
+          matchedEdges: relevantEdges.length
+        }
+      };
+    }
+
+    /**
+     * Get entities that span multiple platforms (cross-platform entities).
+     */
+    getCrossPlatformEntities(minPlatforms = 2) {
+      return Object.entries(this.graph.nodes)
+        .filter(([_, node]) => Object.keys(node.platforms).length >= minPlatforms)
+        .map(([key, node]) => ({
+          name: node.canonical,
+          type: node.type,
+          platforms: Object.keys(node.platforms),
+          mentions: node.mentions,
+          description: node.description
+        }))
+        .sort((a, b) => b.mentions - a.mentions);
+    }
+
+    /**
+     * Get graph statistics for debugging/benchmarking.
+     */
+    getStats() {
+      const nodes = Object.values(this.graph.nodes);
+      const platformCounts = {};
+      const typeCounts = {};
+      let crossPlatform = 0;
+
+      for (const node of nodes) {
+        const pCount = Object.keys(node.platforms).length;
+        if (pCount > 1) crossPlatform++;
+        for (const p of Object.keys(node.platforms)) {
+          platformCounts[p] = (platformCounts[p] || 0) + 1;
+        }
+        typeCounts[node.type] = (typeCounts[node.type] || 0) + 1;
+      }
+
+      return {
+        totalEntities: nodes.length,
+        totalRelationships: this.graph.edges.length,
+        crossPlatformEntities: crossPlatform,
+        entitiesByPlatform: platformCounts,
+        entitiesByType: typeCounts,
+        lastUpdated: this.graph.meta.lastUpdated
+      };
+    }
+
+    _canonicalize(name) {
+      if (!name) return '';
+      return name.toLowerCase()
+        .replace(/[.\-_\s]+/g, '')
+        .replace(/\.js$/i, '')
+        .replace(/\.ts$/i, '')
+        .replace(/\.py$/i, '')
+        .trim();
+    }
+
+    _computeSimilarity(keyA, keyB, nodeA, nodeB) {
+      // Exact match after canonicalization
+      if (keyA === keyB) return 1.0;
+
+      // Substring containment
+      if (keyA.includes(keyB) || keyB.includes(keyA)) return 0.85;
+
+      // Same type + Levenshtein distance
+      const editDist = this._levenshtein(keyA, keyB);
+      const maxLen = Math.max(keyA.length, keyB.length);
+      const stringSim = 1 - (editDist / maxLen);
+
+      // Type agreement bonus
+      const typeBonus = (nodeA.type === nodeB.type) ? 0.1 : 0;
+
+      return Math.min(1, stringSim + typeBonus);
+    }
+
+    _getSimilarityReason(keyA, keyB, nodeA, nodeB) {
+      if (keyA === keyB) return 'exact_canonical';
+      if (keyA.includes(keyB) || keyB.includes(keyA)) return 'substring_match';
+      return 'fuzzy_match';
+    }
+
+    _mergeNodes(keyA, keyB) {
+      const nodeA = this.graph.nodes[keyA];
+      const nodeB = this.graph.nodes[keyB];
+      if (!nodeA || !nodeB) return;
+
+      // Merge into the more-mentioned node
+      const [keepKey, keep, mergeKey, merge] = nodeA.mentions >= nodeB.mentions
+        ? [keyA, nodeA, keyB, nodeB]
+        : [keyB, nodeB, keyA, nodeA];
+
+      // Merge platforms
+      for (const [platform, data] of Object.entries(merge.platforms)) {
+        if (!keep.platforms[platform]) {
+          keep.platforms[platform] = data;
+        } else {
+          keep.platforms[platform].count += data.count;
+          keep.platforms[platform].lastSeen = Math.max(keep.platforms[platform].lastSeen, data.lastSeen);
+        }
+      }
+
+      // Merge conversations
+      const convSet = new Set([...keep.conversations, ...merge.conversations]);
+      keep.conversations = Array.from(convSet).slice(-50);
+
+      // Merge mentions
+      keep.mentions += merge.mentions;
+
+      // Add alias
+      if (!keep.aliases.includes(merge.canonical)) {
+        keep.aliases.push(merge.canonical);
+      }
+
+      // Update description if merged has better one
+      if ((merge.description || '').length > (keep.description || '').length) {
+        keep.description = merge.description;
+      }
+
+      // Re-point edges from merge to keep
+      for (const edge of this.graph.edges) {
+        if (edge.source === mergeKey) edge.source = keepKey;
+        if (edge.target === mergeKey) edge.target = keepKey;
+      }
+
+      // Remove duplicate self-edges
+      this.graph.edges = this.graph.edges.filter(e => e.source !== e.target);
+
+      // Delete merged node
+      delete this.graph.nodes[mergeKey];
+    }
+
+    _levenshtein(a, b) {
+      const matrix = Array.from({ length: b.length + 1 }, (_, i) => [i]);
+      for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
+      for (let i = 1; i <= b.length; i++) {
+        for (let j = 1; j <= a.length; j++) {
+          const cost = a[j - 1] === b[i - 1] ? 0 : 1;
+          matrix[i][j] = Math.min(
+            matrix[i - 1][j] + 1,
+            matrix[i][j - 1] + 1,
+            matrix[i - 1][j - 1] + cost
+          );
+        }
+      }
+      return matrix[b.length][a.length];
+    }
+
+    _pruneGraph() {
+      // Remove nodes with fewest mentions to save space
+      const entries = Object.entries(this.graph.nodes)
+        .sort((a, b) => a[1].mentions - b[1].mentions);
+
+      // Remove bottom 30%
+      const removeCount = Math.floor(entries.length * 0.3);
+      for (let i = 0; i < removeCount; i++) {
+        const key = entries[i][0];
+        delete this.graph.nodes[key];
+        this.graph.edges = this.graph.edges.filter(e => e.source !== key && e.target !== key);
+      }
+    }
+  }
+
   class KnowledgeBase {
     constructor() {
       this.storageKey = 'chatbridge:knowledge';
@@ -1041,6 +1784,8 @@
     window.AISummaryEngine = AISummaryEngine;
     window.UniversalClipboard = UniversalClipboard;
     window.KnowledgeBase = KnowledgeBase;
+    window.EntityExtractor = EntityExtractor;
+    window.EntityResolver = EntityResolver;
   }
 
   // ============================================

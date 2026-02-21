@@ -1,4 +1,4 @@
-// smartQueries.js - Advanced Smart Queries with Query History, Advanced Filters, & Improved UX
+﻿// smartQueries.js - Advanced Smart Queries with Query History, Advanced Filters, & Improved UX
 // Self-contained styling and logic to ensure perfect rendering
 
 (function () {
@@ -26,12 +26,15 @@
   --sq-accent3: #06B6D4;
   --sq-success: #10B981;
   --sq-error: #ef4444;
-  --sq-border: rgba(255, 255, 255, 0.06);
+  --sq-muted: #5A6478;
+  --sq-border: rgba(255, 255, 255, 0.08);
   --sq-border-accent: rgba(0, 212, 255, 0.25);
   --sq-gradient: linear-gradient(135deg, #00D4FF 0%, #7C3AED 100%);
-  --sq-shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.25);
-  --sq-shadow-lg: 0 12px 48px rgba(0, 0, 0, 0.45);
-  --sq-radius: 12px;
+  --sq-glow-1: rgba(0, 212, 255, 0.4);
+  --sq-glow-2: rgba(124, 58, 237, 0.3);
+  --sq-shadow-sm: 0 4px 16px rgba(0, 0, 0, 0.2);
+  --sq-shadow-lg: 0 12px 48px rgba(0, 0, 0, 0.35);
+  --sq-radius: 14px;
   --sq-font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   --sq-transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -45,6 +48,7 @@
   --sq-surface-elevated: rgba(255, 255, 255, 0.95);
   --sq-white: #0F172A;
   --sq-subtext: #4b5563;
+  --sq-muted: #94a3b8;
   --sq-accent: #0891b2;
   --sq-accent2: #7c3aed;
   --sq-accent3: #059669;
@@ -53,6 +57,8 @@
   --sq-border: rgba(0, 0, 0, 0.08);
   --sq-border-accent: rgba(8, 145, 178, 0.25);
   --sq-gradient: linear-gradient(135deg, #0891b2 0%, #7c3aed 100%);
+  --sq-glow-1: rgba(8, 145, 178, 0.15);
+  --sq-glow-2: rgba(124, 58, 237, 0.1);
   --sq-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.06);
   --sq-shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.1);
 }
@@ -65,6 +71,7 @@
   --sq-surface-elevated: rgba(225, 225, 225, 0.95);
   --sq-white: #1a1a1a;
   --sq-subtext: #4a4a4a;
+  --sq-muted: #7a7a7a;
   --sq-accent: #4a90d9;
   --sq-accent2: #6a7b8a;
   --sq-accent3: #5a9e6f;
@@ -73,6 +80,8 @@
   --sq-border: rgba(0, 0, 0, 0.2);
   --sq-border-accent: rgba(74, 144, 217, 0.3);
   --sq-gradient: linear-gradient(135deg, #4a90d9 0%, #6a7b8a 100%);
+  --sq-glow-1: rgba(74, 144, 217, 0.06);
+  --sq-glow-2: rgba(106, 123, 138, 0.06);
   --sq-shadow-sm: inset 1px 1px 0 rgba(255,255,255,0.6), 0 1px 3px rgba(0,0,0,0.12);
   --sq-shadow-lg: inset 1px 1px 0 rgba(255,255,255,0.4), 0 4px 12px rgba(0,0,0,0.2);
 }
@@ -85,6 +94,7 @@
   --sq-surface-elevated: rgba(255, 255, 255, 0.95);
   --sq-white: #000000;
   --sq-subtext: #1a1a1a;
+  --sq-muted: #555555;
   --sq-accent: #FF6B9D;
   --sq-accent2: #4ECDC4;
   --sq-accent3: #FFE156;
@@ -93,6 +103,8 @@
   --sq-border: #000000;
   --sq-border-accent: #FF6B9D;
   --sq-gradient: linear-gradient(135deg, #FF6B9D 0%, #4ECDC4 100%);
+  --sq-glow-1: transparent;
+  --sq-glow-2: transparent;
   --sq-shadow-sm: 3px 3px 0 #000;
   --sq-shadow-lg: 5px 5px 0 #000;
   --sq-radius: 0px;
@@ -106,6 +118,7 @@
   --sq-surface-elevated: rgba(45, 27, 105, 0.7);
   --sq-white: #f0e6ff;
   --sq-subtext: #c4a0ff;
+  --sq-muted: #7a5dbf;
   --sq-accent: #FF2D95;
   --sq-accent2: #00F0FF;
   --sq-accent3: #FFD700;
@@ -114,6 +127,8 @@
   --sq-border: rgba(255, 45, 149, 0.2);
   --sq-border-accent: rgba(255, 45, 149, 0.4);
   --sq-gradient: linear-gradient(135deg, #FF2D95 0%, #00F0FF 100%);
+  --sq-glow-1: rgba(255, 45, 149, 0.3);
+  --sq-glow-2: rgba(0, 240, 255, 0.2);
   --sq-shadow-sm: 0 4px 12px rgba(255, 45, 149, 0.15);
   --sq-shadow-lg: 0 12px 48px rgba(255, 45, 149, 0.2), 0 0 60px rgba(0, 240, 255, 0.1);
 }
@@ -126,6 +141,7 @@
   --sq-surface-elevated: rgba(42, 36, 69, 0.85);
   --sq-white: #e8e4f0;
   --sq-subtext: #a89ec0;
+  --sq-muted: #6e6590;
   --sq-accent: #b48eff;
   --sq-accent2: #ff8fa3;
   --sq-accent3: #7ecbff;
@@ -134,6 +150,8 @@
   --sq-border: rgba(180, 142, 255, 0.12);
   --sq-border-accent: rgba(180, 142, 255, 0.25);
   --sq-gradient: linear-gradient(135deg, #b48eff 0%, #ff8fa3 100%);
+  --sq-glow-1: rgba(180, 142, 255, 0.08);
+  --sq-glow-2: rgba(255, 143, 163, 0.08);
   --sq-shadow-sm: 4px 4px 10px rgba(0,0,0,0.35), -2px -2px 8px rgba(60,50,90,0.25);
   --sq-shadow-lg: 8px 8px 20px rgba(0,0,0,0.45), -4px -4px 14px rgba(60,50,90,0.18);
 }
@@ -144,7 +162,7 @@
   line-height: 1.6;
   display: flex;
   flex-direction: column;
-  background: linear-gradient(145deg, var(--sq-bg) 0%, var(--sq-bg2) 100%);
+  background: transparent;
   box-sizing: border-box;
   -webkit-font-smoothing: antialiased;
   width: 100%;
@@ -152,7 +170,10 @@
   height: 100%;
   overflow-x: hidden;
   overflow-y: hidden;
+  position: relative;
 }
+
+.sq-wrapper > * { position: relative; z-index: 1; }
 
 .sq-wrapper * { box-sizing: border-box; }
 
@@ -179,6 +200,18 @@
   margin: 4px 0;
 }
 
+/* Inline loading spinner (for small UI elements) */
+@keyframes sq-spin { to { transform: rotate(360deg); } }
+.sq-loading-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--sq-border);
+  border-top-color: var(--sq-accent);
+  border-radius: 50%;
+  animation: sq-spin 0.6s linear infinite;
+  display: inline-block;
+}
+
 /* Layout Structure */
 .sq-main-layout {
   display: flex;
@@ -190,7 +223,6 @@
 
 /* Header */
 .sq-header {
-  background: linear-gradient(180deg, rgba(0, 212, 255, 0.03) 0%, transparent 100%);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   padding: 10px 16px;
@@ -213,6 +245,7 @@
   border-radius: 10px;
   border: 1px solid var(--sq-border);
   gap: 2px;
+  flex-shrink: 0;
 }
 
 .sq-tab {
@@ -227,6 +260,7 @@
   transition: var(--sq-transition);
   position: relative;
   letter-spacing: -0.01em;
+  white-space: nowrap;
 }
 
 .sq-tab.active {
@@ -281,14 +315,14 @@
 .sq-suggestions::-webkit-scrollbar { display: none; }
 
 .sq-suggestion-chip {
-  padding: 5px 12px;
+  padding: 6px 14px;
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid var(--sq-border);
   border-radius: 20px;
   font-size: 11px;
   color: var(--sq-subtext);
   cursor: pointer;
-  transition: var(--sq-transition);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   white-space: nowrap;
   flex-shrink: 0;
 }
@@ -296,23 +330,37 @@
 .sq-suggestion-chip:hover {
   border-color: var(--sq-accent);
   color: var(--sq-accent);
-  background: rgba(0, 212, 255, 0.06);
+  background: rgba(0, 212, 255, 0.08);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
-/* Input Card */
+/* Input Card — elevated glass like popup stat-card */
 .sq-input-card {
   background: rgba(255, 255, 255, 0.03);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border-radius: var(--sq-radius);
-  border: 1px solid transparent;
+  border: 1px solid var(--sq-border);
   padding: 4px;
-  transition: var(--sq-transition);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.sq-input-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
 }
 
 .sq-input-card:focus-within {
-  border-color: rgba(0, 212, 255, 0.25);
-  box-shadow: 0 0 0 2px rgba(0, 212, 255, 0.06);
+  border-color: rgba(0, 212, 255, 0.3);
+  box-shadow: 0 0 0 2px rgba(0, 212, 255, 0.06), 0 4px 16px rgba(0, 0, 0, 0.15);
 }
 
 .sq-textarea {
@@ -361,11 +409,28 @@
   background: var(--sq-gradient);
   color: white;
   box-shadow: 0 4px 14px rgba(0, 212, 255, 0.2);
+  position: relative;
+}
+
+.sq-btn-primary::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  background: var(--sq-gradient);
+  opacity: 0;
+  filter: blur(10px);
+  z-index: -1;
+  transition: opacity 0.3s ease;
 }
 
 .sq-btn-primary:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(0, 212, 255, 0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 28px rgba(0, 212, 255, 0.35);
+}
+
+.sq-btn-primary:hover::after {
+  opacity: 0.4;
 }
 
 .sq-btn-secondary {
@@ -434,16 +499,47 @@
   min-width: 0;
 }
 
-/* Cards */
+/* Cards — elevated glassmorphism matching popup */
 .sq-synthesis-card, .sq-result {
   background: rgba(255, 255, 255, 0.03);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--sq-border);
   border-radius: var(--sq-radius);
   overflow: hidden;
-  transition: var(--sq-transition);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   min-width: 0;
+  position: relative;
+}
+
+/* Glass top-edge highlight — signature popup detail */
+.sq-synthesis-card::before, .sq-result::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.12), transparent);
+  z-index: 1;
+}
+
+/* Hover glow — radial accent reveal */
+.sq-synthesis-card::after, .sq-result::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle at 50% 50%, var(--sq-glow-1), transparent 60%);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  pointer-events: none;
+}
+
+.sq-synthesis-card:hover::after, .sq-result:hover::after {
+  opacity: 0.12;
 }
 
 .sq-synthesis-card {
@@ -461,7 +557,7 @@
 }
 
 .sq-card-title-text {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -469,12 +565,53 @@
 }
 
 .sq-card-content {
-  padding: 12px 14px;
+  padding: 14px 16px;
   font-size: 13px;
-  line-height: 1.65;
+  line-height: 1.7;
   color: var(--sq-white);
-  max-height: 180px;
   overflow-y: auto;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+/* Collapsed state — click to expand */
+.sq-card-content.sq-collapsed {
+  max-height: 220px;
+  position: relative;
+}
+
+.sq-card-content.sq-collapsed::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 48px;
+  background: linear-gradient(transparent, var(--sq-bg2));
+  pointer-events: none;
+}
+
+.sq-expand-btn {
+  display: none;
+  width: 100%;
+  padding: 6px;
+  background: rgba(255,255,255,0.02);
+  border: none;
+  border-top: 1px solid var(--sq-border);
+  color: var(--sq-accent);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  letter-spacing: 0.03em;
+  transition: var(--sq-transition);
+}
+
+.sq-expand-btn:hover {
+  background: rgba(0, 212, 255, 0.06);
+}
+
+.sq-expand-btn.sq-visible {
+  display: block;
 }
 
 .sq-result {
@@ -482,9 +619,9 @@
 }
 
 .sq-result:hover {
-  transform: translateY(-1px);
+  transform: translateY(-2px);
   border-color: var(--sq-border-accent);
-  box-shadow: var(--sq-shadow-sm);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(0, 212, 255, 0.08);
 }
 
 .sq-result[data-tag='decision'] { border-left-color: var(--sq-success); }
@@ -530,7 +667,7 @@
   min-width: 32px;
 }
 
-/* History Sidebar — now an overlay dropdown */
+/* History Sidebar — elevated overlay dropdown */
 .sq-history-sidebar {
   position: absolute;
   top: 44px;
@@ -545,8 +682,19 @@
   flex-direction: column;
   z-index: 200;
   box-shadow: var(--sq-shadow-lg);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+}
+
+.sq-history-sidebar::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.12), transparent);
+  z-index: 1;
 }
 
 .sq-history-sidebar.open { display: flex; }
@@ -729,12 +877,13 @@
         <div class="sq-wrapper sq-no-hscroll">
           <div class="sq-main-layout">
             <!-- Main Content -->
-            <div style="flex: 1; display: flex; flex-direction: column; min-width: 0; overflow: hidden; position: relative;">
+            <div style="flex: 1; display: flex; flex-direction: column; min-width: 0; overflow: hidden; overflow-x: visible; position: relative;">
               <!-- Header -->
               <div class="sq-header">
                 <div class="sq-tabs">
                     <button class="sq-tab active" data-mode="live">Current Chat</button>
                     <button class="sq-tab" data-mode="memory">Search Memory</button>
+                    <button class="sq-tab" data-mode="graph">Knowledge Graph</button>
                 </div>
                 <div style="display:flex; gap:6px; align-items:center;">
                   <button class="sq-btn sq-btn-secondary sq-btn-sm" id="sq-open-history" title="History">📋</button>
@@ -926,6 +1075,11 @@
             textarea.placeholder = "Ask about decisions, confusions, patterns...";
             // Show keyword suggestions for current chat
             this.showKeywordSuggestions();
+          } else if (this.mode === 'graph') {
+            modeHelper.textContent = "Query your cross-platform knowledge graph";
+            synthesisWrapper.style.display = "none";
+            if (askSpan) askSpan.textContent = "Query Graph";
+            textarea.placeholder = "What have I discussed about React hooks across all platforms?";
           } else {
             modeHelper.textContent = "Reason across all saved conversations";
             synthesisWrapper.style.display = "flex";
@@ -982,6 +1136,8 @@
         try {
           if (this.mode === 'live') {
             await this.runLiveQuery(query, resultsArea);
+          } else if (this.mode === 'graph') {
+            await this.runGraphQuery(query, resultsArea);
           } else {
             const synth = this.container.querySelector('#chk-synthesis')?.checked ?? true;
             const sortBy = this.container.querySelector('#sq-sort-by')?.value || 'relevance';
@@ -991,12 +1147,12 @@
             await this.runMemorySearch(query, resultsArea, synth, { sortBy, dateFrom, dateTo });
           }
         } catch (e) {
-          resultsArea.innerHTML = `
-            <div class="sq-error" style="text-align:center; padding:20px;">
-              <div style="font-size:24px; margin-bottom:10px;">⚠️</div>
-              <div>${e.message || 'Error occurred'}</div>
-            </div>
-          `;
+          // Show friendly toast instead of an error card
+          this.showToast(e?.message?.includes?.('API') || e?.message?.includes?.('fetch')
+            ? 'Please configure your API key in ChatBridge Options'
+            : (e?.message || 'Something went wrong. Please try again.'));
+          resultsArea.innerHTML = '';
+          resultsArea.style.display = 'none';
         } finally {
           askBtn.disabled = false;
           askBtn.innerHTML = origBtn;
@@ -1038,10 +1194,12 @@
       if (!suggestionsArea) return;
 
       const suggestions = [
-        { text: 'Unresolved questions', tip: 'Find open loops and unanswered decision points' },
-        { text: 'Key decisions made', tip: 'Extract agreed-upon directions and choices' },
-        { text: 'Changes in thinking', tip: 'Trace how your perspective evolved over time' },
-        { text: 'Action items', tip: 'List tasks and next steps identified in chats' }
+        { text: 'What was decided so far?', tip: 'Summarize key decisions and conclusions from this chat' },
+        { text: 'Continue from where we left off', tip: 'Pick up the conversation thread naturally' },
+        { text: 'What questions are still open?', tip: 'Find unresolved questions and loose threads' },
+        { text: 'What should I ask next?', tip: 'Suggest follow-up questions based on the conversation' },
+        { text: 'Summarize the key points', tip: 'Get a concise overview of the conversation so far' },
+        { text: 'What changed during this chat?', tip: 'Track how ideas evolved over the conversation' }
       ];
 
       suggestionsArea.innerHTML = suggestions.map(s => `
@@ -1127,9 +1285,23 @@
       }
       if (!query.trim()) return;
       const context = this.getContext();
-      const prompt = `Context:\n${context}\n\nQuestion: ${query}\n\nAnswer concisely:`;
+      const prompt = `You are a helpful assistant reasoning about an ongoing conversation.
+
+Conversation context:
+${context}
+
+User question: ${query}
+
+Provide a clear, thorough answer. If the question is about continuing the conversation, suggest what to discuss next. Format important points with **bold**. Be specific and reference the actual conversation content.`;
 
       const response = await this.callLlama(prompt);
+
+      // If callLlama returned empty (toast already shown), clear results area
+      if (!response) {
+        container.innerHTML = '';
+        container.style.display = 'none';
+        return;
+      }
 
       container.innerHTML = `
         <div class="sq-synthesis-card">
@@ -1137,9 +1309,27 @@
             <span class="sq-card-title-text">✨ AI Answer</span>
             <button class="sq-btn sq-btn-secondary sq-btn-sm" id="btn-copy-live">📋 Copy</button>
           </div>
-          <div class="sq-card-content">${this.formatText(this.escapeHTML(response))}</div>
+          <div class="sq-card-content" id="sq-live-answer">${this.formatText(this.escapeHTML(response))}</div>
+          <button class="sq-expand-btn" id="sq-expand-answer">▼ Show full answer</button>
         </div>
       `;
+
+      // Auto-detect if content overflows and show expand button
+      const answerEl = container.querySelector('#sq-live-answer');
+      const expandBtn = container.querySelector('#sq-expand-answer');
+      if (answerEl && expandBtn) {
+        requestAnimationFrame(() => {
+          if (answerEl.scrollHeight > 220) {
+            answerEl.classList.add('sq-collapsed');
+            expandBtn.classList.add('sq-visible');
+            expandBtn.addEventListener('click', () => {
+              const isCollapsed = answerEl.classList.contains('sq-collapsed');
+              answerEl.classList.toggle('sq-collapsed');
+              expandBtn.textContent = isCollapsed ? '▲ Collapse' : '▼ Show full answer';
+            });
+          }
+        });
+      }
 
       const copyBtn = container.querySelector('#btn-copy-live');
       if (copyBtn) {
@@ -1223,13 +1413,21 @@
 
       // Synthesis (Answer)
       if (synthesize) {
-        const topResults = this.currentResults.slice(0, 8);
-        const context = topResults.map(r => `[Date: ${new Date(r.segment.timestamp).toLocaleDateString()}] ${r.excerpt.map(m => m.text).join(' ')}`).join('\n---\n');
+        // Use up to 16 results for comprehensive synthesis
+        const topResults = this.currentResults.slice(0, 16);
+        const context = topResults.map((r, i) => {
+          const date = new Date(r.segment.timestamp).toLocaleDateString();
+          const messages = r.excerpt.map(m => `  ${m.role === 'user' ? 'User' : 'AI'}: ${m.text}`).join('\n');
+          return `[Source ${i + 1} — ${date}]\n${messages}`;
+        }).join('\n\n---\n\n');
+
+        const sourceCount = topResults.length;
+        const totalCount = this.currentResults.length;
 
         html += `
           <div class="sq-synthesis-card" style="margin-bottom:10px;">
             <div class="sq-card-header">
-              <span class="sq-card-title-text">✨ AI Synthesis</span>
+              <span class="sq-card-title-text">✨ AI Synthesis · ${sourceCount} sources</span>
               <button class="sq-btn sq-btn-secondary sq-btn-sm" id="btn-copy-memory">📋 Copy</button>
             </div>
             <div class="sq-card-content" id="sq-synthesis-content">
@@ -1237,18 +1435,56 @@
                 <div class="sq-shimmer" style="width:90%;height:10px;"></div>
                 <div class="sq-shimmer" style="width:70%;height:10px;"></div>
                 <div class="sq-shimmer" style="width:80%;height:10px;"></div>
+                <div class="sq-shimmer" style="width:60%;height:10px;"></div>
               </div>
             </div>
+            <button class="sq-expand-btn" id="sq-expand-synthesis">▼ Show full synthesis</button>
           </div>
         `;
 
-        // Output Governance Prompt (same as before)
-        const prompt = `You are the Smart Query reasoning engine for ChatBridge.\n\nYour job is to extract insight, not explain the system, not summarize conversations, and not describe user intent.\n\nCore Rules (non-negotiable):\n- Never describe the user’s request ("The user is asking...")\n- Do not say “Based on the provided conversation...”\n- Do not explain why the query was asked\n- Do not mention "segments", "matches", "percentages", or "timestamps" unless citing a specific event date.\n- Never summarize the conversation as a whole.\n- Extract only what directly answers the query.\n\nTask:\nUser Question: "${this.currentResults[0].fullQuery || ''}"\n\nRelevant Memory Segments:\n${context}\n\nInstructions:\n1. Identify explicit decision moments or key facts.\n2. Ignore brainstorming, speculation, and repetition.\n3. Collapse duplicates into one decision.\n4. Phrase decisions as outcomes, not dialogue.\n5. If decisions are weak, say "No firm decisions were finalized" and list tentative directions.\n\nAnswer directly:`;
+        const userQuery = this.currentResults[0].fullQuery || '';
+        const prompt = `You are a thorough research assistant synthesizing insights from ${sourceCount} saved conversation memories (out of ${totalCount} total matches).
+
+User's question: "${userQuery}"
+
+Memory sources:
+${context}
+
+Write a comprehensive, detailed synthesis covering ALL relevant information from every source above.
+
+Requirements:
+- Structure with **bold section headers** for each major theme or topic area
+- Under each section, use bullet points to list specific findings, decisions, ideas, or facts
+- For key points, note the date they came up
+- Cover: decisions made, ideas explored, open questions, action items, and how thinking evolved
+- If sources conflict, note the contradiction and which view is more recent
+- Be thorough and detailed - synthesize across ALL ${sourceCount} sources, not just 1-2
+- Do NOT start with "Based on..." or describe what the user asked
+- Jump straight into the structured findings
+
+Synthesize now:`;
 
         this.callLlama(prompt).then(summary => {
           const syntContent = container.querySelector('#sq-synthesis-content');
           if (syntContent) {
             syntContent.innerHTML = this.formatText(summary);
+
+            // Auto-detect overflow and show expand button
+            const expandBtn = container.querySelector('#sq-expand-synthesis');
+            requestAnimationFrame(() => {
+              if (syntContent.scrollHeight > 220) {
+                syntContent.classList.add('sq-collapsed');
+                if (expandBtn) {
+                  expandBtn.classList.add('sq-visible');
+                  expandBtn.addEventListener('click', () => {
+                    const isCollapsed = syntContent.classList.contains('sq-collapsed');
+                    syntContent.classList.toggle('sq-collapsed');
+                    expandBtn.textContent = isCollapsed ? '▲ Collapse' : '▼ Show full synthesis';
+                  });
+                }
+              }
+            });
+
             const copyBtn = container.querySelector('#btn-copy-memory');
             if (copyBtn) {
               copyBtn.addEventListener('click', () => {
@@ -1385,6 +1621,153 @@
       return date.toLocaleDateString();
     }
 
+    /**
+     * Run a graph query: search the EntityResolver knowledge graph,
+     * then optionally synthesize an answer via Gemini.
+     */
+    async runGraphQuery(query, container) {
+      // Initialize EntityResolver if available
+      if (!this.entityResolver && window.EntityResolver) {
+        this.entityResolver = new window.EntityResolver();
+      }
+
+      if (!this.entityResolver) {
+        container.innerHTML = `
+          <div style="text-align:center; padding:24px; color:var(--sq-subtext); font-size:13px;">
+            Knowledge Graph not available.<br>
+            <span style="font-size:11px; opacity:0.8;">Scan some conversations first to build the graph.</span>
+          </div>`;
+        return;
+      }
+
+      // Query the graph
+      const graphResult = this.entityResolver.queryGraph(query, { limit: 15 });
+      const stats = this.entityResolver.getStats();
+      const crossPlatform = this.entityResolver.getCrossPlatformEntities(2);
+
+      if (graphResult.entities.length === 0) {
+        container.innerHTML = `
+          <div style="text-align:center; padding:24px; color:var(--sq-subtext); font-size:13px;">
+            No matching entities found for "${query.length > 50 ? query.slice(0, 50) + '...' : query}"<br>
+            <span style="font-size:11px; opacity:0.8;">Graph has ${stats.totalEntities} entities across ${Object.keys(stats.entitiesByPlatform).length} platforms. Try different search terms.</span>
+          </div>`;
+        return;
+      }
+
+      // Build graph context for AI synthesis
+      const graphContextParts = [];
+      for (const ent of graphResult.entities.slice(0, 10)) {
+        let line = `Entity: ${ent.name} (${ent.type})`;
+        if (ent.description) line += ` — ${ent.description}`;
+        line += ` | Mentions: ${ent.mentions} | Platforms: ${ent.platforms.join(', ')}`;
+        if (ent.conversations.length > 0) {
+          line += ` | Conversations: ${ent.conversations.length}`;
+        }
+        graphContextParts.push(line);
+      }
+      for (const rel of graphResult.relationships.slice(0, 10)) {
+        graphContextParts.push(`Relationship: ${rel.source} ${rel.relation.replace(/_/g, ' ')} ${rel.target} (${rel.platforms.join(', ')})`);
+      }
+
+      const graphContext = graphContextParts.join('\n');
+
+      // Build result HTML — entities section
+      let html = `<div style="margin-bottom:12px;">`;
+
+      // Stats bar
+      html += `<div style="padding:8px 12px; background:rgba(0,212,255,0.08); border:1px solid rgba(0,212,255,0.2); border-radius:8px; margin-bottom:12px; font-size:11px; color:var(--sq-subtext); display:flex; gap:12px; flex-wrap:wrap;">
+        <span>🧠 ${stats.totalEntities} entities</span>
+        <span>🔗 ${stats.totalRelationships} relationships</span>
+        <span>🌐 ${stats.crossPlatformEntities} cross-platform</span>
+        <span>📊 ${graphResult.matchedNodes || graphResult.entities.length} matched</span>
+      </div>`;
+
+      // Entity cards
+      for (const ent of graphResult.entities.slice(0, 10)) {
+        const platformBadges = ent.platforms.map(p =>
+          `<span style="display:inline-block; padding:1px 6px; border-radius:4px; font-size:10px; background:rgba(124,58,237,0.15); color:rgba(124,58,237,0.9); margin-right:4px;">${p.replace(/\.com$|\.ai$/, '')}</span>`
+        ).join('');
+
+        const typeColor = {
+          framework: '#00D4FF', library: '#7C3AED', language: '#10A37F',
+          tool: '#F59E0B', concept: '#6B7280', product: '#EF4444',
+          person: '#EC4899', organization: '#8B5CF6', technology: '#3B82F6'
+        }[ent.type] || '#6B7280';
+
+        html += `<div style="padding:10px 12px; margin-bottom:8px; background:var(--sq-surface, rgba(255,255,255,0.04)); border:1px solid var(--sq-border, rgba(255,255,255,0.08)); border-radius:8px; border-left:3px solid ${typeColor};">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+            <span style="font-weight:600; font-size:13px; color:var(--sq-text, #fff);">${ent.name}</span>
+            <span style="font-size:10px; color:${typeColor}; text-transform:uppercase; font-weight:600;">${ent.type}</span>
+          </div>
+          ${ent.description ? `<div style="font-size:12px; color:var(--sq-subtext); margin-bottom:4px;">${ent.description}</div>` : ''}
+          <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+            ${platformBadges}
+            <span style="font-size:10px; color:var(--sq-subtext);">${ent.mentions} mentions · ${ent.conversations.length} conversations</span>
+          </div>
+        </div>`;
+      }
+
+      // Relationships section
+      if (graphResult.relationships.length > 0) {
+        html += `<div style="margin-top:12px; padding:8px 12px; background:rgba(124,58,237,0.06); border:1px solid rgba(124,58,237,0.15); border-radius:8px;">
+          <div style="font-size:11px; font-weight:600; color:var(--sq-subtext); margin-bottom:6px;">Relationships</div>`;
+        for (const rel of graphResult.relationships.slice(0, 8)) {
+          html += `<div style="font-size:12px; color:var(--sq-text); margin-bottom:4px;">
+            <span style="font-weight:500;">${rel.source}</span>
+            <span style="color:var(--sq-subtext); font-style:italic;"> ${rel.relation.replace(/_/g, ' ')} </span>
+            <span style="font-weight:500;">${rel.target}</span>
+            <span style="font-size:10px; color:var(--sq-subtext); margin-left:4px;">(${rel.platforms.join(', ')})</span>
+          </div>`;
+        }
+        html += `</div>`;
+      }
+
+      html += `</div>`;
+
+      // AI synthesis section
+      html += `<div id="sq-graph-synthesis" style="margin-top:12px;">
+        <div style="display:flex; flex-direction:column; align-items:center; gap:8px; padding:16px;">
+          <div class="sq-shimmer" style="width:80%;height:10px;"></div>
+          <div class="sq-shimmer" style="width:60%;height:10px;"></div>
+          <div style="font-size:11px; color:var(--sq-subtext);">Synthesizing answer from knowledge graph...</div>
+        </div>
+      </div>`;
+
+      container.innerHTML = html;
+
+      // Request AI synthesis
+      try {
+        const synthResult = await new Promise((resolve) => {
+          chrome.runtime.sendMessage({
+            type: 'graph_query_synthesize',
+            payload: { query, graphContext }
+          }, resolve);
+        });
+
+        const synthContainer = container.querySelector('#sq-graph-synthesis');
+        if (synthResult && synthResult.ok && synthResult.result) {
+          synthContainer.innerHTML = `
+            <div style="padding:12px; background:rgba(0,212,255,0.06); border:1px solid rgba(0,212,255,0.15); border-radius:8px;">
+              <div style="font-size:11px; font-weight:600; color:rgba(0,212,255,0.8); margin-bottom:6px;">🧠 AI Synthesis</div>
+              <div style="font-size:13px; color:var(--sq-text); line-height:1.6; white-space:pre-wrap;">${synthResult.result}</div>
+            </div>`;
+        } else {
+          synthContainer.innerHTML = `
+            <div style="padding:8px 12px; background:rgba(255,255,255,0.03); border-radius:8px; font-size:12px; color:var(--sq-subtext);">
+              Graph results shown above. Configure API key for AI synthesis.
+            </div>`;
+        }
+      } catch (e) {
+        const synthContainer = container.querySelector('#sq-graph-synthesis');
+        if (synthContainer) {
+          synthContainer.innerHTML = `
+            <div style="padding:8px 12px; font-size:12px; color:var(--sq-subtext);">
+              Graph search complete. AI synthesis unavailable.
+            </div>`;
+        }
+      }
+    }
+
     getContext() {
       try {
         if (window.pickAdapter) {
@@ -1397,16 +1780,82 @@
 
     async callLlama(text) {
       return new Promise(resolve => {
-        chrome.runtime.sendMessage({
-          type: 'call_llama',
-          payload: { action: 'prompt', text: text }
-        }, res => resolve(res && res.ok ? res.result : "Failed to get AI response."));
+        try {
+          chrome.runtime.sendMessage({
+            type: 'call_llama',
+            payload: { action: 'prompt', text: text }
+          }, res => {
+            if (chrome.runtime.lastError) {
+              this.showToast('Please configure your API key in ChatBridge Options');
+              return resolve('');
+            }
+            if (res && res.ok) return resolve(res.result);
+            // Friendly toast for any API error
+            const msg = (res && res.error === 'no_api_key')
+              ? 'Please configure your API key in ChatBridge Options'
+              : (res && res.message) || 'Please configure your API key in ChatBridge Options';
+            this.showToast(msg);
+            return resolve('');
+          });
+        } catch (e) {
+          this.showToast('Please configure your API key in ChatBridge Options');
+          resolve('');
+        }
       });
+    }
+
+    showToast(msg) {
+      // Use existing page-level toast if available
+      if (typeof window !== 'undefined' && typeof window.__cbToast === 'function') {
+        window.__cbToast(msg);
+        return;
+      }
+      // Fallback: inject a lightweight toast into the shadow root
+      const root = this.container?.getRootNode?.() || document;
+      let container = root.querySelector?.('#sq-toast-container');
+      if (!container) {
+        container = document.createElement('div');
+        container.id = 'sq-toast-container';
+        container.style.cssText = 'position:fixed;bottom:18px;left:18px;z-index:2147483647;display:flex;flex-direction:column-reverse;gap:8px;pointer-events:none;';
+        (root === document ? document.body : root).appendChild(container);
+      }
+      const t = document.createElement('div');
+      t.textContent = msg;
+      t.style.cssText = `
+        background:rgba(10,15,28,0.95);color:#E6E9F0;padding:10px 16px;border-radius:10px;
+        border:1px solid rgba(0,212,255,0.25);box-shadow:0 4px 16px rgba(0,0,0,0.3);
+        font-family:'Inter',system-ui,sans-serif;font-size:13px;font-weight:500;
+        pointer-events:auto;max-width:320px;word-wrap:break-word;
+        animation:cb-toast-slide-in 0.25s ease-out;
+      `;
+      container.appendChild(t);
+      setTimeout(() => { try { t.remove(); } catch(e){} }, 3000);
     }
 
     formatText(text) {
       if (!text) return '';
-      return text.replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+      // Convert markdown-style formatting to HTML
+      const lines = text.split('\n');
+      let html = '';
+      let inList = false;
+      for (const line of lines) {
+        const trimmed = line.trim();
+        const bulletMatch = trimmed.match(/^[-•]\s+(.+)/);
+        if (bulletMatch) {
+          if (!inList) { html += '<ul style="margin:4px 0 4px 8px;padding-left:14px;">'; inList = true; }
+          html += `<li>${bulletMatch[1]}</li>`;
+        } else {
+          if (inList) { html += '</ul>'; inList = false; }
+          if (trimmed === '') { html += '<br>'; }
+          else { html += `<p style="margin:3px 0;">${trimmed}</p>`; }
+        }
+      }
+      if (inList) html += '</ul>';
+      // Bold and italic
+      html = html.replace(/\*\*\*(.*?)\*\*\*/g, '<strong><em>$1</em></strong>');
+      html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+      html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
+      return html;
     }
 
     announceToScreenReader(message) {

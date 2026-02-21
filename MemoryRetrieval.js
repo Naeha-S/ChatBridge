@@ -16,7 +16,9 @@
             this.segmentEngine = null;
             this.intentAnalyzer = null;
             this.embeddings = new Map(); // segmentId -> embedding vector
+            this.normalizedTexts = new Map(); // segmentId -> normalized text (for cross-platform search)
             this.embeddingCache = new Map(); // query -> results cache
+            this.entityResolver = null; // Knowledge graph (EntityResolver)
             this.initialized = false;
         }
 
@@ -30,6 +32,9 @@
             }
             if (window.IntentAnalyzer) {
                 this.intentAnalyzer = new window.IntentAnalyzer();
+            }
+            if (window.EntityResolver) {
+                this.entityResolver = new window.EntityResolver();
             }
 
             // Load cached segments from localStorage
@@ -69,17 +74,19 @@
         /**
          * Index a conversation - extract segments and compute embeddings
          * @param {Object} conversation - Conversation to index
+         * @param {string} [platformId] - Optional platform identifier for fingerprint-aware segmentation
          */
-        async indexConversation(conversation) {
+        async indexConversation(conversation, platformId) {
             if (!this.segmentEngine) return;
 
-            // Extract segments
-            const segments = this.segmentEngine.extractSegments(conversation);
+            // Extract segments using platform-aware segmentation
+            const resolvedPlatform = platformId || conversation.platform || 'unknown';
+            const segments = this.segmentEngine.extractSegments(conversation, resolvedPlatform);
 
             // Index segments
             this.segmentEngine.indexSegments(conversation.ts || Date.now(), segments);
 
-            // Compute embeddings for each segment (if API available)
+            // Compute embeddings and normalized texts for each segment
             for (const segment of segments) {
                 try {
                     const embedding = await this.computeEmbedding(segment);
@@ -88,6 +95,18 @@
                     }
                 } catch (e) {
                     console.log('[MemoryRetrieval] Embedding computation skipped:', e.message);
+                }
+
+                // Pre-compute normalized text for cross-platform retrieval
+                try {
+                    if (window.NormalizedSegment) {
+                        const normalized = window.NormalizedSegment.normalize(segment);
+                        if (normalized.normalizedText) {
+                            this.normalizedTexts.set(segment.id, normalized.normalizedText);
+                        }
+                    }
+                } catch (e) {
+                    // Normalization is best-effort
                 }
             }
 
@@ -177,6 +196,10 @@
             // Step 4: Layer 2 - Intent alignment scoring
             candidates = this.scoreByIntentAlignment(candidates, queryAnalysis);
 
+            // Step 4.5: Knowledge graph augmentation
+            // Boost candidates whose segments mention entities relevant to the query
+            candidates = this.applyGraphBoost(candidates, queryAnalysis);
+
             // Step 5: Layer 3 - Reasoning filter
             candidates = this.applyReasoningFilter(candidates, queryAnalysis);
 
@@ -211,21 +234,27 @@
 
         /**
          * Layer 1: Semantic/Keyword search
+         * Uses normalized text for cross-platform fairness when available.
          */
         semanticSearch(segments, queryAnalysis) {
             const keywords = queryAnalysis.keywords || [];
             const topicFocus = queryAnalysis.topicFocus;
 
             return segments.map(segment => {
-                const segmentText = segment.messages.map(m => m.text).join(' ').toLowerCase();
+                // Use normalized text if available (strips platform-specific formatting)
+                // This ensures cross-platform retrieval is fair — a Claude response
+                // and a ChatGPT response about the same topic score similarly
+                const rawText = segment.messages.map(m => m.text).join(' ').toLowerCase();
+                const normalizedText = (this.normalizedTexts.get(segment.id) || rawText).toLowerCase();
                 let semanticScore = 0;
 
-                // Keyword matching
+                // Keyword matching (on normalized text for cross-platform fairness)
                 for (const keyword of keywords) {
-                    if (segmentText.includes(keyword.toLowerCase())) {
+                    const kw = keyword.toLowerCase();
+                    if (normalizedText.includes(kw)) {
                         semanticScore += 0.2;
                     }
-                    if ((segment.keywords || []).includes(keyword.toLowerCase())) {
+                    if ((segment.keywords || []).includes(kw)) {
                         semanticScore += 0.15;
                     }
                 }
@@ -235,7 +264,7 @@
                     if (segment.topic.toLowerCase().includes(topicFocus.toLowerCase())) {
                         semanticScore += 0.3;
                     }
-                    if (segmentText.includes(topicFocus.toLowerCase())) {
+                    if (normalizedText.includes(topicFocus.toLowerCase())) {
                         semanticScore += 0.2;
                     }
                 }
@@ -267,6 +296,75 @@
                     combinedScore: (candidate.semanticScore * 0.4) + (alignmentScore * 0.6)
                 };
             });
+        }
+
+        /**
+         * Knowledge graph augmentation layer.
+         * Boosts candidates that contain entities relevant to the query,
+         * using the EntityResolver knowledge graph for cross-platform linking.
+         */
+        applyGraphBoost(candidates, queryAnalysis) {
+            if (!this.entityResolver) return candidates;
+
+            try {
+                const query = (queryAnalysis.keywords || []).join(' ') + ' ' + (queryAnalysis.topicFocus || '');
+                const graphResult = this.entityResolver.queryGraph(query.trim(), { limit: 20 });
+
+                if (!graphResult.entities || graphResult.entities.length === 0) return candidates;
+
+                // Build a set of entity names (lowercased) for fast lookup
+                const entityNames = new Set();
+                const entityScores = new Map(); // name -> relevanceScore
+                for (const ent of graphResult.entities) {
+                    const lower = ent.name.toLowerCase();
+                    entityNames.add(lower);
+                    entityScores.set(lower, ent.relevanceScore || 1);
+                    // Add aliases too
+                    if (ent.aliases) {
+                        for (const alias of ent.aliases) {
+                            entityNames.add(alias.toLowerCase());
+                            entityScores.set(alias.toLowerCase(), (ent.relevanceScore || 1) * 0.8);
+                        }
+                    }
+                }
+
+                // Boost candidates that mention graph entities
+                return candidates.map(candidate => {
+                    const segText = candidate.segment.messages
+                        .map(m => m.text).join(' ').toLowerCase();
+
+                    let graphBoost = 0;
+                    let matchedEntities = [];
+
+                    for (const [name, score] of entityScores) {
+                        if (segText.includes(name)) {
+                            graphBoost += 0.05 * Math.min(score, 5);
+                            matchedEntities.push(name);
+                        }
+                    }
+
+                    // Bonus for segments with cross-platform entity matches
+                    for (const ent of graphResult.entities) {
+                        if (Object.keys(ent.platformDetails || {}).length > 1) {
+                            if (segText.includes(ent.name.toLowerCase())) {
+                                graphBoost += 0.08; // Cross-platform entities are more valuable
+                            }
+                        }
+                    }
+
+                    // Cap the boost at 0.3
+                    graphBoost = Math.min(0.3, graphBoost);
+
+                    return {
+                        ...candidate,
+                        combinedScore: candidate.combinedScore + graphBoost,
+                        graphMatchedEntities: matchedEntities.length > 0 ? matchedEntities : undefined
+                    };
+                });
+            } catch (e) {
+                console.log('[MemoryRetrieval] Graph boost skipped:', e.message);
+                return candidates;
+            }
         }
 
         /**
@@ -467,7 +565,8 @@
             let totalSegments = 0;
 
             for (const conv of conversations) {
-                const segments = await this.indexConversation(conv);
+                // Pass platform from conversation metadata for fingerprint-aware segmentation
+                const segments = await this.indexConversation(conv, conv.platform);
                 totalSegments += segments.length;
             }
 
@@ -490,6 +589,7 @@
          */
         clearCache() {
             this.embeddingCache.clear();
+            this.normalizedTexts.clear();
         }
     }
 

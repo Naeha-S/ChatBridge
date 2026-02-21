@@ -456,6 +456,24 @@ function cosine(a, b) {
   if (na === 0 || nb === 0) return 0; return dot / (Math.sqrt(na) * Math.sqrt(nb));
 }
 
+// ─── Drift Detection: Fallback repair prompt generator (no API needed) ────
+function generateFallbackRepairPrompt(sourceContext, severity) {
+  // Extract key sentences from source context for a rule-based repair prompt
+  const sentences = sourceContext.split(/[.!?]+/).map(s => s.trim()).filter(s => s.length > 20);
+  const keyPhrases = sentences.slice(-8); // Last 8 meaningful sentences
+
+  const intro = severity === 'critical'
+    ? 'Important: I was in the middle of a conversation on another platform. Here is the essential context you need to continue accurately:'
+    : severity === 'high'
+      ? 'I\'m continuing a conversation from another AI platform. Please align your responses with this context:'
+      : 'For context, here\'s what we were discussing on another platform:';
+
+  const contextBlock = keyPhrases.join('. ') + '.';
+  const outro = 'Please continue from where we left off, maintaining consistency with the above context.';
+
+  return `${intro}\n\n${contextBlock}\n\n${outro}`;
+}
+
 // stable JSON stringify that sorts object keys (simple recursive)
 function stableStringify(obj) {
   if (obj === null || obj === undefined) return JSON.stringify(obj);
@@ -816,6 +834,373 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       })();
       return true;
     }
+
+    // ─── Drift Detection: get embedding for drift comparison ──────────────
+    if (msg.type === 'get_drift_embedding') {
+      (async () => {
+        try {
+          const text = (msg.payload && msg.payload.text) ? String(msg.payload.text) : '';
+          if (!text || text.length < 5) return sendResponse({ ok: false, error: 'text_too_short' });
+          const vector = await fetchEmbeddingOpenAI(text);
+          if (!vector) return sendResponse({ ok: false, error: 'embedding_failed' });
+          return sendResponse({ ok: true, vector });
+        } catch (e) {
+          return sendResponse({ ok: false, error: e && e.message });
+        }
+      })();
+      return true;
+    }
+
+    // ─── Drift Detection: measure drift between source context and target response ───
+    if (msg.type === 'measure_drift') {
+      (async () => {
+        try {
+          const payload = msg.payload || {};
+          const sourceText = payload.sourceContext || '';
+          const targetText = payload.targetResponse || '';
+
+          if (!sourceText || !targetText) {
+            return sendResponse({ ok: false, error: 'missing_context' });
+          }
+
+          // Get embeddings for both texts
+          const [sourceEmb, targetEmb] = await Promise.all([
+            fetchEmbeddingOpenAI(sourceText),
+            fetchEmbeddingOpenAI(targetText)
+          ]);
+
+          if (!sourceEmb || !targetEmb) {
+            return sendResponse({ ok: false, error: 'embedding_failed' });
+          }
+
+          // Compute cosine similarity
+          const score = cosine(sourceEmb, targetEmb);
+          console.log('[ChatBridge BG] Drift score computed:', score.toFixed(4));
+
+          return sendResponse({
+            ok: true,
+            driftScore: score,
+            sourceEmbedding: sourceEmb,
+            targetEmbedding: targetEmb
+          });
+        } catch (e) {
+          console.error('[ChatBridge BG] measure_drift error:', e);
+          return sendResponse({ ok: false, error: e && e.message });
+        }
+      })();
+      return true;
+    }
+
+    // ─── Drift Detection: generate a repair prompt using Gemini ──────────────
+    if (msg.type === 'generate_repair_prompt') {
+      (async () => {
+        try {
+          const payload = msg.payload || {};
+          const sourceContext = payload.sourceContext || '';
+          const targetResponse = payload.targetResponse || '';
+          const driftScore = payload.driftScore || 0;
+          const severity = payload.severity || 'moderate';
+
+          if (!sourceContext) {
+            return sendResponse({ ok: false, error: 'missing_source_context' });
+          }
+
+          let geminiApiKey = null;
+          try {
+            geminiApiKey = await new Promise(r =>
+              chrome.storage.local.get(['chatbridge_gemini_key', 'chatbridge_config'], d => {
+                r(d.chatbridge_gemini_key || (d.chatbridge_config && d.chatbridge_config.geminiKey) || null);
+              })
+            );
+          } catch (_) { }
+
+          if (!geminiApiKey) {
+            // Fallback: generate a simple rule-based repair prompt
+            const repairPrompt = generateFallbackRepairPrompt(sourceContext, severity);
+            return sendResponse({ ok: true, repairPrompt, method: 'fallback' });
+          }
+
+          // Build the repair prompt generation request
+          const severityInstruction = severity === 'critical'
+            ? 'The context has been almost entirely lost. The repair prompt must comprehensively re-establish ALL key context.'
+            : severity === 'high'
+              ? 'Significant context was lost. The repair prompt should restore the major topics and decisions.'
+              : 'Some context drift occurred. The repair prompt should gently re-align the conversation.';
+
+          const systemInstruction = `You are a context repair specialist. Your job is to generate a SHORT, DIRECT prompt that re-establishes lost conversation context when a user transfers their AI conversation from one platform to another. The repair prompt will be injected into the target AI chat to re-align it with the original conversation. Do NOT include any meta-commentary. Output ONLY the repair prompt text.`;
+
+          const promptText = `The user transferred a conversation from one AI platform to another, but the new platform's response drifted from the original context.
+
+Drift severity: ${severity} (similarity score: ${(driftScore * 100).toFixed(0)}%)
+${severityInstruction}
+
+ORIGINAL CONVERSATION CONTEXT (from source platform):
+${sourceContext.slice(0, 2500)}
+
+${targetResponse ? `DRIFTED RESPONSE (from target platform):
+${targetResponse.slice(0, 800)}` : ''}
+
+Generate a repair prompt that:
+1. Briefly re-states the key topics, decisions, and open questions from the original context
+2. Corrects any misunderstandings in the drifted response
+3. Asks the target AI to continue from where the original conversation left off
+4. Is concise (under 300 words) but information-dense
+
+OUTPUT ONLY THE REPAIR PROMPT:`;
+
+          // Use existing Gemini API infrastructure
+          const model = typeof getNextAvailableModel === 'function'
+            ? getNextAvailableModel()
+            : 'gemini-2.0-flash';
+
+          const apiUrl = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${geminiApiKey}`;
+
+          const body = {
+            systemInstruction: { parts: [{ text: systemInstruction }] },
+            contents: [{ role: 'user', parts: [{ text: promptText }] }],
+            generationConfig: {
+              maxOutputTokens: 512,
+              temperature: 0.3
+            }
+          };
+
+          const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+          });
+
+          if (!response.ok) {
+            console.warn('[ChatBridge BG] Gemini repair prompt API error:', response.status);
+            if (typeof markModelFailed === 'function') markModelFailed(model, response.status);
+            // Fallback to rule-based
+            const repairPrompt = generateFallbackRepairPrompt(sourceContext, severity);
+            return sendResponse({ ok: true, repairPrompt, method: 'fallback' });
+          }
+
+          if (typeof markModelSuccess === 'function') markModelSuccess(model);
+          const json = await response.json();
+          const repairPrompt = json?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
+          if (!repairPrompt) {
+            const fallback = generateFallbackRepairPrompt(sourceContext, severity);
+            return sendResponse({ ok: true, repairPrompt: fallback, method: 'fallback' });
+          }
+
+          return sendResponse({ ok: true, repairPrompt: repairPrompt.trim(), method: 'gemini' });
+        } catch (e) {
+          console.error('[ChatBridge BG] generate_repair_prompt error:', e);
+          // Fallback on any error
+          try {
+            const fallback = generateFallbackRepairPrompt(msg.payload?.sourceContext || '', msg.payload?.severity || 'moderate');
+            return sendResponse({ ok: true, repairPrompt: fallback, method: 'fallback' });
+          } catch (_) {
+            return sendResponse({ ok: false, error: e && e.message });
+          }
+        }
+      })();
+      return true;
+    }
+
+    // ─── Drift Detection: store/retrieve drift profiles ────────────────────
+    if (msg.type === 'drift_profile_update') {
+      (async () => {
+        try {
+          const payload = msg.payload || {};
+          const key = 'chatbridge_drift_profiles';
+          await new Promise(r => chrome.storage.local.set({ [key]: payload.profiles || {} }, r));
+          return sendResponse({ ok: true });
+        } catch (e) {
+          return sendResponse({ ok: false, error: e && e.message });
+        }
+      })();
+      return true;
+    }
+
+    // ─── Knowledge Graph: Extract entities via Gemini API ────────────────
+    if (msg.type === 'extract_entities') {
+      (async () => {
+        try {
+          const payload = msg.payload || {};
+          const conversationText = payload.text || '';
+          if (!conversationText) {
+            return sendResponse({ ok: false, error: 'No text provided' });
+          }
+
+          // Check for Gemini API key
+          const configResult = await new Promise(r => chrome.storage.local.get('chatbridge_config', r));
+          const config = (configResult && configResult.chatbridge_config) || {};
+          const geminiApiKey = config.geminiApiKey;
+
+          if (!geminiApiKey) {
+            return sendResponse({ ok: false, error: 'No Gemini API key', method: 'none' });
+          }
+
+          // Build extraction prompt
+          const snippet = conversationText.length > 4000
+            ? conversationText.slice(0, 4000) + '\n\n...(truncated)'
+            : conversationText;
+
+          const systemInstruction = 'You are an expert knowledge analyst. Extract entities and relationships from AI conversation transcripts. Always return valid JSON only.';
+
+          const promptText = `Extract entities and relationships from this AI conversation.
+
+Conversation:
+${snippet}
+
+Return ONLY a JSON object (no commentary):
+{
+  "entities": [
+    {"name": "exact name", "type": "person|technology|concept|library|product|organization|language|framework|tool", "description": "one-sentence description in context"}
+  ],
+  "relationships": [
+    {"source": "entity name", "target": "entity name", "relation": "uses|depends_on|integrates_with|replaces|compared_to|similar_to|alternative_to|built_with|extends|implements|wraps|connects_to|migrated_from|migrated_to|combined_with|works_with|powered_by|compatible_with|supports|requires|conflicts_with", "context": "brief explanation"}
+  ]
+}
+
+Rules:
+- Max 30 entities, 20 relationships
+- Entity names should be canonical (e.g., "React" not "ReactJS")
+- Include ONLY entities actually discussed, not just mentioned in passing
+- Relationships must reference entities in the entities array`;
+
+          const model = getNextAvailableModel();
+          const apiUrl = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${geminiApiKey}`;
+          const body = {
+            systemInstruction: { parts: [{ text: systemInstruction }] },
+            contents: [{ role: 'user', parts: [{ text: promptText }] }],
+            generationConfig: { maxOutputTokens: 1024, temperature: 0.2 }
+          };
+
+          const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+          });
+
+          if (!response.ok) {
+            markModelFailed(model, response.status);
+            return sendResponse({ ok: false, error: `API error: ${response.status}`, method: 'gemini_failed' });
+          }
+          markModelSuccess(model);
+
+          const json = await response.json();
+          const resultText = json?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
+          // Parse JSON from response
+          const jsonStart = resultText.indexOf('{');
+          const jsonEnd = resultText.lastIndexOf('}');
+          if (jsonStart >= 0 && jsonEnd > jsonStart) {
+            const parsed = JSON.parse(resultText.slice(jsonStart, jsonEnd + 1));
+            return sendResponse({
+              ok: true,
+              entities: Array.isArray(parsed.entities) ? parsed.entities.slice(0, 30) : [],
+              relationships: Array.isArray(parsed.relationships) ? parsed.relationships.slice(0, 20) : [],
+              method: 'gemini'
+            });
+          }
+
+          return sendResponse({ ok: true, entities: [], relationships: [], method: 'gemini_empty' });
+        } catch (e) {
+          console.error('[ChatBridge BG] extract_entities error:', e);
+          return sendResponse({ ok: false, error: e && e.message });
+        }
+      })();
+      return true;
+    }
+
+    // ─── Knowledge Graph: Resolve entity similarity via embeddings ───────
+    if (msg.type === 'resolve_entities') {
+      (async () => {
+        try {
+          const payload = msg.payload || {};
+          const textA = payload.textA || '';
+          const textB = payload.textB || '';
+
+          if (!textA || !textB) {
+            return sendResponse({ ok: false, error: 'Missing text pair' });
+          }
+
+          // Get embeddings for both texts
+          const embeddingA = await getLocalEmbeddingViaContent(textA);
+          const embeddingB = await getLocalEmbeddingViaContent(textB);
+
+          if (!embeddingA || !embeddingB) {
+            return sendResponse({ ok: false, error: 'Embedding computation failed' });
+          }
+
+          const similarity = cosine(embeddingA, embeddingB);
+          return sendResponse({ ok: true, similarity });
+        } catch (e) {
+          console.error('[ChatBridge BG] resolve_entities error:', e);
+          return sendResponse({ ok: false, error: e && e.message });
+        }
+      })();
+      return true;
+    }
+
+    // ─── Knowledge Graph: Query graph via Gemini synthesis ───────────────
+    if (msg.type === 'graph_query_synthesize') {
+      (async () => {
+        try {
+          const payload = msg.payload || {};
+          const query = payload.query || '';
+          const graphContext = payload.graphContext || '';
+
+          if (!query) {
+            return sendResponse({ ok: false, error: 'No query provided' });
+          }
+
+          const configResult = await new Promise(r => chrome.storage.local.get('chatbridge_config', r));
+          const config = (configResult && configResult.chatbridge_config) || {};
+          const geminiApiKey = config.geminiApiKey;
+
+          if (!geminiApiKey) {
+            return sendResponse({ ok: false, error: 'No API key' });
+          }
+
+          const systemInstruction = 'You are a knowledge graph assistant. Answer questions using ONLY the provided entity and relationship data from the user\'s past AI conversations. Be precise and cite specific conversations/platforms when possible.';
+
+          const promptText = `Based on my conversation knowledge graph, answer this question:
+
+Question: ${query}
+
+Knowledge Graph Context:
+${graphContext}
+
+Provide a concise, factual answer based ONLY on the graph data above. If the graph doesn't contain relevant information, say so. Reference specific platforms and conversations where topics were discussed.`;
+
+          const model = getNextAvailableModel();
+          const apiUrl = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${geminiApiKey}`;
+          const body = {
+            systemInstruction: { parts: [{ text: systemInstruction }] },
+            contents: [{ role: 'user', parts: [{ text: promptText }] }],
+            generationConfig: { maxOutputTokens: 512, temperature: 0.3 }
+          };
+
+          const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+          });
+
+          if (!response.ok) {
+            markModelFailed(model, response.status);
+            return sendResponse({ ok: false, error: `API error: ${response.status}` });
+          }
+          markModelSuccess(model);
+
+          const json = await response.json();
+          const result = json?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+          return sendResponse({ ok: true, result: result.trim() });
+        } catch (e) {
+          console.error('[ChatBridge BG] graph_query_synthesize error:', e);
+          return sendResponse({ ok: false, error: e && e.message });
+        }
+      })();
+      return true;
+    }
+
   } catch (e) { /* ignore other messages here */ }
 });
 
@@ -2501,18 +2886,21 @@ Output ONLY the friendly revision.`
           const text = await res.text();
           json = text ? JSON.parse(text) : {};
         } catch (e) {
-          console.error('[Llama API] Failed to parse response:', e);
-          return sendResponse({ ok: false, error: 'llama_parse_error', message: 'Invalid JSON response' });
+          console.warn('[Llama API] Failed to parse response:', e);
+          return sendResponse({ ok: false, error: 'llama_parse_error', message: 'Could not reach AI service. Please check your API key in Options.' });
         }
 
         if (!res.ok) {
-          console.error('[Llama API Error]', res.status, json);
-          return sendResponse({ ok: false, error: 'llama_http_error', status: res.status, body: json });
+          console.warn('[Llama API]', res.status, json?.error?.message || '');
+          const userMsg = res.status === 401 || res.status === 403
+            ? 'Invalid API key. Please configure your HuggingFace API key in ChatBridge Options.'
+            : 'AI service temporarily unavailable. Please try again.';
+          return sendResponse({ ok: false, error: 'llama_http_error', status: res.status, message: userMsg });
         }
 
         if (!json.choices || !Array.isArray(json.choices) || json.choices.length === 0) {
-          console.error('[Llama API] No choices in response:', json);
-          return sendResponse({ ok: false, error: 'llama_no_choices', message: 'No response from model' });
+          console.warn('[Llama API] No choices in response');
+          return sendResponse({ ok: false, error: 'llama_no_choices', message: 'No response from model. Please try again.' });
         }
 
         const result = json.choices[0].message?.content || '';
@@ -2520,8 +2908,11 @@ Output ONLY the friendly revision.`
 
         return sendResponse({ ok: true, result, model: 'llama-3.1-8b' });
       } catch (e) {
-        console.error('[Llama API] Error:', e);
-        return sendResponse({ ok: false, error: 'llama_fetch_error', message: (e && e.message) || String(e) });
+        console.warn('[Llama API] Fetch failed:', e?.message || e);
+        const userMsg = (e?.message || '').includes('Failed to fetch')
+          ? 'Could not reach AI service. Please check your API key in ChatBridge Options.'
+          : 'AI request failed. Please try again.';
+        return sendResponse({ ok: false, error: 'llama_fetch_error', message: userMsg });
       }
     })();
     return true;

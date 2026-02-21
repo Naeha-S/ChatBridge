@@ -287,6 +287,12 @@ const SiteAdapters = [
   {
     id: "chatgpt",
     label: "ChatGPT (chat.openai.com, chatgpt.com)",
+    responseStructureHints: {
+      // ChatGPT: heavy markdown structure — headers, bullet lists, code blocks
+      codeHeavy: true,
+      citationHeavy: false,
+      segParams: { maxTurnsPerSegment: 7, roleClusterThreshold: 5, topicShiftSensitivity: 0.6 }
+    },
     detect: () => location.hostname.includes("chat.openai.com") || location.hostname.includes("chatgpt.com"),
     scrollContainer: () => document.querySelector('[data-testid="conversation-turns"]')?.parentElement || document.querySelector('main') || document.scrollingElement,
     getMessages: () => {
@@ -377,6 +383,12 @@ const SiteAdapters = [
   {
     id: "claude",
     label: "Claude (claude.ai)",
+    responseStructureHints: {
+      // Claude: long-form paragraphs, numbered reasoning, fewer headers
+      codeHeavy: false,
+      citationHeavy: false,
+      segParams: { maxTurnsPerSegment: 5, roleClusterThreshold: 6, topicShiftSensitivity: 0.6 }
+    },
     detect: () => location.hostname.includes("claude.ai"),
     scrollContainer: () => document.querySelector('[data-testid="chat-scroll"]') || document.querySelector('[data-testid="conversation-view"]') || document.querySelector('main') || document.scrollingElement,
     getMessages: () => {
@@ -623,6 +635,12 @@ const SiteAdapters = [
   {
     id: "gemini",
     label: "Gemini (gemini.google.com)",
+    responseStructureHints: {
+      // Gemini: shorter, conversational turns; fewer code blocks
+      codeHeavy: false,
+      citationHeavy: false,
+      segParams: { maxTurnsPerSegment: 12, roleClusterThreshold: 4, topicShiftSensitivity: 0.4 }
+    },
     detect: () => location.hostname.includes("gemini.google.com") || location.hostname.includes("bard.google.com"),
 
     scrollContainer: () => {
@@ -833,6 +851,12 @@ const SiteAdapters = [
   {
     id: "perplexity",
     label: "Perplexity (perplexity.ai)",
+    responseStructureHints: {
+      // Perplexity: citation-heavy, self-contained responses with inline sources
+      codeHeavy: false,
+      citationHeavy: true,
+      segParams: { maxTurnsPerSegment: 6, roleClusterThreshold: 5, topicShiftSensitivity: 0.65 }
+    },
     detect: () => location.hostname.includes("perplexity.ai"),
     scrollContainer: () => document.querySelector('[class*="ThreadContent"]') || document.querySelector('main') || document.scrollingElement,
     getMessages: () => {
@@ -896,6 +920,12 @@ const SiteAdapters = [
   {
     id: "poe",
     label: "Poe (poe.com)",
+    responseStructureHints: {
+      // Poe: varies by bot, use moderate defaults
+      codeHeavy: false,
+      citationHeavy: false,
+      segParams: { maxTurnsPerSegment: 8, roleClusterThreshold: 5, topicShiftSensitivity: 0.5 }
+    },
     detect: () => location.hostname.includes("poe.com"),
     scrollContainer: () => document.querySelector('[class*="ChatMessagesView"]') || document.querySelector("main") || document.scrollingElement,
     getMessages: () => {
@@ -939,6 +969,12 @@ const SiteAdapters = [
   {
     id: "mistral",
     label: "Mistral (chat.mistral.ai)",
+    responseStructureHints: {
+      // Mistral: moderate length, structured but not heavy on markdown
+      codeHeavy: false,
+      citationHeavy: false,
+      segParams: { maxTurnsPerSegment: 8, roleClusterThreshold: 5, topicShiftSensitivity: 0.5 }
+    },
     detect: () => location.hostname.includes("mistral.ai"),
     scrollContainer: () => document.querySelector("main") || document.scrollingElement,
     getMessages: () => {
@@ -950,6 +986,12 @@ const SiteAdapters = [
   {
     id: "grok",
     label: "Grok (x.ai / grok)",
+    responseStructureHints: {
+      // Grok: conversational, concise responses
+      codeHeavy: false,
+      citationHeavy: false,
+      segParams: { maxTurnsPerSegment: 10, roleClusterThreshold: 5, topicShiftSensitivity: 0.45 }
+    },
     detect: () => location.hostname.includes("x.ai") || location.hostname.includes("grok.ai"),
     scrollContainer: () => document.scrollingElement,
     getMessages: () => {
@@ -961,6 +1003,12 @@ const SiteAdapters = [
   {
     id: "copilot",
     label: "MS Copilot / Bing Chat",
+    responseStructureHints: {
+      // Copilot: citation-augmented, moderate length
+      codeHeavy: false,
+      citationHeavy: true,
+      segParams: { maxTurnsPerSegment: 7, roleClusterThreshold: 5, topicShiftSensitivity: 0.55 }
+    },
     detect: () => location.hostname.includes("bing.com") || location.hostname.includes("copilot.microsoft.com"),
     scrollContainer: () => document.querySelector("main") || document.scrollingElement,
     getMessages: () => {
@@ -972,6 +1020,12 @@ const SiteAdapters = [
   {
     id: "deepseek",
     label: "DeepSeek",
+    responseStructureHints: {
+      // DeepSeek: code-heavy (Coder model), structured responses
+      codeHeavy: true,
+      citationHeavy: false,
+      segParams: { maxTurnsPerSegment: 6, roleClusterThreshold: 5, topicShiftSensitivity: 0.6 }
+    },
     detect: () => location.hostname.includes("deepseek") || location.hostname.includes("deepseek.ai"),
     scrollContainer: () => document.scrollingElement,
     getMessages: () => {
