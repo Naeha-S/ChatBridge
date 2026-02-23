@@ -131,7 +131,6 @@ Last updated: 2026-02-18
 - [ ] Tooltip hints for new users
 - [ ] API key setup wizard with validation
 
----
 
 ## Phase 6 — Productization
 
