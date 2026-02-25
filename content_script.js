@@ -2569,6 +2569,1199 @@
     color: #d0c8e8;
     backdrop-filter: none;
   }
+/* ===== AGENT TAB — Light Theme ===== */
+:host(.cb-theme-light) .cb-ah-card {
+    background: #ffffff;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+:host(.cb-theme-light) .cb-ah-card:hover {
+    border-color: rgba(37, 99, 235, 0.25);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    background: #f8f9fa;
+}
+
+:host(.cb-theme-light) .cb-ah-card-icon {
+    background: rgba(37, 99, 235, 0.06);
+    border-color: rgba(37, 99, 235, 0.12);
+}
+
+:host(.cb-theme-light) .cb-ah-card-name {
+    color: #1a1a1a;
+}
+
+:host(.cb-theme-light) .cb-ah-card-desc {
+    color: #6b7280;
+}
+
+:host(.cb-theme-light) .cb-ah-ambient {
+    opacity: 0.15;
+}
+
+:host(.cb-theme-light) .cb-agent-sub {
+    color: #1a1a1a;
+}
+
+:host(.cb-theme-light) .cb-agent-header {
+    border-color: rgba(0, 0, 0, 0.06);
+}
+
+:host(.cb-theme-light) .cb-agent-back {
+    color: #6b7280;
+}
+
+:host(.cb-theme-light) .cb-agent-back:hover {
+    background: #f1f3f5;
+    color: #1a1a1a;
+}
+
+:host(.cb-theme-light) .cb-agent-header-title {
+    color: #1a1a1a;
+}
+
+:host(.cb-theme-light) .cb-agent-desc {
+    color: #6b7280;
+}
+
+:host(.cb-theme-light) .cb-agent-btn-primary {
+    background: linear-gradient(135deg, var(--cb-accent-primary), color-mix(in srgb, var(--cb-accent-primary) 80%, #000));
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.2);
+}
+
+:host(.cb-theme-light) .cb-agent-btn-secondary {
+    background: #ffffff;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    color: #374151;
+}
+
+:host(.cb-theme-light) .cb-agent-btn-secondary:hover {
+    background: #f1f3f5;
+    border-color: rgba(37, 99, 235, 0.3);
+}
+
+:host(.cb-theme-light) .cb-agent-select {
+    background: #ffffff;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    color: #1a1a1a;
+}
+
+:host(.cb-theme-light) .cb-agent-select option {
+    background: #fff;
+    color: #1a1a1a;
+}
+
+:host(.cb-theme-light) .cb-agent-textarea {
+    background: #ffffff;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    color: #1a1a1a;
+}
+
+:host(.cb-theme-light) .cb-agent-chip {
+    background: #f3f4f6;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    color: #374151;
+}
+
+:host(.cb-theme-light) .cb-agent-chip:hover {
+    background: rgba(37, 99, 235, 0.06);
+    border-color: rgba(37, 99, 235, 0.2);
+    color: #2563eb;
+}
+
+:host(.cb-theme-light) .cb-agent-chip-active {
+    background: rgba(37, 99, 235, 0.08) !important;
+    border-color: rgba(37, 99, 235, 0.25) !important;
+    color: #2563eb !important;
+}
+
+:host(.cb-theme-light) .cb-agent-result-section {
+    background: #f8f9fa;
+    border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+:host(.cb-theme-light) .cb-agent-result-body {
+    color: #374151;
+}
+
+:host(.cb-theme-light) .cb-agent-result-body strong {
+    color: #1a1a1a;
+}
+
+:host(.cb-theme-light) .cb-agent-stat {
+    background: #f8f9fa;
+    border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+:host(.cb-theme-light) .cb-agent-stat-val {
+    color: #1a1a1a;
+}
+
+:host(.cb-theme-light) .cb-agent-stat-label {
+    color: #6b7280;
+}
+
+:host(.cb-theme-light) .cb-agent-skeleton {
+    background: linear-gradient(90deg, #f1f3f5 25%, #e5e7eb 50%, #f1f3f5 75%);
+    background-size: 200% 100%;
+}
+
+:host(.cb-theme-light) .cb-agent-error {
+    background: rgba(220, 38, 38, 0.06);
+    border-color: rgba(220, 38, 38, 0.15);
+    color: #dc2626;
+}
+
+:host(.cb-theme-light) .cb-agent-empty {
+    color: #9ca3af;
+}
+
+:host(.cb-theme-light) .cb-agent-meta {
+    color: #9ca3af;
+    border-color: rgba(0, 0, 0, 0.04);
+}
+
+:host(.cb-theme-light) .cb-agent-section-title {
+    color: var(--cb-accent-primary);
+    border-color: rgba(37, 99, 235, 0.12);
+}
+
+:host(.cb-theme-light) .cb-track-card {
+    background: #ffffff;
+    border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+:host(.cb-theme-light) .cb-track-card:hover {
+    background: #f8f9fa;
+    border-color: rgba(37, 99, 235, 0.2);
+}
+
+:host(.cb-theme-light) .cb-track-btn {
+    background: #f3f4f6;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    color: #6b7280;
+}
+
+:host(.cb-theme-light) .cb-track-btn:hover {
+    border-color: var(--cb-accent-primary);
+    color: #1a1a1a;
+}
+
+:host(.cb-theme-light) .cb-donut-hole {
+    background: #ffffff;
+}
+
+:host(.cb-theme-light) .cb-heatmap-day {
+    background: rgba(37, 99, 235, 0.04);
+    border-color: rgba(0, 0, 0, 0.04);
+}
+
+:host(.cb-theme-light) .cb-topic-word {
+    background: #f3f4f6;
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    color: #374151;
+}
+
+:host(.cb-theme-light) .cb-confidence-meter {
+    background: rgba(0, 0, 0, 0.04);
+}
+
+:host(.cb-theme-light) .cb-timeline::before {
+    background: linear-gradient(180deg, var(--cb-accent-primary), rgba(0, 0, 0, 0.06));
+}
+
+:host(.cb-theme-light) .cb-timeline-item::before {
+    border-color: var(--cb-accent-primary);
+    background: #ffffff;
+}
+
+:host(.cb-theme-light) .cb-timeline-time {
+    color: #9ca3af;
+}
+
+:host(.cb-theme-light) .cb-agent-loading-text {
+    color: #9ca3af;
+}
+
+:host(.cb-theme-light) .cb-agent-platform-tag {
+    background: rgba(37, 99, 235, 0.06);
+    border-color: rgba(37, 99, 235, 0.15);
+    color: #2563eb;
+}
+
+/* ===== AGENT TAB — Skeuomorphic Theme ===== */
+:host(.cb-theme-skeuomorphic) .cb-ah-card {
+    background: linear-gradient(180deg, #e8e8e8 0%, #d4d4d4 100%);
+    border: 1px solid #aaa;
+    border-top-color: #ddd;
+    border-left-color: #d5d5d5;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+:host(.cb-theme-skeuomorphic) .cb-ah-card:hover {
+    background: linear-gradient(180deg, #f0f0f0 0%, #ddd 100%);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 2px 6px rgba(0, 0, 0, 0.18);
+    transform: translateY(-1px);
+}
+
+:host(.cb-theme-skeuomorphic) .cb-ah-card-icon {
+    background: linear-gradient(180deg, #ddd, #ccc);
+    border: 1px solid #bbb;
+}
+
+:host(.cb-theme-skeuomorphic) .cb-ah-card-name {
+    color: #333;
+}
+
+:host(.cb-theme-skeuomorphic) .cb-ah-card-desc {
+    color: #666;
+}
+
+:host(.cb-theme-skeuomorphic) .cb-ah-ambient {
+    display: none;
+}
+
+:host(.cb-theme-skeuomorphic) .cb-agent-sub {
+    color: #333;
+}
+
+:host(.cb-theme-skeuomorphic) .cb-agent-header {
+    border-color: #bbb;
+}
+
+:host(.cb-theme-skeuomorphic) .cb-agent-back {
+    color: #555;
+}
+
+:host(.cb-theme-skeuomorphic) .cb-agent-back:hover {
+    background: linear-gradient(180deg, #e8e8e8, #d8d8d8);
+    color: #333;
+}
+
+:host(.cb-theme-skeuomorphic) .cb-agent-header-title {
+    color: #333;
+}
+
+:host(.cb-theme-skeuomorphic) .cb-agent-desc {
+    color: #666;
+}
+
+:host(.cb-theme-skeuomorphic) .cb-agent-btn-primary {
+    background: linear-gradient(180deg, #5da0e0 0%, #3a7cc0 100%);
+    border: 1px solid #2e6da4;
+    color: #fff;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+:host(.cb-theme-skeuomorphic) .cb-agent-btn-secondary {
+    background: linear-gradient(180deg, #e8e8e8, #d2d2d2);
+    border: 1px solid #999;
+    color: #333;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+:host(.cb-theme-skeuomorphic) .cb-agent-select {
+    background: linear-gradient(180deg, #fff 0%, #eee 100%);
+    border: 1px solid #999;
+    color: #333;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+:host(.cb-theme-skeuomorphic) .cb-agent-select option {
+    background: #fff;
+    color: #333;
+}
+
+:host(.cb-theme-skeuomorphic) .cb-agent-textarea {
+    background: #fff;
+    border: 2px solid #aaa;
+    color: #333;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+:host(.cb-theme-skeuomorphic) .cb-agent-chip {
+    background: linear-gradient(180deg, #e0e0e0, #d0d0d0);
+    border: 1px solid #bbb;
+    color: #444;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+:host(.cb-theme-skeuomorphic) .cb-agent-chip:hover {
+    background: linear-gradient(180deg, #e8e8e8, #d8d8d8);
+    border-color: #4a90d9;
+    color: #333;
+}
+
+:host(.cb-theme-skeuomorphic) .cb-agent-chip-active {
+    background: linear-gradient(180deg, #d8e8f4, #c8d8e8) !important;
+    border-color: #4a90d9 !important;
+    color: #4a90d9 !important;
+}
+
+:host(.cb-theme-skeuomorphic) .cb-agent-result-section {
+    background: linear-gradient(180deg, #e0e0e0, #d2d2d2);
+    border: 1px solid #aaa;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+:host(.cb-theme-skeuomorphic) .cb-agent-result-body {
+    color: #333;
+}
+
+:host(.cb-theme-skeuomorphic) .cb-agent-result-body strong {
+    color: #1a1a1a;
+}
+
+:host(.cb-theme-skeuomorphic) .cb-agent-stat {
+    background: linear-gradient(180deg, #ddd, #ccc);
+    border: 1px solid #bbb;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+:host(.cb-theme-skeuomorphic) .cb-agent-stat-val {
+    color: #333;
+}
+
+:host(.cb-theme-skeuomorphic) .cb-agent-stat-label {
+    color: #666;
+}
+
+:host(.cb-theme-skeuomorphic) .cb-agent-skeleton {
+    background: linear-gradient(90deg, #d0d0d0 25%, #ddd 50%, #d0d0d0 75%);
+    background-size: 200% 100%;
+}
+
+:host(.cb-theme-skeuomorphic) .cb-agent-error {
+    background: linear-gradient(180deg, #f0d0d0, #e8c0c0);
+    border: 1px solid #c08080;
+    color: #8b2020;
+}
+
+:host(.cb-theme-skeuomorphic) .cb-agent-meta {
+    color: #888;
+    border-color: #bbb;
+}
+
+:host(.cb-theme-skeuomorphic) .cb-agent-section-title {
+    color: #4a90d9;
+    border-color: #bbb;
+}
+
+:host(.cb-theme-skeuomorphic) .cb-track-card {
+    background: linear-gradient(180deg, #e6e6e6, #d8d8d8);
+    border: 1px solid #aaa;
+}
+
+:host(.cb-theme-skeuomorphic) .cb-track-card:hover {
+    background: linear-gradient(180deg, #f0f0f0, #e0e0e0);
+}
+
+:host(.cb-theme-skeuomorphic) .cb-track-btn {
+    background: linear-gradient(180deg, #e0e0e0, #d0d0d0);
+    border: 1px solid #bbb;
+    color: #555;
+}
+
+:host(.cb-theme-skeuomorphic) .cb-donut-hole {
+    background: #d2d2d2;
+}
+
+:host(.cb-theme-skeuomorphic) .cb-heatmap-day {
+    background: rgba(74, 144, 217, 0.08);
+    border: 1px solid #bbb;
+}
+
+:host(.cb-theme-skeuomorphic) .cb-topic-word {
+    background: linear-gradient(180deg, #e0e0e0, #d4d4d4);
+    border: 1px solid #bbb;
+    color: #333;
+}
+
+:host(.cb-theme-skeuomorphic) .cb-confidence-meter {
+    background: #ccc;
+}
+
+:host(.cb-theme-skeuomorphic) .cb-timeline::before {
+    background: linear-gradient(180deg, #4a90d9, #bbb);
+}
+
+:host(.cb-theme-skeuomorphic) .cb-timeline-item::before {
+    border-color: #4a90d9;
+    background: #d2d2d2;
+}
+
+:host(.cb-theme-skeuomorphic) .cb-agent-platform-tag {
+    background: rgba(74, 144, 217, 0.12);
+    border-color: rgba(74, 144, 217, 0.3);
+    color: #4a90d9;
+}
+
+/* ===== AGENT TAB — Neo Brutalism Theme ===== */
+:host(.cb-theme-brutalism) .cb-ah-card {
+    background: #fff;
+    border: 2px solid #000;
+    box-shadow: 3px 3px 0 #000;
+    border-radius: 0;
+}
+
+:host(.cb-theme-brutalism) .cb-ah-card:hover {
+    background: #FEF3C7;
+    transform: translate(-2px, -2px);
+    box-shadow: 5px 5px 0 #000;
+}
+
+:host(.cb-theme-brutalism) .cb-ah-card-icon {
+    background: #FEF3C7;
+    border: 2px solid #000;
+    border-radius: 0;
+}
+
+:host(.cb-theme-brutalism) .cb-ah-card-name {
+    color: #000;
+    font-weight: 800;
+}
+
+:host(.cb-theme-brutalism) .cb-ah-card-desc {
+    color: #333;
+}
+
+:host(.cb-theme-brutalism) .cb-ah-ambient {
+    display: none;
+}
+
+:host(.cb-theme-brutalism) .cb-agent-sub {
+    color: #000;
+}
+
+:host(.cb-theme-brutalism) .cb-agent-header {
+    border-color: #000;
+    border-width: 2px;
+}
+
+:host(.cb-theme-brutalism) .cb-agent-back {
+    color: #000;
+    font-weight: 700;
+    border-radius: 0;
+}
+
+:host(.cb-theme-brutalism) .cb-agent-back:hover {
+    background: #FFE156;
+}
+
+:host(.cb-theme-brutalism) .cb-agent-header-title {
+    color: #000;
+    font-weight: 900;
+}
+
+:host(.cb-theme-brutalism) .cb-agent-desc {
+    color: #333;
+}
+
+:host(.cb-theme-brutalism) .cb-agent-btn-primary {
+    background: #FF6B9D !important;
+    border: 2px solid #000 !important;
+    box-shadow: 4px 4px 0 #000;
+    color: #000 !important;
+    font-weight: 800;
+    border-radius: 0;
+    text-transform: uppercase;
+}
+
+:host(.cb-theme-brutalism) .cb-agent-btn-primary:hover:not(:disabled) {
+    transform: translate(-2px, -2px);
+    box-shadow: 6px 6px 0 #000;
+    background: #ff85b1 !important;
+}
+
+:host(.cb-theme-brutalism) .cb-agent-btn-primary:active:not(:disabled) {
+    transform: translate(2px, 2px);
+    box-shadow: 1px 1px 0 #000;
+}
+
+:host(.cb-theme-brutalism) .cb-agent-btn-secondary {
+    background: #fff;
+    border: 2px solid #000;
+    box-shadow: 2px 2px 0 #000;
+    color: #000;
+    font-weight: 700;
+    border-radius: 0;
+}
+
+:host(.cb-theme-brutalism) .cb-agent-btn-secondary:hover {
+    background: #FFE156;
+    transform: translate(-1px, -1px);
+    box-shadow: 3px 3px 0 #000;
+}
+
+:host(.cb-theme-brutalism) .cb-agent-select {
+    background: #fff;
+    border: 2px solid #000;
+    box-shadow: 2px 2px 0 #000;
+    color: #000;
+    border-radius: 0;
+}
+
+:host(.cb-theme-brutalism) .cb-agent-select option {
+    background: #fff;
+    color: #000;
+}
+
+:host(.cb-theme-brutalism) .cb-agent-textarea {
+    background: #fff;
+    border: 2px solid #000;
+    color: #000;
+    border-radius: 0;
+    box-shadow: inset 2px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+:host(.cb-theme-brutalism) .cb-agent-chip {
+    background: #fff;
+    border: 2px solid #000;
+    color: #000;
+    box-shadow: 2px 2px 0 #000;
+    border-radius: 0;
+    font-weight: 700;
+}
+
+:host(.cb-theme-brutalism) .cb-agent-chip:hover {
+    background: #FEF3C7;
+    transform: translate(-1px, -1px);
+    box-shadow: 3px 3px 0 #000;
+}
+
+:host(.cb-theme-brutalism) .cb-agent-chip-active {
+    background: #FF6B9D !important;
+    color: #000 !important;
+    border-color: #000 !important;
+}
+
+:host(.cb-theme-brutalism) .cb-agent-result-section {
+    background: #fff;
+    border: 2px solid #000;
+    box-shadow: 3px 3px 0 #000;
+    border-radius: 0;
+}
+
+:host(.cb-theme-brutalism) .cb-agent-result-header {
+    color: #000;
+    border-color: #000;
+    font-weight: 800;
+}
+
+:host(.cb-theme-brutalism) .cb-agent-result-body {
+    color: #1a1a1a;
+}
+
+:host(.cb-theme-brutalism) .cb-agent-result-body strong {
+    color: #000;
+}
+
+:host(.cb-theme-brutalism) .cb-agent-stat {
+    background: #FEF3C7;
+    border: 2px solid #000;
+    box-shadow: 2px 2px 0 #000;
+    border-radius: 0;
+}
+
+:host(.cb-theme-brutalism) .cb-agent-stat-val {
+    color: #FF6B9D;
+}
+
+:host(.cb-theme-brutalism) .cb-agent-stat-label {
+    color: #444;
+}
+
+:host(.cb-theme-brutalism) .cb-agent-skeleton {
+    background: linear-gradient(90deg, #f0f0f0 25%, #fff 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    border: 1px solid #000;
+    border-radius: 0;
+}
+
+:host(.cb-theme-brutalism) .cb-agent-error {
+    background: #fff;
+    border: 2px solid #FF0000;
+    box-shadow: 3px 3px 0 #FF0000;
+    color: #FF0000;
+    border-radius: 0;
+}
+
+:host(.cb-theme-brutalism) .cb-agent-meta {
+    color: #666;
+    border-color: #000;
+}
+
+:host(.cb-theme-brutalism) .cb-agent-section-title {
+    color: #FF6B9D;
+    border-color: #000;
+    font-weight: 900;
+}
+
+:host(.cb-theme-brutalism) .cb-track-card {
+    background: #fff;
+    border: 2px solid #000;
+    box-shadow: 2px 2px 0 #000;
+    border-radius: 0;
+}
+
+:host(.cb-theme-brutalism) .cb-track-card:hover {
+    background: #4ECDC4;
+    transform: translate(-2px, -2px);
+    box-shadow: 4px 4px 0 #000;
+}
+
+:host(.cb-theme-brutalism) .cb-track-btn {
+    background: #fff;
+    border: 2px solid #000;
+    box-shadow: 1px 1px 0 #000;
+    color: #000;
+    border-radius: 0;
+}
+
+:host(.cb-theme-brutalism) .cb-donut-hole {
+    background: #FFFBEB;
+}
+
+:host(.cb-theme-brutalism) .cb-donut {
+    border: 2px solid #000;
+}
+
+:host(.cb-theme-brutalism) .cb-heatmap-day {
+    border: 1px solid #000;
+    border-radius: 0;
+}
+
+:host(.cb-theme-brutalism) .cb-topic-word {
+    background: #fff;
+    border: 1px solid #000;
+    color: #000;
+    border-radius: 0;
+    font-weight: 700;
+}
+
+:host(.cb-theme-brutalism) .cb-confidence-meter {
+    background: #FEF3C7;
+    border: 1px solid #000;
+    border-radius: 0;
+}
+
+:host(.cb-theme-brutalism) .cb-timeline::before {
+    background: #000;
+}
+
+:host(.cb-theme-brutalism) .cb-timeline-item::before {
+    border-color: #000;
+    background: #FFE156;
+    border-width: 2px;
+}
+
+:host(.cb-theme-brutalism) .cb-agent-platform-tag {
+    background: #4ECDC4;
+    border: 1px solid #000;
+    color: #000;
+    border-radius: 0;
+    font-weight: 700;
+}
+
+:host(.cb-theme-brutalism) .cb-sparkline-bar {
+    border-radius: 0;
+}
+
+/* ===== AGENT TAB — Synthwave Theme ===== */
+:host(.cb-theme-synthwave) .cb-ah-card {
+    background: rgba(45, 27, 105, 0.5);
+    border: 1px solid rgba(255, 45, 149, 0.2);
+    box-shadow: 0 0 10px rgba(255, 45, 149, 0.08);
+}
+
+:host(.cb-theme-synthwave) .cb-ah-card:hover {
+    background: rgba(255, 45, 149, 0.12);
+    border-color: rgba(255, 45, 149, 0.5);
+    box-shadow: 0 0 20px rgba(255, 45, 149, 0.25), 0 0 10px rgba(0, 240, 255, 0.15);
+}
+
+:host(.cb-theme-synthwave) .cb-ah-card-icon {
+    background: rgba(255, 45, 149, 0.1);
+    border-color: rgba(255, 45, 149, 0.25);
+}
+
+:host(.cb-theme-synthwave) .cb-ah-card-name {
+    color: #f0e6ff;
+}
+
+:host(.cb-theme-synthwave) .cb-ah-card-desc {
+    color: #b794f6;
+}
+
+:host(.cb-theme-synthwave) .cb-ah-ambient {
+    opacity: 0.4;
+}
+
+:host(.cb-theme-synthwave) .cb-agent-sub {
+    color: #f0e6ff;
+}
+
+:host(.cb-theme-synthwave) .cb-agent-header {
+    border-color: rgba(255, 45, 149, 0.2);
+}
+
+:host(.cb-theme-synthwave) .cb-agent-back {
+    color: #b794f6;
+}
+
+:host(.cb-theme-synthwave) .cb-agent-back:hover {
+    background: rgba(255, 45, 149, 0.15);
+    color: #f0e6ff;
+}
+
+:host(.cb-theme-synthwave) .cb-agent-header-icon {
+    filter: drop-shadow(0 0 6px rgba(255, 45, 149, 0.5));
+}
+
+:host(.cb-theme-synthwave) .cb-agent-header-title {
+    color: #f0e6ff;
+    text-shadow: 0 0 8px rgba(255, 45, 149, 0.4);
+}
+
+:host(.cb-theme-synthwave) .cb-agent-desc {
+    color: #b794f6;
+}
+
+:host(.cb-theme-synthwave) .cb-agent-btn-primary {
+    background: linear-gradient(135deg, #FF2D95, #ff6ec7) !important;
+    border: 1px solid rgba(255, 45, 149, 0.5);
+    color: #fff !important;
+    box-shadow: 0 0 20px rgba(255, 45, 149, 0.4), 0 0 40px rgba(255, 45, 149, 0.2);
+}
+
+:host(.cb-theme-synthwave) .cb-agent-btn-primary:hover:not(:disabled) {
+    box-shadow: 0 0 30px rgba(255, 45, 149, 0.5), 0 0 60px rgba(0, 240, 255, 0.2);
+    text-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+}
+
+:host(.cb-theme-synthwave) .cb-agent-btn-secondary {
+    background: rgba(45, 27, 105, 0.5);
+    border: 1px solid rgba(255, 45, 149, 0.25);
+    color: #b794f6;
+}
+
+:host(.cb-theme-synthwave) .cb-agent-btn-secondary:hover {
+    background: rgba(255, 45, 149, 0.15);
+    border-color: #FF2D95;
+    color: #f0e6ff;
+    box-shadow: 0 0 10px rgba(255, 45, 149, 0.3);
+}
+
+:host(.cb-theme-synthwave) .cb-agent-select {
+    background: rgba(26, 10, 46, 0.8);
+    border: 1px solid rgba(255, 45, 149, 0.3);
+    color: #f0e6ff;
+}
+
+:host(.cb-theme-synthwave) .cb-agent-select:focus {
+    box-shadow: 0 0 15px rgba(255, 45, 149, 0.3);
+}
+
+:host(.cb-theme-synthwave) .cb-agent-select option {
+    background: #1a0a2e;
+    color: #f0e6ff;
+}
+
+:host(.cb-theme-synthwave) .cb-agent-textarea {
+    background: rgba(26, 10, 46, 0.6);
+    border: 1px solid rgba(255, 45, 149, 0.25);
+    color: #f0e6ff;
+}
+
+:host(.cb-theme-synthwave) .cb-agent-textarea:focus {
+    border-color: #FF2D95;
+    box-shadow: 0 0 15px rgba(255, 45, 149, 0.3);
+}
+
+:host(.cb-theme-synthwave) .cb-agent-chip {
+    background: rgba(45, 27, 105, 0.4);
+    border: 1px solid rgba(255, 45, 149, 0.2);
+    color: #b794f6;
+}
+
+:host(.cb-theme-synthwave) .cb-agent-chip:hover {
+    background: rgba(255, 45, 149, 0.15);
+    border-color: #FF2D95;
+    color: #FF2D95;
+    text-shadow: 0 0 6px rgba(255, 45, 149, 0.4);
+}
+
+:host(.cb-theme-synthwave) .cb-agent-chip-active {
+    background: rgba(255, 45, 149, 0.2) !important;
+    border-color: #FF2D95 !important;
+    color: #FF2D95 !important;
+    box-shadow: 0 0 8px rgba(255, 45, 149, 0.3) !important;
+}
+
+:host(.cb-theme-synthwave) .cb-agent-result-section {
+    background: rgba(45, 27, 105, 0.4);
+    border: 1px solid rgba(255, 45, 149, 0.15);
+}
+
+:host(.cb-theme-synthwave) .cb-agent-result-header {
+    color: #FF2D95;
+    border-color: rgba(255, 45, 149, 0.2);
+}
+
+:host(.cb-theme-synthwave) .cb-agent-result-body {
+    color: #d0c4f0;
+}
+
+:host(.cb-theme-synthwave) .cb-agent-stat {
+    background: rgba(45, 27, 105, 0.5);
+    border: 1px solid rgba(255, 45, 149, 0.15);
+}
+
+:host(.cb-theme-synthwave) .cb-agent-stat-val {
+    color: #f0e6ff;
+    text-shadow: 0 0 8px currentColor;
+}
+
+:host(.cb-theme-synthwave) .cb-agent-stat-label {
+    color: #b794f6;
+}
+
+:host(.cb-theme-synthwave) .cb-agent-skeleton {
+    background: linear-gradient(90deg, rgba(45, 27, 105, 0.3) 25%, rgba(255, 45, 149, 0.08) 50%, rgba(45, 27, 105, 0.3) 75%);
+    background-size: 200% 100%;
+}
+
+:host(.cb-theme-synthwave) .cb-agent-error {
+    background: rgba(255, 71, 87, 0.1);
+    border-color: rgba(255, 71, 87, 0.3);
+    color: #ff4757;
+}
+
+:host(.cb-theme-synthwave) .cb-agent-meta {
+    color: #9b7dd4;
+    border-color: rgba(255, 45, 149, 0.1);
+}
+
+:host(.cb-theme-synthwave) .cb-agent-section-title {
+    color: #FF2D95;
+    border-color: rgba(255, 45, 149, 0.2);
+    text-shadow: 0 0 6px rgba(255, 45, 149, 0.3);
+}
+
+:host(.cb-theme-synthwave) .cb-track-card {
+    background: rgba(45, 27, 105, 0.5);
+    border: 1px solid rgba(255, 45, 149, 0.15);
+}
+
+:host(.cb-theme-synthwave) .cb-track-card:hover {
+    background: rgba(255, 45, 149, 0.1);
+    border-color: rgba(255, 45, 149, 0.4);
+    box-shadow: 0 0 15px rgba(255, 45, 149, 0.15);
+}
+
+:host(.cb-theme-synthwave) .cb-track-btn {
+    background: rgba(45, 27, 105, 0.4);
+    border: 1px solid rgba(255, 45, 149, 0.2);
+    color: #b794f6;
+}
+
+:host(.cb-theme-synthwave) .cb-donut-hole {
+    background: #1a0a2e;
+}
+
+:host(.cb-theme-synthwave) .cb-heatmap-day {
+    background: rgba(255, 45, 149, 0.06);
+    border-color: rgba(255, 45, 149, 0.1);
+}
+
+:host(.cb-theme-synthwave) .cb-heatmap-val {
+    text-shadow: 0 0 4px currentColor;
+}
+
+:host(.cb-theme-synthwave) .cb-topic-word {
+    background: rgba(45, 27, 105, 0.4);
+    border: 1px solid rgba(255, 45, 149, 0.15);
+    color: #d0c4f0;
+}
+
+:host(.cb-theme-synthwave) .cb-topic-word:hover {
+    background: rgba(255, 45, 149, 0.12);
+}
+
+:host(.cb-theme-synthwave) .cb-confidence-meter {
+    background: rgba(45, 27, 105, 0.5);
+}
+
+:host(.cb-theme-synthwave) .cb-timeline::before {
+    background: linear-gradient(180deg, #FF2D95, rgba(0, 240, 255, 0.3));
+}
+
+:host(.cb-theme-synthwave) .cb-timeline-item::before {
+    border-color: #FF2D95;
+    background: #1a0a2e;
+    box-shadow: 0 0 6px rgba(255, 45, 149, 0.4);
+}
+
+:host(.cb-theme-synthwave) .cb-sparkline-bar {
+    box-shadow: 0 0 4px currentColor;
+}
+
+:host(.cb-theme-synthwave) .cb-agent-platform-tag {
+    background: rgba(0, 240, 255, 0.1);
+    border-color: rgba(0, 240, 255, 0.3);
+    color: #00F0FF;
+    text-shadow: 0 0 4px rgba(0, 240, 255, 0.3);
+}
+
+/* ===== AGENT TAB — Glass / Claymorphism Theme ===== */
+:host(.cb-theme-glass) .cb-ah-card {
+    background: linear-gradient(145deg, #2d2748, #23203a);
+    border: 1px solid rgba(180, 142, 255, 0.08);
+    box-shadow: 5px 5px 12px rgba(0, 0, 0, 0.35), -3px -3px 8px rgba(60, 50, 90, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.03);
+    border-radius: 16px;
+}
+
+:host(.cb-theme-glass) .cb-ah-card:hover {
+    background: linear-gradient(145deg, #332d52, #282340);
+    box-shadow: 6px 6px 14px rgba(0, 0, 0, 0.4), -3px -3px 10px rgba(60, 50, 90, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    border-color: rgba(180, 142, 255, 0.15);
+}
+
+:host(.cb-theme-glass) .cb-ah-card-icon {
+    background: linear-gradient(145deg, #332d52, #282340);
+    border-color: rgba(180, 142, 255, 0.1);
+    border-radius: 14px;
+    box-shadow: inset 2px 2px 4px rgba(0, 0, 0, 0.2), inset -1px -1px 3px rgba(60, 50, 90, 0.1);
+}
+
+:host(.cb-theme-glass) .cb-ah-card-name {
+    color: #e8e4f0;
+}
+
+:host(.cb-theme-glass) .cb-ah-card-desc {
+    color: #a89ec0;
+}
+
+:host(.cb-theme-glass) .cb-ah-ambient {
+    opacity: 0.2;
+}
+
+:host(.cb-theme-glass) .cb-agent-sub {
+    color: #e8e4f0;
+}
+
+:host(.cb-theme-glass) .cb-agent-header {
+    border-color: rgba(180, 142, 255, 0.08);
+}
+
+:host(.cb-theme-glass) .cb-agent-back {
+    color: #a89ec0;
+    border-radius: 10px;
+}
+
+:host(.cb-theme-glass) .cb-agent-back:hover {
+    background: linear-gradient(145deg, #332d52, #282340);
+    color: #e8e4f0;
+}
+
+:host(.cb-theme-glass) .cb-agent-header-title {
+    color: #e8e4f0;
+}
+
+:host(.cb-theme-glass) .cb-agent-desc {
+    color: #a89ec0;
+}
+
+:host(.cb-theme-glass) .cb-agent-btn-primary {
+    background: linear-gradient(145deg, #6b4faf, #523d8c) !important;
+    border: 1px solid rgba(180, 142, 255, 0.15);
+    color: #f0ecff !important;
+    box-shadow: 5px 5px 12px rgba(0, 0, 0, 0.4), -3px -3px 8px rgba(107, 79, 175, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+}
+
+:host(.cb-theme-glass) .cb-agent-btn-primary:hover:not(:disabled) {
+    box-shadow: 6px 6px 14px rgba(0, 0, 0, 0.45), -3px -3px 10px rgba(107, 79, 175, 0.25);
+}
+
+:host(.cb-theme-glass) .cb-agent-btn-primary:active:not(:disabled) {
+    box-shadow: inset 3px 3px 8px rgba(0, 0, 0, 0.4), inset -2px -2px 6px rgba(60, 50, 90, 0.15);
+}
+
+:host(.cb-theme-glass) .cb-agent-btn-secondary {
+    background: linear-gradient(145deg, #302a4a, #252038);
+    border: 1px solid rgba(180, 142, 255, 0.08);
+    color: #d0c8e8;
+    box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.35), -2px -2px 6px rgba(60, 50, 90, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    border-radius: 12px;
+}
+
+:host(.cb-theme-glass) .cb-agent-btn-secondary:hover {
+    background: linear-gradient(145deg, #3a3260, #2d2745);
+    color: #e8e4f0;
+}
+
+:host(.cb-theme-glass) .cb-agent-select {
+    background: linear-gradient(145deg, #252038, #1e1a2e);
+    border: 1px solid rgba(180, 142, 255, 0.08);
+    color: #e8e4f0;
+    box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.25), inset -1px -1px 3px rgba(60, 50, 90, 0.1);
+    border-radius: 12px;
+}
+
+:host(.cb-theme-glass) .cb-agent-select option {
+    background: #1e1a2e;
+    color: #e8e4f0;
+}
+
+:host(.cb-theme-glass) .cb-agent-textarea {
+    background: linear-gradient(145deg, #221e38, #1c1830);
+    border: 1px solid rgba(180, 142, 255, 0.06);
+    color: #e8e4f0;
+    box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.3), inset -1px -1px 3px rgba(60, 50, 90, 0.1);
+    border-radius: 12px;
+}
+
+:host(.cb-theme-glass) .cb-agent-chip {
+    background: linear-gradient(145deg, #2d2748, #252038);
+    border: 1px solid rgba(180, 142, 255, 0.08);
+    color: #d0c8e8;
+    box-shadow: 3px 3px 8px rgba(0, 0, 0, 0.25), -2px -2px 6px rgba(60, 50, 90, 0.12);
+    border-radius: 20px;
+}
+
+:host(.cb-theme-glass) .cb-agent-chip:hover {
+    background: linear-gradient(145deg, #3a3260, #2d2745);
+    border-color: rgba(180, 142, 255, 0.15);
+    color: #b48eff;
+}
+
+:host(.cb-theme-glass) .cb-agent-chip-active {
+    background: linear-gradient(145deg, #4a3d7a, #3a3260) !important;
+    border-color: rgba(180, 142, 255, 0.25) !important;
+    color: #b48eff !important;
+}
+
+:host(.cb-theme-glass) .cb-agent-result-section {
+    background: linear-gradient(145deg, #2a2445, #221e38);
+    border: 1px solid rgba(180, 142, 255, 0.06);
+    box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.3), -2px -2px 6px rgba(60, 50, 90, 0.15);
+    border-radius: 14px;
+}
+
+:host(.cb-theme-glass) .cb-agent-result-header {
+    color: #b48eff;
+    border-color: rgba(180, 142, 255, 0.1);
+}
+
+:host(.cb-theme-glass) .cb-agent-result-body {
+    color: #c8c0e0;
+}
+
+:host(.cb-theme-glass) .cb-agent-stat {
+    background: linear-gradient(145deg, #2d2748, #252038);
+    border: 1px solid rgba(180, 142, 255, 0.06);
+    box-shadow: 3px 3px 8px rgba(0, 0, 0, 0.3), -2px -2px 6px rgba(60, 50, 90, 0.12);
+    border-radius: 14px;
+}
+
+:host(.cb-theme-glass) .cb-agent-stat-val {
+    color: #e8e4f0;
+}
+
+:host(.cb-theme-glass) .cb-agent-stat-label {
+    color: #a89ec0;
+}
+
+:host(.cb-theme-glass) .cb-agent-skeleton {
+    background: linear-gradient(90deg, #252038 25%, #302a4a 50%, #252038 75%);
+    background-size: 200% 100%;
+    border-radius: 10px;
+}
+
+:host(.cb-theme-glass) .cb-agent-error {
+    background: linear-gradient(145deg, #3a2040, #2a1830);
+    border-color: rgba(255, 107, 107, 0.15);
+    color: #ff6b6b;
+    box-shadow: 3px 3px 8px rgba(0, 0, 0, 0.3), -2px -2px 6px rgba(60, 50, 90, 0.1);
+    border-radius: 12px;
+}
+
+:host(.cb-theme-glass) .cb-agent-meta {
+    color: #8878a8;
+    border-color: rgba(180, 142, 255, 0.06);
+}
+
+:host(.cb-theme-glass) .cb-agent-section-title {
+    color: #b48eff;
+    border-color: rgba(180, 142, 255, 0.12);
+}
+
+:host(.cb-theme-glass) .cb-track-card {
+    background: linear-gradient(145deg, #2a2445, #221e38);
+    border: 1px solid rgba(180, 142, 255, 0.06);
+    box-shadow: 3px 3px 8px rgba(0, 0, 0, 0.25), -2px -2px 6px rgba(60, 50, 90, 0.12);
+    border-radius: 12px;
+}
+
+:host(.cb-theme-glass) .cb-track-card:hover {
+    background: linear-gradient(145deg, #332d52, #282340);
+    border-color: rgba(180, 142, 255, 0.15);
+}
+
+:host(.cb-theme-glass) .cb-track-btn {
+    background: linear-gradient(145deg, #302a4a, #252038);
+    border: 1px solid rgba(180, 142, 255, 0.08);
+    color: #a89ec0;
+    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2), -1px -1px 3px rgba(60, 50, 90, 0.1);
+    border-radius: 8px;
+}
+
+:host(.cb-theme-glass) .cb-donut-hole {
+    background: #1e1a2e;
+}
+
+:host(.cb-theme-glass) .cb-donut {
+    box-shadow: 5px 5px 12px rgba(0, 0, 0, 0.3), -3px -3px 8px rgba(60, 50, 90, 0.15);
+}
+
+:host(.cb-theme-glass) .cb-heatmap-day {
+    background: rgba(180, 142, 255, 0.04);
+    border-color: rgba(180, 142, 255, 0.06);
+    box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.15), -1px -1px 3px rgba(60, 50, 90, 0.08);
+    border-radius: 6px;
+}
+
+:host(.cb-theme-glass) .cb-topic-word {
+    background: linear-gradient(145deg, #2d2748, #252038);
+    border: 1px solid rgba(180, 142, 255, 0.06);
+    color: #d0c8e8;
+    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2), -1px -1px 3px rgba(60, 50, 90, 0.1);
+    border-radius: 8px;
+}
+
+:host(.cb-theme-glass) .cb-confidence-meter {
+    background: rgba(180, 142, 255, 0.06);
+    box-shadow: inset 2px 2px 4px rgba(0, 0, 0, 0.2), inset -1px -1px 3px rgba(60, 50, 90, 0.08);
+    border-radius: 6px;
+}
+
+:host(.cb-theme-glass) .cb-timeline::before {
+    background: linear-gradient(180deg, #b48eff, rgba(60, 50, 90, 0.2));
+}
+
+:host(.cb-theme-glass) .cb-timeline-item::before {
+    border-color: #b48eff;
+    background: #1e1a2e;
+    box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+:host(.cb-theme-glass) .cb-agent-platform-tag {
+    background: rgba(180, 142, 255, 0.08);
+    border-color: rgba(180, 142, 255, 0.15);
+    color: #b48eff;
+}
 
   :host * { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important; letter-spacing: -0.01em; }
   .cb-panel { box-sizing: border-box; position:fixed; top:var(--cb-space-md); right:var(--cb-space-md); width:400px; max-width:calc(100vw - 24px); max-height:calc(100vh - 120px); overflow-y:auto; overflow-x:hidden; border-radius:var(--cb-radius-xl); background: var(--cb-bg2); color:var(--cb-white) !important; z-index:2147483647; box-shadow: var(--cb-shadow-xl), 0 0 40px color-mix(in srgb, var(--cb-accent-primary) 10%, transparent); border: 1px solid var(--cb-border); backdrop-filter: blur(12px); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); word-wrap: break-word; pointer-events:auto; }
@@ -2929,26 +4122,26 @@
     // --- color-mix() fallback for browsers that lack support ---
     if (!CSS.supports || !CSS.supports('color', 'color-mix(in srgb, red 50%, blue)')) {
       const _cmColors = {
-        '--cb-accent-primary': [96,165,250],
-        '--cb-accent-secondary': [167,139,250],
-        '--cb-accent-tertiary': [52,211,153]
+        '--cb-accent-primary': [96, 165, 250],
+        '--cb-accent-secondary': [167, 139, 250],
+        '--cb-accent-tertiary': [52, 211, 153]
       };
       // Replace color-mix(in srgb, var(--var) N%, transparent) → rgba(r,g,b, N/100)
       style.textContent = style.textContent.replace(
         /color-mix\(in srgb,\s*var\((--cb-accent-(?:primary|secondary|tertiary))\)\s+(\d+)%,\s*transparent\)/g,
-        function(m, v, p) { var c = _cmColors[v]; return c ? 'rgba('+c[0]+','+c[1]+','+c[2]+','+(parseInt(p)/100).toFixed(2)+')' : m; }
+        function (m, v, p) { var c = _cmColors[v]; return c ? 'rgba(' + c[0] + ',' + c[1] + ',' + c[2] + ',' + (parseInt(p) / 100).toFixed(2) + ')' : m; }
       );
       // Replace color-mix(in srgb, var(--var) N%, var(--bg)) → rgba(r,g,b, N/100) (approximate)
       style.textContent = style.textContent.replace(
         /color-mix\(in srgb,\s*var\((--cb-accent-(?:primary|secondary|tertiary))\)\s+(\d+)%,\s*var\(--cb-bg[23]?\)\)/g,
-        function(m, v, p) { var c = _cmColors[v]; return c ? 'rgba('+c[0]+','+c[1]+','+c[2]+','+(parseInt(p)/100).toFixed(2)+')' : m; }
+        function (m, v, p) { var c = _cmColors[v]; return c ? 'rgba(' + c[0] + ',' + c[1] + ',' + c[2] + ',' + (parseInt(p) / 100).toFixed(2) + ')' : m; }
       );
       // Replace color-mix(in srgb, #hex N%, ...) → rgba of hex at N% alpha (used in debate/toolkit)
       style.textContent = style.textContent.replace(
         /color-mix\(in srgb,\s*#([0-9a-fA-F]{6})\s+(\d+)%,\s*(?:transparent|var\([^)]+\))\)/g,
-        function(m, hex, p) {
-          var r = parseInt(hex.substring(0,2),16), g = parseInt(hex.substring(2,4),16), b = parseInt(hex.substring(4,6),16);
-          return 'rgba('+r+','+g+','+b+','+(parseInt(p)/100).toFixed(2)+')';
+        function (m, hex, p) {
+          var r = parseInt(hex.substring(0, 2), 16), g = parseInt(hex.substring(2, 4), 16), b = parseInt(hex.substring(4, 6), 16);
+          return 'rgba(' + r + ',' + g + ',' + b + ',' + (parseInt(p) / 100).toFixed(2) + ')';
         }
       );
     }
@@ -12189,6 +13382,40 @@ Respond with JSON only:
       });
     }
 
+    // Agent Route with retry — exponential backoff (1s, 3s), max 2 retries
+    async function callAgentRouteWithRetry(prompt, opts = {}, maxRetries = 2) {
+      let lastError = 'unknown';
+      for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        const res = await callAgentRoute(prompt, opts);
+        if (res && res.ok) return res;
+        lastError = (res && res.error) || 'no-response';
+        if (attempt < maxRetries) {
+          const delay = attempt === 0 ? 1000 : 3000;
+          await new Promise(r => setTimeout(r, delay));
+        }
+      }
+      return { ok: false, error: lastError, retried: true };
+    }
+
+    // Render styled error with retry button
+    function renderAgentError(container, errorMsg, retryFn) {
+      if (!container) return;
+      container.innerHTML = `
+        <div class="cb-agent-error" role="alert">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <span style="font-weight:600;">Something went wrong</span>
+          </div>
+          <div style="font-size:11px;opacity:0.8;margin-bottom:8px;">${escapeHtml(errorMsg || 'Request failed after retries')}</div>
+          <button class="cb-agent-retry-btn" aria-label="Retry this action">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+            Retry
+          </button>
+        </div>`;
+      const btn = container.querySelector('.cb-agent-retry-btn');
+      if (btn && retryFn) btn.addEventListener('click', retryFn);
+    }
+
     // Agent badge state (in-memory, synced from storage on sidebar open)
     const __agentBadges = { catchmeup: 0, trackthis: 0 };
 
@@ -12288,126 +13515,196 @@ Respond with JSON only:
           const agentStyles = document.createElement('style');
           agentStyles.id = 'cb-agent-hub-styles';
           agentStyles.textContent = `
+            /* ═══════════════════════════════════════════════ */
+            /* AGENT HUB — Premium Glassmorphism Design       */
+            /* ═══════════════════════════════════════════════ */
+
+            /* Stagger entrance keyframes */
+            @keyframes cb-ah-stagger { from { opacity:0; transform:translateY(18px) scale(0.96); } to { opacity:1; transform:translateY(0) scale(1); } }
+            @keyframes cb-ah-shimmer { 0% { transform:translateX(-100%); } 100% { transform:translateX(100%); } }
+            @keyframes cb-ah-glow-pulse { 0%,100% { opacity:0.4; } 50% { opacity:0.8; } }
+            @keyframes cb-agent-slide-in { from { opacity:0; transform:translateX(16px); } to { opacity:1; transform:translateX(0); } }
+            @keyframes cb-skeleton-pulse { 0%,100% { opacity:0.3; } 50% { opacity:0.6; } }
+            @keyframes cb-badge-pop { from { transform:scale(0); } to { transform:scale(1); } }
+            @keyframes cb-pulse-ring { 0% { box-shadow:0 0 0 0 var(--_agent-clr); } 70% { box-shadow:0 0 0 6px transparent; } 100% { box-shadow:0 0 0 0 transparent; } }
+            @keyframes cb-donut-reveal { from { opacity:0; transform:scale(0.85) rotate(-10deg); } to { opacity:1; transform:scale(1) rotate(0); } }
+
             /* Agent Hub Grid */
-            .cb-ah-grid { display:grid;grid-template-columns:repeat(2,1fr);gap:10px;padding:2px; }
+            .cb-ah-grid { display:grid;grid-template-columns:repeat(2,1fr);gap:12px;padding:4px 2px; }
+
+            /* ── Premium Glass Card ── */
             .cb-ah-card {
-              position:relative;padding:16px 14px;background:var(--cb-bg2);border:1px solid var(--cb-border);
-              border-radius:var(--cb-radius-lg);cursor:pointer;overflow:hidden;
-              transition:all 0.28s cubic-bezier(0.4,0,0.2,1);
+              position:relative;padding:18px 16px;
+              background:linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%);
+              backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+              border:1px solid rgba(255,255,255,0.06);
+              border-radius:14px;cursor:pointer;overflow:hidden;
+              transition:all 0.32s cubic-bezier(0.4,0,0.2,1);
+              animation:cb-ah-stagger 0.4s cubic-bezier(0.2,0.8,0.2,1) both;
             }
-            .cb-ah-card:hover { transform:translateY(-3px); }
+            .cb-ah-card:nth-child(1) { animation-delay:0ms; }
+            .cb-ah-card:nth-child(2) { animation-delay:50ms; }
+            .cb-ah-card:nth-child(3) { animation-delay:100ms; }
+            .cb-ah-card:nth-child(4) { animation-delay:150ms; }
+            .cb-ah-card:nth-child(5) { animation-delay:200ms; }
+            .cb-ah-card:nth-child(6) { animation-delay:250ms; }
+            .cb-ah-card:hover {
+              transform:translateY(-4px);
+              border-color:color-mix(in srgb, var(--_agent-clr) 35%, transparent);
+              box-shadow:
+                0 8px 32px color-mix(in srgb, var(--_agent-clr) 12%, transparent),
+                0 2px 8px rgba(0,0,0,0.3),
+                inset 0 1px 0 rgba(255,255,255,0.05);
+            }
+            .cb-ah-card:active { transform:translateY(-1px) scale(0.98); }
+            /* Bottom glow bar */
             .cb-ah-card::after {
-              content:'';position:absolute;bottom:0;left:0;right:0;height:2.5px;
-              background:var(--_agent-clr);opacity:0;transition:opacity 0.3s;
+              content:'';position:absolute;bottom:0;left:10%;right:10%;height:2px;
+              background:var(--_agent-clr);opacity:0;transition:all 0.35s;
+              border-radius:2px 2px 0 0;filter:blur(0.5px);
             }
-            .cb-ah-card:hover::after { opacity:1; }
+            .cb-ah-card:hover::after { opacity:0.8;left:0;right:0; }
+            /* Shimmer sweep on hover */
+            .cb-ah-card::before {
+              content:'';position:absolute;top:0;left:0;width:100%;height:100%;
+              background:linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.03) 50%, transparent 100%);
+              transform:translateX(-100%);z-index:1;pointer-events:none;
+            }
+            .cb-ah-card:hover::before { animation:cb-ah-shimmer 0.8s ease-out; }
+
+            /* Icon container with gradient ring */
             .cb-ah-icon {
-              width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;
-              margin-bottom:10px;flex-shrink:0;
-              background:color-mix(in srgb, var(--_agent-clr) 10%, transparent);
-              border:1px solid color-mix(in srgb, var(--_agent-clr) 22%, transparent);
-              color:var(--_agent-clr);transition:all 0.25s;
+              width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;
+              margin-bottom:12px;flex-shrink:0;
+              background:linear-gradient(135deg, color-mix(in srgb, var(--_agent-clr) 12%, transparent), color-mix(in srgb, var(--_agent-clr) 5%, transparent));
+              border:1px solid color-mix(in srgb, var(--_agent-clr) 25%, transparent);
+              color:var(--_agent-clr);transition:all 0.3s cubic-bezier(0.4,0,0.2,1);
+              box-shadow:0 2px 8px color-mix(in srgb, var(--_agent-clr) 8%, transparent);
             }
             .cb-ah-card:hover .cb-ah-icon {
-              background:color-mix(in srgb, var(--_agent-clr) 18%, transparent);
-              border-color:color-mix(in srgb, var(--_agent-clr) 40%, transparent);
-              box-shadow:0 0 16px color-mix(in srgb, var(--_agent-clr) 20%, transparent);
+              background:linear-gradient(135deg, color-mix(in srgb, var(--_agent-clr) 22%, transparent), color-mix(in srgb, var(--_agent-clr) 10%, transparent));
+              border-color:color-mix(in srgb, var(--_agent-clr) 45%, transparent);
+              box-shadow:0 4px 20px color-mix(in srgb, var(--_agent-clr) 25%, transparent);
+              transform:scale(1.08);
             }
-            .cb-ah-name { font-weight:650;color:var(--cb-white);font-size:12.5px;letter-spacing:0.15px;margin-bottom:3px; }
-            .cb-ah-desc { font-size:10px;color:var(--cb-subtext);line-height:1.45; }
+            .cb-ah-name { font-weight:650;color:var(--cb-white);font-size:12.5px;letter-spacing:0.2px;margin-bottom:4px; }
+            .cb-ah-desc { font-size:10px;color:var(--cb-subtext);line-height:1.5;opacity:0.85; }
+
+            /* Badge with glow */
             .cb-ah-badge {
               position:absolute;top:10px;right:10px;min-width:18px;height:18px;
-              background:var(--cb-error);color:#fff;font-size:9px;font-weight:700;
+              background:linear-gradient(135deg, #ef4444, #dc2626);color:#fff;font-size:9px;font-weight:700;
               border-radius:var(--cb-radius-full);display:none;align-items:center;
-              justify-content:center;padding:0 5px;box-shadow:0 2px 10px rgba(239,68,68,0.45);z-index:2;
-              animation:cb-badge-pop 0.3s cubic-bezier(0.2,0.8,0.2,1);
+              justify-content:center;padding:0 5px;
+              box-shadow:0 2px 12px rgba(239,68,68,0.5), 0 0 0 2px rgba(239,68,68,0.15);
+              z-index:2;animation:cb-badge-pop 0.3s cubic-bezier(0.2,0.8,0.2,1);
             }
-            .cb-ah-ambient { position:absolute;top:10px;right:10px;font-size:7px;text-transform:uppercase;
-              letter-spacing:0.8px;color:var(--_agent-clr);opacity:0.5;font-weight:600;display:none; }
-            @keyframes cb-badge-pop { from { transform:scale(0); } to { transform:scale(1); } }
+            /* Ambient pulse for active agents */
+            .cb-ah-pulse-dot {
+              position:absolute;top:12px;right:12px;width:7px;height:7px;
+              border-radius:50%;background:var(--_agent-clr);
+              animation:cb-pulse-ring 2s ease-out infinite;
+            }
 
-            /* Agent Sub-view */
-            .cb-agent-sub {
-              animation:cb-agent-enter 0.3s cubic-bezier(0.2,0.8,0.2,1) forwards;
-            }
-            @keyframes cb-agent-enter { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+            /* ── Agent Sub-view ── */
+            .cb-agent-sub { animation:cb-agent-slide-in 0.35s cubic-bezier(0.2,0.8,0.2,1) forwards; }
             .cb-agent-header {
-              display:flex;align-items:center;gap:10px;margin-bottom:14px;padding-bottom:12px;
-              border-bottom:1px solid var(--cb-border);
+              display:flex;align-items:center;gap:10px;margin-bottom:16px;padding-bottom:14px;
+              border-bottom:1px solid rgba(255,255,255,0.06);
             }
             .cb-agent-header-icon {
-              width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;
+              width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;
               flex-shrink:0;
+              background:linear-gradient(135deg, color-mix(in srgb, var(--_agent-clr) 15%, transparent), color-mix(in srgb, var(--_agent-clr) 5%, transparent));
+              border:1px solid color-mix(in srgb, var(--_agent-clr) 25%, transparent);
+              color:var(--_agent-clr);
             }
             .cb-agent-header-title { font-weight:700;font-size:14px;color:var(--cb-white);flex:1; }
             .cb-agent-back {
-              background:none;border:1px solid var(--cb-border);border-radius:var(--cb-radius-sm);
-              color:var(--cb-subtext);cursor:pointer;font-size:11px;padding:5px 12px;
-              transition:all 0.2s;display:flex;align-items:center;gap:4px;
+              background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);
+              border-radius:8px;color:var(--cb-subtext);cursor:pointer;font-size:11px;
+              padding:6px 12px;transition:all 0.2s;display:flex;align-items:center;gap:4px;
             }
-            .cb-agent-back:hover { border-color:var(--cb-accent-primary);color:var(--cb-white); }
+            .cb-agent-back:hover { border-color:var(--_agent-clr, var(--cb-accent-primary));color:var(--cb-white);background:rgba(255,255,255,0.06); }
             .cb-agent-back svg { width:12px;height:12px; }
-            .cb-agent-desc { font-size:11.5px;color:var(--cb-subtext);line-height:1.55;margin-bottom:14px; }
+            .cb-agent-desc { font-size:11.5px;color:var(--cb-subtext);line-height:1.6;margin-bottom:16px;opacity:0.9; }
 
-            /* Agent form elements */
+            /* ── Form elements ── */
             .cb-agent-input {
-              width:100%;padding:9px 12px;border-radius:var(--cb-radius-sm);
-              background:var(--cb-bg3);border:1px solid var(--cb-border);
+              width:100%;padding:10px 14px;border-radius:10px;
+              background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);
               color:var(--cb-white);font-size:12px;font-family:inherit;
-              transition:border-color 0.2s;box-sizing:border-box;
+              transition:all 0.25s;box-sizing:border-box;
             }
-            .cb-agent-input:focus { border-color:var(--cb-accent-primary);outline:none; }
-            .cb-agent-input::placeholder { color:var(--cb-subtext);opacity:0.7; }
+            .cb-agent-input:focus {
+              border-color:color-mix(in srgb, var(--_agent-clr, var(--cb-accent-primary)) 50%, transparent);
+              outline:none;
+              box-shadow:0 0 0 3px color-mix(in srgb, var(--_agent-clr, var(--cb-accent-primary)) 10%, transparent);
+              background:rgba(255,255,255,0.05);
+            }
+            .cb-agent-input::placeholder { color:var(--cb-subtext);opacity:0.6; }
             .cb-agent-textarea { min-height:70px;resize:vertical; }
             .cb-agent-select {
-              width:100%;padding:9px 12px;border-radius:var(--cb-radius-sm);
-              background:var(--cb-bg3);border:1px solid var(--cb-border);
+              width:100%;padding:10px 14px;border-radius:10px;
+              background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);
               color:var(--cb-white);font-size:12px;font-family:inherit;
-              cursor:pointer;appearance:auto;
+              cursor:pointer;appearance:auto;transition:all 0.25s;
+            }
+            .cb-agent-select:focus {
+              border-color:color-mix(in srgb, var(--_agent-clr, var(--cb-accent-primary)) 50%, transparent);
+              outline:none;
             }
             .cb-agent-chip {
-              display:inline-flex;padding:4px 10px;
-              background:color-mix(in srgb, var(--_agent-clr, var(--cb-accent-primary)) 8%, transparent);
-              border:1px solid color-mix(in srgb, var(--_agent-clr, var(--cb-accent-primary)) 20%, transparent);
-              border-radius:var(--cb-radius-full);font-size:10.5px;color:var(--cb-white);
-              cursor:pointer;transition:all 0.18s;user-select:none;
+              display:inline-flex;padding:5px 12px;
+              background:rgba(255,255,255,0.04);
+              border:1px solid rgba(255,255,255,0.08);
+              border-radius:20px;font-size:10.5px;color:var(--cb-white);
+              cursor:pointer;transition:all 0.2s;user-select:none;
             }
             .cb-agent-chip:hover {
-              background:color-mix(in srgb, var(--_agent-clr, var(--cb-accent-primary)) 18%, transparent);
-              border-color:color-mix(in srgb, var(--_agent-clr, var(--cb-accent-primary)) 35%, transparent);
+              background:color-mix(in srgb, var(--_agent-clr, var(--cb-accent-primary)) 12%, transparent);
+              border-color:color-mix(in srgb, var(--_agent-clr, var(--cb-accent-primary)) 30%, transparent);
+              color:var(--_agent-clr, var(--cb-accent-primary));
             }
             .cb-agent-chip-active {
-              background:color-mix(in srgb, var(--_agent-clr, var(--cb-accent-primary)) 20%, transparent) !important;
-              border-color:var(--_agent-clr, var(--cb-accent-primary)) !important;
-              color:var(--_agent-clr) !important;font-weight:600;
+              background:color-mix(in srgb, var(--_agent-clr, var(--cb-accent-primary)) 18%, transparent) !important;
+              border-color:color-mix(in srgb, var(--_agent-clr, var(--cb-accent-primary)) 50%, transparent) !important;
+              color:var(--_agent-clr, var(--cb-accent-primary)) !important;font-weight:600;
+              box-shadow:0 0 12px color-mix(in srgb, var(--_agent-clr, var(--cb-accent-primary)) 15%, transparent);
             }
 
-            /* Agent action buttons */
+            /* ── Action buttons ── */
             .cb-agent-btn-primary {
-              width:100%;padding:10px 16px;border-radius:var(--cb-radius-sm);border:none;
-              background:linear-gradient(135deg, var(--_agent-clr, var(--cb-accent-primary)), color-mix(in srgb, var(--_agent-clr, var(--cb-accent-primary)) 70%, #000));
+              width:100%;padding:11px 18px;border-radius:10px;border:none;
+              background:linear-gradient(135deg, var(--_agent-clr, var(--cb-accent-primary)), color-mix(in srgb, var(--_agent-clr, var(--cb-accent-primary)) 65%, #000));
               color:#fff;font-size:12.5px;font-weight:600;font-family:inherit;
-              cursor:pointer;transition:all 0.25s;
-              box-shadow:0 2px 12px color-mix(in srgb, var(--_agent-clr, var(--cb-accent-primary)) 25%, transparent);
+              cursor:pointer;transition:all 0.28s;position:relative;overflow:hidden;
+              box-shadow:0 4px 16px color-mix(in srgb, var(--_agent-clr, var(--cb-accent-primary)) 25%, transparent);
             }
             .cb-agent-btn-primary:hover:not(:disabled) {
-              transform:translateY(-1px);
-              box-shadow:0 4px 20px color-mix(in srgb, var(--_agent-clr, var(--cb-accent-primary)) 35%, transparent);
+              transform:translateY(-2px);
+              box-shadow:0 8px 28px color-mix(in srgb, var(--_agent-clr, var(--cb-accent-primary)) 35%, transparent);
+              filter:brightness(1.1);
             }
-            .cb-agent-btn-primary:disabled { opacity:0.5;cursor:not-allowed;transform:none; }
+            .cb-agent-btn-primary:active:not(:disabled) { transform:translateY(0);filter:brightness(0.95); }
+            .cb-agent-btn-primary:disabled { opacity:0.45;cursor:not-allowed;transform:none;filter:none; }
             .cb-agent-btn-secondary {
-              padding:8px 14px;border-radius:var(--cb-radius-sm);
-              background:var(--cb-bg3);border:1px solid var(--cb-border);
+              padding:9px 16px;border-radius:10px;
+              background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);
               color:var(--cb-white);font-size:11.5px;font-family:inherit;
               cursor:pointer;transition:all 0.2s;
             }
-            .cb-agent-btn-secondary:hover { border-color:var(--cb-accent-primary);background:var(--cb-bg2); }
+            .cb-agent-btn-secondary:hover {
+              border-color:color-mix(in srgb, var(--_agent-clr, var(--cb-accent-primary)) 40%, transparent);
+              background:rgba(255,255,255,0.06);
+            }
 
-            /* Agent result sections */
+            /* ── Result sections ── */
             .cb-agent-result-section {
-              padding:14px;border-radius:var(--cb-radius-md);
-              background:var(--cb-bg2);border:1px solid var(--cb-border);
-              margin-bottom:10px;
+              padding:16px;border-radius:12px;
+              background:linear-gradient(135deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+              border:1px solid rgba(255,255,255,0.06);
+              margin-bottom:10px;backdrop-filter:blur(8px);
             }
             .cb-agent-result-header {
               font-weight:700;font-size:12px;margin-bottom:8px;padding-bottom:6px;
@@ -12415,104 +13712,257 @@ Respond with JSON only:
               color:var(--_agent-clr, var(--cb-accent-primary));
               display:flex;align-items:center;gap:6px;
             }
-            .cb-agent-result-body { font-size:12px;color:var(--cb-white);line-height:1.6; }
+            .cb-agent-result-body { font-size:12px;color:rgba(255,255,255,0.88);line-height:1.65; }
             .cb-agent-result-body strong { color:var(--cb-white); }
-            .cb-agent-bullet {
-              padding-left:14px;position:relative;margin:3px 0;
-            }
+            .cb-agent-bullet { padding-left:14px;position:relative;margin:3px 0; }
             .cb-agent-bullet::before {
               content:'';position:absolute;left:2px;top:7px;width:4px;height:4px;
               border-radius:50%;background:var(--_agent-clr, var(--cb-accent-primary));
             }
-            .cb-agent-numbered {
-              padding-left:18px;position:relative;margin:3px 0;
-            }
+            .cb-agent-numbered { padding-left:18px;position:relative;margin:3px 0; }
             .cb-agent-numbered::before {
               content:attr(data-n);position:absolute;left:0;top:0;
               color:var(--_agent-clr, var(--cb-accent-primary));font-weight:700;font-size:10px;
             }
             .cb-agent-platform-tag {
-              display:inline-block;padding:1px 6px;
-              background:color-mix(in srgb, var(--cb-accent-primary) 10%, transparent);
-              border:1px solid color-mix(in srgb, var(--cb-accent-primary) 20%, transparent);
-              border-radius:3px;font-size:9px;font-weight:600;color:var(--cb-accent-primary);
+              display:inline-block;padding:2px 8px;
+              background:linear-gradient(135deg, rgba(0,212,255,0.1), rgba(0,212,255,0.05));
+              border:1px solid rgba(0,212,255,0.2);
+              border-radius:5px;font-size:9px;font-weight:600;color:rgba(0,212,255,0.9);
             }
-            .cb-agent-action-row {
-              display:flex;gap:8px;margin-top:12px;
-            }
+            .cb-agent-action-row { display:flex;gap:8px;margin-top:14px; }
             .cb-agent-action-row > * { flex:1; }
             .cb-agent-meta {
-              font-size:9.5px;color:var(--cb-subtext);text-align:center;margin-top:8px;
-              padding-top:8px;border-top:1px solid var(--cb-border);
-            }
-            .cb-agent-loading {
-              display:flex;flex-direction:column;align-items:center;padding:28px 16px;gap:10px;
-            }
-            .cb-agent-loading-text { font-size:11.5px;color:var(--cb-subtext); }
-            .cb-agent-empty {
-              text-align:center;padding:24px 16px;color:var(--cb-subtext);font-size:12px;
-            }
-            .cb-agent-error {
-              padding:14px;border-radius:var(--cb-radius-md);
-              background:color-mix(in srgb, var(--cb-error) 8%, var(--cb-bg2));
-              border:1px solid color-mix(in srgb, var(--cb-error) 25%, transparent);
-              color:var(--cb-error);font-size:12px;
+              font-size:9px;color:var(--cb-subtext);text-align:center;margin-top:10px;
+              padding-top:8px;border-top:1px solid rgba(255,255,255,0.04);opacity:0.7;
             }
 
-            /* Stats grid */
+            /* ── Loading & States ── */
+            .cb-agent-loading { display:flex;flex-direction:column;align-items:center;padding:32px 16px;gap:12px; }
+            .cb-agent-loading-text { font-size:11.5px;color:var(--cb-subtext); }
+            .cb-agent-skeleton {
+              width:100%;border-radius:8px;
+              background:linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.06) 50%, rgba(255,255,255,0.03) 75%);
+              background-size:200% 100%;
+              animation:cb-skeleton-pulse 1.5s ease-in-out infinite;
+            }
+            .cb-agent-skeleton-lg { height:14px;margin-bottom:8px; }
+            .cb-agent-skeleton-md { height:10px;margin-bottom:6px;width:80%; }
+            .cb-agent-skeleton-sm { height:10px;margin-bottom:6px;width:55%; }
+            .cb-agent-empty { text-align:center;padding:28px 16px;color:var(--cb-subtext);font-size:12px;opacity:0.8; }
+            .cb-agent-error {
+              padding:16px;border-radius:12px;
+              background:linear-gradient(135deg, rgba(239,68,68,0.08), rgba(239,68,68,0.03));
+              border:1px solid rgba(239,68,68,0.2);
+              color:rgba(239,68,68,0.9);font-size:12px;
+            }
+            .cb-agent-retry-btn {
+              display:inline-flex;align-items:center;gap:6px;padding:7px 16px;
+              border-radius:8px;font-size:11.5px;font-weight:600;cursor:pointer;
+              background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.25);
+              color:rgba(239,68,68,0.9);transition:all 0.2s;font-family:inherit;
+            }
+            .cb-agent-retry-btn:hover { background:rgba(239,68,68,0.2);border-color:rgba(239,68,68,0.4); }
+            .cb-agent-retry-btn:active { transform:scale(0.97); }
+            .cb-agent-retry-btn svg { flex-shrink:0; }
+
+            /* ── Section title (formatted markdown) ── */
+            .cb-agent-section-title {
+              font-weight:700;font-size:12.5px;margin:14px 0 6px 0;
+              padding-bottom:4px;border-bottom:1px solid color-mix(in srgb, var(--_agent-clr, var(--cb-accent-primary)) 18%, transparent);
+              color:var(--_agent-clr, var(--cb-accent-primary));letter-spacing:-0.2px;
+            }
+
+            /* ── Confidence meter bar ── */
+            .cb-confidence-meter {
+              height:6px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden;margin-bottom:14px;
+            }
+            .cb-confidence-fill { height:100%;border-radius:3px;transition:width 0.8s cubic-bezier(0.4,0,0.2,1); }
+
+            /* ── Textarea ── */
+            .cb-agent-textarea {
+              width:100%;box-sizing:border-box;padding:10px 14px;border-radius:10px;resize:vertical;
+              background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);
+              color:var(--cb-white);font-size:12px;font-family:inherit;line-height:1.5;
+              transition:border-color 0.2s;outline:none;
+            }
+            .cb-agent-textarea:focus {
+              border-color:color-mix(in srgb, var(--_agent-clr, var(--cb-accent-primary)) 50%, transparent);
+              box-shadow:0 0 0 3px color-mix(in srgb, var(--_agent-clr, var(--cb-accent-primary)) 8%, transparent);
+            }
+
+            /* ── Select dropdown ── */
+            .cb-agent-select {
+              width:100%;box-sizing:border-box;padding:10px 14px;border-radius:10px;
+              background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);
+              color:var(--cb-white);font-size:12px;font-family:inherit;
+              cursor:pointer;transition:border-color 0.2s;outline:none;
+              -webkit-appearance:none;appearance:none;
+              background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+              background-repeat:no-repeat;background-position:right 12px center;
+            }
+            .cb-agent-select:focus {
+              border-color:color-mix(in srgb, var(--_agent-clr, var(--cb-accent-primary)) 50%, transparent);
+            }
+            .cb-agent-select option { background:var(--cb-bg2, #0a0f1a);color:var(--cb-white); }
+
+            /* ── Track This card names ── */
+            .cb-track-card-name { font-weight:600;font-size:11.5px;color:var(--cb-white);overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+            .cb-track-card-meta { font-size:9.5px;color:var(--cb-subtext);margin-top:2px; }
+            .cb-track-card-active { border-color:color-mix(in srgb, var(--_agent-clr) 30%, transparent);background:color-mix(in srgb, var(--_agent-clr) 6%, rgba(255,255,255,0.02)); }
+
+            /* ── Stats grid ── */
             .cb-agent-stats { display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:14px; }
             .cb-agent-stat {
-              padding:10px 12px;border-radius:var(--cb-radius-md);text-align:center;
-              background:color-mix(in srgb, var(--_agent-clr, var(--cb-accent-primary)) 5%, var(--cb-bg2));
-              border:1px solid color-mix(in srgb, var(--_agent-clr, var(--cb-accent-primary)) 15%, transparent);
+              padding:12px;border-radius:12px;text-align:center;
+              background:linear-gradient(135deg, color-mix(in srgb, var(--_agent-clr, var(--cb-accent-primary)) 6%, transparent), color-mix(in srgb, var(--_agent-clr, var(--cb-accent-primary)) 2%, transparent));
+              border:1px solid color-mix(in srgb, var(--_agent-clr, var(--cb-accent-primary)) 12%, transparent);
             }
-            .cb-agent-stat-val { font-size:20px;font-weight:700;color:var(--cb-white); }
-            .cb-agent-stat-label { font-size:9.5px;color:var(--cb-subtext);margin-top:2px; }
+            .cb-agent-stat-val { font-size:22px;font-weight:700;color:var(--cb-white);letter-spacing:-0.5px; }
+            .cb-agent-stat-label { font-size:9px;color:var(--cb-subtext);margin-top:3px;text-transform:uppercase;letter-spacing:0.5px; }
 
-            /* Confidence meter */
-            .cb-agent-meter { margin-bottom:14px;padding:10px 14px;border-radius:var(--cb-radius-md);background:var(--cb-bg2);border:1px solid var(--cb-border); }
-            .cb-agent-meter-top { display:flex;justify-content:space-between;align-items:center;margin-bottom:6px; }
+            /* ── Confidence meter ── */
+            .cb-agent-meter {
+              margin-bottom:14px;padding:12px 16px;border-radius:12px;
+              background:linear-gradient(135deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+              border:1px solid rgba(255,255,255,0.06);
+            }
+            .cb-agent-meter-top { display:flex;justify-content:space-between;align-items:center;margin-bottom:8px; }
             .cb-agent-meter-label { font-size:10.5px;color:var(--cb-subtext); }
-            .cb-agent-meter-value { font-size:16px;font-weight:700; }
-            .cb-agent-meter-bar { height:6px;background:var(--cb-bg3);border-radius:3px;overflow:hidden; }
-            .cb-agent-meter-fill { height:100%;border-radius:3px;transition:width 0.6s cubic-bezier(0.4,0,0.2,1); }
+            .cb-agent-meter-value { font-size:18px;font-weight:700; }
+            .cb-agent-meter-bar { height:6px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden; }
+            .cb-agent-meter-fill { height:100%;border-radius:3px;transition:width 0.8s cubic-bezier(0.4,0,0.2,1); }
 
-            /* Track This topic cards */
+            /* ── Track This topic cards ── */
             .cb-track-card {
-              padding:10px 12px;border-radius:var(--cb-radius-md);
-              background:var(--cb-bg2);border:1px solid var(--cb-border);
-              display:flex;align-items:center;gap:10px;cursor:pointer;transition:all 0.2s;
+              padding:12px 14px;border-radius:12px;
+              background:linear-gradient(135deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+              border:1px solid rgba(255,255,255,0.06);
+              display:flex;align-items:center;gap:10px;cursor:pointer;transition:all 0.22s;
             }
-            .cb-track-card:hover { border-color:color-mix(in srgb, var(--_agent-clr) 40%, transparent);background:color-mix(in srgb, var(--_agent-clr) 4%, var(--cb-bg2)); }
-            .cb-track-card-new { border-color:color-mix(in srgb, var(--_agent-clr) 30%, transparent);background:color-mix(in srgb, var(--_agent-clr) 6%, var(--cb-bg2)); }
-            .cb-track-indicator { width:6px;height:6px;border-radius:50%;flex-shrink:0; }
+            .cb-track-card:hover {
+              border-color:color-mix(in srgb, var(--_agent-clr) 35%, transparent);
+              background:color-mix(in srgb, var(--_agent-clr) 4%, rgba(255,255,255,0.02));
+              transform:translateX(2px);
+            }
+            .cb-track-card-new {
+              border-color:color-mix(in srgb, var(--_agent-clr) 30%, transparent);
+              background:color-mix(in srgb, var(--_agent-clr) 6%, rgba(255,255,255,0.02));
+            }
+            .cb-track-indicator { width:7px;height:7px;border-radius:50%;flex-shrink:0; }
             .cb-track-info { flex:1;min-width:0; }
             .cb-track-label { font-weight:600;font-size:11.5px;color:var(--cb-white);overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
-            .cb-track-meta { font-size:9.5px;color:var(--cb-subtext);margin-top:2px;display:flex;gap:6px;flex-wrap:wrap;align-items:center; }
+            .cb-track-meta { font-size:9.5px;color:var(--cb-subtext);margin-top:3px;display:flex;gap:6px;flex-wrap:wrap;align-items:center; }
             .cb-track-actions { display:flex;gap:4px;flex-shrink:0; }
-            .cb-track-btn { background:none;border:1px solid var(--cb-border);border-radius:var(--cb-radius-sm);color:var(--cb-subtext);cursor:pointer;font-size:10px;padding:4px 8px;transition:all 0.18s; }
-            .cb-track-btn:hover { border-color:var(--cb-accent-primary);color:var(--cb-white); }
+            .cb-track-btn {
+              background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);
+              border-radius:6px;color:var(--cb-subtext);cursor:pointer;font-size:10px;padding:4px 8px;transition:all 0.2s;
+            }
+            .cb-track-btn:hover { border-color:var(--_agent-clr, var(--cb-accent-primary));color:var(--cb-white); }
             .cb-track-btn-remove:hover { border-color:var(--cb-error);color:var(--cb-error); }
 
-            /* Bar chart */
-            .cb-agent-bar-row { display:flex;align-items:center;gap:8px;margin-bottom:5px; }
+            /* ── Sparkline (CSS-only mini bar chart) ── */
+            .cb-sparkline { display:flex;align-items:flex-end;gap:2px;height:18px;flex-shrink:0; }
+            .cb-sparkline-bar { width:4px;border-radius:1.5px;background:var(--_agent-clr, var(--cb-accent-primary));opacity:0.6;transition:height 0.3s;min-height:2px; }
+            .cb-sparkline-bar:last-child { opacity:1; }
+
+            /* ── Bar chart ── */
+            .cb-agent-bar-row { display:flex;align-items:center;gap:8px;margin-bottom:6px; }
             .cb-agent-bar-label { width:70px;font-size:10.5px;color:var(--cb-white);text-align:right;flex-shrink:0; }
-            .cb-agent-bar-track { flex:1;height:16px;background:var(--cb-bg3);border-radius:4px;overflow:hidden; }
-            .cb-agent-bar-fill { height:100%;border-radius:4px;transition:width 0.5s cubic-bezier(0.4,0,0.2,1); }
+            .cb-agent-bar-track { flex:1;height:18px;background:rgba(255,255,255,0.04);border-radius:6px;overflow:hidden; }
+            .cb-agent-bar-fill { height:100%;border-radius:6px;transition:width 0.6s cubic-bezier(0.4,0,0.2,1); }
             .cb-agent-bar-value { width:28px;font-size:10.5px;color:var(--cb-subtext);flex-shrink:0; }
 
-            /* Toggle group */
-            .cb-agent-toggle-group { display:flex;gap:0;border:1px solid var(--cb-border);border-radius:var(--cb-radius-sm);overflow:hidden; }
+            /* ── Toggle group ── */
+            .cb-agent-toggle-group { display:flex;gap:0;border:1px solid rgba(255,255,255,0.08);border-radius:10px;overflow:hidden;background:rgba(255,255,255,0.02); }
             .cb-agent-toggle {
-              flex:1;padding:7px 12px;background:transparent;border:none;
+              flex:1;padding:8px 12px;background:transparent;border:none;
               color:var(--cb-subtext);font-size:10.5px;font-family:inherit;
               cursor:pointer;transition:all 0.2s;text-align:center;
             }
-            .cb-agent-toggle:not(:last-child) { border-right:1px solid var(--cb-border); }
+            .cb-agent-toggle:not(:last-child) { border-right:1px solid rgba(255,255,255,0.06); }
             .cb-agent-toggle-active {
               background:color-mix(in srgb, var(--_agent-clr, var(--cb-accent-primary)) 15%, transparent);
               color:var(--_agent-clr, var(--cb-accent-primary));font-weight:600;
             }
+
+            /* ── Heatmap (7-day grid) ── */
+            .cb-heatmap { display:flex;gap:4px;margin:8px 0; }
+            .cb-heatmap-day {
+              flex:1;aspect-ratio:1;border-radius:4px;position:relative;
+              background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.04);
+              display:flex;flex-direction:column;align-items:center;justify-content:center;
+              transition:all 0.2s;
+            }
+            .cb-heatmap-day:hover { transform:scale(1.1);z-index:1; }
+            .cb-heatmap-label { font-size:7px;color:var(--cb-subtext);margin-top:2px; }
+            .cb-heatmap-val { font-size:9px;font-weight:700;color:var(--cb-white); }
+
+            /* ── Donut chart (conic-gradient) ── */
+            .cb-donut {
+              width:100px;height:100px;border-radius:50%;position:relative;
+              animation:cb-donut-reveal 0.5s cubic-bezier(0.2,0.8,0.2,1);
+            }
+            .cb-donut-hole {
+              position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+              width:60px;height:60px;border-radius:50%;
+              background:var(--cb-bg2, #0a0f1a);
+              display:flex;flex-direction:column;align-items:center;justify-content:center;
+            }
+            .cb-donut-total { font-size:16px;font-weight:700;color:var(--cb-white); }
+            .cb-donut-label { font-size:7px;color:var(--cb-subtext);text-transform:uppercase;letter-spacing:0.3px; }
+
+            /* ── Topic cloud ── */
+            .cb-topic-cloud { display:flex;flex-wrap:wrap;gap:6px;justify-content:center;padding:8px 0; }
+            .cb-topic-word {
+              padding:3px 8px;border-radius:6px;
+              background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);
+              color:var(--cb-white);transition:all 0.2s;cursor:default;
+            }
+            .cb-topic-word:hover { background:rgba(255,255,255,0.06);transform:scale(1.05); }
+
+            /* ── Comparison layout ── */
+            .cb-comparison { display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0; }
+            .cb-comparison-col {
+              padding:10px;border-radius:10px;font-size:11px;line-height:1.6;
+              background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);
+              max-height:200px;overflow-y:auto;
+            }
+            .cb-comparison-label {
+              font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.6px;
+              margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid rgba(255,255,255,0.06);
+            }
+
+            /* ── Confidence traffic light ── */
+            .cb-traffic-light { display:flex;align-items:center;gap:8px;margin-bottom:12px; }
+            .cb-traffic-dot {
+              width:12px;height:12px;border-radius:50%;
+              box-shadow:0 0 8px currentColor;
+            }
+            .cb-traffic-label { font-size:11px;font-weight:600; }
+
+            /* ── Timeline ── */
+            .cb-timeline { position:relative;padding-left:20px;margin:10px 0; }
+            .cb-timeline::before {
+              content:'';position:absolute;left:6px;top:0;bottom:0;width:2px;
+              background:linear-gradient(180deg, var(--_agent-clr, var(--cb-accent-primary)), rgba(255,255,255,0.04));
+              border-radius:1px;
+            }
+            .cb-timeline-item {
+              position:relative;padding:8px 0 12px 0;font-size:11px;color:var(--cb-white);
+            }
+            .cb-timeline-item::before {
+              content:'';position:absolute;left:-17px;top:11px;width:8px;height:8px;
+              border-radius:50%;border:2px solid var(--_agent-clr, var(--cb-accent-primary));
+              background:var(--cb-bg2, #0a0f1a);
+            }
+            .cb-timeline-time { font-size:9px;color:var(--cb-subtext);margin-bottom:2px; }
+            .cb-timeline-text { font-size:11px;line-height:1.5; }
+
+            /* ── Document stats ── */
+            .cb-doc-stats { display:flex;gap:12px;justify-content:center;margin:8px 0;flex-wrap:wrap; }
+            .cb-doc-stat { font-size:10px;color:var(--cb-subtext);display:flex;align-items:center;gap:3px; }
+            .cb-doc-stat-val { font-weight:700;color:var(--cb-white); }
           `;
           shadow.appendChild(agentStyles);
         }
@@ -12565,34 +14015,53 @@ Respond with JSON only:
           }
         ];
 
-        agents.forEach(agent => {
+        agents.forEach((agent, idx) => {
           const card = document.createElement('div');
           card.className = 'cb-ah-card';
           card.style.setProperty('--_agent-clr', agent.color);
+          // Accessibility
+          card.setAttribute('role', 'button');
+          card.setAttribute('tabindex', '0');
+          card.setAttribute('aria-label', `Open ${agent.name}: ${agent.desc}`);
 
           let badgeHtml = '';
           if (agent.ambient) {
             const count = __agentBadges[agent.id] || 0;
-            badgeHtml = `<div id="cb-agent-badge-${agent.id}" class="cb-ah-badge" style="display:${count > 0 ? 'flex' : 'none'};">${count || ''}</div>`;
+            if (count > 0) {
+              badgeHtml = `<div id="cb-agent-badge-${agent.id}" class="cb-ah-badge" style="display:flex;" aria-label="${count} new">${count}</div>`;
+            } else {
+              badgeHtml = `<div class="cb-ah-pulse-dot" aria-hidden="true"></div>`;
+            }
           }
 
           card.innerHTML = `
             ${badgeHtml}
-            <div class="cb-ah-icon">${agent.icon}</div>
+            <div class="cb-ah-icon" aria-hidden="true">${agent.icon}</div>
             <div class="cb-ah-name">${agent.name}</div>
             <div class="cb-ah-desc">${agent.desc}</div>
           `;
 
-          card.addEventListener('click', async () => {
+          const activateAgent = async () => {
             card.style.transform = 'scale(0.96)';
             setTimeout(() => { card.style.transform = ''; }, 150);
             try {
               agentsGrid.style.display = 'none';
               outputArea.style.display = 'block';
+              outputArea.setAttribute('aria-busy', 'true');
               await agent.action();
+              outputArea.setAttribute('aria-busy', 'false');
             } catch (e) {
-              toast(`${agent.name} failed`);
+              outputArea.setAttribute('aria-busy', 'false');
+              renderAgentError(outputArea, e.message || `${agent.name} failed`, () => activateAgent());
               debugLog(`${agent.name} error`, e);
+            }
+          };
+
+          card.addEventListener('click', activateAgent);
+          card.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              activateAgent();
             }
           });
 
@@ -12605,7 +14074,23 @@ Respond with JSON only:
         const outputArea = document.createElement('div');
         outputArea.id = 'cb-agent-output';
         outputArea.style.cssText = 'display:none;';
+        outputArea.setAttribute('role', 'region');
+        outputArea.setAttribute('aria-label', 'Agent output');
+        outputArea.setAttribute('aria-live', 'polite');
         mainContainer.appendChild(outputArea);
+
+        // Escape key → return to agent grid
+        const handleEscape = (e) => {
+          if (e.key === 'Escape' && outputArea.style.display !== 'none') {
+            outputArea.style.display = 'none';
+            outputArea.innerHTML = '';
+            agentsGrid.style.display = 'grid';
+            // Return focus to first card
+            const firstCard = agentsGrid.querySelector('.cb-ah-card');
+            if (firstCard) firstCard.focus();
+          }
+        };
+        shadow.addEventListener('keydown', handleEscape);
 
         agentContent.appendChild(mainContainer);
         debugLog('Agent Hub rendered successfully');
@@ -12626,17 +14111,27 @@ Respond with JSON only:
       const outputArea = (agentContent && agentContent.querySelector('#cb-agent-output')) || (shadow && shadow.getElementById && shadow.getElementById('cb-agent-output'));
       if (!outputArea) return;
 
+      outputArea.style.setProperty('--_agent-clr', '#00D4FF');
       outputArea.innerHTML = `
-        <div style="margin-bottom:8px;">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-            <div style="width:24px;height:24px;background:rgba(0,212,255,0.15);border:1px solid rgba(0,212,255,0.25);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;">◈</div>
-            <div style="font-weight:600;font-size:13px;color:var(--cb-white);">Catch Me Up</div>
+        <div class="cb-agent-sub">
+          <div class="cb-agent-header">
+            <button class="cb-agent-back" aria-label="Go back to agent list" tabindex="0" id="cb-catchmeup-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>Back</button>
+            <div class="cb-agent-header-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+            <div class="cb-agent-header-title">Catch Me Up</div>
           </div>
-          <div style="font-size:11px;color:var(--cb-subtext);margin-bottom:10px;">Your personalized briefing of what happened across all platforms since you were last here.</div>
-          <button id="cb-catchmeup-run" class="cb-btn cb-btn-primary" style="width:100%;">Generate Briefing</button>
+          <div class="cb-agent-desc">Your personalized briefing of what happened across all platforms since you were last here.</div>
+          <button id="cb-catchmeup-run" class="cb-agent-btn-primary">Generate Briefing</button>
+          <div id="cb-catchmeup-result" style="display:none;margin-top:14px;"></div>
         </div>
-        <div id="cb-catchmeup-result" style="display:none;"></div>
       `;
+
+      // Back button
+      outputArea.querySelector('#cb-catchmeup-back').addEventListener('click', () => {
+        const grid = shadow.getElementById('cb-agents-grid');
+        if (grid) grid.style.display = '';
+        outputArea.style.display = 'none';
+        outputArea.innerHTML = '';
+      });
 
       const runBtn = outputArea.querySelector('#cb-catchmeup-run');
       const resultDiv = outputArea.querySelector('#cb-catchmeup-result');
@@ -12645,26 +14140,30 @@ Respond with JSON only:
         runBtn.disabled = true;
         runBtn.textContent = 'Analyzing your activity...';
         resultDiv.style.display = 'block';
-        resultDiv.innerHTML = '<div style="text-align:center;padding:16px;"><div class="cb-spinner" style="display:inline-block;"></div><div style="margin-top:8px;font-size:11px;color:var(--cb-subtext);">Scanning across all platforms...</div></div>';
+        resultDiv.innerHTML = `
+          <div class="cb-agent-loading">
+            <div class="cb-agent-skeleton cb-agent-skeleton-lg"></div>
+            <div class="cb-agent-skeleton cb-agent-skeleton-md"></div>
+            <div class="cb-agent-skeleton cb-agent-skeleton-sm"></div>
+            <div class="cb-agent-loading-text">Scanning across all platforms...</div>
+          </div>`;
 
         try {
           const catchState = await StorageManager.getAgentCatchMeUp();
           const convos = await StorageManager.getConversations();
 
           if (!convos || convos.length === 0) {
-            resultDiv.innerHTML = '<div style="padding:12px;color:var(--cb-subtext);text-align:center;">No saved conversations yet. Scan some chats first!</div>';
+            resultDiv.innerHTML = '<div class="cb-agent-empty">No saved conversations yet. Scan some chats first!</div>';
             runBtn.disabled = false;
             runBtn.textContent = 'Generate Briefing';
             return;
           }
 
-          // Find conversations since last briefing (or all if first time)
           const lastBriefed = catchState.lastBriefedAt || 0;
           const newConvos = lastBriefed > 0 ? convos.filter(c => c.ts > lastBriefed) : convos.slice(0, 10);
           const hasNew = newConvos.length > 0;
           const targetConvos = hasNew ? newConvos : convos.slice(0, 5);
 
-          // Build context from conversations
           const convoSummaries = targetConvos.map((c, i) => {
             const msgs = c.conversation || [];
             const userMsgs = msgs.filter(m => m.role === 'user').map(m => m.text).join(' ').slice(0, 300);
@@ -12702,20 +14201,40 @@ The single most important thing the user should address now, and why.
 
 Keep it concise. Use bullet points. Include platform names in brackets like [ChatGPT] or [Claude]. Be specific — reference actual topics discussed.`;
 
-          const res = await callAgentRoute(prompt, { complexity: 'deep', maxTokens: 1200 });
+          const res = await callAgentRouteWithRetry(prompt, { complexity: 'deep', maxTokens: 1200 });
 
           if (res && res.ok && res.result) {
+            // Build stats
+            const platforms = [...new Set(targetConvos.map(c => (c.platform || 'unknown').replace(/^www\./, '').split('.')[0]))];
+            const oldest = targetConvos.reduce((min, c) => c.ts < min ? c.ts : min, Date.now());
+            const timeRange = getTimeAgo(oldest);
+
+            // Build timeline
+            const timelineHtml = targetConvos.slice(0, 6).map(c => {
+              const p = (c.platform || 'unknown').replace(/^www\./, '').split('.')[0];
+              const firstMsg = (c.conversation || []).find(m => m.role === 'user');
+              const snippet = firstMsg ? (firstMsg.text || '').slice(0, 60) + ((firstMsg.text || '').length > 60 ? '...' : '') : 'No user message';
+              return `<div class="cb-timeline-item">
+                <div class="cb-timeline-time">${getTimeAgo(c.ts)} · <span class="cb-agent-platform-tag">${escapeHtml(p)}</span></div>
+                <div class="cb-timeline-text">${escapeHtml(snippet)}</div>
+              </div>`;
+            }).join('');
+
             const formattedResult = formatAgentMarkdown(res.result);
             resultDiv.innerHTML = `
-              <div style="white-space:pre-wrap;line-height:1.6;font-size:12px;">${formattedResult}</div>
-              <div style="display:flex;gap:6px;margin-top:10px;">
-                <button id="cb-catchmeup-copy" class="cb-btn" style="flex:1;font-size:11px;">Copy Briefing</button>
-                <button id="cb-catchmeup-insert" class="cb-btn cb-btn-primary" style="flex:1;font-size:11px;">Insert to Chat</button>
+              <div class="cb-agent-stats">
+                <div class="cb-agent-stat"><div class="cb-agent-stat-val">${targetConvos.length}</div><div class="cb-agent-stat-label">Conversations</div></div>
+                <div class="cb-agent-stat"><div class="cb-agent-stat-val">${platforms.length}</div><div class="cb-agent-stat-label">Platforms</div></div>
               </div>
-              <div style="font-size:9px;color:var(--cb-subtext);margin-top:6px;text-align:center;">Powered by ${res.model_used || 'AI'} · ${res.latency_ms || 0}ms</div>
+              <div class="cb-agent-result-section"><div class="cb-agent-result-body">${formattedResult}</div></div>
+              ${timelineHtml ? `<div class="cb-agent-result-section"><div class="cb-agent-result-header">📋 Source Conversations</div><div class="cb-timeline">${timelineHtml}</div></div>` : ''}
+              <div class="cb-agent-action-row">
+                <button id="cb-catchmeup-copy" class="cb-agent-btn-secondary">Copy Briefing</button>
+                <button id="cb-catchmeup-insert" class="cb-agent-btn-primary">Insert to Chat</button>
+              </div>
+              <div class="cb-agent-meta">Powered by ${res.model_used || 'AI'} · ${res.latency_ms || 0}ms · since ${timeRange}</div>
             `;
 
-            // Wire buttons
             const copyBtn = resultDiv.querySelector('#cb-catchmeup-copy');
             const insertBtn = resultDiv.querySelector('#cb-catchmeup-insert');
             if (copyBtn) copyBtn.addEventListener('click', async () => {
@@ -12725,16 +14244,15 @@ Keep it concise. Use bullet points. Include platform names in brackets like [Cha
               try { insertTextToChat(res.result); toast('Inserted!'); } catch (_) { toast('Insert failed'); }
             });
 
-            // Update last briefed timestamp
             await StorageManager.setAgentCatchMeUp({ lastBriefedAt: Date.now(), unreadCount: 0 });
             __agentBadges.catchmeup = 0;
             updateAgentBadgeUI();
             toast('Briefing ready!');
           } else {
-            resultDiv.innerHTML = `<div style="padding:12px;color:rgba(255,100,100,0.9);">Failed to generate briefing: ${res && res.error ? res.error : 'Unknown error'}. Check your API keys in Options.</div>`;
+            resultDiv.innerHTML = `<div class="cb-agent-error">Failed to generate briefing: ${res && res.error ? res.error : 'Unknown error'}. Check your API keys in Options.</div>`;
           }
         } catch (e) {
-          resultDiv.innerHTML = `<div style="padding:12px;color:rgba(255,100,100,0.9);">Error: ${e.message || 'Unknown error'}</div>`;
+          resultDiv.innerHTML = `<div class="cb-agent-error">Error: ${e.message || 'Unknown error'}</div>`;
           debugLog('Catch Me Up error', e);
         } finally {
           runBtn.disabled = false;
@@ -12751,22 +14269,32 @@ Keep it concise. Use bullet points. Include platform names in brackets like [Cha
       const outputArea = (agentContent && agentContent.querySelector('#cb-agent-output')) || (shadow && shadow.getElementById && shadow.getElementById('cb-agent-output'));
       if (!outputArea) return;
 
+      outputArea.style.setProperty('--_agent-clr', '#10B981');
       outputArea.innerHTML = `
-        <div style="margin-bottom:8px;">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-            <div style="width:24px;height:24px;background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.25);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;">◆</div>
-            <div style="font-weight:600;font-size:13px;color:var(--cb-white);">Prepare Me</div>
+        <div class="cb-agent-sub">
+          <div class="cb-agent-header">
+            <button class="cb-agent-back" aria-label="Go back to agent list" tabindex="0" id="cb-prep-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>Back</button>
+            <div class="cb-agent-header-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div>
+            <div class="cb-agent-header-title">Prepare Me</div>
           </div>
-          <div style="font-size:11px;color:var(--cb-subtext);margin-bottom:8px;">Tell me what you're preparing for and I'll assemble a ready-to-use prep pack from your conversation history.</div>
+          <div class="cb-agent-desc">Tell me what you're preparing for and I'll assemble a ready-to-use prep pack from your conversation history.</div>
 
-          <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px;" id="cb-prep-chips"></div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;" id="cb-prep-chips"></div>
 
-          <input type="text" id="cb-prep-task" class="cb-input" placeholder="E.g., Meeting about project X, Job interview, Study session..." style="width:100%;margin-bottom:6px;box-sizing:border-box;" />
-          <input type="text" id="cb-prep-details" class="cb-input" placeholder="Optional: specific names, topics, dates..." style="width:100%;margin-bottom:8px;box-sizing:border-box;" />
-          <button id="cb-prep-run" class="cb-btn cb-btn-primary" style="width:100%;">Build Prep Pack</button>
+          <input type="text" id="cb-prep-task" class="cb-agent-input" placeholder="E.g., Meeting about project X, Job interview, Study session..." style="margin-bottom:8px;" />
+          <input type="text" id="cb-prep-details" class="cb-agent-input" placeholder="Optional: specific names, topics, dates..." style="margin-bottom:10px;" />
+          <button id="cb-prep-run" class="cb-agent-btn-primary">Build Prep Pack</button>
+          <div id="cb-prep-result" style="display:none;margin-top:14px;"></div>
         </div>
-        <div id="cb-prep-result" style="display:none;"></div>
       `;
+
+      // Back button
+      outputArea.querySelector('#cb-prep-back').addEventListener('click', () => {
+        const grid = shadow.getElementById('cb-agents-grid');
+        if (grid) grid.style.display = '';
+        outputArea.style.display = 'none';
+        outputArea.innerHTML = '';
+      });
 
       // Suggestion chips
       const chipsContainer = outputArea.querySelector('#cb-prep-chips');
@@ -12774,11 +14302,13 @@ Keep it concise. Use bullet points. Include platform names in brackets like [Cha
       const chips = ['Meeting', 'Email', 'Proposal', 'Study Session', 'Presentation', 'Job Interview'];
       chips.forEach(label => {
         const chip = document.createElement('span');
-        chip.style.cssText = 'padding:3px 8px;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.2);border-radius:4px;font-size:10px;color:var(--cb-white);cursor:pointer;transition:all 0.15s;';
+        chip.className = 'cb-agent-chip';
         chip.textContent = label;
-        chip.addEventListener('click', () => { taskInput.value = label; });
-        chip.addEventListener('mouseenter', () => { chip.style.background = 'rgba(16,185,129,0.2)'; });
-        chip.addEventListener('mouseleave', () => { chip.style.background = 'rgba(16,185,129,0.1)'; });
+        chip.addEventListener('click', () => {
+          chipsContainer.querySelectorAll('.cb-agent-chip').forEach(c => c.classList.remove('cb-agent-chip-active'));
+          chip.classList.add('cb-agent-chip-active');
+          taskInput.value = label;
+        });
         chipsContainer.appendChild(chip);
       });
 
@@ -12793,15 +14323,19 @@ Keep it concise. Use bullet points. Include platform names in brackets like [Cha
         runBtn.disabled = true;
         runBtn.textContent = 'Assembling prep pack...';
         resultDiv.style.display = 'block';
-        resultDiv.innerHTML = '<div style="text-align:center;padding:16px;"><div class="cb-spinner" style="display:inline-block;"></div><div style="margin-top:8px;font-size:11px;color:var(--cb-subtext);">Searching your conversation history...</div></div>';
+        resultDiv.innerHTML = `
+          <div class="cb-agent-loading">
+            <div class="cb-agent-skeleton cb-agent-skeleton-lg"></div>
+            <div class="cb-agent-skeleton cb-agent-skeleton-md"></div>
+            <div class="cb-agent-skeleton cb-agent-skeleton-sm"></div>
+            <div class="cb-agent-loading-text">Searching your conversation history...</div>
+          </div>`;
 
         try {
-          // Search memory for relevant conversations
           const convos = await StorageManager.getConversations();
           const details = detailsInput.value.trim();
           const searchTerms = (task + ' ' + details).toLowerCase().split(/\s+/).filter(w => w.length > 2);
 
-          // Score and rank conversations by relevance
           const scored = convos.map(c => {
             const text = (c.conversation || []).map(m => m.text || '').join(' ').toLowerCase();
             let score = 0;
@@ -12812,7 +14346,6 @@ Keep it concise. Use bullet points. Include platform names in brackets like [Cha
             return { conv: c, score };
           }).filter(s => s.score > 0).sort((a, b) => b.score - a.score).slice(0, 8);
 
-          // Build context from relevant conversations
           let contextBlock = '';
           if (scored.length > 0) {
             contextBlock = scored.map((s, i) => {
@@ -12852,17 +14385,32 @@ Key facts, numbers, names, deadlines, or links mentioned across conversations.
 
 Make it scannable, actionable, and ready to use immediately. Be specific — reference actual content from their conversations.`;
 
-          const res = await callAgentRoute(prompt, { complexity: 'deep', maxTokens: 1400 });
+          const res = await callAgentRouteWithRetry(prompt, { complexity: 'deep', maxTokens: 1400 });
 
           if (res && res.ok && res.result) {
+            // Build sources list
+            const sourcesHtml = scored.length > 0 ? scored.slice(0, 5).map(s => {
+              const p = (s.conv.platform || 'unknown').replace(/^www\./, '').split('.')[0];
+              return `<div style="display:flex;align-items:center;gap:6px;padding:4px 0;font-size:10.5px;">
+                <span class="cb-agent-platform-tag">${escapeHtml(p)}</span>
+                <span style="color:var(--cb-white);">${getTimeAgo(s.conv.ts)}</span>
+                <span style="color:var(--cb-subtext);font-size:9px;">score: ${s.score}</span>
+              </div>`;
+            }).join('') : '<div style="font-size:10px;color:var(--cb-subtext);">General guidance (no matching conversations)</div>';
+
             const formattedResult = formatAgentMarkdown(res.result);
             resultDiv.innerHTML = `
-              <div style="white-space:pre-wrap;line-height:1.6;font-size:12px;">${formattedResult}</div>
-              <div style="display:flex;gap:6px;margin-top:10px;">
-                <button id="cb-prep-copy" class="cb-btn" style="flex:1;font-size:11px;">Copy Pack</button>
-                <button id="cb-prep-insert" class="cb-btn cb-btn-primary" style="flex:1;font-size:11px;">Insert to Chat</button>
+              <div class="cb-agent-stats">
+                <div class="cb-agent-stat"><div class="cb-agent-stat-val">${scored.length}</div><div class="cb-agent-stat-label">Sources Found</div></div>
+                <div class="cb-agent-stat"><div class="cb-agent-stat-val">5</div><div class="cb-agent-stat-label">Sections</div></div>
               </div>
-              <div style="font-size:9px;color:var(--cb-subtext);margin-top:6px;text-align:center;">Based on ${scored.length} relevant conversation${scored.length !== 1 ? 's' : ''} · ${res.model_used || 'AI'} · ${res.latency_ms || 0}ms</div>
+              <div class="cb-agent-result-section"><div class="cb-agent-result-body">${formattedResult}</div></div>
+              <div class="cb-agent-result-section"><div class="cb-agent-result-header">📎 Sources</div>${sourcesHtml}</div>
+              <div class="cb-agent-action-row">
+                <button id="cb-prep-copy" class="cb-agent-btn-secondary">Copy Pack</button>
+                <button id="cb-prep-insert" class="cb-agent-btn-primary">Insert to Chat</button>
+              </div>
+              <div class="cb-agent-meta">Based on ${scored.length} conversation${scored.length !== 1 ? 's' : ''} · ${res.model_used || 'AI'} · ${res.latency_ms || 0}ms</div>
             `;
 
             const copyBtn = resultDiv.querySelector('#cb-prep-copy');
@@ -12875,10 +14423,10 @@ Make it scannable, actionable, and ready to use immediately. Be specific — ref
             });
             toast('Prep pack ready!');
           } else {
-            resultDiv.innerHTML = `<div style="padding:12px;color:rgba(255,100,100,0.9);">Failed: ${res && res.error ? res.error : 'Unknown error'}</div>`;
+            resultDiv.innerHTML = `<div class="cb-agent-error">Failed: ${res && res.error ? res.error : 'Unknown error'}</div>`;
           }
         } catch (e) {
-          resultDiv.innerHTML = `<div style="padding:12px;color:rgba(255,100,100,0.9);">Error: ${e.message || 'Unknown error'}</div>`;
+          resultDiv.innerHTML = `<div class="cb-agent-error">Error: ${e.message || 'Unknown error'}</div>`;
           debugLog('Prepare Me error', e);
         } finally {
           runBtn.disabled = false;
@@ -12895,74 +14443,88 @@ Make it scannable, actionable, and ready to use immediately. Be specific — ref
       const outputArea = (agentContent && agentContent.querySelector('#cb-agent-output')) || (shadow && shadow.getElementById && shadow.getElementById('cb-agent-output'));
       if (!outputArea) return;
 
-      // Load current tracked topics
       const topics = await StorageManager.getTrackedTopics();
 
+      outputArea.style.setProperty('--_agent-clr', '#8B5CF6');
       outputArea.innerHTML = `
-        <div style="margin-bottom:8px;">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-            <div style="width:24px;height:24px;background:rgba(139,92,246,0.15);border:1px solid rgba(139,92,246,0.25);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;">◇</div>
-            <div style="font-weight:600;font-size:13px;color:var(--cb-white);">Track This</div>
+        <div class="cb-agent-sub">
+          <div class="cb-agent-header">
+            <button class="cb-agent-back" aria-label="Go back to agent list" tabindex="0" id="cb-track-goback"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>Back</button>
+            <div class="cb-agent-header-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></div>
+            <div class="cb-agent-header-title">Track This</div>
           </div>
-          <div style="font-size:11px;color:var(--cb-subtext);margin-bottom:8px;">Pin any topic and ChatBridge will track it across all your AI conversations. Get notified when it comes up again.</div>
+          <div class="cb-agent-desc">Pin any topic and ChatBridge will track it across all your AI conversations. Get notified when it comes up again.</div>
 
-          <div style="display:flex;gap:6px;margin-bottom:8px;">
-            <input type="text" id="cb-track-input" class="cb-input" placeholder="Topic to track (e.g., budget review, React hooks)" style="flex:1;box-sizing:border-box;" />
-            <button id="cb-track-add" class="cb-btn cb-btn-primary" style="white-space:nowrap;font-size:11px;">+ Track</button>
+          <div style="display:flex;gap:6px;margin-bottom:12px;">
+            <input type="text" id="cb-track-input" class="cb-agent-input" placeholder="Topic to track (e.g., budget review, React hooks)" style="flex:1;margin-bottom:0;" />
+            <button id="cb-track-add" class="cb-agent-btn-primary" style="white-space:nowrap;padding:0 14px;">+ Track</button>
           </div>
+
+          <div id="cb-track-list" style="display:flex;flex-direction:column;gap:8px;"></div>
+          <div id="cb-track-detail" style="display:none;"></div>
         </div>
-
-        <div id="cb-track-list" style="display:flex;flex-direction:column;gap:6px;"></div>
-        <div id="cb-track-detail" style="display:none;"></div>
       `;
+
+      // Back button
+      outputArea.querySelector('#cb-track-goback').addEventListener('click', () => {
+        const grid = shadow.getElementById('cb-agents-grid');
+        if (grid) grid.style.display = '';
+        outputArea.style.display = 'none';
+        outputArea.innerHTML = '';
+      });
 
       const trackInput = outputArea.querySelector('#cb-track-input');
       const addBtn = outputArea.querySelector('#cb-track-add');
       const listDiv = outputArea.querySelector('#cb-track-list');
       const detailDiv = outputArea.querySelector('#cb-track-detail');
 
-      // Render tracked topics list
       function renderTopicsList(topicsArr) {
         if (!topicsArr || topicsArr.length === 0) {
-          listDiv.innerHTML = '<div style="text-align:center;padding:16px;color:var(--cb-subtext);font-size:11px;">No topics tracked yet. Add one above!</div>';
+          listDiv.innerHTML = '<div class="cb-agent-empty">No topics tracked yet. Add one above!</div>';
           return;
         }
         listDiv.innerHTML = '';
         topicsArr.forEach(topic => {
           const card = document.createElement('div');
+          card.className = 'cb-track-card';
           const hasActivity = topic.lastActivity > (topic.lastViewedAt || 0);
-          card.style.cssText = `
-            padding:8px 10px;
-            background:${hasActivity ? 'rgba(139,92,246,0.08)' : 'rgba(255,255,255,0.02)'};
-            border:1px solid ${hasActivity ? 'rgba(139,92,246,0.25)' : 'rgba(255,255,255,0.06)'};
-            border-radius:6px;display:flex;align-items:center;gap:8px;cursor:pointer;
-            transition:all 0.15s;
-          `;
+          if (hasActivity) card.classList.add('cb-track-card-active');
           const platforms = (topic.platforms || []).map(p => p.replace(/^www\./, '').split('.')[0]).join(', ') || 'no hits yet';
           const lastSeen = topic.lastActivity ? getTimeAgo(topic.lastActivity) : 'never';
+
+          // Build simple sparkline from hit count
+          const hitCount = topic.hitCount || 0;
+          const sparkBars = Math.min(hitCount, 7);
+          let sparkHtml = '';
+          if (sparkBars > 0) {
+            sparkHtml = '<div class="cb-sparkline" style="margin-top:4px;">';
+            for (let i = 0; i < 7; i++) {
+              const h = i < sparkBars ? Math.max(30, Math.min(100, 30 + (hitCount / 7) * (i + 1) * 5)) : 10;
+              sparkHtml += `<div class="cb-sparkline-bar" style="height:${h}%;opacity:${i < sparkBars ? 0.9 : 0.2};"></div>`;
+            }
+            sparkHtml += '</div>';
+          }
+
           card.innerHTML = `
-            <div style="flex:1;">
-              <div style="font-weight:600;font-size:11px;color:var(--cb-white);">${escapeHtml(topic.label)}</div>
-              <div style="font-size:9px;color:var(--cb-subtext);margin-top:2px;">
-                ${hasActivity ? '<span style="color:rgba(139,92,246,0.9);">● new</span> · ' : ''}${topic.hitCount || 0} hits · ${platforms} · ${lastSeen}
+            <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
+              <div style="flex:1;min-width:0;">
+                <div class="cb-track-card-name">${hasActivity ? '<span style="color:#8B5CF6;margin-right:4px;">●</span>' : ''}${escapeHtml(topic.label)}</div>
+                <div class="cb-track-card-meta">${topic.hitCount || 0} hits · ${platforms} · ${lastSeen}</div>
+                ${sparkHtml}
+              </div>
+              <div style="display:flex;gap:4px;">
+                <button class="cb-track-view cb-agent-btn-secondary" style="padding:4px 8px;font-size:9px;" data-id="${topic.id}">View</button>
+                <button class="cb-track-remove cb-agent-btn-secondary" style="padding:4px 8px;font-size:9px;color:rgba(255,100,100,0.8);" data-id="${topic.id}">×</button>
               </div>
             </div>
-            <div style="display:flex;gap:4px;">
-              <button class="cb-track-view cb-btn" style="padding:3px 6px;font-size:9px;" data-id="${topic.id}">View</button>
-              <button class="cb-track-remove cb-btn" style="padding:3px 6px;font-size:9px;color:rgba(255,100,100,0.8);" data-id="${topic.id}">×</button>
-            </div>
           `;
-          card.addEventListener('mouseenter', () => { card.style.background = 'rgba(255,255,255,0.04)'; });
-          card.addEventListener('mouseleave', () => { card.style.background = hasActivity ? 'rgba(139,92,246,0.08)' : 'rgba(255,255,255,0.02)'; });
           listDiv.appendChild(card);
         });
 
-        // Wire view/remove buttons
         listDiv.querySelectorAll('.cb-track-view').forEach(btn => {
           btn.addEventListener('click', async (e) => {
             e.stopPropagation();
-            const topicId = btn.getAttribute('data-id');
-            await showTopicDetail(topicId);
+            await showTopicDetail(btn.getAttribute('data-id'));
           });
         });
         listDiv.querySelectorAll('.cb-track-remove').forEach(btn => {
@@ -12977,23 +14539,25 @@ Make it scannable, actionable, and ready to use immediately. Be specific — ref
         });
       }
 
-      // Show detail view for a tracked topic
       async function showTopicDetail(topicId) {
         const allTopics = await StorageManager.getTrackedTopics();
         const topic = allTopics.find(t => t.id === topicId);
         if (!topic) return;
 
-        // Mark as viewed
         topic.lastViewedAt = Date.now();
         await StorageManager.setTrackedTopics(allTopics);
         await checkAgentBadges();
 
         listDiv.style.display = 'none';
         detailDiv.style.display = 'block';
-        detailDiv.innerHTML = '<div style="text-align:center;padding:16px;"><div class="cb-spinner" style="display:inline-block;"></div><div style="margin-top:8px;font-size:11px;color:var(--cb-subtext);">Analyzing topic across platforms...</div></div>';
+        detailDiv.innerHTML = `
+          <div class="cb-agent-loading">
+            <div class="cb-agent-skeleton cb-agent-skeleton-lg"></div>
+            <div class="cb-agent-skeleton cb-agent-skeleton-md"></div>
+            <div class="cb-agent-loading-text">Analyzing topic across platforms...</div>
+          </div>`;
 
         try {
-          // Search conversations for this topic
           const convos = await StorageManager.getConversations();
           const keywords = topic.keywords || [topic.label.toLowerCase()];
           const relevant = convos.filter(c => {
@@ -13036,19 +14600,25 @@ One specific, actionable recommendation.
 
 Be concise and specific. Reference actual content from conversations.`;
 
-          const res = await callAgentRoute(prompt, { complexity: 'deep', maxTokens: 1000 });
+          const res = await callAgentRouteWithRetry(prompt, { complexity: 'deep', maxTokens: 1000 });
 
           if (res && res.ok && res.result) {
             const formatted = formatAgentMarkdown(res.result);
             detailDiv.innerHTML = `
-              <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-                <button id="cb-track-back" class="cb-btn" style="padding:3px 8px;font-size:11px;">← Back</button>
-                <div style="font-weight:600;font-size:12px;color:var(--cb-white);">${escapeHtml(topic.label)}</div>
+              <div class="cb-agent-header" style="margin-bottom:10px;">
+                <button id="cb-track-back" class="cb-agent-back" aria-label="Go back to agent list" tabindex="0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>Back</button>
+                <div class="cb-agent-header-title">${escapeHtml(topic.label)}</div>
               </div>
-              <div style="white-space:pre-wrap;line-height:1.6;font-size:12px;">${formatted}</div>
-              <div style="display:flex;gap:6px;margin-top:10px;">
-                <button id="cb-track-copy" class="cb-btn" style="flex:1;font-size:11px;">Copy Report</button>
+              <div class="cb-agent-stats">
+                <div class="cb-agent-stat"><div class="cb-agent-stat-val">${topic.hitCount || 0}</div><div class="cb-agent-stat-label">Total Hits</div></div>
+                <div class="cb-agent-stat"><div class="cb-agent-stat-val">${relevant.length}</div><div class="cb-agent-stat-label">Conversations</div></div>
+                <div class="cb-agent-stat"><div class="cb-agent-stat-val">${(topic.platforms || []).length}</div><div class="cb-agent-stat-label">Platforms</div></div>
               </div>
+              <div class="cb-agent-result-section"><div class="cb-agent-result-body">${formatted}</div></div>
+              <div class="cb-agent-action-row">
+                <button id="cb-track-copy" class="cb-agent-btn-secondary">Copy Report</button>
+              </div>
+              <div class="cb-agent-meta">Tracked since ${getTimeAgo(topic.createdAt)} · ${res.model_used || 'AI'} · ${res.latency_ms || 0}ms</div>
             `;
             detailDiv.querySelector('#cb-track-back').addEventListener('click', () => {
               detailDiv.style.display = 'none';
@@ -13059,15 +14629,15 @@ Be concise and specific. Reference actual content from conversations.`;
               try { await navigator.clipboard.writeText(res.result); toast('Report copied!'); } catch (_) { toast('Copy failed'); }
             });
           } else {
-            detailDiv.innerHTML = `<div style="padding:12px;color:rgba(255,100,100,0.9);">Failed: ${res && res.error ? res.error : 'Unknown error'}</div>
-              <button id="cb-track-back2" class="cb-btn" style="margin-top:8px;">← Back</button>`;
+            detailDiv.innerHTML = `<div class="cb-agent-error">Failed: ${res && res.error ? res.error : 'Unknown error'}</div>
+              <button id="cb-track-back2" class="cb-agent-btn-secondary" style="margin-top:8px;">← Back</button>`;
             detailDiv.querySelector('#cb-track-back2').addEventListener('click', () => {
               detailDiv.style.display = 'none';
               listDiv.style.display = 'flex';
             });
           }
         } catch (e) {
-          detailDiv.innerHTML = `<div style="padding:12px;color:rgba(255,100,100,0.9);">Error: ${e.message}</div>`;
+          detailDiv.innerHTML = `<div class="cb-agent-error">Error: ${e.message}</div>`;
           debugLog('Track This detail error', e);
         }
       }
@@ -13082,8 +14652,7 @@ Be concise and specific. Reference actual content from conversations.`;
         addBtn.textContent = 'Adding...';
 
         try {
-          // Extract keywords via Llama (fast)
-          const kwRes = await callAgentRoute(
+          const kwRes = await callAgentRouteWithRetry(
             `Extract 3-5 search keywords from this topic for matching in conversations. Return ONLY a JSON array of lowercase strings, nothing else.\n\nTopic: "${label}"`,
             { model: 'llama', maxTokens: 100, temperature: 0.2 }
           );
@@ -13094,7 +14663,6 @@ Be concise and specific. Reference actual content from conversations.`;
               const parsed = JSON.parse(kwRes.result.replace(/```json?\n?/g, '').replace(/```/g, '').trim());
               if (Array.isArray(parsed)) keywords = [...new Set([label.toLowerCase(), ...parsed.map(k => String(k).toLowerCase())])];
             } catch (_) {
-              // Fallback: split on common separators
               keywords = [...new Set([label.toLowerCase(), ...label.toLowerCase().split(/[\s,]+/).filter(w => w.length > 2)])];
             }
           }
@@ -13127,6 +14695,9 @@ Be concise and specific. Reference actual content from conversations.`;
       renderTopicsList(topics);
     }
 
+
+
+
     // ============================================
     // AGENT 4: SECOND OPINION — Multi-Model Verification
     // "Verify any AI answer" — cross-check with a different model
@@ -13135,41 +14706,51 @@ Be concise and specific. Reference actual content from conversations.`;
       const outputArea = (agentContent && agentContent.querySelector('#cb-agent-output')) || (shadow && shadow.getElementById && shadow.getElementById('cb-agent-output'));
       if (!outputArea) return;
 
+      outputArea.style.setProperty('--_agent-clr', '#F59E0B');
       outputArea.innerHTML = `
-        <div style="margin-bottom:8px;">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-            <div style="width:24px;height:24px;background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.25);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;">▣</div>
-            <div style="font-weight:600;font-size:13px;color:var(--cb-white);">Second Opinion</div>
+        <div class="cb-agent-sub">
+          <div class="cb-agent-header">
+            <button class="cb-agent-back" aria-label="Go back to agent list" tabindex="0" id="cb-so-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>Back</button>
+            <div class="cb-agent-header-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg></div>
+            <div class="cb-agent-header-title">Second Opinion</div>
           </div>
-          <div style="font-size:11px;color:var(--cb-subtext);margin-bottom:8px;">Cross-check any AI answer with a different model. Get a confidence score and see what might be wrong or missing.</div>
+          <div class="cb-agent-desc">Cross-check any AI answer with a different model. Get a confidence score and see what might be wrong or missing.</div>
 
-          <div style="display:flex;gap:6px;margin-bottom:8px;">
-            <button id="cb-so-auto" class="cb-btn cb-btn-primary" style="flex:1;font-size:10px;">Auto-detect last answer</button>
-            <button id="cb-so-paste" class="cb-btn" style="flex:1;font-size:10px;">Paste an answer</button>
-          </div>
-
-          <div id="cb-so-paste-area" style="display:none;margin-bottom:8px;">
-            <textarea id="cb-so-question" class="cb-textarea" placeholder="Original question..." style="width:100%;min-height:40px;margin-bottom:4px;box-sizing:border-box;"></textarea>
-            <textarea id="cb-so-answer" class="cb-textarea" placeholder="AI answer to verify..." style="width:100%;min-height:80px;box-sizing:border-box;"></textarea>
+          <div style="display:flex;gap:6px;margin-bottom:10px;">
+            <button id="cb-so-auto" class="cb-agent-btn-primary" style="flex:1;font-size:10px;">Auto-detect last answer</button>
+            <button id="cb-so-paste" class="cb-agent-btn-secondary" style="flex:1;font-size:10px;">Paste an answer</button>
           </div>
 
-          <div id="cb-so-auto-preview" style="display:none;margin-bottom:8px;padding:8px;background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.15);border-radius:6px;">
-            <div style="font-size:10px;color:var(--cb-subtext);margin-bottom:4px;">Detected answer:</div>
+          <div id="cb-so-paste-area" style="display:none;margin-bottom:10px;">
+            <textarea id="cb-so-question" class="cb-agent-textarea" aria-label="Input text" placeholder="Original question..." style="min-height:40px;margin-bottom:6px;"></textarea>
+            <textarea id="cb-so-answer" class="cb-agent-textarea" aria-label="Input text" placeholder="AI answer to verify..." style="min-height:80px;"></textarea>
+          </div>
+
+          <div id="cb-so-auto-preview" style="display:none;margin-bottom:10px;" class="cb-agent-result-section">
+            <div class="cb-agent-result-header">Detected answer:</div>
             <div id="cb-so-auto-text" style="font-size:11px;color:var(--cb-white);max-height:80px;overflow:hidden;"></div>
           </div>
 
-          <select id="cb-so-model" class="cb-select" style="width:100%;margin-bottom:8px;">
+          <select id="cb-so-model" class="cb-agent-select" aria-label="Select option" style="margin-bottom:10px;">
             <option value="auto">Auto-select verification model</option>
             <option value="gemini">Verify with Gemini</option>
             <option value="llama">Verify with Llama</option>
           </select>
 
-          <button id="cb-so-run" class="cb-btn cb-btn-primary" style="width:100%;" disabled>Get Second Opinion</button>
+          <button id="cb-so-run" class="cb-agent-btn-primary" disabled>Get Second Opinion</button>
+          <div id="cb-so-result" style="display:none;margin-top:14px;"></div>
         </div>
-        <div id="cb-so-result" style="display:none;"></div>
       `;
 
-      let mode = 'auto'; // 'auto' or 'paste'
+      // Back button
+      outputArea.querySelector('#cb-so-back').addEventListener('click', () => {
+        const grid = shadow.getElementById('cb-agents-grid');
+        if (grid) grid.style.display = '';
+        outputArea.style.display = 'none';
+        outputArea.innerHTML = '';
+      });
+
+      let mode = 'auto';
       let detectedQuestion = '';
       let detectedAnswer = '';
 
@@ -13186,17 +14767,17 @@ Be concise and specific. Reference actual content from conversations.`;
 
       autoBtn.addEventListener('click', async () => {
         mode = 'auto';
-        autoBtn.classList.add('cb-btn-primary');
-        pasteBtn.classList.remove('cb-btn-primary');
+        autoBtn.className = 'cb-agent-btn-primary';
+        autoBtn.style.cssText = 'flex:1;font-size:10px;';
+        pasteBtn.className = 'cb-agent-btn-secondary';
+        pasteBtn.style.cssText = 'flex:1;font-size:10px;';
         pasteArea.style.display = 'none';
         autoPreview.style.display = 'block';
 
-        // Try to grab last AI answer from current chat
         try {
           const chatText = await getConversationText();
           if (chatText && chatText.length > 10) {
             const lines = chatText.split('\n');
-            // Find last assistant message
             let lastQ = '', lastA = '';
             for (let i = lines.length - 1; i >= 0; i--) {
               if (lines[i].startsWith('assistant:') && !lastA) {
@@ -13228,8 +14809,10 @@ Be concise and specific. Reference actual content from conversations.`;
 
       pasteBtn.addEventListener('click', () => {
         mode = 'paste';
-        pasteBtn.classList.add('cb-btn-primary');
-        autoBtn.classList.remove('cb-btn-primary');
+        pasteBtn.className = 'cb-agent-btn-primary';
+        pasteBtn.style.cssText = 'flex:1;font-size:10px;';
+        autoBtn.className = 'cb-agent-btn-secondary';
+        autoBtn.style.cssText = 'flex:1;font-size:10px;';
         pasteArea.style.display = 'block';
         autoPreview.style.display = 'none';
         runBtn.disabled = false;
@@ -13256,7 +14839,12 @@ Be concise and specific. Reference actual content from conversations.`;
         runBtn.disabled = true;
         runBtn.textContent = 'Cross-checking with AI...';
         resultDiv.style.display = 'block';
-        resultDiv.innerHTML = '<div style="text-align:center;padding:16px;"><div class="cb-spinner" style="display:inline-block;"></div><div style="margin-top:8px;font-size:11px;color:var(--cb-subtext);">Running verification analysis...</div></div>';
+        resultDiv.innerHTML = `
+          <div class="cb-agent-loading">
+            <div class="cb-agent-skeleton cb-agent-skeleton-lg"></div>
+            <div class="cb-agent-skeleton cb-agent-skeleton-md"></div>
+            <div class="cb-agent-loading-text">Running verification analysis...</div>
+          </div>`;
 
         try {
           const verifyModel = modelSelect.value === 'auto' ? 'auto' : modelSelect.value;
@@ -13287,38 +14875,37 @@ A brief, improved version that fixes the issues found. Only include this if sign
 
 Be rigorous but fair. Cite specific parts of the original answer when critiquing.`;
 
-          const res = await callAgentRoute(prompt, { model: verifyModel, complexity: 'deep', maxTokens: 1200 });
+          const res = await callAgentRouteWithRetry(prompt, { model: verifyModel, complexity: 'deep', maxTokens: 1200 });
 
           if (res && res.ok && res.result) {
-            // Extract agreement score for visual meter
+            // Extract agreement score for visual traffic light
             const scoreMatch = res.result.match(/\*\*(\d+)%?\*\*/);
             const score = scoreMatch ? parseInt(scoreMatch[1], 10) : null;
 
-            let meterHtml = '';
+            let trafficHtml = '';
             if (score !== null) {
-              const color = score >= 80 ? 'rgba(16,185,129,0.9)' : score >= 50 ? 'rgba(245,158,11,0.9)' : 'rgba(239,68,68,0.9)';
-              meterHtml = `
-                <div style="margin-bottom:10px;padding:8px;background:rgba(255,255,255,0.03);border-radius:6px;">
-                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-                    <span style="font-size:10px;color:var(--cb-subtext);">Confidence</span>
-                    <span style="font-size:14px;font-weight:700;color:${color};">${score}%</span>
-                  </div>
-                  <div style="height:6px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden;">
-                    <div style="height:100%;width:${score}%;background:${color};border-radius:3px;transition:width 0.5s;"></div>
-                  </div>
+              const color = score >= 80 ? '#10B981' : score >= 50 ? '#F59E0B' : '#EF4444';
+              const label = score >= 80 ? 'High Confidence' : score >= 50 ? 'Medium Confidence' : 'Low Confidence';
+              trafficHtml = `
+                <div class="cb-traffic-light">
+                  <div class="cb-traffic-dot" style="color:${color};background:${color};"></div>
+                  <div class="cb-traffic-label" style="color:${color};">${score}% — ${label}</div>
+                </div>
+                <div class="cb-confidence-meter">
+                  <div class="cb-confidence-fill" style="width:${score}%;background:${color};"></div>
                 </div>
               `;
             }
 
             const formatted = formatAgentMarkdown(res.result);
             resultDiv.innerHTML = `
-              ${meterHtml}
-              <div style="white-space:pre-wrap;line-height:1.6;font-size:12px;">${formatted}</div>
-              <div style="display:flex;gap:6px;margin-top:10px;">
-                <button id="cb-so-copy" class="cb-btn" style="flex:1;font-size:11px;">Copy Analysis</button>
-                <button id="cb-so-insert" class="cb-btn cb-btn-primary" style="flex:1;font-size:11px;">Insert Improved</button>
+              ${trafficHtml}
+              <div class="cb-agent-result-section"><div class="cb-agent-result-body">${formatted}</div></div>
+              <div class="cb-agent-action-row">
+                <button id="cb-so-copy" class="cb-agent-btn-secondary">Copy Analysis</button>
+                <button id="cb-so-insert" class="cb-agent-btn-primary">Insert Improved</button>
               </div>
-              <div style="font-size:9px;color:var(--cb-subtext);margin-top:6px;text-align:center;">Verified by ${res.model_used || 'AI'} · ${res.latency_ms || 0}ms</div>
+              <div class="cb-agent-meta">Verified by ${res.model_used || 'AI'} · ${res.latency_ms || 0}ms</div>
             `;
 
             resultDiv.querySelector('#cb-so-copy').addEventListener('click', async () => {
@@ -13329,10 +14916,10 @@ Be rigorous but fair. Cite specific parts of the original answer when critiquing
             });
             toast('Verification complete!');
           } else {
-            resultDiv.innerHTML = `<div style="padding:12px;color:rgba(255,100,100,0.9);">Failed: ${res && res.error ? res.error : 'Unknown error'}</div>`;
+            resultDiv.innerHTML = `<div class="cb-agent-error">Failed: ${res && res.error ? res.error : 'Unknown error'}</div>`;
           }
         } catch (e) {
-          resultDiv.innerHTML = `<div style="padding:12px;color:rgba(255,100,100,0.9);">Error: ${e.message || 'Unknown error'}</div>`;
+          resultDiv.innerHTML = `<div class="cb-agent-error">Error: ${e.message || 'Unknown error'}</div>`;
           debugLog('Second Opinion error', e);
         } finally {
           runBtn.disabled = false;
@@ -13349,40 +14936,50 @@ Be rigorous but fair. Cite specific parts of the original answer when critiquing
       const outputArea = (agentContent && agentContent.querySelector('#cb-agent-output')) || (shadow && shadow.getElementById && shadow.getElementById('cb-agent-output'));
       if (!outputArea) return;
 
+      outputArea.style.setProperty('--_agent-clr', '#EC4899');
       outputArea.innerHTML = `
-        <div style="margin-bottom:8px;">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-            <div style="width:24px;height:24px;background:rgba(236,72,153,0.15);border:1px solid rgba(236,72,153,0.25);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;">◎</div>
-            <div style="font-weight:600;font-size:13px;color:var(--cb-white);">Handoff</div>
+        <div class="cb-agent-sub">
+          <div class="cb-agent-header">
+            <button class="cb-agent-back" aria-label="Go back to agent list" tabindex="0" id="cb-handoff-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>Back</button>
+            <div class="cb-agent-header-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg></div>
+            <div class="cb-agent-header-title">Handoff</div>
           </div>
-          <div style="font-size:11px;color:var(--cb-subtext);margin-bottom:8px;">Generate a professional briefing document from your AI conversations — ready to share with anyone.</div>
+          <div class="cb-agent-desc">Generate a professional briefing document from your AI conversations — ready to share with anyone.</div>
 
-          <select id="cb-handoff-source" class="cb-select" style="width:100%;margin-bottom:6px;">
+          <select id="cb-handoff-source" class="cb-agent-select" aria-label="Select option" style="margin-bottom:8px;">
             <option value="current">Current conversation</option>
             <option value="recent">All recent activity (last 5 chats)</option>
             <option value="topic">Search by topic...</option>
           </select>
 
-          <div id="cb-handoff-topic-search" style="display:none;margin-bottom:6px;">
-            <input type="text" id="cb-handoff-topic" class="cb-input" placeholder="Search topic..." style="width:100%;box-sizing:border-box;" />
+          <div id="cb-handoff-topic-search" style="display:none;margin-bottom:8px;">
+            <input type="text" id="cb-handoff-topic" class="cb-agent-input" placeholder="Search topic..." />
           </div>
 
-          <select id="cb-handoff-recipient" class="cb-select" style="width:100%;margin-bottom:6px;">
+          <select id="cb-handoff-recipient" class="cb-agent-select" aria-label="Select option" style="margin-bottom:8px;">
             <option value="Colleague">Colleague</option>
             <option value="Client">Client</option>
             <option value="Manager">Manager</option>
             <option value="My Future Self">My Future Self</option>
           </select>
 
-          <div style="display:flex;gap:6px;margin-bottom:8px;">
-            <button id="cb-handoff-brief" class="cb-btn cb-btn-primary" style="flex:1;font-size:10px;">Brief</button>
-            <button id="cb-handoff-detailed" class="cb-btn" style="flex:1;font-size:10px;">Comprehensive</button>
+          <div style="display:flex;gap:6px;margin-bottom:10px;">
+            <button id="cb-handoff-brief" class="cb-agent-btn-primary" style="flex:1;font-size:10px;">Brief</button>
+            <button id="cb-handoff-detailed" class="cb-agent-btn-secondary" style="flex:1;font-size:10px;">Comprehensive</button>
           </div>
 
-          <button id="cb-handoff-run" class="cb-btn cb-btn-primary" style="width:100%;">Generate Handoff Document</button>
+          <button id="cb-handoff-run" class="cb-agent-btn-primary">Generate Handoff Document</button>
+          <div id="cb-handoff-result" style="display:none;margin-top:14px;"></div>
         </div>
-        <div id="cb-handoff-result" style="display:none;"></div>
       `;
+
+      // Back button
+      outputArea.querySelector('#cb-handoff-back').addEventListener('click', () => {
+        const grid = shadow.getElementById('cb-agents-grid');
+        if (grid) grid.style.display = '';
+        outputArea.style.display = 'none';
+        outputArea.innerHTML = '';
+      });
 
       let detailLevel = 'brief';
       const sourceSelect = outputArea.querySelector('#cb-handoff-source');
@@ -13400,20 +14997,29 @@ Be rigorous but fair. Cite specific parts of the original answer when critiquing
 
       briefBtn.addEventListener('click', () => {
         detailLevel = 'brief';
-        briefBtn.classList.add('cb-btn-primary');
-        detailedBtn.classList.remove('cb-btn-primary');
+        briefBtn.className = 'cb-agent-btn-primary';
+        briefBtn.style.cssText = 'flex:1;font-size:10px;';
+        detailedBtn.className = 'cb-agent-btn-secondary';
+        detailedBtn.style.cssText = 'flex:1;font-size:10px;';
       });
       detailedBtn.addEventListener('click', () => {
         detailLevel = 'comprehensive';
-        detailedBtn.classList.add('cb-btn-primary');
-        briefBtn.classList.remove('cb-btn-primary');
+        detailedBtn.className = 'cb-agent-btn-primary';
+        detailedBtn.style.cssText = 'flex:1;font-size:10px;';
+        briefBtn.className = 'cb-agent-btn-secondary';
+        briefBtn.style.cssText = 'flex:1;font-size:10px;';
       });
 
       runBtn.addEventListener('click', async () => {
         runBtn.disabled = true;
         runBtn.textContent = 'Generating document...';
         resultDiv.style.display = 'block';
-        resultDiv.innerHTML = '<div style="text-align:center;padding:16px;"><div class="cb-spinner" style="display:inline-block;"></div><div style="margin-top:8px;font-size:11px;color:var(--cb-subtext);">Compiling briefing document...</div></div>';
+        resultDiv.innerHTML = `
+          <div class="cb-agent-loading">
+            <div class="cb-agent-skeleton cb-agent-skeleton-lg"></div>
+            <div class="cb-agent-skeleton cb-agent-skeleton-md"></div>
+            <div class="cb-agent-loading-text">Compiling briefing document...</div>
+          </div>`;
 
         try {
           let contextText = '';
@@ -13423,7 +15029,7 @@ Be rigorous but fair. Cite specific parts of the original answer when critiquing
           if (source === 'current') {
             contextText = await getConversationText();
             if (!contextText || contextText.length < 10) {
-              resultDiv.innerHTML = '<div style="padding:12px;color:var(--cb-subtext);">No current conversation. Scan a chat first!</div>';
+              resultDiv.innerHTML = '<div class="cb-agent-empty">No current conversation. Scan a chat first!</div>';
               runBtn.disabled = false;
               runBtn.textContent = 'Generate Handoff Document';
               return;
@@ -13450,7 +15056,7 @@ Be rigorous but fair. Cite specific parts of the original answer when critiquing
           }
 
           if (!contextText || contextText.length < 20) {
-            resultDiv.innerHTML = '<div style="padding:12px;color:var(--cb-subtext);">Not enough content found. Try a different source.</div>';
+            resultDiv.innerHTML = '<div class="cb-agent-empty">Not enough content found. Try a different source.</div>';
             runBtn.disabled = false;
             runBtn.textContent = 'Generate Handoff Document';
             return;
@@ -13462,8 +15068,8 @@ Be rigorous but fair. Cite specific parts of the original answer when critiquing
 
           const toneGuide = recipient === 'Client' ? 'professional and polished'
             : recipient === 'Manager' ? 'executive and results-focused'
-            : recipient === 'My Future Self' ? 'informal and reference-oriented'
-            : 'clear and collegial';
+              : recipient === 'My Future Self' ? 'informal and reference-oriented'
+                : 'clear and collegial';
 
           const prompt = `You are Handoff, a context packaging agent inside ChatBridge.
 
@@ -13497,22 +15103,44 @@ Important names, dates, numbers, links, or technical details for quick lookup.
 
 Make this ready to send as-is. No meta-commentary. Clean markdown formatting.`;
 
-          const res = await callAgentRoute(prompt, { complexity: 'deep', maxTokens: detailLevel === 'brief' ? 800 : 1400 });
+          const res = await callAgentRouteWithRetry(prompt, { complexity: 'deep', maxTokens: detailLevel === 'brief' ? 800 : 1400 });
 
           if (res && res.ok && res.result) {
             const formatted = formatAgentMarkdown(res.result);
+
+            // Word/section count stats
+            const wordCount = res.result.split(/\s+/).length;
+            const sectionCount = (res.result.match(/^## /gm) || []).length;
+
             resultDiv.innerHTML = `
-              <div style="white-space:pre-wrap;line-height:1.6;font-size:12px;">${formatted}</div>
-              <div style="display:flex;gap:6px;margin-top:10px;">
-                <button id="cb-handoff-copy" class="cb-btn" style="flex:1;font-size:11px;">Copy Document</button>
-                <button id="cb-handoff-save" class="cb-btn" style="flex:1;font-size:11px;">Save Draft</button>
-                <button id="cb-handoff-insert" class="cb-btn cb-btn-primary" style="flex:1;font-size:11px;">Insert</button>
+              <div class="cb-agent-stats">
+                <div class="cb-agent-stat"><div class="cb-agent-stat-val">${wordCount}</div><div class="cb-agent-stat-label">Words</div></div>
+                <div class="cb-agent-stat"><div class="cb-agent-stat-val">${sectionCount}</div><div class="cb-agent-stat-label">Sections</div></div>
               </div>
-              <div style="font-size:9px;color:var(--cb-subtext);margin-top:6px;text-align:center;">For ${recipient} · ${detailLevel} · ${res.model_used || 'AI'} · ${res.latency_ms || 0}ms</div>
+              <div class="cb-agent-result-section"><div class="cb-agent-result-body">${formatted}</div></div>
+              <div class="cb-agent-action-row">
+                <button id="cb-handoff-copy" class="cb-agent-btn-secondary">Copy</button>
+                <button id="cb-handoff-download" class="cb-agent-btn-secondary">Download .md</button>
+                <button id="cb-handoff-save" class="cb-agent-btn-secondary">Save Draft</button>
+                <button id="cb-handoff-insert" class="cb-agent-btn-primary">Insert</button>
+              </div>
+              <div class="cb-agent-meta">For ${recipient} · ${detailLevel} · ${res.model_used || 'AI'} · ${res.latency_ms || 0}ms</div>
             `;
 
             resultDiv.querySelector('#cb-handoff-copy').addEventListener('click', async () => {
               try { await navigator.clipboard.writeText(res.result); toast('Document copied!'); } catch (_) { toast('Copy failed'); }
+            });
+            resultDiv.querySelector('#cb-handoff-download').addEventListener('click', () => {
+              try {
+                const blob = new Blob([res.result], { type: 'text/markdown' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `handoff-${recipient.toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().slice(0, 10)}.md`;
+                a.click();
+                URL.revokeObjectURL(url);
+                toast('Downloaded!');
+              } catch (_) { toast('Download failed'); }
             });
             resultDiv.querySelector('#cb-handoff-save').addEventListener('click', async () => {
               try {
@@ -13530,10 +15158,10 @@ Make this ready to send as-is. No meta-commentary. Clean markdown formatting.`;
             });
             toast('Handoff document ready!');
           } else {
-            resultDiv.innerHTML = `<div style="padding:12px;color:rgba(255,100,100,0.9);">Failed: ${res && res.error ? res.error : 'Unknown error'}</div>`;
+            resultDiv.innerHTML = `<div class="cb-agent-error">Failed: ${res && res.error ? res.error : 'Unknown error'}</div>`;
           }
         } catch (e) {
-          resultDiv.innerHTML = `<div style="padding:12px;color:rgba(255,100,100,0.9);">Error: ${e.message || 'Unknown error'}</div>`;
+          resultDiv.innerHTML = `<div class="cb-agent-error">Error: ${e.message || 'Unknown error'}</div>`;
           debugLog('Handoff error', e);
         } finally {
           runBtn.disabled = false;
@@ -13550,17 +15178,27 @@ Make this ready to send as-is. No meta-commentary. Clean markdown formatting.`;
       const outputArea = (agentContent && agentContent.querySelector('#cb-agent-output')) || (shadow && shadow.getElementById && shadow.getElementById('cb-agent-output'));
       if (!outputArea) return;
 
+      outputArea.style.setProperty('--_agent-clr', '#6366F1');
       outputArea.innerHTML = `
-        <div style="margin-bottom:8px;">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-            <div style="width:24px;height:24px;background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.25);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;">●</div>
-            <div style="font-weight:600;font-size:13px;color:var(--cb-white);">My Pulse</div>
+        <div class="cb-agent-sub">
+          <div class="cb-agent-header">
+            <button class="cb-agent-back" aria-label="Go back to agent list" tabindex="0" id="cb-pulse-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>Back</button>
+            <div class="cb-agent-header-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+            <div class="cb-agent-header-title">My Pulse</div>
           </div>
-          <div style="font-size:11px;color:var(--cb-subtext);margin-bottom:10px;">Discover patterns in how you use AI. Get personalized insights to boost your productivity.</div>
-          <button id="cb-pulse-run" class="cb-btn cb-btn-primary" style="width:100%;">Generate My Pulse</button>
+          <div class="cb-agent-desc">Discover patterns in how you use AI. Get personalized insights to boost your productivity.</div>
+          <button id="cb-pulse-run" class="cb-agent-btn-primary">Generate My Pulse</button>
+          <div id="cb-pulse-result" style="display:none;margin-top:14px;"></div>
         </div>
-        <div id="cb-pulse-result" style="display:none;"></div>
       `;
+
+      // Back button
+      outputArea.querySelector('#cb-pulse-back').addEventListener('click', () => {
+        const grid = shadow.getElementById('cb-agents-grid');
+        if (grid) grid.style.display = '';
+        outputArea.style.display = 'none';
+        outputArea.innerHTML = '';
+      });
 
       const runBtn = outputArea.querySelector('#cb-pulse-run');
       const resultDiv = outputArea.querySelector('#cb-pulse-result');
@@ -13569,14 +15207,20 @@ Make this ready to send as-is. No meta-commentary. Clean markdown formatting.`;
         runBtn.disabled = true;
         runBtn.textContent = 'Analyzing your AI usage...';
         resultDiv.style.display = 'block';
-        resultDiv.innerHTML = '<div style="text-align:center;padding:16px;"><div class="cb-spinner" style="display:inline-block;"></div><div style="margin-top:8px;font-size:11px;color:var(--cb-subtext);">Crunching your data across platforms...</div></div>';
+        resultDiv.innerHTML = `
+          <div class="cb-agent-loading">
+            <div class="cb-agent-skeleton cb-agent-skeleton-lg"></div>
+            <div class="cb-agent-skeleton cb-agent-skeleton-md"></div>
+            <div class="cb-agent-skeleton cb-agent-skeleton-sm"></div>
+            <div class="cb-agent-loading-text">Crunching your data across platforms...</div>
+          </div>`;
 
         try {
           const convos = await StorageManager.getConversations();
           const pulseSessions = await StorageManager.getPulseSessions();
 
           if ((!convos || convos.length === 0) && (!pulseSessions || pulseSessions.length === 0)) {
-            resultDiv.innerHTML = '<div style="padding:12px;color:var(--cb-subtext);text-align:center;">No usage data yet. Use ChatBridge for a while and come back!</div>';
+            resultDiv.innerHTML = '<div class="cb-agent-empty">No usage data yet. Use ChatBridge for a while and come back!</div>';
             runBtn.disabled = false;
             runBtn.textContent = 'Generate My Pulse';
             return;
@@ -13599,7 +15243,6 @@ Make this ready to send as-is. No meta-commentary. Clean markdown formatting.`;
 
             msgs.forEach(m => {
               totalWords += (m.text || '').split(/\s+/).length;
-              // Extract topic keywords
               const words = (m.text || '').toLowerCase().match(/\b[a-z]{4,}\b/g) || [];
               words.forEach(w => {
                 if (!stopWords.includes(w)) {
@@ -13608,60 +15251,97 @@ Make this ready to send as-is. No meta-commentary. Clean markdown formatting.`;
               });
             });
 
-            // Daily activity
             const day = new Date(c.ts).toLocaleDateString();
             dailyActivity[day] = (dailyActivity[day] || 0) + 1;
           });
 
-          // Top platforms
           const topPlatforms = Object.entries(platformCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
-          // Top topics
           const topTopics = Object.entries(topicFrequency).sort((a, b) => b[1] - a[1]).slice(0, 15);
-
-          // Build CSS bar charts
-          const maxPlatformCount = topPlatforms.length > 0 ? topPlatforms[0][1] : 1;
-          const platformBarsHtml = topPlatforms.map(([name, count]) => {
-            const pct = Math.round((count / maxPlatformCount) * 100);
-            return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-              <div style="width:70px;font-size:10px;color:var(--cb-white);text-align:right;">${name}</div>
-              <div style="flex:1;height:14px;background:rgba(255,255,255,0.04);border-radius:3px;overflow:hidden;">
-                <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,rgba(99,102,241,0.6),rgba(99,102,241,0.3));border-radius:3px;"></div>
-              </div>
-              <div style="font-size:10px;color:var(--cb-subtext);width:24px;">${count}</div>
-            </div>`;
-          }).join('');
-
-          // Render quick stats first
           const avgMsgsPerChat = convos.length > 0 ? Math.round(totalMessages / convos.length) : 0;
           const activeDays = Object.keys(dailyActivity).length;
 
+          // Build donut chart for platforms
+          const totalConvos = convos.length;
+          const platformColors = ['#6366F1', '#8B5CF6', '#A78BFA', '#C4B5FD', '#DDD6FE'];
+          let conicDeg = 0;
+          const conicStops = topPlatforms.map(([name, count], i) => {
+            const pct = (count / totalConvos) * 100;
+            const start = conicDeg;
+            conicDeg += pct;
+            return `${platformColors[i] || '#4B5563'} ${start.toFixed(1)}deg ${conicDeg.toFixed(1)}deg`;
+          });
+          if (conicDeg < 360) conicStops.push(`rgba(255,255,255,0.04) ${conicDeg.toFixed(1)}deg 360deg`);
+          const donutGradient = `conic-gradient(${conicStops.join(', ')})`;
+
+          // Platform legend
+          const legendHtml = topPlatforms.map(([name, count], i) => `
+            <div style="display:flex;align-items:center;gap:6px;font-size:10px;">
+              <div style="width:8px;height:8px;border-radius:2px;background:${platformColors[i] || '#4B5563'};"></div>
+              <span style="color:var(--cb-white);">${name}</span>
+              <span style="color:var(--cb-subtext);margin-left:auto;">${count}</span>
+            </div>
+          `).join('');
+
+          // Build heatmap for last 7 days
+          const dayNames = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+          const now = new Date();
+          let heatmapHtml = '';
+          for (let i = 6; i >= 0; i--) {
+            const d = new Date(now);
+            d.setDate(d.getDate() - i);
+            const key = d.toLocaleDateString();
+            const val = dailyActivity[key] || 0;
+            const opacity = val === 0 ? 0.05 : Math.min(0.8, 0.1 + val * 0.15);
+            heatmapHtml += `<div class="cb-heatmap-day" style="background:rgba(99,102,241,${opacity});">
+              <div class="cb-heatmap-val">${val}</div>
+              <div class="cb-heatmap-label">${dayNames[d.getDay()]}</div>
+            </div>`;
+          }
+
+          // Topic cloud
+          const cloudHtml = topTopics.slice(0, 12).map(([word, count]) => {
+            const size = 9 + Math.min(count * 0.5, 5);
+            return `<span class="cb-topic-word" style="font-size:${size}px;">${word}</span>`;
+          }).join('');
+
           resultDiv.innerHTML = `
-            <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-bottom:10px;">
-              <div style="padding:8px;background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.15);border-radius:6px;text-align:center;">
-                <div style="font-size:18px;font-weight:700;color:var(--cb-white);">${convos.length}</div>
-                <div style="font-size:9px;color:var(--cb-subtext);">Conversations</div>
-              </div>
-              <div style="padding:8px;background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.15);border-radius:6px;text-align:center;">
-                <div style="font-size:18px;font-weight:700;color:var(--cb-white);">${totalMessages}</div>
-                <div style="font-size:9px;color:var(--cb-subtext);">Messages</div>
-              </div>
-              <div style="padding:8px;background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.15);border-radius:6px;text-align:center;">
-                <div style="font-size:18px;font-weight:700;color:var(--cb-white);">${Object.keys(platformCounts).length}</div>
-                <div style="font-size:9px;color:var(--cb-subtext);">Platforms</div>
-              </div>
-              <div style="padding:8px;background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.15);border-radius:6px;text-align:center;">
-                <div style="font-size:18px;font-weight:700;color:var(--cb-white);">${activeDays}</div>
-                <div style="font-size:9px;color:var(--cb-subtext);">Active Days</div>
+            <div class="cb-agent-stats">
+              <div class="cb-agent-stat"><div class="cb-agent-stat-val">${convos.length}</div><div class="cb-agent-stat-label">Conversations</div></div>
+              <div class="cb-agent-stat"><div class="cb-agent-stat-val">${totalMessages}</div><div class="cb-agent-stat-label">Messages</div></div>
+              <div class="cb-agent-stat"><div class="cb-agent-stat-val">${Object.keys(platformCounts).length}</div><div class="cb-agent-stat-label">Platforms</div></div>
+              <div class="cb-agent-stat"><div class="cb-agent-stat-val">${activeDays}</div><div class="cb-agent-stat-label">Active Days</div></div>
+            </div>
+
+            <div class="cb-agent-result-section">
+              <div class="cb-agent-result-header">📊 Platform Usage</div>
+              <div style="display:flex;align-items:center;gap:16px;padding:6px 0;">
+                <div class="cb-donut" style="background:${donutGradient};flex-shrink:0;">
+                  <div class="cb-donut-hole">
+                    <div class="cb-donut-total">${totalConvos}</div>
+                    <div class="cb-donut-label">total</div>
+                  </div>
+                </div>
+                <div style="flex:1;display:flex;flex-direction:column;gap:4px;">${legendHtml}</div>
               </div>
             </div>
 
-            <div style="margin-bottom:10px;">
-              <div style="font-weight:600;font-size:11px;color:var(--cb-white);margin-bottom:6px;">Platform Usage</div>
-              ${platformBarsHtml || '<div style="font-size:10px;color:var(--cb-subtext);">No platform data yet</div>'}
+            <div class="cb-agent-result-section">
+              <div class="cb-agent-result-header">🔥 7-Day Activity</div>
+              <div class="cb-heatmap">${heatmapHtml}</div>
             </div>
 
-            <div id="cb-pulse-ai-insights" style="margin-top:8px;">
-              <div style="text-align:center;padding:8px;"><div class="cb-spinner" style="display:inline-block;"></div><div style="font-size:10px;color:var(--cb-subtext);margin-top:4px;">Generating AI insights...</div></div>
+            <div class="cb-agent-result-section">
+              <div class="cb-agent-result-header">💬 Top Topics</div>
+              <div class="cb-topic-cloud">${cloudHtml || '<span style="font-size:10px;color:var(--cb-subtext);">Not enough data yet</span>'}</div>
+            </div>
+
+            <div id="cb-pulse-ai-insights" class="cb-agent-result-section">
+              <div class="cb-agent-result-header">🧠 AI Insights</div>
+              <div class="cb-agent-loading">
+                <div class="cb-agent-skeleton cb-agent-skeleton-md"></div>
+                <div class="cb-agent-skeleton cb-agent-skeleton-sm"></div>
+                <div class="cb-agent-loading-text">Generating AI insights...</div>
+              </div>
             </div>
           `;
 
@@ -13700,26 +15380,27 @@ Specific, actionable suggestions to improve their AI productivity. Based on actu
 
 Be conversational and insightful. Reference their actual data. Make them feel like this is truly personalized.`;
 
-          const res = await callAgentRoute(prompt, { complexity: 'deep', maxTokens: 1200 });
+          const res = await callAgentRouteWithRetry(prompt, { complexity: 'deep', maxTokens: 1200 });
 
           if (res && res.ok && res.result) {
             const formatted = formatAgentMarkdown(res.result);
             insightsDiv.innerHTML = `
-              <div style="white-space:pre-wrap;line-height:1.6;font-size:12px;">${formatted}</div>
-              <div style="display:flex;gap:6px;margin-top:10px;">
-                <button id="cb-pulse-copy" class="cb-btn" style="flex:1;font-size:11px;">Copy Report</button>
+              <div class="cb-agent-result-header">🧠 AI Insights</div>
+              <div class="cb-agent-result-body">${formatted}</div>
+              <div class="cb-agent-action-row" style="margin-top:10px;">
+                <button id="cb-pulse-copy" class="cb-agent-btn-secondary">Copy Report</button>
               </div>
-              <div style="font-size:9px;color:var(--cb-subtext);margin-top:6px;text-align:center;">${res.model_used || 'AI'} · ${res.latency_ms || 0}ms</div>
+              <div class="cb-agent-meta">${res.model_used || 'AI'} · ${res.latency_ms || 0}ms</div>
             `;
             insightsDiv.querySelector('#cb-pulse-copy').addEventListener('click', async () => {
               try { await navigator.clipboard.writeText(res.result); toast('Report copied!'); } catch (_) { toast('Copy failed'); }
             });
             toast('Pulse report ready!');
           } else {
-            insightsDiv.innerHTML = `<div style="padding:8px;color:rgba(255,100,100,0.9);font-size:11px;">AI insights unavailable: ${res && res.error ? res.error : 'Unknown error'}</div>`;
+            insightsDiv.innerHTML = `<div class="cb-agent-result-header">🧠 AI Insights</div><div class="cb-agent-error">AI insights unavailable: ${res && res.error ? res.error : 'Unknown error'}</div>`;
           }
         } catch (e) {
-          resultDiv.innerHTML = `<div style="padding:12px;color:rgba(255,100,100,0.9);">Error: ${e.message || 'Unknown error'}</div>`;
+          resultDiv.innerHTML = `<div class="cb-agent-error">Error: ${e.message || 'Unknown error'}</div>`;
           debugLog('My Pulse error', e);
         } finally {
           runBtn.disabled = false;
@@ -13737,17 +15418,20 @@ Be conversational and insightful. Reference their actual data. Make them feel li
       if (!text) return '';
       let html = escapeHtml(text);
       // Headers: ## Title
-      html = html.replace(/^## (.+)$/gm, '<div style="font-weight:700;font-size:12px;color:var(--cb-accent-primary);margin:10px 0 4px 0;border-bottom:1px solid rgba(255,255,255,0.06);padding-bottom:3px;">$1</div>');
+      html = html.replace(/^## (.+)$/gm, '<div class="cb-agent-section-title">$1</div>');
       // Bold: **text**
       html = html.replace(/\*\*(.+?)\*\*/g, '<strong style="color:var(--cb-white);">$1</strong>');
       // Bullet points: - item or * item
-      html = html.replace(/^[\-\*•]\s+(.+)$/gm, '<div style="padding-left:12px;position:relative;margin:2px 0;"><span style="position:absolute;left:0;color:var(--cb-accent-primary);">·</span>$1</div>');
+      html = html.replace(/^[\-\*•]\s+(.+)$/gm, '<div style="padding-left:14px;position:relative;margin:3px 0;"><span style="position:absolute;left:2px;color:var(--_agent-clr, var(--cb-accent-primary));font-size:8px;top:4px;">●</span>$1</div>');
       // Numbered lists: 1. item
-      html = html.replace(/^(\d+)\.\s+(.+)$/gm, '<div style="padding-left:16px;position:relative;margin:2px 0;"><span style="position:absolute;left:0;color:var(--cb-accent-primary);font-weight:600;font-size:10px;">$1.</span>$2</div>');
+      html = html.replace(/^(\d+)\.\s+(.+)$/gm, '<div style="padding-left:18px;position:relative;margin:3px 0;"><span style="position:absolute;left:0;color:var(--_agent-clr, var(--cb-accent-primary));font-weight:700;font-size:10px;">$1.</span>$2</div>');
       // Platform tags: [ChatGPT] etc
-      html = html.replace(/\[([A-Z][a-zA-Z]+(?:\s[A-Z][a-zA-Z]*)*)\]/g, '<span style="display:inline-block;padding:1px 5px;background:rgba(0,212,255,0.1);border:1px solid rgba(0,212,255,0.2);border-radius:3px;font-size:9px;font-weight:600;color:rgba(0,212,255,0.9);">$1</span>');
+      html = html.replace(/\[([A-Z][a-zA-Z]+(?:\s[A-Z][a-zA-Z]*)*)\]/g, '<span class="cb-agent-platform-tag">$1</span>');
+      // Inline code: `code`
+      html = html.replace(/`([^`]+)`/g, '<code style="background:rgba(255,255,255,0.06);padding:1px 4px;border-radius:3px;font-size:10px;color:var(--cb-white);">$1</code>');
       return html;
     }
+
 
     // Time ago helper for agents
     function getTimeAgo(timestamp) {
@@ -14935,7 +16619,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
                       if (embRes && embRes.length > 0) {
                         debugLog('[Background] Embedding resolution merged', embRes.length, 'entities');
                       }
-                    }).catch(() => {});
+                    }).catch(() => { });
                   } catch (e) {
                     debugLog('[Background] Knowledge graph extraction failed:', e);
                   }
@@ -19688,7 +21372,7 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
                   });
 
                   // Also store as _lastScanResult for features that check it directly
-                  try { window.ChatBridge._lastScanResult = msgs; } catch (_) {}
+                  try { window.ChatBridge._lastScanResult = msgs; } catch (_) { }
 
                   // Update status bar
                   const userMsgs = msgs.filter(m => m.role === 'user').length;
@@ -19718,7 +21402,7 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
                     if (typeof window.__CB_UPDATE_STATUS === 'function') {
                       window.__CB_UPDATE_STATUS(`Loaded: ${descriptivePhrase}`, 'active');
                     }
-                  } catch (_) {}
+                  } catch (_) { }
 
                   if (typeof announce === 'function') announce(`Loaded conversation: ${descriptivePhrase}`);
                   toast(`Loaded ${msgs.length} messages`);

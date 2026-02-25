@@ -23,14 +23,14 @@ Last updated: 2026-02-18
 - [ ] Accessibility pass (keyboard nav, ARIA labels)
 
 ### ◈ Agent Tab
-- [ ] Header ("Agent Utilities" + close)
-- [ ] Intro text
-- [ ] Agent selection cards / buttons
-- [ ] Agent output display area
-- [ ] Loading skeleton states
-- [ ] Error handling + retry
-- [ ] Wire to background API calls
-- [ ] Accessibility pass
+- [x] Header ("Agent Utilities" + close)
+- [x] Intro text
+- [x] Agent selection cards / buttons
+- [x] Agent output display area
+- [x] Loading skeleton states
+- [x] Error handling + retry
+- [x] Wire to background API calls
+- [x] Accessibility pass
 
 ### 🔧 Overall Fixes
 - [ ] Deduplicate `call_openai` handler in background.js
