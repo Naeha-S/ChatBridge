@@ -74,7 +74,21 @@
   console.log('[ChatBridge] Injecting on approved site:', window.location.hostname);
 
   // Fix: Polyfill missing Rewrite functions referenced in UI
-  async function rewriteText(style, text, options) {
+  // Utility: escape HTML special chars to prevent XSS when setting innerHTML
+  function escapeHtml(str) {
+    if (str == null) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#x27;');
+  }
+
+  // Early-scope polyfills — defined here so code that runs before the main IIFE
+  // can call them; the canonical implementations inside the IIFE shadow these.
+  // Named distinctly to make the intent clear and avoid accidental hoisting conflicts.
+  async function rewriteTextPolyfill(style, text, options) {
     // Try using the sophisticated Rewriter utility if available
     if (window.ChatBridgeRewriter && window.ChatBridgeRewriter.rewriteWithStyle) {
       if (options && options.onProgress) options.onProgress({ phase: 'processing', percent: 50 });
@@ -105,8 +119,8 @@
   }
 
   // Polyfill for hierarchicalProcess (sync tone) -> fallback to standard rewrite
-  async function hierarchicalProcess(text, mode, options) {
-    return await rewriteText('professional', text, options);
+  async function hierarchicalProcessPolyfill(text, mode, options) {
+    return await rewriteTextPolyfill('professional', text, options);
   }
 
   // AUTO-INSERT: Check if we arrived from "Continue With" and should auto-insert context
@@ -141,6 +155,30 @@
 
       // If no context or too old (>5 minutes), skip
       if (!continueData || !continueData.text || !continueData.timestamp) return;
+
+      // Ensure we only auto-insert on the intended target platform.
+      try {
+        const _target = String(continueData.target || '').toLowerCase();
+        const _host = String(window.location.hostname || '').toLowerCase();
+        const _targetHosts = {
+          chatgpt: ['chat.openai.com', 'chatgpt.com'],
+          claude: ['claude.ai'],
+          gemini: ['gemini.google.com'],
+          copilot: ['copilot.microsoft.com'],
+          perplexity: ['perplexity.ai', 'www.perplexity.ai'],
+          mistral: ['chat.mistral.ai'],
+          poe: ['poe.com'],
+          deepseek: ['chat.deepseek.com', 'deepseek.ai'],
+          grok: ['x.ai'],
+          meta: ['meta.ai'],
+        };
+        const _allowed = (_targetHosts[_target] || []).some(h => _host === h || _host.endsWith('.' + h));
+        if (_target && !_allowed) {
+          console.log('[ChatBridge] Auto-insert skipped: current host does not match target', _target);
+          return;
+        }
+      } catch (_) { }
+
       if (Date.now() - continueData.timestamp > 5 * 60 * 1000) {
         // Clear old context
         localStorage.removeItem('chatbridge:continue_context');
@@ -460,12 +498,10 @@
       if (msg && msg.type === 'open_memory_architect') {
         (async () => {
           try {
-            window.__CB_FOCUS_THEME = msg.theme || '';
-            // Ensure UI visible
+            // Legacy: Memory Architect removed — open Agent Hub instead
             try { const h = document.getElementById('cb-host'); if (h) h.style.display = 'block'; } catch (e) { }
-            // Switch to Memory Architect view
-            if (typeof showMemoryArchitect === 'function') {
-              await showMemoryArchitect();
+            if (typeof renderAgentHub === 'function') {
+              await renderAgentHub();
             }
             if (sendResponse) sendResponse({ ok: true });
           } catch (e) {
@@ -1195,10 +1231,9 @@
 
     const shadow = host.attachShadow({ mode: 'open' });
 
-    // High-end Dark Neon theme inside shadow DOM (Bebas Neue font)
+    // High-end Dark Neon theme inside shadow DOM
     const style = document.createElement('style');
     style.textContent = `
-      @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');
 
       @font-face {
         font-family: 'Inter';
@@ -2891,6 +2926,42 @@
   @keyframes cbFadeSlideIn { to { opacity: 1; transform: translateY(0); } }
   #cb-pd-view { background: linear-gradient(180deg, var(--cb-bg), var(--cb-bg2)); }
   `;
+    // --- color-mix() fallback for browsers that lack support ---
+    if (!CSS.supports || !CSS.supports('color', 'color-mix(in srgb, red 50%, blue)')) {
+      const _cmColors = {
+        '--cb-accent-primary': [96,165,250],
+        '--cb-accent-secondary': [167,139,250],
+        '--cb-accent-tertiary': [52,211,153]
+      };
+      // Replace color-mix(in srgb, var(--var) N%, transparent) → rgba(r,g,b, N/100)
+      style.textContent = style.textContent.replace(
+        /color-mix\(in srgb,\s*var\((--cb-accent-(?:primary|secondary|tertiary))\)\s+(\d+)%,\s*transparent\)/g,
+        function(m, v, p) { var c = _cmColors[v]; return c ? 'rgba('+c[0]+','+c[1]+','+c[2]+','+(parseInt(p)/100).toFixed(2)+')' : m; }
+      );
+      // Replace color-mix(in srgb, var(--var) N%, var(--bg)) → rgba(r,g,b, N/100) (approximate)
+      style.textContent = style.textContent.replace(
+        /color-mix\(in srgb,\s*var\((--cb-accent-(?:primary|secondary|tertiary))\)\s+(\d+)%,\s*var\(--cb-bg[23]?\)\)/g,
+        function(m, v, p) { var c = _cmColors[v]; return c ? 'rgba('+c[0]+','+c[1]+','+c[2]+','+(parseInt(p)/100).toFixed(2)+')' : m; }
+      );
+      // Replace color-mix(in srgb, #hex N%, ...) → rgba of hex at N% alpha (used in debate/toolkit)
+      style.textContent = style.textContent.replace(
+        /color-mix\(in srgb,\s*#([0-9a-fA-F]{6})\s+(\d+)%,\s*(?:transparent|var\([^)]+\))\)/g,
+        function(m, hex, p) {
+          var r = parseInt(hex.substring(0,2),16), g = parseInt(hex.substring(2,4),16), b = parseInt(hex.substring(4,6),16);
+          return 'rgba('+r+','+g+','+b+','+(parseInt(p)/100).toFixed(2)+')';
+        }
+      );
+    }
+
+    // --- :has() selector fallback ---
+    // Replace .cb-radio:has(input:checked) with .cb-radio-checked for browsers without :has()
+    if (!CSS.supports || !CSS.supports('selector(:has(*))')) {
+      style.textContent = style.textContent.replace(
+        /\.cb-radio:has\(input:checked\)/g,
+        '.cb-radio.cb-radio-checked'
+      );
+    }
+
     shadow.appendChild(style);
     // Apply saved theme preference - DEFAULT TO DARK
     try {
@@ -3480,11 +3551,11 @@
     btnRestore.title = 'Continue where you left off - Pick any saved chat and paste it into this AI';
     btnRestore.setAttribute('aria-label', 'Restore conversation');
 
-    const btnClipboard = document.createElement('button');
-    btnClipboard.className = 'cb-btn cb-action-card';
-    btnClipboard.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg><span>Copy</span>`;
-    btnClipboard.title = 'Quick export - Copy this conversation to share or save externally';
-    btnClipboard.setAttribute('aria-label', 'Copy conversation to clipboard');
+    const btnToolkit = document.createElement('button');
+    btnToolkit.className = 'cb-btn cb-action-card';
+    btnToolkit.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg><span>Toolkit</span>`;
+    btnToolkit.title = 'Action tools — Voice Over, Flashcards, Action Items, Image Gen, Teach Me, Code Sandbox, Podcast, AI Debate';
+    btnToolkit.setAttribute('aria-label', 'Open Toolkit');
 
     const btnSmartQuery = document.createElement('button');
     btnSmartQuery.className = 'cb-btn cb-action-card';
@@ -3536,13 +3607,13 @@
       panel.appendChild(scanRow);
     } catch (e) { try { row1.appendChild(btnScan); } catch (e2) { } }
 
-    // Grid: Restore, Query, Graph, Insights, Copy, Prompts, Summarize, Rewrite, Translate
+    // Grid: Restore, Query, Agent, Insights, Toolkit, Prompts, Summarize, Rewrite, Translate
     [
       btnRestore,
       btnSmartQuery,
       btnKnowledgeGraph,
       btnInsights,
-      btnClipboard,
+      btnToolkit,
       btnPromptDesigner,
       btnSummarize,
       btnRewrite,
@@ -3559,7 +3630,7 @@
     // Quick action buttons with SVG icons
     const qaButtons = [
       { id: 'qa-sidebar-optimize', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v5m0 4v8m-4-4l4-4 4 4"/><circle cx="12" cy="12" r="10"/></svg>', label: 'Optimize', title: 'Transform raw prompts into high-performance AI prompts' },
-      { id: 'qa-sidebar-stats', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>', label: 'Stats', title: 'Show word count, read time & saved count' },
+      { id: 'qa-sidebar-copy', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>', label: 'Copy', title: 'Copy conversation to clipboard' },
       { id: 'qa-sidebar-clean', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>', label: 'Clean', title: 'Remove duplicates and organize saved conversations' },
       { id: 'qa-sidebar-export', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>', label: 'Export', title: 'Export all conversations as JSON or Markdown' }
     ];
@@ -4469,7 +4540,7 @@
       radio.name = 'cb-trans-mode';
       radio.value = mode;
       radio.style.cssText = 'cursor:pointer;accent-color:var(--cb-accent-primary);';
-      if (idx === 0) radio.checked = true;
+      if (idx === 0) { radio.checked = true; label.classList.add('cb-radio-checked'); }
       const span = document.createElement('span');
       span.textContent = mode === 'all' ? 'All' : mode === 'user' ? 'User' : mode === 'ai' ? 'AI' : mode === 'last' ? 'Last' : 'Custom';
       span.className = 'cb-radio-text';
@@ -4549,6 +4620,12 @@
       } else {
         customArea.style.display = 'none';
       }
+      // :has() fallback — toggle .cb-radio-checked class on the parent label
+      transRadioGroup.querySelectorAll('.cb-radio').forEach(lbl => {
+        const inp = lbl.querySelector('input[type="radio"]');
+        if (inp && inp.checked) lbl.classList.add('cb-radio-checked');
+        else lbl.classList.remove('cb-radio-checked');
+      });
     });
 
     // Character count for custom input
@@ -4601,6 +4678,7 @@
           style.textContent = `
           .cb-radio:hover { background: color-mix(in srgb, var(--cb-accent-primary) 15%, transparent); border-color: color-mix(in srgb, var(--cb-accent-primary) 50%, transparent); transform: translateY(-1px); }
           .cb-radio:has(input:checked) { background: color-mix(in srgb, var(--cb-accent-primary) 20%, transparent); border-color: color-mix(in srgb, var(--cb-accent-primary) 60%, transparent); }
+          .cb-radio.cb-radio-checked { background: rgba(96,165,250,0.2); border-color: rgba(96,165,250,0.6); }
           .cb-radio input { accent-color: var(--cb-accent-primary); }
           .cb-radio input:checked + .cb-radio-text { font-weight: 600; color: var(--cb-white); }
           #cb-trans-options { box-shadow: 0 8px 32px rgba(0,0,0,0.3); }
@@ -4887,7 +4965,7 @@
     agentTop.appendChild(agentTitle); agentTop.appendChild(btnCloseAgent);
     agentView.appendChild(agentTop);
 
-    const agentIntro = document.createElement('div'); agentIntro.className = 'cb-view-intro'; agentIntro.textContent = 'Specialized cognitive instruments for structured analysis and output generation.';
+    const agentIntro = document.createElement('div'); agentIntro.className = 'cb-view-intro'; agentIntro.textContent = '6 intelligence agents that work across all your AI conversations.';
     agentView.appendChild(agentIntro);
 
     // Agent content container (will be populated by renderAgentHub)
@@ -5148,7 +5226,815 @@
 
     panel.appendChild(insightsView);
 
-    // Gemini Nano input/output area
+    // ============================================
+    // TOOLKIT VIEW — 8 forward-facing action tools
+    // ============================================
+    const toolkitView = document.createElement('div'); toolkitView.className = 'cb-internal-view'; toolkitView.id = 'cb-toolkit-view'; toolkitView.setAttribute('data-cb-ignore', 'true');
+    const toolkitTop = document.createElement('div'); toolkitTop.className = 'cb-view-top'; toolkitTop.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;';
+    const toolkitTitle = document.createElement('div'); toolkitTitle.className = 'cb-view-title';
+    toolkitTitle.innerHTML = '<span class="cb-gradient-text" style="display:inline-flex;align-items:center;gap:10px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>Toolkit</span>';
+    const btnCloseToolkit = document.createElement('button'); btnCloseToolkit.className = 'cb-view-close';
+    btnCloseToolkit.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+    btnCloseToolkit.setAttribute('aria-label', 'Close Toolkit view');
+    toolkitTop.appendChild(toolkitTitle); toolkitTop.appendChild(btnCloseToolkit);
+    toolkitView.appendChild(toolkitTop);
+
+    const toolkitIntro = document.createElement('div'); toolkitIntro.className = 'cb-view-intro';
+    toolkitIntro.textContent = 'Action tools to transform your conversations into something useful right now.';
+    toolkitView.appendChild(toolkitIntro);
+
+    const toolkitContent = document.createElement('div'); toolkitContent.id = 'cb-toolkit-content'; toolkitContent.style.cssText = 'padding:12px 0;overflow-y:auto;overflow-x:hidden;max-height:calc(100vh - 250px);';
+
+    // Toolkit tools definition
+    const toolkitTools = [
+      { id: 'tk-voiceover', icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>', name: 'Voice Over', desc: 'Read conversation aloud with text-to-speech' },
+      { id: 'tk-flashcards', icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M12 8v8"/><path d="M8 12h8"/></svg>', name: 'Flashcard Maker', desc: 'Generate study flashcards from key concepts' },
+      { id: 'tk-actions', icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>', name: 'Action Items', desc: 'Extract TODOs and next steps as a checklist' },
+      { id: 'tk-imagegen', icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>', name: 'Image Generator', desc: 'Create images from conversation context or prompts' },
+      { id: 'tk-teachme', icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>', name: 'Teach Me', desc: 'Turn any topic into an interactive mini-lesson' },
+      { id: 'tk-codesandbox', icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/><line x1="14" y1="4" x2="10" y2="20"/></svg>', name: 'Code Sandbox', desc: 'Extract and run code blocks from conversations' },
+      { id: 'tk-podcast', icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>', name: 'Podcast', desc: 'Convert conversation into a two-voice podcast script' },
+      { id: 'tk-debate', icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><line x1="9" y1="10" x2="15" y2="10"/></svg>', name: 'AI Debate', desc: 'Get both sides of any claim argued by AI' }
+    ];
+
+    // Render toolkit grid
+    const tkGrid = document.createElement('div');
+    tkGrid.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:4px;';
+    const tkCards = {};
+    toolkitTools.forEach(tool => {
+      const card = document.createElement('div');
+      card.className = 'cb-insight-block';
+      card.id = tool.id;
+      card.style.cssText = 'cursor:pointer;transition:all 0.2s;padding:14px;';
+      card.innerHTML = `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;"><span style="color:var(--cb-accent-primary);flex-shrink:0;">${tool.icon}</span><span style="font-weight:600;font-size:12px;color:var(--cb-text);">${tool.name}</span></div><div style="font-size:10px;color:var(--cb-subtext);line-height:1.4;">${tool.desc}</div>`;
+      card.addEventListener('mouseenter', () => { card.style.borderColor = 'var(--cb-accent-primary)'; card.style.transform = 'translateY(-1px)'; });
+      card.addEventListener('mouseleave', () => { card.style.borderColor = ''; card.style.transform = ''; });
+      tkCards[tool.id] = card;
+      tkGrid.appendChild(card);
+    });
+    toolkitContent.appendChild(tkGrid);
+
+    // Sub-panel area for individual tool UIs
+    const tkSubPanel = document.createElement('div');
+    tkSubPanel.id = 'cb-tk-subpanel';
+    tkSubPanel.style.cssText = 'display:none;margin-top:14px;';
+    toolkitContent.appendChild(tkSubPanel);
+    toolkitView.appendChild(toolkitContent);
+    panel.appendChild(toolkitView);
+
+    // ---- Toolkit sub-panel helpers ----
+    function tkShowSub(title, icon, contentHTML) {
+      tkGrid.style.display = 'none';
+      tkSubPanel.style.display = 'block';
+      tkSubPanel.innerHTML = `
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="color:var(--cb-accent-primary);">${icon}</span>
+            <span style="font-weight:600;font-size:13px;color:var(--cb-text);">${title}</span>
+          </div>
+          <button id="tk-back-btn" style="background:none;border:1px solid var(--cb-border);border-radius:6px;color:var(--cb-subtext);cursor:pointer;font-size:11px;padding:4px 10px;transition:all 0.2s;">← Back</button>
+        </div>
+        <div id="tk-sub-content">${contentHTML}</div>
+      `;
+      shadow.getElementById('tk-back-btn').addEventListener('click', tkShowGrid);
+    }
+    function tkShowGrid() {
+      tkGrid.style.display = 'grid';
+      tkSubPanel.style.display = 'none';
+      tkSubPanel.innerHTML = '';
+      // Stop any ongoing TTS
+      try { speechSynthesis.cancel(); } catch (_) { }
+    }
+
+    // ============================================
+    // TOOLKIT TOOL 1: Voice Over (TTS)
+    // ============================================
+    tkCards['tk-voiceover']?.addEventListener('click', async () => {
+      const chatText = await getConversationText();
+      if (!chatText) { toast('Scan a conversation first'); return; }
+
+      tkShowSub('Voice Over', '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>', `
+        <div style="margin-bottom:12px;">
+          <label style="font-size:11px;color:var(--cb-subtext);display:block;margin-bottom:6px;">Voice</label>
+          <select id="tk-voice-select" style="width:100%;padding:8px;border-radius:6px;background:var(--cb-bg2);border:1px solid var(--cb-border);color:var(--cb-text);font-size:12px;"></select>
+        </div>
+        <div style="margin-bottom:12px;">
+          <label style="font-size:11px;color:var(--cb-subtext);display:block;margin-bottom:6px;">Speed: <span id="tk-speed-val">1.0</span>x</label>
+          <input type="range" id="tk-speed" min="0.5" max="2" step="0.1" value="1" style="width:100%;accent-color:var(--cb-accent-primary);">
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:12px;">
+          <button id="tk-tts-play" class="cb-btn" style="flex:1;padding:8px;font-size:12px;display:flex;align-items:center;justify-content:center;gap:6px;">▶ Play</button>
+          <button id="tk-tts-pause" class="cb-btn" style="flex:1;padding:8px;font-size:12px;" disabled>⏸ Pause</button>
+          <button id="tk-tts-stop" class="cb-btn" style="flex:1;padding:8px;font-size:12px;" disabled>⏹ Stop</button>
+        </div>
+        <div id="tk-tts-status" style="font-size:11px;color:var(--cb-subtext);text-align:center;">Ready to read ${chatText.split(/\s+/).length} words</div>
+      `);
+
+      // Populate voices
+      const voiceSel = shadow.getElementById('tk-voice-select');
+      function loadVoices() {
+        const voices = speechSynthesis.getVoices();
+        voiceSel.innerHTML = '';
+        voices.filter(v => v.lang.startsWith('en')).forEach((v, i) => {
+          const opt = document.createElement('option'); opt.value = i;
+          opt.textContent = `${v.name} (${v.lang})`;
+          if (v.default) opt.selected = true;
+          voiceSel.appendChild(opt);
+        });
+        if (!voiceSel.children.length) {
+          voices.forEach((v, i) => {
+            const opt = document.createElement('option'); opt.value = i; opt.textContent = `${v.name} (${v.lang})`;
+            voiceSel.appendChild(opt);
+          });
+        }
+      }
+      loadVoices();
+      speechSynthesis.onvoiceschanged = loadVoices;
+
+      // Speed slider
+      const speedSlider = shadow.getElementById('tk-speed');
+      const speedVal = shadow.getElementById('tk-speed-val');
+      speedSlider?.addEventListener('input', () => { speedVal.textContent = parseFloat(speedSlider.value).toFixed(1); });
+
+      // TTS controls
+      let currentUtterance = null;
+      shadow.getElementById('tk-tts-play')?.addEventListener('click', () => {
+        speechSynthesis.cancel();
+        const voices = speechSynthesis.getVoices();
+        const utter = new SpeechSynthesisUtterance(chatText);
+        const selIdx = parseInt(voiceSel.value) || 0;
+        if (voices[selIdx]) utter.voice = voices[selIdx];
+        utter.rate = parseFloat(speedSlider.value) || 1;
+        utter.onstart = () => {
+          shadow.getElementById('tk-tts-status').textContent = 'Playing...';
+          shadow.getElementById('tk-tts-pause').disabled = false;
+          shadow.getElementById('tk-tts-stop').disabled = false;
+        };
+        utter.onend = () => {
+          shadow.getElementById('tk-tts-status').textContent = 'Finished';
+          shadow.getElementById('tk-tts-pause').disabled = true;
+          shadow.getElementById('tk-tts-stop').disabled = true;
+        };
+        currentUtterance = utter;
+        speechSynthesis.speak(utter);
+      });
+
+      shadow.getElementById('tk-tts-pause')?.addEventListener('click', () => {
+        if (speechSynthesis.paused) {
+          speechSynthesis.resume();
+          shadow.getElementById('tk-tts-pause').textContent = '⏸ Pause';
+          shadow.getElementById('tk-tts-status').textContent = 'Playing...';
+        } else {
+          speechSynthesis.pause();
+          shadow.getElementById('tk-tts-pause').textContent = '▶ Resume';
+          shadow.getElementById('tk-tts-status').textContent = 'Paused';
+        }
+      });
+
+      shadow.getElementById('tk-tts-stop')?.addEventListener('click', () => {
+        speechSynthesis.cancel();
+        shadow.getElementById('tk-tts-status').textContent = 'Stopped';
+        shadow.getElementById('tk-tts-pause').disabled = true;
+        shadow.getElementById('tk-tts-stop').disabled = true;
+      });
+    });
+
+    // ============================================
+    // TOOLKIT TOOL 2: Flashcard Maker
+    // ============================================
+    tkCards['tk-flashcards']?.addEventListener('click', async () => {
+      const chatText = await getConversationText();
+      if (!chatText) { toast('Scan a conversation first'); return; }
+
+      tkShowSub('Flashcard Maker', '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M12 8v8"/><path d="M8 12h8"/></svg>', `
+        <div style="text-align:center;padding:20px;"><div class="cb-spinner"></div><div style="margin-top:8px;font-size:11px;color:var(--cb-subtext);">Generating flashcards...</div></div>
+      `);
+
+      try {
+        const res = await callGeminiAsync({
+          action: 'prompt',
+          text: `From the following conversation, extract 5-10 key concept flashcards. Return ONLY a JSON array where each item has "front" (question/term) and "back" (answer/definition). Keep answers concise (1-3 sentences). No markdown wrapping.\n\nConversation:\n${chatText.substring(0, 8000)}`
+        });
+
+        if (!res || !res.ok || !res.result) throw new Error(res?.error || 'No result');
+        let cards;
+        try {
+          const cleaned = res.result.replace(/```json?\s*/g, '').replace(/```/g, '').trim();
+          cards = JSON.parse(cleaned);
+        } catch (_) { throw new Error('Could not parse flashcards'); }
+
+        if (!Array.isArray(cards) || !cards.length) throw new Error('No flashcards generated');
+
+        let currentCard = 0;
+        let flipped = false;
+
+        const subContent = shadow.getElementById('tk-sub-content');
+        function renderCard() {
+          const c = cards[currentCard];
+          flipped = false;
+          subContent.innerHTML = `
+            <div style="text-align:center;margin-bottom:10px;font-size:11px;color:var(--cb-subtext);">Card ${currentCard + 1} of ${cards.length}</div>
+            <div id="tk-fc-card" style="min-height:120px;padding:20px;border-radius:10px;background:var(--cb-bg2);border:1px solid var(--cb-border);cursor:pointer;display:flex;align-items:center;justify-content:center;text-align:center;transition:all 0.3s;font-size:13px;color:var(--cb-text);line-height:1.5;">
+              ${c.front}
+            </div>
+            <div style="font-size:10px;color:var(--cb-subtext);text-align:center;margin:8px 0;">Click card to flip</div>
+            <div style="display:flex;gap:8px;">
+              <button id="tk-fc-prev" class="cb-btn" style="flex:1;padding:8px;font-size:12px;" ${currentCard === 0 ? 'disabled' : ''}>← Prev</button>
+              <button id="tk-fc-next" class="cb-btn" style="flex:1;padding:8px;font-size:12px;" ${currentCard === cards.length - 1 ? 'disabled' : ''}>Next →</button>
+            </div>
+            <button id="tk-fc-copy" class="cb-btn" style="width:100%;margin-top:8px;padding:8px;font-size:11px;">📋 Copy All Flashcards</button>
+          `;
+
+          shadow.getElementById('tk-fc-card')?.addEventListener('click', () => {
+            const cardEl = shadow.getElementById('tk-fc-card');
+            flipped = !flipped;
+            cardEl.innerHTML = flipped ? c.back : c.front;
+            cardEl.style.background = flipped ? 'color-mix(in srgb, var(--cb-accent-primary) 10%, var(--cb-bg2))' : 'var(--cb-bg2)';
+            cardEl.style.borderColor = flipped ? 'var(--cb-accent-primary)' : 'var(--cb-border)';
+          });
+
+          shadow.getElementById('tk-fc-prev')?.addEventListener('click', () => { if (currentCard > 0) { currentCard--; renderCard(); } });
+          shadow.getElementById('tk-fc-next')?.addEventListener('click', () => { if (currentCard < cards.length - 1) { currentCard++; renderCard(); } });
+          shadow.getElementById('tk-fc-copy')?.addEventListener('click', async () => {
+            const text = cards.map((c, i) => `Card ${i + 1}:\nQ: ${c.front}\nA: ${c.back}`).join('\n\n');
+            await navigator.clipboard.writeText(text);
+            toast('Flashcards copied!');
+          });
+        }
+        renderCard();
+      } catch (e) {
+        shadow.getElementById('tk-sub-content').innerHTML = `<div style="color:var(--cb-error);font-size:12px;text-align:center;padding:20px;">Failed to generate flashcards: ${e.message}</div>`;
+      }
+    });
+
+    // ============================================
+    // TOOLKIT TOOL 3: Action Items
+    // ============================================
+    tkCards['tk-actions']?.addEventListener('click', async () => {
+      const chatText = await getConversationText();
+      if (!chatText) { toast('Scan a conversation first'); return; }
+
+      tkShowSub('Action Items', '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>', `
+        <div style="text-align:center;padding:20px;"><div class="cb-spinner"></div><div style="margin-top:8px;font-size:11px;color:var(--cb-subtext);">Extracting action items...</div></div>
+      `);
+
+      try {
+        const res = await callGeminiAsync({
+          action: 'prompt',
+          text: `From the following conversation, extract all action items, TODOs, next steps, decisions, and follow-ups. Return ONLY a JSON array where each item has "task" (the action), "priority" ("high"/"medium"/"low"), and "category" ("todo"/"decision"/"followup"/"idea"). Be thorough.\n\nConversation:\n${chatText.substring(0, 8000)}`
+        });
+
+        if (!res || !res.ok || !res.result) throw new Error(res?.error || 'No result');
+        let items;
+        try {
+          const cleaned = res.result.replace(/```json?\s*/g, '').replace(/```/g, '').trim();
+          items = JSON.parse(cleaned);
+        } catch (_) { throw new Error('Could not parse action items'); }
+
+        if (!Array.isArray(items) || !items.length) throw new Error('No action items found');
+
+        const priorityColors = { high: '#ef4444', medium: '#f59e0b', low: '#22c55e' };
+        const categoryIcons = { todo: '☑️', decision: '⚖️', followup: '🔄', idea: '💡' };
+
+        const subContent = shadow.getElementById('tk-sub-content');
+        subContent.innerHTML = `
+          <div style="margin-bottom:10px;font-size:11px;color:var(--cb-subtext);">${items.length} item${items.length > 1 ? 's' : ''} extracted</div>
+          <div id="tk-action-list" style="display:flex;flex-direction:column;gap:8px;"></div>
+          <button id="tk-actions-copy" class="cb-btn" style="width:100%;margin-top:12px;padding:8px;font-size:11px;">📋 Copy Checklist</button>
+        `;
+
+        const listEl = shadow.getElementById('tk-action-list');
+        items.forEach((item, i) => {
+          const row = document.createElement('div');
+          row.style.cssText = 'display:flex;align-items:flex-start;gap:8px;padding:10px;border-radius:8px;background:var(--cb-bg2);border:1px solid var(--cb-border);';
+          row.innerHTML = `
+            <input type="checkbox" id="tk-ac-${i}" style="margin-top:2px;accent-color:var(--cb-accent-primary);flex-shrink:0;">
+            <div style="flex:1;">
+              <div style="font-size:12px;color:var(--cb-text);line-height:1.4;">${categoryIcons[item.category] || '📌'} ${item.task}</div>
+              <div style="display:flex;gap:6px;margin-top:4px;">
+                <span style="font-size:9px;padding:2px 6px;border-radius:4px;background:${priorityColors[item.priority] || '#6b7280'}22;color:${priorityColors[item.priority] || '#6b7280'};border:1px solid ${priorityColors[item.priority] || '#6b7280'}44;">${item.priority}</span>
+                <span style="font-size:9px;padding:2px 6px;border-radius:4px;background:var(--cb-bg3);color:var(--cb-subtext);">${item.category}</span>
+              </div>
+            </div>
+          `;
+          listEl.appendChild(row);
+        });
+
+        shadow.getElementById('tk-actions-copy')?.addEventListener('click', async () => {
+          const text = items.map((it, i) => `[ ] ${it.task} [${it.priority}] (${it.category})`).join('\n');
+          await navigator.clipboard.writeText(text);
+          toast('Checklist copied!');
+        });
+      } catch (e) {
+        shadow.getElementById('tk-sub-content').innerHTML = `<div style="color:var(--cb-error);font-size:12px;text-align:center;padding:20px;">Failed to extract action items: ${e.message}</div>`;
+      }
+    });
+
+    // ============================================
+    // TOOLKIT TOOL 4: Image Generator
+    // ============================================
+    tkCards['tk-imagegen']?.addEventListener('click', async () => {
+      tkShowSub('Image Generator', '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>', `
+        <div style="margin-bottom:12px;">
+          <label style="font-size:11px;color:var(--cb-subtext);display:block;margin-bottom:6px;">Image Prompt</label>
+          <textarea id="tk-img-prompt" style="width:100%;min-height:60px;padding:8px;border-radius:6px;background:var(--cb-bg2);border:1px solid var(--cb-border);color:var(--cb-text);font-size:12px;resize:vertical;font-family:inherit;" placeholder="Describe the image you want to generate..."></textarea>
+        </div>
+        <button id="tk-img-from-chat" class="cb-btn" style="width:100%;padding:6px;font-size:11px;margin-bottom:8px;">✨ Auto-suggest from conversation</button>
+        <button id="tk-img-generate" class="cb-btn" style="width:100%;padding:8px;font-size:12px;">🎨 Generate Image</button>
+        <div id="tk-img-result" style="margin-top:12px;"></div>
+      `);
+
+      // Auto-suggest prompt from conversation
+      shadow.getElementById('tk-img-from-chat')?.addEventListener('click', async () => {
+        const chatText = await getConversationText();
+        if (!chatText) { toast('Scan a conversation first'); return; }
+        const promptEl = shadow.getElementById('tk-img-prompt');
+        promptEl.value = 'Generating suggestion...';
+        try {
+          const res = await callGeminiAsync({
+            action: 'prompt',
+            text: `Based on this conversation, suggest a single vivid image prompt (1-2 sentences) that would make a great visual companion. Return ONLY the prompt text, no quotes or explanation.\n\nConversation:\n${chatText.substring(0, 4000)}`
+          });
+          promptEl.value = (res && res.ok && res.result) ? res.result.trim() : 'A creative visualization of the conversation topics';
+        } catch (_) { promptEl.value = ''; }
+      });
+
+      // Generate image via Gemini
+      shadow.getElementById('tk-img-generate')?.addEventListener('click', async () => {
+        const promptEl = shadow.getElementById('tk-img-prompt');
+        const prompt = promptEl.value.trim();
+        if (!prompt) { toast('Enter a prompt first'); return; }
+
+        const resultEl = shadow.getElementById('tk-img-result');
+        resultEl.innerHTML = '<div style="text-align:center;padding:20px;"><div class="cb-spinner"></div><div style="margin-top:8px;font-size:11px;color:var(--cb-subtext);">Generating image...</div></div>';
+
+        try {
+          const res = await new Promise(resolve => {
+            chrome.runtime.sendMessage({ type: 'generate_image', payload: { prompt } }, resolve);
+          });
+
+          if (res && res.ok && res.imageData) {
+            resultEl.innerHTML = `
+              <div style="border-radius:8px;overflow:hidden;border:1px solid var(--cb-border);">
+                <img id="tk-img-preview" src="${res.imageData}" style="width:100%;display:block;" alt="Generated image">
+              </div>
+              <div style="display:flex;gap:8px;margin-top:8px;">
+                <button id="tk-img-download" class="cb-btn" style="flex:1;padding:8px;font-size:11px;">💾 Download</button>
+                <button id="tk-img-copy" class="cb-btn" style="flex:1;padding:8px;font-size:11px;">📋 Copy</button>
+              </div>
+            `;
+            shadow.getElementById('tk-img-download')?.addEventListener('click', () => {
+              const a = document.createElement('a');
+              a.href = res.imageData;
+              a.download = `chatbridge-image-${Date.now()}.png`;
+              a.click();
+              toast('Image downloaded!');
+            });
+            shadow.getElementById('tk-img-copy')?.addEventListener('click', async () => {
+              try {
+                const resp = await fetch(res.imageData);
+                const blob = await resp.blob();
+                await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
+                toast('Image copied!');
+              } catch (_) { toast('Copy failed — try download instead'); }
+            });
+          } else {
+            // Fallback: describe image as text since generation not available
+            resultEl.innerHTML = `<div style="padding:14px;border-radius:8px;background:var(--cb-bg2);border:1px solid var(--cb-border);font-size:12px;color:var(--cb-subtext);text-align:center;">Image generation requires a Gemini API key with Imagen access. Try describing your prompt to an AI chat with image generation capabilities.</div>`;
+          }
+        } catch (e) {
+          resultEl.innerHTML = `<div style="color:var(--cb-error);font-size:12px;text-align:center;padding:14px;">${e.message || 'Image generation failed'}</div>`;
+        }
+      });
+    });
+
+    // ============================================
+    // TOOLKIT TOOL 5: Teach Me
+    // ============================================
+    tkCards['tk-teachme']?.addEventListener('click', async () => {
+      const chatText = await getConversationText();
+
+      tkShowSub('Teach Me', '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>', `
+        <div style="margin-bottom:12px;">
+          <label style="font-size:11px;color:var(--cb-subtext);display:block;margin-bottom:6px;">Topic to learn</label>
+          <input type="text" id="tk-teach-topic" style="width:100%;padding:8px;border-radius:6px;background:var(--cb-bg2);border:1px solid var(--cb-border);color:var(--cb-text);font-size:12px;" placeholder="Enter a concept or topic...">
+        </div>
+        ${chatText ? '<button id="tk-teach-extract" class="cb-btn" style="width:100%;padding:6px;font-size:11px;margin-bottom:8px;">✨ Extract topics from conversation</button>' : ''}
+        <div style="margin-bottom:12px;">
+          <label style="font-size:11px;color:var(--cb-subtext);display:block;margin-bottom:6px;">Depth</label>
+          <div style="display:flex;gap:6px;">
+            <button class="cb-btn tk-depth-btn" data-depth="beginner" style="flex:1;padding:6px;font-size:11px;">Beginner</button>
+            <button class="cb-btn tk-depth-btn" data-depth="intermediate" style="flex:1;padding:6px;font-size:11px;border-color:var(--cb-accent-primary);">Intermediate</button>
+            <button class="cb-btn tk-depth-btn" data-depth="advanced" style="flex:1;padding:6px;font-size:11px;">Advanced</button>
+          </div>
+        </div>
+        <button id="tk-teach-go" class="cb-btn" style="width:100%;padding:8px;font-size:12px;">📖 Teach Me</button>
+        <div id="tk-teach-result" style="margin-top:12px;"></div>
+      `);
+
+      let selectedDepth = 'intermediate';
+      shadow.querySelectorAll('.tk-depth-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          shadow.querySelectorAll('.tk-depth-btn').forEach(b => b.style.borderColor = '');
+          btn.style.borderColor = 'var(--cb-accent-primary)';
+          selectedDepth = btn.dataset.depth;
+        });
+      });
+
+      // Extract topics from conversation
+      shadow.getElementById('tk-teach-extract')?.addEventListener('click', async () => {
+        const topicInput = shadow.getElementById('tk-teach-topic');
+        topicInput.value = 'Extracting...';
+        try {
+          const res = await callGeminiAsync({
+            action: 'prompt',
+            text: `From this conversation, identify the single most important technical or conceptual topic being discussed. Return ONLY the topic name (2-5 words), nothing else.\n\n${chatText.substring(0, 4000)}`
+          });
+          topicInput.value = (res && res.ok && res.result) ? res.result.trim().replace(/^["']|["']$/g, '') : '';
+        } catch (_) { topicInput.value = ''; }
+      });
+
+      // Generate lesson
+      shadow.getElementById('tk-teach-go')?.addEventListener('click', async () => {
+        const topic = shadow.getElementById('tk-teach-topic').value.trim();
+        if (!topic) { toast('Enter a topic'); return; }
+
+        const resultEl = shadow.getElementById('tk-teach-result');
+        resultEl.innerHTML = '<div style="text-align:center;padding:20px;"><div class="cb-spinner"></div><div style="margin-top:8px;font-size:11px;color:var(--cb-subtext);">Creating lesson...</div></div>';
+
+        try {
+          const res = await callGeminiAsync({
+            action: 'prompt',
+            text: `Create a ${selectedDepth}-level mini-lesson on "${topic}". Structure it as JSON with these fields:
+- "definition": clear 1-2 sentence definition
+- "keyPoints": array of 3-5 key points (strings)
+- "analogy": a relatable real-world analogy
+- "example": a practical example or code snippet
+- "quiz": object with "question" (string) and "options" (array of 4 strings) and "answer" (index 0-3)
+Return ONLY valid JSON, no markdown wrapping.`
+          });
+
+          if (!res || !res.ok || !res.result) throw new Error(res?.error || 'No result');
+          let lesson;
+          try {
+            const cleaned = res.result.replace(/```json?\s*/g, '').replace(/```/g, '').trim();
+            lesson = JSON.parse(cleaned);
+          } catch (_) { throw new Error('Could not parse lesson'); }
+
+          resultEl.innerHTML = `
+            <div style="border-radius:8px;background:var(--cb-bg2);border:1px solid var(--cb-border);padding:14px;margin-bottom:10px;">
+              <div style="font-weight:600;font-size:13px;color:var(--cb-accent-primary);margin-bottom:8px;">📝 Definition</div>
+              <div style="font-size:12px;color:var(--cb-text);line-height:1.5;">${lesson.definition || ''}</div>
+            </div>
+            <div style="border-radius:8px;background:var(--cb-bg2);border:1px solid var(--cb-border);padding:14px;margin-bottom:10px;">
+              <div style="font-weight:600;font-size:13px;color:var(--cb-accent-primary);margin-bottom:8px;">🔑 Key Points</div>
+              ${(lesson.keyPoints || []).map(p => `<div style="font-size:12px;color:var(--cb-text);padding:4px 0;display:flex;gap:6px;"><span style="color:var(--cb-accent-secondary);">•</span>${p}</div>`).join('')}
+            </div>
+            <div style="border-radius:8px;background:var(--cb-bg2);border:1px solid var(--cb-border);padding:14px;margin-bottom:10px;">
+              <div style="font-weight:600;font-size:13px;color:var(--cb-accent-primary);margin-bottom:8px;">💡 Analogy</div>
+              <div style="font-size:12px;color:var(--cb-text);line-height:1.5;font-style:italic;">${lesson.analogy || ''}</div>
+            </div>
+            <div style="border-radius:8px;background:var(--cb-bg2);border:1px solid var(--cb-border);padding:14px;margin-bottom:10px;">
+              <div style="font-weight:600;font-size:13px;color:var(--cb-accent-primary);margin-bottom:8px;">🔧 Example</div>
+              <pre style="font-size:11px;color:var(--cb-text);line-height:1.4;white-space:pre-wrap;font-family:monospace;background:var(--cb-bg3);padding:10px;border-radius:6px;overflow-x:auto;">${lesson.example || ''}</pre>
+            </div>
+            ${lesson.quiz ? `
+            <div style="border-radius:8px;background:var(--cb-bg2);border:1px solid var(--cb-border);padding:14px;">
+              <div style="font-weight:600;font-size:13px;color:var(--cb-accent-primary);margin-bottom:8px;">❓ Quick Quiz</div>
+              <div style="font-size:12px;color:var(--cb-text);margin-bottom:10px;">${lesson.quiz.question}</div>
+              <div id="tk-quiz-options" style="display:flex;flex-direction:column;gap:6px;"></div>
+              <div id="tk-quiz-result" style="margin-top:8px;font-size:11px;display:none;"></div>
+            </div>` : ''}
+          `;
+
+          // Wire quiz
+          if (lesson.quiz && lesson.quiz.options) {
+            const optionsEl = shadow.getElementById('tk-quiz-options');
+            const quizResult = shadow.getElementById('tk-quiz-result');
+            lesson.quiz.options.forEach((opt, i) => {
+              const btn = document.createElement('button');
+              btn.className = 'cb-btn';
+              btn.style.cssText = 'padding:8px;font-size:11px;text-align:left;';
+              btn.textContent = `${String.fromCharCode(65 + i)}. ${opt}`;
+              btn.addEventListener('click', () => {
+                const correct = i === lesson.quiz.answer;
+                quizResult.style.display = 'block';
+                quizResult.style.color = correct ? '#22c55e' : '#ef4444';
+                quizResult.textContent = correct ? '✅ Correct!' : `❌ The answer is ${String.fromCharCode(65 + lesson.quiz.answer)}. ${lesson.quiz.options[lesson.quiz.answer]}`;
+                optionsEl.querySelectorAll('button').forEach(b => b.disabled = true);
+                btn.style.borderColor = correct ? '#22c55e' : '#ef4444';
+              });
+              optionsEl.appendChild(btn);
+            });
+          }
+        } catch (e) {
+          resultEl.innerHTML = `<div style="color:var(--cb-error);font-size:12px;text-align:center;padding:20px;">Failed: ${e.message}</div>`;
+        }
+      });
+    });
+
+    // ============================================
+    // TOOLKIT TOOL 6: Code Sandbox
+    // ============================================
+    tkCards['tk-codesandbox']?.addEventListener('click', async () => {
+      const chatText = await getConversationText();
+
+      tkShowSub('Code Sandbox', '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/><line x1="14" y1="4" x2="10" y2="20"/></svg>', `
+        <div style="margin-bottom:8px;">
+          <label style="font-size:11px;color:var(--cb-subtext);display:block;margin-bottom:6px;">Language</label>
+          <select id="tk-code-lang" style="width:100%;padding:6px;border-radius:6px;background:var(--cb-bg2);border:1px solid var(--cb-border);color:var(--cb-text);font-size:12px;">
+            <option value="javascript">JavaScript</option>
+            <option value="html">HTML (runs in iframe)</option>
+            <option value="python">Python (display only)</option>
+          </select>
+        </div>
+        ${chatText ? '<button id="tk-code-extract" class="cb-btn" style="width:100%;padding:6px;font-size:11px;margin-bottom:8px;">✨ Extract code from conversation</button>' : ''}
+        <div style="margin-bottom:8px;">
+          <label style="font-size:11px;color:var(--cb-subtext);display:block;margin-bottom:6px;">Code</label>
+          <textarea id="tk-code-editor" style="width:100%;min-height:120px;padding:8px;border-radius:6px;background:var(--cb-bg3);border:1px solid var(--cb-border);color:var(--cb-text);font-size:11px;font-family:monospace;resize:vertical;tab-size:2;white-space:pre;" placeholder="Paste or write code here..."></textarea>
+        </div>
+        <button id="tk-code-run" class="cb-btn" style="width:100%;padding:8px;font-size:12px;">▶ Run Code</button>
+        <div id="tk-code-output" style="margin-top:10px;"></div>
+      `);
+
+      // Extract code from conversation
+      shadow.getElementById('tk-code-extract')?.addEventListener('click', async () => {
+        const editor = shadow.getElementById('tk-code-editor');
+        editor.value = '// Extracting code blocks...';
+        try {
+          const res = await callGeminiAsync({
+            action: 'prompt',
+            text: `Extract the most important/complete code block from this conversation. Return ONLY the raw code, no markdown fences, no explanation. If multiple blocks, combine them logically.\n\n${chatText.substring(0, 6000)}`
+          });
+          editor.value = (res && res.ok && res.result) ? res.result.replace(/```[\w]*\s*/g, '').replace(/```/g, '').trim() : '// No code found';
+        } catch (_) { editor.value = '// Extraction failed'; }
+      });
+
+      // Run code
+      shadow.getElementById('tk-code-run')?.addEventListener('click', () => {
+        const code = shadow.getElementById('tk-code-editor').value;
+        const lang = shadow.getElementById('tk-code-lang').value;
+        const outputEl = shadow.getElementById('tk-code-output');
+
+        if (!code.trim()) { toast('Enter some code first'); return; }
+
+        if (lang === 'javascript') {
+          outputEl.innerHTML = '<div style="font-size:11px;color:var(--cb-subtext);margin-bottom:4px;">Output:</div>';
+          const outBox = document.createElement('pre');
+          outBox.style.cssText = 'padding:10px;border-radius:6px;background:var(--cb-bg3);border:1px solid var(--cb-border);color:var(--cb-text);font-size:11px;font-family:monospace;max-height:200px;overflow:auto;white-space:pre-wrap;';
+          outputEl.appendChild(outBox);
+
+          const logs = [];
+          const fakeConsole = {
+            log: (...args) => logs.push(args.map(a => typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)).join(' ')),
+            error: (...args) => logs.push('ERROR: ' + args.join(' ')),
+            warn: (...args) => logs.push('WARN: ' + args.join(' '))
+          };
+
+          try {
+            const fn = new Function('console', code);
+            const result = fn(fakeConsole);
+            if (result !== undefined && !logs.length) logs.push(String(result));
+            outBox.textContent = logs.join('\n') || '(no output)';
+          } catch (e) {
+            outBox.textContent = `Error: ${e.message}`;
+            outBox.style.color = '#ef4444';
+          }
+        } else if (lang === 'html') {
+          outputEl.innerHTML = '<div style="font-size:11px;color:var(--cb-subtext);margin-bottom:4px;">Preview:</div>';
+          const iframe = document.createElement('iframe');
+          iframe.style.cssText = 'width:100%;min-height:200px;border-radius:6px;border:1px solid var(--cb-border);background:#fff;';
+          iframe.sandbox = 'allow-scripts';
+          outputEl.appendChild(iframe);
+          iframe.srcdoc = code;
+        } else {
+          outputEl.innerHTML = `<pre style="padding:10px;border-radius:6px;background:var(--cb-bg3);border:1px solid var(--cb-border);color:var(--cb-text);font-size:11px;font-family:monospace;max-height:200px;overflow:auto;white-space:pre-wrap;">${code}</pre><div style="font-size:10px;color:var(--cb-subtext);margin-top:4px;">Python display only — paste into a Python environment to execute.</div>`;
+        }
+      });
+    });
+
+    // ============================================
+    // TOOLKIT TOOL 7: Conversation to Podcast
+    // ============================================
+    tkCards['tk-podcast']?.addEventListener('click', async () => {
+      const chatText = await getConversationText();
+      if (!chatText) { toast('Scan a conversation first'); return; }
+
+      tkShowSub('Podcast', '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>', `
+        <div style="text-align:center;padding:20px;"><div class="cb-spinner"></div><div style="margin-top:8px;font-size:11px;color:var(--cb-subtext);">Converting conversation to podcast script...</div></div>
+      `);
+
+      try {
+        const res = await callGeminiAsync({
+          action: 'prompt',
+          text: `Convert this conversation into an engaging 2-person podcast script between "Host" and "Expert". Make it natural and conversational, with transitions, humor, and emphasis on key insights. Return ONLY a JSON array where each item has "speaker" ("Host" or "Expert") and "text" (their dialogue line). Keep it 8-15 exchanges.\n\nConversation:\n${chatText.substring(0, 8000)}`
+        });
+
+        if (!res || !res.ok || !res.result) throw new Error(res?.error || 'No result');
+        let script;
+        try {
+          const cleaned = res.result.replace(/```json?\s*/g, '').replace(/```/g, '').trim();
+          script = JSON.parse(cleaned);
+        } catch (_) { throw new Error('Could not parse podcast script'); }
+
+        if (!Array.isArray(script) || !script.length) throw new Error('No podcast generated');
+
+        const subContent = shadow.getElementById('tk-sub-content');
+        subContent.innerHTML = `
+          <div style="margin-bottom:12px;">
+            <div style="display:flex;gap:8px;margin-bottom:10px;">
+              <button id="tk-pod-play" class="cb-btn" style="flex:1;padding:8px;font-size:12px;">▶ Play Podcast</button>
+              <button id="tk-pod-stop" class="cb-btn" style="flex:1;padding:8px;font-size:12px;" disabled>⏹ Stop</button>
+            </div>
+            <div id="tk-pod-status" style="font-size:11px;color:var(--cb-subtext);text-align:center;margin-bottom:10px;">${script.length} exchanges ready</div>
+          </div>
+          <div id="tk-pod-script" style="display:flex;flex-direction:column;gap:8px;max-height:300px;overflow-y:auto;"></div>
+          <button id="tk-pod-copy" class="cb-btn" style="width:100%;margin-top:10px;padding:8px;font-size:11px;">📋 Copy Script</button>
+        `;
+
+        const scriptEl = shadow.getElementById('tk-pod-script');
+        script.forEach((line, i) => {
+          const isHost = line.speaker === 'Host';
+          const el = document.createElement('div');
+          el.id = `tk-pod-line-${i}`;
+          el.style.cssText = `padding:10px;border-radius:8px;background:${isHost ? 'color-mix(in srgb, var(--cb-accent-primary) 8%, var(--cb-bg2))' : 'color-mix(in srgb, var(--cb-accent-secondary) 8%, var(--cb-bg2))'};border:1px solid var(--cb-border);`;
+          // Build with DOM nodes — line.speaker and line.text come from AI output
+          const speakerEl = document.createElement('div');
+          speakerEl.style.cssText = `font-size:10px;font-weight:600;color:${isHost ? 'var(--cb-accent-primary)' : 'var(--cb-accent-secondary)'};margin-bottom:4px;`;
+          speakerEl.textContent = line.speaker;
+          const lineTextEl = document.createElement('div');
+          lineTextEl.style.cssText = 'font-size:12px;color:var(--cb-text);line-height:1.4;';
+          lineTextEl.textContent = line.text;
+          el.appendChild(speakerEl);
+          el.appendChild(lineTextEl);
+          scriptEl.appendChild(el);
+        });
+
+        // Play podcast with TTS - alternate voices
+        let podPlaying = false;
+        let podIndex = 0;
+
+        shadow.getElementById('tk-pod-play')?.addEventListener('click', () => {
+          if (podPlaying) return;
+          podPlaying = true;
+          podIndex = 0;
+          shadow.getElementById('tk-pod-play').disabled = true;
+          shadow.getElementById('tk-pod-stop').disabled = false;
+
+          const voices = speechSynthesis.getVoices();
+          const enVoices = voices.filter(v => v.lang.startsWith('en'));
+          const voice1 = enVoices.find(v => /female|zira|samantha/i.test(v.name)) || enVoices[0] || voices[0];
+          const voice2 = enVoices.find(v => /male|david|daniel/i.test(v.name) && v !== voice1) || enVoices[1] || voices[1] || voice1;
+
+          function speakLine(idx) {
+            if (!podPlaying || idx >= script.length) {
+              podPlaying = false;
+              shadow.getElementById('tk-pod-play').disabled = false;
+              shadow.getElementById('tk-pod-stop').disabled = true;
+              shadow.getElementById('tk-pod-status').textContent = idx >= script.length ? 'Finished' : 'Stopped';
+              return;
+            }
+
+            // Highlight current line
+            script.forEach((_, j) => {
+              const el = shadow.getElementById(`tk-pod-line-${j}`);
+              if (el) el.style.opacity = j === idx ? '1' : '0.5';
+            });
+            shadow.getElementById('tk-pod-status').textContent = `Playing ${idx + 1}/${script.length}...`;
+
+            const utter = new SpeechSynthesisUtterance(script[idx].text);
+            utter.voice = script[idx].speaker === 'Host' ? voice1 : voice2;
+            utter.rate = 1.05;
+            utter.pitch = script[idx].speaker === 'Host' ? 1.0 : 0.9;
+            utter.onend = () => { podIndex = idx + 1; speakLine(idx + 1); };
+            speechSynthesis.speak(utter);
+          }
+          speakLine(0);
+        });
+
+        shadow.getElementById('tk-pod-stop')?.addEventListener('click', () => {
+          podPlaying = false;
+          speechSynthesis.cancel();
+          shadow.getElementById('tk-pod-play').disabled = false;
+          shadow.getElementById('tk-pod-stop').disabled = true;
+          shadow.getElementById('tk-pod-status').textContent = 'Stopped';
+          script.forEach((_, j) => {
+            const el = shadow.getElementById(`tk-pod-line-${j}`);
+            if (el) el.style.opacity = '1';
+          });
+        });
+
+        shadow.getElementById('tk-pod-copy')?.addEventListener('click', async () => {
+          const text = script.map(l => `[${l.speaker}] ${l.text}`).join('\n\n');
+          await navigator.clipboard.writeText(text);
+          toast('Podcast script copied!');
+        });
+      } catch (e) {
+        shadow.getElementById('tk-sub-content').innerHTML = `<div style="color:var(--cb-error);font-size:12px;text-align:center;padding:20px;">Failed: ${e.message}</div>`;
+      }
+    });
+
+    // ============================================
+    // TOOLKIT TOOL 8: AI Debate
+    // ============================================
+    tkCards['tk-debate']?.addEventListener('click', async () => {
+      const chatText = await getConversationText();
+
+      tkShowSub('AI Debate', '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><line x1="9" y1="10" x2="15" y2="10"/></svg>', `
+        <div style="margin-bottom:12px;">
+          <label style="font-size:11px;color:var(--cb-subtext);display:block;margin-bottom:6px;">Claim or topic to debate</label>
+          <input type="text" id="tk-debate-topic" style="width:100%;padding:8px;border-radius:6px;background:var(--cb-bg2);border:1px solid var(--cb-border);color:var(--cb-text);font-size:12px;" placeholder="e.g. &quot;AI will replace most jobs within 10 years&quot;">
+        </div>
+        ${chatText ? '<button id="tk-debate-extract" class="cb-btn" style="width:100%;padding:6px;font-size:11px;margin-bottom:8px;">✨ Extract debatable claim from conversation</button>' : ''}
+        <button id="tk-debate-go" class="cb-btn" style="width:100%;padding:8px;font-size:12px;">⚔️ Start Debate</button>
+        <div id="tk-debate-result" style="margin-top:12px;"></div>
+      `);
+
+      // Extract claim
+      shadow.getElementById('tk-debate-extract')?.addEventListener('click', async () => {
+        const topicInput = shadow.getElementById('tk-debate-topic');
+        topicInput.value = 'Extracting...';
+        try {
+          const res = await callGeminiAsync({
+            action: 'prompt',
+            text: `From this conversation, identify the most debatable or controversial claim. Return ONLY the claim as a single statement.\n\n${chatText.substring(0, 4000)}`
+          });
+          topicInput.value = (res && res.ok && res.result) ? res.result.trim().replace(/^["']|["']$/g, '') : '';
+        } catch (_) { topicInput.value = ''; }
+      });
+
+      // Run debate
+      shadow.getElementById('tk-debate-go')?.addEventListener('click', async () => {
+        const topic = shadow.getElementById('tk-debate-topic').value.trim();
+        if (!topic) { toast('Enter a claim to debate'); return; }
+
+        const resultEl = shadow.getElementById('tk-debate-result');
+        resultEl.innerHTML = '<div style="text-align:center;padding:20px;"><div class="cb-spinner"></div><div style="margin-top:8px;font-size:11px;color:var(--cb-subtext);">Generating debate...</div></div>';
+
+        try {
+          const res = await callGeminiAsync({
+            action: 'prompt',
+            text: `Debate this claim: "${topic}"
+
+Return ONLY valid JSON with this structure:
+{
+  "claim": "the claim being debated",
+  "for": {
+    "summary": "1-2 sentence position",
+    "arguments": ["arg1", "arg2", "arg3"],
+    "evidence": "key supporting evidence"
+  },
+  "against": {
+    "summary": "1-2 sentence position",
+    "arguments": ["arg1", "arg2", "arg3"],
+    "evidence": "key opposing evidence"
+  },
+  "verdict": "balanced 1-2 sentence conclusion noting which side is stronger and why"
+}
+
+Be thorough and fair to both sides.`
+          });
+
+          if (!res || !res.ok || !res.result) throw new Error(res?.error || 'No result');
+          let debate;
+          try {
+            const cleaned = res.result.replace(/```json?\s*/g, '').replace(/```/g, '').trim();
+            debate = JSON.parse(cleaned);
+          } catch (_) { throw new Error('Could not parse debate'); }
+
+          resultEl.innerHTML = `
+            <div style="font-size:12px;color:var(--cb-text);text-align:center;padding:10px;margin-bottom:12px;font-style:italic;border-bottom:1px solid var(--cb-border);">"${debate.claim || topic}"</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+              <div style="padding:12px;border-radius:8px;background:color-mix(in srgb, #22c55e 8%, var(--cb-bg2));border:1px solid #22c55e44;">
+                <div style="font-weight:600;font-size:12px;color:#22c55e;margin-bottom:8px;">👍 FOR</div>
+                <div style="font-size:11px;color:var(--cb-text);margin-bottom:8px;line-height:1.4;">${debate.for?.summary || ''}</div>
+                ${(debate.for?.arguments || []).map(a => `<div style="font-size:11px;color:var(--cb-text);padding:3px 0;display:flex;gap:4px;"><span style="color:#22c55e;">•</span>${a}</div>`).join('')}
+                <div style="font-size:10px;color:var(--cb-subtext);margin-top:6px;padding-top:6px;border-top:1px solid var(--cb-border);line-height:1.3;">📊 ${debate.for?.evidence || ''}</div>
+              </div>
+              <div style="padding:12px;border-radius:8px;background:color-mix(in srgb, #ef4444 8%, var(--cb-bg2));border:1px solid #ef444444;">
+                <div style="font-weight:600;font-size:12px;color:#ef4444;margin-bottom:8px;">👎 AGAINST</div>
+                <div style="font-size:11px;color:var(--cb-text);margin-bottom:8px;line-height:1.4;">${debate.against?.summary || ''}</div>
+                ${(debate.against?.arguments || []).map(a => `<div style="font-size:11px;color:var(--cb-text);padding:3px 0;display:flex;gap:4px;"><span style="color:#ef4444;">•</span>${a}</div>`).join('')}
+                <div style="font-size:10px;color:var(--cb-subtext);margin-top:6px;padding-top:6px;border-top:1px solid var(--cb-border);line-height:1.3;">📊 ${debate.against?.evidence || ''}</div>
+              </div>
+            </div>
+            <div style="padding:12px;border-radius:8px;background:color-mix(in srgb, var(--cb-accent-primary) 8%, var(--cb-bg2));border:1px solid var(--cb-accent-primary);text-align:center;">
+              <div style="font-weight:600;font-size:12px;color:var(--cb-accent-primary);margin-bottom:6px;">⚖️ Verdict</div>
+              <div style="font-size:12px;color:var(--cb-text);line-height:1.4;">${debate.verdict || ''}</div>
+            </div>
+            <button id="tk-debate-copy" class="cb-btn" style="width:100%;margin-top:10px;padding:8px;font-size:11px;">📋 Copy Debate</button>
+          `;
+
+          shadow.getElementById('tk-debate-copy')?.addEventListener('click', async () => {
+            const text = `DEBATE: ${debate.claim}\n\n👍 FOR:\n${debate.for?.summary}\n${(debate.for?.arguments || []).map(a => `• ${a}`).join('\n')}\nEvidence: ${debate.for?.evidence}\n\n👎 AGAINST:\n${debate.against?.summary}\n${(debate.against?.arguments || []).map(a => `• ${a}`).join('\n')}\nEvidence: ${debate.against?.evidence}\n\n⚖️ VERDICT: ${debate.verdict}`;
+            await navigator.clipboard.writeText(text);
+            toast('Debate copied!');
+          });
+        } catch (e) {
+          resultEl.innerHTML = `<div style="color:var(--cb-error);font-size:12px;text-align:center;padding:20px;">Failed: ${e.message}</div>`;
+        }
+      });
+    });
     const geminiWrap = document.createElement('div'); geminiWrap.style.padding = '8px 18px'; geminiWrap.style.display = 'flex'; geminiWrap.style.flexDirection = 'column'; geminiWrap.style.gap = '8px';
     // Insert preview above (textarea removed - preview is the read-only display)
     geminiWrap.appendChild(preview);
@@ -5428,7 +6314,16 @@
           const btn = document.createElement('button');
           btn.className = 'cb-btn'; btn.type = 'button';
           btn.style.cssText = 'text-align:left;padding:8px;background:rgba(16,24,43,0.35);border:1px solid color-mix(in srgb, var(--cb-accent-primary) 15%, transparent);font-size:11px;display:flex;gap:6px;align-items:center;';
-          btn.innerHTML = `<span style="opacity:0.85;">•</span><span style="opacity:0.9;font-weight:600;">${it.label}:</span><span style="opacity:0.85;">${it.text}</span>`;
+          // Use textContent for dynamic label/text to prevent XSS
+          btn.innerHTML = '<span style="opacity:0.85;">•</span>';
+          const _lblSpan = document.createElement('span');
+          _lblSpan.style.cssText = 'opacity:0.9;font-weight:600;';
+          _lblSpan.textContent = it.label + ':';
+          const _txtSpan = document.createElement('span');
+          _txtSpan.style.cssText = 'opacity:0.85;';
+          _txtSpan.textContent = it.text;
+          btn.appendChild(_lblSpan);
+          btn.appendChild(_txtSpan);
           btn.addEventListener('click', () => { try { it.action(); } catch (_) { } });
           list.appendChild(btn);
         });
@@ -5882,6 +6777,7 @@
         try { if (typeof settingsPanel !== 'undefined' && settingsPanel) settingsPanel.classList.remove('cb-view-active'); } catch (_) { }
         try { if (typeof syncView !== 'undefined' && syncView) syncView.classList.remove('cb-view-active'); } catch (_) { }
         try { if (typeof optimizerView !== 'undefined' && optimizerView) optimizerView.classList.remove('cb-view-active'); } catch (_) { }
+        try { if (typeof toolkitView !== 'undefined' && toolkitView) { toolkitView.classList.remove('cb-view-active'); try { speechSynthesis.cancel(); } catch (_) { } } } catch (_) { }
 
         // Close dynamically created views (Smart Queries, etc.)
         try {
@@ -6340,11 +7236,13 @@
           const cleanUrl = url.replace(/[.,;:!?)]+$/, ''); // Remove trailing punctuation
           if (!seenUrls.has(cleanUrl) && cleanUrl.length > 10) {
             seenUrls.add(cleanUrl);
+            let _domain = '';
+            try { _domain = new URL(cleanUrl).hostname.replace('www.', ''); } catch (_) { _domain = cleanUrl.split('/')[0]; }
             extracted.urls.push({
               value: cleanUrl,
               msgIndex: i,
               role: role,
-              domain: new URL(cleanUrl).hostname.replace('www.', '')
+              domain: _domain
             });
           }
         });
@@ -6529,10 +7427,23 @@
         }
       }
 
-      // Store globally for UI access
+      // Store only counts globally (not raw PII values) to limit blast radius.
+      // Full PII remains ephemeral in the returned object for the current render only.
       try {
         window.ChatBridge = window.ChatBridge || {};
-        window.ChatBridge._extractedContent = extracted;
+        window.ChatBridge._extractedContent = {
+          _countsOnly: true,
+          urls: extracted.urls.length,
+          numbers: extracted.numbers.length,
+          lists: extracted.lists.length,
+          codeBlocks: extracted.codeBlocks.length,
+          tables: extracted.tables.length,
+          emails: extracted.emails.length,
+          phones: extracted.phones.length,
+          prices: extracted.prices.length,
+          dates: extracted.dates.length,
+          commands: extracted.commands.length
+        };
       } catch (e) { }
 
       console.log('[ChatBridge] Local extraction complete:', {
@@ -8795,23 +9706,50 @@ Output ONLY the 5 numbered questions, no other text.`;
           };
           // Category colors only - icons replaced with colored dots in template
 
-          listContainer.innerHTML = promptData.questions.map((q, i) => `
-            <div class="cb-prompt-item" data-text="${encodeURIComponent(q.text)}" data-index="${i}" data-cat-color="${categoryColors[q.category] || '#60a5fa'}" style="border-left-color:${categoryColors[q.category] || '#60a5fa'};animation-delay:${i * 0.06}s;">
-              <div class="cb-prompt-item-header">
-                <div class="cb-prompt-dot" style="background:${categoryColors[q.category] || '#60a5fa'};box-shadow:0 0 8px ${categoryColors[q.category] || '#60a5fa'}60;"></div>
-                <span class="cb-prompt-category" style="color:${categoryColors[q.category] || '#60a5fa'};">${q.category.toLowerCase()}</span>
-                <svg class="cb-prompt-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="margin-left:8px;"><path d="M6 9l6 6 6-6"/></svg>
-              </div>
-              <div class="cb-prompt-text">${q.text}</div>
-              <div class="cb-prompt-actions">
-                <button class="cb-prompt-copy-btn">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
-                  Copy
-                </button>
-                <div style="font-size:10px; color:var(--cb-subtext); opacity:0.3; margin-left:auto;">Double-click to insert</div>
-              </div>
-            </div>
-          `).join('');
+          // Build cards using DOM nodes so AI-generated text (q.text, q.category)
+          // is set via textContent, never interpolated into innerHTML.
+          listContainer.innerHTML = '';
+          promptData.questions.forEach((q, i) => {
+            const color = categoryColors[q.category] || '#60a5fa';
+            const item = document.createElement('div');
+            item.className = 'cb-prompt-item';
+            item.dataset.text = encodeURIComponent(q.text);
+            item.dataset.index = String(i);
+            item.dataset.catColor = color;
+            item.style.cssText = `border-left-color:${color};animation-delay:${i * 0.06}s;`;
+
+            const hdr = document.createElement('div');
+            hdr.className = 'cb-prompt-item-header';
+
+            const dot = document.createElement('div');
+            dot.className = 'cb-prompt-dot';
+            dot.style.cssText = `background:${color};box-shadow:0 0 8px ${color}60;`;
+
+            const catSpan = document.createElement('span');
+            catSpan.className = 'cb-prompt-category';
+            catSpan.style.color = color;
+            catSpan.textContent = String(q.category || '').toLowerCase();
+
+            const chevronWrap = document.createElement('span');
+            chevronWrap.innerHTML = '<svg class="cb-prompt-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="margin-left:8px;"><path d="M6 9l6 6 6-6"/></svg>';
+
+            hdr.appendChild(dot);
+            hdr.appendChild(catSpan);
+            hdr.appendChild(chevronWrap);
+
+            const textDiv = document.createElement('div');
+            textDiv.className = 'cb-prompt-text';
+            textDiv.textContent = q.text; // textContent — safe
+
+            const actDiv = document.createElement('div');
+            actDiv.className = 'cb-prompt-actions';
+            actDiv.innerHTML = '<button class="cb-prompt-copy-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>Copy</button><div style="font-size:10px;color:var(--cb-subtext);opacity:0.3;margin-left:auto;">Double-click to insert</div>';
+
+            item.appendChild(hdr);
+            item.appendChild(textDiv);
+            item.appendChild(actDiv);
+            listContainer.appendChild(item);
+          });
 
           // Add click handlers
           listContainer.querySelectorAll('.cb-prompt-item').forEach(item => {
@@ -11227,10 +12165,111 @@ Respond with JSON only:
     }
 
     // ============================================
-    // AI AGENT HUB FUNCTIONS
+    // AI AGENT HUB — 6 Everyday Intelligence Agents
+    // Cross-platform, proactive, consumer-grade productivity agents
     // ============================================
 
-    // Render Agent Hub UI with 6 power agents - Premium Glassmorphism Design
+    // Agent Route helper — intelligent multi-model routing via background.js
+    function callAgentRoute(prompt, opts = {}) {
+      return new Promise((resolve) => {
+        try {
+          chrome.runtime.sendMessage({
+            type: 'agent_route',
+            payload: {
+              prompt,
+              model: opts.model || 'auto',
+              complexity: opts.complexity || 'auto',
+              maxTokens: opts.maxTokens || 1024,
+              temperature: opts.temperature != null ? opts.temperature : 0.4
+            }
+          }, res => {
+            resolve(res || { ok: false, error: 'no-response' });
+          });
+        } catch (e) { resolve({ ok: false, error: e && e.message }); }
+      });
+    }
+
+    // Agent badge state (in-memory, synced from storage on sidebar open)
+    const __agentBadges = { catchmeup: 0, trackthis: 0 };
+
+    // Check and update agent badges (called on sidebar open + after scan)
+    async function checkAgentBadges() {
+      try {
+        // Catch Me Up: count conversations since last briefed
+        const catchState = await StorageManager.getAgentCatchMeUp();
+        const convos = await StorageManager.getConversations();
+        const newCount = convos.filter(c => c.ts > (catchState.lastBriefedAt || 0)).length;
+        __agentBadges.catchmeup = newCount;
+
+        // Track This: check for topic activity
+        const topics = await StorageManager.getTrackedTopics();
+        let trackCount = 0;
+        topics.forEach(t => {
+          if (t.lastActivity > (t.lastViewedAt || 0)) trackCount++;
+        });
+        __agentBadges.trackthis = trackCount;
+
+        // Update badge UI if agent grid is visible
+        updateAgentBadgeUI();
+      } catch (e) { debugLog('checkAgentBadges error', e); }
+    }
+
+    function updateAgentBadgeUI() {
+      try {
+        if (!shadow) return;
+        const catchBadge = shadow.querySelector('#cb-agent-badge-catchmeup');
+        const trackBadge = shadow.querySelector('#cb-agent-badge-trackthis');
+        if (catchBadge) {
+          catchBadge.textContent = __agentBadges.catchmeup > 0 ? __agentBadges.catchmeup : '';
+          catchBadge.style.display = __agentBadges.catchmeup > 0 ? 'flex' : 'none';
+        }
+        if (trackBadge) {
+          trackBadge.textContent = __agentBadges.trackthis > 0 ? __agentBadges.trackthis : '';
+          trackBadge.style.display = __agentBadges.trackthis > 0 ? 'flex' : 'none';
+        }
+      } catch (e) { /* ignore badge UI errors */ }
+    }
+
+    // Check tracked topics against new messages (called after scan)
+    async function checkTrackedTopicsAgainstScan(messagesText) {
+      try {
+        if (!messagesText || messagesText.length < 10) return;
+        const topics = await StorageManager.getTrackedTopics();
+        if (!topics.length) return;
+        const lowerText = messagesText.toLowerCase();
+        let changed = false;
+        const currentPlatform = location.hostname;
+        topics.forEach(t => {
+          const matched = (t.keywords || []).some(kw => lowerText.includes(kw.toLowerCase()));
+          if (matched) {
+            t.lastActivity = Date.now();
+            if (!t.platforms) t.platforms = [];
+            if (!t.platforms.includes(currentPlatform)) t.platforms.push(currentPlatform);
+            if (!t.hitCount) t.hitCount = 0;
+            t.hitCount++;
+            changed = true;
+          }
+        });
+        if (changed) {
+          await StorageManager.setTrackedTopics(topics);
+          await checkAgentBadges();
+        }
+      } catch (e) { debugLog('checkTrackedTopicsAgainstScan error', e); }
+    }
+
+    // Record pulse session (called after scan)
+    async function recordPulseSession(messageCount, platform) {
+      try {
+        await StorageManager.appendPulseSession({
+          date: Date.now(),
+          platform: platform || location.hostname,
+          messageCount: messageCount || 0,
+          topTopics: [] // populated by My Pulse analysis
+        });
+      } catch (e) { debugLog('recordPulseSession error', e); }
+    }
+
+    // Render Agent Hub UI — 6 Intelligence Agents in 2×3 grid
     async function renderAgentHub() {
       try {
         if (!agentContent) {
@@ -11241,104 +12280,315 @@ Respond with JSON only:
         agentContent.innerHTML = '';
         debugLog('Rendering Agent Hub...');
 
-        // Main container with refined padding
+        // Refresh badges
+        await checkAgentBadges();
+
+        // ── Agent Hub CSS (injected once) ──
+        if (!shadow.getElementById('cb-agent-hub-styles')) {
+          const agentStyles = document.createElement('style');
+          agentStyles.id = 'cb-agent-hub-styles';
+          agentStyles.textContent = `
+            /* Agent Hub Grid */
+            .cb-ah-grid { display:grid;grid-template-columns:repeat(2,1fr);gap:10px;padding:2px; }
+            .cb-ah-card {
+              position:relative;padding:16px 14px;background:var(--cb-bg2);border:1px solid var(--cb-border);
+              border-radius:var(--cb-radius-lg);cursor:pointer;overflow:hidden;
+              transition:all 0.28s cubic-bezier(0.4,0,0.2,1);
+            }
+            .cb-ah-card:hover { transform:translateY(-3px); }
+            .cb-ah-card::after {
+              content:'';position:absolute;bottom:0;left:0;right:0;height:2.5px;
+              background:var(--_agent-clr);opacity:0;transition:opacity 0.3s;
+            }
+            .cb-ah-card:hover::after { opacity:1; }
+            .cb-ah-icon {
+              width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;
+              margin-bottom:10px;flex-shrink:0;
+              background:color-mix(in srgb, var(--_agent-clr) 10%, transparent);
+              border:1px solid color-mix(in srgb, var(--_agent-clr) 22%, transparent);
+              color:var(--_agent-clr);transition:all 0.25s;
+            }
+            .cb-ah-card:hover .cb-ah-icon {
+              background:color-mix(in srgb, var(--_agent-clr) 18%, transparent);
+              border-color:color-mix(in srgb, var(--_agent-clr) 40%, transparent);
+              box-shadow:0 0 16px color-mix(in srgb, var(--_agent-clr) 20%, transparent);
+            }
+            .cb-ah-name { font-weight:650;color:var(--cb-white);font-size:12.5px;letter-spacing:0.15px;margin-bottom:3px; }
+            .cb-ah-desc { font-size:10px;color:var(--cb-subtext);line-height:1.45; }
+            .cb-ah-badge {
+              position:absolute;top:10px;right:10px;min-width:18px;height:18px;
+              background:var(--cb-error);color:#fff;font-size:9px;font-weight:700;
+              border-radius:var(--cb-radius-full);display:none;align-items:center;
+              justify-content:center;padding:0 5px;box-shadow:0 2px 10px rgba(239,68,68,0.45);z-index:2;
+              animation:cb-badge-pop 0.3s cubic-bezier(0.2,0.8,0.2,1);
+            }
+            .cb-ah-ambient { position:absolute;top:10px;right:10px;font-size:7px;text-transform:uppercase;
+              letter-spacing:0.8px;color:var(--_agent-clr);opacity:0.5;font-weight:600;display:none; }
+            @keyframes cb-badge-pop { from { transform:scale(0); } to { transform:scale(1); } }
+
+            /* Agent Sub-view */
+            .cb-agent-sub {
+              animation:cb-agent-enter 0.3s cubic-bezier(0.2,0.8,0.2,1) forwards;
+            }
+            @keyframes cb-agent-enter { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+            .cb-agent-header {
+              display:flex;align-items:center;gap:10px;margin-bottom:14px;padding-bottom:12px;
+              border-bottom:1px solid var(--cb-border);
+            }
+            .cb-agent-header-icon {
+              width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;
+              flex-shrink:0;
+            }
+            .cb-agent-header-title { font-weight:700;font-size:14px;color:var(--cb-white);flex:1; }
+            .cb-agent-back {
+              background:none;border:1px solid var(--cb-border);border-radius:var(--cb-radius-sm);
+              color:var(--cb-subtext);cursor:pointer;font-size:11px;padding:5px 12px;
+              transition:all 0.2s;display:flex;align-items:center;gap:4px;
+            }
+            .cb-agent-back:hover { border-color:var(--cb-accent-primary);color:var(--cb-white); }
+            .cb-agent-back svg { width:12px;height:12px; }
+            .cb-agent-desc { font-size:11.5px;color:var(--cb-subtext);line-height:1.55;margin-bottom:14px; }
+
+            /* Agent form elements */
+            .cb-agent-input {
+              width:100%;padding:9px 12px;border-radius:var(--cb-radius-sm);
+              background:var(--cb-bg3);border:1px solid var(--cb-border);
+              color:var(--cb-white);font-size:12px;font-family:inherit;
+              transition:border-color 0.2s;box-sizing:border-box;
+            }
+            .cb-agent-input:focus { border-color:var(--cb-accent-primary);outline:none; }
+            .cb-agent-input::placeholder { color:var(--cb-subtext);opacity:0.7; }
+            .cb-agent-textarea { min-height:70px;resize:vertical; }
+            .cb-agent-select {
+              width:100%;padding:9px 12px;border-radius:var(--cb-radius-sm);
+              background:var(--cb-bg3);border:1px solid var(--cb-border);
+              color:var(--cb-white);font-size:12px;font-family:inherit;
+              cursor:pointer;appearance:auto;
+            }
+            .cb-agent-chip {
+              display:inline-flex;padding:4px 10px;
+              background:color-mix(in srgb, var(--_agent-clr, var(--cb-accent-primary)) 8%, transparent);
+              border:1px solid color-mix(in srgb, var(--_agent-clr, var(--cb-accent-primary)) 20%, transparent);
+              border-radius:var(--cb-radius-full);font-size:10.5px;color:var(--cb-white);
+              cursor:pointer;transition:all 0.18s;user-select:none;
+            }
+            .cb-agent-chip:hover {
+              background:color-mix(in srgb, var(--_agent-clr, var(--cb-accent-primary)) 18%, transparent);
+              border-color:color-mix(in srgb, var(--_agent-clr, var(--cb-accent-primary)) 35%, transparent);
+            }
+            .cb-agent-chip-active {
+              background:color-mix(in srgb, var(--_agent-clr, var(--cb-accent-primary)) 20%, transparent) !important;
+              border-color:var(--_agent-clr, var(--cb-accent-primary)) !important;
+              color:var(--_agent-clr) !important;font-weight:600;
+            }
+
+            /* Agent action buttons */
+            .cb-agent-btn-primary {
+              width:100%;padding:10px 16px;border-radius:var(--cb-radius-sm);border:none;
+              background:linear-gradient(135deg, var(--_agent-clr, var(--cb-accent-primary)), color-mix(in srgb, var(--_agent-clr, var(--cb-accent-primary)) 70%, #000));
+              color:#fff;font-size:12.5px;font-weight:600;font-family:inherit;
+              cursor:pointer;transition:all 0.25s;
+              box-shadow:0 2px 12px color-mix(in srgb, var(--_agent-clr, var(--cb-accent-primary)) 25%, transparent);
+            }
+            .cb-agent-btn-primary:hover:not(:disabled) {
+              transform:translateY(-1px);
+              box-shadow:0 4px 20px color-mix(in srgb, var(--_agent-clr, var(--cb-accent-primary)) 35%, transparent);
+            }
+            .cb-agent-btn-primary:disabled { opacity:0.5;cursor:not-allowed;transform:none; }
+            .cb-agent-btn-secondary {
+              padding:8px 14px;border-radius:var(--cb-radius-sm);
+              background:var(--cb-bg3);border:1px solid var(--cb-border);
+              color:var(--cb-white);font-size:11.5px;font-family:inherit;
+              cursor:pointer;transition:all 0.2s;
+            }
+            .cb-agent-btn-secondary:hover { border-color:var(--cb-accent-primary);background:var(--cb-bg2); }
+
+            /* Agent result sections */
+            .cb-agent-result-section {
+              padding:14px;border-radius:var(--cb-radius-md);
+              background:var(--cb-bg2);border:1px solid var(--cb-border);
+              margin-bottom:10px;
+            }
+            .cb-agent-result-header {
+              font-weight:700;font-size:12px;margin-bottom:8px;padding-bottom:6px;
+              border-bottom:1px solid color-mix(in srgb, var(--_agent-clr, var(--cb-accent-primary)) 15%, transparent);
+              color:var(--_agent-clr, var(--cb-accent-primary));
+              display:flex;align-items:center;gap:6px;
+            }
+            .cb-agent-result-body { font-size:12px;color:var(--cb-white);line-height:1.6; }
+            .cb-agent-result-body strong { color:var(--cb-white); }
+            .cb-agent-bullet {
+              padding-left:14px;position:relative;margin:3px 0;
+            }
+            .cb-agent-bullet::before {
+              content:'';position:absolute;left:2px;top:7px;width:4px;height:4px;
+              border-radius:50%;background:var(--_agent-clr, var(--cb-accent-primary));
+            }
+            .cb-agent-numbered {
+              padding-left:18px;position:relative;margin:3px 0;
+            }
+            .cb-agent-numbered::before {
+              content:attr(data-n);position:absolute;left:0;top:0;
+              color:var(--_agent-clr, var(--cb-accent-primary));font-weight:700;font-size:10px;
+            }
+            .cb-agent-platform-tag {
+              display:inline-block;padding:1px 6px;
+              background:color-mix(in srgb, var(--cb-accent-primary) 10%, transparent);
+              border:1px solid color-mix(in srgb, var(--cb-accent-primary) 20%, transparent);
+              border-radius:3px;font-size:9px;font-weight:600;color:var(--cb-accent-primary);
+            }
+            .cb-agent-action-row {
+              display:flex;gap:8px;margin-top:12px;
+            }
+            .cb-agent-action-row > * { flex:1; }
+            .cb-agent-meta {
+              font-size:9.5px;color:var(--cb-subtext);text-align:center;margin-top:8px;
+              padding-top:8px;border-top:1px solid var(--cb-border);
+            }
+            .cb-agent-loading {
+              display:flex;flex-direction:column;align-items:center;padding:28px 16px;gap:10px;
+            }
+            .cb-agent-loading-text { font-size:11.5px;color:var(--cb-subtext); }
+            .cb-agent-empty {
+              text-align:center;padding:24px 16px;color:var(--cb-subtext);font-size:12px;
+            }
+            .cb-agent-error {
+              padding:14px;border-radius:var(--cb-radius-md);
+              background:color-mix(in srgb, var(--cb-error) 8%, var(--cb-bg2));
+              border:1px solid color-mix(in srgb, var(--cb-error) 25%, transparent);
+              color:var(--cb-error);font-size:12px;
+            }
+
+            /* Stats grid */
+            .cb-agent-stats { display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:14px; }
+            .cb-agent-stat {
+              padding:10px 12px;border-radius:var(--cb-radius-md);text-align:center;
+              background:color-mix(in srgb, var(--_agent-clr, var(--cb-accent-primary)) 5%, var(--cb-bg2));
+              border:1px solid color-mix(in srgb, var(--_agent-clr, var(--cb-accent-primary)) 15%, transparent);
+            }
+            .cb-agent-stat-val { font-size:20px;font-weight:700;color:var(--cb-white); }
+            .cb-agent-stat-label { font-size:9.5px;color:var(--cb-subtext);margin-top:2px; }
+
+            /* Confidence meter */
+            .cb-agent-meter { margin-bottom:14px;padding:10px 14px;border-radius:var(--cb-radius-md);background:var(--cb-bg2);border:1px solid var(--cb-border); }
+            .cb-agent-meter-top { display:flex;justify-content:space-between;align-items:center;margin-bottom:6px; }
+            .cb-agent-meter-label { font-size:10.5px;color:var(--cb-subtext); }
+            .cb-agent-meter-value { font-size:16px;font-weight:700; }
+            .cb-agent-meter-bar { height:6px;background:var(--cb-bg3);border-radius:3px;overflow:hidden; }
+            .cb-agent-meter-fill { height:100%;border-radius:3px;transition:width 0.6s cubic-bezier(0.4,0,0.2,1); }
+
+            /* Track This topic cards */
+            .cb-track-card {
+              padding:10px 12px;border-radius:var(--cb-radius-md);
+              background:var(--cb-bg2);border:1px solid var(--cb-border);
+              display:flex;align-items:center;gap:10px;cursor:pointer;transition:all 0.2s;
+            }
+            .cb-track-card:hover { border-color:color-mix(in srgb, var(--_agent-clr) 40%, transparent);background:color-mix(in srgb, var(--_agent-clr) 4%, var(--cb-bg2)); }
+            .cb-track-card-new { border-color:color-mix(in srgb, var(--_agent-clr) 30%, transparent);background:color-mix(in srgb, var(--_agent-clr) 6%, var(--cb-bg2)); }
+            .cb-track-indicator { width:6px;height:6px;border-radius:50%;flex-shrink:0; }
+            .cb-track-info { flex:1;min-width:0; }
+            .cb-track-label { font-weight:600;font-size:11.5px;color:var(--cb-white);overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+            .cb-track-meta { font-size:9.5px;color:var(--cb-subtext);margin-top:2px;display:flex;gap:6px;flex-wrap:wrap;align-items:center; }
+            .cb-track-actions { display:flex;gap:4px;flex-shrink:0; }
+            .cb-track-btn { background:none;border:1px solid var(--cb-border);border-radius:var(--cb-radius-sm);color:var(--cb-subtext);cursor:pointer;font-size:10px;padding:4px 8px;transition:all 0.18s; }
+            .cb-track-btn:hover { border-color:var(--cb-accent-primary);color:var(--cb-white); }
+            .cb-track-btn-remove:hover { border-color:var(--cb-error);color:var(--cb-error); }
+
+            /* Bar chart */
+            .cb-agent-bar-row { display:flex;align-items:center;gap:8px;margin-bottom:5px; }
+            .cb-agent-bar-label { width:70px;font-size:10.5px;color:var(--cb-white);text-align:right;flex-shrink:0; }
+            .cb-agent-bar-track { flex:1;height:16px;background:var(--cb-bg3);border-radius:4px;overflow:hidden; }
+            .cb-agent-bar-fill { height:100%;border-radius:4px;transition:width 0.5s cubic-bezier(0.4,0,0.2,1); }
+            .cb-agent-bar-value { width:28px;font-size:10.5px;color:var(--cb-subtext);flex-shrink:0; }
+
+            /* Toggle group */
+            .cb-agent-toggle-group { display:flex;gap:0;border:1px solid var(--cb-border);border-radius:var(--cb-radius-sm);overflow:hidden; }
+            .cb-agent-toggle {
+              flex:1;padding:7px 12px;background:transparent;border:none;
+              color:var(--cb-subtext);font-size:10.5px;font-family:inherit;
+              cursor:pointer;transition:all 0.2s;text-align:center;
+            }
+            .cb-agent-toggle:not(:last-child) { border-right:1px solid var(--cb-border); }
+            .cb-agent-toggle-active {
+              background:color-mix(in srgb, var(--_agent-clr, var(--cb-accent-primary)) 15%, transparent);
+              color:var(--_agent-clr, var(--cb-accent-primary));font-weight:600;
+            }
+          `;
+          shadow.appendChild(agentStyles);
+        }
+
+        // Main container
         const mainContainer = document.createElement('div');
-        mainContainer.style.cssText = 'padding:8px;display:flex;flex-direction:column;gap:8px;';
+        mainContainer.style.cssText = 'padding:4px 0;display:flex;flex-direction:column;gap:12px;';
 
-        // Premium Header - Luxury Minimal
-        const header = document.createElement('div');
-        header.style.cssText = `
-          padding:10px 12px;
-          background:rgba(255,255,255,0.02);
-          border:1px solid rgba(255,255,255,0.06);
-          border-radius:8px;
-        `;
-        header.innerHTML = `
-          <div style="display:flex;align-items:center;gap:12px;">
-            <div style="width:28px;height:28px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--cb-accent-primary);">◈</div>
-            <div style="flex:1;">
-              <div style="font-weight:600;color:var(--cb-white);font-size:13px;letter-spacing:0.3px;">Agent Utilities</div>
-              <div style="font-size:10px;color:var(--cb-subtext);margin-top:2px;text-transform:uppercase;letter-spacing:0.5px;">4 Cognitive Instruments</div>
-            </div>
-          </div>
-        `;
-        mainContainer.appendChild(header);
-
-        // Agents Grid - 2 columns, tighter
+        // Agents Grid — 2×3 layout
         const agentsGrid = document.createElement('div');
-        agentsGrid.style.cssText = 'display:grid;grid-template-columns:repeat(2,1fr);gap:8px;';
+        agentsGrid.id = 'cb-agents-grid';
+        agentsGrid.className = 'cb-ah-grid';
 
-        // Agent definitions - Refined 4 (Closer and Continue REMOVED)
         const agents = [
           {
-            id: 'action-extractor',
-            name: 'Extractor',
-            desc: 'Surface action items',
-            icon: '◆',
-            accent: 'rgba(16,185,129,0.15)',
-            border: 'rgba(16,185,129,0.25)',
-            action: showActionExtractor
+            id: 'catchmeup', name: 'Catch Me Up',
+            desc: 'Activity briefing since your last visit',
+            icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
+            color: '#00D4FF', ambient: true, action: showCatchMeUp
           },
           {
-            id: 'cognitive-simplifier',
-            name: 'Reduce',
-            desc: 'Distill complexity',
-            icon: '◇',
-            accent: 'rgba(139,92,246,0.15)',
-            border: 'rgba(139,92,246,0.25)',
-            action: showCognitiveSimplifier
+            id: 'prepareme', name: 'Prepare Me',
+            desc: 'Task-specific prep packs on demand',
+            icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><line x1="8" y1="7" x2="16" y2="7"/><line x1="8" y1="11" x2="14" y2="11"/></svg>',
+            color: '#10B981', ambient: false, action: showPrepareMe
           },
           {
-            id: 'draft-generator',
-            name: 'Compose',
-            desc: 'Generate structured outputs',
-            icon: '▣',
-            accent: 'rgba(59,130,246,0.15)',
-            border: 'rgba(59,130,246,0.25)',
-            action: showDraftGenerator
+            id: 'trackthis', name: 'Track This',
+            desc: 'Pin & monitor topics cross-platform',
+            icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>',
+            color: '#8B5CF6', ambient: true, action: showTrackThis
           },
           {
-            id: 'echo-synth',
-            name: 'Synthesizer',
-            desc: 'Cross-model integration',
-            icon: '◎',
-            accent: 'rgba(236,72,153,0.15)',
-            border: 'rgba(236,72,153,0.25)',
-            action: showEchoSynth
+            id: 'secondopinion', name: 'Second Opinion',
+            desc: 'Cross-check any AI answer for accuracy',
+            icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>',
+            color: '#F59E0B', ambient: false, action: showSecondOpinion
+          },
+          {
+            id: 'handoff', name: 'Handoff',
+            desc: 'Package context into shareable briefs',
+            icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>',
+            color: '#EC4899', ambient: false, action: showHandoff
+          },
+          {
+            id: 'mypulse', name: 'My Pulse',
+            desc: 'AI usage analytics & productivity score',
+            icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>',
+            color: '#6366F1', ambient: false, action: showMyPulse
           }
         ];
 
         agents.forEach(agent => {
           const card = document.createElement('div');
-          card.style.cssText = `
-            display:flex;flex-direction:column;align-items:flex-start;
-            padding:10px 12px;
-            background:rgba(255,255,255,0.02);
-            border:1px solid rgba(255,255,255,0.06);
-            border-radius:6px;
-            cursor:pointer;
-            transition:all 0.15s ease;
-          `;
+          card.className = 'cb-ah-card';
+          card.style.setProperty('--_agent-clr', agent.color);
+
+          let badgeHtml = '';
+          if (agent.ambient) {
+            const count = __agentBadges[agent.id] || 0;
+            badgeHtml = `<div id="cb-agent-badge-${agent.id}" class="cb-ah-badge" style="display:${count > 0 ? 'flex' : 'none'};">${count || ''}</div>`;
+          }
 
           card.innerHTML = `
-            <div style="width:28px;height:28px;background:${agent.accent};border:1px solid ${agent.border};border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;color:rgba(255,255,255,0.8);margin-bottom:8px;">${agent.icon}</div>
-            <div style="font-weight:600;color:var(--cb-white);font-size:11px;letter-spacing:0.2px;">${agent.name}</div>
-            <div style="font-size:9px;color:var(--cb-subtext);line-height:1.4;margin-top:2px;">${agent.desc}</div>
+            ${badgeHtml}
+            <div class="cb-ah-icon">${agent.icon}</div>
+            <div class="cb-ah-name">${agent.name}</div>
+            <div class="cb-ah-desc">${agent.desc}</div>
           `;
 
-          // Hover effects - subtle luxury
-          card.addEventListener('mouseenter', () => {
-            card.style.background = 'rgba(255,255,255,0.04)';
-            card.style.borderColor = 'rgba(255,255,255,0.1)';
-          });
-          card.addEventListener('mouseleave', () => {
-            card.style.background = 'rgba(255,255,255,0.02)';
-            card.style.borderColor = 'rgba(255,255,255,0.06)';
-          });
-
-          // Click handler
           card.addEventListener('click', async () => {
+            card.style.transform = 'scale(0.96)';
+            setTimeout(() => { card.style.transform = ''; }, 150);
             try {
+              agentsGrid.style.display = 'none';
+              outputArea.style.display = 'block';
               await agent.action();
             } catch (e) {
               toast(`${agent.name} failed`);
@@ -11351,2100 +12601,1170 @@ Respond with JSON only:
 
         mainContainer.appendChild(agentsGrid);
 
-        // Output Section - ultra compact
-        const outputSection = document.createElement('div');
-        outputSection.style.cssText = 'display:flex;flex-direction:column;gap:4px;';
-
+        // Output Area — hidden by default, shown when agent is clicked
         const outputArea = document.createElement('div');
         outputArea.id = 'cb-agent-output';
-        outputArea.className = 'cb-view-text cb-agent-enter';
-        outputArea.style.cssText = `
-          min-height:80px;max-height:500px;overflow-y:auto;
-          background:rgba(0,0,0,0.15);
-          border:1px solid rgba(255,255,255,0.06);
-          border-radius:6px;padding:8px;
-          font-size:12px;line-height:1.5;
-          color:var(--cb-white);
-        `;
-        outputArea.innerHTML = '<div style="text-align:center;color:rgba(255,255,255,0.25);padding:30px 20px;font-size:13px;">Click an agent above to get started</div>';
-        outputSection.appendChild(outputArea);
+        outputArea.style.cssText = 'display:none;';
+        mainContainer.appendChild(outputArea);
 
-        // Output controls REMOVED - Agents render their own controls now
-        // This prevents double buttons and extra vertical space
-
-
-        mainContainer.appendChild(outputSection);
         agentContent.appendChild(mainContainer);
-
         debugLog('Agent Hub rendered successfully');
 
       } catch (e) {
         debugLog('renderAgentHub error', e);
         if (agentContent) {
-          agentContent.innerHTML = `<div style="padding:12px;color:rgba(255,100,100,0.9);">Failed to load Agent Hub: ${e.message || 'Unknown error'}</div>`;
+          agentContent.innerHTML = `<div class="cb-agent-error">Failed to load Agent Hub: ${e.message || 'Unknown error'}</div>`;
         }
       }
     }
 
-    // Helper: Create agent card
-    function createAgentCard(name, description, icon, details, onClick) {
-      const card = document.createElement('button');
-      card.className = 'cb-btn';
-      card.style.cssText = 'padding:14px 12px;text-align:left;height:auto;display:flex;flex-direction:column;gap:6px;background:rgba(16,24,43,0.4);border:1px solid color-mix(in srgb, var(--cb-accent-primary) 20%, transparent);transition:all 0.2s; position:relative; z-index:1;';
-      card.setAttribute('type', 'button');
-      card.innerHTML = `
-        <div style="font-size:24px;line-height:1;">${icon}</div>
-        <div style="font-weight:700;font-size:13px;">${name}</div>
-        <div style="font-size:10px;opacity:0.8;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--cb-accent-primary);">${description}</div>
-        <div style="font-size:11px;opacity:0.7;line-height:1.3;margin-top:2px;">${details}</div>
-      `;
-      card.addEventListener('mouseenter', () => {
-        card.style.background = 'color-mix(in srgb, var(--cb-accent-primary) 15%, transparent)';
-        card.style.transform = 'translateY(-2px)';
-        card.style.boxShadow = '0 4px 12px color-mix(in srgb, var(--cb-accent-primary) 20%, transparent)';
-      });
-      card.addEventListener('mouseleave', () => {
-        card.style.background = 'rgba(16,24,43,0.4)';
-        card.style.transform = 'translateY(0)';
-        card.style.boxShadow = '';
-      });
-      // Add debouncing to prevent multiple rapid clicks
-      let isProcessing = false;
-      card.addEventListener('click', async (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        if (isProcessing) {
-          debugLog('Agent card click ignored - already processing');
-          return;
-        }
-        isProcessing = true;
-        card.style.opacity = '0.6';
-        card.style.pointerEvents = 'none';
-
-        try {
-          await onClick();
-        } catch (err) {
-          debugLog('Agent card onClick error:', err);
-        } finally {
-          setTimeout(() => {
-            isProcessing = false;
-            card.style.opacity = '1';
-            card.style.pointerEvents = '';
-          }, 500);
-        }
-      });
-      return card;
-    }
-
-    // Show Continuum Agent Interface (combines ALL relevant conversations using RAG)
-    async function showContinuumAgent() {
+    // ============================================
+    // AGENT 1: CATCH ME UP — Ambient Briefing Agent
+    // "Where did I leave off?" — proactive briefing of recent activity
+    // ============================================
+    async function showCatchMeUp() {
       const outputArea = (agentContent && agentContent.querySelector('#cb-agent-output')) || (shadow && shadow.getElementById && shadow.getElementById('cb-agent-output'));
       if (!outputArea) return;
 
-      outputArea.innerHTML = '<div style="text-align:center;padding:20px;"><div class="cb-spinner" style="display:inline-block;"></div><div style="margin-top:12px;">Analyzing context across platforms with RAG...</div></div>';
-
-      try {
-        // Get all conversations (for fallback)
-        const convs = await loadConversationsAsync();
-        if (!convs || convs.length === 0) {
-          outputArea.textContent = '⚠️ No previous conversations found. Scan some chats first to enable Continuum.';
-          return;
-        }
-
-        // Get current platform
-        const currentHost = location.hostname;
-        function hostFromConv(c) {
-          try {
-            return (c.platform || (c.url && new URL(c.url).hostname) || '').toString() || '';
-          } catch (_) { return ''; }
-        }
-
-        // Get most recent conversation to build query context
-        const recentDifferent = (convs || []).find(c => hostFromConv(c) && hostFromConv(c) !== currentHost);
-        const recentSame = (convs || []).find(c => hostFromConv(c) && hostFromConv(c) === currentHost) || convs[0];
-        const seedConv = recentDifferent || recentSame;
-        const seedTopics = seedConv.topics || [];
-
-        // Build query from recent messages and topics
-        const recentMessages = seedConv.conversation || [];
-        const queryText = [
-          ...seedTopics,
-          ...(recentMessages.slice(-3).map(m => m.text.slice(0, 200)))
-        ].join(' ');
-
-        let relatedConvs = [];
-        let usingRAG = false;
-
-        // Try RAG-powered semantic search first with enhanced relevance filtering
-        if (typeof window.RAGEngine !== 'undefined') {
-          try {
-            debugLog('[Continuum] Using RAG to find related conversations');
-            const ragResults = await window.RAGEngine.retrieve(queryText, 12); // Get more candidates for filtering
-
-            if (ragResults && ragResults.length > 0) {
-              usingRAG = true;
-
-              // Enhanced filtering: only keep high-relevance results
-              const RELEVANCE_THRESHOLD = 0.35; // Higher threshold = more selective
-              const filteredResults = ragResults.filter(r => {
-                // Filter out noise, greetings, generic responses
-                const text = (r.text || '').toLowerCase();
-                const isNoise = /^(hi|hello|thanks|thank you|ok|okay|yes|no|sure|got it)[\s\.\!]*$/i.test(text.trim());
-                const isGreeting = text.length < 50 && /greeting|introduction|welcome/i.test(text);
-                const hasContent = text.length > 100; // Require substantial content
-
-                return r.score >= RELEVANCE_THRESHOLD && !isNoise && !isGreeting && hasContent;
-              });
-
-              debugLog('[Continuum] RAG found', filteredResults.length, 'high-relevance conversations (filtered from', ragResults.length, ')');
-
-              // Map RAG results back to full conversation objects
-              relatedConvs = filteredResults.slice(0, 8).map(r => {
-                const conv = convs.find(c => String(c.ts) === String(r.id));
-                return conv || {
-                  ts: r.id,
-                  platform: r.metadata?.platform || 'unknown',
-                  topics: r.metadata?.topics || [],
-                  conversation: [{ role: 'assistant', text: r.text }],
-                  ragScore: r.score
-                };
-              });
-            }
-          } catch (e) {
-            debugLog('[Continuum] RAG search failed, falling back to topic matching:', e);
-          }
-        }
-
-        // Fallback: topic-based matching if RAG not available or failed
-        if (!usingRAG || relatedConvs.length === 0) {
-          debugLog('[Continuum] Using topic-based fallback');
-          relatedConvs = (convs || []).filter(c => {
-            if (c === seedConv) return true;
-            const cTopics = c.topics || [];
-            return cTopics.some(t => seedTopics.includes(t));
-          }).slice(0, 8);
-        }
-
-        debugLog('[Continuum] Found', relatedConvs.length, 'related conversations on topics:', seedTopics, '(RAG:', usingRAG, ')');
-
-        // Build combined context focusing on continuity and decisions
-        let combinedContext = '';
-        relatedConvs.forEach((conv, idx) => {
-          const host = hostFromConv(conv) || 'unknown';
-          const ago = Math.round((Date.now() - (conv.ts || Date.now())) / (1000 * 60 * 60));
-          const msgs = conv.conversation || [];
-
-          // Extract decision points, questions, and substantive exchanges
-          const substantiveMessages = msgs.filter(m => {
-            const text = (m.text || '').toLowerCase();
-            // Filter out noise and focus on content
-            const hasSubstance = text.length > 80;
-            const isDecision = /decided|chose|selected|going with|will use|implemented/i.test(text);
-            const isQuestion = text.includes('?') || /how|why|what|when|where|should|could|would/i.test(text);
-            const isConstraint = /require|must|need|constraint|limitation|cannot/i.test(text);
-
-            return hasSubstance && (isDecision || isQuestion || isConstraint);
-          });
-
-          // Use substantive messages if available, otherwise fall back to recent
-          const relevantMsgs = substantiveMessages.length > 0 ? substantiveMessages.slice(-3) : msgs.slice(-3);
-          const snippet = relevantMsgs.map(m => `${m.role}: ${m.text.slice(0, 250)}`).join('\n');
-          const ragScore = conv.ragScore ? ` [${(conv.ragScore * 100).toFixed(0)}% match]` : '';
-
-          combinedContext += `\n---\nConv ${idx + 1} (${host}, ${ago}h ago${ragScore}):\n${snippet}\n`;
-        });
-
-        // Truncate if too long, but prioritize recent conversations
-        if (combinedContext.length > 3500) {
-          combinedContext = combinedContext.slice(0, 3500) + '\n\n...(context truncated - showing most relevant exchanges)';
-        }
-
-        // Get detail level preference
-        const detailLevel = await getDetailLevel();
-
-        const depthInstructions = {
-          concise: '2-3 sentences with key insights only',
-          detailed: '3-4 sentences with patterns, decisions, and unresolved questions',
-          expert: '5-6 sentences with comprehensive analysis, edge cases, and technical context'
-        };
-
-        const nextStepCount = {
-          concise: '1',
-          detailed: '2',
-          expert: '3-4'
-        };
-
-        const prompt = `You are Continuum, a context reconstruction agent. Rebuild the current conversation state from ${relatedConvs.length} conversations${usingRAG ? ' (RAG-powered semantic search)' : ''}.
-
-**INPUT CONVERSATIONS:**
-${combinedContext}
-
-**YOUR TASK:**
-Analyze the conversations and extract structured context in 6 categories. Output REAL, SPECIFIC information - NEVER use placeholders like [What the user is doing] or [Current goal].
-
-**OUTPUT FORMAT (use exact markers):**
-
----UNIFIED_CONTEXT---
-• Specific detail about what user is working on (real information only)
-• What they are trying to accomplish right now
-• Current approach or technology being used
-• Any key assumptions or working hypotheses
-
----ACTIVE_GOALS---
-• Specific goal mentioned in conversations
-• Another concrete objective if present
-
----CURRENT_PROGRESS---
-• What was actually built, written, or decided
-• Concrete steps already completed
-• Technologies or approaches confirmed
-
----UNRESOLVED_ITEMS---
-• Specific question or blocker from the messages
-• Missing information that's needed
-• Decision point that needs resolution
-
----KEY_DETAILS---
-• Technical constraint or requirement mentioned
-• Specific tool, framework, API, or library being used
-• Important limitation or boundary condition
-
----NEXT_ACTIONS---
-• Practical next step user can take immediately
-• Another actionable item based on context
-
-**CRITICAL RULES:**
-1. NEVER output placeholders like [CONVERSATION STATE], [STATE], [What user is doing], etc.
-2. NEVER output empty sections - if no real data, OMIT that section entirely
-3. ONLY output real, specific information from actual messages
-4. Each bullet (•) MUST contain concrete details from conversations
-5. Be specific - mention actual technologies, decisions, problems
-6. If you cannot find real information for a section, skip it completely
-
-**GOOD EXAMPLE:**
----UNIFIED_CONTEXT---
-• User is implementing OAuth2 authentication with Google provider in Next.js 14
-• Trying to decide between JWT tokens vs server-side sessions for auth state
-• Currently stuck on redirect URI configuration in Google Console
-
-**BAD EXAMPLE (DO NOT DO THIS):**
----UNIFIED_CONTEXT---
-• [What the user is currently doing]
-• User is working on a project
-• [Current approach or direction]`;
-
-        const res = await callLlamaAsync({ action: 'prompt', text: prompt });
-
-        if (res && res.ok) {
-          const rawOutput = res.result || '';
-
-          // Parse structured sections from AI output
-          function extractSection(text, sectionName) {
-            const pattern = '---' + sectionName + '---([\\s\\S]*?)(?=---|$)';
-            const regex = new RegExp(pattern, 'i');
-            const match = text.match(regex);
-            if (!match) return [];
-            return match[1].trim().split('\n').filter(line => line.trim().startsWith('•')).map(line => line.trim().substring(1).trim());
-          }
-
-          const sections = {
-            unifiedContext: extractSection(rawOutput, 'UNIFIED_CONTEXT'),
-            activeGoals: extractSection(rawOutput, 'ACTIVE_GOALS'),
-            currentProgress: extractSection(rawOutput, 'CURRENT_PROGRESS'),
-            unresolvedItems: extractSection(rawOutput, 'UNRESOLVED_ITEMS'),
-            keyDetails: extractSection(rawOutput, 'KEY_DETAILS'),
-            nextActions: extractSection(rawOutput, 'NEXT_ACTIONS')
-          };
-
-          // Build compact collapsible component
-          const createComponent = (title, icon, items, color, defaultCollapsed = true) => {
-            if (!items || items.length === 0) return '';
-            const id = 'continuum-' + title.toLowerCase().replace(/\\s+/g, '-');
-
-            return `
-              <div style="background:var(--cb-surface);border:1px solid var(--cb-border);border-radius:4px;margin-bottom:4px;overflow:hidden;">
-                <div id="${id}-header" style="display:flex;align-items:center;gap:6px;padding:6px 8px;cursor:pointer;user-select:none;border-left:2px solid ${color};transition:background 0.15s;" 
-                     onmouseover="this.style.background='var(--cb-bg)'" 
-                     onmouseout="this.style.background='transparent'">
-                  <span id="${id}-toggle" style="font-size:9px;color:var(--cb-subtext);width:10px;">${defaultCollapsed ? '▶' : '▼'}</span>
-                  <span style="font-size:12px;line-height:1;">${icon}</span>
-                  <h4 style="margin:0;color:var(--cb-white);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;flex:1;">${title}</h4>
-                  <span style="font-size:8px;color:var(--cb-subtext);background:var(--cb-bg);padding:1px 5px;border-radius:8px;">${items.length}</span>
-                </div>
-                <div id="${id}-content" style="display:${defaultCollapsed ? 'none' : 'block'};padding:4px 8px 6px 24px;border-left:2px solid ${color};">
-                  ${items.map(item => `
-                    <div style="font-size:10px;color:var(--cb-subtext);line-height:1.5;padding:3px 0 3px 10px;position:relative;margin-bottom:1px;">
-                      <span style="position:absolute;left:0;top:7px;width:4px;height:4px;background:${color};border-radius:50%;opacity:0.7;"></span>
-                      ${item}
-                    </div>
-                  `).join('')}
-                </div>
-              </div>
-            `;
-          };
-
-          // Render beautiful structured UI
-          outputArea.innerHTML = `
-            <div style="display:flex;flex-direction:column;gap:0;max-height:calc(100vh - 160px);overflow-y:auto;padding-right:6px;">
-              ${createComponent('Context', '🔗', sections.unifiedContext, 'var(--cb-accent-primary)', true)}
-              ${createComponent('Goals', '🎯', sections.activeGoals, 'var(--cb-accent-tertiary)', true)}
-              ${createComponent('Progress', '✅', sections.currentProgress, 'var(--cb-success)', true)}
-              ${createComponent('Unresolved', '⚠️', sections.unresolvedItems, 'var(--cb-warning)', true)}
-              ${createComponent('Key Details', '🔑', sections.keyDetails, 'var(--cb-accent-secondary)', true)}
-              ${createComponent('Next Actions', '➡️', sections.nextActions, 'var(--cb-accent-primary)', true)}
-              
-              <div style="background:var(--cb-bg);border:1px solid var(--cb-border);border-radius:4px;margin-top:8px;padding:8px;position:sticky;bottom:0;box-shadow:0 -2px 8px rgba(0,0,0,0.1);">
-                <div style="display:flex;gap:6px;margin-bottom:6px;">
-                  <button id="continuum-continue" class="cb-btn cb-btn-primary" style="font-size:10px;padding:6px 12px;flex:1;font-weight:500;">💬 Continue</button>
-                  <button id="continuum-refresh" class="cb-btn" style="font-size:10px;padding:6px 12px;flex:1;font-weight:500;">🔄 Refresh</button>
-                </div>
-                <div style="display:flex;gap:4px;justify-content:center;">
-                  <button id="continuum-review" class="cb-btn" style="font-size:9px;padding:4px 8px;background:transparent;border:1px solid var(--cb-border);">🔍 Review</button>
-                  <button id="continuum-copy" class="cb-btn" style="font-size:9px;padding:4px 8px;background:transparent;border:1px solid var(--cb-border);">📋 Copy</button>
-                </div>
-                <div style="font-size:8px;color:var(--cb-subtext);margin-top:6px;text-align:center;opacity:0.7;">📊 ${relatedConvs.length} conversations • ${new Set(relatedConvs.map(c => hostFromConv(c))).size} platforms${usingRAG ? ' • RAG' : ''}</div>
-              </div>
-            </div>`;
-
-          // Setup click handlers for dropdowns after rendering
-          setTimeout(() => {
-            ['context', 'goals', 'progress', 'unresolved', 'key-details', 'next-actions'].forEach(section => {
-              const header = document.getElementById('continuum-' + section + '-header');
-              const content = document.getElementById('continuum-' + section + '-content');
-              const toggle = document.getElementById('continuum-' + section + '-toggle');
-
-              if (header && content && toggle) {
-                header.onclick = () => {
-                  const isCollapsed = content.style.display === 'none';
-                  content.style.display = isCollapsed ? 'block' : 'none';
-                  toggle.textContent = isCollapsed ? '▼' : '▶';
-                };
-              }
-            });
-          }, 100);
-
-          // Store context state
-          continuumContextState = {
-            unifiedContext: sections.unifiedContext,
-            activeGoals: sections.activeGoals,
-            currentProgress: sections.currentProgress,
-            unresolvedItems: sections.unresolvedItems,
-            keyDetails: sections.keyDetails,
-            nextActions: sections.nextActions,
-            lastUpdate: Date.now(),
-            messageHistory: []
-          };
-
-          // Auto-scroll
-          setTimeout(() => {
-            outputArea.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          }, 100);
-
-          // Build context block helper
-          const buildContextBlock = () => {
-            let block = '[CONVERSATION STATE - Generated by Continuum]\\n\\n';
-            if (sections.unifiedContext.length > 0) {
-              block += '🔗 CONTEXT:\\n' + sections.unifiedContext.map(i => `• ${i}`).join('\\n') + '\\n\\n';
-            }
-            if (sections.activeGoals.length > 0) {
-              block += '🎯 GOALS:\\n' + sections.activeGoals.map(i => `• ${i}`).join('\\n') + '\\n\\n';
-            }
-            if (sections.currentProgress.length > 0) {
-              block += '✅ PROGRESS:\\n' + sections.currentProgress.map(i => `• ${i}`).join('\\n') + '\\n\\n';
-            }
-            if (sections.unresolvedItems.length > 0) {
-              block += '⚠️ UNRESOLVED:\\n' + sections.unresolvedItems.map(i => `• ${i}`).join('\\n') + '\\n\\n';
-            }
-            if (sections.keyDetails.length > 0) {
-              block += '🔑 KEY DETAILS:\\n' + sections.keyDetails.map(i => `• ${i}`).join('\\n') + '\\n\\n';
-            }
-            if (sections.nextActions && sections.nextActions.length > 0) {
-              block += '➡️ NEXT:\\n' + sections.nextActions.map(i => `• ${i}`).join('\\n') + '\\n';
-            }
-            return block;
-          };
-
-          // Button event listeners
-          const btnCont = outputArea.querySelector('#continuum-continue');
-          const btnRev = outputArea.querySelector('#continuum-review');
-          const btnRefresh = outputArea.querySelector('#continuum-refresh');
-          const btnCopy = outputArea.querySelector('#continuum-copy');
-
-          btnCont && btnCont.addEventListener('click', async () => {
-            try {
-              await restoreToChat(`Please continue from where we left off. Here is the working state:\\n\\n${buildContextBlock()}`, []);
-              toast('Context inserted to chat');
-            } catch (e) { toast('Insert failed'); }
-          });
-
-          btnRev && btnRev.addEventListener('click', async () => {
-            try {
-              await restoreToChat(`Before continuing, review this context and confirm your understanding:\\n\\n${buildContextBlock()}`, []);
-              toast('Review request inserted');
-            } catch (e) { toast('Insert failed'); }
-          });
-
-          btnCopy && btnCopy.addEventListener('click', async () => {
-            try {
-              await navigator.clipboard.writeText(buildContextBlock());
-              toast('Context copied to clipboard!');
-            } catch (e) { toast('Copy failed'); }
-          });
-
-          btnRefresh && btnRefresh.addEventListener('click', async () => {
-            showContinuumAgent(); // Re-run the whole analysis
-          });
-
-          toast('Context bridge ready!');
-        } else {
-          outputArea.textContent = `❌ Failed to reconstruct context: ${res && res.error ? res.error : 'unknown error'}`;
-        }
-      } catch (e) {
-        outputArea.textContent = `❌ Continuum error: ${e.message || 'Unknown error'}`;
-        debugLog('Continuum error', e);
-      }
-    }
-
-    // Show Memory Architect Interface (end-user actionable with RAG stats)
-    async function showMemoryArchitect() {
-      const outputArea = (agentContent && agentContent.querySelector('#cb-agent-output')) || (shadow && shadow.getElementById && shadow.getElementById('cb-agent-output'));
-      if (!outputArea) return;
-
-      outputArea.innerHTML = '<div style="text-align:center;padding:20px;"><div class="cb-spinner" style="display:inline-block;"></div><div style="margin-top:12px;">Building knowledge map with RAG...</div></div>';
-
-      try {
-        const convs = await loadConversationsAsync();
-        if (!convs || convs.length === 0) {
-          outputArea.textContent = '⚠️ No conversations to organize. Scan some chats first.';
-          return;
-        }
-
-        // Get RAG stats if available
-        let ragStats = null;
-        if (typeof window.RAGEngine !== 'undefined') {
-          try {
-            ragStats = await window.RAGEngine.getStats();
-            debugLog('[Memory Architect] RAG stats:', ragStats);
-          } catch (e) {
-            debugLog('[Memory Architect] Failed to get RAG stats:', e);
-          }
-        }
-
-        // Analyze and categorize conversations
-        const domainMap = {};
-        const timeline = [];
-
-        for (const conv of convs.slice(0, 20)) { // Limit to recent 20
-          const topics = conv.topics || [];
-          const date = new Date(conv.ts).toLocaleDateString();
-
-          topics.forEach(topic => {
-            if (!domainMap[topic]) domainMap[topic] = [];
-            domainMap[topic].push({
-              date,
-              platform: conv.platform || 'unknown',
-              preview: (conv.conversation && conv.conversation[0] && conv.conversation[0].text.slice(0, 80)) || '...'
-            });
-          });
-
-          timeline.push({
-            date,
-            topics: topics.slice(0, 3),
-            platform: conv.platform
-          });
-        }
-
-        // Phase 3: Get theme clusters
-        let themeClusters = [];
-        if (typeof window.MCPBridge !== 'undefined') {
-          try {
-            const themeResponse = await window.MCPBridge.getThemes(0.7);
-            themeClusters = themeResponse.clusters || [];
-            debugLog('[Memory Architect] Theme clusters:', themeClusters);
-          } catch (e) {
-            debugLog('[Memory Architect] Failed to get theme clusters:', e);
-          }
-        }
-
-        // Get detail level preference
-        const detailLevel = await getDetailLevel();
-
-        // Build knowledge report (Phase 3: content-focused, adaptive depth)
-        const domains = Object.keys(domainMap).sort((a, b) => domainMap[b].length - domainMap[a].length);
-        let topDomain = domains[0] || 'General';
-        const focusTheme = (window.__CB_FOCUS_THEME || '').trim();
-        if (focusTheme) {
-          topDomain = focusTheme;
-          if (!domains.includes(focusTheme)) domains.unshift(focusTheme);
-        }
-        const total = convs.length;
-        const range = `${timeline[timeline.length - 1]?.date || ''} - ${timeline[0]?.date || ''}`;
-
-        const maxClusters = { concise: 3, detailed: 5, expert: 8 }[detailLevel];
-        const maxConvs = { concise: 3, detailed: 5, expert: 10 }[detailLevel];
-        const contentLength = { concise: 80, detailed: 120, expert: 200 }[detailLevel];
-
-        // Build user-friendly conversation list and topic compiler
-        let outputHtml = '<div style="display:flex;flex-direction:column;gap:12px;">';
-        outputHtml += '<div id="memory-detail-container"></div>';
-        outputHtml += `
-          <div style="display:flex;gap:8px;align-items:center;padding:8px 0;">
-            <input id="memory-topic-input" class="cb-input" placeholder="Project/topic (e.g., onboarding portal)" style="flex:1;padding:8px;border-radius:6px;border:1px solid color-mix(in srgb, var(--cb-accent-primary) 25%, transparent);background:rgba(16,24,43,0.5);color:#E6E9F0;" />
-            <button id="memory-compile" class="cb-btn cb-btn-primary">Compile Context</button>
-          </div>
-          <div id="memory-compiled" style="display:none;margin-top:8px;background:rgba(16,24,43,0.5);border:1px solid color-mix(in srgb, var(--cb-accent-primary) 20%, transparent);border-radius:8px;">
-            <div style="padding:10px 12px;border-bottom:1px solid color-mix(in srgb, var(--cb-accent-primary) 15%, transparent);font-weight:600;">📚 Compiled Project Context</div>
-            <div id="memory-compiled-body" style="white-space:pre-wrap;line-height:1.5;padding:12px;font-size:12px;"></div>
-            <div style="display:flex;gap:8px;border-top:1px solid color-mix(in srgb, var(--cb-accent-primary) 15%, transparent);padding:10px 12px;">
-              <button id="memory-copy" class="cb-btn cb-btn-primary" style="flex:1;">📋 Copy Context</button>
-              <button id="memory-insert" class="cb-btn" style="flex:1;">➤ Insert to Chat</button>
-            </div>
-          </div>
-        `;
-
-        // Header with simple stats
-        outputHtml += `<div style="font-weight:700;font-size:14px;margin-bottom:4px;">💬 Your Recent Conversations (${total})</div>`;
-        if (focusTheme) {
-          outputHtml += `<div style="font-size:11px;opacity:0.8;margin-bottom:8px;">Focusing on: <strong>${focusTheme}</strong></div>`;
-        }
-
-        // Show conversations as clickable cards
-        convs.slice(0, maxConvs).forEach((conv, idx) => {
-          const date = new Date(conv.ts).toLocaleDateString();
-          const time = new Date(conv.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-          const platform = conv.platform || 'unknown';
-          const firstMsg = conv.conversation?.find(m => m.role === 'user');
-          const content = firstMsg ? firstMsg.text.slice(0, contentLength) : 'No preview available';
-          const topics = (conv.topics || []).slice(0, 3).join(', ') || 'General';
-
-          outputHtml += `
-            <div style="background:rgba(16,24,43,0.5);border:1px solid color-mix(in srgb, var(--cb-accent-primary) 20%, transparent);border-radius:8px;padding:12px;">
-              <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:8px;">
-                <div style="font-weight:600;color:var(--cb-accent-primary);font-size:12px;">${platform}</div>
-                <div style="font-size:10px;opacity:0.7;">${date} • ${time}</div>
-              </div>
-              <div style="font-size:12px;line-height:1.5;margin-bottom:8px;opacity:0.9;">"${content}..."</div>
-              <div style="display:flex;justify-content:space-between;align-items:center;">
-                <div style="font-size:10px;opacity:0.7;">Topics: ${topics}</div>
-                <button class="cb-btn memory-continue-btn" data-conv-idx="${idx}" style="font-size:10px;padding:4px 8px;">Continue Here</button>
-              </div>
-            </div>
-          `;
-        });
-
-        outputHtml += '</div>';
-
-        outputArea.innerHTML = outputHtml;
-
-        // Add detail level toggle
-        createDetailLevelToggle('memory-detail-container', async (newLevel) => {
-          showMemoryArchitect();
-        });
-
-        // Seed topic input with focus or top domain
-        const topicInput = outputArea.querySelector('#memory-topic-input');
-        if (topicInput) topicInput.value = (focusTheme || topDomain || '').toString();
-
-        // Compile Context handler
-        const compileBtn = outputArea.querySelector('#memory-compile');
-        const compiledBox = outputArea.querySelector('#memory-compiled');
-        const compiledBody = outputArea.querySelector('#memory-compiled-body');
-        const copyBtn = outputArea.querySelector('#memory-copy');
-        const insertBtn = outputArea.querySelector('#memory-insert');
-
-        function compileContextForTopic(topic) {
-          try {
-            const q = (topic || '').trim().toLowerCase();
-            if (!q) return '';
-            // Collect all messages across conversations that mention the topic
-            const hits = [];
-            convs.forEach(conv => {
-              const ts = conv.ts || Date.now();
-              const date = new Date(ts).toLocaleString();
-              (conv.conversation || []).forEach((m, idx) => {
-                const t = (m.text || '');
-                if (!t) return;
-                if ((conv.topics || []).some(tp => String(tp).toLowerCase().includes(q)) || t.toLowerCase().includes(q)) {
-                  hits.push({ ts, date, role: m.role, text: t.slice(0, 800), platform: conv.platform || 'unknown' });
-                }
-              });
-            });
-            if (!hits.length) return '';
-            hits.sort((a, b) => a.ts - b.ts);
-            let out = `Project/Topic: ${topic}\nTotal mentions: ${hits.length}\n\n`;
-            hits.forEach((h, i) => {
-              out += `#${i + 1} • ${h.date} • ${h.platform} • ${h.role}\n${h.text}\n\n`;
-            });
-            out += '---\nContinue from here with the consolidated context above.';
-            return out;
-          } catch (_) { return ''; }
-        }
-
-        if (compileBtn && compiledBox && compiledBody && copyBtn && insertBtn) {
-          compileBtn.addEventListener('click', () => {
-            try {
-              const topic = topicInput ? topicInput.value : '';
-              const ctx = compileContextForTopic(topic);
-              if (ctx) {
-                compiledBody.textContent = ctx; compiledBox.style.display = 'block';
-              } else {
-                compiledBody.textContent = '(No mentions found across your chats)'; compiledBox.style.display = 'block';
-              }
-            } catch (_) { }
-          });
-          copyBtn.addEventListener('click', async () => {
-            try { await navigator.clipboard.writeText(compiledBody.textContent || ''); copyBtn.textContent = '✓ Copied'; setTimeout(() => copyBtn.textContent = '📋 Copy Context', 2000); } catch (_) { }
-          });
-          insertBtn.addEventListener('click', async () => {
-            try { const t = compiledBody.textContent || ''; if (window.ChatBridge && typeof window.ChatBridge.restoreToChat === 'function') { await window.ChatBridge.restoreToChat(t, []); } insertBtn.textContent = '✓ Inserted'; setTimeout(() => insertBtn.textContent = '➤ Insert to Chat', 2000); } catch (_) { }
-          });
-        }
-
-        // Wire up continue buttons
-        const continueButtons = outputArea.querySelectorAll('.memory-continue-btn');
-        continueButtons.forEach(btn => {
-          btn.addEventListener('click', async () => {
-            const idx = parseInt(btn.dataset.convIdx);
-            const conv = convs[idx];
-            if (!conv) return;
-
-            const firstMsg = conv.conversation?.find(m => m.role === 'user');
-            const preview = firstMsg ? firstMsg.text.slice(0, 150) : '';
-            const platform = conv.platform || 'unknown';
-            const topics = (conv.topics || []).join(', ') || 'General';
-
-            const contextPrompt = `I want to continue from my previous conversation on ${platform} about: ${topics}.\n\nI was discussing: "${preview}..."\n\nCan you help me pick up where I left off and provide the next steps?`;
-
-            try {
-              await restoreToChat(contextPrompt, []);
-              toast('Context inserted!');
-            } catch (e) {
-              toast('Insert failed');
-              debugLog('[Memory Architect] Continue failed:', e);
-            }
-          });
-        });
-
-        toast('Knowledge base indexed!');
-
-      } catch (e) {
-        outputArea.textContent = `❌ Memory Architect error: ${e.message || 'Unknown error'}`;
-        debugLog('Memory Architect error', e);
-      }
-    }
-
-    // Show EchoSynth Interface (ensure shadow-scoped bindings)
-    // Show EchoSynth Interface (ensure shadow-scoped bindings)
-    async function showEchoSynth() {
-      const outputArea = (agentContent && agentContent.querySelector('#cb-agent-output')) || (shadow && shadow.getElementById && shadow.getElementById('cb-agent-output'));
-      if (!outputArea) return;
-
-      // Show input UI for EchoSynth
       outputArea.innerHTML = `
-        <div id="echosynth-detail-container"></div>
-        <div style="padding:0;display:flex;flex-direction:column;gap:8px;">
-          <div id="echosynth-tone" style="display:flex;gap:4px;align-items:center;">
-            <span style="font-size:10px;color:var(--cb-subtext);font-weight:600;margin-right:2px;">TONE:</span>
-            <button class="cb-btn cb-btn-sm" data-tone="analytical" style="font-size:10px;padding:4px 8px;border-radius:4px;">Analytical</button>
-            <button class="cb-btn cb-btn-sm" data-tone="narrative" style="font-size:10px;padding:4px 8px;border-radius:4px;">Narrative</button>
-            <button class="cb-btn cb-btn-sm" data-tone="structured" style="font-size:10px;padding:4px 8px;border-radius:4px;">Structured</button>
-            <span id="tone-preview" style="font-size:9px;color:var(--cb-subtext);margin-left:auto;opacity:0.7;">Auto</span>
+        <div style="margin-bottom:8px;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+            <div style="width:24px;height:24px;background:rgba(0,212,255,0.15);border:1px solid rgba(0,212,255,0.25);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;">◈</div>
+            <div style="font-weight:600;font-size:13px;color:var(--cb-white);">Catch Me Up</div>
           </div>
-          
-          <textarea id="echosynth-prompt" placeholder="Enter your question..." style="width:100%;min-height:70px;padding:8px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:var(--cb-white);font-size:11px;resize:vertical;font-family:inherit;"></textarea>
-          
-          <div style="display:flex;gap:6px;">
-            <button id="echosynth-run" class="cb-btn cb-btn-primary" style="flex:1;padding:8px;font-size:11px;border-radius:6px;">▶ Run Synthesis</button>
-            <button id="echosynth-cancel" class="cb-btn" style="padding:8px;font-size:11px;border-radius:6px;width:60px;">Cancel</button>
-          </div>
+          <div style="font-size:11px;color:var(--cb-subtext);margin-bottom:10px;">Your personalized briefing of what happened across all platforms since you were last here.</div>
+          <button id="cb-catchmeup-run" class="cb-btn cb-btn-primary" style="width:100%;">Generate Briefing</button>
         </div>
-        <div id="echosynth-results" style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.06);display:none;"></div>
+        <div id="cb-catchmeup-result" style="display:none;"></div>
       `;
 
-      // Add detail level toggle
-      createDetailLevelToggle('echosynth-detail-container', (level) => {
-        debugLog('[EchoSynth] Detail level changed to:', level);
-      });
-
-      const promptInput = outputArea.querySelector('#echosynth-prompt');
-      const runBtn = outputArea.querySelector('#echosynth-run');
-      const cancelBtn = outputArea.querySelector('#echosynth-cancel');
-      const resultsDiv = outputArea.querySelector('#echosynth-results');
-      const toneBar = outputArea.querySelector('#echosynth-tone');
-      const toneButtons = toneBar.querySelectorAll('button[data-tone]');
-      const tonePreview = toneBar.querySelector('#tone-preview');
-
-      // Tone detection heuristics
-      const inferTone = (text) => {
-        const s = (text || '').toLowerCase();
-        if (/(implement|api|bug|error|stack|code|optimiz|complexity|latency|schema)/.test(s)) return 'analytical';
-        if (/(story|creative|metaphor|vision|inspire|narrative|analogy)/.test(s)) return 'narrative';
-        if (/(plan|roadmap|steps|milestone|timeline|prioritize|OKR|bullet)/.test(s)) return 'structured';
-        return 'structured';
-      };
-      let selectedTone = 'auto';
-      toneButtons.forEach(btn => {
-        btn.addEventListener('click', () => {
-          selectedTone = btn.dataset.tone;
-          toneButtons.forEach(b => b.classList.remove('cb-btn-primary'));
-          btn.classList.add('cb-btn-primary');
-          tonePreview.textContent = `Preview: ${selectedTone}`;
-        });
-      });
-
-      cancelBtn.addEventListener('click', () => {
-        outputArea.textContent = '(Agent results will appear here)';
-      });
+      const runBtn = outputArea.querySelector('#cb-catchmeup-run');
+      const resultDiv = outputArea.querySelector('#cb-catchmeup-result');
 
       runBtn.addEventListener('click', async () => {
-        const userPrompt = promptInput.value.trim();
-        if (!userPrompt) {
-          toast('Enter a question first');
-          return;
-        }
-
         runBtn.disabled = true;
-        runBtn.textContent = 'Processing...';
-        resultsDiv.style.display = 'block';
-        resultsDiv.innerHTML = '<div style="text-align:center;padding:12px;"><div class="cb-spinner" style="display:inline-block;"></div><div style="margin-top:8px;font-size:12px;">Analyzing query...</div></div>';
+        runBtn.textContent = 'Analyzing your activity...';
+        resultDiv.style.display = 'block';
+        resultDiv.innerHTML = '<div style="text-align:center;padding:16px;"><div class="cb-spinner" style="display:inline-block;"></div><div style="margin-top:8px;font-size:11px;color:var(--cb-subtext);">Scanning across all platforms...</div></div>';
 
         try {
-          // ═══ ENHANCEMENT 1: Sub-Question Decomposer ═══
-          // Detect multi-part questions using lightweight rule-based logic
-          const hasMultiPart = /\band\b.*\?|\bor\b.*\?|,.*\?/.test(userPrompt) ||
-            (userPrompt.match(/\?/g) || []).length > 1;
-          const subQuestions = hasMultiPart ?
-            userPrompt.split(/\?/).filter(q => q.trim().length > 10).map(q => q.trim() + '?').slice(0, 3) :
-            [userPrompt];
+          const catchState = await StorageManager.getAgentCatchMeUp();
+          const convos = await StorageManager.getConversations();
 
-          if (subQuestions.length > 1) {
-            resultsDiv.innerHTML += `<div style="font-size:11px;opacity:0.7;">Detected ${subQuestions.length} sub-questions...</div>`;
-          }
-
-          // ═══ ENHANCEMENT 2: Intent Clarifier ═══
-          // Optional lightweight query clarification (<20 tokens)
-          let clarifiedPrompt = userPrompt;
-          if (userPrompt.length > 100 || /\b(basically|kind of|like|sort of)\b/i.test(userPrompt)) {
-            resultsDiv.innerHTML = '<div style="text-align:center;padding:12px;"><div class="cb-spinner" style="display:inline-block;"></div><div style="margin-top:8px;font-size:12px;">Clarifying intent...</div></div>';
-            const clarifyPrompt = `Rewrite as clear instruction (<15 words): "${userPrompt.slice(0, 200)}"`;
-            const clarifyRes = await callLlamaAsync({ action: 'prompt', text: clarifyPrompt });
-            if (clarifyRes?.ok && clarifyRes.result && clarifyRes.result.length < userPrompt.length) {
-              clarifiedPrompt = clarifyRes.result.trim().replace(/^["']|["']$/g, '');
-              debugLog('[EchoSynth] Intent clarified:', clarifiedPrompt);
-            }
-          }
-
-          resultsDiv.innerHTML = '<div style="text-align:center;padding:12px;"><div class="cb-spinner" style="display:inline-block;"></div><div style="margin-top:8px;font-size:12px;">Retrieving context via RAG, then querying AIs...</div></div>';
-
-          // Retrieve relevant context from past conversations using RAG
-          let ragContext = '';
-          let ragResultCount = 0;
-          if (typeof window.RAGEngine !== 'undefined') {
-            try {
-              const ragResults = await window.RAGEngine.retrieve(clarifiedPrompt, 3);
-              if (ragResults && ragResults.length > 0) {
-                ragResultCount = ragResults.length;
-                ragContext = '\n\n[Relevant context from past conversations:]\n' +
-                  ragResults.map((r, i) => `${i + 1}. ${r.text.slice(0, 200)}... (relevance: ${(r.score * 100).toFixed(0)}%)`).join('\n');
-                debugLog('[EchoSynth] Retrieved RAG context:', ragResults);
-              }
-            } catch (e) {
-              debugLog('[EchoSynth] RAG retrieval failed:', e);
-            }
-          }
-
-          // Enhance prompt with RAG context if available
-          const enhancedPrompt = ragContext ? clarifiedPrompt + ragContext : clarifiedPrompt;
-          const tone = selectedTone === 'auto' ? inferTone(userPrompt) : selectedTone;
-          tonePreview.textContent = `Preview: ${tone}`;
-
-          // Query Llama twice (with slight variation) for multi-perspective synthesis without OpenAI
-          const llamaPromise = callLlamaAsync({ action: 'prompt', text: enhancedPrompt }).catch(e => ({ ok: false, error: e.message }));
-          // Second call with 'Alternative perspective' hint to encourage diversity
-          const llama2Promise = callLlamaAsync({ action: 'prompt', text: enhancedPrompt + '\n\nProvide an alternative perspective or additional details.' }).catch(e => ({ ok: false, error: e.message }));
-
-          const [llamaRes, llama2Res] = await Promise.all([llamaPromise, llama2Promise]);
-
-          // ═══ ENHANCEMENT 3: Ramble Filter ═══
-          // Clean up AI responses locally before synthesis
-          const cleanResponse = (text) => {
-            if (!text) return '';
-            return text
-              .replace(/^(As an AI|As a language model|I'm an AI|I don't have|I cannot|I can't actually).*?[\.\n]/gmi, '')
-              .replace(/\n{3,}/g, '\n\n') // Remove excessive newlines
-              .replace(/^[\s\n]+|[\s\n]+$/g, '') // Trim whitespace
-              .replace(/(.+)\n\1/g, '$1') // Remove duplicate consecutive lines
-              .slice(0, 8000); // Reasonable length limit
-          };
-
-          // Collect successful responses with ramble filtering
-          const responses = [];
-          if (llamaRes && llamaRes.ok && llamaRes.result) {
-            const modelName = 'Llama 3.1 (Primary)';
-            const cleaned = cleanResponse(llamaRes.result);
-            responses.push({
-              source: modelName,
-              answer: cleaned,
-              raw: llamaRes.result
-            });
-          }
-          if (llama2Res && llama2Res.ok && llama2Res.result) {
-            const cleaned = cleanResponse(llama2Res.result);
-            responses.push({
-              source: 'Llama 3.1 (Alternative)',
-              answer: cleaned,
-              raw: llama2Res.result
-            });
-          }
-
-          if (responses.length === 0) {
-            resultsDiv.innerHTML = `<div style="color:rgba(255,100,100,0.9);">❌ Both AI models failed to respond. Check API keys and try again.</div>`;
+          if (!convos || convos.length === 0) {
+            resultDiv.innerHTML = '<div style="padding:12px;color:var(--cb-subtext);text-align:center;">No saved conversations yet. Scan some chats first!</div>';
+            runBtn.disabled = false;
+            runBtn.textContent = 'Generate Briefing';
             return;
           }
 
-          // ═══ ENHANCEMENT 4: Referee Mode ═══
-          // Compare AI responses locally without re-querying
-          let refereeAnalysis = '';
-          if (responses.length > 1) {
-            const text1 = responses[0].answer.toLowerCase();
-            const text2 = responses[1].answer.toLowerCase();
+          // Find conversations since last briefing (or all if first time)
+          const lastBriefed = catchState.lastBriefedAt || 0;
+          const newConvos = lastBriefed > 0 ? convos.filter(c => c.ts > lastBriefed) : convos.slice(0, 10);
+          const hasNew = newConvos.length > 0;
+          const targetConvos = hasNew ? newConvos : convos.slice(0, 5);
 
-            // Find shared claims (simple overlap detection)
-            const sentences1 = text1.split(/[.!?]+/).map(s => s.trim()).filter(s => s.length > 30);
-            const sentences2 = text2.split(/[.!?]+/).map(s => s.trim()).filter(s => s.length > 30);
+          // Build context from conversations
+          const convoSummaries = targetConvos.map((c, i) => {
+            const msgs = c.conversation || [];
+            const userMsgs = msgs.filter(m => m.role === 'user').map(m => m.text).join(' ').slice(0, 300);
+            const aiMsgs = msgs.filter(m => m.role === 'assistant').map(m => m.text).join(' ').slice(0, 300);
+            const platform = c.platform || 'unknown';
+            const timeAgo = getTimeAgo(c.ts);
+            return `[Conv ${i + 1}] Platform: ${platform} | ${timeAgo}\nUser discussed: ${userMsgs}\nAI responded about: ${aiMsgs}`;
+          }).join('\n\n---\n\n');
 
-            const agreements = sentences1.filter(s1 =>
-              sentences2.some(s2 => {
-                const words1 = s1.split(/\s+/).filter(w => w.length > 4);
-                const words2 = s2.split(/\s+/).filter(w => w.length > 4);
-                const overlap = words1.filter(w => words2.includes(w)).length;
-                return overlap / Math.max(words1.length, words2.length) > 0.4;
-              })
-            );
+          const timeContext = lastBriefed > 0
+            ? `The user was last briefed ${getTimeAgo(lastBriefed)}. There are ${newConvos.length} new conversation(s) since then.`
+            : `This is the user's first briefing. Showing their ${targetConvos.length} most recent conversations.`;
 
-            // Detect contradictions (opposite sentiments on same topic)
-            const contradictions = [];
-            const polarWords = {
-              positive: ['yes', 'true', 'correct', 'better', 'should', 'recommended'],
-              negative: ['no', 'false', 'incorrect', 'worse', 'shouldn\'t', 'not recommended']
-            };
+          const prompt = `You are Catch Me Up, a personal briefing agent inside ChatBridge.
 
-            sentences1.forEach(s1 => {
-              sentences2.forEach(s2 => {
-                const hasPos1 = polarWords.positive.some(w => s1.includes(w));
-                const hasNeg1 = polarWords.negative.some(w => s1.includes(w));
-                const hasPos2 = polarWords.positive.some(w => s2.includes(w));
-                const hasNeg2 = polarWords.negative.some(w => s2.includes(w));
+${timeContext}
 
-                if ((hasPos1 && hasNeg2) || (hasNeg1 && hasPos2)) {
-                  contradictions.push({ sent1: s1.slice(0, 100), sent2: s2.slice(0, 100) });
-                }
-              });
-            });
+Here are the conversations to brief the user on:
 
-            refereeAnalysis = `
-              <div style="margin:12px 0;padding:8px;background:rgba(138,43,226,0.08);border:1px solid rgba(138,43,226,0.25);border-radius:6px;font-size:11px;">
-                <b>🔍 Referee Analysis:</b><br/>
-                ✓ Agreements: ${agreements.length} shared claims<br/>
-                ${contradictions.length > 0 ? `⚠️ Contradictions: ${contradictions.length} conflicting views<br/>` : ''}
-                ${contradictions.length > 0 ? `<div style="opacity:0.8;margin-top:4px;">Note: Synthesis will prioritize more specific and well-reasoned claims.</div>` : ''}
-              </div>
-            `;
-          }
+${convoSummaries}
 
-          // Phase 3: Multi-stage generation pipeline
-          const detailLevel = await getDetailLevel(); // Get from user preference
-          let finalAnswer = '';
+Generate a concise, scannable morning-briefing style summary:
 
-          if (responses.length > 1) {
-            // Stage 1: Create outline
-            resultsDiv.innerHTML += '<div style="font-size:11px;opacity:0.7;margin-top:8px;">Stage 1/3: Outlining key points...</div>';
-            const outlinePrompt = `Analyze these two AI responses and create a brief outline (3-5 bullet points) of key points to cover:
+## Active Threads
+What's still in progress — where the user left off on each thread. Include platform names.
 
-Question: ${userPrompt}
+## Pending Items
+Any commitments, deadlines, follow-ups, or action items mentioned across conversations.
 
-Gemini: ${responses[0].answer.slice(0, 500)}...
-ChatGPT: ${responses[1]?.answer?.slice(0, 500) || 'N/A'}...
+## What Changed
+Key decisions made, new information discovered, or progress noted.
 
-Outline (bullet points only):`;
+## Priority Action
+The single most important thing the user should address now, and why.
 
-            const outlineRes = await callLlamaAsync({ action: 'prompt', text: outlinePrompt });
-            const outline = outlineRes?.result || '• Main points\n• Key insights\n• Conclusion';
+Keep it concise. Use bullet points. Include platform names in brackets like [ChatGPT] or [Claude]. Be specific — reference actual topics discussed.`;
 
-            // Stage 2: Expand with context
-            resultsDiv.innerHTML += '<div style="font-size:11px;opacity:0.7;">Stage 2/3: Expanding with retrieved context...</div>';
-
-            const depthInstructions = {
-              concise: 'brief and to-the-point (2-3 paragraphs maximum)',
-              detailed: 'comprehensive with examples and explanations',
-              expert: 'highly technical with implementation details, edge cases, and best practices'
-            };
-
-            const toneInstructions = {
-              analytical: `Technical Excellence Guidelines:
-- Lead with core concepts and definitions
-- Include code snippets, algorithms, or pseudo-code where relevant
-- Explain time/space complexity for algorithms
-- Call out edge cases, gotchas, and common pitfalls
-- Reference specific technologies, versions, and APIs
-- Use precise terminology (avoid vague words like "better" without metrics)
-- Include performance considerations and trade-offs`,
-              narrative: `Storytelling Excellence Guidelines:
-- Open with a relatable scenario or metaphor
-- Use analogies to explain complex concepts
-- Build a narrative arc (setup → challenge → resolution)
-- Include real-world examples or case studies
-- Make abstract ideas concrete and visual
-- End with key takeaways or actionable insights
-- Keep the reader engaged with conversational flow`,
-              structured: `Clarity & Organization Guidelines:
-- Use clear section headings (##) and subheadings (###)
-- Lead with an executive summary or TL;DR
-- Break down into numbered steps or bullet points
-- Prioritize information (most important first)
-- Use tables or lists for comparisons
-- Include a "Next Steps" or "Action Items" section
-- Keep paragraphs short (2-4 sentences max)`
-            };
-            const expandPrompt = `You are EchoSynth, an elite AI synthesis engine that combines insights from multiple AI models into superior outputs.
-
-**Your Mission**: Create a ${depthInstructions[detailLevel]} answer that synthesizes the best of both AI responses while adding your own expert insights.
-
-**Tone**: ${tone}
-${toneInstructions[tone]}
-
-**Quality Standards**:
-✓ Accuracy: Verify facts and correct any errors
-✓ Completeness: Address all aspects of the question
-✓ Clarity: Use clear language and logical structure
-✓ Actionability: Include practical next steps when relevant
-✓ Sources: Integrate insights from both models seamlessly
-
-**Available Insights**:
-
-📋 **Outline** (Key Points to Cover):
-${outline}
-
-🧠 **Retrieved Context** (From Past Conversations):
-${ragContext || 'No additional context available'}
-
-🤖 **Gemini's Perspective**:
-${responses[0].answer}
-
-💡 **ChatGPT's Perspective**:
-${responses[1]?.answer || 'Not available'}
-
-**Your Task**: Synthesize these perspectives into a unified, superior answer. Don't just merge—enhance. Add examples, clarify ambiguities, correct errors, and structure for maximum impact.
-
-**Output Format**: Use Markdown formatting with:
-- ## Section headings for major topics
-- ### Subheadings for subtopics
-- **Bold** for key terms
-- \`code\` for technical references
-- > Blockquotes for important notes
-- Bullet points and numbered lists for clarity
-
-**Depth Level**: ${detailLevel}
-**Tone**: ${tone}
-
----
-
-**Begin Your Synthesized Answer**:`;
-
-
-            const expandRes = await callLlamaAsync({ action: 'prompt', text: expandPrompt });
-            const expanded = expandRes?.result || responses.map(r => `**${r.source}:**\n${r.answer}`).join('\n\n---\n\n');
-
-            // Stage 3: Refine and structure
-            resultsDiv.innerHTML += '<div style="font-size:11px;opacity:0.7;">Stage 3/3: Refining final output...</div>';
-            const refinePrompt = `Polish this answer for clarity and structure. Maintain the ${tone} tone. Add section headings, ensure logical flow, and highlight key takeaways:
-
-${expanded}
-
-Refined Answer (final, polished):`;
-
-            const refineRes = await callLlamaAsync({ action: 'prompt', text: refinePrompt });
-            finalAnswer = refineRes?.result || expanded;
-
-          } else {
-            // Only one response - still apply multi-stage enhancement
-            resultsDiv.innerHTML += '<div style="font-size:11px;opacity:0.7;">Enhancing single response...</div>';
-            const enhancePrompt = `Enhance this answer with additional context and structure:
-
-Original: ${responses[0].answer}
-RAG Context: ${ragContext}
-
-Enhanced Answer:`;
-            const enhanceRes = await callLlamaAsync({ action: 'prompt', text: enhancePrompt });
-            finalAnswer = enhanceRes?.result || responses[0].answer;
-          }
-
-          // ═══ ENHANCEMENT 5: Follow-Up Suggestions ═══
-          // Generate 1-3 follow-up suggestions locally (no AI calls)
-          const generateFollowUps = (question, answer) => {
-            const suggestions = [];
-            const lowerQ = question.toLowerCase();
-            const lowerA = answer.toLowerCase();
-
-            // Detect domain and suggest relevant follow-ups
-            if (/\b(how|implement|build|create)\b/.test(lowerQ)) {
-              if (lowerA.includes('error') || lowerA.includes('issue')) {
-                suggestions.push('How can I debug common errors in this implementation?');
-              }
-              if (lowerA.includes('performance') || lowerA.includes('optimize')) {
-                suggestions.push('What are the performance considerations?');
-              }
-              suggestions.push('What are best practices for this approach?');
-            } else if (/\b(what|explain|understand)\b/.test(lowerQ)) {
-              suggestions.push('Can you provide a practical example?');
-              if (lowerA.includes('vs') || lowerA.includes('compared')) {
-                suggestions.push('Which option should I choose for my use case?');
-              }
-            } else if (/\b(why|reason)\b/.test(lowerQ)) {
-              suggestions.push('What are alternative approaches?');
-            }
-
-            return suggestions.slice(0, 3);
-          };
-
-          const followUps = generateFollowUps(userPrompt, finalAnswer);
-          const followUpHtml = followUps.length > 0 ? `
-            <div style="margin-top:12px;padding:8px;background:color-mix(in srgb, var(--cb-accent-primary) 5%, transparent);border:1px solid color-mix(in srgb, var(--cb-accent-primary) 20%, transparent);border-radius:6px;">
-              <div style="font-size:11px;font-weight:600;margin-bottom:6px;opacity:0.9;">💡 Suggested Follow-Ups:</div>
-              ${followUps.map((q, i) => `<button class="cb-btn cb-followup" data-question="${q}" style="display:block;width:100%;text-align:left;margin:4px 0;padding:6px 8px;font-size:11px;">${i + 1}. ${q}</button>`).join('')}
-            </div>
-          ` : '';
-
-          resultsDiv.innerHTML = `
-            ${refereeAnalysis}
-            <div style="font-weight:700;margin-bottom:8px;color:var(--cb-accent-primary);">✨ Synthesized Answer ${ragResultCount > 0 ? '🔍 (RAG-Enhanced)' : ''}</div>
-            <div style="white-space:pre-wrap;line-height:1.6;">${finalAnswer || 'No result'}</div>
-            <div style="margin-top:12px;padding:8px;background:color-mix(in srgb, var(--cb-accent-primary) 10%, transparent);border-radius:6px;font-size:11px;">
-              <strong>Sources:</strong> ${responses.map(r => r.source).join(' + ')}${ragResultCount > 0 ? ` + ${ragResultCount} past conversations (RAG)` : ''} • Synthesized at ${new Date().toLocaleTimeString()}
-            </div>
-            ${followUpHtml}
-          `;
-
-          // Attach follow-up button handlers
-          const followUpButtons = resultsDiv.querySelectorAll('.cb-followup');
-          followUpButtons.forEach(btn => {
-            btn.addEventListener('click', () => {
-              promptInput.value = btn.dataset.question;
-              toast('Follow-up loaded - click Run');
-            });
-          });
-          try { if (window.RAGEngine && window.RAGEngine.incrementMetric) window.RAGEngine.incrementMetric('totalSynthesisSessions', 1); } catch (_) { }
-          toast('Multi-AI synthesis complete!');
-        } catch (e) {
-          resultsDiv.innerHTML = `<div style="color:rgba(255,100,100,0.9);">❌ Error: ${e.message || 'Unknown error'}</div>`;
-          debugLog('EchoSynth error', e);
-        } finally {
-          runBtn.disabled = false;
-          runBtn.textContent = '▶ Run EchoSynth';
-        }
-      });
-    }
-
-    // ============================================
-    // ACTION EXTRACTOR - Get to-dos instantly
-    // ============================================
-    async function showActionExtractor() {
-      const outputArea = (agentContent && agentContent.querySelector('#cb-agent-output')) || (shadow && shadow.getElementById && shadow.getElementById('cb-agent-output'));
-      if (!outputArea) return;
-
-      outputArea.innerHTML = `<div style="display:flex;align-items:center;gap:8px;padding:8px;"><div class="cb-spinner" style="width:16px;height:16px;"></div><span style="font-size:11px;color:var(--cb-subtext);">Extracting actions...</span></div>`;
-
-      try {
-        const chatText = await getConversationText();
-        if (!chatText || chatText.length < 20) {
-          outputArea.innerHTML = `<div style="padding:12px;text-align:center;"><div style="font-size:20px;margin-bottom:6px;">💬</div><div style="font-size:11px;color:var(--cb-white);">No conversation found</div><div style="font-size:9px;color:var(--cb-subtext);margin-top:2px;">Scan a chat first</div></div>`;
-          return;
-        }
-
-        const prompt = `Extract actionable items from this conversation. Return in this EXACT JSON format:
-{"tasks":["task1","task2"],"deadlines":[{"item":"what","when":"when"}],"assignments":[{"person":"who","task":"what"}]}
-
-Conversation:
-${chatText.slice(0, 3500)}
-
-Output ONLY valid JSON:`;
-
-        const res = await new Promise(resolve => {
-          chrome.runtime.sendMessage({ type: 'call_llama', payload: { action: 'generate', text: prompt } }, r => {
-            resolve(chrome.runtime.lastError ? { ok: false } : (r || { ok: false }));
-          });
-        });
-
-        if (res && res.ok && res.result) {
-          let data = { tasks: [], deadlines: [], assignments: [] };
-          try {
-            const jsonMatch = res.result.match(/\{[\s\S]*\}/);
-            if (jsonMatch) data = JSON.parse(jsonMatch[0]);
-          } catch (e) {
-            const lines = res.result.split('\n').filter(l => l.trim());
-            data.tasks = lines.slice(0, 5);
-          }
-
-          // Polished UI - Compact but designed
-          const tasksHtml = (data.tasks || []).map(t => `
-            <div style="display:flex;align-items:flex-start;gap:8px;padding:8px 10px;background:rgba(16,185,129,0.06);border-radius:6px;margin-bottom:4px;border:1px solid rgba(16,185,129,0.1);">
-              <span style="color:#10b981;font-size:10px;margin-top:2px;">◆</span>
-              <span style="font-size:11px;color:var(--cb-white);line-height:1.4;">${t}</span>
-            </div>
-          `).join('') || '<div style="color:var(--cb-subtext);font-size:11px;padding:4px;">No tasks found</div>';
-
-          const deadlinesHtml = (data.deadlines || []).map(d => `
-            <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:rgba(245,158,11,0.06);border-radius:6px;margin-bottom:4px;border:1px solid rgba(245,158,11,0.1);">
-              <span style="font-size:12px;">📅</span>
-              <span style="font-size:11px;color:var(--cb-white);flex:1;">${d.item || d}</span>
-              <span style="font-size:10px;color:#f59e0b;font-weight:500;">${d.when || ''}</span>
-            </div>
-          `).join('') || '<div style="color:var(--cb-subtext);font-size:11px;padding:4px;">No deadlines found</div>';
-
-          const assignmentsHtml = (data.assignments || []).map(a => `
-            <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:rgba(139,92,246,0.06);border-radius:6px;margin-bottom:4px;border:1px solid rgba(139,92,246,0.1);">
-              <span style="font-size:12px;">👤</span>
-              <span style="font-size:10px;color:#8b5cf6;font-weight:600;background:rgba(139,92,246,0.1);padding:2px 6px;border-radius:4px;">${a.person || '?'}</span>
-              <span style="font-size:11px;color:var(--cb-white);flex:1;">${a.task || a}</span>
-            </div>
-          `).join('') || '<div style="color:var(--cb-subtext);font-size:11px;padding:4px;">No assignments found</div>';
-
-          outputArea.innerHTML = `
-            <div style="padding:0;">
-              <!-- Stats Row -->
-              <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;padding:0 2px;font-size:11px;color:var(--cb-subtext);">
-                <span style="color:#10b981;font-weight:600;">${(data.tasks || []).length} TASKS</span>
-                <span style="color:#f59e0b;font-weight:600;">${(data.deadlines || []).length} DUE</span>
-                <span style="color:#8b5cf6;font-weight:600;">${(data.assignments || []).length} PPL</span>
-              </div>
-
-              <!-- Sections -->
-              <div style="margin-bottom:8px;">
-                <div style="display:flex;align-items:center;gap:4px;margin-bottom:4px;">
-                  <div style="width:4px;height:4px;background:#10b981;border-radius:50%;"></div>
-                  <div style="font-size:9px;font-weight:600;color:var(--cb-subtext);text-transform:uppercase;letter-spacing:0.5px;">Tasks</div>
-                </div>
-                ${tasksHtml}
-              </div>
-
-              <div style="margin-bottom:8px;">
-                <div style="display:flex;align-items:center;gap:4px;margin-bottom:4px;">
-                  <div style="width:4px;height:4px;background:#f59e0b;border-radius:50%;"></div>
-                  <div style="font-size:9px;font-weight:600;color:var(--cb-subtext);text-transform:uppercase;letter-spacing:0.5px;">Deadlines</div>
-                </div>
-                ${deadlinesHtml}
-              </div>
-
-              <div style="margin-bottom:6px;">
-                <div style="display:flex;align-items:center;gap:4px;margin-bottom:4px;">
-                  <div style="width:4px;height:4px;background:#8b5cf6;border-radius:50%;"></div>
-                  <div style="font-size:9px;font-weight:600;color:var(--cb-subtext);text-transform:uppercase;letter-spacing:0.5px;">Assigned</div>
-                </div>
-                ${assignmentsHtml}
-              </div>
-
-              <div style="display:flex;gap:6px;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.06);">
-                <button id="action-copy" class="cb-btn cb-btn-secondary" style="flex:1;padding:6px;font-size:10px;border-radius:6px;">📋 Copy</button>
-                <button id="action-insert" class="cb-btn cb-btn-primary" style="flex:1;padding:6px;font-size:10px;border-radius:6px;">➤ Insert</button>
-              </div>
-            </div>
-          `;
-
-          const copyText = `TASKS:\n${(data.tasks || []).map(t => `☐ ${t}`).join('\n')}\n\nDEADLINES:\n${(data.deadlines || []).map(d => `📅 ${d.item || d} - ${d.when || ''}`).join('\n')}\n\nASSIGNMENTS:\n${(data.assignments || []).map(a => `👤 ${a.person || ''}: ${a.task || a}`).join('\n')}`;
-
-          outputArea.querySelector('#action-copy')?.addEventListener('click', async () => {
-            await navigator.clipboard.writeText(copyText);
-            toast('Copied!');
-          });
-
-          outputArea.querySelector('#action-insert')?.addEventListener('click', async () => {
-            try { await restoreToChat(copyText, []); toast('Inserted!'); } catch (e) { toast('Failed'); }
-          });
-
-        } else {
-          outputArea.innerHTML = `<div style="padding:12px;text-align:center;"><div style="font-size:20px;margin-bottom:6px;">⚠️</div><div style="font-size:11px;color:var(--cb-white);">Extraction failed</div><div style="font-size:9px;color:var(--cb-subtext);margin-top:2px;">${res?.error || 'Try again'}</div></div>`;
-        }
-      } catch (e) {
-        outputArea.innerHTML = `<div style="color:#f87171;padding:12px;text-align:center;font-size:11px;">Error: ${e.message || 'Unknown'}</div>`;
-        debugLog('Action Extractor error', e);
-      }
-    }
-
-    // ============================================
-    // DRAFT GENERATOR - Create emails & updates
-    // ============================================
-    async function showDraftGenerator() {
-      const outputArea = (agentContent && agentContent.querySelector('#cb-agent-output')) || (shadow && shadow.getElementById && shadow.getElementById('cb-agent-output'));
-      if (!outputArea) return;
-
-      // outputArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
-
-      outputArea.innerHTML = `
-        <div style="padding:0;">
-          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px;">
-            <button class="cb-draft-type cb-btn" data-type="email" style="flex-direction:column;gap:2px;padding:6px;text-align:center;background:color-mix(in srgb, var(--cb-accent-primary) 10%, transparent);border:1px solid var(--cb-accent-primary);border-radius:6px;height:auto;">
-              <span style="font-size:14px;">📧</span>
-              <span style="font-size:9px;font-weight:600;">Email</span>
-            </button>
-            <button class="cb-draft-type cb-btn" data-type="status" style="flex-direction:column;gap:2px;padding:6px;text-align:center;border-radius:6px;height:auto;">
-              <span style="font-size:14px;">📊</span>
-              <span style="font-size:9px;font-weight:600;">Status</span>
-            </button>
-            <button class="cb-draft-type cb-btn" data-type="notes" style="flex-direction:column;gap:2px;padding:6px;text-align:center;border-radius:6px;height:auto;">
-              <span style="font-size:14px;">📝</span>
-              <span style="font-size:9px;font-weight:600;">Notes</span>
-            </button>
-            <button class="cb-draft-type cb-btn" data-type="reply" style="flex-direction:column;gap:2px;padding:6px;text-align:center;border-radius:6px;height:auto;">
-              <span style="font-size:14px;">💬</span>
-              <span style="font-size:9px;font-weight:600;">Reply</span>
-            </button>
-          </div>
-          
-          <button id="draft-generate" class="cb-btn cb-btn-primary" style="width:100%;padding:8px;font-size:11px;border-radius:6px;">
-            ✨ Generate Draft
-          </button>
-        </div>
-        <div id="draft-results" style="margin-top:0px;display:none;"></div>
-      `;
-
-      let selectedType = 'email';
-      const typeButtons = outputArea.querySelectorAll('.cb-draft-type');
-      const generateBtn = outputArea.querySelector('#draft-generate');
-      const resultsDiv = outputArea.querySelector('#draft-results');
-
-      typeButtons.forEach(btn => {
-        btn.addEventListener('click', () => {
-          typeButtons.forEach(b => {
-            b.style.background = 'rgba(255,255,255,0.03)';
-            b.style.border = '1px solid rgba(255,255,255,0.08)';
-          });
-          btn.style.background = 'color-mix(in srgb, var(--cb-accent-primary) 10%, transparent)';
-          btn.style.border = '1px solid var(--cb-accent-primary)';
-          selectedType = btn.dataset.type;
-        });
-      });
-
-      generateBtn.addEventListener('click', async () => {
-        generateBtn.disabled = true;
-        generateBtn.innerHTML = '<span class="cb-spinner" style="width:10px;height:10px;border-width:2px;"></span> Generating...';
-        resultsDiv.style.display = 'block';
-        resultsDiv.style.marginTop = '8px';
-        resultsDiv.innerHTML = '<div style="text-align:center;padding:12px;"><div class="cb-spinner" style="width:16px;height:16px;"></div></div>';
-
-        try {
-          const chatText = await getConversationText();
-          if (!chatText || chatText.length < 20) {
-            resultsDiv.innerHTML = '<div style="color:var(--cb-warning);padding:8px;text-align:center;font-size:11px;">No conversation found.</div>';
-            return;
-          }
-
-          const prompts = {
-            email: `Based on this conversation, write a professional email summarizing the key points and any decisions made. Use a clear subject line, professional greeting, body with bullet points for key items, and sign off. Be concise but complete.`,
-            status: `Based on this conversation, create a brief project status update. Include: Current Status (1 sentence), Key Progress (2-3 bullets), Blockers/Issues (if any), Next Steps. Keep it executive-friendly.`,
-            notes: `Based on this conversation, create structured meeting notes. Include: Date/Time, Attendees (if mentioned), Agenda Items, Discussion Points, Decisions Made, Action Items, Next Meeting. Use bullet points.`,
-            reply: `Based on this conversation, draft a brief follow-up message or reply. Keep it friendly, professional, and action-oriented. 2-3 sentences max.`
-          };
-
-          const prompt = `${prompts[selectedType]}
-
-Conversation:
-${chatText.slice(0, 3500)}`;
-
-          const res = await new Promise(resolve => {
-            chrome.runtime.sendMessage({ type: 'call_llama', payload: { action: 'generate', text: prompt } }, r => {
-              resolve(chrome.runtime.lastError ? { ok: false, error: 'Message failed' } : (r || { ok: false }));
-            });
-          });
+          const res = await callAgentRoute(prompt, { complexity: 'deep', maxTokens: 1200 });
 
           if (res && res.ok && res.result) {
-            resultsDiv.innerHTML = `
-              <textarea id="draft-output" style="width:100%;min-height:120px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:8px;font-size:11px;line-height:1.5;color:var(--cb-white);resize:vertical;font-family:inherit;">${res.result}</textarea>
-              <div style="display:flex;gap:6px;margin-top:6px;">
-                <button id="draft-copy" class="cb-btn cb-btn-secondary" style="flex:1;padding:6px;font-size:10px;border-radius:6px;">📋 Copy</button>
-                <button id="draft-insert" class="cb-btn cb-btn-primary" style="flex:1;padding:6px;font-size:10px;border-radius:6px;">➤ Insert</button>
+            const formattedResult = formatAgentMarkdown(res.result);
+            resultDiv.innerHTML = `
+              <div style="white-space:pre-wrap;line-height:1.6;font-size:12px;">${formattedResult}</div>
+              <div style="display:flex;gap:6px;margin-top:10px;">
+                <button id="cb-catchmeup-copy" class="cb-btn" style="flex:1;font-size:11px;">Copy Briefing</button>
+                <button id="cb-catchmeup-insert" class="cb-btn cb-btn-primary" style="flex:1;font-size:11px;">Insert to Chat</button>
               </div>
+              <div style="font-size:9px;color:var(--cb-subtext);margin-top:6px;text-align:center;">Powered by ${res.model_used || 'AI'} · ${res.latency_ms || 0}ms</div>
             `;
 
-            resultsDiv.querySelector('#draft-copy')?.addEventListener('click', async () => {
-              const text = resultsDiv.querySelector('#draft-output').value;
-              await navigator.clipboard.writeText(text);
-              toast('Draft copied!');
+            // Wire buttons
+            const copyBtn = resultDiv.querySelector('#cb-catchmeup-copy');
+            const insertBtn = resultDiv.querySelector('#cb-catchmeup-insert');
+            if (copyBtn) copyBtn.addEventListener('click', async () => {
+              try { await navigator.clipboard.writeText(res.result); toast('Briefing copied!'); } catch (_) { toast('Copy failed'); }
+            });
+            if (insertBtn) insertBtn.addEventListener('click', () => {
+              try { insertTextToChat(res.result); toast('Inserted!'); } catch (_) { toast('Insert failed'); }
             });
 
-            resultsDiv.querySelector('#draft-insert')?.addEventListener('click', async () => {
-              const text = resultsDiv.querySelector('#draft-output').value;
-              try {
-                await restoreToChat(text, []);
-                toast('Inserted!');
-              } catch (e) {
-                toast('Insert failed');
-              }
-            });
-
-            toast('Generated!');
+            // Update last briefed timestamp
+            await StorageManager.setAgentCatchMeUp({ lastBriefedAt: Date.now(), unreadCount: 0 });
+            __agentBadges.catchmeup = 0;
+            updateAgentBadgeUI();
+            toast('Briefing ready!');
           } else {
-            resultsDiv.innerHTML = `<div style="color:#f87171;padding:8px;font-size:11px;">Failed: ${res?.error || 'Unknown error'}</div>`;
+            resultDiv.innerHTML = `<div style="padding:12px;color:rgba(255,100,100,0.9);">Failed to generate briefing: ${res && res.error ? res.error : 'Unknown error'}. Check your API keys in Options.</div>`;
           }
         } catch (e) {
-          resultsDiv.innerHTML = `<div style="color:#f87171;padding:8px;font-size:11px;">Error: ${e.message || 'Unknown error'}</div>`;
-          debugLog('Draft Generator error', e);
+          resultDiv.innerHTML = `<div style="padding:12px;color:rgba(255,100,100,0.9);">Error: ${e.message || 'Unknown error'}</div>`;
+          debugLog('Catch Me Up error', e);
         } finally {
-          generateBtn.disabled = false;
-          generateBtn.innerHTML = '✨ Generate Draft';
+          runBtn.disabled = false;
+          runBtn.textContent = 'Generate Briefing';
         }
       });
     }
 
     // ============================================
-    // SESSION CLOSER - End-of-chat clarity
+    // AGENT 2: PREPARE ME — Task-Specific Prep Pack
+    // "Get me ready for anything" — assembles intelligence for upcoming tasks
     // ============================================
-    async function showSessionCloser() {
+    async function showPrepareMe() {
       const outputArea = (agentContent && agentContent.querySelector('#cb-agent-output')) || (shadow && shadow.getElementById && shadow.getElementById('cb-agent-output'));
       if (!outputArea) return;
 
-      outputArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
-
       outputArea.innerHTML = `
-        <div style="padding:4px;">
-          <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
-            <div style="width:36px;height:36px;background:linear-gradient(135deg,#f59e0b,#d97706);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;">🔚</div>
-            <div>
-              <div style="font-weight:700;font-size:14px;color:#fff;">Session Closer</div>
-              <div style="font-size:10px;color:rgba(255,255,255,0.5);">Analyzing conversation outcomes...</div>
-            </div>
+        <div style="margin-bottom:8px;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+            <div style="width:24px;height:24px;background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.25);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;">◆</div>
+            <div style="font-weight:600;font-size:13px;color:var(--cb-white);">Prepare Me</div>
           </div>
-          <div style="display:flex;justify-content:center;padding:30px;"><div class="cb-spinner"></div></div>
+          <div style="font-size:11px;color:var(--cb-subtext);margin-bottom:8px;">Tell me what you're preparing for and I'll assemble a ready-to-use prep pack from your conversation history.</div>
+
+          <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px;" id="cb-prep-chips"></div>
+
+          <input type="text" id="cb-prep-task" class="cb-input" placeholder="E.g., Meeting about project X, Job interview, Study session..." style="width:100%;margin-bottom:6px;box-sizing:border-box;" />
+          <input type="text" id="cb-prep-details" class="cb-input" placeholder="Optional: specific names, topics, dates..." style="width:100%;margin-bottom:8px;box-sizing:border-box;" />
+          <button id="cb-prep-run" class="cb-btn cb-btn-primary" style="width:100%;">Build Prep Pack</button>
         </div>
+        <div id="cb-prep-result" style="display:none;"></div>
       `;
 
-      try {
-        const chatText = await getConversationText();
-        if (!chatText || chatText.length < 20) {
-          outputArea.innerHTML = `
-            <div style="text-align:center;padding:30px;">
-              <div style="font-size:32px;margin-bottom:12px;">💬</div>
-              <div style="font-size:13px;color:#fff;font-weight:600;">No Conversation Found</div>
-              <div style="font-size:11px;color:rgba(255,255,255,0.5);margin-top:4px;">Scan a chat first</div>
-            </div>
-          `;
-          return;
-        }
+      // Suggestion chips
+      const chipsContainer = outputArea.querySelector('#cb-prep-chips');
+      const taskInput = outputArea.querySelector('#cb-prep-task');
+      const chips = ['Meeting', 'Email', 'Proposal', 'Study Session', 'Presentation', 'Job Interview'];
+      chips.forEach(label => {
+        const chip = document.createElement('span');
+        chip.style.cssText = 'padding:3px 8px;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.2);border-radius:4px;font-size:10px;color:var(--cb-white);cursor:pointer;transition:all 0.15s;';
+        chip.textContent = label;
+        chip.addEventListener('click', () => { taskInput.value = label; });
+        chip.addEventListener('mouseenter', () => { chip.style.background = 'rgba(16,185,129,0.2)'; });
+        chip.addEventListener('mouseleave', () => { chip.style.background = 'rgba(16,185,129,0.1)'; });
+        chipsContainer.appendChild(chip);
+      });
 
-        const prompt = `Analyze this conversation and return a JSON closure report:
-{"changed":["outcome1","outcome2"],"unresolved":["issue1","issue2"],"nextMove":"specific action to take"}
+      const runBtn = outputArea.querySelector('#cb-prep-run');
+      const detailsInput = outputArea.querySelector('#cb-prep-details');
+      const resultDiv = outputArea.querySelector('#cb-prep-result');
 
-Conversation:
-${chatText.slice(0, 3500)}
+      runBtn.addEventListener('click', async () => {
+        const task = taskInput.value.trim();
+        if (!task) { toast('Please describe what you\'re preparing for'); return; }
 
-Output ONLY valid JSON:`;
+        runBtn.disabled = true;
+        runBtn.textContent = 'Assembling prep pack...';
+        resultDiv.style.display = 'block';
+        resultDiv.innerHTML = '<div style="text-align:center;padding:16px;"><div class="cb-spinner" style="display:inline-block;"></div><div style="margin-top:8px;font-size:11px;color:var(--cb-subtext);">Searching your conversation history...</div></div>';
 
-        const res = await new Promise(resolve => {
-          chrome.runtime.sendMessage({ type: 'call_llama', payload: { action: 'generate', text: prompt } }, r => {
-            resolve(chrome.runtime.lastError ? { ok: false } : (r || { ok: false }));
-          });
-        });
+        try {
+          // Search memory for relevant conversations
+          const convos = await StorageManager.getConversations();
+          const details = detailsInput.value.trim();
+          const searchTerms = (task + ' ' + details).toLowerCase().split(/\s+/).filter(w => w.length > 2);
 
-        if (res && res.ok && res.result) {
-          let data = { changed: [], unresolved: [], nextMove: '' };
-          try {
-            const jsonMatch = res.result.match(/\{[\s\S]*\}/);
-            if (jsonMatch) data = JSON.parse(jsonMatch[0]);
-          } catch (e) {
-            data.changed = [res.result.slice(0, 100)];
+          // Score and rank conversations by relevance
+          const scored = convos.map(c => {
+            const text = (c.conversation || []).map(m => m.text || '').join(' ').toLowerCase();
+            let score = 0;
+            searchTerms.forEach(term => {
+              const matches = (text.match(new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi')) || []).length;
+              score += matches;
+            });
+            return { conv: c, score };
+          }).filter(s => s.score > 0).sort((a, b) => b.score - a.score).slice(0, 8);
+
+          // Build context from relevant conversations
+          let contextBlock = '';
+          if (scored.length > 0) {
+            contextBlock = scored.map((s, i) => {
+              const msgs = s.conv.conversation || [];
+              const relevant = msgs.map(m => m.text || '').join(' ').slice(0, 500);
+              return `[Source ${i + 1}] Platform: ${s.conv.platform || 'unknown'} | ${getTimeAgo(s.conv.ts)} | Relevance: ${s.score}\n${relevant}`;
+            }).join('\n\n---\n\n');
+          } else {
+            contextBlock = 'No directly relevant past conversations found. Generate general guidance based on the task type.';
           }
 
-          const changedHtml = (data.changed || []).map(c => `
-            <div style="display:flex;align-items:flex-start;gap:8px;padding:8px 10px;background:rgba(34,197,94,0.06);border-radius:8px;margin-bottom:4px;">
-              <span style="color:#22c55e;flex-shrink:0;">✓</span>
-              <span style="font-size:11px;color:#fff;line-height:1.4;">${c}</span>
-            </div>
-          `).join('') || '<div style="color:rgba(255,255,255,0.4);font-size:11px;">Nothing identified</div>';
+          const prompt = `You are Prepare Me, a preparation assistant inside ChatBridge.
 
-          const unresolvedHtml = (data.unresolved || []).map(u => `
-            <div style="display:flex;align-items:flex-start;gap:8px;padding:8px 10px;background:rgba(251,191,36,0.06);border-radius:8px;margin-bottom:4px;">
-              <span style="color:#fbbf24;flex-shrink:0;">○</span>
-              <span style="font-size:11px;color:#fff;line-height:1.4;">${u}</span>
-            </div>
-          `).join('') || '<div style="color:rgba(255,255,255,0.4);font-size:11px;">All resolved!</div>';
+The user is about to: ${task}
+${details ? `Additional details: ${details}` : ''}
 
-          outputArea.innerHTML = `
-            <div style="padding:4px;">
-              <!-- Changed Section -->
-              <div style="margin-bottom:16px;">
-                <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
-                  <div style="width:28px;height:28px;background:linear-gradient(135deg,#22c55e,#16a34a);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;">✅</div>
-                  <div>
-                    <div style="font-weight:700;font-size:12px;color:#22c55e;">WHAT CHANGED</div>
-                    <div style="font-size:9px;color:rgba(255,255,255,0.4);">${(data.changed || []).length} outcomes</div>
-                  </div>
-                </div>
-                ${changedHtml}
+Based on their past AI conversations (${scored.length} relevant found):
+
+${contextBlock}
+
+Assemble a PREP PACK:
+
+## Key Background
+Relevant context from past chats that applies to this task. Cite source platforms in brackets.
+
+## Talking Points
+5 ready-to-use points synthesized from their history. Make them specific and actionable.
+
+## Questions to Ask
+Things they discussed but never resolved, or gaps that need addressing.
+
+## Watch Out
+Potential issues, contradictions, or risks found in their past discussions.
+
+## Quick Reference
+Key facts, numbers, names, deadlines, or links mentioned across conversations.
+
+Make it scannable, actionable, and ready to use immediately. Be specific — reference actual content from their conversations.`;
+
+          const res = await callAgentRoute(prompt, { complexity: 'deep', maxTokens: 1400 });
+
+          if (res && res.ok && res.result) {
+            const formattedResult = formatAgentMarkdown(res.result);
+            resultDiv.innerHTML = `
+              <div style="white-space:pre-wrap;line-height:1.6;font-size:12px;">${formattedResult}</div>
+              <div style="display:flex;gap:6px;margin-top:10px;">
+                <button id="cb-prep-copy" class="cb-btn" style="flex:1;font-size:11px;">Copy Pack</button>
+                <button id="cb-prep-insert" class="cb-btn cb-btn-primary" style="flex:1;font-size:11px;">Insert to Chat</button>
               </div>
-              
-              <!-- Unresolved Section -->
-              <div style="margin-bottom:16px;">
-                <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
-                  <div style="width:28px;height:28px;background:linear-gradient(135deg,#fbbf24,#f59e0b);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;">⏳</div>
-                  <div>
-                    <div style="font-weight:700;font-size:12px;color:#fbbf24;">UNRESOLVED</div>
-                    <div style="font-size:9px;color:rgba(255,255,255,0.4);">${(data.unresolved || []).length} pending</div>
-                  </div>
-                </div>
-                ${unresolvedHtml}
-              </div>
-              
-              <!-- Next Move -->
-              <div style="background:linear-gradient(135deg,rgba(99,102,241,0.12),rgba(99,102,241,0.04));border:1px solid rgba(99,102,241,0.25);border-radius:12px;padding:14px;">
-                <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-                  <span style="font-size:16px;">➡️</span>
-                  <span style="font-weight:700;font-size:12px;color:#818cf8;">NEXT MOVE</span>
-                </div>
-                <div style="font-size:12px;color:#fff;line-height:1.5;">${data.nextMove || 'No specific action identified'}</div>
-              </div>
-              
-              <!-- Action Button -->
-              <button id="session-copy" class="cb-btn cb-btn-primary" style="width:100%;margin-top:14px;padding:10px;">📋 Copy Report</button>
-            </div>
-          `;
+              <div style="font-size:9px;color:var(--cb-subtext);margin-top:6px;text-align:center;">Based on ${scored.length} relevant conversation${scored.length !== 1 ? 's' : ''} · ${res.model_used || 'AI'} · ${res.latency_ms || 0}ms</div>
+            `;
 
-          const copyText = `SESSION CLOSURE REPORT\n\n✅ WHAT CHANGED:\n${(data.changed || []).map(c => `• ${c}`).join('\n')}\n\n⏳ UNRESOLVED:\n${(data.unresolved || []).map(u => `• ${u}`).join('\n')}\n\n➡️ NEXT MOVE:\n${data.nextMove || 'None'}`;
-
-          outputArea.querySelector('#session-copy')?.addEventListener('click', async () => {
-            await navigator.clipboard.writeText(copyText);
-            toast('📋 Copied!');
-          });
-
-          toast('🔚 Report ready!');
-        } else {
-          outputArea.innerHTML = `
-            <div style="text-align:center;padding:30px;">
-              <div style="font-size:32px;margin-bottom:12px;">⚠️</div>
-              <div style="font-size:13px;color:#fff;">Analysis Failed</div>
-            </div>
-          `;
+            const copyBtn = resultDiv.querySelector('#cb-prep-copy');
+            const insertBtn = resultDiv.querySelector('#cb-prep-insert');
+            if (copyBtn) copyBtn.addEventListener('click', async () => {
+              try { await navigator.clipboard.writeText(res.result); toast('Prep pack copied!'); } catch (_) { toast('Copy failed'); }
+            });
+            if (insertBtn) insertBtn.addEventListener('click', () => {
+              try { insertTextToChat(res.result); toast('Inserted!'); } catch (_) { toast('Insert failed'); }
+            });
+            toast('Prep pack ready!');
+          } else {
+            resultDiv.innerHTML = `<div style="padding:12px;color:rgba(255,100,100,0.9);">Failed: ${res && res.error ? res.error : 'Unknown error'}</div>`;
+          }
+        } catch (e) {
+          resultDiv.innerHTML = `<div style="padding:12px;color:rgba(255,100,100,0.9);">Error: ${e.message || 'Unknown error'}</div>`;
+          debugLog('Prepare Me error', e);
+        } finally {
+          runBtn.disabled = false;
+          runBtn.textContent = 'Build Prep Pack';
         }
-      } catch (e) {
-        outputArea.innerHTML = `<div style="color:#f87171;padding:20px;text-align:center;">❌ Error</div>`;
-        debugLog('Session Closer error', e);
-      }
+      });
     }
 
     // ============================================
-    // COGNITIVE SIMPLIFIER - Make responses lighter
+    // AGENT 3: TRACK THIS — Ambient Topic Tracker
+    // "Pin & follow any topic" — longitudinal cross-platform monitoring
     // ============================================
-    async function showCognitiveSimplifier() {
+    async function showTrackThis() {
       const outputArea = (agentContent && agentContent.querySelector('#cb-agent-output')) || (shadow && shadow.getElementById && shadow.getElementById('cb-agent-output'));
       if (!outputArea) return;
 
-      outputArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // Load current tracked topics
+      const topics = await StorageManager.getTrackedTopics();
 
       outputArea.innerHTML = `
-        <div style="padding:4px;">
-          <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
-            <div style="width:36px;height:36px;background:linear-gradient(135deg,var(--cb-accent-secondary),var(--cb-accent-primary));border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;">🧠</div>
-            <div>
-              <div style="font-weight:700;font-size:14px;color:var(--cb-white);">Cognitive Simplifier</div>
-              <div style="font-size:10px;color:var(--cb-subtext);">Reducing cognitive load...</div>
-            </div>
+        <div style="margin-bottom:8px;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+            <div style="width:24px;height:24px;background:rgba(139,92,246,0.15);border:1px solid rgba(139,92,246,0.25);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;">◇</div>
+            <div style="font-weight:600;font-size:13px;color:var(--cb-white);">Track This</div>
           </div>
-          <div style="display:flex;justify-content:center;padding:30px;"><div class="cb-spinner"></div></div>
+          <div style="font-size:11px;color:var(--cb-subtext);margin-bottom:8px;">Pin any topic and ChatBridge will track it across all your AI conversations. Get notified when it comes up again.</div>
+
+          <div style="display:flex;gap:6px;margin-bottom:8px;">
+            <input type="text" id="cb-track-input" class="cb-input" placeholder="Topic to track (e.g., budget review, React hooks)" style="flex:1;box-sizing:border-box;" />
+            <button id="cb-track-add" class="cb-btn cb-btn-primary" style="white-space:nowrap;font-size:11px;">+ Track</button>
+          </div>
         </div>
+
+        <div id="cb-track-list" style="display:flex;flex-direction:column;gap:6px;"></div>
+        <div id="cb-track-detail" style="display:none;"></div>
       `;
 
-      try {
-        const chatText = await getConversationText();
-        if (!chatText || chatText.length < 20) {
-          outputArea.innerHTML = `
-            <div style="text-align:center;padding:12px;">
-              <div style="font-size:24px;margin-bottom:6px;">💬</div>
-              <div style="font-size:11px;color:#fff;">No Conversation Found</div>
-            </div>
-          `;
+      const trackInput = outputArea.querySelector('#cb-track-input');
+      const addBtn = outputArea.querySelector('#cb-track-add');
+      const listDiv = outputArea.querySelector('#cb-track-list');
+      const detailDiv = outputArea.querySelector('#cb-track-detail');
+
+      // Render tracked topics list
+      function renderTopicsList(topicsArr) {
+        if (!topicsArr || topicsArr.length === 0) {
+          listDiv.innerHTML = '<div style="text-align:center;padding:16px;color:var(--cb-subtext);font-size:11px;">No topics tracked yet. Add one above!</div>';
           return;
         }
-
-        const lastResponse = chatText.slice(-2500);
-        const originalWordCount = lastResponse.split(/\s+/).length;
-
-        const prompt = `Simplify this AI response. Return a JSON with the simplified version broken into clear sections:
-{"sections":[{"title":"Main Point","content":"..."},{"title":"Key Details","content":"..."}],"summary":"one sentence summary"}
-
-Text to simplify:
-${lastResponse}
-
-Output ONLY valid JSON:`;
-
-        const res = await new Promise(resolve => {
-          chrome.runtime.sendMessage({ type: 'call_llama', payload: { action: 'generate', text: prompt } }, r => {
-            resolve(chrome.runtime.lastError ? { ok: false } : (r || { ok: false }));
-          });
-        });
-
-        if (res && res.ok && res.result) {
-          let data = { sections: [], summary: '' };
-          try {
-            const jsonMatch = res.result.match(/\{[\s\S]*\}/);
-            if (jsonMatch) data = JSON.parse(jsonMatch[0]);
-          } catch (e) {
-            data.sections = [{ title: 'Simplified', content: res.result }];
-          }
-
-          const sectionsHtml = (data.sections || []).map((s, i) => `
-            <div style="margin-bottom:8px;">
-              <div style="display:flex;align-items:center;gap:4px;margin-bottom:4px;">
-                <div style="width:16px;height:16px;background:linear-gradient(135deg,var(--cb-accent-secondary),var(--cb-accent-primary));border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:9px;color:#fff;">${i + 1}</div>
-                <span style="font-weight:600;font-size:11px;color:var(--cb-accent-secondary);">${s.title || 'Section'}</span>
+        listDiv.innerHTML = '';
+        topicsArr.forEach(topic => {
+          const card = document.createElement('div');
+          const hasActivity = topic.lastActivity > (topic.lastViewedAt || 0);
+          card.style.cssText = `
+            padding:8px 10px;
+            background:${hasActivity ? 'rgba(139,92,246,0.08)' : 'rgba(255,255,255,0.02)'};
+            border:1px solid ${hasActivity ? 'rgba(139,92,246,0.25)' : 'rgba(255,255,255,0.06)'};
+            border-radius:6px;display:flex;align-items:center;gap:8px;cursor:pointer;
+            transition:all 0.15s;
+          `;
+          const platforms = (topic.platforms || []).map(p => p.replace(/^www\./, '').split('.')[0]).join(', ') || 'no hits yet';
+          const lastSeen = topic.lastActivity ? getTimeAgo(topic.lastActivity) : 'never';
+          card.innerHTML = `
+            <div style="flex:1;">
+              <div style="font-weight:600;font-size:11px;color:var(--cb-white);">${escapeHtml(topic.label)}</div>
+              <div style="font-size:9px;color:var(--cb-subtext);margin-top:2px;">
+                ${hasActivity ? '<span style="color:rgba(139,92,246,0.9);">● new</span> · ' : ''}${topic.hitCount || 0} hits · ${platforms} · ${lastSeen}
               </div>
-              <div style="font-size:11px;color:var(--cb-white);line-height:1.4;padding-left:20px;">${s.content || ''}</div>
             </div>
-          `).join('');
-
-          const newWordCount = (data.sections || []).reduce((sum, s) => sum + (s.content || '').split(/\s+/).length, 0);
-          const reduction = Math.round((1 - newWordCount / originalWordCount) * 100);
-
-          outputArea.innerHTML = `
-            <div style="padding:0;">
-              <!-- Stats -->
-              <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;padding:0 2px;font-size:11px;color:var(--cb-subtext);">
-                  <span style="color:#8b5cf6;font-weight:600;">${reduction > 0 ? reduction : 0}% LIGHTER</span>
-                  <span style="color:#22c55e;font-weight:600;">${(data.sections || []).length} SECTIONS</span>
-              </div>
-              
-              ${data.summary ? `
-              <div style="background:color-mix(in srgb, var(--cb-accent-secondary) 8%, transparent);border:1px solid color-mix(in srgb, var(--cb-accent-secondary) 20%, transparent);border-radius:6px;padding:8px;margin-bottom:10px;">
-                <div style="font-size:9px;color:var(--cb-accent-secondary);font-weight:600;margin-bottom:2px;">TL;DR</div>
-                <div style="font-size:11px;color:var(--cb-white);line-height:1.4;">${data.summary}</div>
-              </div>
-              ` : ''}
-              
-              <!-- Sections -->
-              <div style="margin-bottom:8px;">
-                ${sectionsHtml || '<div style="color:var(--cb-subtext);font-size:10px;">No sections</div>'}
-              </div>
-              
-              <!-- Actions -->
-              <div style="display:flex;gap:6px;margin-top:8px;border-top:1px solid rgba(255,255,255,0.06);padding-top:6px;">
-                <button id="simplify-copy" class="cb-btn cb-btn-secondary" style="flex:1;padding:6px;font-size:10px;border-radius:6px;">📋 Copy</button>
-                <button id="simplify-insert" class="cb-btn cb-btn-primary" style="flex:1;padding:6px;font-size:10px;border-radius:6px;">➤ Insert</button>
-              </div>
+            <div style="display:flex;gap:4px;">
+              <button class="cb-track-view cb-btn" style="padding:3px 6px;font-size:9px;" data-id="${topic.id}">View</button>
+              <button class="cb-track-remove cb-btn" style="padding:3px 6px;font-size:9px;color:rgba(255,100,100,0.8);" data-id="${topic.id}">×</button>
             </div>
           `;
+          card.addEventListener('mouseenter', () => { card.style.background = 'rgba(255,255,255,0.04)'; });
+          card.addEventListener('mouseleave', () => { card.style.background = hasActivity ? 'rgba(139,92,246,0.08)' : 'rgba(255,255,255,0.02)'; });
+          listDiv.appendChild(card);
+        });
 
-          const copyText = (data.summary ? `TL;DR: ${data.summary}\n\n` : '') + (data.sections || []).map((s, i) => `${i + 1}. ${s.title || 'Section'}\n${s.content || ''}`).join('\n\n');
-
-          outputArea.querySelector('#simplify-copy')?.addEventListener('click', async () => {
-            await navigator.clipboard.writeText(copyText);
-            toast('Copied!');
+        // Wire view/remove buttons
+        listDiv.querySelectorAll('.cb-track-view').forEach(btn => {
+          btn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const topicId = btn.getAttribute('data-id');
+            await showTopicDetail(topicId);
           });
-
-          outputArea.querySelector('#simplify-insert')?.addEventListener('click', async () => {
-            try { await restoreToChat(copyText, []); toast('Inserted!'); } catch (e) { toast('Failed'); }
+        });
+        listDiv.querySelectorAll('.cb-track-remove').forEach(btn => {
+          btn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const topicId = btn.getAttribute('data-id');
+            const updated = (await StorageManager.getTrackedTopics()).filter(t => t.id !== topicId);
+            await StorageManager.setTrackedTopics(updated);
+            renderTopicsList(updated);
+            toast('Topic removed');
           });
-
-          toast('Simplified!');
-        } else {
-          outputArea.innerHTML = `<div style="padding:12px;text-align:center;"><div style="font-size:20px;margin-bottom:6px;">⚠️</div><div style="font-size:11px;color:var(--cb-white);">Failed</div></div>`;
-        }
-      } catch (e) {
-        outputArea.innerHTML = `<div style="color:#f87171;padding:12px;text-align:center;font-size:11px;">Error</div>`;
-        debugLog('Cognitive Simplifier error', e);
+        });
       }
+
+      // Show detail view for a tracked topic
+      async function showTopicDetail(topicId) {
+        const allTopics = await StorageManager.getTrackedTopics();
+        const topic = allTopics.find(t => t.id === topicId);
+        if (!topic) return;
+
+        // Mark as viewed
+        topic.lastViewedAt = Date.now();
+        await StorageManager.setTrackedTopics(allTopics);
+        await checkAgentBadges();
+
+        listDiv.style.display = 'none';
+        detailDiv.style.display = 'block';
+        detailDiv.innerHTML = '<div style="text-align:center;padding:16px;"><div class="cb-spinner" style="display:inline-block;"></div><div style="margin-top:8px;font-size:11px;color:var(--cb-subtext);">Analyzing topic across platforms...</div></div>';
+
+        try {
+          // Search conversations for this topic
+          const convos = await StorageManager.getConversations();
+          const keywords = topic.keywords || [topic.label.toLowerCase()];
+          const relevant = convos.filter(c => {
+            const text = (c.conversation || []).map(m => m.text || '').join(' ').toLowerCase();
+            return keywords.some(kw => text.includes(kw));
+          }).slice(0, 10);
+
+          const contextBlock = relevant.map((c, i) => {
+            const msgs = (c.conversation || []).map(m => m.text || '').join(' ').slice(0, 400);
+            return `[${c.platform || 'unknown'}] ${getTimeAgo(c.ts)}: ${msgs}`;
+          }).join('\n\n');
+
+          const prompt = `You are Track This, a topic tracking agent inside ChatBridge.
+
+The user is tracking: "${topic.label}"
+Keywords: ${keywords.join(', ')}
+First tracked: ${getTimeAgo(topic.createdAt)}
+Total hits: ${topic.hitCount || 0}
+Platforms: ${(topic.platforms || []).join(', ') || 'none yet'}
+
+Relevant conversations (${relevant.length} found):
+${contextBlock || 'No relevant conversations found yet.'}
+
+Provide a status dashboard:
+
+## Current Status
+Where things stand with this topic right now. Be specific.
+
+## Timeline
+Key moments when this topic came up, chronologically. Include platform names.
+
+## Key Updates
+What changed or progressed since the user started tracking.
+
+## Open Items
+Unresolved questions or pending actions related to this topic.
+
+## Suggested Next Step
+One specific, actionable recommendation.
+
+Be concise and specific. Reference actual content from conversations.`;
+
+          const res = await callAgentRoute(prompt, { complexity: 'deep', maxTokens: 1000 });
+
+          if (res && res.ok && res.result) {
+            const formatted = formatAgentMarkdown(res.result);
+            detailDiv.innerHTML = `
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                <button id="cb-track-back" class="cb-btn" style="padding:3px 8px;font-size:11px;">← Back</button>
+                <div style="font-weight:600;font-size:12px;color:var(--cb-white);">${escapeHtml(topic.label)}</div>
+              </div>
+              <div style="white-space:pre-wrap;line-height:1.6;font-size:12px;">${formatted}</div>
+              <div style="display:flex;gap:6px;margin-top:10px;">
+                <button id="cb-track-copy" class="cb-btn" style="flex:1;font-size:11px;">Copy Report</button>
+              </div>
+            `;
+            detailDiv.querySelector('#cb-track-back').addEventListener('click', () => {
+              detailDiv.style.display = 'none';
+              listDiv.style.display = 'flex';
+              StorageManager.getTrackedTopics().then(t => renderTopicsList(t));
+            });
+            detailDiv.querySelector('#cb-track-copy').addEventListener('click', async () => {
+              try { await navigator.clipboard.writeText(res.result); toast('Report copied!'); } catch (_) { toast('Copy failed'); }
+            });
+          } else {
+            detailDiv.innerHTML = `<div style="padding:12px;color:rgba(255,100,100,0.9);">Failed: ${res && res.error ? res.error : 'Unknown error'}</div>
+              <button id="cb-track-back2" class="cb-btn" style="margin-top:8px;">← Back</button>`;
+            detailDiv.querySelector('#cb-track-back2').addEventListener('click', () => {
+              detailDiv.style.display = 'none';
+              listDiv.style.display = 'flex';
+            });
+          }
+        } catch (e) {
+          detailDiv.innerHTML = `<div style="padding:12px;color:rgba(255,100,100,0.9);">Error: ${e.message}</div>`;
+          debugLog('Track This detail error', e);
+        }
+      }
+
+      // Add topic handler
+      addBtn.addEventListener('click', async () => {
+        const label = trackInput.value.trim();
+        if (!label) { toast('Enter a topic to track'); return; }
+        if (topics.length >= 10) { toast('Max 10 tracked topics. Remove one first.'); return; }
+
+        addBtn.disabled = true;
+        addBtn.textContent = 'Adding...';
+
+        try {
+          // Extract keywords via Llama (fast)
+          const kwRes = await callAgentRoute(
+            `Extract 3-5 search keywords from this topic for matching in conversations. Return ONLY a JSON array of lowercase strings, nothing else.\n\nTopic: "${label}"`,
+            { model: 'llama', maxTokens: 100, temperature: 0.2 }
+          );
+
+          let keywords = [label.toLowerCase()];
+          if (kwRes && kwRes.ok && kwRes.result) {
+            try {
+              const parsed = JSON.parse(kwRes.result.replace(/```json?\n?/g, '').replace(/```/g, '').trim());
+              if (Array.isArray(parsed)) keywords = [...new Set([label.toLowerCase(), ...parsed.map(k => String(k).toLowerCase())])];
+            } catch (_) {
+              // Fallback: split on common separators
+              keywords = [...new Set([label.toLowerCase(), ...label.toLowerCase().split(/[\s,]+/).filter(w => w.length > 2)])];
+            }
+          }
+
+          const newTopic = {
+            id: 'track_' + Date.now(),
+            label,
+            keywords,
+            createdAt: Date.now(),
+            lastActivity: 0,
+            lastViewedAt: Date.now(),
+            platforms: [],
+            hitCount: 0
+          };
+
+          topics.push(newTopic);
+          await StorageManager.setTrackedTopics(topics);
+          trackInput.value = '';
+          renderTopicsList(topics);
+          toast(`Now tracking "${label}"`);
+        } catch (e) {
+          toast('Failed to add topic');
+          debugLog('Track This add error', e);
+        } finally {
+          addBtn.disabled = false;
+          addBtn.textContent = '+ Track';
+        }
+      });
+
+      renderTopicsList(topics);
     }
 
     // ============================================
-    // AUTO-CONTINUE - Continue cut-off responses
+    // AGENT 4: SECOND OPINION — Multi-Model Verification
+    // "Verify any AI answer" — cross-check with a different model
     // ============================================
-    async function showAutoContinue() {
+    async function showSecondOpinion() {
       const outputArea = (agentContent && agentContent.querySelector('#cb-agent-output')) || (shadow && shadow.getElementById && shadow.getElementById('cb-agent-output'));
       if (!outputArea) return;
 
-      outputArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
-
-      // Immediately detect
       outputArea.innerHTML = `
-        <div style="padding:4px;">
-          <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
-            <div style="width:36px;height:36px;background:linear-gradient(135deg,#06b6d4,#0891b2);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;">🔁</div>
-            <div>
-              <div style="font-weight:700;font-size:14px;color:#fff;">Auto-Continue</div>
-              <div style="font-size:10px;color:rgba(255,255,255,0.5);">Scanning for incomplete responses...</div>
-            </div>
+        <div style="margin-bottom:8px;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+            <div style="width:24px;height:24px;background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.25);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;">▣</div>
+            <div style="font-weight:600;font-size:13px;color:var(--cb-white);">Second Opinion</div>
           </div>
-          <div style="display:flex;justify-content:center;padding:20px;"><div class="cb-spinner"></div></div>
-        </div>
-      `;
+          <div style="font-size:11px;color:var(--cb-subtext);margin-bottom:8px;">Cross-check any AI answer with a different model. Get a confidence score and see what might be wrong or missing.</div>
 
-      try {
-        const chatText = await getConversationText();
-        if (!chatText || chatText.length < 20) {
-          outputArea.innerHTML = `
-            <div style="text-align:center;padding:30px;">
-              <div style="font-size:32px;margin-bottom:12px;">💬</div>
-              <div style="font-size:13px;color:#fff;font-weight:600;">No Conversation Found</div>
-            </div>
-          `;
-          return;
-        }
+          <div style="display:flex;gap:6px;margin-bottom:8px;">
+            <button id="cb-so-auto" class="cb-btn cb-btn-primary" style="flex:1;font-size:10px;">Auto-detect last answer</button>
+            <button id="cb-so-paste" class="cb-btn" style="flex:1;font-size:10px;">Paste an answer</button>
+          </div>
 
-        const lastPart = chatText.slice(-500);
-        const incompleteIndicators = [
-          /\.{3}$/,
-          /[,;:]$/,
-          /\b(and|or|but|however|therefore|for example|such as|including)\s*$/i,
-          /\d+\.\s*$/,
-          /[-•]\s*$/,
-          /```[^`]*$/,
-        ];
-        const isIncomplete = incompleteIndicators.some(p => p.test(lastPart.trim()));
+          <div id="cb-so-paste-area" style="display:none;margin-bottom:8px;">
+            <textarea id="cb-so-question" class="cb-textarea" placeholder="Original question..." style="width:100%;min-height:40px;margin-bottom:4px;box-sizing:border-box;"></textarea>
+            <textarea id="cb-so-answer" class="cb-textarea" placeholder="AI answer to verify..." style="width:100%;min-height:80px;box-sizing:border-box;"></textarea>
+          </div>
 
-        if (isIncomplete) {
-          outputArea.innerHTML = `
-            <div style="padding:4px;">
-              <!-- Status Card -->
-              <div style="background:linear-gradient(135deg,rgba(245,158,11,0.12),rgba(245,158,11,0.04));border:1px solid rgba(245,158,11,0.25);border-radius:12px;padding:16px;margin-bottom:16px;">
-                <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
-                  <div style="width:32px;height:32px;background:linear-gradient(135deg,#f59e0b,#d97706);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;">⚠️</div>
-                  <div>
-                    <div style="font-weight:700;font-size:13px;color:#f59e0b;">Incomplete Response Detected</div>
-                    <div style="font-size:10px;color:rgba(255,255,255,0.5);">The last message appears cut off</div>
-                  </div>
-                </div>
-                <div style="font-size:11px;color:rgba(255,255,255,0.6);line-height:1.5;padding-left:42px;">
-                  Click the button below to ask the AI to continue where it left off.
-                </div>
-              </div>
-              
-              <!-- Preview -->
-              <div style="margin-bottom:16px;">
-                <div style="font-size:10px;color:rgba(255,255,255,0.4);margin-bottom:6px;">LAST 100 CHARACTERS:</div>
-                <div style="background:rgba(0,0,0,0.2);border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:10px;font-size:11px;color:rgba(255,255,255,0.6);font-family:monospace;">...${lastPart.slice(-100)}</div>
-              </div>
-              
-              <!-- Action Button -->
-              <button id="continue-insert" class="cb-btn cb-btn-primary" style="width:100%;padding:12px;font-size:12px;">
-                ➤ Insert "Continue" Prompt
-              </button>
-            </div>
-          `;
-        } else {
-          outputArea.innerHTML = `
-            <div style="padding:4px;">
-              <!-- Status Card -->
-              <div style="background:linear-gradient(135deg,rgba(34,197,94,0.12),rgba(34,197,94,0.04));border:1px solid rgba(34,197,94,0.25);border-radius:12px;padding:16px;margin-bottom:16px;">
-                <div style="display:flex;align-items:center;gap:10px;">
-                  <div style="width:32px;height:32px;background:linear-gradient(135deg,#22c55e,#16a34a);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;">✓</div>
-                  <div>
-                    <div style="font-weight:700;font-size:13px;color:#22c55e;">Response Looks Complete</div>
-                    <div style="font-size:10px;color:rgba(255,255,255,0.5);">No obvious signs of truncation</div>
-                  </div>
-                </div>
-              </div>
-              
-              <div style="font-size:11px;color:rgba(255,255,255,0.5);text-align:center;margin-bottom:16px;">
-                You can still insert a continue prompt if you think more content is needed.
-              </div>
-              
-              <!-- Action Button -->
-              <button id="continue-insert" class="cb-btn" style="width:100%;padding:12px;font-size:12px;">
-                ➤ Insert "Continue" Prompt Anyway
-              </button>
-            </div>
-          `;
-        }
+          <div id="cb-so-auto-preview" style="display:none;margin-bottom:8px;padding:8px;background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.15);border-radius:6px;">
+            <div style="font-size:10px;color:var(--cb-subtext);margin-bottom:4px;">Detected answer:</div>
+            <div id="cb-so-auto-text" style="font-size:11px;color:var(--cb-white);max-height:80px;overflow:hidden;"></div>
+          </div>
 
-        outputArea.querySelector('#continue-insert')?.addEventListener('click', async () => {
-          try {
-            await restoreToChat("Please continue from where you left off.", []);
-            toast('➤ Inserted!');
-          } catch (e) {
-            toast('Failed');
-          }
-        });
-
-      } catch (e) {
-        outputArea.innerHTML = `<div style="color:#f87171;padding:20px;text-align:center;">❌ Error</div>`;
-      }
-    }
-
-    // Show Quick Agent Interface (original simple agent, lightly polished UI)
-    async function showQuickAgent() {
-      const outputArea = (agentContent && agentContent.querySelector('#cb-agent-output')) || (shadow && shadow.getElementById && shadow.getElementById('cb-agent-output'));
-      if (!outputArea) return;
-
-      outputArea.innerHTML = `
-        <div style="margin-bottom:12px;">
-          <div style="font-weight:700;margin-bottom:4px;font-size:13px;">🎯 Quick Agent</div>
-          <div style="font-size:11px;opacity:0.85;margin-bottom:12px;">Analyze the current conversation and suggest next actions</div>
-          <select id="quick-agent-goal" class="cb-select" style="width:100%;margin-bottom:8px;">
-            <option value="Improve answer">Improve answer quality</option>
-            <option value="Extract tasks">Extract action items</option>
-            <option value="Generate follow-ups">Generate follow-up questions</option>
-            <option value="Summarize executive">Executive summary</option>
-            <option value="Debug plan">Debug & troubleshoot</option>
+          <select id="cb-so-model" class="cb-select" style="width:100%;margin-bottom:8px;">
+            <option value="auto">Auto-select verification model</option>
+            <option value="gemini">Verify with Gemini</option>
+            <option value="llama">Verify with Llama</option>
           </select>
-          <button id="quick-agent-run" class="cb-btn cb-btn-primary" style="width:100%;margin-top:4px;">▶ Run Analysis</button>
+
+          <button id="cb-so-run" class="cb-btn cb-btn-primary" style="width:100%;" disabled>Get Second Opinion</button>
         </div>
-        <div id="quick-agent-results" style="margin-top:12px;padding-top:12px;border-top:1px solid color-mix(in srgb, var(--cb-accent-primary) 20%, transparent);display:none;">
-          <div style="font-weight:600;margin-bottom:8px;color:var(--cb-subtext);">Results</div>
-        </div>
+        <div id="cb-so-result" style="display:none;"></div>
       `;
 
-      const goalSelect = outputArea.querySelector('#quick-agent-goal');
-      const runBtn = outputArea.querySelector('#quick-agent-run');
-      const resultsDiv = outputArea.querySelector('#quick-agent-results');
+      let mode = 'auto'; // 'auto' or 'paste'
+      let detectedQuestion = '';
+      let detectedAnswer = '';
 
-      runBtn.addEventListener('click', async () => {
-        runBtn.disabled = true;
-        runBtn.textContent = 'Analyzing...';
-        resultsDiv.style.display = 'block';
-        resultsDiv.innerHTML = '<div style="text-align:center;padding:12px;"><div class="cb-spinner" style="display:inline-block;"></div></div>';
+      const autoBtn = outputArea.querySelector('#cb-so-auto');
+      const pasteBtn = outputArea.querySelector('#cb-so-paste');
+      const pasteArea = outputArea.querySelector('#cb-so-paste-area');
+      const autoPreview = outputArea.querySelector('#cb-so-auto-preview');
+      const autoText = outputArea.querySelector('#cb-so-auto-text');
+      const questionInput = outputArea.querySelector('#cb-so-question');
+      const answerInput = outputArea.querySelector('#cb-so-answer');
+      const modelSelect = outputArea.querySelector('#cb-so-model');
+      const runBtn = outputArea.querySelector('#cb-so-run');
+      const resultDiv = outputArea.querySelector('#cb-so-result');
 
+      autoBtn.addEventListener('click', async () => {
+        mode = 'auto';
+        autoBtn.classList.add('cb-btn-primary');
+        pasteBtn.classList.remove('cb-btn-primary');
+        pasteArea.style.display = 'none';
+        autoPreview.style.display = 'block';
+
+        // Try to grab last AI answer from current chat
         try {
           const chatText = await getConversationText();
-          if (!chatText || chatText.length < 10) {
-            resultsDiv.innerHTML = '<div style="color:rgba(255,100,100,0.9);">⚠️ No conversation found. Start chatting first.</div>';
-            return;
-          }
-
-          const goal = goalSelect.value;
-          const prompt = `You are a Quick Agent assistant. Based on the goal "${goal}", analyze this conversation and provide:
-
-1. **Analysis** (2-3 bullet points)
-2. **Recommendations** (3-5 specific action items)
-3. **Next Steps** (What to do right now)
-
-Keep it concise and actionable. Use Markdown formatting.
-
-Conversation:
-${chatText.slice(0, 3000)}`;
-
-          const res = await callLlamaAsync({ action: 'prompt', text: prompt });
-
-          if (res && res.ok) {
-            resultsDiv.innerHTML = `<div style="white-space:pre-wrap;line-height:1.6;">${res.result || 'Analysis complete'}</div>`;
-            toast('Analysis complete!');
+          if (chatText && chatText.length > 10) {
+            const lines = chatText.split('\n');
+            // Find last assistant message
+            let lastQ = '', lastA = '';
+            for (let i = lines.length - 1; i >= 0; i--) {
+              if (lines[i].startsWith('assistant:') && !lastA) {
+                lastA = lines[i].replace(/^assistant:\s*/, '').trim();
+              }
+              if (lines[i].startsWith('user:') && !lastQ && lastA) {
+                lastQ = lines[i].replace(/^user:\s*/, '').trim();
+                break;
+              }
+            }
+            if (lastA) {
+              detectedAnswer = lastA.slice(0, 3000);
+              detectedQuestion = lastQ.slice(0, 500);
+              autoText.textContent = detectedAnswer.slice(0, 200) + (detectedAnswer.length > 200 ? '...' : '');
+              runBtn.disabled = false;
+            } else {
+              autoText.textContent = 'No AI answer detected. Try scanning the chat first, or use "Paste an answer".';
+              runBtn.disabled = true;
+            }
           } else {
-            resultsDiv.innerHTML = `<div style="color:rgba(255,100,100,0.9);">❌ Failed: ${res && res.error ? res.error : 'unknown error'}</div>`;
+            autoText.textContent = 'No conversation found. Scan a chat first.';
+            runBtn.disabled = true;
           }
         } catch (e) {
-          resultsDiv.innerHTML = `<div style="color:rgba(255,100,100,0.9);">❌ Error: ${e.message || 'Unknown error'}</div>`;
-          debugLog('Quick Agent error', e);
-        } finally {
-          runBtn.disabled = false;
-          runBtn.textContent = '▶ Run Analysis';
+          autoText.textContent = 'Could not detect answer. Use "Paste an answer" instead.';
+          runBtn.disabled = true;
         }
       });
-    }
 
-    // Threadkeeper Agent - Autonomous Conversation Tracking
-    async function showThreadkeeperAgent() {
-      const outputArea = (agentContent && agentContent.querySelector('#cb-agent-output')) || (shadow && shadow.getElementById && shadow.getElementById('cb-agent-output'));
-      if (!outputArea) return;
-
-      outputArea.innerHTML = `
-        <div style="margin-bottom:12px;">
-          <div style="font-weight:700;margin-bottom:4px;font-size:13px;">🧵 Threadkeeper</div>
-          <div style="font-size:11px;opacity:0.85;margin-bottom:12px;">Autonomous conversation tracking with auto-context injection</div>
-          <div style="background:rgba(138,43,226,0.08);border:1px solid rgba(138,43,226,0.25);border-radius:8px;padding:10px;margin-bottom:12px;font-size:11px;line-height:1.5;">
-            <b>Agentic Capabilities:</b><br/>
-            • Tracks all conversations across platforms<br/>
-            • Identifies returning topics automatically<br/>
-            • Auto-injects missing context<br/>
-            • Warns when history is incomplete
-          </div>
-          <button id="threadkeeper-scan" class="cb-btn cb-btn-primary" style="width:100%;margin-top:4px;">🔍 Scan All Threads</button>
-        </div>
-        <div id="threadkeeper-results" style="margin-top:12px;padding-top:12px;border-top:1px solid color-mix(in srgb, var(--cb-accent-primary) 20%, transparent);display:none;">
-          <div style="font-weight:600;margin-bottom:8px;color:var(--cb-subtext);">Thread Analysis</div>
-        </div>
-      `;
-
-      const scanBtn = outputArea.querySelector('#threadkeeper-scan');
-      const resultsDiv = outputArea.querySelector('#threadkeeper-results');
-
-      scanBtn.addEventListener('click', async () => {
-        scanBtn.disabled = true;
-        scanBtn.textContent = 'Scanning threads...';
-        resultsDiv.style.display = 'block';
-        resultsDiv.innerHTML = '<div style="text-align:center;padding:12px;"><div class="cb-spinner" style="display:inline-block;"></div><div style="margin-top:8px;font-size:11px;">Analyzing conversation history...</div></div>';
-
-        try {
-          // Get current conversation
-          const currentChat = await getConversationText();
-          if (!currentChat || currentChat.length < 10) {
-            resultsDiv.innerHTML = '<div style="color:rgba(255,100,100,0.9);">⚠️ No current conversation found.</div>';
-            return;
-          }
-
-          // Get stored conversations from all platforms
-          const allConvos = await getAllStoredConversations();
-
-          const prompt = `You are Threadkeeper, an autonomous conversation tracking agent.
-
-**Your Mission:** Analyze the current conversation and identify connections to past conversations.
-
-**Current Conversation (last 1000 chars):**
-${currentChat.slice(-1000)}
-
-**Previous Conversations Available:**
-${allConvos.length} stored conversations across AI platforms
-
-**Your Agentic Analysis:**
-1. **Topic Detection:** What is the user discussing now?
-2. **Context Gaps:** What information from past conversations is missing?
-3. **Auto-Injection Plan:** What context should be restored?
-4. **Warnings:** Alert if critical history is missing
-
-Format output as:
-## 🎯 Current Topic
-[brief description]
-
-## 🔗 Related Past Conversations
-[list with relevance scores]
-
-## ⚠️ Missing Context
-[what needs to be restored]
-
-## 📝 Recommended Action
-[specific context to inject into chat]`;
-
-          const res = await callLlamaAsync({ action: 'prompt', text: prompt });
-
-          if (res && res.ok && res.result) {
-            // Render result
-            resultsDiv.innerHTML = `<div class="cb-threadkeeper-result" style="white-space:pre-wrap;line-height:1.6;">${res.result}</div>`;
-            // Add safe button (no inline handlers)
-            const btn = document.createElement('button');
-            btn.className = 'cb-btn cb-btn-primary';
-            btn.style.cssText = 'width:100%;margin-top:12px;';
-            btn.textContent = '📋 Copy Context & Inject';
-            btn.addEventListener('click', async () => {
-              try {
-                btn.disabled = true; btn.textContent = 'Injecting context...';
-                const contentDiv = resultsDiv.querySelector('.cb-threadkeeper-result');
-                const text = contentDiv ? contentDiv.textContent : '';
-                if (text) { await navigator.clipboard.writeText(text); }
-                btn.textContent = '✓ Context copied - paste into chat';
-                setTimeout(() => { btn.disabled = false; btn.textContent = '📋 Copy Context & Inject'; }, 3000);
-              } catch (_) { btn.disabled = false; btn.textContent = '📋 Copy Context & Inject'; }
-            });
-            resultsDiv.appendChild(btn);
-            toast('Thread analysis complete!');
-          } else {
-            resultsDiv.innerHTML = `<div style="color:rgba(255,100,100,0.9);">❌ Failed: ${res && res.error ? res.error : 'unknown error'}</div>`;
-          }
-        } catch (e) {
-          resultsDiv.innerHTML = `<div style="color:rgba(255,100,100,0.9);">❌ Error: ${e.message || 'Unknown error'}</div>`;
-          debugLog('Threadkeeper error', e);
-        } finally {
-          scanBtn.disabled = false;
-          scanBtn.textContent = '🔍 Scan All Threads';
-        }
+      pasteBtn.addEventListener('click', () => {
+        mode = 'paste';
+        pasteBtn.classList.add('cb-btn-primary');
+        autoBtn.classList.remove('cb-btn-primary');
+        pasteArea.style.display = 'block';
+        autoPreview.style.display = 'none';
+        runBtn.disabled = false;
       });
-    }
 
-    // Multi-AI Planner Agent - Project Orchestrator
-    async function showMultiAIPlannerAgent() {
-      const outputArea = (agentContent && agentContent.querySelector('#cb-agent-output')) || (shadow && shadow.getElementById && shadow.getElementById('cb-agent-output'));
-      if (!outputArea) return;
+      // Auto-trigger detection
+      autoBtn.click();
 
-      outputArea.innerHTML = `
-        <div style="margin-bottom:12px;">
-          <div style="font-weight:700;margin-bottom:4px;font-size:13px;">🎯 Multi-AI Planner</div>
-          <div style="font-size:11px;opacity:0.85;margin-bottom:12px;">Break goals into AI-powered steps with orchestrated execution</div>
-          <div style="background:color-mix(in srgb, var(--cb-accent-primary) 8%, transparent);border:1px solid color-mix(in srgb, var(--cb-accent-primary) 25%, transparent);border-radius:8px;padding:10px;margin-bottom:12px;font-size:11px;line-height:1.5;">
-            <b>Agentic Planning:</b><br/>
-            • Breaks goals into actionable steps<br/>
-            • Assigns tasks to optimal AI models<br/>
-            • Collects & synthesizes all results<br/>
-            • Builds unified execution plan
-          </div>
-          <textarea id="planner-goal" class="cb-textarea" placeholder="Describe your project goal...
-Examples:
-• Build a portfolio website
-• Deploy a Python API
-• Create a Chrome extension
-• Write a technical blog post" style="width:100%;min-height:80px;margin-bottom:8px;"></textarea>
-          <button id="planner-create" class="cb-btn cb-btn-primary" style="width:100%;margin-top:4px;">🚀 Create AI-Powered Plan</button>
-        </div>
-        <div id="planner-results" style="margin-top:12px;padding-top:12px;border-top:1px solid color-mix(in srgb, var(--cb-accent-primary) 20%, transparent);display:none;">
-          <div style="font-weight:600;margin-bottom:8px;color:var(--cb-subtext);">Orchestrated Plan</div>
-        </div>
-      `;
+      runBtn.addEventListener('click', async () => {
+        let question, answer;
+        if (mode === 'auto') {
+          question = detectedQuestion;
+          answer = detectedAnswer;
+        } else {
+          question = questionInput.value.trim();
+          answer = answerInput.value.trim();
+        }
 
-      const goalInput = outputArea.querySelector('#planner-goal');
-      const createBtn = outputArea.querySelector('#planner-create');
-      const resultsDiv = outputArea.querySelector('#planner-results');
-
-      createBtn.addEventListener('click', async () => {
-        const goal = goalInput.value.trim();
-        if (!goal) {
-          toast('Please describe your goal');
+        if (!answer || answer.length < 10) {
+          toast('No answer to verify. Paste or auto-detect one first.');
           return;
         }
 
-        createBtn.disabled = true;
-        createBtn.textContent = 'Planning with multiple AIs...';
-        resultsDiv.style.display = 'block';
-        resultsDiv.innerHTML = '<div style="text-align:center;padding:12px;"><div class="cb-spinner" style="display:inline-block;"></div><div style="margin-top:8px;font-size:11px;">Consulting Gemini, ChatGPT, Claude, and Copilot...</div></div>';
+        runBtn.disabled = true;
+        runBtn.textContent = 'Cross-checking with AI...';
+        resultDiv.style.display = 'block';
+        resultDiv.innerHTML = '<div style="text-align:center;padding:16px;"><div class="cb-spinner" style="display:inline-block;"></div><div style="margin-top:8px;font-size:11px;color:var(--cb-subtext);">Running verification analysis...</div></div>';
 
         try {
-          // Helper: Convert breakdown/refinement into concise, skimmable plan
-          function postProcessPlanner(breakdownText, goalText, refinementText) {
-            try {
-              const txt = String(breakdownText || '');
-              const steps = [];
-              // Find step headings
-              const re = /(\n|^)\s*(?:##+\s*)?Step\s*(\d+)\s*[:\-]\s*([^\n]+)\s*/gi;
-              let m;
-              const indices = [];
-              while ((m = re.exec(txt)) !== null) {
-                indices.push({ idx: m.index, num: parseInt(m[2], 10) || steps.length + 1, title: (m[3] || '').trim() });
-              }
-              // Build step blocks
-              for (let i = 0; i < indices.length; i++) {
-                const start = indices[i].idx;
-                const end = i + 1 < indices.length ? indices[i + 1].idx : txt.length;
-                const block = txt.slice(start, end);
-                const assignedMatch = block.match(/Assigned\s*to\s*:?\s*(?:\*\*|\*)?([^\n*]+)(?:\*\*|\*)?/i);
-                const taskMatch = block.match(/Task\s*:?\s*([^\n\r]+(?:\n(?!\s*\w+\s*:\s).+)*)/i);
-                const model = assignedMatch ? assignedMatch[1].trim() : '';
-                const taskRaw = taskMatch ? taskMatch[1].trim() : '';
-                const taskOne = (() => {
-                  const t = taskRaw.replace(/\s+/g, ' ').trim();
-                  // keep up to 2 short sentences or ~160 chars
-                  const parts = t.split(/(?<=\.)\s+/).filter(Boolean);
-                  const clipped = parts.slice(0, 2).join(' ');
-                  return (clipped || t).slice(0, 160);
-                })();
-                steps.push({ num: indices[i].num, title: indices[i].title, model, task: taskOne });
-              }
+          const verifyModel = modelSelect.value === 'auto' ? 'auto' : modelSelect.value;
 
-              // Fallback: if no steps matched, create a single-line summary
-              if (!steps.length) {
-                const one = (txt.split('\n').find(l => /Assigned to|Task|Step/i.test(l)) || txt).replace(/\s+/g, ' ').trim().slice(0, 180);
-                return `# ${goalText}\n\n- ${one}`;
-              }
+          const prompt = `You are Second Opinion, a verification agent inside ChatBridge.
 
-              // Integration flow extraction
-              let flow = '';
-              try {
-                const sec = /Integration\s*Plan[\s\S]*?\n+([^\n][^#\n]{0,160})/i.exec(txt);
-                if (sec && sec[1]) flow = sec[1].replace(/\s+/g, ' ').trim();
-              } catch (_) { }
-              if (!flow) {
-                const order = steps.map(s => `S${s.num}`).join(' → ');
-                flow = `${order} → Final deliverable`;
-              }
+${question ? `Original question: "${question}"` : 'Original question: [not available]'}
 
-              // Compose concise plan
-              const header = `# ${goalText}`;
-              const lines = steps
-                .sort((a, b) => a.num - b.num)
-                .slice(0, 7)
-                .map(s => `- [${s.model || 'Model'}] ${s.title || s.task}`);
-              // Ensure at least 5 items if available
-              const concise = `${header}\n\n${lines.join('\n')}\n\nIntegration Flow: ${flow}`;
-              return concise;
-            } catch (e) {
-              return String(breakdownText || '');
+AI answer to verify:
+"${answer.slice(0, 3000)}"
+
+Provide a thorough verification:
+
+## Agreement Score
+Give a percentage (0-100%) indicating how accurate and complete this answer is. Format: **XX%**
+
+## Confirmed Correct
+Points in the answer that are definitely accurate. Be specific.
+
+## Potential Issues
+Any factual errors, oversimplifications, outdated information, or misleading statements. Be specific about what's wrong and why.
+
+## What's Missing
+Important information, caveats, or alternative approaches the answer didn't mention.
+
+## Improved Answer
+A brief, improved version that fixes the issues found. Only include this if significant improvements are needed.
+
+Be rigorous but fair. Cite specific parts of the original answer when critiquing.`;
+
+          const res = await callAgentRoute(prompt, { model: verifyModel, complexity: 'deep', maxTokens: 1200 });
+
+          if (res && res.ok && res.result) {
+            // Extract agreement score for visual meter
+            const scoreMatch = res.result.match(/\*\*(\d+)%?\*\*/);
+            const score = scoreMatch ? parseInt(scoreMatch[1], 10) : null;
+
+            let meterHtml = '';
+            if (score !== null) {
+              const color = score >= 80 ? 'rgba(16,185,129,0.9)' : score >= 50 ? 'rgba(245,158,11,0.9)' : 'rgba(239,68,68,0.9)';
+              meterHtml = `
+                <div style="margin-bottom:10px;padding:8px;background:rgba(255,255,255,0.03);border-radius:6px;">
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                    <span style="font-size:10px;color:var(--cb-subtext);">Confidence</span>
+                    <span style="font-size:14px;font-weight:700;color:${color};">${score}%</span>
+                  </div>
+                  <div style="height:6px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden;">
+                    <div style="height:100%;width:${score}%;background:${color};border-radius:3px;transition:width 0.5s;"></div>
+                  </div>
+                </div>
+              `;
             }
+
+            const formatted = formatAgentMarkdown(res.result);
+            resultDiv.innerHTML = `
+              ${meterHtml}
+              <div style="white-space:pre-wrap;line-height:1.6;font-size:12px;">${formatted}</div>
+              <div style="display:flex;gap:6px;margin-top:10px;">
+                <button id="cb-so-copy" class="cb-btn" style="flex:1;font-size:11px;">Copy Analysis</button>
+                <button id="cb-so-insert" class="cb-btn cb-btn-primary" style="flex:1;font-size:11px;">Insert Improved</button>
+              </div>
+              <div style="font-size:9px;color:var(--cb-subtext);margin-top:6px;text-align:center;">Verified by ${res.model_used || 'AI'} · ${res.latency_ms || 0}ms</div>
+            `;
+
+            resultDiv.querySelector('#cb-so-copy').addEventListener('click', async () => {
+              try { await navigator.clipboard.writeText(res.result); toast('Analysis copied!'); } catch (_) { toast('Copy failed'); }
+            });
+            resultDiv.querySelector('#cb-so-insert').addEventListener('click', () => {
+              try { insertTextToChat(res.result); toast('Inserted!'); } catch (_) { toast('Insert failed'); }
+            });
+            toast('Verification complete!');
+          } else {
+            resultDiv.innerHTML = `<div style="padding:12px;color:rgba(255,100,100,0.9);">Failed: ${res && res.error ? res.error : 'Unknown error'}</div>`;
           }
-          // Stage 1: Break down goal into steps
-          resultsDiv.innerHTML += '<div style="font-size:11px;opacity:0.7;margin-top:8px;">Stage 1/3: Breaking down goal into steps...</div>';
-
-          const breakdownPrompt = `You are Multi-AI Planner, a project orchestration agent.
-
-**User Goal:**
-${goal}
-
-**Your Task:** Break this goal into 5-7 specific, actionable steps. For each step, assign the best AI model.
-
-**Available AI Models:**
-- Gemini 2.5-pro: Complex reasoning, analysis, architecture
-- ChatGPT-4o: Code generation, debugging, implementation
-- Claude: Writing, documentation, explanations
-- Copilot: Code completion, refactoring, optimization
-
-**Output Format:**
-## 📋 Project Breakdown
-
-### Step 1: [Title]
-**Assigned to:** [AI Model]
-**Task:** [Specific instruction for the AI]
-**Expected Output:** [What result this produces]
-
-[Repeat for all steps]
-
-## 🔗 Integration Plan
-[How all steps combine into final deliverable]`;
-
-          const breakdown = await callGeminiAsync({ action: 'prompt', text: breakdownPrompt, length: 'long' });
-
-          if (!breakdown || !breakdown.ok) {
-            resultsDiv.innerHTML = `<div style="color:rgba(255,100,100,0.9);">❌ Planning failed: ${breakdown?.error || 'unknown error'}</div>`;
-            return;
-          }
-
-          // Stage 2: Execute parallel consultations (simulate multi-AI)
-          resultsDiv.innerHTML += '<div style="font-size:11px;opacity:0.7;">Stage 2/3: Executing parallel AI consultations...</div>';
-
-          const refinementPrompt = `Based on this project breakdown, provide implementation guidance:
-
-${breakdown.result}
-
-**Your Role:** Act as the consulting AI team. Provide:
-1. **Technical recommendations** (architecture, tools, best practices)
-2. **Potential challenges** and how to overcome them
-3. **Resource requirements** (time, skills, dependencies)
-4. **Success criteria** for each step
-
-Keep it practical and actionable.`;
-
-          const refinement = await callGeminiAsync({ action: 'prompt', text: refinementPrompt, length: 'long' });
-
-          // Stage 3: Final synthesis
-          resultsDiv.innerHTML += '<div style="font-size:11px;opacity:0.7;">Stage 3/3: Synthesizing unified plan...</div>';
-
-          const concisePlan = postProcessPlanner(String(breakdown.result || ''), goal, String(refinement?.result || ''));
-          // Clear and render plan without inline handlers
-          resultsDiv.innerHTML = '';
-          const planDiv = document.createElement('div');
-          planDiv.style.cssText = 'white-space:pre-wrap;line-height:1.6;font-size:12px;';
-          planDiv.textContent = concisePlan;
-          const btnBar = document.createElement('div');
-          btnBar.style.cssText = 'display:flex;gap:8px;margin-top:12px;';
-          const copyBtn = document.createElement('button');
-          copyBtn.className = 'cb-btn cb-btn-primary';
-          copyBtn.style.cssText = 'flex:1;';
-          copyBtn.textContent = '📋 Copy Plan';
-          copyBtn.addEventListener('click', async () => {
-            try { await navigator.clipboard.writeText(planDiv.textContent || ''); copyBtn.textContent = '✓ Copied'; setTimeout(() => copyBtn.textContent = '📋 Copy Plan', 2000); } catch (_) { }
-          });
-          const insertBtn = document.createElement('button');
-          insertBtn.className = 'cb-btn';
-          insertBtn.style.cssText = 'flex:1;';
-          insertBtn.textContent = '➤ Insert to Chat';
-          insertBtn.addEventListener('click', async () => {
-            try { const text = planDiv.textContent || ''; if (window.ChatBridge && typeof window.ChatBridge.restoreToChat === 'function') { await window.ChatBridge.restoreToChat(text, []); } insertBtn.textContent = '✓ Inserted'; setTimeout(() => insertBtn.textContent = '➤ Insert to Chat', 2000); } catch (_) { }
-          });
-          btnBar.appendChild(copyBtn);
-          btnBar.appendChild(insertBtn);
-          resultsDiv.appendChild(planDiv);
-          resultsDiv.appendChild(btnBar);
-          toast('Orchestrated plan ready!');
-
         } catch (e) {
-          resultsDiv.innerHTML = `<div style="color:rgba(255,100,100,0.9);">❌ Error: ${e.message || 'Unknown error'}</div>`;
-          debugLog('Multi-AI Planner error', e);
+          resultDiv.innerHTML = `<div style="padding:12px;color:rgba(255,100,100,0.9);">Error: ${e.message || 'Unknown error'}</div>`;
+          debugLog('Second Opinion error', e);
         } finally {
-          createBtn.disabled = false;
-          createBtn.textContent = '🚀 Create AI-Powered Plan';
+          runBtn.disabled = false;
+          runBtn.textContent = 'Get Second Opinion';
         }
       });
     }
 
-    // Helper: Get all stored conversations
+    // ============================================
+    // AGENT 5: HANDOFF — Context Packaging Agent
+    // "Package context for anyone" — generate human-readable briefing docs
+    // ============================================
+    async function showHandoff() {
+      const outputArea = (agentContent && agentContent.querySelector('#cb-agent-output')) || (shadow && shadow.getElementById && shadow.getElementById('cb-agent-output'));
+      if (!outputArea) return;
+
+      outputArea.innerHTML = `
+        <div style="margin-bottom:8px;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+            <div style="width:24px;height:24px;background:rgba(236,72,153,0.15);border:1px solid rgba(236,72,153,0.25);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;">◎</div>
+            <div style="font-weight:600;font-size:13px;color:var(--cb-white);">Handoff</div>
+          </div>
+          <div style="font-size:11px;color:var(--cb-subtext);margin-bottom:8px;">Generate a professional briefing document from your AI conversations — ready to share with anyone.</div>
+
+          <select id="cb-handoff-source" class="cb-select" style="width:100%;margin-bottom:6px;">
+            <option value="current">Current conversation</option>
+            <option value="recent">All recent activity (last 5 chats)</option>
+            <option value="topic">Search by topic...</option>
+          </select>
+
+          <div id="cb-handoff-topic-search" style="display:none;margin-bottom:6px;">
+            <input type="text" id="cb-handoff-topic" class="cb-input" placeholder="Search topic..." style="width:100%;box-sizing:border-box;" />
+          </div>
+
+          <select id="cb-handoff-recipient" class="cb-select" style="width:100%;margin-bottom:6px;">
+            <option value="Colleague">Colleague</option>
+            <option value="Client">Client</option>
+            <option value="Manager">Manager</option>
+            <option value="My Future Self">My Future Self</option>
+          </select>
+
+          <div style="display:flex;gap:6px;margin-bottom:8px;">
+            <button id="cb-handoff-brief" class="cb-btn cb-btn-primary" style="flex:1;font-size:10px;">Brief</button>
+            <button id="cb-handoff-detailed" class="cb-btn" style="flex:1;font-size:10px;">Comprehensive</button>
+          </div>
+
+          <button id="cb-handoff-run" class="cb-btn cb-btn-primary" style="width:100%;">Generate Handoff Document</button>
+        </div>
+        <div id="cb-handoff-result" style="display:none;"></div>
+      `;
+
+      let detailLevel = 'brief';
+      const sourceSelect = outputArea.querySelector('#cb-handoff-source');
+      const topicSearch = outputArea.querySelector('#cb-handoff-topic-search');
+      const topicInput = outputArea.querySelector('#cb-handoff-topic');
+      const recipientSelect = outputArea.querySelector('#cb-handoff-recipient');
+      const briefBtn = outputArea.querySelector('#cb-handoff-brief');
+      const detailedBtn = outputArea.querySelector('#cb-handoff-detailed');
+      const runBtn = outputArea.querySelector('#cb-handoff-run');
+      const resultDiv = outputArea.querySelector('#cb-handoff-result');
+
+      sourceSelect.addEventListener('change', () => {
+        topicSearch.style.display = sourceSelect.value === 'topic' ? 'block' : 'none';
+      });
+
+      briefBtn.addEventListener('click', () => {
+        detailLevel = 'brief';
+        briefBtn.classList.add('cb-btn-primary');
+        detailedBtn.classList.remove('cb-btn-primary');
+      });
+      detailedBtn.addEventListener('click', () => {
+        detailLevel = 'comprehensive';
+        detailedBtn.classList.add('cb-btn-primary');
+        briefBtn.classList.remove('cb-btn-primary');
+      });
+
+      runBtn.addEventListener('click', async () => {
+        runBtn.disabled = true;
+        runBtn.textContent = 'Generating document...';
+        resultDiv.style.display = 'block';
+        resultDiv.innerHTML = '<div style="text-align:center;padding:16px;"><div class="cb-spinner" style="display:inline-block;"></div><div style="margin-top:8px;font-size:11px;color:var(--cb-subtext);">Compiling briefing document...</div></div>';
+
+        try {
+          let contextText = '';
+          const source = sourceSelect.value;
+          const recipient = recipientSelect.value;
+
+          if (source === 'current') {
+            contextText = await getConversationText();
+            if (!contextText || contextText.length < 10) {
+              resultDiv.innerHTML = '<div style="padding:12px;color:var(--cb-subtext);">No current conversation. Scan a chat first!</div>';
+              runBtn.disabled = false;
+              runBtn.textContent = 'Generate Handoff Document';
+              return;
+            }
+            contextText = contextText.slice(0, 6000);
+          } else if (source === 'recent') {
+            const convos = await StorageManager.getConversations();
+            contextText = convos.slice(0, 5).map((c, i) => {
+              const msgs = (c.conversation || []).map(m => `${m.role}: ${m.text}`).join('\n');
+              return `--- Chat ${i + 1} (${c.platform || 'unknown'}, ${getTimeAgo(c.ts)}) ---\n${msgs.slice(0, 1200)}`;
+            }).join('\n\n');
+          } else if (source === 'topic') {
+            const topicQuery = topicInput.value.trim();
+            if (!topicQuery) { toast('Enter a topic to search'); runBtn.disabled = false; runBtn.textContent = 'Generate Handoff Document'; return; }
+            const convos = await StorageManager.getConversations();
+            const relevant = convos.filter(c => {
+              const text = (c.conversation || []).map(m => m.text || '').join(' ').toLowerCase();
+              return topicQuery.toLowerCase().split(/\s+/).some(w => text.includes(w));
+            }).slice(0, 5);
+            contextText = relevant.map((c, i) => {
+              const msgs = (c.conversation || []).map(m => `${m.role}: ${m.text}`).join('\n');
+              return `--- Chat ${i + 1} (${c.platform || 'unknown'}, ${getTimeAgo(c.ts)}) ---\n${msgs.slice(0, 1200)}`;
+            }).join('\n\n');
+          }
+
+          if (!contextText || contextText.length < 20) {
+            resultDiv.innerHTML = '<div style="padding:12px;color:var(--cb-subtext);">Not enough content found. Try a different source.</div>';
+            runBtn.disabled = false;
+            runBtn.textContent = 'Generate Handoff Document';
+            return;
+          }
+
+          const lengthGuide = detailLevel === 'brief'
+            ? 'Keep it concise — aim for 200-400 words. Only the essentials.'
+            : 'Be comprehensive — aim for 500-800 words. Include all relevant details.';
+
+          const toneGuide = recipient === 'Client' ? 'professional and polished'
+            : recipient === 'Manager' ? 'executive and results-focused'
+            : recipient === 'My Future Self' ? 'informal and reference-oriented'
+            : 'clear and collegial';
+
+          const prompt = `You are Handoff, a context packaging agent inside ChatBridge.
+
+Generate a professional handoff document for: ${recipient}
+Detail level: ${detailLevel}
+${lengthGuide}
+Tone: ${toneGuide}
+
+Source conversations:
+${contextText}
+
+Create a polished, shareable document:
+
+## Executive Summary
+2-3 sentences: what this is about, why it matters, current state.
+
+## Background & Decisions
+Key choices made, with reasoning. What was discussed and concluded.
+
+## Current Status
+Where things stand right now. What's done, what's in progress.
+
+## Open Questions
+Unresolved items that need attention or decisions.
+
+## Action Items
+Prioritized next steps with clear ownership suggestions.
+
+## Key Reference
+Important names, dates, numbers, links, or technical details for quick lookup.
+
+Make this ready to send as-is. No meta-commentary. Clean markdown formatting.`;
+
+          const res = await callAgentRoute(prompt, { complexity: 'deep', maxTokens: detailLevel === 'brief' ? 800 : 1400 });
+
+          if (res && res.ok && res.result) {
+            const formatted = formatAgentMarkdown(res.result);
+            resultDiv.innerHTML = `
+              <div style="white-space:pre-wrap;line-height:1.6;font-size:12px;">${formatted}</div>
+              <div style="display:flex;gap:6px;margin-top:10px;">
+                <button id="cb-handoff-copy" class="cb-btn" style="flex:1;font-size:11px;">Copy Document</button>
+                <button id="cb-handoff-save" class="cb-btn" style="flex:1;font-size:11px;">Save Draft</button>
+                <button id="cb-handoff-insert" class="cb-btn cb-btn-primary" style="flex:1;font-size:11px;">Insert</button>
+              </div>
+              <div style="font-size:9px;color:var(--cb-subtext);margin-top:6px;text-align:center;">For ${recipient} · ${detailLevel} · ${res.model_used || 'AI'} · ${res.latency_ms || 0}ms</div>
+            `;
+
+            resultDiv.querySelector('#cb-handoff-copy').addEventListener('click', async () => {
+              try { await navigator.clipboard.writeText(res.result); toast('Document copied!'); } catch (_) { toast('Copy failed'); }
+            });
+            resultDiv.querySelector('#cb-handoff-save').addEventListener('click', async () => {
+              try {
+                await StorageManager.saveHandoffDraft({
+                  id: 'handoff_' + Date.now(),
+                  title: `Handoff for ${recipient} - ${new Date().toLocaleDateString()}`,
+                  content: res.result,
+                  createdAt: Date.now()
+                });
+                toast('Draft saved!');
+              } catch (_) { toast('Save failed'); }
+            });
+            resultDiv.querySelector('#cb-handoff-insert').addEventListener('click', () => {
+              try { insertTextToChat(res.result); toast('Inserted!'); } catch (_) { toast('Insert failed'); }
+            });
+            toast('Handoff document ready!');
+          } else {
+            resultDiv.innerHTML = `<div style="padding:12px;color:rgba(255,100,100,0.9);">Failed: ${res && res.error ? res.error : 'Unknown error'}</div>`;
+          }
+        } catch (e) {
+          resultDiv.innerHTML = `<div style="padding:12px;color:rgba(255,100,100,0.9);">Error: ${e.message || 'Unknown error'}</div>`;
+          debugLog('Handoff error', e);
+        } finally {
+          runBtn.disabled = false;
+          runBtn.textContent = 'Generate Handoff Document';
+        }
+      });
+    }
+
+    // ============================================
+    // AGENT 6: MY PULSE — AI Usage Intelligence
+    // "Your AI usage intelligence" — behavioral analytics & productivity insights
+    // ============================================
+    async function showMyPulse() {
+      const outputArea = (agentContent && agentContent.querySelector('#cb-agent-output')) || (shadow && shadow.getElementById && shadow.getElementById('cb-agent-output'));
+      if (!outputArea) return;
+
+      outputArea.innerHTML = `
+        <div style="margin-bottom:8px;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+            <div style="width:24px;height:24px;background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.25);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;">●</div>
+            <div style="font-weight:600;font-size:13px;color:var(--cb-white);">My Pulse</div>
+          </div>
+          <div style="font-size:11px;color:var(--cb-subtext);margin-bottom:10px;">Discover patterns in how you use AI. Get personalized insights to boost your productivity.</div>
+          <button id="cb-pulse-run" class="cb-btn cb-btn-primary" style="width:100%;">Generate My Pulse</button>
+        </div>
+        <div id="cb-pulse-result" style="display:none;"></div>
+      `;
+
+      const runBtn = outputArea.querySelector('#cb-pulse-run');
+      const resultDiv = outputArea.querySelector('#cb-pulse-result');
+
+      runBtn.addEventListener('click', async () => {
+        runBtn.disabled = true;
+        runBtn.textContent = 'Analyzing your AI usage...';
+        resultDiv.style.display = 'block';
+        resultDiv.innerHTML = '<div style="text-align:center;padding:16px;"><div class="cb-spinner" style="display:inline-block;"></div><div style="margin-top:8px;font-size:11px;color:var(--cb-subtext);">Crunching your data across platforms...</div></div>';
+
+        try {
+          const convos = await StorageManager.getConversations();
+          const pulseSessions = await StorageManager.getPulseSessions();
+
+          if ((!convos || convos.length === 0) && (!pulseSessions || pulseSessions.length === 0)) {
+            resultDiv.innerHTML = '<div style="padding:12px;color:var(--cb-subtext);text-align:center;">No usage data yet. Use ChatBridge for a while and come back!</div>';
+            runBtn.disabled = false;
+            runBtn.textContent = 'Generate My Pulse';
+            return;
+          }
+
+          // Build analytics data
+          const platformCounts = {};
+          const topicFrequency = {};
+          const dailyActivity = {};
+          let totalMessages = 0;
+          let totalWords = 0;
+          const stopWords = ['that', 'this', 'with', 'from', 'they', 'have', 'been', 'will', 'would', 'could', 'should', 'about', 'their', 'which', 'there', 'your', 'more', 'also', 'some', 'when', 'what', 'here', 'just', 'like', 'than', 'them', 'then', 'into', 'over', 'such', 'only', 'very', 'each', 'much', 'make', 'know', 'well', 'back', 'even', 'most', 'made', 'after', 'does', 'need', 'help', 'please', 'sure', 'want', 'think', 'provide', 'following', 'using', 'based'];
+
+          convos.forEach(c => {
+            const platform = (c.platform || 'unknown').replace(/^www\./, '').split('.')[0];
+            platformCounts[platform] = (platformCounts[platform] || 0) + 1;
+
+            const msgs = c.conversation || [];
+            totalMessages += msgs.length;
+
+            msgs.forEach(m => {
+              totalWords += (m.text || '').split(/\s+/).length;
+              // Extract topic keywords
+              const words = (m.text || '').toLowerCase().match(/\b[a-z]{4,}\b/g) || [];
+              words.forEach(w => {
+                if (!stopWords.includes(w)) {
+                  topicFrequency[w] = (topicFrequency[w] || 0) + 1;
+                }
+              });
+            });
+
+            // Daily activity
+            const day = new Date(c.ts).toLocaleDateString();
+            dailyActivity[day] = (dailyActivity[day] || 0) + 1;
+          });
+
+          // Top platforms
+          const topPlatforms = Object.entries(platformCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+          // Top topics
+          const topTopics = Object.entries(topicFrequency).sort((a, b) => b[1] - a[1]).slice(0, 15);
+
+          // Build CSS bar charts
+          const maxPlatformCount = topPlatforms.length > 0 ? topPlatforms[0][1] : 1;
+          const platformBarsHtml = topPlatforms.map(([name, count]) => {
+            const pct = Math.round((count / maxPlatformCount) * 100);
+            return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+              <div style="width:70px;font-size:10px;color:var(--cb-white);text-align:right;">${name}</div>
+              <div style="flex:1;height:14px;background:rgba(255,255,255,0.04);border-radius:3px;overflow:hidden;">
+                <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,rgba(99,102,241,0.6),rgba(99,102,241,0.3));border-radius:3px;"></div>
+              </div>
+              <div style="font-size:10px;color:var(--cb-subtext);width:24px;">${count}</div>
+            </div>`;
+          }).join('');
+
+          // Render quick stats first
+          const avgMsgsPerChat = convos.length > 0 ? Math.round(totalMessages / convos.length) : 0;
+          const activeDays = Object.keys(dailyActivity).length;
+
+          resultDiv.innerHTML = `
+            <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-bottom:10px;">
+              <div style="padding:8px;background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.15);border-radius:6px;text-align:center;">
+                <div style="font-size:18px;font-weight:700;color:var(--cb-white);">${convos.length}</div>
+                <div style="font-size:9px;color:var(--cb-subtext);">Conversations</div>
+              </div>
+              <div style="padding:8px;background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.15);border-radius:6px;text-align:center;">
+                <div style="font-size:18px;font-weight:700;color:var(--cb-white);">${totalMessages}</div>
+                <div style="font-size:9px;color:var(--cb-subtext);">Messages</div>
+              </div>
+              <div style="padding:8px;background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.15);border-radius:6px;text-align:center;">
+                <div style="font-size:18px;font-weight:700;color:var(--cb-white);">${Object.keys(platformCounts).length}</div>
+                <div style="font-size:9px;color:var(--cb-subtext);">Platforms</div>
+              </div>
+              <div style="padding:8px;background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.15);border-radius:6px;text-align:center;">
+                <div style="font-size:18px;font-weight:700;color:var(--cb-white);">${activeDays}</div>
+                <div style="font-size:9px;color:var(--cb-subtext);">Active Days</div>
+              </div>
+            </div>
+
+            <div style="margin-bottom:10px;">
+              <div style="font-weight:600;font-size:11px;color:var(--cb-white);margin-bottom:6px;">Platform Usage</div>
+              ${platformBarsHtml || '<div style="font-size:10px;color:var(--cb-subtext);">No platform data yet</div>'}
+            </div>
+
+            <div id="cb-pulse-ai-insights" style="margin-top:8px;">
+              <div style="text-align:center;padding:8px;"><div class="cb-spinner" style="display:inline-block;"></div><div style="font-size:10px;color:var(--cb-subtext);margin-top:4px;">Generating AI insights...</div></div>
+            </div>
+          `;
+
+          // Now generate AI insights
+          const insightsDiv = resultDiv.querySelector('#cb-pulse-ai-insights');
+
+          const analyticsContext = `Usage Summary:
+- ${convos.length} total conversations across ${Object.keys(platformCounts).length} platforms
+- ${totalMessages} total messages, ${totalWords} total words
+- ${avgMsgsPerChat} avg messages per chat
+- ${activeDays} active days
+- Top platforms: ${topPlatforms.map(([n, c]) => `${n}(${c})`).join(', ')}
+- Top topics (by frequency): ${topTopics.slice(0, 10).map(([w, c]) => `${w}(${c})`).join(', ')}
+- Session data points: ${pulseSessions.length}`;
+
+          const prompt = `You are My Pulse, an AI usage analytics agent inside ChatBridge.
+
+${analyticsContext}
+
+Generate personalized productivity insights:
+
+## Usage Patterns
+How does the user interact with AI? Frequency, platform preferences, session behavior. Be specific with the numbers.
+
+## Topic Trends
+What are their recurring interests? What topics are growing or declining? Any obsessions or blind spots?
+
+## Platform Intelligence
+Which AI do they use for what? Are they using the right tool for the right job?
+
+## Productivity Score
+Rate their AI productivity 1-10 based on: diversity of use, conversation depth, multi-platform leverage, and consistency. Explain the score.
+
+## 3 Recommendations
+Specific, actionable suggestions to improve their AI productivity. Based on actual patterns, not generic advice.
+
+Be conversational and insightful. Reference their actual data. Make them feel like this is truly personalized.`;
+
+          const res = await callAgentRoute(prompt, { complexity: 'deep', maxTokens: 1200 });
+
+          if (res && res.ok && res.result) {
+            const formatted = formatAgentMarkdown(res.result);
+            insightsDiv.innerHTML = `
+              <div style="white-space:pre-wrap;line-height:1.6;font-size:12px;">${formatted}</div>
+              <div style="display:flex;gap:6px;margin-top:10px;">
+                <button id="cb-pulse-copy" class="cb-btn" style="flex:1;font-size:11px;">Copy Report</button>
+              </div>
+              <div style="font-size:9px;color:var(--cb-subtext);margin-top:6px;text-align:center;">${res.model_used || 'AI'} · ${res.latency_ms || 0}ms</div>
+            `;
+            insightsDiv.querySelector('#cb-pulse-copy').addEventListener('click', async () => {
+              try { await navigator.clipboard.writeText(res.result); toast('Report copied!'); } catch (_) { toast('Copy failed'); }
+            });
+            toast('Pulse report ready!');
+          } else {
+            insightsDiv.innerHTML = `<div style="padding:8px;color:rgba(255,100,100,0.9);font-size:11px;">AI insights unavailable: ${res && res.error ? res.error : 'Unknown error'}</div>`;
+          }
+        } catch (e) {
+          resultDiv.innerHTML = `<div style="padding:12px;color:rgba(255,100,100,0.9);">Error: ${e.message || 'Unknown error'}</div>`;
+          debugLog('My Pulse error', e);
+        } finally {
+          runBtn.disabled = false;
+          runBtn.textContent = 'Generate My Pulse';
+        }
+      });
+    }
+
+    // ============================================
+    // AGENT UTILITIES
+    // ============================================
+
+    // Format markdown-like output from agents into styled HTML
+    function formatAgentMarkdown(text) {
+      if (!text) return '';
+      let html = escapeHtml(text);
+      // Headers: ## Title
+      html = html.replace(/^## (.+)$/gm, '<div style="font-weight:700;font-size:12px;color:var(--cb-accent-primary);margin:10px 0 4px 0;border-bottom:1px solid rgba(255,255,255,0.06);padding-bottom:3px;">$1</div>');
+      // Bold: **text**
+      html = html.replace(/\*\*(.+?)\*\*/g, '<strong style="color:var(--cb-white);">$1</strong>');
+      // Bullet points: - item or * item
+      html = html.replace(/^[\-\*•]\s+(.+)$/gm, '<div style="padding-left:12px;position:relative;margin:2px 0;"><span style="position:absolute;left:0;color:var(--cb-accent-primary);">·</span>$1</div>');
+      // Numbered lists: 1. item
+      html = html.replace(/^(\d+)\.\s+(.+)$/gm, '<div style="padding-left:16px;position:relative;margin:2px 0;"><span style="position:absolute;left:0;color:var(--cb-accent-primary);font-weight:600;font-size:10px;">$1.</span>$2</div>');
+      // Platform tags: [ChatGPT] etc
+      html = html.replace(/\[([A-Z][a-zA-Z]+(?:\s[A-Z][a-zA-Z]*)*)\]/g, '<span style="display:inline-block;padding:1px 5px;background:rgba(0,212,255,0.1);border:1px solid rgba(0,212,255,0.2);border-radius:3px;font-size:9px;font-weight:600;color:rgba(0,212,255,0.9);">$1</span>');
+      return html;
+    }
+
+    // Time ago helper for agents
+    function getTimeAgo(timestamp) {
+      if (!timestamp) return 'unknown';
+      const diff = Date.now() - timestamp;
+      const mins = Math.floor(diff / 60000);
+      if (mins < 1) return 'just now';
+      if (mins < 60) return `${mins}m ago`;
+      const hrs = Math.floor(mins / 60);
+      if (hrs < 24) return `${hrs}h ago`;
+      const days = Math.floor(hrs / 24);
+      if (days < 7) return `${days}d ago`;
+      if (days < 30) return `${Math.floor(days / 7)}w ago`;
+      return `${Math.floor(days / 30)}mo ago`;
+    }
+
+    // Helper: Get all stored conversations (used by agents)
     async function getAllStoredConversations() {
       try {
         const stored = await storageGet('chatbridge_conversations');
@@ -14636,6 +14956,35 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
                     debugLog('[Background] Auto-summarize failed:', e);
                   }
                 }
+
+                // === AMBIENT AGENT TRIGGERS ===
+                // Track This: check if any tracked topics match the scanned text
+                try {
+                  const fullText = final.map(m => m.text || '').join(' ');
+                  if (fullText.length > 20) {
+                    await checkTrackedTopicsAgainstScan(fullText);
+                  }
+                } catch (e) {
+                  debugLog('[Background] Track This ambient check failed:', e);
+                }
+
+                // My Pulse: record this scan session
+                try {
+                  await recordPulseSession(final.length, conv.platform || location.hostname);
+                } catch (e) {
+                  debugLog('[Background] Pulse session record failed:', e);
+                }
+
+                // Catch Me Up: increment unread count
+                try {
+                  const catchState = await StorageManager.getAgentCatchMeUp();
+                  catchState.unreadCount = (catchState.unreadCount || 0) + 1;
+                  await StorageManager.setAgentCatchMeUp(catchState);
+                  __agentBadges.catchmeup = catchState.unreadCount;
+                } catch (e) {
+                  debugLog('[Background] Catch Me Up counter failed:', e);
+                }
+                // === END AMBIENT AGENT TRIGGERS ===
               } catch (e) {
                 debugLog('[Background] Background tasks error:', e);
               }
@@ -14666,12 +15015,26 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       }
     });
 
-    // Clipboard button - copy most recent output (preview, summary, rewrite, translate, sync)
-    btnClipboard.addEventListener('click', async () => {
+    // Toolkit button - open Toolkit view
+    btnToolkit.addEventListener('click', () => {
+      closeAllViews();
+      tkShowGrid();
+      toolkitView.classList.add('cb-view-active');
+    });
+
+    // Close Toolkit view
+    btnCloseToolkit.addEventListener('click', () => {
+      toolkitView.classList.remove('cb-view-active');
+      try { speechSynthesis.cancel(); } catch (_) { }
+    });
+
+    // ⚡ Sidebar Quick Actions Event Listeners
+    // Note: Summary removed - was redundant with Summarize button
+
+    // Copy quick pill — same logic as old clipboard button
+    shadow.getElementById('qa-sidebar-copy')?.addEventListener('click', async () => {
       try {
         let txt = '';
-
-        // Priority 1: Check if any internal view is active and has output
         if (summView.classList.contains('cb-view-active') && summSourceText && summSourceText.textContent && summSourceText.textContent !== '(no conversation found)' && summSourceText.textContent !== '(no result)') {
           txt = summSourceText.textContent;
         } else if (rewView.classList.contains('cb-view-active') && rewSourceText && rewSourceText.textContent && rewSourceText.textContent !== '(no conversation found)' && rewSourceText.textContent !== '(no result)') {
@@ -14681,93 +15044,15 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         } else if (syncView.classList.contains('cb-view-active') && syncSourceText && syncSourceText.textContent && syncSourceText.textContent !== '(no conversation found)' && syncSourceText.textContent !== '(no result)') {
           txt = syncSourceText.textContent;
         }
-
-        // Priority 2: Check preview area for recent auto-summary or restored content
         if (!txt && preview && preview.textContent && preview.textContent !== 'Preview: (none)' && !preview.textContent.startsWith('Preview:')) {
           txt = preview.textContent;
         }
-
-        // Priority 3: Fallback to last scanned text
-        if (!txt) {
-          txt = lastScannedText || '';
-        }
-
+        if (!txt) txt = lastScannedText || '';
         if (!txt) { toast('Nothing to copy'); return; }
         await navigator.clipboard.writeText(txt);
         toast('Copied to clipboard');
       } catch (e) {
-        try {
-          // Last resort: try lastScannedText
-          await navigator.clipboard.writeText(lastScannedText || '');
-          toast('Copied to clipboard (fallback)');
-        } catch (err) {
-          toast('Copy failed');
-        }
-      }
-    });
-
-    // ⚡ Sidebar Quick Actions Event Listeners
-    // Note: Summary removed - was redundant with Summarize button
-
-    shadow.getElementById('qa-sidebar-stats')?.addEventListener('click', async () => {
-      try {
-        // Check if stats panel already exists
-        let statsPanel = shadow.getElementById('cb-stats-panel');
-        if (statsPanel) {
-          statsPanel.remove();
-          return; // Toggle off
-        }
-
-        // Get stats data
-        const chatText = await getConversationText();
-        const words = chatText ? chatText.split(/\s+/).length : 0;
-        const chars = chatText ? chatText.length : 0;
-        const readTime = Math.ceil(words / 200);
-        const convs = await loadConversationsAsync();
-
-        // Create inline stats panel - THEMED
-        statsPanel = document.createElement('div');
-        statsPanel.id = 'cb-stats-panel';
-        statsPanel.className = 'cb-inline-panel';
-
-        statsPanel.innerHTML = `
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
-            <h4>📊 Conversation Stats</h4>
-            <button id="close-stats-panel" style="background:none;border:none;color:var(--cb-subtext);cursor:pointer;font-size:16px;padding:4px;transition:color 0.2s;" onmouseover="this.style.color='var(--cb-accent-primary)'" onmouseout="this.style.color='var(--cb-subtext)'">✕</button>
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-            <div class="cb-stat-card">
-              <div class="cb-stat-value" style="color:var(--cb-accent-primary);">${words.toLocaleString()}</div>
-              <div class="cb-stat-label">Words</div>
-            </div>
-            <div class="cb-stat-card">
-              <div class="cb-stat-value" style="color:var(--cb-accent-secondary);">${chars.toLocaleString()}</div>
-              <div class="cb-stat-label">Characters</div>
-            </div>
-            <div class="cb-stat-card">
-              <div class="cb-stat-value" style="color:var(--cb-accent-tertiary);">~${readTime}</div>
-              <div class="cb-stat-label">Min Read</div>
-            </div>
-            <div class="cb-stat-card">
-              <div class="cb-stat-value" style="color:var(--cb-accent-primary);">${convs.length}</div>
-              <div class="cb-stat-label">Saved</div>
-            </div>
-          </div>
-        `;
-
-        // Insert after quick actions row
-        const quickActionsRow = shadow.querySelector('.cb-quick-actions-row');
-        if (quickActionsRow && quickActionsRow.parentNode) {
-          quickActionsRow.parentNode.insertBefore(statsPanel, quickActionsRow.nextSibling);
-        }
-
-        // Close button
-        shadow.getElementById('close-stats-panel')?.addEventListener('click', () => {
-          statsPanel.remove();
-        });
-      } catch (e) {
-        toast('Stats failed');
-        console.error('[ChatBridge] Stats error:', e);
+        try { await navigator.clipboard.writeText(lastScannedText || ''); toast('Copied to clipboard (fallback)'); } catch (_) { toast('Copy failed'); }
       }
     });
 
@@ -15158,6 +15443,8 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         closeAllViews();
         agentView.classList.add('cb-view-active');
         await renderAgentHub();
+        // Ambient: check agent badges on open
+        await checkAgentBadges();
       } catch (e) {
         toast('Failed to open Agent Hub');
         debugLog('Agent Hub open error', e);
@@ -17176,7 +17463,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       const shorten = !!options.shorten;
       const deepThinking = !!options.deepThinking; // Use 22B model for higher quality
       const chunkSize = options.chunkSize || 12000; // Larger chunks = fewer API calls
-      const maxParallel = options.maxParallel || 15; // High parallelism for speed
+      const maxParallel = options.maxParallel || 5; // Capped to avoid rate-limit bursts
 
       if (!text || typeof text !== 'string') return '';
 
@@ -17272,7 +17559,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       const onProgress = typeof options.onProgress === 'function' ? options.onProgress : null;
       try { onProgress && onProgress({ phase: 'preparing' }); } catch (e) { }
       const chunkSize = options.chunkSize || 24000; // Increased from 18K for fewer API calls
-      const maxParallel = options.maxParallel || 10; // Increased from 6 for maximum speed
+      const maxParallel = options.maxParallel || 5; // Capped to avoid rate-limit bursts
       const mergePrompt = options.mergePrompt || `Combine the following pieces into a single coherent output that preserves context, style, and important details.`;
       const perChunkExtra = options.extraPayload || {};
       if (!text || typeof text !== 'string') return '';
@@ -18207,19 +18494,7 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
 
     btnCloseSmart.addEventListener('click', () => { try { smartView.classList.remove('cb-view-active'); } catch (e) { } });
 
-    // ============================================
-    // AGENT HUB: New UI with Action Extractor, Draft Generator, Quick Actions
-    // ============================================
-    btnKnowledgeGraph.addEventListener('click', async () => {
-      try {
-        closeAllViews();
-        agentView.classList.add('cb-view-active');
-        await renderAgentHub();
-      } catch (e) {
-        toast('Failed to open Agent Hub');
-        debugLog('open agent view', e);
-      }
-    });
+    // (Agent Hub button handler defined above at ~L15252)
 
     btnCloseAgent.addEventListener('click', () => { try { agentView.classList.remove('cb-view-active'); } catch (e) { } });
 

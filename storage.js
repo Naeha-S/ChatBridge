@@ -3,7 +3,12 @@ const StorageManager = (() => {
     CONVERSATIONS: 'chatbridge_conversations_v1',
     CONFIG: 'chatbridge_config',
     THEME: 'cb_theme',
-    CACHE_PREFIX: 'chatbridge:cache:'
+    CACHE_PREFIX: 'chatbridge:cache:',
+    // Agent Hub storage keys
+    AGENT_CATCHMEUP: 'chatbridge_agent_catchmeup',
+    AGENT_TRACKED_TOPICS: 'chatbridge_agent_tracked_topics',
+    AGENT_PULSE_SESSIONS: 'chatbridge_agent_pulse_sessions',
+    AGENT_HANDOFF_DRAFTS: 'chatbridge_agent_handoff_drafts'
   };
 
   const LIMITS = {
@@ -156,6 +161,62 @@ const StorageManager = (() => {
     clearConversations().then(() => cb && cb()).catch(() => cb && cb());
   }
 
+  // ============================================
+  // AGENT HUB STORAGE HELPERS
+  // ============================================
+
+  // Catch Me Up — track when user last saw a briefing
+  async function getAgentCatchMeUp() {
+    try {
+      return (await get(KEYS.AGENT_CATCHMEUP)) || { lastBriefedAt: 0, unreadCount: 0 };
+    } catch (e) { return { lastBriefedAt: 0, unreadCount: 0 }; }
+  }
+  async function setAgentCatchMeUp(data) {
+    try { await set(KEYS.AGENT_CATCHMEUP, data); } catch (e) { console.warn('[ChatBridge] Agent CatchMeUp save error:', e); }
+  }
+
+  // Track This — persistent topic tracking
+  async function getTrackedTopics() {
+    try {
+      return (await get(KEYS.AGENT_TRACKED_TOPICS)) || [];
+    } catch (e) { return []; }
+  }
+  async function setTrackedTopics(topics) {
+    try { await set(KEYS.AGENT_TRACKED_TOPICS, topics); } catch (e) { console.warn('[ChatBridge] Agent TrackedTopics save error:', e); }
+  }
+
+  // My Pulse — session-level usage telemetry (rolling 90 days, max 500)
+  async function getPulseSessions() {
+    try {
+      return (await get(KEYS.AGENT_PULSE_SESSIONS)) || [];
+    } catch (e) { return []; }
+  }
+  async function appendPulseSession(session) {
+    try {
+      let sessions = (await get(KEYS.AGENT_PULSE_SESSIONS)) || [];
+      sessions.push(session);
+      // Rolling 90-day window, max 500 records
+      const cutoff = Date.now() - (90 * 24 * 60 * 60 * 1000);
+      sessions = sessions.filter(s => s.date > cutoff).slice(-500);
+      await set(KEYS.AGENT_PULSE_SESSIONS, sessions);
+    } catch (e) { console.warn('[ChatBridge] Agent Pulse save error:', e); }
+  }
+
+  // Handoff — saved briefing documents
+  async function getHandoffDrafts() {
+    try {
+      return (await get(KEYS.AGENT_HANDOFF_DRAFTS)) || [];
+    } catch (e) { return []; }
+  }
+  async function saveHandoffDraft(draft) {
+    try {
+      let drafts = (await get(KEYS.AGENT_HANDOFF_DRAFTS)) || [];
+      drafts.unshift(draft);
+      drafts = drafts.slice(0, 20); // Keep last 20
+      await set(KEYS.AGENT_HANDOFF_DRAFTS, drafts);
+    } catch (e) { console.warn('[ChatBridge] Agent Handoff save error:', e); }
+  }
+
   return {
     KEYS,
     get,
@@ -166,7 +227,16 @@ const StorageManager = (() => {
     clearConversations,
     saveConversationSync,
     getConversationsSync,
-    clearConversationsSync
+    clearConversationsSync,
+    // Agent Hub
+    getAgentCatchMeUp,
+    setAgentCatchMeUp,
+    getTrackedTopics,
+    setTrackedTopics,
+    getPulseSessions,
+    appendPulseSession,
+    getHandoffDrafts,
+    saveHandoffDraft
   };
 })();
 

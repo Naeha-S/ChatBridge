@@ -33,7 +33,26 @@ All files use IIFE + `'use strict'` and expose APIs on `window.*` — no ES modu
 ### AI API routing (background.js)
 - **Gemini**: Model failover chain `gemini-2.0-flash` → `gemini-2.5-flash` → `flash-lite` → `2.5-pro`. Dual rate limiting: sliding window (10/min, 100/hr) + token bucket via `limiterTry()`.
 - **Llama**: HuggingFace router (`meta-llama/Llama-3.1-8B-Instruct:novita`), OpenAI-compatible format. `callLlama()` in smartQueries.js **never rejects** — resolves to `''` on error, shows toast instead.
+- **Agent routing**: `agent_route` message type in background.js auto-selects Gemini (for complex) or Llama (for fast) based on prompt length/complexity keywords. Returns `{ ok, result, model_used, latency_ms }`.
 - **Rewrite templates**: 12 named styles in `REWRITE_TEMPLATES` object in background.js (`normal`, `concise`, `direct`, `detailed`, `academic`, `humanized`, `creative`, `professional`, `simple`, `friendly`, `customStyle`, `project_summary`). Add new styles there.
+
+### Agent Hub (content_script.js ~L12167-13620)
+6 intelligence agents in a 2×3 grid. Each agent has zero overlap with Insights, Toolkit, or Smart Queries.
+
+| Agent | Function | Ambient | Key Feature |
+|-------|----------|---------|-------------|
+| **Catch Me Up** | `showCatchMeUp()` | ✓ | Proactive briefing of activity since last visit. Badge shows unread count. |
+| **Prepare Me** | `showPrepareMe()` | ✗ | Task-specific prep packs assembled from conversation history. Suggestion chips for common tasks. |
+| **Track This** | `showTrackThis()` | ✓ | Pin & follow any topic longitudinally. AI-extracted keywords, cross-platform hit tracking. Max 10 topics. |
+| **Second Opinion** | `showSecondOpinion()` | ✗ | Cross-check any AI answer with a different model. Confidence score meter. Auto-detect or paste mode. |
+| **Handoff** | `showHandoff()` | ✗ | Generate shareable briefing documents from conversations. Recipients: Colleague/Client/Manager/Future Self. Brief or comprehensive. |
+| **My Pulse** | `showMyPulse()` | ✗ | AI usage analytics dashboard. Platform bar charts, topic trends, productivity score. |
+
+**Ambient system**: Catch Me Up and Track This run passively — after every scan, `checkTrackedTopicsAgainstScan()` updates topic hit counts, `recordPulseSession()` logs usage, and Catch Me Up's unread counter increments. Badges appear on agent cards when the hub opens via `checkAgentBadges()`.
+
+**Agent storage** (storage.js): 4 keys — `AGENT_CATCHMEUP`, `AGENT_TRACKED_TOPICS`, `AGENT_PULSE_SESSIONS`, `AGENT_HANDOFF_DRAFTS`. Helpers: `getAgentCatchMeUp/set`, `getTrackedTopics/set`, `getPulseSessions/appendPulseSession` (rolling 90-day, max 500), `getHandoffDrafts/saveHandoffDraft` (max 20).
+
+**Utilities**: `callAgentRoute()` wraps `chrome.runtime.sendMessage({ type: 'agent_route' })`, `formatAgentMarkdown()` converts markdown headings/bold/bullets/platform tags to styled HTML, `getTimeAgo()` human-readable timestamps.
 
 ## Naming conventions
 - CSS classes: `cb-` prefix (content script UI), `sq-` prefix (Smart Queries)

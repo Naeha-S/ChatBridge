@@ -2706,6 +2706,139 @@ Rewritten conversation (optimized for ${tgt}):`;
     return true;
   }
 
+  // ============================================
+  // AGENT ROUTE — Intelligent multi-model routing for Agent Hub
+  // Routes prompts to optimal AI model based on task complexity
+  // ============================================
+  if (msg && msg.type === 'agent_route') {
+    (async () => {
+      const startMs = Date.now();
+      try {
+        const payload = msg.payload || {};
+        const preferredModel = payload.model || 'auto'; // 'gemini', 'llama', 'auto'
+        const prompt = payload.prompt || '';
+        const maxTokens = payload.maxTokens || 1024;
+        const temperature = payload.temperature != null ? payload.temperature : 0.4;
+        const complexity = payload.complexity || 'auto'; // 'deep', 'fast', 'auto'
+
+        if (!prompt) {
+          return sendResponse({ ok: false, error: 'empty_prompt', message: 'No prompt provided to agent_route.' });
+        }
+
+        // Determine model: auto-select based on complexity heuristics
+        let selectedModel = preferredModel;
+        if (selectedModel === 'auto') {
+          const isDeep = complexity === 'deep' || prompt.length > 2000 || /synthesiz|analyz|compar|evaluat|briefing|handoff|comprehensive/i.test(prompt);
+          selectedModel = isDeep ? 'gemini' : 'llama';
+        }
+
+        let result = null;
+
+        if (selectedModel === 'gemini') {
+          // Rate limit check
+          const rateCheck = checkRateLimit(rateLimiters.gemini);
+          if (!rateCheck.allowed) {
+            // Fallback to Llama if Gemini is rate-limited
+            selectedModel = 'llama';
+          } else if (!limiterTry()) {
+            selectedModel = 'llama';
+          } else {
+            recordRequest(rateLimiters.gemini);
+            const geminiApiKey = await getGeminiApiKey();
+            if (!geminiApiKey) {
+              // Fallback to Llama if no Gemini key
+              selectedModel = 'llama';
+            } else {
+              // Call Gemini with failover chain
+              const models = ['gemini-2.0-flash', 'gemini-2.5-flash', 'gemini-2.0-flash-lite', 'gemini-2.5-pro'];
+              let lastError = null;
+              for (const model of models) {
+                try {
+                  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`;
+                  const body = {
+                    contents: [{ parts: [{ text: prompt }] }],
+                    generationConfig: {
+                      temperature,
+                      maxOutputTokens: maxTokens,
+                      topP: 0.9
+                    },
+                    systemInstruction: {
+                      parts: [{ text: 'You are an intelligent agent inside ChatBridge, a cross-platform AI conversation manager. Provide concise, structured, actionable output. Use markdown formatting with headers and bullet points. Never add meta-commentary — output ONLY the requested content.' }]
+                    }
+                  };
+                  const resp = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                  });
+                  if (!resp.ok) {
+                    lastError = `${model}: HTTP ${resp.status}`;
+                    continue;
+                  }
+                  const data = await resp.json();
+                  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+                  if (text) {
+                    result = { ok: true, result: text, model_used: model, latency_ms: Date.now() - startMs };
+                    break;
+                  }
+                  lastError = `${model}: empty response`;
+                } catch (e) {
+                  lastError = `${model}: ${e.message}`;
+                }
+              }
+              if (!result) {
+                // All Gemini models failed — fallback to Llama
+                selectedModel = 'llama';
+              }
+            }
+          }
+        }
+
+        // Llama path (primary or fallback)
+        if (selectedModel === 'llama' && !result) {
+          const HF_API_KEY = await getHuggingFaceApiKey();
+          if (!HF_API_KEY) {
+            return sendResponse({ ok: false, error: 'no_api_key', message: 'No API keys configured. Open ChatBridge Options to set up Gemini or HuggingFace keys.', latency_ms: Date.now() - startMs });
+          }
+          try {
+            const resp = await fetch('https://router.huggingface.co/novita/v3/openai/chat/completions', {
+              method: 'POST',
+              headers: { 'Authorization': `Bearer ${HF_API_KEY}`, 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                model: 'meta-llama/Llama-3.1-8B-Instruct',
+                messages: [
+                  { role: 'system', content: 'You are an intelligent agent inside ChatBridge, a cross-platform AI conversation manager. Provide concise, structured, actionable output. Use markdown formatting with headers and bullet points. Never add meta-commentary — output ONLY the requested content.' },
+                  { role: 'user', content: prompt }
+                ],
+                max_tokens: maxTokens,
+                temperature,
+                stream: false
+              })
+            });
+            if (resp.ok) {
+              const data = await resp.json();
+              const text = data?.choices?.[0]?.message?.content;
+              if (text) {
+                result = { ok: true, result: text, model_used: 'llama-3.1-8b', latency_ms: Date.now() - startMs };
+              }
+            }
+          } catch (e) {
+            // Llama also failed
+          }
+        }
+
+        if (result) {
+          return sendResponse(result);
+        } else {
+          return sendResponse({ ok: false, error: 'all_models_failed', message: 'All AI models failed. Check your API keys in ChatBridge Options.', latency_ms: Date.now() - startMs });
+        }
+      } catch (e) {
+        return sendResponse({ ok: false, error: 'agent_route_error', message: (e && e.message) || String(e), latency_ms: Date.now() - startMs });
+      }
+    })();
+    return true;
+  }
+
   // HuggingFace Llama 3.1 API handler (for rewrite/translate)
   if (msg && msg.type === 'call_llama') {
     if (!limiterTry()) return sendResponse({ ok: false, error: 'rate_limited' });
