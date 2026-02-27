@@ -13424,7 +13424,7 @@ Respond with JSON only:
       try {
         // Catch Me Up: count conversations since last briefed
         const catchState = await StorageManager.getAgentCatchMeUp();
-        const convos = await StorageManager.getConversations();
+        const convos = await loadConversationsAsync();
         const newCount = convos.filter(c => c.ts > (catchState.lastBriefedAt || 0)).length;
         __agentBadges.catchmeup = newCount;
 
@@ -14140,19 +14140,28 @@ Respond with JSON only:
         runBtn.disabled = true;
         runBtn.textContent = 'Analyzing your activity...';
         resultDiv.style.display = 'block';
+        let loadingTimer;
         resultDiv.innerHTML = `
           <div class="cb-agent-loading">
             <div class="cb-agent-skeleton cb-agent-skeleton-lg"></div>
             <div class="cb-agent-skeleton cb-agent-skeleton-md"></div>
             <div class="cb-agent-skeleton cb-agent-skeleton-sm"></div>
-            <div class="cb-agent-loading-text">Scanning across all platforms...</div>
+            <div class="cb-agent-loading-text" id="cb-cmu-load-text">Gathering conversations...</div>
           </div>`;
+
+        const loadTexts = ['Analyzing active threads...', 'Identifying pending tasks...', 'Synthesizing recent activity...', 'Drafting your briefing...'];
+        let loadIdx = 0;
+        loadingTimer = setInterval(() => {
+          const lt = resultDiv.querySelector('#cb-cmu-load-text');
+          if (lt) { loadIdx = (loadIdx + 1) % loadTexts.length; lt.textContent = loadTexts[loadIdx]; }
+        }, 1500);
 
         try {
           const catchState = await StorageManager.getAgentCatchMeUp();
-          const convos = await StorageManager.getConversations();
+          const convos = await loadConversationsAsync();
 
           if (!convos || convos.length === 0) {
+            clearInterval(loadingTimer);
             resultDiv.innerHTML = '<div class="cb-agent-empty">No saved conversations yet. Scan some chats first!</div>';
             runBtn.disabled = false;
             runBtn.textContent = 'Generate Briefing';
@@ -14166,42 +14175,55 @@ Respond with JSON only:
 
           const convoSummaries = targetConvos.map((c, i) => {
             const msgs = c.conversation || [];
-            const userMsgs = msgs.filter(m => m.role === 'user').map(m => m.text).join(' ').slice(0, 300);
-            const aiMsgs = msgs.filter(m => m.role === 'assistant').map(m => m.text).join(' ').slice(0, 300);
-            const platform = c.platform || 'unknown';
-            const timeAgo = getTimeAgo(c.ts);
-            return `[Conv ${i + 1}] Platform: ${platform} | ${timeAgo}\nUser discussed: ${userMsgs}\nAI responded about: ${aiMsgs}`;
-          }).join('\n\n---\n\n');
+            const userMsgs = msgs.filter(m => m.role === 'user').map(m => m.text).join('\n---\n').slice(0, 800);
+            const aiMsgs = msgs.filter(m => m.role === 'assistant').map(m => m.text).join('\n---\n').slice(0, 800);
+            const platform = c.platform || location.hostname || 'unknown';
+            const timeAgo = getTimeAgo(c.ts || Date.now());
+            return `[Conversation ${i + 1}]
+Platform: ${platform}
+Time: ${timeAgo}
+User said:
+${userMsgs}
+AI replied:
+${aiMsgs}`;
+          }).join('\n\n========================\n\n');
 
-          const timeContext = lastBriefed > 0
-            ? `The user was last briefed ${getTimeAgo(lastBriefed)}. There are ${newConvos.length} new conversation(s) since then.`
-            : `This is the user's first briefing. Showing their ${targetConvos.length} most recent conversations.`;
+          const timeContext = lastBriefed > 0 && hasNew
+            ? `Timeframe: Since user was last briefed (${getTimeAgo(lastBriefed)}). ${newConvos.length} new conversation(s) to analyze.`
+            : `Timeframe: This is the user's first briefing, analyzing their ${targetConvos.length} most recent conversations.`;
 
-          const prompt = `You are Catch Me Up, a personal briefing agent inside ChatBridge.
+          const prompt = `You are "Catch Me Up" — an elite personal AI briefing agent inside ChatBridge.
 
+CONTEXT:
 ${timeContext}
 
-Here are the conversations to brief the user on:
-
+CONVERSATION DATA TO ANALYZE:
+========================
 ${convoSummaries}
+========================
 
-Generate a concise, scannable morning-briefing style summary:
+YOUR INSTRUCTIONS:
+Create a scannable, actionable briefing based ONLY on the conversations above. 
+CRITICAL RULES: 
+- Start directly with the first markdown heading. No greetings, no intro.
+- Use bullet points. Be specific about actual topics, concepts, code, or tasks discussed.
+- Mention the platform [Like This] at the beginning of bullet points when relevant.
+- Do NOT hallucinate. If a section has no data, write "No notable items identified."
 
+REQUIRED SECTIONS:
 ## Active Threads
-What's still in progress — where the user left off on each thread. Include platform names.
+Briefly list the ongoing discussions, projects, or questions left hanging.
 
 ## Pending Items
-Any commitments, deadlines, follow-ups, or action items mentioned across conversations.
+List commitments, deadlines, unimplemented code, or follow-up actions required by the user.
 
 ## What Changed
-Key decisions made, new information discovered, or progress noted.
+Synthesize key decisions made, problems solved, or new information learned.
 
 ## Priority Action
-The single most important thing the user should address now, and why.
+The singular most important action the user should focus on next based on the recent history, and in one sentence, why.`;
 
-Keep it concise. Use bullet points. Include platform names in brackets like [ChatGPT] or [Claude]. Be specific — reference actual topics discussed.`;
-
-          const res = await callAgentRouteWithRetry(prompt, { complexity: 'deep', maxTokens: 1200 });
+          const res = await callAgentRouteWithRetry(prompt, { complexity: 'deep', maxTokens: 1500 });
 
           if (res && res.ok && res.result) {
             // Build stats
@@ -14255,6 +14277,7 @@ Keep it concise. Use bullet points. Include platform names in brackets like [Cha
           resultDiv.innerHTML = `<div class="cb-agent-error">Error: ${e.message || 'Unknown error'}</div>`;
           debugLog('Catch Me Up error', e);
         } finally {
+          if (typeof loadingTimer !== 'undefined') clearInterval(loadingTimer);
           runBtn.disabled = false;
           runBtn.textContent = 'Generate Briefing';
         }
@@ -14323,16 +14346,24 @@ Keep it concise. Use bullet points. Include platform names in brackets like [Cha
         runBtn.disabled = true;
         runBtn.textContent = 'Assembling prep pack...';
         resultDiv.style.display = 'block';
+        let prepTimer;
         resultDiv.innerHTML = `
           <div class="cb-agent-loading">
             <div class="cb-agent-skeleton cb-agent-skeleton-lg"></div>
             <div class="cb-agent-skeleton cb-agent-skeleton-md"></div>
             <div class="cb-agent-skeleton cb-agent-skeleton-sm"></div>
-            <div class="cb-agent-loading-text">Searching your conversation history...</div>
+            <div class="cb-agent-loading-text" id="cb-prep-load-text">Searching your conversation history...</div>
           </div>`;
 
+        const loadTexts = ['Analyzing prior knowledge...', 'Synthesizing relevant data...', 'Drafting your prep pack...'];
+        let loadIdx = 0;
+        prepTimer = setInterval(() => {
+          const lt = resultDiv.querySelector('#cb-prep-load-text');
+          if (lt) { loadIdx = (loadIdx + 1) % loadTexts.length; lt.textContent = loadTexts[loadIdx]; }
+        }, 1500);
+
         try {
-          const convos = await StorageManager.getConversations();
+          const convos = await loadConversationsAsync();
           const details = detailsInput.value.trim();
           const searchTerms = (task + ' ' + details).toLowerCase().split(/\s+/).filter(w => w.length > 2);
 
@@ -14344,48 +14375,60 @@ Keep it concise. Use bullet points. Include platform names in brackets like [Cha
               score += matches;
             });
             return { conv: c, score };
-          }).filter(s => s.score > 0).sort((a, b) => b.score - a.score).slice(0, 8);
+          }).filter(s => s.score > 0).sort((a, b) => b.score - a.score).slice(0, 10);
 
           let contextBlock = '';
           if (scored.length > 0) {
             contextBlock = scored.map((s, i) => {
               const msgs = s.conv.conversation || [];
-              const relevant = msgs.map(m => m.text || '').join(' ').slice(0, 500);
-              return `[Source ${i + 1}] Platform: ${s.conv.platform || 'unknown'} | ${getTimeAgo(s.conv.ts)} | Relevance: ${s.score}\n${relevant}`;
-            }).join('\n\n---\n\n');
+              const userMsgs = msgs.filter(m => m.role === 'user').map(m => m.text).join('\n---\n').slice(0, 1000);
+              const aiMsgs = msgs.filter(m => m.role === 'assistant').map(m => m.text).join('\n---\n').slice(0, 1000);
+              const platform = s.conv.platform || location.hostname || 'unknown';
+              return `[Source ${i + 1}] Platform: ${platform} | ${getTimeAgo(s.conv.ts)}
+User said: ${userMsgs}
+AI replied: ${aiMsgs}`;
+            }).join('\n\n========================\n\n');
           } else {
-            contextBlock = 'No directly relevant past conversations found. Generate general guidance based on the task type.';
+            contextBlock = 'No directly relevant past conversations found. Generate general, highly professional guidance based on the task type.';
           }
 
-          const prompt = `You are Prepare Me, a preparation assistant inside ChatBridge.
+          const prompt = `You are "Prepare Me" — an elite preparation assistant inside ChatBridge.
 
-The user is about to: ${task}
-${details ? `Additional details: ${details}` : ''}
+USER'S UPCOMING TASK: 
+${task}
+${details ? `Additional Context provided by user: ${details}` : ''}
 
-Based on their past AI conversations (${scored.length} relevant found):
-
+RELEVANT PRIOR CONVERSATIONS FOUND (${scored.length}):
+========================
 ${contextBlock}
+========================
 
-Assemble a PREP PACK:
+YOUR INSTRUCTIONS:
+Assemble a highly professional, comprehensive PREP PACK for the user's upcoming task.
+Synthesize the provided conversation history. If no exact matches are found, provide expert general guidance for the task.
+CRITICAL RULES:
+- Start directly with the first markdown heading. No intro fluff.
+- Use explicit bullet points. 
+- Do NOT hallucinate specifics; infer what you can logically.
+- Mention the platform [Like This] at the beginning of bullet points when referencing past AI discussions.
 
+REQUIRED SECTIONS:
 ## Key Background
-Relevant context from past chats that applies to this task. Cite source platforms in brackets.
+The crucial context and history the user needs to remember before starting this task.
 
 ## Talking Points
-5 ready-to-use points synthesized from their history. Make them specific and actionable.
+5 ready-to-use, specific, and actionable points synthesized for this task. 
 
 ## Questions to Ask
-Things they discussed but never resolved, or gaps that need addressing.
+Critical questions the user should ask during this task to uncover gaps or resolve ambiguities.
 
 ## Watch Out
-Potential issues, contradictions, or risks found in their past discussions.
+Potential risks, pitfalls, or contradictions to be aware of.
 
 ## Quick Reference
-Key facts, numbers, names, deadlines, or links mentioned across conversations.
+A hyper-dense cheat sheet of key facts, numbers, names, or deadlines pulled from their context or relevant to the task.`;
 
-Make it scannable, actionable, and ready to use immediately. Be specific — reference actual content from their conversations.`;
-
-          const res = await callAgentRouteWithRetry(prompt, { complexity: 'deep', maxTokens: 1400 });
+          const res = await callAgentRouteWithRetry(prompt, { complexity: 'deep', maxTokens: 1500 });
 
           if (res && res.ok && res.result) {
             // Build sources list
@@ -14429,6 +14472,7 @@ Make it scannable, actionable, and ready to use immediately. Be specific — ref
           resultDiv.innerHTML = `<div class="cb-agent-error">Error: ${e.message || 'Unknown error'}</div>`;
           debugLog('Prepare Me error', e);
         } finally {
+          if (typeof prepTimer !== 'undefined') clearInterval(prepTimer);
           runBtn.disabled = false;
           runBtn.textContent = 'Build Prep Pack';
         }
@@ -14506,15 +14550,24 @@ Make it scannable, actionable, and ready to use immediately. Be specific — ref
           }
 
           card.innerHTML = `
-            <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
-              <div style="flex:1;min-width:0;">
-                <div class="cb-track-card-name">${hasActivity ? '<span style="color:#8B5CF6;margin-right:4px;">●</span>' : ''}${escapeHtml(topic.label)}</div>
-                <div class="cb-track-card-meta">${topic.hitCount || 0} hits · ${platforms} · ${lastSeen}</div>
-                ${sparkHtml}
+            <div style="display:flex;justify-content:space-between;align-items:center;width:100%;gap:12px;">
+              <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px;">
+                <div style="display:flex;align-items:center;gap:8px;">
+                  ${hasActivity ? '<div style="width:8px;height:8px;border-radius:50%;background:#8B5CF6;box-shadow:0 0 8px rgba(139,92,246,0.6);" aria-label="New activity"></div>' : ''}
+                  <span class="cb-track-card-name" style="font-size:14px;font-weight:600;color:var(--cb-text);">${escapeHtml(topic.label)}</span>
+                </div>
+                <div class="cb-track-card-meta" style="font-size:11px;color:var(--cb-subtext);display:flex;gap:5px;flex-wrap:wrap;align-items:center;">
+                  <span style="display:flex;align-items:center;gap:3px;"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>${topic.hitCount || 0} hits</span>
+                  <span style="opacity:0.5;">•</span>
+                  <span>${platforms}</span>
+                  <span style="opacity:0.5;">•</span>
+                  <span>${lastSeen}</span>
+                </div>
+                ${sparkHtml ? `<div style="margin-top:2px;">${sparkHtml}</div>` : ''}
               </div>
-              <div style="display:flex;gap:4px;">
-                <button class="cb-track-view cb-agent-btn-secondary" style="padding:4px 8px;font-size:9px;" data-id="${topic.id}">View</button>
-                <button class="cb-track-remove cb-agent-btn-secondary" style="padding:4px 8px;font-size:9px;color:rgba(255,100,100,0.8);" data-id="${topic.id}">×</button>
+              <div style="display:flex;flex-direction:column;gap:6px;">
+                <button class="cb-track-view cb-agent-btn-primary" style="padding:6px 14px;font-size:11px;min-width:70px;justify-content:center;" data-id="${topic.id}">View</button>
+                <button class="cb-track-remove cb-agent-btn-secondary" style="padding:4px 14px;font-size:11px;min-width:70px;justify-content:center;color:var(--cb-error, #f87171);background:transparent;border-color:transparent;" data-id="${topic.id}">Remove</button>
               </div>
             </div>
           `;
@@ -14550,57 +14603,77 @@ Make it scannable, actionable, and ready to use immediately. Be specific — ref
 
         listDiv.style.display = 'none';
         detailDiv.style.display = 'block';
+        let trackTimer;
         detailDiv.innerHTML = `
           <div class="cb-agent-loading">
             <div class="cb-agent-skeleton cb-agent-skeleton-lg"></div>
             <div class="cb-agent-skeleton cb-agent-skeleton-md"></div>
-            <div class="cb-agent-loading-text">Analyzing topic across platforms...</div>
+            <div class="cb-agent-loading-text" id="cb-track-load-text">Gathering topic hits...</div>
           </div>`;
 
+        const loadTexts = ['Extracting relevant mentions...', 'Building timeline...', 'Formulating status dashboard...'];
+        let loadIdx = 0;
+        trackTimer = setInterval(() => {
+          const lt = detailDiv.querySelector('#cb-track-load-text');
+          if (lt) { loadIdx = (loadIdx + 1) % loadTexts.length; lt.textContent = loadTexts[loadIdx]; }
+        }, 1500);
+
         try {
-          const convos = await StorageManager.getConversations();
+          const convos = await loadConversationsAsync();
           const keywords = topic.keywords || [topic.label.toLowerCase()];
           const relevant = convos.filter(c => {
             const text = (c.conversation || []).map(m => m.text || '').join(' ').toLowerCase();
             return keywords.some(kw => text.includes(kw));
-          }).slice(0, 10);
+          }).slice(0, 15);
 
           const contextBlock = relevant.map((c, i) => {
-            const msgs = (c.conversation || []).map(m => m.text || '').join(' ').slice(0, 400);
-            return `[${c.platform || 'unknown'}] ${getTimeAgo(c.ts)}: ${msgs}`;
-          }).join('\n\n');
+            const msgs = c.conversation || [];
+            const userMsgs = msgs.filter(m => m.role === 'user').map(m => m.text).join('\n---\n').slice(0, 800);
+            const aiMsgs = msgs.filter(m => m.role === 'assistant').map(m => m.text).join('\n---\n').slice(0, 800);
+            return `[Source ${i + 1}] Platform: ${c.platform || 'unknown'} | ${getTimeAgo(c.ts)}
+User said: ${userMsgs}
+AI replied: ${aiMsgs}`;
+          }).join('\n\n========================\n\n');
 
-          const prompt = `You are Track This, a topic tracking agent inside ChatBridge.
+          const prompt = `You are "Track This" — an elite AI tracking agent inside ChatBridge.
 
-The user is tracking: "${topic.label}"
-Keywords: ${keywords.join(', ')}
-First tracked: ${getTimeAgo(topic.createdAt)}
-Total hits: ${topic.hitCount || 0}
-Platforms: ${(topic.platforms || []).join(', ') || 'none yet'}
+TOPIC YOU ARE TRACKING: "${topic.label}"
+KEYWORDS: ${keywords.join(', ')}
+FIRST TRACKED: ${getTimeAgo(topic.createdAt)}
+TOTAL HITS: ${topic.hitCount || 0}
+PLATFORMS FOUND ON: ${(topic.platforms || []).join(', ') || 'None yet'}
 
-Relevant conversations (${relevant.length} found):
-${contextBlock || 'No relevant conversations found yet.'}
+CONVERSATIONAL DATA MATCHING TOPIC (${relevant.length} found):
+========================
+${contextBlock || 'No relevant conversations found yet. Generate a placeholder tracking status.'}
+========================
 
-Provide a status dashboard:
+YOUR INSTRUCTIONS:
+Analyze the conversation data and generate a comprehensive Status Dashboard for this specific topic.
+CRITICAL RULES:
+- Start directly with the first markdown heading. No greetings.
+- Use explicit bullet points.
+- Do NOT hallucinate. Point out if there's no data for a section.
+- Base your analysis specifically on actual mentions of "${topic.label}".
+- Use Markdown bolding to emphasize names, dates, or key concepts.
 
+REQUIRED SECTIONS:
 ## Current Status
-Where things stand with this topic right now. Be specific.
+A sharply written summary of exactly where this topic currently stands based on the most recent discussions.
 
 ## Timeline
-Key moments when this topic came up, chronologically. Include platform names.
+A quick chronological breakdown of how this topic evolved across the provided sources. Cite platform names like [ChatGPT].
 
-## Key Updates
-What changed or progressed since the user started tracking.
+## Key Updates & Discoveries
+What new information, code snippets, or decisions were made regarding this topic since the oldest source.
 
 ## Open Items
-Unresolved questions or pending actions related to this topic.
+Specific pending actions, bugs, or unresolved debates related to the topic.
 
 ## Suggested Next Step
-One specific, actionable recommendation.
+One incredibly specific, actionable recommendation for what the user should do next with this topic.`;
 
-Be concise and specific. Reference actual content from conversations.`;
-
-          const res = await callAgentRouteWithRetry(prompt, { complexity: 'deep', maxTokens: 1000 });
+          const res = await callAgentRouteWithRetry(prompt, { complexity: 'deep', maxTokens: 1500 });
 
           if (res && res.ok && res.result) {
             const formatted = formatAgentMarkdown(res.result);
@@ -14639,6 +14712,8 @@ Be concise and specific. Reference actual content from conversations.`;
         } catch (e) {
           detailDiv.innerHTML = `<div class="cb-agent-error">Error: ${e.message}</div>`;
           debugLog('Track This detail error', e);
+        } finally {
+          if (typeof trackTimer !== 'undefined') clearInterval(trackTimer);
         }
       }
 
@@ -15036,7 +15111,7 @@ Be rigorous but fair. Cite specific parts of the original answer when critiquing
             }
             contextText = contextText.slice(0, 6000);
           } else if (source === 'recent') {
-            const convos = await StorageManager.getConversations();
+            const convos = await loadConversationsAsync();
             contextText = convos.slice(0, 5).map((c, i) => {
               const msgs = (c.conversation || []).map(m => `${m.role}: ${m.text}`).join('\n');
               return `--- Chat ${i + 1} (${c.platform || 'unknown'}, ${getTimeAgo(c.ts)}) ---\n${msgs.slice(0, 1200)}`;
@@ -15044,7 +15119,7 @@ Be rigorous but fair. Cite specific parts of the original answer when critiquing
           } else if (source === 'topic') {
             const topicQuery = topicInput.value.trim();
             if (!topicQuery) { toast('Enter a topic to search'); runBtn.disabled = false; runBtn.textContent = 'Generate Handoff Document'; return; }
-            const convos = await StorageManager.getConversations();
+            const convos = await loadConversationsAsync();
             const relevant = convos.filter(c => {
               const text = (c.conversation || []).map(m => m.text || '').join(' ').toLowerCase();
               return topicQuery.toLowerCase().split(/\s+/).some(w => text.includes(w));
@@ -15207,202 +15282,132 @@ Make this ready to send as-is. No meta-commentary. Clean markdown formatting.`;
         runBtn.disabled = true;
         runBtn.textContent = 'Analyzing your AI usage...';
         resultDiv.style.display = 'block';
+        let pulseTimer;
         resultDiv.innerHTML = `
           <div class="cb-agent-loading">
             <div class="cb-agent-skeleton cb-agent-skeleton-lg"></div>
             <div class="cb-agent-skeleton cb-agent-skeleton-md"></div>
             <div class="cb-agent-skeleton cb-agent-skeleton-sm"></div>
-            <div class="cb-agent-loading-text">Crunching your data across platforms...</div>
+            <div class="cb-agent-loading-text" id="cb-pulse-load-text">Crunching your data across platforms...</div>
           </div>`;
 
+        const loadTexts = ['Extracting usage patterns...', 'Analyzing behavioral metrics...', 'Formulating productivity insights...'];
+        let loadIdx = 0;
+        pulseTimer = setInterval(() => {
+          const lt = resultDiv.querySelector('#cb-pulse-load-text');
+          if (lt) { loadIdx = (loadIdx + 1) % loadTexts.length; lt.textContent = loadTexts[loadIdx]; }
+        }, 1500);
+
         try {
-          const convos = await StorageManager.getConversations();
+          const convos = await loadConversationsAsync();
           const pulseSessions = await StorageManager.getPulseSessions();
 
           if ((!convos || convos.length === 0) && (!pulseSessions || pulseSessions.length === 0)) {
+            if (typeof pulseTimer !== 'undefined') clearInterval(pulseTimer);
             resultDiv.innerHTML = '<div class="cb-agent-empty">No usage data yet. Use ChatBridge for a while and come back!</div>';
             runBtn.disabled = false;
             runBtn.textContent = 'Generate My Pulse';
             return;
           }
 
-          // Build analytics data
+          // Build analytics context simply without UI stats
           const platformCounts = {};
-          const topicFrequency = {};
-          const dailyActivity = {};
           let totalMessages = 0;
           let totalWords = 0;
+          const topicFrequency = {};
           const stopWords = ['that', 'this', 'with', 'from', 'they', 'have', 'been', 'will', 'would', 'could', 'should', 'about', 'their', 'which', 'there', 'your', 'more', 'also', 'some', 'when', 'what', 'here', 'just', 'like', 'than', 'them', 'then', 'into', 'over', 'such', 'only', 'very', 'each', 'much', 'make', 'know', 'well', 'back', 'even', 'most', 'made', 'after', 'does', 'need', 'help', 'please', 'sure', 'want', 'think', 'provide', 'following', 'using', 'based'];
 
-          convos.forEach(c => {
-            const platform = (c.platform || 'unknown').replace(/^www\./, '').split('.')[0];
+          // Let's bring in full context text of the 15 most recent convos
+          const recentConvos = convos.slice(0, 15);
+          const convoContextBlock = recentConvos.map((c, i) => {
+            const platform = (c.platform || location.hostname || 'unknown').replace(/^www\./, '').split('.')[0];
             platformCounts[platform] = (platformCounts[platform] || 0) + 1;
 
             const msgs = c.conversation || [];
             totalMessages += msgs.length;
+            const userMsgs = msgs.filter(m => m.role === 'user').map(m => m.text);
+            const aiMsgs = msgs.filter(m => m.role === 'assistant').map(m => m.text);
 
-            msgs.forEach(m => {
-              totalWords += (m.text || '').split(/\s+/).length;
-              const words = (m.text || '').toLowerCase().match(/\b[a-z]{4,}\b/g) || [];
-              words.forEach(w => {
-                if (!stopWords.includes(w)) {
-                  topicFrequency[w] = (topicFrequency[w] || 0) + 1;
-                }
-              });
+            userMsgs.forEach(text => {
+              totalWords += (text || '').split(/\s+/).length;
+              const words = (text || '').toLowerCase().match(/\b[a-z]{5,}\b/g) || [];
+              words.forEach(w => { if (!stopWords.includes(w)) topicFrequency[w] = (topicFrequency[w] || 0) + 1; });
             });
 
-            const day = new Date(c.ts).toLocaleDateString();
-            dailyActivity[day] = (dailyActivity[day] || 0) + 1;
-          });
+            return `[Conversation ${i + 1}] Platform: ${platform} | ${getTimeAgo(c.ts)}
+User said: ${userMsgs.join('\n---\n').slice(0, 600)}
+AI replied: ${aiMsgs.join('\n---\n').slice(0, 600)}`;
+          }).join('\n\n========================\n\n');
 
-          const topPlatforms = Object.entries(platformCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
-          const topTopics = Object.entries(topicFrequency).sort((a, b) => b[1] - a[1]).slice(0, 15);
-          const avgMsgsPerChat = convos.length > 0 ? Math.round(totalMessages / convos.length) : 0;
-          const activeDays = Object.keys(dailyActivity).length;
+          const topPlatforms = Object.entries(platformCounts).sort((a, b) => b[1] - a[1]).map(([n, c]) => `${n}(${c})`).join(', ');
+          const topTopics = Object.entries(topicFrequency).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([w, c]) => `${w}(${c})`).join(', ');
 
-          // Build donut chart for platforms
-          const totalConvos = convos.length;
-          const platformColors = ['#6366F1', '#8B5CF6', '#A78BFA', '#C4B5FD', '#DDD6FE'];
-          let conicDeg = 0;
-          const conicStops = topPlatforms.map(([name, count], i) => {
-            const pct = (count / totalConvos) * 100;
-            const start = conicDeg;
-            conicDeg += pct;
-            return `${platformColors[i] || '#4B5563'} ${start.toFixed(1)}deg ${conicDeg.toFixed(1)}deg`;
-          });
-          if (conicDeg < 360) conicStops.push(`rgba(255,255,255,0.04) ${conicDeg.toFixed(1)}deg 360deg`);
-          const donutGradient = `conic-gradient(${conicStops.join(', ')})`;
+          const analyticsContext = `Usage Summary Details:
+- Recent Conversations Analyzed: ${recentConvos.length}
+- Total Messages in these: ${totalMessages}
+- Estimated Total Words by User: ${totalWords}
+- Platform Distribution: ${topPlatforms}
+- Most Used Keywords: ${topTopics}`;
 
-          // Platform legend
-          const legendHtml = topPlatforms.map(([name, count], i) => `
-            <div style="display:flex;align-items:center;gap:6px;font-size:10px;">
-              <div style="width:8px;height:8px;border-radius:2px;background:${platformColors[i] || '#4B5563'};"></div>
-              <span style="color:var(--cb-white);">${name}</span>
-              <span style="color:var(--cb-subtext);margin-left:auto;">${count}</span>
-            </div>
-          `).join('');
+          const prompt = `You are "My Pulse" — an elite AI productivity and usage analyst inside ChatBridge.
 
-          // Build heatmap for last 7 days
-          const dayNames = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-          const now = new Date();
-          let heatmapHtml = '';
-          for (let i = 6; i >= 0; i--) {
-            const d = new Date(now);
-            d.setDate(d.getDate() - i);
-            const key = d.toLocaleDateString();
-            const val = dailyActivity[key] || 0;
-            const opacity = val === 0 ? 0.05 : Math.min(0.8, 0.1 + val * 0.15);
-            heatmapHtml += `<div class="cb-heatmap-day" style="background:rgba(99,102,241,${opacity});">
-              <div class="cb-heatmap-val">${val}</div>
-              <div class="cb-heatmap-label">${dayNames[d.getDay()]}</div>
-            </div>`;
-          }
-
-          // Topic cloud
-          const cloudHtml = topTopics.slice(0, 12).map(([word, count]) => {
-            const size = 9 + Math.min(count * 0.5, 5);
-            return `<span class="cb-topic-word" style="font-size:${size}px;">${word}</span>`;
-          }).join('');
-
-          resultDiv.innerHTML = `
-            <div class="cb-agent-stats">
-              <div class="cb-agent-stat"><div class="cb-agent-stat-val">${convos.length}</div><div class="cb-agent-stat-label">Conversations</div></div>
-              <div class="cb-agent-stat"><div class="cb-agent-stat-val">${totalMessages}</div><div class="cb-agent-stat-label">Messages</div></div>
-              <div class="cb-agent-stat"><div class="cb-agent-stat-val">${Object.keys(platformCounts).length}</div><div class="cb-agent-stat-label">Platforms</div></div>
-              <div class="cb-agent-stat"><div class="cb-agent-stat-val">${activeDays}</div><div class="cb-agent-stat-label">Active Days</div></div>
-            </div>
-
-            <div class="cb-agent-result-section">
-              <div class="cb-agent-result-header">📊 Platform Usage</div>
-              <div style="display:flex;align-items:center;gap:16px;padding:6px 0;">
-                <div class="cb-donut" style="background:${donutGradient};flex-shrink:0;">
-                  <div class="cb-donut-hole">
-                    <div class="cb-donut-total">${totalConvos}</div>
-                    <div class="cb-donut-label">total</div>
-                  </div>
-                </div>
-                <div style="flex:1;display:flex;flex-direction:column;gap:4px;">${legendHtml}</div>
-              </div>
-            </div>
-
-            <div class="cb-agent-result-section">
-              <div class="cb-agent-result-header">🔥 7-Day Activity</div>
-              <div class="cb-heatmap">${heatmapHtml}</div>
-            </div>
-
-            <div class="cb-agent-result-section">
-              <div class="cb-agent-result-header">💬 Top Topics</div>
-              <div class="cb-topic-cloud">${cloudHtml || '<span style="font-size:10px;color:var(--cb-subtext);">Not enough data yet</span>'}</div>
-            </div>
-
-            <div id="cb-pulse-ai-insights" class="cb-agent-result-section">
-              <div class="cb-agent-result-header">🧠 AI Insights</div>
-              <div class="cb-agent-loading">
-                <div class="cb-agent-skeleton cb-agent-skeleton-md"></div>
-                <div class="cb-agent-skeleton cb-agent-skeleton-sm"></div>
-                <div class="cb-agent-loading-text">Generating AI insights...</div>
-              </div>
-            </div>
-          `;
-
-          // Now generate AI insights
-          const insightsDiv = resultDiv.querySelector('#cb-pulse-ai-insights');
-
-          const analyticsContext = `Usage Summary:
-- ${convos.length} total conversations across ${Object.keys(platformCounts).length} platforms
-- ${totalMessages} total messages, ${totalWords} total words
-- ${avgMsgsPerChat} avg messages per chat
-- ${activeDays} active days
-- Top platforms: ${topPlatforms.map(([n, c]) => `${n}(${c})`).join(', ')}
-- Top topics (by frequency): ${topTopics.slice(0, 10).map(([w, c]) => `${w}(${c})`).join(', ')}
-- Session data points: ${pulseSessions.length}`;
-
-          const prompt = `You are My Pulse, an AI usage analytics agent inside ChatBridge.
-
+USER'S OVERALL STATS:
 ${analyticsContext}
 
-Generate personalized productivity insights:
+RECENT CONVERSATIONAL DATA:
+========================
+${convoContextBlock}
+========================
 
-## Usage Patterns
-How does the user interact with AI? Frequency, platform preferences, session behavior. Be specific with the numbers.
+YOUR INSTRUCTIONS:
+Analyze the user's conversational behavior, focus areas, and AI tool usage.
+Provide deep, personalized productivity insights.
+CRITICAL RULES:
+- Start directly with the first markdown heading. No greetings.
+- Use explicit bullet points.
+- Identify real patterns, blind spots, or habits embedded directly in the data.
+- Mention the platform [Like This] at the beginning of bullet points when comparing usage.
 
-## Topic Trends
-What are their recurring interests? What topics are growing or declining? Any obsessions or blind spots?
+REQUIRED SECTIONS:
+## Work Habits
+Analyze how they use AI. Are they assigning it rote tasks, deep creative work, coding, debugging? Identify their core workflow style (e.g., "The Delegator", "The Co-Writer", "The Debugger").
 
-## Platform Intelligence
-Which AI do they use for what? Are they using the right tool for the right job?
+## Topic Intelligence
+Synthesize the broader concepts and projects they seem to be hyper-focused on lately based on their prompts.
+
+## Tool Efficacy
+Are they using the correct AI platforms for their needs? Do they favor one style? Suggest how they could optimize their multi-platform usage.
 
 ## Productivity Score
-Rate their AI productivity 1-10 based on: diversity of use, conversation depth, multi-platform leverage, and consistency. Explain the score.
+Rate their AI productivity out of 10. Explain exactly why you gave them this score based on their data.
 
-## 3 Recommendations
-Specific, actionable suggestions to improve their AI productivity. Based on actual patterns, not generic advice.
+## 3 Radical Suggestions
+Three incredibly specific, actionable, and non-obvious ways they can get more out of their AI workflow starting today.`;
 
-Be conversational and insightful. Reference their actual data. Make them feel like this is truly personalized.`;
-
-          const res = await callAgentRouteWithRetry(prompt, { complexity: 'deep', maxTokens: 1200 });
+          const res = await callAgentRouteWithRetry(prompt, { complexity: 'deep', maxTokens: 1500 });
 
           if (res && res.ok && res.result) {
             const formatted = formatAgentMarkdown(res.result);
-            insightsDiv.innerHTML = `
-              <div class="cb-agent-result-header">🧠 AI Insights</div>
+            resultDiv.innerHTML = `
+              <div class="cb-agent-result-header" style="margin-bottom:12px;">🧠 AI Insights</div>
               <div class="cb-agent-result-body">${formatted}</div>
-              <div class="cb-agent-action-row" style="margin-top:10px;">
-                <button id="cb-pulse-copy" class="cb-agent-btn-secondary">Copy Report</button>
+              <div class="cb-agent-action-row" style="margin-top:14px;">
+                <button id="cb-pulse-copy" class="cb-agent-btn-secondary">Copy Insights</button>
               </div>
-              <div class="cb-agent-meta">${res.model_used || 'AI'} · ${res.latency_ms || 0}ms</div>
+              <div class="cb-agent-meta" style="margin-top:8px;">Analyzed ${recentConvos.length} chats · ${res.model_used || 'AI'} · ${res.latency_ms || 0}ms</div>
             `;
-            insightsDiv.querySelector('#cb-pulse-copy').addEventListener('click', async () => {
-              try { await navigator.clipboard.writeText(res.result); toast('Report copied!'); } catch (_) { toast('Copy failed'); }
+            resultDiv.querySelector('#cb-pulse-copy').addEventListener('click', async () => {
+              try { await navigator.clipboard.writeText(res.result); toast('Insights copied!'); } catch (_) { toast('Copy failed'); }
             });
             toast('Pulse report ready!');
           } else {
-            insightsDiv.innerHTML = `<div class="cb-agent-result-header">🧠 AI Insights</div><div class="cb-agent-error">AI insights unavailable: ${res && res.error ? res.error : 'Unknown error'}</div>`;
+            resultDiv.innerHTML = `<div class="cb-agent-error">AI insights unavailable: ${res && res.error ? res.error : 'Unknown error'}</div>`;
           }
         } catch (e) {
           resultDiv.innerHTML = `<div class="cb-agent-error">Error: ${e.message || 'Unknown error'}</div>`;
           debugLog('My Pulse error', e);
         } finally {
+          if (typeof pulseTimer !== 'undefined') clearInterval(pulseTimer);
           runBtn.disabled = false;
           runBtn.textContent = 'Generate My Pulse';
         }
@@ -18488,23 +18493,23 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
               }
             };
             const summary = await hierarchicalSummarize(fullText, opts);
-            formatted = summary + '\n\n🔄 Please continue based on this context.';
+            formatted = summary + '\n\n---\n[SYSTEM: The user just restored this past conversation summary. Analyze the context above, but DO NOT summarize it or answer it yet. Acknowledge by simply saying "Context restored. Ready for your next prompt." and await instructions.]';
             // Save summary for future use
             sel.summary = summary;
             await saveConversation(sel);
           } catch (sumErr) {
             debugLog('Auto-summarize failed, using full text', sumErr);
             updateRestoreStatus('Autosummary failed. Falling back to full text...');
-            formatted = sel.conversation.map(m => (m.role === 'user' ? 'User: ' : 'Assistant: ') + m.text).join('\n\n') + '\n\n🔄 Please continue the conversation.';
+            formatted = sel.conversation.map(m => (m.role === 'user' ? 'User: ' : 'Assistant: ') + m.text).join('\n\n') + '\n\n---\n[SYSTEM: The user just restored this past conversation. Analyze the context above, but DO NOT summarize it or answer it yet. Acknowledge by simply saying "Context restored. Ready for your next prompt." and await instructions.]';
           }
         } else if (sel.summary && typeof sel.summary === 'string' && sel.summary.trim().length > 0) {
           // Use existing summary
           updateRestoreStatus('Using existing saved summary. Restoring to chat...');
-          formatted = sel.summary.trim();
+          formatted = sel.summary.trim() + '\n\n---\n[SYSTEM: The user just restored this past conversation summary. Analyze the context above, but DO NOT summarize it or answer it yet. Acknowledge by simply saying "Context restored. Ready for your next prompt." and await instructions.]';
         } else {
           // Use full conversation for small chats
           updateRestoreStatus('Small chat detected. Restoring full conversation...');
-          formatted = sel.conversation.map(m => (m.role === 'user' ? 'User: ' : 'Assistant: ') + m.text).join('\n\n') + '\n\n🔄 Please continue the conversation.';
+          formatted = sel.conversation.map(m => (m.role === 'user' ? 'User: ' : 'Assistant: ') + m.text).join('\n\n') + '\n\n---\n[SYSTEM: The user just restored this past conversation. Analyze the context above, but DO NOT summarize it or answer it yet. Acknowledge by simply saying "Context restored. Ready for your next prompt." and await instructions.]';
         }
         // Collect attachments from conversation
         const allAtts = [];
@@ -22593,3 +22598,4 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
   }
 
 })();
+
