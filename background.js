@@ -1766,6 +1766,32 @@ Return ONLY the rewritten text. No preamble. No explanation.`;
     return true;
   }
 
+  // Forward conversation load from sidebar to the active tab's content script
+  if (msg && msg.type === 'chatbridge_load_conversation') {
+    try {
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        if (tabs && tabs[0] && tabs[0].id) {
+          chrome.tabs.sendMessage(tabs[0].id, {
+            type: 'chatbridge_load_conversation',
+            conversation: msg.conversation
+          }, (res) => {
+            if (chrome.runtime.lastError) {
+              console.warn('[ChatBridge BG] Forward load_conversation failed:', chrome.runtime.lastError.message);
+              sendResponse({ ok: false, error: 'tab_not_reachable' });
+            } else {
+              sendResponse(res || { ok: true });
+            }
+          });
+        } else {
+          sendResponse({ ok: false, error: 'no_active_tab' });
+        }
+      });
+    } catch (e) {
+      sendResponse({ ok: false, error: e && e.message });
+    }
+    return true;
+  }
+
   // Handler to save a conversation from content script into conversation DB
   if (msg && msg.type === 'save_conversation') {
     (async () => {

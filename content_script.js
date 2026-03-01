@@ -411,7 +411,50 @@
         })();
         return true; // Keep channel open for async response
       }
-      // Local embedding request from background (compute in content script)
+      // Handle conversation load from sidebar history viewer
+      if (msg && msg.type === 'chatbridge_load_conversation') {
+        try {
+          const conv = msg.conversation;
+          if (conv) {
+            const msgs = conv.conversation || conv.messages || [];
+            const fullText = msgs.map(m => `${m.role === 'user' ? 'User' : 'AI'}: ${m.text || m.content || ''}`).join('\n\n');
+
+            // Set as active conversation — all features check these
+            if (typeof window.ChatBridge !== 'undefined') {
+              if (typeof window.ChatBridge.setLastScan === 'function') {
+                window.ChatBridge.setLastScan({
+                  ts: conv.ts,
+                  platform: conv.platform || 'unknown',
+                  model: conv.model || 'unknown',
+                  messages: msgs,
+                  conversation: conv,
+                  text: fullText,
+                  timestamp: Date.now()
+                });
+              }
+              window.ChatBridge.selectedConversation = conv;
+              try { window.ChatBridge._lastScanResult = msgs; } catch (_) { }
+
+              // Refresh the in-panel history list if available
+              if (typeof window.ChatBridge.refreshHistory === 'function') {
+                window.ChatBridge.refreshHistory();
+              }
+            }
+
+            // Update status
+            if (typeof window.__CB_UPDATE_STATUS === 'function') {
+              window.__CB_UPDATE_STATUS(`Loaded from sidebar`, 'active');
+            }
+
+            console.log('[ChatBridge] Loaded conversation from sidebar:', msgs.length, 'messages');
+            sendResponse({ ok: true });
+          }
+        } catch (e) {
+          console.error('[ChatBridge] Load conversation error:', e);
+          sendResponse({ ok: false, error: e && e.message });
+        }
+        return true;
+      }
       if (msg && msg.type === 'local_get_embedding') {
         (async () => {
           try {
@@ -9997,30 +10040,77 @@ Be thorough and fair to both sides.`
                 card.style.borderColor = 'rgba(255,255,255,0.06)';
               });
 
-              // Open button handler
+              // Open button handler — set as active conversation so all features use it
               card.querySelector('.cb-lib-open').addEventListener('click', async (e) => {
                 e.stopPropagation();
                 try {
                   const msgs = conv.messages || conv.conversation || [];
                   if (msgs.length === 0) { toast('No messages to restore'); return; }
 
-                  // Format conversation for insertion
-                  const text = msgs.map(m => `${m.role === 'user' ? 'User' : 'AI'}: ${m.text}`).join('\n\n');
-                  await restoreToChat(text, msgs);
-                  toast('Conversation restored!');
+                  // Format conversation text
+                  const fullText = msgs.map(m => `${m.role === 'user' ? 'User' : 'AI'}: ${m.text || m.content || ''}`).join('\n\n');
+
+                  // Set as active conversation for all features (summarize, translate, rewrite, etc.)
+                  lastScannedText = fullText;
+                  window.ChatBridge.selectedConversation = conv;
+                  window.ChatBridge.setLastScan({
+                    ts: conv.ts,
+                    platform: conv.platform || 'unknown',
+                    model: conv.model || 'unknown',
+                    messages: msgs,
+                    conversation: conv,
+                    text: fullText,
+                    timestamp: Date.now()
+                  });
+                  try { window.ChatBridge._lastScanResult = msgs; } catch (_) { }
+
+                  // Update premium preview card
+                  try {
+                    const previewStatsEl = shadow.querySelector('#cb-preview-stats');
+                    const previewTextEl = shadow.querySelector('#cb-preview-text');
+                    const wordCount = msgs.reduce((acc, m) => acc + ((m.text || m.content || '').split(/\s+/).length), 0);
+                    if (previewStatsEl) previewStatsEl.innerHTML = `<span class="cb-preview-stat">${wordCount.toLocaleString()} words</span><span class="cb-preview-stat">${msgs.length} msgs</span>`;
+                    if (previewTextEl) { previewTextEl.textContent = fullText.slice(0, 150) + (fullText.length > 150 ? '...' : ''); previewTextEl.style.opacity = '1'; }
+                    if (typeof window.__CB_UPDATE_STATUS === 'function') window.__CB_UPDATE_STATUS(`Loaded from library`, 'active');
+                  } catch (_) { }
+
+                  toast(`Loaded ${msgs.length} messages`);
                 } catch (err) {
                   debugLog('Open conversation error:', err);
                   toast('Failed to open');
                 }
               });
 
-              // Delete button handler
+              // Delete button handler — also cleans active state if this was the active conv
               card.querySelector('.cb-lib-del').addEventListener('click', async (e) => {
                 e.stopPropagation();
                 try {
                   const allConvs = await loadConversationsAsync();
                   const filtered = allConvs.filter(c => (c.id || c.ts) !== convId);
                   await saveConversationsAsync(filtered);
+
+                  // If deleted conversation was the active one, clear active state
+                  try {
+                    const selConv = window.ChatBridge.selectedConversation;
+                    if (selConv && (selConv.id || selConv.ts) === convId) {
+                      lastScannedText = '';
+                      window.ChatBridge._lastScanData = null;
+                      window.ChatBridge.selectedConversation = null;
+                      try { window.ChatBridge._lastScanResult = null; } catch (_) { }
+                      // Reset preview card
+                      try {
+                        const pStats = shadow.querySelector('#cb-preview-stats');
+                        const pText = shadow.querySelector('#cb-preview-text');
+                        if (pStats) pStats.innerHTML = '<span class="cb-preview-stat">0 words</span><span class="cb-preview-stat">0 msgs</span>';
+                        if (pText) { pText.textContent = 'Scan a conversation to see preview...'; pText.style.opacity = ''; }
+                        if (typeof window.__CB_UPDATE_STATUS === 'function') window.__CB_UPDATE_STATUS('Idle', 'idle');
+                      } catch (_) { }
+                    }
+                  } catch (_) { }
+
+                  // Also sync to background
+                  try { chrome.runtime.sendMessage({ type: 'replace_conversations', payload: { conversations: filtered } }); } catch (_) { }
+
                   card.style.opacity = '0';
                   card.style.transform = 'translateX(10px)';
                   setTimeout(() => {
@@ -17117,6 +17207,28 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         // Clear the preview/last-scanned text
         try { preview.textContent = 'Preview: (none)'; } catch (e) { }
         lastScannedText = '';
+
+        // Clear all active conversation state
+        try {
+          window.ChatBridge._lastScanData = null;
+          window.ChatBridge.selectedConversation = null;
+          try { window.ChatBridge._lastScanResult = null; } catch (_) { }
+        } catch (_) { }
+
+        // Clear image vault (IndexedDB)
+        try {
+          if (typeof clearImageVault === 'function') await clearImageVault();
+          else if (window.ChatBridge && typeof window.ChatBridge.clearImageVault === 'function') await window.ChatBridge.clearImageVault();
+        } catch (_) { }
+
+        // Reset premium preview card
+        try {
+          const pStats = shadow.querySelector('#cb-preview-stats');
+          const pText = shadow.querySelector('#cb-preview-text');
+          if (pStats) pStats.innerHTML = '<span class="cb-preview-stat">0 words</span><span class="cb-preview-stat">0 msgs</span>';
+          if (pText) { pText.textContent = 'Scan a conversation to see preview...'; pText.style.opacity = ''; }
+          if (typeof window.__CB_UPDATE_STATUS === 'function') window.__CB_UPDATE_STATUS('Idle', 'idle');
+        } catch (_) { }
       } catch (e) {
         toast('Clear failed: ' + (e && e.message));
       }
@@ -21315,18 +21427,16 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
               const actions = document.createElement('div');
               actions.className = 'cb-hi-actions';
 
-              // Open in original tab button (only if URL is available)
-              if (s.url) {
-                const openBtn = document.createElement('button');
-                openBtn.className = 'cb-hi-action-btn';
-                openBtn.title = 'Open original chat';
-                openBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>';
-                openBtn.onclick = (e) => {
-                  e.stopPropagation();
-                  try { window.open(s.url, '_blank'); } catch (_) { toast('Could not open URL'); }
-                };
-                actions.appendChild(openBtn);
-              }
+              // Load chat button — loads conversation as active session
+              const loadBtn = document.createElement('button');
+              loadBtn.className = 'cb-hi-action-btn';
+              loadBtn.title = 'Load chat';
+              loadBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>';
+              loadBtn.onclick = (e) => {
+                e.stopPropagation();
+                handleOpen();
+              };
+              actions.appendChild(loadBtn);
 
               // Delete button
               const delBtn = document.createElement('button');
@@ -21343,6 +21453,27 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
                     if (idx >= 0) {
                       convs.splice(idx, 1);
                       chrome.storage.local.set({ [key]: convs }, () => {
+                        // If deleted conversation was the active one, clear active state
+                        try {
+                          const selConv = window.ChatBridge.selectedConversation;
+                          if (selConv && selConv.ts === s.ts) {
+                            lastScannedText = '';
+                            window.ChatBridge._lastScanData = null;
+                            window.ChatBridge.selectedConversation = null;
+                            try { window.ChatBridge._lastScanResult = null; } catch (_) { }
+                            // Reset preview card
+                            try {
+                              const pStats = shadow.querySelector('#cb-preview-stats');
+                              const pText = shadow.querySelector('#cb-preview-text');
+                              if (pStats) pStats.innerHTML = '<span class="cb-preview-stat">0 words</span><span class="cb-preview-stat">0 msgs</span>';
+                              if (pText) { pText.textContent = 'Scan a conversation to see preview...'; pText.style.opacity = ''; }
+                              try { preview.textContent = 'Preview: (none)'; } catch (_) { }
+                              if (typeof window.__CB_UPDATE_STATUS === 'function') window.__CB_UPDATE_STATUS('Idle', 'idle');
+                            } catch (_) { }
+                          }
+                        } catch (_) { }
+                        // Sync to background
+                        try { chrome.runtime.sendMessage({ type: 'replace_conversations', payload: { conversations: convs } }); } catch (_) { }
                         toast('Conversation deleted');
                         refreshHistory(filterText);
                       });

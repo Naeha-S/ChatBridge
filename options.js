@@ -446,6 +446,8 @@
     const updates = {};
     STORAGE_KEYS.forEach(key => updates[key] = []);
     chrome.storage.local.set(updates, () => {
+      // Sync to background (IndexedDB clear)
+      try { chrome.runtime.sendMessage({ type: 'clear_conversations' }); } catch (_) { }
       loadHistory();
       loadDashboardStats();
       showToast(window.t ? window.t('allCleared', currentLang) : 'All conversations cleared', 'success');

@@ -366,7 +366,18 @@
         renderDetail(index);
         renderList(); // Re-render to update active class logic
 
-        // Mobile view handling (if we add responsive styles)
+        // Send selected conversation to the content script via background
+        // so it becomes the active conversation for all features (Summarize, Translate, etc.)
+        const conv = conversations[index];
+        if (conv) {
+            try {
+                chrome.runtime.sendMessage({
+                    type: 'chatbridge_load_conversation',
+                    conversation: conv
+                });
+            } catch (_) { }
+        }
+
         // Mobile view handling
         if (window.innerWidth < 768) {
             document.querySelector('.sidebar').style.display = 'none';
@@ -394,6 +405,9 @@
 
         await new Promise(r => chrome.storage.local.set(updates, r));
 
+        // Sync to background (IndexedDB)
+        try { chrome.runtime.sendMessage({ type: 'replace_conversations', payload: { conversations: conversations } }); } catch (_) { }
+
         if (selectedIndex === index) {
             clearDetail();
         } else if (selectedIndex > index) {
@@ -417,6 +431,9 @@
         }
 
         await new Promise(r => chrome.storage.local.set(updates, r));
+
+        // Sync to background (IndexedDB clear)
+        try { chrome.runtime.sendMessage({ type: 'clear_conversations' }); } catch (_) { }
 
         clearDetail();
         renderFilters();
