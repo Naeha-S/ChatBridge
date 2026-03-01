@@ -1,4 +1,4 @@
-﻿// wrap everything in an IIFE and exit early if already injected to avoid redeclaration
+// wrap everything in an IIFE and exit early if already injected to avoid redeclaration
 (function () {
   'use strict';
   if (typeof window !== 'undefined' && window.__CHATBRIDGE_INJECTED) {
@@ -443,7 +443,7 @@
 
             // Update status
             if (typeof window.__CB_UPDATE_STATUS === 'function') {
-              window.__CB_UPDATE_STATUS(`Loaded from sidebar`, 'active');
+              window.__CB_UPDATE_STATUS('Session Active', 'active');
             }
 
             console.log('[ChatBridge] Loaded conversation from sidebar:', msgs.length, 'messages');
@@ -1499,6 +1499,19 @@
   :host(.cb-theme-light) .cb-prompt-item:hover {
     background: #f8f9fa;
     border-color: rgba(37, 99, 235, 0.2);
+  }
+  :host(.cb-theme-light) .cb-prompt-item--expanded {
+    background: #f8fafc;
+    border-color: rgba(0, 0, 0, 0.12);
+  }
+  :host(.cb-theme-light) .cb-prompt-text {
+    color: rgba(0, 0, 0, 0.8);
+  }
+  :host(.cb-theme-light) .cb-prompt-category {
+    opacity: 0.8;
+  }
+  :host(.cb-theme-light) .cb-prompt-actions {
+    border-top-color: rgba(0, 0, 0, 0.06);
   }
   :host(.cb-theme-light) .cb-status-bar {
     background: #f8f9fa;
@@ -4022,9 +4035,9 @@
   .cb-style-hint-wrap { margin-top: 10px; }
   .cb-input { width: 100%; background: var(--cb-bg); color: var(--cb-white); border: 1px solid var(--cb-border); padding: 8px 10px; border-radius: 8px; font-size: 13px; font-family: inherit; transition: all 0.2s ease; }
   .cb-input:focus { border-color: var(--cb-accent-primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--cb-accent-primary) 12%, transparent); outline: none; }
-  /* small inline spinner used with loading buttons */
-  .cb-spinner { display:inline-block; width:14px; height:14px; border-radius:50%; vertical-align:middle; margin-right:8px; background: conic-gradient(var(--cb-progress), rgba(255,255,255,0.9)); box-shadow: 0 0 12px color-mix(in srgb, var(--cb-accent-primary) 30%, transparent), 0 0 0 1px rgba(0,0,0,0.08) inset; animation: cb-spin 0.9s linear infinite; }
-  @keyframes cb-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  /* small inline shimmer bar used with loading states */
+  .cb-spinner { display:inline-block; width:20px; height:3px; border-radius:3px; vertical-align:middle; margin-right:8px; background: linear-gradient(90deg, rgba(255,255,255,0.08) 25%, var(--cb-accent-primary) 50%, rgba(255,255,255,0.08) 75%); background-size: 200% 100%; animation: cb-shimmer-bar 1.4s ease-in-out infinite; }
+  @keyframes cb-shimmer-bar { 0% { background-position: 200% center; } 100% { background-position: -200% center; } }
   @keyframes cb-ellipsis { 0% { opacity:0.25; transform: translateY(0); } 30% { opacity:1; transform: translateY(-2px); } 60% { opacity:0.25; transform: translateY(0); } 100% { opacity:0.25; transform: translateY(0); } }
   @keyframes cb-pulse { 0% { opacity: 1; transform: scale(1); } 50% { opacity: 0.8; transform: scale(0.98); } 100% { opacity: 1; transform: scale(1); } }
   @keyframes cb-success { 0% { transform: scale(0.8); opacity: 0; } 50% { transform: scale(1.1); } 100% { transform: scale(1); opacity: 1; } }
@@ -4131,13 +4144,13 @@
   .cb-pd-empty-icon { width: 48px; height: 48px; margin: 0 auto 20px; border-radius: 14px; background: color-mix(in srgb, var(--cb-accent-primary) 5%, transparent); display: flex; align-items: center; justify-content: center; opacity: 0.8; }
   .cb-pd-empty-title { font-family: system-ui, -apple-system, sans-serif !important; font-size: 18px; color: var(--cb-white); margin-bottom: 8px; letter-spacing: 0.5px; opacity: 0.9; font-weight: 600; }
   .cb-pd-empty-desc { font-size: 12px; color: var(--cb-subtext); line-height: 1.6; opacity: 0.5; }
-  .cb-prompt-item { padding: 14px 18px; background: rgba(255, 255, 255, 0.02); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.05); border-left: 3px solid transparent; border-radius: 14px; cursor: pointer; transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1); opacity: 0; transform: translateY(12px); animation: cbFadeSlideIn 0.5s ease forwards; position: relative; overflow: hidden; max-height: 52px; display: flex; flex-direction: column; gap: 16px; box-sizing: border-box; }
+  .cb-prompt-item { padding: 14px 18px; background: rgba(255, 255, 255, 0.02); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.05); border-left: 3px solid transparent; border-radius: 14px; cursor: pointer; transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1); opacity: 0; transform: translateY(12px); animation: cbFadeSlideIn 0.5s ease forwards; position: relative; overflow: hidden; max-height: 52px; display: flex; flex-direction: column; gap: 16px; box-sizing: border-box; }
   .cb-prompt-item::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.01) 50%, transparent 100%); transform: translateX(-100%); transition: transform 0.6s ease; }
   .cb-prompt-item:hover { background: rgba(255, 255, 255, 0.04); border-color: rgba(255, 255, 255, 0.1); transform: translateY(-1px); box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2); }
   .cb-prompt-item:hover::before { transform: translateX(100%); }
   
-  .cb-prompt-item--expanded { max-height: 2000px; padding: 20px 22px 24px; background: rgba(255, 255, 255, 0.05); border-color: rgba(255, 255, 255, 0.15); cursor: default; }
-  .cb-prompt-item--expanded .cb-prompt-text { opacity: 1; transform: translateY(0); display: block; }
+  .cb-prompt-item--expanded { max-height: none; overflow: visible; padding: 20px 22px 24px; background: rgba(255, 255, 255, 0.05); border-color: rgba(255, 255, 255, 0.15); cursor: default; }
+  .cb-prompt-item--expanded .cb-prompt-text { opacity: 1; transform: translateY(0); display: block; white-space: pre-wrap; word-break: break-word; }
   .cb-prompt-item--expanded .cb-prompt-actions { opacity: 1; display: flex; transform: translateY(0); pointer-events: auto; }
   .cb-prompt-item--expanded .cb-prompt-category { opacity: 0.9; letter-spacing: 0.3px; font-weight: 600; color: var(--cb-white) !important; }
   .cb-prompt-item--expanded .cb-prompt-chevron { transform: rotate(180deg); opacity: 0.8 !important; }
@@ -4150,12 +4163,15 @@
   .cb-prompt-category { display: block; font-family: system-ui, -apple-system, sans-serif !important; font-size: 14px; font-weight: 500; letter-spacing: 0.3px; opacity: 0.6; flex: 1; transition: all 0.3s ease; text-transform: capitalize; }
   .cb-prompt-chevron { transition: transform 0.4s ease; opacity: 0.3; }
   
-  .cb-prompt-text { font-size: 13.5px; color: rgba(255, 255, 255, 0.9); line-height: 1.65; font-weight: 400; opacity: 0; transform: translateY(4px); transition: all 0.4s ease 0.1s; display: none; -webkit-user-select: text; user-select: text; margin: 4px 0; }
+  .cb-prompt-text { font-size: 13.5px; color: rgba(255, 255, 255, 0.9); line-height: 1.65; font-weight: 400; opacity: 0; transform: translateY(4px); transition: all 0.3s ease 0.05s; display: none; -webkit-user-select: text; user-select: text; margin: 4px 0; }
   
-  .cb-prompt-actions { opacity: 0; transform: translateY(8px); transition: all 0.4s ease 0.2s; display: none; align-items: center; gap: 12px; margin-top: 4px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 16px; }
-  .cb-prompt-copy-btn { padding: 8px 16px; font-size: 10px; font-weight: 600; color: var(--cb-accent-primary); border-radius: 10px; border: 1px solid color-mix(in srgb, var(--cb-accent-primary) 20%, transparent); background: color-mix(in srgb, var(--cb-accent-primary) 5%, transparent); display: flex; align-items: center; gap: 8px; cursor: pointer; transition: all 0.3s ease; }
+  .cb-prompt-actions { opacity: 0; transform: translateY(8px); transition: all 0.3s ease 0.1s; display: none; align-items: center; gap: 10px; margin-top: 4px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 16px; flex-wrap: wrap; }
+  .cb-prompt-copy-btn, .cb-prompt-insert-btn { padding: 8px 16px; font-size: 10px; font-weight: 600; border-radius: 10px; display: flex; align-items: center; gap: 8px; cursor: pointer; transition: all 0.3s ease; }
+  .cb-prompt-copy-btn { color: var(--cb-accent-primary); border: 1px solid color-mix(in srgb, var(--cb-accent-primary) 20%, transparent); background: color-mix(in srgb, var(--cb-accent-primary) 5%, transparent); }
   .cb-prompt-copy-btn:hover { background: color-mix(in srgb, var(--cb-accent-primary) 12%, transparent); border-color: color-mix(in srgb, var(--cb-accent-primary) 40%, transparent); transform: translateY(-1px); }
-  .cb-prompt-copy-btn svg { width: 14px; height: 14px; stroke: currentColor; }
+  .cb-prompt-insert-btn { color: var(--cb-accent-tertiary); border: 1px solid color-mix(in srgb, var(--cb-accent-tertiary) 20%, transparent); background: color-mix(in srgb, var(--cb-accent-tertiary) 5%, transparent); }
+  .cb-prompt-insert-btn:hover { background: color-mix(in srgb, var(--cb-accent-tertiary) 12%, transparent); border-color: color-mix(in srgb, var(--cb-accent-tertiary) 40%, transparent); transform: translateY(-1px); }
+  .cb-prompt-copy-btn svg, .cb-prompt-insert-btn svg { width: 14px; height: 14px; stroke: currentColor; }
 
   .cb-pd-error { text-align: center; padding: 32px; color: var(--cb-subtext); font-size: 12px; font-style: italic; opacity: 0.6; }
   .cb-pd-error--fail { color: #f87171; opacity: 0.8; }
@@ -4371,7 +4387,7 @@
         const badge = shadow.querySelector('.cb-preview-badge');
 
         if (text) text.textContent = status;
-        if (sub) sub.textContent = status === 'Idle' ? `Ready on ${getPlatformName()}` : status;
+        if (sub) sub.textContent = (status === 'Idle' || type === 'idle') ? `Ready on ${getPlatformName()}` : (type === 'active' ? `Active on ${getPlatformName()}` : status);
 
         if (dot) {
           dot.className = 'cb-status-dot'; // reset
@@ -5365,7 +5381,7 @@
         btnInsertSumm.style.display = 'none';
 
         // nicer loading state
-        summProg.innerHTML = '<span class="cb-spinner" style="display:inline-block;width:12px;height:12px;border:2px solid var(--cb-accent-primary);border-top-color:transparent;border-radius:50%;margin-right:8px;animation:cb-spin 1s linear infinite;"></span>Analyzing...';
+        summProg.innerHTML = '<span class="cb-spinner"></span>Analyzing...';
         summProg.style.display = 'inline-flex';
         summProg.style.alignItems = 'center';
 
@@ -5427,13 +5443,8 @@
       }
     });
 
-    // Ensure spinner animation style exists
-    if (!document.getElementById('cb-spin-style')) {
-      const s = document.createElement('style');
-      s.id = 'cb-spin-style';
-      s.textContent = '@keyframes cb-spin {to{transform:rotate(360deg)}}';
-      document.head.appendChild(s);
-    }
+
+
 
     btnInsertSumm.addEventListener('click', async () => {
       const text = summSourceText.textContent;
@@ -5632,13 +5643,46 @@
 
     const rewProg = document.createElement('span'); rewProg.className = 'cb-progress'; rewProg.style.display = 'none'; rewView.appendChild(rewProg);
 
-    // Insert button with success styling
-    const btnInsertRew = document.createElement('button');
-    btnInsertRew.className = 'cb-btn cb-view-go';
-    btnInsertRew.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px;"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>Insert to Chat';
-    btnInsertRew.style.cssText = 'width: 100%; margin-top: 12px; display: none; background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.3); color: #10b981; padding: 10px 18px;';
+    // Output display area for rewrite results (not auto-injected)
+    const rewOutputLabel = document.createElement('div');
+    rewOutputLabel.style.cssText = 'font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--cb-subtext);margin-bottom:8px;margin-top:16px;display:none;opacity:0.8;';
+    rewOutputLabel.textContent = 'Rewritten Output';
+    rewOutputLabel.id = 'cb-rew-output-label';
+    rewView.appendChild(rewOutputLabel);
 
-    rewView.appendChild(btnInsertRew);
+    const rewOutputArea = document.createElement('div');
+    rewOutputArea.id = 'cb-rew-output';
+    rewOutputArea.style.cssText = 'display:none;background:var(--cb-bg3);border:1px solid var(--cb-border);border-radius:12px;padding:16px;max-height:250px;overflow-y:auto;overflow-x:auto;white-space:pre-wrap;line-height:1.7;font-size:13px;color:var(--cb-white);box-shadow:inset 0 1px 0 rgba(255,255,255,0.04);word-break:break-word;';
+    rewView.appendChild(rewOutputArea);
+
+    // Copy + Insert buttons for rewrite output
+    const rewBtnRow = document.createElement('div');
+    rewBtnRow.style.cssText = 'display:flex;gap:10px;margin-top:12px;';
+
+    const btnCopyRew = document.createElement('button');
+    btnCopyRew.className = 'cb-btn';
+    btnCopyRew.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>Copy';
+    btnCopyRew.style.cssText = 'flex:1;display:none;background:rgba(99,102,241,0.1);border-color:rgba(99,102,241,0.3);color:#818cf8;padding:10px 18px;';
+    btnCopyRew.addEventListener('click', () => {
+      try {
+        const text = rewOutputArea.textContent || '';
+        if (!text) { toast('Nothing to copy'); return; }
+        navigator.clipboard.writeText(text).then(() => {
+          toast('Copied to clipboard');
+          btnCopyRew.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px;"><polyline points="20 6 9 17 4 12"></polyline></svg>Copied!';
+          setTimeout(() => { btnCopyRew.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>Copy'; }, 2000);
+        });
+      } catch (e) { toast('Copy failed'); }
+    });
+
+    const btnInsertRew = document.createElement('button');
+    btnInsertRew.className = 'cb-btn';
+    btnInsertRew.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px;"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>Insert to Chat';
+    btnInsertRew.style.cssText = 'flex:1;display:none;background:rgba(16, 185, 129, 0.1);border-color:rgba(16, 185, 129, 0.3);color:#10b981;padding:10px 18px;';
+
+    rewBtnRow.appendChild(btnInsertRew);
+    rewBtnRow.appendChild(btnCopyRew);
+    rewView.appendChild(rewBtnRow);
 
 
     // Translate view - Premium Luxury UI
@@ -5896,12 +5940,34 @@
     transResult.style.cssText = 'margin-top:12px;background:var(--cb-bg3);border:1px solid var(--cb-border);border-radius:12px;padding:16px;max-height:300px;overflow-y:auto;white-space:pre-wrap;line-height:1.7;font-size:13px;display:none;box-shadow:inset 0 1px 0 rgba(255,255,255,0.04);';
     transView.appendChild(transResult);
 
-    // Insert button with success styling
+    // Action buttons row for translate results
+    const transResultBtnRow = document.createElement('div');
+    transResultBtnRow.style.cssText = 'display:flex;gap:10px;margin-top:12px;';
+
+    const btnCopyTrans = document.createElement('button');
+    btnCopyTrans.className = 'cb-btn';
+    btnCopyTrans.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>Copy';
+    btnCopyTrans.style.cssText = 'flex:1;display:none;background:rgba(99,102,241,0.1);border-color:rgba(99,102,241,0.3);color:#818cf8;padding:10px 18px;';
+    btnCopyTrans.addEventListener('click', () => {
+      try {
+        const text = transResult.dataset.plainText || transResult.textContent || '';
+        if (!text) { toast('Nothing to copy'); return; }
+        navigator.clipboard.writeText(text).then(() => {
+          toast('Copied to clipboard');
+          btnCopyTrans.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px;"><polyline points="20 6 9 17 4 12"></polyline></svg>Copied!';
+          setTimeout(() => { btnCopyTrans.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>Copy'; }, 2000);
+        });
+      } catch (e) { toast('Copy failed'); }
+    });
+
     const btnInsertTrans = document.createElement('button');
     btnInsertTrans.className = 'cb-btn';
     btnInsertTrans.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>Insert to Chat';
-    btnInsertTrans.style.cssText = 'margin-top:12px;display:none;background:rgba(16, 185, 129, 0.1);border-color:rgba(16, 185, 129, 0.3);color:#10b981;padding:10px 18px;';
-    transView.appendChild(btnInsertTrans);
+    btnInsertTrans.style.cssText = 'flex:1;display:none;background:rgba(16, 185, 129, 0.1);border-color:rgba(16, 185, 129, 0.3);color:#10b981;padding:10px 18px;';
+
+    transResultBtnRow.appendChild(btnCopyTrans);
+    transResultBtnRow.appendChild(btnInsertTrans);
+    transView.appendChild(transResultBtnRow);
     transGearBtn.addEventListener('click', () => { const isHidden = transOptions.style.display === 'none'; transOptions.style.display = isHidden ? 'block' : 'none'; });
     try { const saved = localStorage.getItem('chatbridge:pref:transLang'); if (saved) { transLangSelect.value = saved; } else { const nav = (navigator.language || navigator.userLanguage || 'en').toLowerCase().split('-')[0]; const navToCode = { 'en': 'en', 'ja': 'ja', 'es': 'es', 'fr': 'fr', 'de': 'de', 'zh': 'zh', 'ko': 'ko', 'it': 'it', 'pt': 'pt', 'ru': 'ru', 'ar': 'ar', 'hi': 'hi', 'tr': 'tr', 'nl': 'nl', 'sv': 'sv', 'pl': 'pl', 'ta': 'ta' }; transLangSelect.value = navToCode[nav] || 'en'; } } catch (e) { }
     transLangSelect.addEventListener('change', () => { try { localStorage.setItem('chatbridge:pref:transLang', transLangSelect.value); } catch (e) { } });
@@ -7934,7 +8000,7 @@ Be thorough and fair to both sides.`
             break;
           case 'trans':
             if (transSourceText) __cbViewStates.trans.sourceText = transSourceText.textContent || '';
-            if (transResult) __cbViewStates.trans.result = transResult.textContent || '';
+            if (transResult) __cbViewStates.trans.result = transResult.dataset.plainText || transResult.textContent || '';
             if (transLangSelect) __cbViewStates.trans.targetLang = transLangSelect.value;
             break;
           case 'rew':
@@ -7971,7 +8037,27 @@ Be thorough and fair to both sides.`
               transSourceText.textContent = __cbViewStates.trans.sourceText;
             }
             if (__cbViewStates.trans.result && transResult) {
-              transResult.textContent = __cbViewStates.trans.result;
+              // Re-render formatted output
+              const savedText = __cbViewStates.trans.result;
+              transResult.innerHTML = '';
+              const paragraphs = savedText.split(/\n\s*\n/);
+              paragraphs.forEach(p => {
+                if (!p.trim()) return;
+                const para = document.createElement('div');
+                para.style.cssText = 'margin-bottom:12px;line-height:1.7;';
+                const roleMatch = p.trim().match(/^(User|AI):\s*/i);
+                if (roleMatch) {
+                  const label = document.createElement('span');
+                  label.style.cssText = 'font-weight:600;color:var(--cb-accent-primary);font-size:11px;text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:4px;opacity:0.7;';
+                  label.textContent = roleMatch[1];
+                  para.appendChild(label);
+                  para.appendChild(document.createTextNode(p.trim().slice(roleMatch[0].length)));
+                } else {
+                  para.textContent = p.trim();
+                }
+                transResult.appendChild(para);
+              });
+              transResult.dataset.plainText = savedText;
             }
             if (__cbViewStates.trans.targetLang && transLangSelect) {
               transLangSelect.value = __cbViewStates.trans.targetLang;
@@ -10071,7 +10157,7 @@ Be thorough and fair to both sides.`
                     const wordCount = msgs.reduce((acc, m) => acc + ((m.text || m.content || '').split(/\s+/).length), 0);
                     if (previewStatsEl) previewStatsEl.innerHTML = `<span class="cb-preview-stat">${wordCount.toLocaleString()} words</span><span class="cb-preview-stat">${msgs.length} msgs</span>`;
                     if (previewTextEl) { previewTextEl.textContent = fullText.slice(0, 150) + (fullText.length > 150 ? '...' : ''); previewTextEl.style.opacity = '1'; }
-                    if (typeof window.__CB_UPDATE_STATUS === 'function') window.__CB_UPDATE_STATUS(`Loaded from library`, 'active');
+                    if (typeof window.__CB_UPDATE_STATUS === 'function') window.__CB_UPDATE_STATUS('Session Active', 'active');
                   } catch (_) { }
 
                   toast(`Loaded ${msgs.length} messages`);
@@ -11026,7 +11112,7 @@ Output ONLY the 5 numbered questions, no other text.`;
 
             const actDiv = document.createElement('div');
             actDiv.className = 'cb-prompt-actions';
-            actDiv.innerHTML = '<button class="cb-prompt-copy-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>Copy</button><div style="font-size:10px;color:var(--cb-subtext);opacity:0.3;margin-left:auto;">Double-click to insert</div>';
+            actDiv.innerHTML = '<button class="cb-prompt-insert-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>Insert</button><button class="cb-prompt-copy-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>Copy</button>';
 
             item.appendChild(hdr);
             item.appendChild(textDiv);
@@ -11086,6 +11172,24 @@ Output ONLY the 5 numbered questions, no other text.`;
                   toast('Copied to clipboard');
                 } catch (err) {
                   toast('Failed to copy');
+                }
+              });
+            }
+
+            // Internal insert button
+            const insertBtn = item.querySelector('.cb-prompt-insert-btn');
+            if (insertBtn) {
+              insertBtn.addEventListener('click', async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const text = decodeURIComponent(item.dataset.text);
+                const inserted = insertTextToChat(text);
+                if (inserted) {
+                  item.classList.add('cb-prompt-item--inserted');
+                  setTimeout(() => item.classList.remove('cb-prompt-item--inserted'), 400);
+                  toast('Inserted to chat');
+                } else {
+                  toast('No active input found');
                 }
               });
             }
@@ -16818,8 +16922,8 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           txt = summSourceText.textContent;
         } else if (rewView.classList.contains('cb-view-active') && rewSourceText && rewSourceText.textContent && rewSourceText.textContent !== '(no conversation found)' && rewSourceText.textContent !== '(no result)') {
           txt = rewSourceText.textContent;
-        } else if (transView.classList.contains('cb-view-active') && transResult && transResult.textContent) {
-          txt = transResult.textContent;
+        } else if (transView.classList.contains('cb-view-active') && transResult && (transResult.dataset.plainText || transResult.textContent)) {
+          txt = transResult.dataset.plainText || transResult.textContent;
         } else if (syncView.classList.contains('cb-view-active') && syncSourceText && syncSourceText.textContent && syncSourceText.textContent !== '(no conversation found)' && syncSourceText.textContent !== '(no result)') {
           txt = syncSourceText.textContent;
         }
@@ -19263,8 +19367,8 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       const targetLang = options.targetLang || 'English';
       const shorten = !!options.shorten;
       const deepThinking = !!options.deepThinking; // Use 22B model for higher quality
-      const chunkSize = options.chunkSize || 12000; // Larger chunks = fewer API calls
-      const maxParallel = options.maxParallel || 5; // Capped to avoid rate-limit bursts
+      const chunkSize = options.chunkSize || 18000; // Larger chunks = fewer API calls
+      const maxParallel = options.maxParallel || 8; // High parallelism for speed
 
       if (!text || typeof text !== 'string') return '';
 
@@ -19790,16 +19894,14 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
 
           rewProg.style.display = 'none';
 
-          // Auto-insert for fluid UX
-          try {
-            await restoreToChat(result);
-            btnInsertRew.style.display = 'none'; // Hide since auto-inserted
-            toast('Inserted to chat');
-          } catch (e) {
-            // Show insert button as fallback
-            btnInsertRew.style.display = 'inline-block';
-            toast('Transformation done - click Insert');
-          }
+          // Show result in output area (NOT auto-injected)
+          rewOutputArea.textContent = result;
+          rewOutputArea.style.display = 'block';
+          rewOutputLabel.style.display = 'block';
+          btnCopyRew.style.display = 'inline-flex';
+          btnInsertRew.style.display = 'inline-flex';
+          toast('Rewrite complete');
+
         } else {
           toast('Transformation returned no result');
         }
@@ -19815,9 +19917,10 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
 
     btnInsertRew.addEventListener('click', () => {
       try {
-        const text = (rewSourceText && rewSourceText.textContent) || '';
-        if (!text || text === '(no result)') { toast('Nothing to insert'); return; }
+        const text = (rewOutputArea && rewOutputArea.textContent) || '';
+        if (!text) { toast('Nothing to insert'); return; }
         restoreToChat(text);
+        toast('Inserted to chat');
       } catch (e) { toast('Insert failed'); }
     });
 
@@ -19829,13 +19932,15 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           restoreViewState('trans');
           if (__cbViewStates.trans.result) {
             transResult.style.display = 'block';
-            btnInsertTrans.style.display = 'inline-block';
+            btnInsertTrans.style.display = 'inline-flex';
+            btnCopyTrans.style.display = 'inline-flex';
           }
         } else {
           // First time opening - start fresh
-          transResult.textContent = '';
+          transResult.innerHTML = '';
           transResult.style.display = 'none';
           btnInsertTrans.style.display = 'none';
+          btnCopyTrans.style.display = 'none';
         }
         transView.classList.add('cb-view-active');
       } catch (e) { toast('Failed to open Translate'); debugLog('open trans view', e); }
@@ -20058,8 +20163,10 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
         btnGoTrans.disabled = true;
         transProg.style.display = 'inline-flex';
         transResult.style.display = 'none';
-        transResult.textContent = '';
+        transResult.innerHTML = '';
+        delete transResult.dataset.plainText;
         btnInsertTrans.style.display = 'none';
+        btnCopyTrans.style.display = 'none';
 
         // Get parameters
         const targetLanguage = transLangSelect.value || 'en';
@@ -20151,16 +20258,49 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
         });
 
         if (result && !result.includes('[translation-failed]') && !result.includes('[translation-error]')) {
-          transResult.textContent = result;
+          // Format output with paragraph breaks for readability
+          transResult.innerHTML = '';
+          const paragraphs = result.split(/\n\s*\n/);
+          paragraphs.forEach(p => {
+            if (!p.trim()) return;
+            const para = document.createElement('div');
+            para.style.cssText = 'margin-bottom:12px;line-height:1.7;';
+            // Detect role labels (User: / AI:) and style them
+            const roleMatch = p.trim().match(/^(User|AI):\s*/i);
+            if (roleMatch) {
+              const label = document.createElement('span');
+              label.style.cssText = 'font-weight:600;color:var(--cb-accent-primary);font-size:11px;text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:4px;opacity:0.7;';
+              label.textContent = roleMatch[1];
+              para.appendChild(label);
+              const textNode = document.createTextNode(p.trim().slice(roleMatch[0].length));
+              para.appendChild(textNode);
+            } else {
+              para.textContent = p.trim();
+            }
+            transResult.appendChild(para);
+          });
+          // Store plain text for copy/insert
+          transResult.dataset.plainText = result;
           transResult.style.display = 'block';
-          btnInsertTrans.style.display = 'inline-block';
+          btnInsertTrans.style.display = 'inline-flex';
+          btnCopyTrans.style.display = 'inline-flex';
           transProg.style.display = 'none';
           toast('✓ Translation complete');
         } else if (result) {
-          // Some chunks might have failed but we have partial data?
-          transResult.textContent = result;
+          // Partial data with formatting
+          transResult.innerHTML = '';
+          const paragraphs = result.split(/\n\s*\n/);
+          paragraphs.forEach(p => {
+            if (!p.trim()) return;
+            const para = document.createElement('div');
+            para.style.cssText = 'margin-bottom:12px;line-height:1.7;';
+            para.textContent = p.trim();
+            transResult.appendChild(para);
+          });
+          transResult.dataset.plainText = result;
           transResult.style.display = 'block';
-          btnInsertTrans.style.display = 'inline-block';
+          btnInsertTrans.style.display = 'inline-flex';
+          btnCopyTrans.style.display = 'inline-flex';
           transProg.style.display = 'none';
           toast('⚠️ Translation completed with errors');
         } else {
@@ -20177,7 +20317,7 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
     });
     btnInsertTrans.addEventListener('click', async () => {
       try {
-        const text = transResult.textContent || '';
+        const text = transResult.dataset.plainText || transResult.textContent || '';
         if (!text) { toast('Nothing to insert'); return; }
         console.log('[ChatBridge] Translate Insert clicked, text length:', text.length);
         const success = await restoreToChat(text);
@@ -21536,7 +21676,7 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
 
                     // Show Active Session badge
                     if (typeof window.__CB_UPDATE_STATUS === 'function') {
-                      window.__CB_UPDATE_STATUS(`Loaded: ${descriptivePhrase}`, 'active');
+                      window.__CB_UPDATE_STATUS('Session Active', 'active');
                     }
                   } catch (_) { }
 
