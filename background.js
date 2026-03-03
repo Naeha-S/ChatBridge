@@ -3,38 +3,75 @@
 // Note: Service worker modules don't support importScripts.
 // Security, RAG, and MCP features are available in content scripts instead.
 
-// Initialize rate limiters
-const rateLimiters = {
-  gemini: { maxPerMinute: 10, maxPerHour: 100, requests: [] },
-  scan: { maxPerMinute: 5, maxPerHour: 50, requests: [] }
+// ─── MV3-Safe State Management ──────────────────────────────────────────────
+// Chrome MV3 terminates service workers after ~30s of inactivity.
+// All mutable state must persist in chrome.storage.session so it survives
+// sleep/wake cycles. We keep a fast in-memory mirror that rehydrates on
+// first access each wake cycle.
+
+// --- Rate Limiters (persisted to chrome.storage.session) ---
+const RATE_LIMIT_CONFIGS = {
+  gemini: { maxPerMinute: 10, maxPerHour: 100 },
+  scan: { maxPerMinute: 5, maxPerHour: 50 }
 };
 
-function checkRateLimit(limiter) {
+// In-memory mirror (fast reads within a single wake cycle)
+let _rateLimitCache = null; // { gemini: { requests: [] }, scan: { requests: [] } }
+
+async function _loadRateLimits() {
+  if (_rateLimitCache) return _rateLimitCache;
+  try {
+    const data = await chrome.storage.session.get(['cb_rateLimiters']);
+    _rateLimitCache = data.cb_rateLimiters || {
+      gemini: { requests: [] },
+      scan: { requests: [] }
+    };
+  } catch (_) {
+    _rateLimitCache = { gemini: { requests: [] }, scan: { requests: [] } };
+  }
+  return _rateLimitCache;
+}
+
+async function _saveRateLimits() {
+  try { await chrome.storage.session.set({ cb_rateLimiters: _rateLimitCache }); } catch (_) { }
+}
+
+async function checkRateLimit(limiterName) {
+  const limits = await _loadRateLimits();
+  const limiter = limits[limiterName] || { requests: [] };
+  const config = RATE_LIMIT_CONFIGS[limiterName] || { maxPerMinute: 10, maxPerHour: 100 };
   const now = Date.now();
   const oneMinuteAgo = now - 60 * 1000;
   const oneHourAgo = now - 60 * 60 * 1000;
 
-  limiter.requests = limiter.requests.filter(t => t > oneHourAgo);
+  limiter.requests = (limiter.requests || []).filter(t => t > oneHourAgo);
+  limits[limiterName] = limiter;
+  // Persist pruned list
+  await _saveRateLimits();
 
   const lastMinute = limiter.requests.filter(t => t > oneMinuteAgo).length;
   const lastHour = limiter.requests.length;
 
-  if (lastMinute >= limiter.maxPerMinute) {
+  if (lastMinute >= config.maxPerMinute) {
     return { allowed: false, reason: 'rate_limit_minute', retryAfter: 60 };
   }
 
-  if (lastHour >= limiter.maxPerHour) {
+  if (lastHour >= config.maxPerHour) {
     return { allowed: false, reason: 'rate_limit_hour', retryAfter: 3600 };
   }
 
   return { allowed: true };
 }
 
-function recordRequest(limiter) {
+async function recordRequest(limiterName) {
+  const limits = await _loadRateLimits();
+  const limiter = limits[limiterName] || { requests: [] };
   limiter.requests.push(Date.now());
+  limits[limiterName] = limiter;
+  await _saveRateLimits();
 }
 
-// Gemini model priority: Best to worst based on rate limits
+// --- Model Failover State (persisted to chrome.storage.session) ---
 const GEMINI_MODEL_PRIORITY = [
   'gemini-2.0-flash',         // FASTEST: 15 RPM, 1M TPM - try first for speed
   'gemini-2.5-flash',         // Fast: 10 RPM, 250K TPM  
@@ -43,9 +80,25 @@ const GEMINI_MODEL_PRIORITY = [
   'gemini-2.0-flash-exp'      // Experimental, 50 RPD
 ];
 
-let currentModelIndex = 0; // Track which model we're using
-let modelFailureCount = {}; // Track failures per model
-const MAX_MODEL_FAILURES = 1; // Switch models after 1 failure (was 3, reduced to fix first-click issues)
+const MAX_MODEL_FAILURES = 1;
+
+// In-memory mirror for model state
+let _modelStateCache = null; // { currentModelIndex: 0, modelFailureCount: {} }
+
+async function _loadModelState() {
+  if (_modelStateCache) return _modelStateCache;
+  try {
+    const data = await chrome.storage.session.get(['cb_modelState']);
+    _modelStateCache = data.cb_modelState || { currentModelIndex: 0, modelFailureCount: {} };
+  } catch (_) {
+    _modelStateCache = { currentModelIndex: 0, modelFailureCount: {} };
+  }
+  return _modelStateCache;
+}
+
+async function _saveModelState() {
+  try { await chrome.storage.session.set({ cb_modelState: _modelStateCache }); } catch (_) { }
+}
 
 // Centralized rewrite templates map
 // Safe, meaning-preserving prompts. No detector evasion or academic-integrity bypass.
@@ -76,35 +129,41 @@ const REWRITE_TEMPLATES = {
 };
 
 // Get next available model, skipping those with too many failures
-function getNextAvailableModel() {
+async function getNextAvailableModel() {
+  const state = await _loadModelState();
   for (let i = 0; i < GEMINI_MODEL_PRIORITY.length; i++) {
-    const idx = (currentModelIndex + i) % GEMINI_MODEL_PRIORITY.length;
+    const idx = (state.currentModelIndex + i) % GEMINI_MODEL_PRIORITY.length;
     const model = GEMINI_MODEL_PRIORITY[idx];
-    if ((modelFailureCount[model] || 0) < MAX_MODEL_FAILURES) {
-      currentModelIndex = idx;
+    if ((state.modelFailureCount[model] || 0) < MAX_MODEL_FAILURES) {
+      state.currentModelIndex = idx;
+      await _saveModelState();
       return model;
     }
   }
   // All models have failures, reset and try again
-  modelFailureCount = {};
-  currentModelIndex = 0;
+  state.modelFailureCount = {};
+  state.currentModelIndex = 0;
+  await _saveModelState();
   return GEMINI_MODEL_PRIORITY[0];
 }
 
 // Mark model as failed and switch to next
-function markModelFailed(model, statusCode) {
-  modelFailureCount[model] = (modelFailureCount[model] || 0) + 1;
-  console.warn(`[Gemini] Model ${model} failed (${modelFailureCount[model]}/${MAX_MODEL_FAILURES})`, statusCode);
-  if (modelFailureCount[model] >= MAX_MODEL_FAILURES) {
+async function markModelFailed(model, statusCode) {
+  const state = await _loadModelState();
+  state.modelFailureCount[model] = (state.modelFailureCount[model] || 0) + 1;
+  console.warn(`[Gemini] Model ${model} failed (${state.modelFailureCount[model]}/${MAX_MODEL_FAILURES})`, statusCode);
+  if (state.modelFailureCount[model] >= MAX_MODEL_FAILURES) {
     console.warn(`[Gemini] Switching from ${model} due to repeated failures`);
-    currentModelIndex = (currentModelIndex + 1) % GEMINI_MODEL_PRIORITY.length;
+    state.currentModelIndex = (state.currentModelIndex + 1) % GEMINI_MODEL_PRIORITY.length;
   }
+  await _saveModelState();
 }
 
 // Mark model as successful, reset ALL failure counts for clean slate
-function markModelSuccess(model) {
-  // Reset all models on any success
-  modelFailureCount = {};
+async function markModelSuccess(model) {
+  const state = await _loadModelState();
+  state.modelFailureCount = {};
+  await _saveModelState();
   console.log(`[Gemini] ✓ Success with ${model}, reset all failure counts`);
 }
 
@@ -246,21 +305,21 @@ if (chrome.idle && chrome.idle.onStateChanged) {
   });
 }
 
-// OPTIMIZATION: Reduce alarm frequency from 30min to 60min to lower background activity
-// Also create a periodic alarm to attempt precompute (background service workers may be stopped)
+// ─── MV3-Safe Alarms for Background Tasks ────────────────────────────────
+// setInterval cannot work in MV3 because the worker dies after ~30s.
+// Use chrome.alarms instead — they fire even if the worker was terminated.
 try {
   if (chrome.alarms) {
-    chrome.alarms.create('chatbridge_precompute', { periodInMinutes: 60 }); // Increased from 30 to 60
+    chrome.alarms.create('chatbridge_precompute', { periodInMinutes: 60 });
+    chrome.alarms.create('chatbridge_cache_cleanup', { periodInMinutes: 30 });
     chrome.alarms.onAlarm.addListener((alarm) => {
-      try { if (alarm && alarm.name === 'chatbridge_precompute') precomputeEmbeddingsIdle(2); } catch (e) { }
+      try {
+        if (alarm && alarm.name === 'chatbridge_precompute') precomputeEmbeddingsIdle(2);
+        if (alarm && alarm.name === 'chatbridge_cache_cleanup') cacheCleanExpired();
+      } catch (e) { }
     });
   }
 } catch (e) { }
-
-// clean cache periodically
-// OPTIMIZATION: Reduce cache cleanup frequency to lower background CPU usage
-// Changed from every 10 minutes to every 30 minutes
-try { setInterval(() => { cacheCleanExpired(); }, 1000 * 60 * 30); } catch (e) { } // Increased from 10 to 30
 // Simple IndexedDB vector store (fallback to in-memory on failure)
 const V_DB_NAME = 'chatbridge_vectors_v1';
 const V_STORE = 'vectors';
@@ -950,7 +1009,7 @@ OUTPUT ONLY THE REPAIR PROMPT:`;
 
           // Use existing Gemini API infrastructure
           const model = typeof getNextAvailableModel === 'function'
-            ? getNextAvailableModel()
+            ? await getNextAvailableModel()
             : 'gemini-2.0-flash';
 
           const apiUrl = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${geminiApiKey}`;
@@ -1064,7 +1123,7 @@ Rules:
 - Include ONLY entities actually discussed, not just mentioned in passing
 - Relationships must reference entities in the entities array`;
 
-          const model = getNextAvailableModel();
+          const model = await getNextAvailableModel();
           const apiUrl = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${geminiApiKey}`;
           const body = {
             systemInstruction: { parts: [{ text: systemInstruction }] },
@@ -1170,7 +1229,7 @@ ${graphContext}
 
 Provide a concise, factual answer based ONLY on the graph data above. If the graph doesn't contain relevant information, say so. Reference specific platforms and conversations where topics were discussed.`;
 
-          const model = getNextAvailableModel();
+          const model = await getNextAvailableModel();
           const apiUrl = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${geminiApiKey}`;
           const body = {
             systemInstruction: { parts: [{ text: systemInstruction }] },
@@ -2261,22 +2320,22 @@ Return ONLY the rewritten text. No preamble. No explanation.`;
 
   // Gemini cloud API handler
   if (msg && msg.type === 'call_gemini') {
-    // Check rate limit before processing
-    const rateCheck = checkRateLimit(rateLimiters.gemini);
-    if (!rateCheck.allowed) {
-      return sendResponse({
-        ok: false,
-        error: 'rate_limited',
-        message: `Rate limit exceeded. Try again in ${rateCheck.retryAfter} seconds.`,
-        retryAfter: rateCheck.retryAfter
-      });
-    }
-
     if (!limiterTry()) return sendResponse({ ok: false, error: 'rate_limited' });
     (async () => {
       try {
+        // Check rate limit before processing (async — persisted to session storage)
+        const rateCheck = await checkRateLimit('gemini');
+        if (!rateCheck.allowed) {
+          return sendResponse({
+            ok: false,
+            error: 'rate_limited',
+            message: `Rate limit exceeded. Try again in ${rateCheck.retryAfter} seconds.`,
+            retryAfter: rateCheck.retryAfter
+          });
+        }
+
         // Record the request
-        recordRequest(rateLimiters.gemini);
+        await recordRequest('gemini');
 
         let geminiApiKey = await getGeminiApiKey();
         if (!geminiApiKey) {
@@ -2605,7 +2664,7 @@ Rewritten conversation (optimized for ${tgt}):`;
         const maxRetries = GEMINI_MODEL_PRIORITY.length;
 
         for (let attempt = 0; attempt < maxRetries; attempt++) {
-          const currentModel = getNextAvailableModel();
+          const currentModel = await getNextAvailableModel();
           const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${currentModel}:generateContent?key=${geminiApiKey}`;
           const body = {
             systemInstruction: systemInstruction ? { parts: [{ text: systemInstruction }] } : undefined,
@@ -2761,15 +2820,15 @@ Rewritten conversation (optimized for ${tgt}):`;
         let result = null;
 
         if (selectedModel === 'gemini') {
-          // Rate limit check
-          const rateCheck = checkRateLimit(rateLimiters.gemini);
+          // Rate limit check (async — persisted to session storage)
+          const rateCheck = await checkRateLimit('gemini');
           if (!rateCheck.allowed) {
             // Fallback to Llama if Gemini is rate-limited
             selectedModel = 'llama';
           } else if (!limiterTry()) {
             selectedModel = 'llama';
           } else {
-            recordRequest(rateLimiters.gemini);
+            await recordRequest('gemini');
             const geminiApiKey = await getGeminiApiKey();
             if (!geminiApiKey) {
               // Fallback to Llama if no Gemini key
@@ -3088,7 +3147,7 @@ Output ONLY the friendly revision.`
         const maxRetries = GEMINI_MODEL_PRIORITY.length;
 
         for (let attempt = 0; attempt < maxRetries; attempt++) {
-          const currentModel = getNextAvailableModel();
+          const currentModel = await getNextAvailableModel();
           const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${currentModel}:generateContent?key=${geminiApiKey}`;
           const body = {
             contents: [{ parts: [{ text: promptText }] }],
@@ -3132,7 +3191,7 @@ Output ONLY the friendly revision.`
         const maxRetries = GEMINI_MODEL_PRIORITY.length;
 
         for (let attempt = 0; attempt < maxRetries; attempt++) {
-          const currentModel = getNextAvailableModel();
+          const currentModel = await getNextAvailableModel();
           const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${currentModel}:generateContent?key=${geminiApiKey}`;
           const body = {
             contents: [{ parts: [{ text: promptText }] }],
@@ -3177,7 +3236,7 @@ Output ONLY the friendly revision.`
         async function geminiGenerate(systemInstruction, promptText) {
           let lastError = null;
           for (let attempt = 0; attempt < GEMINI_MODEL_PRIORITY.length; attempt++) {
-            const currentModel = getNextAvailableModel();
+            const currentModel = await getNextAvailableModel();
             const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${currentModel}:generateContent?key=${geminiApiKey}`;
             const body = {
               systemInstruction: systemInstruction ? { parts: [{ text: systemInstruction }] } : undefined,

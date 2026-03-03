@@ -5,7 +5,8 @@
   "description": "Manually scan your visible AI chat session and paste it into another AI chat. Local-only by default.",
   "permissions": [
     "storage",
-    "activeTab"
+    "activeTab",
+    "alarms"
   ],
   "host_permissions": [
     "https://generativelanguage.googleapis.com/*",
@@ -98,7 +99,33 @@
         "fonts/Inter-Bold.woff2"
       ],
       "matches": [
-        "<all_urls>"
+        "*://chat.openai.com/*",
+        "*://chatgpt.com/*",
+        "*://*.chatgpt.com/*",
+        "*://gemini.google.com/*",
+        "*://claude.ai/*",
+        "*://chat.mistral.ai/*",
+        "*://deepseek.ai/*",
+        "*://chat.deepseek.com/*",
+        "*://www.perplexity.ai/*",
+        "*://perplexity.ai/*",
+        "*://*.poe.com/*",
+        "*://*.x.ai/*",
+        "*://copilot.microsoft.com/*",
+        "*://www.bing.com/*",
+        "*://meta.ai/*",
+        "*://huggingface.co/*",
+        "*://you.com/*",
+        "*://phind.com/*",
+        "*://character.ai/*",
+        "*://beta.character.ai/*",
+        "*://replika.ai/*",
+        "*://jasper.ai/*",
+        "*://writesonic.com/*",
+        "*://app.writesonic.com/*",
+        "*://forefront.ai/*",
+        "*://open-assistant.io/*",
+        "*://kuki.ai/*"
       ]
     }
   ],

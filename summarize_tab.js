@@ -33,3 +33,13 @@ document.getElementById('restore-btn').addEventListener('click', () => {
     payload: { summary }
   });
 });
+
+// Apply saved theme class to the summarize tab body
+try {
+  chrome.storage.local.get(['cb_theme'], r => {
+    try {
+      const t = r && r.cb_theme;
+      if (t && t !== 'dark') document.body.classList.add('cb-theme-' + t);
+    } catch (e) { }
+  });
+} catch (e) { }

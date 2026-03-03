@@ -1,4 +1,4 @@
-// wrap everything in an IIFE and exit early if already injected to avoid redeclaration
+﻿// wrap everything in an IIFE and exit early if already injected to avoid redeclaration
 (function () {
   'use strict';
   if (typeof window !== 'undefined' && window.__CHATBRIDGE_INJECTED) {
@@ -4884,7 +4884,7 @@
       { id: 'qa-sidebar-optimize', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v5m0 4v8m-4-4l4-4 4 4"/><circle cx="12" cy="12" r="10"/></svg>', label: 'Optimize', title: 'Transform raw prompts into high-performance AI prompts' },
       { id: 'qa-sidebar-copy', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>', label: 'Copy', title: 'Copy conversation to clipboard' },
       { id: 'qa-sidebar-clean', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>', label: 'Clean', title: 'Remove duplicates and organize saved conversations' },
-      { id: 'qa-sidebar-export', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>', label: 'Export', title: 'Export all conversations as JSON or Markdown' }
+      { id: 'qa-sidebar-export', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>', label: 'Export', title: 'Export conversations as PDF, Markdown, Text, CSV, or JSON' }
     ];
 
     qaButtons.forEach(qa => {
@@ -17166,6 +17166,54 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           exportPanel.remove();
         });
 
+        // ========== Rich Content Helpers for Export ==========
+        // Parses a message text into structured segments: text, code blocks, math, tables, thinking
+        const parseMessageSegments = (text) => {
+          if (!text) return [{ type: 'text', content: '' }];
+          const segments = [];
+          // Regex to match code blocks, math blocks, thinking blocks, and markdown tables
+          // Order matters: longest/most specific first
+          const blockPattern = /(<thinking>[\s\S]*?<\/thinking>|```(\w*)\n?([\s\S]*?)```|\$\$[\s\S]*?\$\$|\\\[[\s\S]*?\\\]|((?:^\|.+\|$\n?){2,}))/gm;
+          let lastIndex = 0;
+          let match;
+          while ((match = blockPattern.exec(text)) !== null) {
+            // Add preceding plain text
+            if (match.index > lastIndex) {
+              segments.push({ type: 'text', content: text.slice(lastIndex, match.index) });
+            }
+            const raw = match[0];
+            if (raw.startsWith('<thinking>')) {
+              segments.push({ type: 'thinking', content: raw.replace(/<\/?thinking>/g, '').trim() });
+            } else if (raw.startsWith('```')) {
+              segments.push({ type: 'code', language: match[2] || '', content: (match[3] || '').trim() });
+            } else if (raw.startsWith('$$') || raw.startsWith('\\[')) {
+              const inner = raw.startsWith('$$') ? raw.slice(2, -2).trim() : raw.slice(2, -2).trim();
+              segments.push({ type: 'math', content: inner });
+            } else if (match[4]) {
+              segments.push({ type: 'table', content: raw.trim() });
+            }
+            lastIndex = match.index + raw.length;
+          }
+          if (lastIndex < text.length) {
+            segments.push({ type: 'text', content: text.slice(lastIndex) });
+          }
+          return segments.length ? segments : [{ type: 'text', content: text }];
+        };
+
+        // ========== Download helper ==========
+        const downloadFile = (content, filename, mimeType) => {
+          const blob = new Blob([content], { type: mimeType });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = filename;
+          a.click();
+          URL.revokeObjectURL(url);
+        };
+
+        const fileSlug = (lbl) => lbl.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+        const dateStamp = () => new Date().toISOString().split('T')[0];
+
         // Helper to show format selection
         const showFormatSelection = (dataToExport, label) => {
           exportPanel.innerHTML = `
@@ -17173,11 +17221,15 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
               <h4 style="margin:0;font-size:14px;font-weight:600;color:var(--cb-white);">📦 Export ${label}</h4>
               <button id="export-back" style="background:none;border:none;color:var(--cb-subtext);cursor:pointer;font-size:12px;padding:4px;">← Back</button>
             </div>
-            <div style="font-size:11px;color:var(--cb-subtext);margin-bottom:12px;">Choose format:</div>
-            <div style="display:flex;gap:8px;">
-              <button id="format-json" class="cb-btn cb-btn-primary" style="flex:1;padding:10px;font-size:12px;font-weight:600;">JSON</button>
-              <button id="format-md" class="cb-export-btn" style="flex:1;padding:10px;font-size:12px;font-weight:600;">Markdown</button>
+            <div style="font-size:11px;color:var(--cb-subtext);margin-bottom:8px;">Choose format:</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+              <button id="format-pdf" class="cb-btn cb-btn-primary" style="padding:10px;font-size:12px;font-weight:600;">📄 PDF</button>
+              <button id="format-md" class="cb-export-btn" style="padding:10px;font-size:12px;font-weight:600;">📝 Markdown</button>
+              <button id="format-txt" class="cb-export-btn" style="padding:10px;font-size:12px;font-weight:600;">📋 Text</button>
+              <button id="format-csv" class="cb-export-btn" style="padding:10px;font-size:12px;font-weight:600;">📊 CSV</button>
             </div>
+            <button id="format-json" class="cb-export-btn" style="width:100%;padding:10px;font-size:12px;font-weight:600;">{ } JSON</button>
+            <div style="font-size:10px;color:var(--cb-subtext);margin-top:8px;opacity:0.7;">Code blocks, math, tables & thinking preserved</div>
           `;
 
           // Back button
@@ -17185,45 +17237,266 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
             shadow.getElementById('qa-sidebar-export')?.click(); // Re-open
           });
 
-          // JSON Export
+          // ===== JSON Export =====
           shadow.getElementById('format-json')?.addEventListener('click', () => {
-            const blob = new Blob([JSON.stringify(dataToExport, null, 2)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `chatbridge-${label.toLowerCase().replace(/ /g, '-')}-${new Date().toISOString().split('T')[0]}.json`;
-            a.click();
-            URL.revokeObjectURL(url);
-            toast(`📦 Exported as JSON`);
+            downloadFile(
+              JSON.stringify(dataToExport, null, 2),
+              `chatbridge-${fileSlug(label)}-${dateStamp()}.json`,
+              'application/json'
+            );
+            toast('📦 Exported as JSON');
             exportPanel.remove();
           });
 
-          // Markdown Export
+          // ===== Markdown Export (rich) =====
           shadow.getElementById('format-md')?.addEventListener('click', () => {
-            let markdown = `# ChatBridge Export - ${label}\n\n**Date**: ${new Date().toLocaleString()}\n\n---\n\n`;
+            let md = `# ChatBridge Export \u2014 ${label}\n\n`;
+            md += `> Exported on ${new Date().toLocaleString()}\n\n---\n\n`;
 
             dataToExport.forEach((conv, i) => {
-              markdown += `## Conversation ${i + 1}\n\n`;
-              markdown += `**Platform**: ${conv.platform || 'Unknown'}\n`;
-              markdown += `**Timestamp**: ${conv.ts ? new Date(conv.ts).toLocaleString() : 'N/A'}\n\n`;
+              md += `## Conversation ${i + 1}\n\n`;
+              md += `| Property | Value |\n|----------|-------|\n`;
+              md += `| Platform | ${conv.platform || 'Unknown'} |\n`;
+              md += `| Date | ${conv.ts ? new Date(conv.ts).toLocaleString() : 'N/A'} |\n\n`;
 
               (conv.conversation || conv.messages || []).forEach(msg => {
                 const role = msg.role || msg.type || 'user';
                 const text = msg.text || msg.content || '';
-                markdown += `**${role.toUpperCase()}**: ${text}\n\n`;
-              });
+                const segments = parseMessageSegments(text);
 
-              markdown += `---\n\n`;
+                md += `### ${role === 'user' ? '\uD83D\uDC64 User' : '\uD83E\uDD16 Assistant'}\n\n`;
+
+                segments.forEach(seg => {
+                  switch (seg.type) {
+                    case 'code':
+                      md += `\`\`\`${seg.language}\n${seg.content}\n\`\`\`\n\n`;
+                      break;
+                    case 'math':
+                      md += `$$\n${seg.content}\n$$\n\n`;
+                      break;
+                    case 'table':
+                      md += `${seg.content}\n\n`;
+                      break;
+                    case 'thinking':
+                      md += `<details>\n<summary>\uD83E\uDDE0 Thinking Process</summary>\n\n${seg.content}\n\n</details>\n\n`;
+                      break;
+                    default:
+                      if (seg.content.trim()) md += `${seg.content.trim()}\n\n`;
+                  }
+                });
+              });
+              md += `---\n\n`;
             });
 
-            const blob = new Blob([markdown], { type: 'text/markdown' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `chatbridge-${label.toLowerCase().replace(/ /g, '-')}-${new Date().toISOString().split('T')[0]}.md`;
-            a.click();
-            URL.revokeObjectURL(url);
-            toast(`📝 Exported as Markdown`);
+            downloadFile(md, `chatbridge-${fileSlug(label)}-${dateStamp()}.md`, 'text/markdown');
+            toast('\uD83D\uDCDD Exported as Markdown');
+            exportPanel.remove();
+          });
+
+          // ===== Plain Text Export =====
+          shadow.getElementById('format-txt')?.addEventListener('click', () => {
+            const divider = '='.repeat(60);
+            let txt = `CHATBRIDGE EXPORT \u2014 ${label}\n`;
+            txt += `Exported: ${new Date().toLocaleString()}\n${divider}\n\n`;
+
+            dataToExport.forEach((conv, i) => {
+              txt += `${divider}\n`;
+              txt += `CONVERSATION ${i + 1}  |  Platform: ${conv.platform || 'Unknown'}  |  ${conv.ts ? new Date(conv.ts).toLocaleString() : ''}\n`;
+              txt += `${divider}\n\n`;
+
+              (conv.conversation || conv.messages || []).forEach(msg => {
+                const role = msg.role || msg.type || 'user';
+                const text = msg.text || msg.content || '';
+                const segments = parseMessageSegments(text);
+                const tag = role === 'user' ? '[USER]' : '[ASSISTANT]';
+
+                txt += `${tag}\n`;
+                segments.forEach(seg => {
+                  switch (seg.type) {
+                    case 'code':
+                      txt += `--- CODE${seg.language ? ' (' + seg.language + ')' : ''} ---\n${seg.content}\n--- END CODE ---\n\n`;
+                      break;
+                    case 'math':
+                      txt += `--- MATH ---\n${seg.content}\n--- END MATH ---\n\n`;
+                      break;
+                    case 'table':
+                      txt += `--- TABLE ---\n${seg.content}\n--- END TABLE ---\n\n`;
+                      break;
+                    case 'thinking':
+                      txt += `--- THINKING PROCESS ---\n${seg.content}\n--- END THINKING ---\n\n`;
+                      break;
+                    default:
+                      if (seg.content.trim()) txt += `${seg.content.trim()}\n`;
+                  }
+                });
+                txt += '\n';
+              });
+              txt += '\n';
+            });
+
+            downloadFile(txt, `chatbridge-${fileSlug(label)}-${dateStamp()}.txt`, 'text/plain');
+            toast('\uD83D\uDCCB Exported as Text');
+            exportPanel.remove();
+          });
+
+          // ===== CSV Export =====
+          shadow.getElementById('format-csv')?.addEventListener('click', () => {
+            const escCsv = (val) => {
+              if (val == null) return '';
+              const s = String(val).replace(/"/g, '""');
+              return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s}"` : s;
+            };
+
+            let csv = 'Conversation,Platform,Timestamp,Role,Content Type,Content\n';
+
+            dataToExport.forEach((conv, i) => {
+              const platform = conv.platform || 'Unknown';
+              const ts = conv.ts ? new Date(conv.ts).toISOString() : '';
+
+              (conv.conversation || conv.messages || []).forEach(msg => {
+                const role = msg.role || msg.type || 'user';
+                const text = msg.text || msg.content || '';
+                const segments = parseMessageSegments(text);
+
+                segments.forEach(seg => {
+                  if (!seg.content.trim()) return;
+                  csv += `${escCsv(i + 1)},${escCsv(platform)},${escCsv(ts)},${escCsv(role)},${escCsv(seg.type)},${escCsv(seg.content.trim())}\n`;
+                });
+              });
+            });
+
+            downloadFile(csv, `chatbridge-${fileSlug(label)}-${dateStamp()}.csv`, 'text/csv');
+            toast('\uD83D\uDCCA Exported as CSV');
+            exportPanel.remove();
+          });
+
+          // ===== PDF Export =====
+          shadow.getElementById('format-pdf')?.addEventListener('click', () => {
+            // Build a styled HTML document and open print dialog (Save as PDF)
+            let totalMessages = 0;
+            let totalCodeBlocks = 0;
+            let totalTables = 0;
+            let totalMath = 0;
+            let totalThinking = 0;
+
+            let bodyHtml = '';
+            dataToExport.forEach((conv, i) => {
+              bodyHtml += `<div class="conversation"><h2>Conversation ${i + 1}</h2>`;
+              bodyHtml += `<div class="meta"><span><strong>Platform:</strong> ${conv.platform || 'Unknown'}</span>`;
+              bodyHtml += `<span><strong>Date:</strong> ${conv.ts ? new Date(conv.ts).toLocaleString() : 'N/A'}</span></div>`;
+
+              (conv.conversation || conv.messages || []).forEach(msg => {
+                totalMessages++;
+                const role = msg.role || msg.type || 'user';
+                const text = msg.text || msg.content || '';
+                const segments = parseMessageSegments(text);
+                const isUser = role === 'user' || role === 'human';
+
+                bodyHtml += `<div class="message ${isUser ? 'user' : 'assistant'}">`;
+                bodyHtml += `<div class="role-badge ${isUser ? 'user-badge' : 'ai-badge'}">${isUser ? '\uD83D\uDC64 User' : '\uD83E\uDD16 Assistant'}</div>`;
+
+                segments.forEach(seg => {
+                  switch (seg.type) {
+                    case 'code':
+                      totalCodeBlocks++;
+                      const escaped = seg.content.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                      bodyHtml += `<div class="code-label">${seg.language || 'code'}</div><pre><code>${escaped}</code></pre>`;
+                      break;
+                    case 'math':
+                      totalMath++;
+                      bodyHtml += `<div class="math-block">${seg.content.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>`;
+                      break;
+                    case 'table': {
+                      totalTables++;
+                      const rows = seg.content.split('\n').filter(r => r.trim() && !/^[\s|:-]+$/.test(r));
+                      bodyHtml += '<table>';
+                      rows.forEach((row, ri) => {
+                        const cells = row.split('|').map(c => c.trim()).filter(Boolean);
+                        const tag = ri === 0 ? 'th' : 'td';
+                        bodyHtml += '<tr>' + cells.map(c => `<${tag}>${c}</${tag}>`).join('') + '</tr>';
+                      });
+                      bodyHtml += '</table>';
+                      break;
+                    }
+                    case 'thinking':
+                      totalThinking++;
+                      bodyHtml += `<details class="thinking"><summary>\uD83E\uDDE0 Thinking Process</summary><p>${seg.content.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>')}</p></details>`;
+                      break;
+                    default:
+                      if (seg.content.trim()) {
+                        const htmlText = seg.content.trim()
+                          .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                          .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                          .replace(/`([^`]+)`/g, '<code>$1</code>')
+                          .replace(/\n/g, '<br>');
+                        bodyHtml += `<p>${htmlText}</p>`;
+                      }
+                  }
+                });
+                bodyHtml += '</div>';
+              });
+              bodyHtml += '</div>';
+            });
+
+            const statsLine = [
+              `${totalMessages} messages`,
+              totalCodeBlocks ? `${totalCodeBlocks} code blocks` : '',
+              totalTables ? `${totalTables} tables` : '',
+              totalMath ? `${totalMath} math formulas` : '',
+              totalThinking ? `${totalThinking} thinking blocks` : ''
+            ].filter(Boolean).join(' \u2022 ');
+
+            const fullHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>ChatBridge Export - ${label}</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:800px;margin:0 auto;padding:40px 24px;color:#1a1a2e;line-height:1.6;background:#fff}
+h1{font-size:22px;margin-bottom:4px;color:#111}
+.subtitle{font-size:12px;color:#666;margin-bottom:4px}
+.stats-bar{font-size:11px;color:#888;margin-bottom:20px;padding:8px 12px;background:#f5f5f5;border-radius:6px}
+.conversation{margin-bottom:32px;page-break-inside:avoid}
+.conversation h2{font-size:16px;border-bottom:2px solid #e5e7eb;padding-bottom:6px;margin-bottom:12px;color:#1e293b}
+.meta{font-size:12px;color:#64748b;margin-bottom:16px;display:flex;gap:20px}
+.message{margin-bottom:16px;padding:12px 16px;border-radius:10px;border:1px solid #e5e7eb}
+.message.user{background:#f0f4ff;border-left:3px solid #3b82f6}
+.message.assistant{background:#f0fdf4;border-left:3px solid #22c55e}
+.role-badge{font-size:11px;font-weight:700;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px}
+.user-badge{color:#3b82f6}
+.ai-badge{color:#22c55e}
+pre{background:#1e1e2e;color:#cdd6f4;padding:14px;border-radius:8px;overflow-x:auto;font-size:12px;line-height:1.5;margin:8px 0;white-space:pre-wrap;word-wrap:break-word}
+code{font-family:'Fira Code',Consolas,monospace;font-size:12px}
+p code{background:#e8e8e8;padding:1px 5px;border-radius:3px;font-size:12px}
+.code-label{font-size:10px;color:#888;text-transform:uppercase;margin-top:4px;letter-spacing:0.5px}
+.math-block{background:#fffbeb;border:1px solid #fde68a;padding:12px;border-radius:8px;font-family:'Cambria Math','Times New Roman',serif;font-size:14px;text-align:center;margin:8px 0;white-space:pre-wrap}
+table{width:100%;border-collapse:collapse;margin:8px 0;font-size:12px}
+th,td{border:1px solid #d1d5db;padding:8px 10px;text-align:left}
+th{background:#f1f5f9;font-weight:600;color:#334155}
+tr:nth-child(even){background:#f8fafc}
+.thinking{margin:8px 0;border:1px dashed #c084fc;border-radius:8px;padding:0}
+.thinking summary{padding:10px 14px;cursor:pointer;font-size:12px;font-weight:600;color:#7c3aed;background:#faf5ff;border-radius:8px}
+.thinking p{padding:10px 14px;font-size:12px;color:#6b7280;line-height:1.6;white-space:pre-wrap}
+p{margin:4px 0;font-size:13px}
+@media print{body{padding:20px 16px}pre{white-space:pre-wrap!important}details{open}details>summary{display:none}details>p{display:block!important}}
+</style></head><body>
+<h1>\uD83D\uDCE6 ChatBridge Export \u2014 ${label}</h1>
+<div class="subtitle">${new Date().toLocaleString()}</div>
+<div class="stats-bar">${statsLine}</div>
+${bodyHtml}
+</body></html>`;
+
+            const pdfWin = window.open('', '_blank');
+            if (pdfWin) {
+              pdfWin.document.write(fullHtml);
+              pdfWin.document.close();
+              // Give rendering a moment, then trigger print dialog
+              setTimeout(() => {
+                try { pdfWin.print(); } catch (e) { console.error('[ChatBridge] PDF print error:', e); }
+              }, 600);
+              toast('\uD83D\uDCE4 PDF ready \u2014 use Print \u2192 Save as PDF');
+            } else {
+              // Popup blocked — fallback to HTML download
+              downloadFile(fullHtml, `chatbridge-${fileSlug(label)}-${dateStamp()}.html`, 'text/html');
+              toast('\uD83D\uDCE4 Exported as HTML (open & print to PDF)');
+            }
             exportPanel.remove();
           });
         };
