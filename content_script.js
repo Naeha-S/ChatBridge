@@ -565,6 +565,23 @@
         return true;
       }
 
+      if (msg && msg.type === 'theme_changed') {
+        try {
+          const theme = msg.theme || 'dark';
+          const host = document.getElementById('cb-host');
+          if (host) {
+            host.classList.remove('cb-theme-light', 'cb-theme-synthwave', 'cb-theme-skeuomorphic', 'cb-theme-brutalism', 'cb-theme-glass');
+            if (theme !== 'dark') {
+              host.classList.add(`cb-theme-${theme}`);
+            }
+          }
+          if (sendResponse) sendResponse({ ok: true });
+        } catch (e) {
+          if (sendResponse) sendResponse({ ok: false, error: e.message });
+        }
+        return true;
+      }
+
       if (msg && msg.type === 'cs_self_test') {
         try {
           // Minimal sanity checks only; no DOM mutations
@@ -8254,7 +8271,8 @@ Be thorough and fair to both sides.`
 
       // Helper to get theme variables
       function getThemeVars() {
-        const style = getComputedStyle(document.documentElement);
+        const hostEl = document.getElementById('cb-host');
+        const style = getComputedStyle(hostEl || document.documentElement);
         return {
           bg: style.getPropertyValue('--cb-bg').trim() || '#0A0F1C',
           bg2: style.getPropertyValue('--cb-bg2').trim() || '#10182B',

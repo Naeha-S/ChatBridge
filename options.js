@@ -356,6 +356,7 @@
     });
   });
 
+
   btnSaveNvidia?.addEventListener('click', async () => {
     const v = (nvidiaApiKeyInput.value || '').trim();
     const t = window.t || ((k) => k);

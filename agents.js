@@ -725,7 +725,7 @@
   }
 
   // Register Custom Element
-  if (!customElements.get('cb-agent-hub')) {
+  if (typeof customElements !== 'undefined' && customElements && customElements.get && !customElements.get('cb-agent-hub')) {
     customElements.define('cb-agent-hub', ChatBridgeAgentHub);
   }
 

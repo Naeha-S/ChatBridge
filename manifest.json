@@ -6,12 +6,15 @@
   "permissions": [
     "storage",
     "activeTab",
-    "alarms"
+    "alarms",
+    "idle",
+    "tabs"
   ],
   "host_permissions": [
     "https://generativelanguage.googleapis.com/*",
     "https://api.openai.com/*",
     "https://api-inference.huggingface.co/*",
+    "https://router.huggingface.co/*",
     "https://integrate.api.nvidia.com/*"
   ],
   "action": {

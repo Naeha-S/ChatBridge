@@ -2422,21 +2422,32 @@ Return ONLY the rewritten text. No preamble. No explanation.`;
   // rate limiter (token bucket)
   const limiterTry = () => RateLimiter.try();
 
-  // Background handler for calling OpenAI (safe place to keep API keys)
+  // Background handler for calling OpenAI
   if (msg && msg.type === 'call_openai') {
     if (!limiterTry()) return sendResponse({ ok: false, error: 'rate_limited' });
 
     (async () => {
       try {
         const payload = msg.payload || {};
-        const key = payload.apiKey || (await new Promise(r => chrome.storage.local.get(['chatbridge_api_key'], d => r(d.chatbridge_api_key))));
+        const OPENAI_API_KEY = await getOpenAIApiKey();
+        const key = payload.apiKey || OPENAI_API_KEY;
         const model = payload.model || 'gpt-4o-mini';
         const timeoutMs = (typeof payload.timeout === 'number') ? payload.timeout : 25000;
-        if (!key) return sendResponse({ ok: false, error: 'no_api_key' });
+        
+        if (!key) {
+          return sendResponse({ ok: false, error: 'no_api_key', message: 'OpenAI API key not configured.' });
+        }
+
+        const promptText = payload.text || payload.prompt || '';
+        const messages = payload.messages || (promptText ? [{ role: 'user', content: promptText }] : []);
+        
+        if (messages.length === 0) {
+           return sendResponse({ ok: false, error: 'invalid_request', message: 'No messages or prompt provided.' });
+        }
 
         // Cache lookup (5 minute TTL)
         try {
-          const cacheKey = hashString(stableStringify({ type: 'call_openai', model: model, messages: payload.messages || [] }));
+          const cacheKey = hashString(stableStringify({ type: 'call_openai', model, messages }));
           const rec = await cacheGet(cacheKey);
           if (rec && rec.ts && rec.ttl && (Date.now() - rec.ts) < rec.ttl && rec.response) {
             return sendResponse(rec.response);
@@ -2453,114 +2464,49 @@ Return ONLY the rewritten text. No preamble. No explanation.`;
             const res = await fetch('https://api.openai.com/v1/chat/completions', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
-              body: JSON.stringify({ model, messages: payload.messages || [] }),
+              body: JSON.stringify({
+                model, 
+                messages,
+                temperature: payload.temperature !== undefined ? payload.temperature : 0.7,
+                max_tokens: payload.max_tokens || 2000
+              }),
               signal: controller.signal
             });
             clearTimeout(to);
-            const json = await (async () => { const t = await res.text(); try { return JSON.parse(t); } catch (e) { return { raw: t }; } })();
+            
+            const text = await res.text();
+            let json = {};
+            try { json = JSON.parse(text); } catch (e) { json = { raw: text }; }
+            
             if (!res.ok) {
               lastErr = { status: res.status, body: json };
-              // retry on 5xx
               if (res.status >= 500 && attempt < maxAttempts) { await new Promise(r => setTimeout(r, 300 * attempt)); continue; }
-              return sendResponse({ ok: false, error: 'http_error', status: res.status, body: json });
+              return sendResponse({ ok: false, error: 'openai_http_error', status: res.status, body: json });
             }
-            // extract assistant text safely
+            
             const assistant = (json && json.choices && json.choices[0] && json.choices[0].message && json.choices[0].message.content) || '';
+            const result = assistant; // alias for compatibility
+            
             // cache successful response (5min TTL)
             try {
-              const cacheKey = hashString(stableStringify({ type: 'call_openai', model: model, messages: payload.messages || [] }));
-              await cachePut({ id: cacheKey, ts: Date.now(), ttl: 1000 * 60 * 5, response: { ok: true, assistant } });
+              const cacheKey = hashString(stableStringify({ type: 'call_openai', model, messages }));
+              await cachePut({ id: cacheKey, ts: Date.now(), ttl: 1000 * 60 * 5, response: { ok: true, assistant, result } });
               cacheCleanExpired();
             } catch (e) { /* ignore cache write errors */ }
-            return sendResponse({ ok: true, assistant: assistant });
+            
+            return sendResponse({ ok: true, assistant, result });
           } catch (e) {
             lastErr = e;
             if (e && e.name === 'AbortError') return sendResponse({ ok: false, error: 'timeout' });
-            // transient network error -> backoff and retry
             if (attempt < maxAttempts) await new Promise(r => setTimeout(r, 200 * attempt));
           }
         }
         return sendResponse({ ok: false, error: 'failed', detail: lastErr });
       } catch (e) {
-        return sendResponse({ ok: false, error: 'fetch_error', message: (e && e.message) || String(e) });
-      }
-    })();
-    // indicate we'll respond asynchronously
-    return true;
-  }
-
-  // OpenAI API handler for EchoSynth multi-AI synthesis
-  if (msg && msg.type === 'call_openai') {
-    if (!limiterTry()) return sendResponse({ ok: false, error: 'rate_limited' });
-    (async () => {
-      try {
-        const OPENAI_API_KEY = await getOpenAIApiKey();
-        if (!OPENAI_API_KEY) {
-          return sendResponse({ ok: false, error: 'no_api_key', message: 'OpenAI API key not configured.' });
-        }
-        const payload = msg.payload || {};
-        const promptText = payload.text || payload.prompt || '';
-
-        // Check cache first
-        try {
-          const cacheKey = hashString(stableStringify({ type: 'call_openai', prompt: promptText }));
-          const rec = await cacheGet(cacheKey);
-          if (rec && rec.ts && rec.ttl && (Date.now() - rec.ts) < rec.ttl && rec.response) {
-            return sendResponse(rec.response);
-          }
-        } catch (e) { /* ignore */ }
-
-        const endpoint = 'https://api.openai.com/v1/chat/completions';
-        const body = {
-          model: 'gpt-4o-mini',
-          messages: [{ role: 'user', content: promptText }],
-          temperature: 0.7,
-          max_tokens: 2000
-        };
-
-        const res = await fetch(endpoint, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${OPENAI_API_KEY}`
-          },
-          body: JSON.stringify(body)
-        });
-
-        let json;
-        try {
-          const text = await res.text();
-          json = text ? JSON.parse(text) : {};
-        } catch (e) {
-          console.error('[OpenAI API] Failed to parse response as JSON:', e);
-          return sendResponse({ ok: false, error: 'openai_parse_error', message: 'Invalid JSON response', status: res.status });
-        }
-
-        if (!res.ok) {
-          console.error('[OpenAI API Error]', res.status, json);
-          return sendResponse({ ok: false, error: 'openai_http_error', status: res.status, body: json });
-        }
-
-        if (!json.choices || !Array.isArray(json.choices) || json.choices.length === 0) {
-          console.error('[OpenAI API] No choices in response:', json);
-          return sendResponse({ ok: false, error: 'openai_parse_error', message: 'No choices in response', body: json });
-        }
-
-        const result = json.choices[0].message?.content || '';
-
-        // Cache successful result (5min TTL)
-        try {
-          const cacheKey = hashString(stableStringify({ type: 'call_openai', prompt: promptText }));
-          await cachePut({ id: cacheKey, ts: Date.now(), ttl: 1000 * 60 * 5, response: { ok: true, result } });
-          cacheCleanExpired();
-        } catch (e) { /* ignore */ }
-
-        return sendResponse({ ok: true, result });
-      } catch (e) {
         return sendResponse({ ok: false, error: 'openai_fetch_error', message: (e && e.message) || String(e) });
       }
     })();
-    return true;
+    return true; // async
   }
 
   // Gemini cloud API handler

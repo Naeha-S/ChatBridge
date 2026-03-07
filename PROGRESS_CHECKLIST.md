@@ -11,34 +11,9 @@ product. Last updated: 2026-02-18
 
 ### 🔍 Smart Query Tab
 
-- [x] UI shell (header, close button, intro text)
-- [x] Suggestion chips (Key decisions, Unresolved questions, Code examples,
-      Important dates)
-- [x] Filter row (host, tag, date range)
-- [x] Search input + button
-- [x] Results display with expandable excerpts
-- [x] Ask AI button + AI synthesis answer
-- [x] Index Chats button
-- [x] Provenance / source citations
 - [ ] Performance audit — large index sets
 - [ ] Edge cases: no results, partial index, stale index
 - [ ] Accessibility pass (keyboard nav, ARIA labels)
-
-### 🔧 Overall Fixes
-
-- [ ] Deduplicate `call_openai` handler in background.js
-- [ ] Replace `setInterval` in background.js with `chrome.alarms` (MV3
-      compliance)
-- [ ] Remove dead `window` references in background.js service worker
-- [ ] Add missing `router.huggingface.co` to manifest host_permissions
-- [ ] Audit `idle` / `alarms` / `tabs` permission usage and add to manifest or
-      remove calls
-- [ ] Settings panel — verify all sections render and persist correctly
-- [ ] Toast notification animations (slide-in / slide-out / auto-dismiss)
-- [ ] Theme persistence across sessions
-- [ ] Insight Finder modal polish and theme sync
-
----
 
 ## Phase 2 — Core AI Infrastructure
 

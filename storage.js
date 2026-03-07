@@ -59,6 +59,10 @@ const StorageManager = (() => {
     try {
       const storage = storageAPI || await initStorage();
       return new Promise((resolve, reject) => {
+        if (!storage || typeof storage.get !== 'function') {
+          resolve(null);
+          return;
+        }
         storage.get([key], result => {
           if (chrome?.runtime?.lastError) {
             reject(new Error(chrome.runtime.lastError.message));
@@ -77,6 +81,10 @@ const StorageManager = (() => {
     try {
       const storage = storageAPI || await initStorage();
       return new Promise((resolve, reject) => {
+        if (!storage || typeof storage.set !== 'function') {
+          reject(new Error('Storage set not available'));
+          return;
+        }
         storage.set({ [key]: value }, () => {
           if (chrome?.runtime?.lastError) {
             reject(new Error(chrome.runtime.lastError.message));
@@ -95,6 +103,10 @@ const StorageManager = (() => {
     try {
       const storage = storageAPI || await initStorage();
       return new Promise((resolve, reject) => {
+        if (!storage || typeof storage.remove !== 'function') {
+          reject(new Error('Storage remove not available'));
+          return;
+        }
         storage.remove(key, () => {
           if (chrome?.runtime?.lastError) {
             reject(new Error(chrome.runtime.lastError.message));
