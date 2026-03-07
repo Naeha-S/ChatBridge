@@ -1435,6 +1435,42 @@
             </div>
             <button class="btn btn-primary" id="btn-save-gemini">Save</button>
           </div>
+
+          <!-- NVIDIA (Embeddings) -->
+          <div class="api-row">
+            <div class="api-info">
+              <div class="api-name">NVIDIA</div>
+              <a href="https://build.nvidia.com/" target="_blank" class="api-link">Get key →</a>
+            </div>
+            <div class="api-input-wrap">
+              <input type="password" id="nvidiaApiKey" class="api-input" placeholder="nvapi-..." />
+              <button class="api-toggle" id="nvidia-toggle" type="button">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                  stroke-linejoin="round">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+              </button>
+            </div>
+            <div class="api-status" id="nvidiaStatus">
+              <span class="status-dot"></span>
+              <span>Not set</span>
+            </div>
+            <button class="btn btn-primary" id="btn-save-nvidia">Save</button>
+          </div>
+
+          <div class="api-row">
+            <div class="api-info">
+              <div class="api-name">Embeddings</div>
+              <div class="api-link">Reindex memory vectors</div>
+            </div>
+            <div class="api-input-wrap"></div>
+            <div class="api-status" id="rebuildStatus">
+              <span class="status-dot"></span>
+              <span>Idle</span>
+            </div>
+            <button class="btn btn-secondary" id="btn-rebuild-embeddings">Rebuild</button>
+          </div>
         </div>
       </section>
 
@@ -1609,6 +1645,7 @@
   </div>
 
   <script src="translations.js"></script>
+  <script src="security.js"></script>
   <script src="options.js"></script>
 </body>
 

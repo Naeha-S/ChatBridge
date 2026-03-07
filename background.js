@@ -190,6 +190,34 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           return;
         }
 
+        // Security: Validate URL protocol and block private/internal hosts
+        let parsedUrl;
+        try {
+          parsedUrl = new URL(url);
+        } catch (_) {
+          sendResponse({ ok: false, error: 'Invalid URL' });
+          return;
+        }
+        if (parsedUrl.protocol !== 'https:' && parsedUrl.protocol !== 'http:') {
+          sendResponse({ ok: false, error: 'Only http/https URLs are allowed' });
+          return;
+        }
+        const hostname = parsedUrl.hostname;
+        // Block localhost, loopback, and private IP ranges
+        if (
+          hostname === 'localhost' ||
+          hostname === '127.0.0.1' ||
+          hostname === '::1' ||
+          hostname === '0.0.0.0' ||
+          hostname.endsWith('.local') ||
+          hostname.endsWith('.internal') ||
+          /^(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|169\.254\.)/.test(hostname) ||
+          /^\[?(fc|fd|fe80)/i.test(hostname)
+        ) {
+          sendResponse({ ok: false, error: 'Requests to private/internal addresses are not allowed' });
+          return;
+        }
+
         // Fetch through background script (has broader permissions and doesn't trigger Cloudflare)
         const res = await fetch(url, {
           mode: 'cors',
@@ -277,9 +305,21 @@ async function precomputeEmbeddingsIdle(batch = 3) {
         if (existing && existing.vector && existing.vector.length) continue;
         const text = (c.conversation || []).map(m => `${m.role}: ${m.text}`).join('\n\n');
         if (!text || text.length < 30) continue;
-        const emb = await fetchEmbeddingOpenAI(text);
-        if (emb && Array.isArray(emb)) {
-          await idbPut({ id, vector: emb, metadata: { platform: c.platform || '', url: c.url || '', ts: c.ts || 0, topics: c.topics || [] }, ts: Date.now() });
+        const embOut = await fetchEmbeddingPreferred(text);
+        if (embOut && Array.isArray(embOut.vector)) {
+          await idbPut({
+            id,
+            vector: embOut.vector,
+            metadata: {
+              platform: c.platform || '',
+              url: c.url || '',
+              ts: c.ts || 0,
+              topics: c.topics || [],
+              embeddingProvider: embOut.provider,
+              embeddingModel: embOut.model
+            },
+            ts: Date.now()
+          });
           processed++;
         }
         // OPTIMIZATION: Small delay to avoid CPU burst even during idle
@@ -414,6 +454,20 @@ async function idbGet(id) {
       req.onerror = () => res(null);
     });
   } catch (e) { return null; }
+}
+
+async function idbClear() {
+  try {
+    if (!idb) await openVectorDB();
+    if (!idb) return false;
+    return await new Promise((res) => {
+      const tx = idb.transaction([V_STORE], 'readwrite');
+      const st = tx.objectStore(V_STORE);
+      const req = st.clear();
+      req.onsuccess = () => res(true);
+      req.onerror = () => res(false);
+    });
+  } catch (e) { return false; }
 }
 
 // Cache helpers
@@ -614,6 +668,61 @@ async function getOpenAIApiKey(opts) {
 // HuggingFace API key getter with cache (for Llama rewrite/translate)
 const __cbHuggingFaceKeyCache = { value: null, ts: 0 };
 const DEV_HARDCODED_HF_KEY = typeof window !== 'undefined' && window.CHATBRIDGE_CONFIG ? window.CHATBRIDGE_CONFIG.HUGGINGFACE_API_KEY : null;
+const __cbNvidiaKeyCache = { value: null, ts: 0 };
+
+const SECURITY_MASTER_KEY_NAME = 'chatbridge_master_key';
+let __cbSecurityMasterKey = null;
+
+async function getSecurityMasterKey(opts) {
+  const force = !!(opts && opts.force);
+  if (!force && __cbSecurityMasterKey) return __cbSecurityMasterKey;
+  const stored = await new Promise(r => chrome.storage.local.get([SECURITY_MASTER_KEY_NAME], d => r(d && d[SECURITY_MASTER_KEY_NAME])));
+  if (!stored) return null;
+  const jwk = JSON.parse(stored);
+  __cbSecurityMasterKey = await crypto.subtle.importKey(
+    'jwk',
+    jwk,
+    { name: 'AES-GCM', length: 256 },
+    true,
+    ['encrypt', 'decrypt']
+  );
+  return __cbSecurityMasterKey;
+}
+
+async function decryptStoredValue(encryptedB64) {
+  if (!encryptedB64) return null;
+  const key = await getSecurityMasterKey();
+  if (!key) return null;
+  const combined = Uint8Array.from(atob(encryptedB64), c => c.charCodeAt(0));
+  const iv = combined.slice(0, 12);
+  const ciphertext = combined.slice(12);
+  const plainBuffer = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ciphertext);
+  return new TextDecoder().decode(plainBuffer);
+}
+
+async function getNvidiaApiKey(opts) {
+  const force = !!(opts && opts.force);
+  const now = Date.now();
+  if (!force && __cbNvidiaKeyCache.value && (now - __cbNvidiaKeyCache.ts) < 60_000) {
+    return __cbNvidiaKeyCache.value;
+  }
+  try {
+    const encrypted = await new Promise(r => chrome.storage.local.get(['chatbridge_api_nvidia'], d => r(d && d.chatbridge_api_nvidia)));
+    if (!encrypted) {
+      __cbNvidiaKeyCache.value = null;
+      __cbNvidiaKeyCache.ts = now;
+      return null;
+    }
+    const decrypted = await decryptStoredValue(encrypted);
+    __cbNvidiaKeyCache.value = decrypted || null;
+    __cbNvidiaKeyCache.ts = now;
+    return __cbNvidiaKeyCache.value;
+  } catch (_) {
+    __cbNvidiaKeyCache.value = null;
+    __cbNvidiaKeyCache.ts = now;
+    return null;
+  }
+}
 
 async function getHuggingFaceApiKey(opts) {
   const force = !!(opts && opts.force);
@@ -654,6 +763,15 @@ try {
           if (changes && changes.chatbridge_hf_key) {
             __cbHuggingFaceKeyCache.value = changes.chatbridge_hf_key.newValue || null;
             __cbHuggingFaceKeyCache.ts = Date.now();
+          }
+          if (changes && changes.chatbridge_api_nvidia) {
+            __cbNvidiaKeyCache.value = null;
+            __cbNvidiaKeyCache.ts = 0;
+          }
+          if (changes && changes[SECURITY_MASTER_KEY_NAME]) {
+            __cbSecurityMasterKey = null;
+            __cbNvidiaKeyCache.value = null;
+            __cbNvidiaKeyCache.ts = 0;
           }
         }
       } catch (_) { }
@@ -795,9 +913,68 @@ async function getLocalEmbeddingsBatchViaContent(texts) {
   } catch (e) { return null; }
 }
 
-// Fetch embedding (now local via content script)
-async function fetchEmbeddingGemini(text) { return getLocalEmbeddingViaContent(text); }
-async function fetchEmbeddingOpenAI(text) { return getLocalEmbeddingViaContent(text); }
+function normalizeEmbeddingVector(raw) {
+  if (!raw) return null;
+  if (Array.isArray(raw)) return raw;
+  if (Array.isArray(raw.embedding)) return raw.embedding;
+  if (Array.isArray(raw.vector)) return raw.vector;
+  return null;
+}
+
+async function fetchEmbeddingNvidia(text) {
+  const nvidiaApiKey = await getNvidiaApiKey();
+  if (!nvidiaApiKey) throw new Error('no_api_key');
+
+  const response = await fetch('https://integrate.api.nvidia.com/v1/embeddings', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${nvidiaApiKey}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      model: 'llama-nemotron-embed-1b-v2',
+      input: text
+    })
+  });
+
+  if (!response.ok) {
+    if (response.status === 401 || response.status === 403) throw new Error('invalid_api_key');
+    if (response.status === 429) throw new Error('rate_limited');
+    throw new Error(`http_${response.status}`);
+  }
+
+  let json = null;
+  try {
+    json = await response.json();
+  } catch (_) {
+    throw new Error('parse_error');
+  }
+  const vector = normalizeEmbeddingVector(json && json.data && json.data[0]);
+  if (!vector || !vector.length) throw new Error('empty_embedding');
+  return { vector, provider: 'nvidia', model: 'llama-nemotron-embed-1b-v2' };
+}
+
+async function fetchEmbeddingPreferred(text) {
+  try {
+    const nvidia = await fetchEmbeddingNvidia(text);
+    if (nvidia && Array.isArray(nvidia.vector)) return nvidia;
+  } catch (_) {
+    // NVIDIA is optional; local embedding remains a no-key fallback.
+  }
+  const local = await getLocalEmbeddingViaContent(text);
+  if (!local) return null;
+  return { vector: local, provider: 'local', model: 'content-script-transformer' };
+}
+
+// Fetch embedding compatibility wrappers
+async function fetchEmbeddingGemini(text) {
+  const out = await fetchEmbeddingPreferred(text);
+  return out && out.vector ? out.vector : null;
+}
+async function fetchEmbeddingOpenAI(text) {
+  const out = await fetchEmbeddingPreferred(text);
+  return out && out.vector ? out.vector : null;
+}
 
 // Message handlers for vector index / query
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
@@ -812,12 +989,24 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         if (!text) return sendResponse({ ok: false, error: 'no_text' });
         // Try to get embedding from payload first
         let embedding = payload.embedding || null;
+        let embeddingProvider = payload.embeddingProvider || null;
+        let embeddingModel = payload.embeddingModel || null;
         if (!embedding) {
-          // try OpenAI embeddings
-          embedding = await fetchEmbeddingOpenAI(text);
+          const embOut = await fetchEmbeddingPreferred(text);
+          embedding = embOut && embOut.vector;
+          embeddingProvider = embOut && embOut.provider;
+          embeddingModel = embOut && embOut.model;
         }
         if (!embedding) return sendResponse({ ok: false, error: 'no_embedding' });
-        const obj = { id, vector: embedding, metadata: metadata, ts: Date.now() };
+        const obj = {
+          id,
+          vector: embedding,
+          metadata: Object.assign({}, metadata, {
+            embeddingProvider: embeddingProvider || metadata.embeddingProvider || 'unknown',
+            embeddingModel: embeddingModel || metadata.embeddingModel || 'unknown'
+          }),
+          ts: Date.now()
+        };
         const ok = await idbPut(obj);
         return sendResponse({ ok: !!ok });
       })();
@@ -864,6 +1053,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     if (msg.type === 'vector_index_all') {
       (async () => {
         try {
+          const clearExisting = !!(msg.payload && msg.payload.clearExisting);
+          if (clearExisting) {
+            await idbClear();
+          }
           // load conversations from convo DB, payload, or fallback to chrome.storage.local
           const fromPayload = (msg.payload && Array.isArray(msg.payload.conversations)) ? msg.payload.conversations : null;
           let convs = [];
@@ -881,9 +1074,22 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
               const id = String(c.ts || Date.now());
               const text = (c.conversation || []).map(m => `${m.role}: ${m.text}`).join('\n\n');
               if (!text || text.trim().length < 20) continue;
-              const emb = await fetchEmbeddingOpenAI(text);
-              if (!emb) continue;
-              const obj = { id, vector: emb, metadata: { platform: c.platform || '', url: c.url || '', ts: c.ts || 0, topics: c.topics || [] }, ts: Date.now() };
+              const embOut = await fetchEmbeddingPreferred(text);
+              if (!embOut || !embOut.vector) continue;
+              const obj = {
+                id,
+                vector: embOut.vector,
+                metadata: {
+                  platform: c.platform || '',
+                  url: c.url || '',
+                  ts: c.ts || 0,
+                  topics: c.topics || [],
+                  excerpt: text.slice(0, 700),
+                  embeddingProvider: embOut.provider,
+                  embeddingModel: embOut.model
+                },
+                ts: Date.now()
+              };
               await idbPut(obj);
               indexed++;
             } catch (e) { /* continue on per-item error */ }
@@ -1349,6 +1555,45 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       }
     })();
     return true; // Keep channel open for async response
+  }
+
+  // Test NVIDIA API connection (embeddings)
+  if (msg && msg.type === 'test_nvidia_api') {
+    (async () => {
+      const key = msg.apiKey;
+      if (!key) {
+        return sendResponse({ ok: false, error: 'No API key provided' });
+      }
+
+      try {
+        const response = await fetch('https://integrate.api.nvidia.com/v1/embeddings', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${key}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            model: 'llama-nemotron-embed-1b-v2',
+            input: 'connection test'
+          })
+        });
+
+        if (response.ok) {
+          const json = await response.json().catch(() => ({}));
+          const emb = json && json.data && json.data[0] && json.data[0].embedding;
+          if (Array.isArray(emb) && emb.length > 0) {
+            return sendResponse({ ok: true, status: 200 });
+          }
+          return sendResponse({ ok: false, status: 502, error: 'No embedding returned' });
+        }
+
+        const text = await response.text().catch(() => '');
+        return sendResponse({ ok: false, status: response.status, error: text });
+      } catch (error) {
+        return sendResponse({ ok: false, error: error.message });
+      }
+    })();
+    return true;
   }
 
   // EuroLLM Translation Handler (Hugging Face OpenAI-compatible API)
@@ -2800,123 +3045,221 @@ Rewritten conversation (optimized for ${tgt}):`;
       const startMs = Date.now();
       try {
         const payload = msg.payload || {};
-        const preferredModel = payload.model || 'auto'; // 'gemini', 'llama', 'auto'
+        const preferredModel = payload.model || 'auto'; // 'gemini', 'llama', 'hybrid', 'auto'
+        const routeMode = payload.routeMode || preferredModel;
         const prompt = payload.prompt || '';
         const maxTokens = payload.maxTokens || 1024;
         const temperature = payload.temperature != null ? payload.temperature : 0.4;
         const complexity = payload.complexity || 'auto'; // 'deep', 'fast', 'auto'
+        const retrievalEnabled = payload.enableRetrieval !== false;
 
         if (!prompt) {
           return sendResponse({ ok: false, error: 'empty_prompt', message: 'No prompt provided to agent_route.' });
         }
 
-        // Determine model: auto-select based on complexity heuristics
-        let selectedModel = preferredModel;
-        if (selectedModel === 'auto') {
-          const isDeep = complexity === 'deep' || prompt.length > 2000 || /synthesiz|analyz|compar|evaluat|briefing|handoff|comprehensive/i.test(prompt);
-          selectedModel = isDeep ? 'gemini' : 'llama';
+        async function withTimeout(promise, timeoutMs) {
+          let timer = null;
+          try {
+            return await Promise.race([
+              promise,
+              new Promise((_, reject) => {
+                timer = setTimeout(() => reject(new Error('timeout')), timeoutMs);
+              })
+            ]);
+          } finally {
+            if (timer) clearTimeout(timer);
+          }
         }
 
-        let result = null;
-
-        if (selectedModel === 'gemini') {
-          // Rate limit check (async — persisted to session storage)
+        async function callGeminiForAgent(agentPrompt) {
           const rateCheck = await checkRateLimit('gemini');
-          if (!rateCheck.allowed) {
-            // Fallback to Llama if Gemini is rate-limited
-            selectedModel = 'llama';
-          } else if (!limiterTry()) {
-            selectedModel = 'llama';
-          } else {
-            await recordRequest('gemini');
-            const geminiApiKey = await getGeminiApiKey();
-            if (!geminiApiKey) {
-              // Fallback to Llama if no Gemini key
-              selectedModel = 'llama';
-            } else {
-              // Call Gemini with failover chain
-              const models = ['gemini-2.0-flash', 'gemini-2.5-flash', 'gemini-2.0-flash-lite', 'gemini-2.5-pro'];
-              let lastError = null;
-              for (const model of models) {
-                try {
-                  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`;
-                  const body = {
-                    contents: [{ parts: [{ text: prompt }] }],
-                    generationConfig: {
-                      temperature,
-                      maxOutputTokens: maxTokens,
-                      topP: 0.9
-                    },
-                    systemInstruction: {
-                      parts: [{ text: 'You are an intelligent agent inside ChatBridge, a cross-platform AI conversation manager. Provide concise, structured, actionable output. Use markdown formatting with headers and bullet points. Never add meta-commentary — output ONLY the requested content.' }]
-                    }
-                  };
-                  const resp = await fetch(url, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(body)
-                  });
-                  if (!resp.ok) {
-                    lastError = `${model}: HTTP ${resp.status}`;
-                    continue;
+          if (!rateCheck.allowed || !limiterTry()) return null;
+
+          const geminiApiKey = await getGeminiApiKey();
+          if (!geminiApiKey) return null;
+
+          await recordRequest('gemini');
+          const models = ['gemini-2.0-flash', 'gemini-2.5-flash', 'gemini-2.0-flash-lite', 'gemini-2.5-pro'];
+          for (const model of models) {
+            try {
+              const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`;
+              const resp = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  contents: [{ parts: [{ text: agentPrompt }] }],
+                  generationConfig: {
+                    temperature,
+                    maxOutputTokens: maxTokens,
+                    topP: 0.9
+                  },
+                  systemInstruction: {
+                    parts: [{ text: 'You are an intelligent agent inside ChatBridge, a cross-platform AI conversation manager. Provide concise, structured, actionable output. Use markdown formatting with headers and bullet points. Never add meta-commentary.' }]
                   }
-                  const data = await resp.json();
-                  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-                  if (text) {
-                    result = { ok: true, result: text, model_used: model, latency_ms: Date.now() - startMs };
-                    break;
-                  }
-                  lastError = `${model}: empty response`;
-                } catch (e) {
-                  lastError = `${model}: ${e.message}`;
-                }
-              }
-              if (!result) {
-                // All Gemini models failed — fallback to Llama
-                selectedModel = 'llama';
-              }
-            }
+                })
+              });
+              if (!resp.ok) continue;
+              const data = await resp.json();
+              const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+              if (text) return { ok: true, result: text, model_used: model };
+            } catch (_) { }
           }
+          return null;
         }
 
-        // Llama path (primary or fallback)
-        if (selectedModel === 'llama' && !result) {
-          const HF_API_KEY = await getHuggingFaceApiKey();
-          if (!HF_API_KEY) {
-            return sendResponse({ ok: false, error: 'no_api_key', message: 'No API keys configured. Open ChatBridge Options to set up Gemini or HuggingFace keys.', latency_ms: Date.now() - startMs });
-          }
+        async function callLlamaForAgent(agentPrompt) {
+          const hfApiKey = await getHuggingFaceApiKey();
+          if (!hfApiKey) return null;
           try {
             const resp = await fetch('https://router.huggingface.co/novita/v3/openai/chat/completions', {
               method: 'POST',
-              headers: { 'Authorization': `Bearer ${HF_API_KEY}`, 'Content-Type': 'application/json' },
+              headers: { 'Authorization': `Bearer ${hfApiKey}`, 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 model: 'meta-llama/Llama-3.1-8B-Instruct',
                 messages: [
-                  { role: 'system', content: 'You are an intelligent agent inside ChatBridge, a cross-platform AI conversation manager. Provide concise, structured, actionable output. Use markdown formatting with headers and bullet points. Never add meta-commentary — output ONLY the requested content.' },
-                  { role: 'user', content: prompt }
+                  { role: 'system', content: 'You are an intelligent agent inside ChatBridge, a cross-platform AI conversation manager. Provide concise, structured, actionable output. Use markdown formatting with headers and bullet points. Never add meta-commentary.' },
+                  { role: 'user', content: agentPrompt }
                 ],
                 max_tokens: maxTokens,
                 temperature,
                 stream: false
               })
             });
-            if (resp.ok) {
-              const data = await resp.json();
-              const text = data?.choices?.[0]?.message?.content;
-              if (text) {
-                result = { ok: true, result: text, model_used: 'llama-3.1-8b', latency_ms: Date.now() - startMs };
-              }
-            }
-          } catch (e) {
-            // Llama also failed
+            if (!resp.ok) return null;
+            const data = await resp.json();
+            const text = data?.choices?.[0]?.message?.content;
+            if (!text) return null;
+            return { ok: true, result: text, model_used: 'llama-3.1-8b' };
+          } catch (_) {
+            return null;
           }
         }
 
-        if (result) {
-          return sendResponse(result);
+        async function getRetrievedContext(queryText, topK) {
+          if (!retrievalEnabled) return { contextText: '', sources: [] };
+          const qEmb = await fetchEmbeddingOpenAI(queryText);
+          if (!qEmb) return { contextText: '', sources: [] };
+          const all = await idbAll();
+          if (!all || !all.length) return { contextText: '', sources: [] };
+
+          const scored = all
+            .map(it => ({
+              score: cosine(qEmb, it.vector || []),
+              metadata: it.metadata || {}
+            }))
+            .sort((a, b) => b.score - a.score)
+            .slice(0, Math.max(1, topK || 4));
+
+          const contextLines = [];
+          const sources = [];
+          for (const row of scored) {
+            const md = row.metadata || {};
+            const line = md.excerpt || md.text || '';
+            if (!line) continue;
+            contextLines.push(`- ${line.slice(0, 600)}`);
+            sources.push({
+              score: Number((row.score || 0).toFixed(4)),
+              platform: md.platform || '',
+              url: md.url || '',
+              ts: md.ts || 0,
+              embeddingProvider: md.embeddingProvider || ''
+            });
+          }
+          return {
+            contextText: contextLines.join('\n'),
+            sources
+          };
+        }
+
+        // Determine model: auto-select based on complexity heuristics
+        let selectedModel = routeMode;
+        if (selectedModel === 'auto') {
+          const isDeep = complexity === 'deep' || prompt.length > 2000 || /synthesiz|analyz|compar|evaluat|briefing|handoff|comprehensive/i.test(prompt);
+          selectedModel = isDeep ? 'hybrid' : 'llama';
+        }
+
+        const retrieval = await getRetrievedContext(prompt, payload.topK || 4);
+        const enrichedPrompt = retrieval.contextText
+          ? `${prompt}\n\nRelevant memory retrieved from previous conversations:\n${retrieval.contextText}\n\nUse this context if helpful, but do not fabricate details.`
+          : prompt;
+
+        let result = null;
+
+        if (selectedModel === 'gemini') {
+          result = await withTimeout(callGeminiForAgent(enrichedPrompt), 14_000).catch(() => null);
+          if (!result) {
+            result = await withTimeout(callLlamaForAgent(enrichedPrompt), 12_000).catch(() => null);
+          }
+        } else if (selectedModel === 'llama') {
+          result = await withTimeout(callLlamaForAgent(enrichedPrompt), 12_000).catch(() => null);
+          if (!result) {
+            result = await withTimeout(callGeminiForAgent(enrichedPrompt), 14_000).catch(() => null);
+          }
+        } else if (selectedModel === 'hybrid') {
+          const [geminiRes, llamaRes] = await Promise.all([
+            withTimeout(callGeminiForAgent(enrichedPrompt), 14_000).catch(() => null),
+            withTimeout(callLlamaForAgent(enrichedPrompt), 12_000).catch(() => null)
+          ]);
+
+          if (geminiRes && llamaRes) {
+            const synthesisPrompt = [
+              'Synthesize the strongest final answer from two model drafts.',
+              'Preserve factual overlap, keep best unique details, and remove redundancy.',
+              '',
+              'Original user request:',
+              prompt,
+              '',
+              'Draft A (Gemini):',
+              geminiRes.result,
+              '',
+              'Draft B (Llama):',
+              llamaRes.result,
+              '',
+              'Return only the final synthesized answer in markdown.'
+            ].join('\n');
+
+            const synth = await withTimeout(callGeminiForAgent(synthesisPrompt), 14_000).catch(() => null)
+              || await withTimeout(callLlamaForAgent(synthesisPrompt), 12_000).catch(() => null);
+
+            if (synth) {
+              result = {
+                ok: true,
+                result: synth.result,
+                model_used: `hybrid(nvidia-rag+${geminiRes.model_used}+${llamaRes.model_used})`
+              };
+            } else {
+              const best = (geminiRes.result.length >= llamaRes.result.length) ? geminiRes : llamaRes;
+              result = {
+                ok: true,
+                result: best.result,
+                model_used: `hybrid-fallback(nvidia-rag+${geminiRes.model_used}+${llamaRes.model_used})`
+              };
+            }
+          } else {
+            result = geminiRes || llamaRes || null;
+            if (result) {
+              result = {
+                ok: true,
+                result: result.result,
+                model_used: `hybrid-single(nvidia-rag+${result.model_used})`
+              };
+            }
+          }
         } else {
+          return sendResponse({ ok: false, error: 'invalid_route_mode', message: `Unsupported route mode: ${selectedModel}` });
+        }
+
+        if (!result) {
           return sendResponse({ ok: false, error: 'all_models_failed', message: 'All AI models failed. Check your API keys in ChatBridge Options.', latency_ms: Date.now() - startMs });
         }
+
+        return sendResponse(Object.assign({}, result, {
+          ok: true,
+          route_mode: selectedModel,
+          latency_ms: Date.now() - startMs,
+          retrieval_used: !!retrieval.contextText,
+          retrieval_sources: retrieval.sources
+        }));
       } catch (e) {
         return sendResponse({ ok: false, error: 'agent_route_error', message: (e && e.message) || String(e), latency_ms: Date.now() - startMs });
       }

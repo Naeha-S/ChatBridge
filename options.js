@@ -76,7 +76,7 @@
 
     // Buttons
     document.querySelectorAll('.btn-primary').forEach(btn => {
-      if (btn.id === 'btn-save-hf' || btn.id === 'btn-save-gemini') {
+      if (btn.id === 'btn-save-hf' || btn.id === 'btn-save-gemini' || btn.id === 'btn-save-nvidia') {
         if (!btn.disabled) btn.textContent = t('save', lang);
       }
     });
@@ -206,15 +206,15 @@
 
     const apiStatusEl = document.getElementById('dashboard-api-status');
     if (apiStatusEl) {
-      chrome.storage.local.get(['chatbridge_hf_key', 'chatbridge_gemini_key'], (res) => {
+      chrome.storage.local.get(['chatbridge_hf_key', 'chatbridge_gemini_key', 'chatbridge_api_nvidia'], (res) => {
         const hasHf = !!res.chatbridge_hf_key;
         const hasGemini = !!res.chatbridge_gemini_key;
-        if (hasHf && hasGemini) {
-          apiStatusEl.textContent = '2 Active';
-          apiStatusEl.style.color = 'var(--success)';
-        } else if (hasHf || hasGemini) {
-          apiStatusEl.textContent = '1 Active';
-          apiStatusEl.style.color = 'var(--warning)';
+        const hasNvidia = !!res.chatbridge_api_nvidia;
+        const active = (hasHf ? 1 : 0) + (hasGemini ? 1 : 0) + (hasNvidia ? 1 : 0);
+
+        if (active >= 1) {
+          apiStatusEl.textContent = `${active} Active`;
+          apiStatusEl.style.color = active >= 2 ? 'var(--success)' : 'var(--warning)';
         } else {
           apiStatusEl.textContent = 'None';
           apiStatusEl.style.color = 'var(--text-muted)';
@@ -230,14 +230,20 @@
   // ============================================
   const hfApiKeyInput = document.getElementById('hfApiKey');
   const geminiApiKeyInput = document.getElementById('geminiApiKey');
+  const nvidiaApiKeyInput = document.getElementById('nvidiaApiKey');
   const btnSaveHF = document.getElementById('btn-save-hf');
   const btnSaveGemini = document.getElementById('btn-save-gemini');
+  const btnSaveNvidia = document.getElementById('btn-save-nvidia');
+  const btnRebuildEmbeddings = document.getElementById('btn-rebuild-embeddings');
   const hfStatus = document.getElementById('hfStatus');
   const geminiStatus = document.getElementById('geminiStatus');
+  const nvidiaStatus = document.getElementById('nvidiaStatus');
+  const rebuildStatus = document.getElementById('rebuildStatus');
   const hfToggle = document.getElementById('hf-toggle');
   const geminiToggle = document.getElementById('gemini-toggle');
+  const nvidiaToggle = document.getElementById('nvidia-toggle');
 
-  chrome.storage.local.get(['chatbridge_hf_key', 'chatbridge_gemini_key'], res => {
+  chrome.storage.local.get(['chatbridge_hf_key', 'chatbridge_gemini_key'], async (res) => {
     if (res.chatbridge_hf_key) {
       hfApiKeyInput.value = res.chatbridge_hf_key;
       updateApiStatus(hfStatus, window.t ? window.t('connected', currentLang) : 'Connected', 'success');
@@ -245,6 +251,18 @@
     if (res.chatbridge_gemini_key) {
       geminiApiKeyInput.value = res.chatbridge_gemini_key;
       updateApiStatus(geminiStatus, window.t ? window.t('connected', currentLang) : 'Connected', 'success');
+    }
+
+    try {
+      if (window.ChatBridgeSecurity && typeof window.ChatBridgeSecurity.getApiKey === 'function') {
+        const nvidiaKey = await window.ChatBridgeSecurity.getApiKey('nvidia');
+        if (nvidiaKey) {
+          nvidiaApiKeyInput.value = nvidiaKey;
+          updateApiStatus(nvidiaStatus, window.t ? window.t('connected', currentLang) : 'Connected', 'success');
+        }
+      }
+    } catch (e) {
+      console.warn('[ChatBridge Options] Failed to load encrypted NVIDIA key:', e);
     }
   });
 
@@ -254,6 +272,10 @@
 
   geminiToggle?.addEventListener('click', () => {
     geminiApiKeyInput.type = geminiApiKeyInput.type === 'password' ? 'text' : 'password';
+  });
+
+  nvidiaToggle?.addEventListener('click', () => {
+    nvidiaApiKeyInput.type = nvidiaApiKeyInput.type === 'password' ? 'text' : 'password';
   });
 
   btnSaveHF?.addEventListener('click', async () => {
@@ -332,6 +354,81 @@
         showToast(t('invalidKey', currentLang), 'error');
       }
     });
+  });
+
+  btnSaveNvidia?.addEventListener('click', async () => {
+    const v = (nvidiaApiKeyInput.value || '').trim();
+    const t = window.t || ((k) => k);
+
+    if (!v) {
+      if (!confirm('Remove stored NVIDIA API key?')) return;
+      chrome.storage.local.remove(['chatbridge_api_nvidia'], () => {
+        nvidiaApiKeyInput.value = '';
+        updateApiStatus(nvidiaStatus, t('notSet', currentLang), '');
+        showToast(t('keyRemoved', currentLang), 'success');
+        loadDashboardStats();
+      });
+      return;
+    }
+
+    btnSaveNvidia.textContent = t('saving', currentLang);
+    btnSaveNvidia.disabled = true;
+    updateApiStatus(nvidiaStatus, t('connecting', currentLang), 'pending');
+
+    chrome.runtime.sendMessage({ type: 'test_nvidia_api', apiKey: v }, async (response) => {
+      btnSaveNvidia.textContent = t('save', currentLang);
+      btnSaveNvidia.disabled = false;
+
+      if (response && response.ok) {
+        try {
+          if (!window.ChatBridgeSecurity || typeof window.ChatBridgeSecurity.saveApiKey !== 'function') {
+            updateApiStatus(nvidiaStatus, t('invalidKey', currentLang), 'error');
+            showToast('Security module unavailable', 'error');
+            return;
+          }
+
+          const saved = await window.ChatBridgeSecurity.saveApiKey('nvidia', v);
+          if (!saved) {
+            updateApiStatus(nvidiaStatus, t('invalidKey', currentLang), 'error');
+            showToast('Failed to save encrypted key', 'error');
+            return;
+          }
+
+          updateApiStatus(nvidiaStatus, t('connected', currentLang), 'success');
+          showToast(t('keySaved', currentLang), 'success');
+          loadDashboardStats();
+        } catch (e) {
+          updateApiStatus(nvidiaStatus, t('invalidKey', currentLang), 'error');
+          showToast('Failed to save key', 'error');
+        }
+      } else {
+        updateApiStatus(nvidiaStatus, t('invalidKey', currentLang), 'error');
+        showToast(t('invalidKey', currentLang), 'error');
+      }
+    });
+  });
+
+  btnRebuildEmbeddings?.addEventListener('click', async () => {
+    const t = window.t || ((k) => k);
+    btnRebuildEmbeddings.disabled = true;
+    updateApiStatus(rebuildStatus, t('connecting', currentLang), 'pending');
+
+    try {
+      const response = await new Promise((resolve, reject) => {
+        chrome.runtime.sendMessage({ type: 'vector_index_all', payload: { clearExisting: true } }, (response) => {
+          if (chrome.runtime.lastError) return reject(new Error(chrome.runtime.lastError.message));
+          if (!response || !response.ok) return reject(new Error((response && response.error) || 'rebuild_failed'));
+          return resolve(response);
+        });
+      });
+      updateApiStatus(rebuildStatus, 'Done', 'success');
+      showToast(`Embeddings rebuilt (${response.indexed || 0} indexed)`, 'success');
+    } catch (e) {
+      updateApiStatus(rebuildStatus, 'Failed', 'error');
+      showToast('Embedding rebuild failed', 'error');
+    } finally {
+      btnRebuildEmbeddings.disabled = false;
+    }
   });
 
   function updateApiStatus(element, text, type) {
@@ -543,7 +640,10 @@
 
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
-    toast.innerHTML = `<span>${type === 'success' ? '✓' : type === 'error' ? '✗' : 'ℹ'}</span> ${message}`;
+    const icon = document.createElement('span');
+    icon.textContent = type === 'success' ? '✓' : type === 'error' ? '✗' : 'ℹ';
+    toast.appendChild(icon);
+    toast.appendChild(document.createTextNode(' ' + message));
     document.body.appendChild(toast);
 
     setTimeout(() => {

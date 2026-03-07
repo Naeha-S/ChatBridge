@@ -1467,7 +1467,7 @@ Synthesize now:`;
         this.callLlama(prompt).then(summary => {
           const syntContent = container.querySelector('#sq-synthesis-content');
           if (syntContent) {
-            syntContent.innerHTML = this.formatText(summary);
+            syntContent.innerHTML = this.formatText(this.escapeHTML(summary));
 
             // Auto-detect overflow and show expand button
             const expandBtn = container.querySelector('#sq-expand-synthesis');

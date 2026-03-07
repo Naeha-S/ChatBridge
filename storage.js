@@ -8,7 +8,8 @@ const StorageManager = (() => {
     AGENT_CATCHMEUP: 'chatbridge_agent_catchmeup',
     AGENT_TRACKED_TOPICS: 'chatbridge_agent_tracked_topics',
     AGENT_PULSE_SESSIONS: 'chatbridge_agent_pulse_sessions',
-    AGENT_HANDOFF_DRAFTS: 'chatbridge_agent_handoff_drafts'
+    AGENT_HANDOFF_DRAFTS: 'chatbridge_agent_handoff_drafts',
+    AGENT_SHADOW_MEMORY: 'chatbridge_agent_shadow_memory'
   };
 
   const LIMITS = {
@@ -217,6 +218,27 @@ const StorageManager = (() => {
     } catch (e) { console.warn('[ChatBridge] Agent Handoff save error:', e); }
   }
 
+  // Shadow Memory — cross-agent signal bus (max 100 signals, FIFO, 7-day TTL)
+  async function getShadowMemory() {
+    try {
+      const signals = (await get(KEYS.AGENT_SHADOW_MEMORY)) || [];
+      const cutoff = Date.now() - (7 * 24 * 60 * 60 * 1000);
+      return signals.filter(s => s.timestamp > cutoff);
+    } catch (e) { return []; }
+  }
+  async function appendShadowSignal(signal) {
+    try {
+      let signals = (await get(KEYS.AGENT_SHADOW_MEMORY)) || [];
+      signals.push(signal);
+      const cutoff = Date.now() - (7 * 24 * 60 * 60 * 1000);
+      signals = signals.filter(s => s.timestamp > cutoff).slice(-100);
+      await set(KEYS.AGENT_SHADOW_MEMORY, signals);
+    } catch (e) { console.warn('[ChatBridge] Shadow Memory save error:', e); }
+  }
+  async function clearShadowMemory() {
+    try { await set(KEYS.AGENT_SHADOW_MEMORY, []); } catch (e) { /* ignore */ }
+  }
+
   return {
     KEYS,
     get,
@@ -236,7 +258,11 @@ const StorageManager = (() => {
     getPulseSessions,
     appendPulseSession,
     getHandoffDrafts,
-    saveHandoffDraft
+    saveHandoffDraft,
+    // Shadow Memory
+    getShadowMemory,
+    appendShadowSignal,
+    clearShadowMemory
   };
 })();
 

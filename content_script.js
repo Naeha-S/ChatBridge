@@ -85,6 +85,17 @@
       .replace(/'/g, '&#x27;');
   }
 
+  // Security: validate URLs before opening in new tabs — block javascript:, data:, etc.
+  function isSafeUrl(url) {
+    if (!url || typeof url !== 'string') return false;
+    try {
+      const parsed = new URL(url);
+      return parsed.protocol === 'https:' || parsed.protocol === 'http:';
+    } catch (_) {
+      return false;
+    }
+  }
+
   // Early-scope polyfills — defined here so code that runs before the main IIFE
   // can call them; the canonical implementations inside the IIFE shadow these.
   // Named distinctly to make the intent clear and avoid accidental hoisting conflicts.
@@ -6737,7 +6748,7 @@
           subContent.innerHTML = `
             <div style="text-align:center;margin-bottom:10px;font-size:11px;color:var(--cb-subtext);">Card ${currentCard + 1} of ${cards.length}</div>
             <div id="tk-fc-card" style="min-height:120px;padding:20px;border-radius:10px;background:var(--cb-bg2);border:1px solid var(--cb-border);cursor:pointer;display:flex;align-items:center;justify-content:center;text-align:center;transition:all 0.3s;font-size:13px;color:var(--cb-text);line-height:1.5;">
-              ${c.front}
+              ${escapeHtml(c.front)}
             </div>
             <div style="font-size:10px;color:var(--cb-subtext);text-align:center;margin:8px 0;">Click card to flip</div>
             <div style="display:flex;gap:8px;">
@@ -6750,7 +6761,7 @@
           shadow.getElementById('tk-fc-card')?.addEventListener('click', () => {
             const cardEl = shadow.getElementById('tk-fc-card');
             flipped = !flipped;
-            cardEl.innerHTML = flipped ? c.back : c.front;
+            cardEl.textContent = flipped ? c.back : c.front;
             cardEl.style.background = flipped ? 'color-mix(in srgb, var(--cb-accent-primary) 10%, var(--cb-bg2))' : 'var(--cb-bg2)';
             cardEl.style.borderColor = flipped ? 'var(--cb-accent-primary)' : 'var(--cb-border)';
           });
@@ -6765,7 +6776,7 @@
         }
         renderCard();
       } catch (e) {
-        shadow.getElementById('tk-sub-content').innerHTML = `<div style="color:var(--cb-error);font-size:12px;text-align:center;padding:20px;">Failed to generate flashcards: ${e.message}</div>`;
+        shadow.getElementById('tk-sub-content').innerHTML = `<div style="color:var(--cb-error);font-size:12px;text-align:center;padding:20px;">Failed to generate flashcards: ${escapeHtml(e.message)}</div>`;
       }
     });
 
@@ -6812,10 +6823,10 @@
           row.innerHTML = `
             <input type="checkbox" id="tk-ac-${i}" style="margin-top:2px;accent-color:var(--cb-accent-primary);flex-shrink:0;">
             <div style="flex:1;">
-              <div style="font-size:12px;color:var(--cb-text);line-height:1.4;">${categoryIcons[item.category] || '📌'} ${item.task}</div>
+              <div style="font-size:12px;color:var(--cb-text);line-height:1.4;">${categoryIcons[item.category] || '📌'} ${escapeHtml(item.task)}</div>
               <div style="display:flex;gap:6px;margin-top:4px;">
-                <span style="font-size:9px;padding:2px 6px;border-radius:4px;background:${priorityColors[item.priority] || '#6b7280'}22;color:${priorityColors[item.priority] || '#6b7280'};border:1px solid ${priorityColors[item.priority] || '#6b7280'}44;">${item.priority}</span>
-                <span style="font-size:9px;padding:2px 6px;border-radius:4px;background:var(--cb-bg3);color:var(--cb-subtext);">${item.category}</span>
+                <span style="font-size:9px;padding:2px 6px;border-radius:4px;background:${priorityColors[item.priority] || '#6b7280'}22;color:${priorityColors[item.priority] || '#6b7280'};border:1px solid ${priorityColors[item.priority] || '#6b7280'}44;">${escapeHtml(item.priority)}</span>
+                <span style="font-size:9px;padding:2px 6px;border-radius:4px;background:var(--cb-bg3);color:var(--cb-subtext);">${escapeHtml(item.category)}</span>
               </div>
             </div>
           `;
@@ -6828,7 +6839,7 @@
           toast('Checklist copied!');
         });
       } catch (e) {
-        shadow.getElementById('tk-sub-content').innerHTML = `<div style="color:var(--cb-error);font-size:12px;text-align:center;padding:20px;">Failed to extract action items: ${e.message}</div>`;
+        shadow.getElementById('tk-sub-content').innerHTML = `<div style="color:var(--cb-error);font-size:12px;text-align:center;padding:20px;">Failed to extract action items: ${escapeHtml(e.message)}</div>`;
       }
     });
 
@@ -6905,7 +6916,7 @@
             resultEl.innerHTML = `<div style="padding:14px;border-radius:8px;background:var(--cb-bg2);border:1px solid var(--cb-border);font-size:12px;color:var(--cb-subtext);text-align:center;">Image generation requires a Gemini API key with Imagen access. Try describing your prompt to an AI chat with image generation capabilities.</div>`;
           }
         } catch (e) {
-          resultEl.innerHTML = `<div style="color:var(--cb-error);font-size:12px;text-align:center;padding:14px;">${e.message || 'Image generation failed'}</div>`;
+          resultEl.innerHTML = `<div style="color:var(--cb-error);font-size:12px;text-align:center;padding:14px;">${escapeHtml(e.message || 'Image generation failed')}</div>`;
         }
       });
     });
@@ -7030,7 +7041,7 @@ Return ONLY valid JSON, no markdown wrapping.`
             });
           }
         } catch (e) {
-          resultEl.innerHTML = `<div style="color:var(--cb-error);font-size:12px;text-align:center;padding:20px;">Failed: ${e.message}</div>`;
+          resultEl.innerHTML = `<div style="color:var(--cb-error);font-size:12px;text-align:center;padding:20px;">Failed: ${escapeHtml(e.message)}</div>`;
         }
       });
     });
@@ -7086,31 +7097,57 @@ Return ONLY valid JSON, no markdown wrapping.`
           outBox.style.cssText = 'padding:10px;border-radius:6px;background:var(--cb-bg3);border:1px solid var(--cb-border);color:var(--cb-text);font-size:11px;font-family:monospace;max-height:200px;overflow:auto;white-space:pre-wrap;';
           outputEl.appendChild(outBox);
 
-          const logs = [];
-          const fakeConsole = {
-            log: (...args) => logs.push(args.map(a => typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)).join(' ')),
-            error: (...args) => logs.push('ERROR: ' + args.join(' ')),
-            warn: (...args) => logs.push('WARN: ' + args.join(' '))
+          // Run JS in a sandboxed iframe to prevent access to extension context
+          const sbIframe = document.createElement('iframe');
+          sbIframe.sandbox = 'allow-scripts';
+          sbIframe.style.display = 'none';
+          document.body.appendChild(sbIframe);
+          const sbHtml = `<!DOCTYPE html><html><body><script>
+var logs = [];
+var fakeConsole = {
+  log: function() { var a = Array.prototype.slice.call(arguments); logs.push(a.map(function(x){ return typeof x === 'object' ? JSON.stringify(x, null, 2) : String(x); }).join(' ')); },
+  error: function() { logs.push('ERROR: ' + Array.prototype.slice.call(arguments).join(' ')); },
+  warn: function() { logs.push('WARN: ' + Array.prototype.slice.call(arguments).join(' ')); }
+};
+try {
+  var result = (new Function('console', ${JSON.stringify(code)}))(fakeConsole);
+  if (result !== undefined && !logs.length) logs.push(String(result));
+  parent.postMessage({ type: 'cb-sandbox-result', output: logs.join('\\n') || '(no output)', error: false }, '*');
+} catch (e) {
+  parent.postMessage({ type: 'cb-sandbox-result', output: 'Error: ' + e.message, error: true }, '*');
+}
+<\/script></body></html>`;
+          const onMsg = (ev) => {
+            if (ev.source === sbIframe.contentWindow && ev.data && ev.data.type === 'cb-sandbox-result') {
+              window.removeEventListener('message', onMsg);
+              outBox.textContent = ev.data.output;
+              if (ev.data.error) outBox.style.color = '#ef4444';
+              try { sbIframe.remove(); } catch (_) { }
+            }
           };
-
-          try {
-            const fn = new Function('console', code);
-            const result = fn(fakeConsole);
-            if (result !== undefined && !logs.length) logs.push(String(result));
-            outBox.textContent = logs.join('\n') || '(no output)';
-          } catch (e) {
-            outBox.textContent = `Error: ${e.message}`;
-            outBox.style.color = '#ef4444';
-          }
+          window.addEventListener('message', onMsg);
+          sbIframe.srcdoc = sbHtml;
+          // Timeout fallback in case sandbox doesn't respond
+          setTimeout(() => { window.removeEventListener('message', onMsg); try { sbIframe.remove(); } catch (_) { } if (!outBox.textContent) outBox.textContent = '(timed out)'; }, 5000);
         } else if (lang === 'html') {
           outputEl.innerHTML = '<div style="font-size:11px;color:var(--cb-subtext);margin-bottom:4px;">Preview:</div>';
           const iframe = document.createElement('iframe');
           iframe.style.cssText = 'width:100%;min-height:200px;border-radius:6px;border:1px solid var(--cb-border);background:#fff;';
           iframe.sandbox = 'allow-scripts';
+          // Security: prevent forms, popups, and top-level navigation from user HTML
+          iframe.setAttribute('csp', "default-src 'unsafe-inline'; script-src 'unsafe-inline'; style-src 'unsafe-inline';");
           outputEl.appendChild(iframe);
           iframe.srcdoc = code;
         } else {
-          outputEl.innerHTML = `<pre style="padding:10px;border-radius:6px;background:var(--cb-bg3);border:1px solid var(--cb-border);color:var(--cb-text);font-size:11px;font-family:monospace;max-height:200px;overflow:auto;white-space:pre-wrap;">${code}</pre><div style="font-size:10px;color:var(--cb-subtext);margin-top:4px;">Python display only — paste into a Python environment to execute.</div>`;
+          const preEl = document.createElement('pre');
+          preEl.style.cssText = 'padding:10px;border-radius:6px;background:var(--cb-bg3);border:1px solid var(--cb-border);color:var(--cb-text);font-size:11px;font-family:monospace;max-height:200px;overflow:auto;white-space:pre-wrap;';
+          preEl.textContent = code;
+          outputEl.innerHTML = '';
+          outputEl.appendChild(preEl);
+          const pyNote = document.createElement('div');
+          pyNote.style.cssText = 'font-size:10px;color:var(--cb-subtext);margin-top:4px;';
+          pyNote.textContent = 'Python display only \u2014 paste into a Python environment to execute.';
+          outputEl.appendChild(pyNote);
         }
       });
     });
@@ -7232,7 +7269,7 @@ Return ONLY valid JSON, no markdown wrapping.`
           toast('Podcast script copied!');
         });
       } catch (e) {
-        shadow.getElementById('tk-sub-content').innerHTML = `<div style="color:var(--cb-error);font-size:12px;text-align:center;padding:20px;">Failed: ${e.message}</div>`;
+        shadow.getElementById('tk-sub-content').innerHTML = `<div style="color:var(--cb-error);font-size:12px;text-align:center;padding:20px;">Failed: ${escapeHtml(e.message)}</div>`;
       }
     });
 
@@ -7305,13 +7342,13 @@ Be thorough and fair to both sides.`
           } catch (_) { throw new Error('Could not parse debate'); }
 
           resultEl.innerHTML = `
-            <div style="font-size:12px;color:var(--cb-text);text-align:center;padding:10px;margin-bottom:12px;font-style:italic;border-bottom:1px solid var(--cb-border);">"${debate.claim || topic}"</div>
+            <div style="font-size:12px;color:var(--cb-text);text-align:center;padding:10px;margin-bottom:12px;font-style:italic;border-bottom:1px solid var(--cb-border);">&ldquo;${escapeHtml(debate.claim || topic)}&rdquo;</div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
               <div style="padding:12px;border-radius:8px;background:color-mix(in srgb, #22c55e 8%, var(--cb-bg2));border:1px solid #22c55e44;">
                 <div style="font-weight:600;font-size:12px;color:#22c55e;margin-bottom:8px;">👍 FOR</div>
-                <div style="font-size:11px;color:var(--cb-text);margin-bottom:8px;line-height:1.4;">${debate.for?.summary || ''}</div>
-                ${(debate.for?.arguments || []).map(a => `<div style="font-size:11px;color:var(--cb-text);padding:3px 0;display:flex;gap:4px;"><span style="color:#22c55e;">•</span>${a}</div>`).join('')}
-                <div style="font-size:10px;color:var(--cb-subtext);margin-top:6px;padding-top:6px;border-top:1px solid var(--cb-border);line-height:1.3;">📊 ${debate.for?.evidence || ''}</div>
+                <div style="font-size:11px;color:var(--cb-text);margin-bottom:8px;line-height:1.4;">${escapeHtml(debate.for?.summary || '')}</div>
+                ${(debate.for?.arguments || []).map(a => `<div style="font-size:11px;color:var(--cb-text);padding:3px 0;display:flex;gap:4px;"><span style="color:#22c55e;">•</span>${escapeHtml(a)}</div>`).join('')}
+                <div style="font-size:10px;color:var(--cb-subtext);margin-top:6px;padding-top:6px;border-top:1px solid var(--cb-border);line-height:1.3;">📊 ${escapeHtml(debate.for?.evidence || '')}</div>
               </div>
               <div style="padding:12px;border-radius:8px;background:color-mix(in srgb, #ef4444 8%, var(--cb-bg2));border:1px solid #ef444444;">
                 <div style="font-weight:600;font-size:12px;color:#ef4444;margin-bottom:8px;">👎 AGAINST</div>
@@ -7333,7 +7370,7 @@ Be thorough and fair to both sides.`
             toast('Debate copied!');
           });
         } catch (e) {
-          resultEl.innerHTML = `<div style="color:var(--cb-error);font-size:12px;text-align:center;padding:20px;">Failed: ${e.message}</div>`;
+          resultEl.innerHTML = `<div style="color:var(--cb-error);font-size:12px;text-align:center;padding:20px;">Failed: ${escapeHtml(e.message)}</div>`;
         }
       });
     });
@@ -12427,9 +12464,11 @@ Output ONLY the 5 numbered questions, no other text.`;
               }
 
               urls.forEach(item => {
-                window.open(item.value, '_blank');
+                if (isSafeUrl(item.value)) {
+                  window.open(item.value, '_blank');
+                }
               });
-              toast(`Opened ${urls.length} URLs!`);
+              toast(`Opened ${urls.filter(item => isSafeUrl(item.value)).length} URLs!`);
             });
           }
 
@@ -13070,7 +13109,7 @@ Respond with JSON only:
       } catch (e) {
         debugLog('renderSmartWorkspace error', e);
         if (insightsContent) {
-          insightsContent.innerHTML = `<div style="padding:12px;color:rgba(255,100,100,0.9);">Failed to load workspace: ${e.message || 'Unknown error'}</div>`;
+          insightsContent.innerHTML = `<div style="padding:12px;color:rgba(255,100,100,0.9);">Failed to load workspace: ${escapeHtml(e.message || 'Unknown error')}</div>`;
         }
       }
     }
@@ -14292,7 +14331,7 @@ Respond with JSON only:
       } catch (e) {
         debugLog('renderAgentHub error', e);
         if (agentContent) {
-          agentContent.innerHTML = `<div class="cb-agent-error">Failed to load Agent Hub: ${e.message || 'Unknown error'}</div>`;
+          agentContent.innerHTML = `<div class="cb-agent-error">Failed to load Agent Hub: ${escapeHtml(e.message || 'Unknown error')}</div>`;
         }
       }
     }
@@ -14465,10 +14504,10 @@ The singular most important action the user should focus on next based on the re
             updateAgentBadgeUI();
             toast('Briefing ready!');
           } else {
-            resultDiv.innerHTML = `<div class="cb-agent-error">Failed to generate briefing: ${res && res.error ? res.error : 'Unknown error'}. Check your API keys in Options.</div>`;
+            resultDiv.innerHTML = `<div class="cb-agent-error">Failed to generate briefing: ${res && res.error ? escapeHtml(res.error) : 'Unknown error'}. Check your API keys in Options.</div>`;
           }
         } catch (e) {
-          resultDiv.innerHTML = `<div class="cb-agent-error">Error: ${e.message || 'Unknown error'}</div>`;
+          resultDiv.innerHTML = `<div class="cb-agent-error">Error: ${escapeHtml(e.message || 'Unknown error')}</div>`;
           debugLog('Catch Me Up error', e);
         } finally {
           if (typeof loadingTimer !== 'undefined') clearInterval(loadingTimer);
@@ -14660,10 +14699,10 @@ A hyper-dense cheat sheet of key facts, numbers, names, or deadlines pulled from
             });
             toast('Prep pack ready!');
           } else {
-            resultDiv.innerHTML = `<div class="cb-agent-error">Failed: ${res && res.error ? res.error : 'Unknown error'}</div>`;
+            resultDiv.innerHTML = `<div class="cb-agent-error">Failed: ${res && res.error ? escapeHtml(res.error) : 'Unknown error'}</div>`;
           }
         } catch (e) {
-          resultDiv.innerHTML = `<div class="cb-agent-error">Error: ${e.message || 'Unknown error'}</div>`;
+          resultDiv.innerHTML = `<div class="cb-agent-error">Error: ${escapeHtml(e.message || 'Unknown error')}</div>`;
           debugLog('Prepare Me error', e);
         } finally {
           if (typeof prepTimer !== 'undefined') clearInterval(prepTimer);
@@ -14896,7 +14935,7 @@ One incredibly specific, actionable recommendation for what the user should do n
               try { await navigator.clipboard.writeText(res.result); toast('Report copied!'); } catch (_) { toast('Copy failed'); }
             });
           } else {
-            detailDiv.innerHTML = `<div class="cb-agent-error">Failed: ${res && res.error ? res.error : 'Unknown error'}</div>
+            detailDiv.innerHTML = `<div class="cb-agent-error">Failed: ${res && res.error ? escapeHtml(res.error) : 'Unknown error'}</div>
               <button id="cb-track-back2" class="cb-agent-btn-secondary" style="margin-top:8px;">← Back</button>`;
             detailDiv.querySelector('#cb-track-back2').addEventListener('click', () => {
               detailDiv.style.display = 'none';
@@ -14904,7 +14943,7 @@ One incredibly specific, actionable recommendation for what the user should do n
             });
           }
         } catch (e) {
-          detailDiv.innerHTML = `<div class="cb-agent-error">Error: ${e.message}</div>`;
+          detailDiv.innerHTML = `<div class="cb-agent-error">Error: ${escapeHtml(e.message)}</div>`;
           debugLog('Track This detail error', e);
         } finally {
           if (typeof trackTimer !== 'undefined') clearInterval(trackTimer);
@@ -15185,10 +15224,10 @@ Be rigorous but fair. Cite specific parts of the original answer when critiquing
             });
             toast('Verification complete!');
           } else {
-            resultDiv.innerHTML = `<div class="cb-agent-error">Failed: ${res && res.error ? res.error : 'Unknown error'}</div>`;
+            resultDiv.innerHTML = `<div class="cb-agent-error">Failed: ${res && res.error ? escapeHtml(res.error) : 'Unknown error'}</div>`;
           }
         } catch (e) {
-          resultDiv.innerHTML = `<div class="cb-agent-error">Error: ${e.message || 'Unknown error'}</div>`;
+          resultDiv.innerHTML = `<div class="cb-agent-error">Error: ${escapeHtml(e.message || 'Unknown error')}</div>`;
           debugLog('Second Opinion error', e);
         } finally {
           runBtn.disabled = false;
@@ -15427,10 +15466,10 @@ Make this ready to send as-is. No meta-commentary. Clean markdown formatting.`;
             });
             toast('Handoff document ready!');
           } else {
-            resultDiv.innerHTML = `<div class="cb-agent-error">Failed: ${res && res.error ? res.error : 'Unknown error'}</div>`;
+            resultDiv.innerHTML = `<div class="cb-agent-error">Failed: ${res && res.error ? escapeHtml(res.error) : 'Unknown error'}</div>`;
           }
         } catch (e) {
-          resultDiv.innerHTML = `<div class="cb-agent-error">Error: ${e.message || 'Unknown error'}</div>`;
+          resultDiv.innerHTML = `<div class="cb-agent-error">Error: ${escapeHtml(e.message || 'Unknown error')}</div>`;
           debugLog('Handoff error', e);
         } finally {
           runBtn.disabled = false;
@@ -15595,10 +15634,10 @@ Three incredibly specific, actionable, and non-obvious ways they can get more ou
             });
             toast('Pulse report ready!');
           } else {
-            resultDiv.innerHTML = `<div class="cb-agent-error">AI insights unavailable: ${res && res.error ? res.error : 'Unknown error'}</div>`;
+            resultDiv.innerHTML = `<div class="cb-agent-error">AI insights unavailable: ${res && res.error ? escapeHtml(res.error) : 'Unknown error'}</div>`;
           }
         } catch (e) {
-          resultDiv.innerHTML = `<div class="cb-agent-error">Error: ${e.message || 'Unknown error'}</div>`;
+          resultDiv.innerHTML = `<div class="cb-agent-error">Error: ${escapeHtml(e.message || 'Unknown error')}</div>`;
           debugLog('My Pulse error', e);
         } finally {
           if (typeof pulseTimer !== 'undefined') clearInterval(pulseTimer);
@@ -16073,7 +16112,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           if (conv.segments && conv.segments.length > 1) {
             const segInfo = document.createElement('div');
             segInfo.style.cssText = 'font-size:10px;opacity:0.7;margin-top:4px;padding:4px 6px;background:rgba(11,15,23,0.15);border-radius:4px;';
-            segInfo.innerHTML = `📊 ${conv.segments.length} topics: ${conv.segments.map(s => s.topic).join(', ')}`;
+            segInfo.innerHTML = `📊 ${conv.segments.length} topics: ${escapeHtml(conv.segments.map(s => s.topic).join(', '))}`;
             card.appendChild(segInfo);
           }
 
@@ -16082,8 +16121,8 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
             const matchDetails = document.createElement('div');
             matchDetails.style.cssText = 'display:none;font-size:10px;margin-top:6px;padding:6px;background:rgba(11,15,23,0.25);border-radius:4px;border-left:2px solid color-mix(in srgb, var(--cb-accent-primary) 50%, transparent);';
             matchDetails.innerHTML = `<strong>Matches:</strong><br>` +
-              `Entities: ${conv.matchedEntities} (${conv.entityDetails.slice(0, 3).map(e => e.current).join(', ')})<br>` +
-              `Themes: ${conv.matchedThemes} (${conv.themeDetails.slice(0, 3).map(t => t.current).join(', ')})`;
+              `Entities: ${escapeHtml(String(conv.matchedEntities))} (${conv.entityDetails.slice(0, 3).map(e => escapeHtml(e.current)).join(', ')})<br>` +
+              `Themes: ${escapeHtml(String(conv.matchedThemes))} (${conv.themeDetails.slice(0, 3).map(t => escapeHtml(t.current)).join(', ')})`;
 
             card.addEventListener('mouseenter', () => { matchDetails.style.display = 'block'; });
             card.addEventListener('mouseleave', () => { matchDetails.style.display = 'none'; });
@@ -17446,7 +17485,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
               totalThinking ? `${totalThinking} thinking blocks` : ''
             ].filter(Boolean).join(' \u2022 ');
 
-            const fullHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>ChatBridge Export - ${label}</title>
+            const fullHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>ChatBridge Export - ${escapeHtml(label)}</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:800px;margin:0 auto;padding:40px 24px;color:#1a1a2e;line-height:1.6;background:#fff}
@@ -17477,7 +17516,7 @@ tr:nth-child(even){background:#f8fafc}
 p{margin:4px 0;font-size:13px}
 @media print{body{padding:20px 16px}pre{white-space:pre-wrap!important}details{open}details>summary{display:none}details>p{display:block!important}}
 </style></head><body>
-<h1>\uD83D\uDCE6 ChatBridge Export \u2014 ${label}</h1>
+<h1>\uD83D\uDCE6 ChatBridge Export \u2014 ${escapeHtml(label)}</h1>
 <div class="subtitle">${new Date().toLocaleString()}</div>
 <div class="stats-bar">${statsLine}</div>
 ${bodyHtml}
@@ -17618,11 +17657,20 @@ ${bodyHtml}
     // Agent: Open view
     btnKnowledgeGraph.addEventListener('click', async () => {
       try {
-        closeAllViews();
-        agentView.classList.add('cb-view-active');
-        await renderAgentHub();
-        // Ambient: check agent badges on open
-        await checkAgentBadges();
+        if (typeof window.renderAgentHubCore === 'function') {
+          // Close the main Sidebar by clicking the close button
+          if (panel.style.display !== 'none') {
+            btnClose.click();
+          }
+          window.renderAgentHubCore();
+        } else {
+          // Fallback to legacy inner view
+          closeAllViews();
+          agentView.classList.add('cb-view-active');
+          await renderAgentHub();
+          // Ambient: check agent badges on open
+          await checkAgentBadges();
+        }
       } catch (e) {
         toast('Failed to open Agent Hub');
         debugLog('Agent Hub open error', e);
@@ -17640,9 +17688,14 @@ ${bodyHtml}
         closeAllViews();
         insightsView.classList.add('cb-view-active');
         await renderInsightsHub();
-        // Scroll to top when opening
+        // Scroll to top when opening inner content, and scroll main panel down
         const contentEl = document.getElementById('cb-insights-content');
         if (contentEl) contentEl.scrollTop = 0;
+        
+        // Ensure main panel is scrolled to the bottom so the new view is visible
+        if (typeof panel !== 'undefined' && panel) {
+          panel.scrollTo({ top: panel.scrollHeight, behavior: 'smooth' });
+        }
       } catch (e) {
         toast('Failed to open Smart Workspace');
         debugLog('Insights open error', e);
