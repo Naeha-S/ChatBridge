@@ -1050,6 +1050,18 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       return true;
     }
 
+    if (msg.type === 'vector_clear_all') {
+      (async () => {
+        try {
+          await idbClear();
+          sendResponse({ ok: true });
+        } catch (e) {
+          sendResponse({ ok: false, error: e && e.message });
+        }
+      })();
+      return true;
+    }
+
     if (msg.type === 'vector_index_all') {
       (async () => {
         try {
@@ -1411,6 +1423,7 @@ Rules:
           const payload = msg.payload || {};
           const query = payload.query || '';
           const graphContext = payload.graphContext || '';
+          const calibratorState = payload.calibratorState || '';
 
           if (!query) {
             return sendResponse({ ok: false, error: 'No query provided' });
@@ -1424,9 +1437,10 @@ Rules:
             return sendResponse({ ok: false, error: 'No API key' });
           }
 
+          const calibratorInstruction = calibratorState ? `\n\nCALIBRATOR SETTINGS (apply these to your writing persona level):\n${calibratorState}` : '';
           const systemInstruction = 'You are a knowledge graph assistant. Answer questions using ONLY the provided entity and relationship data from the user\'s past AI conversations. Be precise and cite specific conversations/platforms when possible.';
 
-          const promptText = `Based on my conversation knowledge graph, answer this question:
+          const promptText = `Based on my conversation knowledge graph, answer this question:${calibratorInstruction}
 
 Question: ${query}
 

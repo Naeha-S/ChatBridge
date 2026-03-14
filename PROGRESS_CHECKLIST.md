@@ -17,14 +17,6 @@ product. Last updated: 2026-02-18
 
 ## Phase 2 — Core AI Infrastructure
 
-### 🤖 API & Token Management
-
-- [ ] Token counting system — track usage per call and cumulative
-- [ ] Token budget / cap per user session
-- [ ] Display usage stats in settings or sidebar
-- [ ] Rate limiting hardening — per-key, per-endpoint
-- [ ] Fallback chain tuning (Gemini → HuggingFace → OpenAI)
-
 ### ☁️ Cloud & Hosting
 
 - [ ] Cloud server connection with auth + encryption
@@ -107,7 +99,6 @@ product. Last updated: 2026-02-18
 
 ### 🚀 Onboarding
 
-- [x] On-install explainer page (welcome flow)
 - [ ] First-scan guided walkthrough
 - [ ] Tooltip hints for new users
 - [ ] API key setup wizard with validation

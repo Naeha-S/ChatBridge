@@ -1285,7 +1285,10 @@
       }
       if (!query.trim()) return;
       const context = this.getContext();
-      const prompt = `You are a helpful assistant reasoning about an ongoing conversation.
+      const promptContextStr = window.ChatBridgeCalibratorState ? window.ChatBridgeCalibratorState() : '';
+      const calibratorInstruction = promptContextStr ? `\n\nCALIBRATOR SETTINGS (apply these to your response persona in the language/detail level requested):\n${promptContextStr}` : '';
+
+      const prompt = `You are a helpful assistant reasoning about an ongoing conversation.${calibratorInstruction}
 
 Conversation context:
 ${context}
@@ -1443,7 +1446,10 @@ Provide a clear, thorough answer. If the question is about continuing the conver
         `;
 
         const userQuery = this.currentResults[0].fullQuery || '';
-        const prompt = `You are a thorough research assistant synthesizing insights from ${sourceCount} saved conversation memories (out of ${totalCount} total matches).
+        const calibratorStateStr = window.ChatBridgeCalibratorState ? window.ChatBridgeCalibratorState() : '';
+        const calibratorInstruction = calibratorStateStr ? `\n\nCALIBRATOR SETTINGS (apply these to your writing persona level):\n${calibratorStateStr}` : '';
+
+        const prompt = `You are a thorough research assistant synthesizing insights from ${sourceCount} saved conversation memories (out of ${totalCount} total matches).${calibratorInstruction}
 
 User's question: "${userQuery}"
 
@@ -1737,10 +1743,11 @@ Synthesize now:`;
 
       // Request AI synthesis
       try {
+        const calibratorStateStr = window.ChatBridgeCalibratorState ? window.ChatBridgeCalibratorState() : '';
         const synthResult = await new Promise((resolve) => {
           chrome.runtime.sendMessage({
             type: 'graph_query_synthesize',
-            payload: { query, graphContext }
+            payload: { query, graphContext, calibratorState: calibratorStateStr }
           }, resolve);
         });
 

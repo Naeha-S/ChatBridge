@@ -755,9 +755,8 @@
       
       document.body.appendChild(host);
     } else {
-      host.style.display = host.style.display === 'none' ? 'block' : 'none';
+      host.style.display = (host.style.display === 'none' || !host.style.display) ? 'block' : 'none';
       if (host.style.display === 'block') {
-         // Sync theme again when re-opened
          host.className = window.__CB_CURRENT_THEME || 'cb-theme-glass';
       }
     }

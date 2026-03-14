@@ -9,6 +9,8 @@ const StorageManager = (() => {
     AGENT_TRACKED_TOPICS: 'chatbridge_agent_tracked_topics',
     AGENT_PULSE_SESSIONS: 'chatbridge_agent_pulse_sessions',
     AGENT_HANDOFF_DRAFTS: 'chatbridge_agent_handoff_drafts',
+    AGENT_CONTEXT_INJECTOR: 'chatbridge_agent_context_injector',
+    AGENT_MIGRATION_EXPORTS: 'chatbridge_agent_migration_exports',
     AGENT_SHADOW_MEMORY: 'chatbridge_agent_shadow_memory'
   };
 
@@ -230,6 +232,32 @@ const StorageManager = (() => {
     } catch (e) { console.warn('[ChatBridge] Agent Handoff save error:', e); }
   }
 
+  // Context Injector — saved reusable context blocks (max 20)
+  async function getSavedContexts() {
+    try {
+      return (await get(KEYS.AGENT_CONTEXT_INJECTOR)) || [];
+    } catch (e) { return []; }
+  }
+  async function setSavedContexts(contexts) {
+    try {
+      const safeContexts = Array.isArray(contexts) ? contexts.slice(0, 20) : [];
+      await set(KEYS.AGENT_CONTEXT_INJECTOR, safeContexts);
+    } catch (e) { console.warn('[ChatBridge] Agent Context Injector save error:', e); }
+  }
+
+  // Migration Kit — cached export snapshots (max 10)
+  async function getMigrationExports() {
+    try {
+      return (await get(KEYS.AGENT_MIGRATION_EXPORTS)) || [];
+    } catch (e) { return []; }
+  }
+  async function setMigrationExports(exportsList) {
+    try {
+      const safeExports = Array.isArray(exportsList) ? exportsList.slice(0, 10) : [];
+      await set(KEYS.AGENT_MIGRATION_EXPORTS, safeExports);
+    } catch (e) { console.warn('[ChatBridge] Agent Migration exports save error:', e); }
+  }
+
   // Shadow Memory — cross-agent signal bus (max 100 signals, FIFO, 7-day TTL)
   async function getShadowMemory() {
     try {
@@ -271,6 +299,10 @@ const StorageManager = (() => {
     appendPulseSession,
     getHandoffDrafts,
     saveHandoffDraft,
+    getSavedContexts,
+    setSavedContexts,
+    getMigrationExports,
+    setMigrationExports,
     // Shadow Memory
     getShadowMemory,
     appendShadowSignal,

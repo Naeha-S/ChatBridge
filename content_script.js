@@ -4582,6 +4582,25 @@
     // Helper to insert text into chat input (handles textarea, input, contenteditable)
     const insertTextToChat = (text) => {
       try {
+        // Apply Response Calibrator if enabled
+        try {
+          if (typeof window.ChatBridgeCalibratorState === 'function') {
+            const calState = window.ChatBridgeCalibratorState();
+            if (calState && calState.enabled) {
+              const dom = calState.domain || 'general topics';
+              const yrs = calState.years ? `${calState.years}y experience` : '';
+              const specs = calState.subdomains ? `. Specialties: ${calState.subdomains}` : '';
+              const calibrationPrefix = `[You are speaking to a ${calState.level} in ${dom} ${yrs}${specs}. Adjust your tone, detail, and depth accordingly.]\n\n`;
+              // Only prepend if not already present to avoid duplication
+              if (!text.startsWith('[You are speaking to')) {
+                text = calibrationPrefix + text;
+              }
+            }
+          }
+        } catch (calErr) {
+          debugLog('insertTextToChat: calibrator error', calErr);
+        }
+
         // Try multiple selectors for different AI platforms
         const selectors = [
           'textarea[placeholder*="message" i]',
@@ -4885,6 +4904,8 @@
       const scanRow = document.createElement('div'); scanRow.className = 'cb-scan-row';
       scanRow.appendChild(btnScan);
       panel.appendChild(scanRow);
+
+      
     } catch (e) { try { row1.appendChild(btnScan); } catch (e2) { } }
 
     // Grid: Restore, Query, Agent, Insights, Toolkit, Prompts, Summarize, Rewrite, Translate
@@ -6543,7 +6564,7 @@
 
     // Set up refresh button handler after content is appended
     setTimeout(() => {
-      const refreshBtn = document.getElementById('cb-media-library-refresh');
+      const refreshBtn = (shadow && typeof shadow.getElementById === 'function') ? shadow.getElementById('cb-media-library-refresh') : null;
       if (refreshBtn) {
         refreshBtn.addEventListener('click', () => {
           loadMediaLibrary();
@@ -6581,7 +6602,7 @@
       { id: 'tk-flashcards', icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M12 8v8"/><path d="M8 12h8"/></svg>', name: 'Flashcard Maker', desc: 'Generate study flashcards from key concepts' },
       { id: 'tk-actions', icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>', name: 'Action Items', desc: 'Extract TODOs and next steps as a checklist' },
       { id: 'tk-imagegen', icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>', name: 'Image Generator', desc: 'Create images from conversation context or prompts' },
-      { id: 'tk-teachme', icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>', name: 'Teach Me', desc: 'Turn any topic into an interactive mini-lesson' },
+      { id: 'tk-context', icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>', name: 'Context Injector', desc: 'Save & load context across platforms' },
       { id: 'tk-codesandbox', icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/><line x1="14" y1="4" x2="10" y2="20"/></svg>', name: 'Code Sandbox', desc: 'Extract and run code blocks from conversations' },
       { id: 'tk-podcast', icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>', name: 'Podcast', desc: 'Convert conversation into a two-voice podcast script' },
       { id: 'tk-debate', icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><line x1="9" y1="10" x2="15" y2="10"/></svg>', name: 'AI Debate', desc: 'Get both sides of any claim argued by AI' }
@@ -6589,16 +6610,44 @@
 
     // Render toolkit grid
     const tkGrid = document.createElement('div');
-    tkGrid.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:4px;';
+    tkGrid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit, minmax(140px, 1fr));gap:12px;padding:4px;';
     const tkCards = {};
     toolkitTools.forEach(tool => {
       const card = document.createElement('div');
       card.className = 'cb-insight-block';
       card.id = tool.id;
-      card.style.cssText = 'cursor:pointer;transition:all 0.2s;padding:14px;';
-      card.innerHTML = `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;"><span style="color:var(--cb-accent-primary);flex-shrink:0;">${tool.icon}</span><span style="font-weight:600;font-size:12px;color:var(--cb-text);">${tool.name}</span></div><div style="font-size:10px;color:var(--cb-subtext);line-height:1.4;">${tool.desc}</div>`;
-      card.addEventListener('mouseenter', () => { card.style.borderColor = 'var(--cb-accent-primary)'; card.style.transform = 'translateY(-1px)'; });
-      card.addEventListener('mouseleave', () => { card.style.borderColor = ''; card.style.transform = ''; });
+      card.style.cssText = 'cursor:pointer;transition:all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);padding:16px;border-radius:12px;background:linear-gradient(145deg, var(--cb-bg2), var(--cb-bg));border:1px solid var(--cb-border);position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:flex-start;';
+      
+      card.innerHTML = `
+        <div style="width:32px;height:32px;border-radius:8px;background:color-mix(in srgb, var(--cb-accent-primary) 15%, transparent);display:flex;align-items:center;justify-content:center;margin-bottom:12px;color:var(--cb-accent-primary);transition:transform 0.3s ease;flex-shrink:0;">
+          ${tool.icon}
+        </div>
+        <div style="font-weight:600;font-size:13px;color:var(--cb-text);margin-bottom:6px;width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:0.02em;">
+          ${tool.name}
+        </div>
+        <div style="font-size:10px;color:var(--cb-subtext);line-height:1.5;opacity:0.85;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">
+          ${tool.desc}
+        </div>
+        <div class="tk-hover-glow" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;background:radial-gradient(80% 80% at 50% 0%, color-mix(in srgb, var(--cb-accent-primary) 15%, transparent) 0%, transparent 100%);opacity:0;transition:opacity 0.3s ease;"></div>
+      `;
+      
+      card.addEventListener('mouseenter', () => { 
+        card.style.borderColor = 'var(--cb-accent-primary)'; 
+        card.style.transform = 'translateY(-3px)'; 
+        card.style.boxShadow = '0 8px 24px -6px color-mix(in srgb, var(--cb-accent-primary) 25%, transparent)';
+        card.querySelector('.tk-hover-glow').style.opacity = '1';
+        card.firstElementChild.style.transform = 'scale(1.1) rotate(-5deg)';
+        card.firstElementChild.style.background = 'color-mix(in srgb, var(--cb-accent-primary) 25%, transparent)';
+      });
+      card.addEventListener('mouseleave', () => { 
+        card.style.borderColor = 'var(--cb-border)'; 
+        card.style.transform = ''; 
+        card.style.boxShadow = '';
+        card.querySelector('.tk-hover-glow').style.opacity = '0';
+        card.firstElementChild.style.transform = '';
+        card.firstElementChild.style.background = 'color-mix(in srgb, var(--cb-accent-primary) 15%, transparent)';
+      });
+      
       tkCards[tool.id] = card;
       tkGrid.appendChild(card);
     });
@@ -6939,128 +6988,140 @@
     });
 
     // ============================================
-    // TOOLKIT TOOL 5: Teach Me
+    // TOOLKIT TOOL 5: Context Injector
     // ============================================
-    tkCards['tk-teachme']?.addEventListener('click', async () => {
+    tkCards['tk-context']?.addEventListener('click', async () => {
       const chatText = await getConversationText();
 
-      tkShowSub('Teach Me', '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>', `
-        <div style="margin-bottom:12px;">
-          <label style="font-size:11px;color:var(--cb-subtext);display:block;margin-bottom:6px;">Topic to learn</label>
-          <input type="text" id="tk-teach-topic" style="width:100%;padding:8px;border-radius:6px;background:var(--cb-bg2);border:1px solid var(--cb-border);color:var(--cb-text);font-size:12px;" placeholder="Enter a concept or topic...">
+      tkShowSub('Context Injector', '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>', `
+        <div style="display:flex;gap:8px;margin-bottom:12px;">
+          <button id="tk-ctx-tab-save" class="cb-btn" style="flex:1;padding:8px;font-size:12px;border-color:var(--cb-accent-primary);">Save New</button>
+          <button id="tk-ctx-tab-load" class="cb-btn" style="flex:1;padding:8px;font-size:12px;">Load Saved</button>
         </div>
-        ${chatText ? '<button id="tk-teach-extract" class="cb-btn" style="width:100%;padding:6px;font-size:11px;margin-bottom:8px;">✨ Extract topics from conversation</button>' : ''}
-        <div style="margin-bottom:12px;">
-          <label style="font-size:11px;color:var(--cb-subtext);display:block;margin-bottom:6px;">Depth</label>
-          <div style="display:flex;gap:6px;">
-            <button class="cb-btn tk-depth-btn" data-depth="beginner" style="flex:1;padding:6px;font-size:11px;">Beginner</button>
-            <button class="cb-btn tk-depth-btn" data-depth="intermediate" style="flex:1;padding:6px;font-size:11px;border-color:var(--cb-accent-primary);">Intermediate</button>
-            <button class="cb-btn tk-depth-btn" data-depth="advanced" style="flex:1;padding:6px;font-size:11px;">Advanced</button>
+        <div id="tk-ctx-view-save" style="display:block;">
+          <div style="font-size:11px;color:var(--cb-subtext);margin-bottom:8px;">Extract context from this chat to carry into other platforms.</div>
+          <button id="tk-ctx-extract" class="cb-btn" style="width:100%;padding:8px;font-size:11px;margin-bottom:8px;">✨ Extract Key Context</button>
+          <div id="tk-ctx-editor-area" style="display:none;margin-top:12px;">
+            <input type="text" id="tk-ctx-title" placeholder="Context Title" style="width:100%;padding:8px;border-radius:6px;background:var(--cb-bg2);border:1px solid var(--cb-border);color:var(--cb-text);font-size:12px;margin-bottom:8px;">
+            <textarea id="tk-ctx-content" rows="6" style="width:100%;padding:8px;border-radius:6px;background:var(--cb-bg2);border:1px solid var(--cb-border);color:var(--cb-text);font-size:12px;resize:vertical;"></textarea>
+            <button id="tk-ctx-save-btn" class="cb-btn cb-btn-primary" style="width:100%;padding:8px;font-size:12px;margin-top:8px;background:var(--cb-accent-primary);color:#fff;border:none;">Save Context</button>
           </div>
         </div>
-        <button id="tk-teach-go" class="cb-btn" style="width:100%;padding:8px;font-size:12px;">📖 Teach Me</button>
-        <div id="tk-teach-result" style="margin-top:12px;"></div>
+        <div id="tk-ctx-view-load" style="display:none;">
+          <div id="tk-ctx-list" style="display:flex;flex-direction:column;gap:8px;"></div>
+        </div>
       `);
 
-      let selectedDepth = 'intermediate';
-      shadow.querySelectorAll('.tk-depth-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-          shadow.querySelectorAll('.tk-depth-btn').forEach(b => b.style.borderColor = '');
-          btn.style.borderColor = 'var(--cb-accent-primary)';
-          selectedDepth = btn.dataset.depth;
-        });
+      const tabSave = shadow.getElementById('tk-ctx-tab-save');
+      const tabLoad = shadow.getElementById('tk-ctx-tab-load');
+      const viewSave = shadow.getElementById('tk-ctx-view-save');
+      const viewLoad = shadow.getElementById('tk-ctx-view-load');
+
+      tabSave?.addEventListener('click', () => {
+        tabSave.style.borderColor = 'var(--cb-accent-primary)'; tabLoad.style.borderColor = '';
+        viewSave.style.display = 'block'; viewLoad.style.display = 'none';
       });
 
-      // Extract topics from conversation
-      shadow.getElementById('tk-teach-extract')?.addEventListener('click', async () => {
-        const topicInput = shadow.getElementById('tk-teach-topic');
-        topicInput.value = 'Extracting...';
-        try {
-          const res = await callGeminiAsync({
-            action: 'prompt',
-            text: `From this conversation, identify the single most important technical or conceptual topic being discussed. Return ONLY the topic name (2-5 words), nothing else.\n\n${chatText.substring(0, 4000)}`
-          });
-          topicInput.value = (res && res.ok && res.result) ? res.result.trim().replace(/^["']|["']$/g, '') : '';
-        } catch (_) { topicInput.value = ''; }
+      tabLoad?.addEventListener('click', async () => {
+        tabLoad.style.borderColor = 'var(--cb-accent-primary)'; tabSave.style.borderColor = '';
+        viewLoad.style.display = 'block'; viewSave.style.display = 'none';
+        await renderContextList();
       });
 
-      // Generate lesson
-      shadow.getElementById('tk-teach-go')?.addEventListener('click', async () => {
-        const topic = shadow.getElementById('tk-teach-topic').value.trim();
-        if (!topic) { toast('Enter a topic'); return; }
-
-        const resultEl = shadow.getElementById('tk-teach-result');
-        resultEl.innerHTML = '<div style="text-align:center;padding:20px;"><div class="cb-spinner"></div><div style="margin-top:8px;font-size:11px;color:var(--cb-subtext);">Creating lesson...</div></div>';
+      // Extract Context
+      shadow.getElementById('tk-ctx-extract')?.addEventListener('click', async (e) => {
+        if (!chatText) return toast('No conversation text found');
+        const btn = e.target;
+        btn.textContent = 'Extracting...';
+        btn.disabled = true;
 
         try {
-          const res = await callGeminiAsync({
-            action: 'prompt',
-            text: `Create a ${selectedDepth}-level mini-lesson on "${topic}". Structure it as JSON with these fields:
-- "definition": clear 1-2 sentence definition
-- "keyPoints": array of 3-5 key points (strings)
-- "analogy": a relatable real-world analogy
-- "example": a practical example or code snippet
-- "quiz": object with "question" (string) and "options" (array of 4 strings) and "answer" (index 0-3)
-Return ONLY valid JSON, no markdown wrapping.`
-          });
-
-          if (!res || !res.ok || !res.result) throw new Error(res?.error || 'No result');
-          let lesson;
-          try {
-            const cleaned = res.result.replace(/```json?\s*/g, '').replace(/```/g, '').trim();
-            lesson = JSON.parse(cleaned);
-          } catch (_) { throw new Error('Could not parse lesson'); }
-
-          resultEl.innerHTML = `
-            <div style="border-radius:8px;background:var(--cb-bg2);border:1px solid var(--cb-border);padding:14px;margin-bottom:10px;">
-              <div style="font-weight:600;font-size:13px;color:var(--cb-accent-primary);margin-bottom:8px;">📝 Definition</div>
-              <div style="font-size:12px;color:var(--cb-text);line-height:1.5;">${lesson.definition || ''}</div>
-            </div>
-            <div style="border-radius:8px;background:var(--cb-bg2);border:1px solid var(--cb-border);padding:14px;margin-bottom:10px;">
-              <div style="font-weight:600;font-size:13px;color:var(--cb-accent-primary);margin-bottom:8px;">🔑 Key Points</div>
-              ${(lesson.keyPoints || []).map(p => `<div style="font-size:12px;color:var(--cb-text);padding:4px 0;display:flex;gap:6px;"><span style="color:var(--cb-accent-secondary);">•</span>${p}</div>`).join('')}
-            </div>
-            <div style="border-radius:8px;background:var(--cb-bg2);border:1px solid var(--cb-border);padding:14px;margin-bottom:10px;">
-              <div style="font-weight:600;font-size:13px;color:var(--cb-accent-primary);margin-bottom:8px;">💡 Analogy</div>
-              <div style="font-size:12px;color:var(--cb-text);line-height:1.5;font-style:italic;">${lesson.analogy || ''}</div>
-            </div>
-            <div style="border-radius:8px;background:var(--cb-bg2);border:1px solid var(--cb-border);padding:14px;margin-bottom:10px;">
-              <div style="font-weight:600;font-size:13px;color:var(--cb-accent-primary);margin-bottom:8px;">🔧 Example</div>
-              <pre style="font-size:11px;color:var(--cb-text);line-height:1.4;white-space:pre-wrap;font-family:monospace;background:var(--cb-bg3);padding:10px;border-radius:6px;overflow-x:auto;">${lesson.example || ''}</pre>
-            </div>
-            ${lesson.quiz ? `
-            <div style="border-radius:8px;background:var(--cb-bg2);border:1px solid var(--cb-border);padding:14px;">
-              <div style="font-weight:600;font-size:13px;color:var(--cb-accent-primary);margin-bottom:8px;">❓ Quick Quiz</div>
-              <div style="font-size:12px;color:var(--cb-text);margin-bottom:10px;">${lesson.quiz.question}</div>
-              <div id="tk-quiz-options" style="display:flex;flex-direction:column;gap:6px;"></div>
-              <div id="tk-quiz-result" style="margin-top:8px;font-size:11px;display:none;"></div>
-            </div>` : ''}
-          `;
-
-          // Wire quiz
-          if (lesson.quiz && lesson.quiz.options) {
-            const optionsEl = shadow.getElementById('tk-quiz-options');
-            const quizResult = shadow.getElementById('tk-quiz-result');
-            lesson.quiz.options.forEach((opt, i) => {
-              const btn = document.createElement('button');
-              btn.className = 'cb-btn';
-              btn.style.cssText = 'padding:8px;font-size:11px;text-align:left;';
-              btn.textContent = `${String.fromCharCode(65 + i)}. ${opt}`;
-              btn.addEventListener('click', () => {
-                const correct = i === lesson.quiz.answer;
-                quizResult.style.display = 'block';
-                quizResult.style.color = correct ? '#22c55e' : '#ef4444';
-                quizResult.textContent = correct ? '✅ Correct!' : `❌ The answer is ${String.fromCharCode(65 + lesson.quiz.answer)}. ${lesson.quiz.options[lesson.quiz.answer]}`;
-                optionsEl.querySelectorAll('button').forEach(b => b.disabled = true);
-                btn.style.borderColor = correct ? '#22c55e' : '#ef4444';
-              });
-              optionsEl.appendChild(btn);
-            });
+          const prompt = `Analyze the following conversation and extract the most critical context to carry forward. Include decisions made, key data, code snippets if relevant, open questions, and a brief summary.\n\nConversation:\n${chatText.substring(0, 8000)}`;
+          const res = await callAgentRouteWithRetry(prompt, { complexity: 'deep', maxTokens: 800 });
+          
+          if (res && res.result) {
+            shadow.getElementById('tk-ctx-editor-area').style.display = 'block';
+            shadow.getElementById('tk-ctx-title').value = `Context: ${new Date().toLocaleDateString()}`;
+            shadow.getElementById('tk-ctx-content').value = res.result.trim();
+            btn.style.display = 'none';
+          } else {
+            toast('Failed to extract context');
           }
-        } catch (e) {
-          resultEl.innerHTML = `<div style="color:var(--cb-error);font-size:12px;text-align:center;padding:20px;">Failed: ${escapeHtml(e.message)}</div>`;
+        } catch (err) {
+          toast('Error: ' + err.message);
+        } finally {
+          btn.textContent = '✨ Extract Key Context';
+          btn.disabled = false;
         }
       });
+
+      // Save Context
+      shadow.getElementById('tk-ctx-save-btn')?.addEventListener('click', async () => {
+        const title = shadow.getElementById('tk-ctx-title').value.trim();
+        const content = shadow.getElementById('tk-ctx-content').value.trim();
+        if (!title || !content) return toast('Need title and content');
+        
+        const contexts = await StorageManager.getSavedContexts();
+        contexts.unshift({ id: Date.now(), title, content, date: Date.now() });
+        await StorageManager.setSavedContexts(contexts);
+        toast('Context saved');
+        
+        // Reset and switch to load view
+        shadow.getElementById('tk-ctx-editor-area').style.display = 'none';
+        shadow.getElementById('tk-ctx-extract').style.display = 'block';
+        tabLoad.click();
+      });
+
+      async function renderContextList() {
+        const listEl = shadow.getElementById('tk-ctx-list');
+        const contexts = await StorageManager.getSavedContexts();
+        
+        if (contexts.length === 0) {
+          listEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--cb-subtext);font-size:12px;">No saved contexts</div>';
+          return;
+        }
+
+        listEl.innerHTML = '';
+        contexts.forEach(ctx => {
+          const card = document.createElement('div');
+          card.className = 'cb-context-card';
+          card.style.cssText = 'border:1px solid var(--cb-border);border-radius:6px;background:var(--cb-bg2);padding:10px;';
+          card.innerHTML = `
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+              <div style="font-weight:600;font-size:12px;color:var(--cb-text);">${escapeHtml(ctx.title)}</div>
+              <div style="font-size:10px;color:var(--cb-subtext);">${new Date(ctx.date).toLocaleDateString()}</div>
+            </div>
+            <div style="font-size:11px;color:var(--cb-subtext);max-height:40px;overflow:hidden;text-overflow:ellipsis;margin-bottom:8px;">${escapeHtml(ctx.content.substring(0, 100))}...</div>
+            <div style="display:flex;gap:6px;">
+              <button class="cb-btn tk-ctx-insert" data-id="${ctx.id}" style="flex:1;padding:6px;font-size:11px;">Insert to Chat</button>
+              <button class="cb-btn tk-ctx-delete" data-id="${ctx.id}" style="padding:6px;font-size:11px;color:#ef4444;border-color:transparent;" title="Delete Context"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+            </div>
+          `;
+          listEl.appendChild(card);
+        });
+
+        // Attach listeners
+        listEl.querySelectorAll('.tk-ctx-insert').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const id = parseInt(btn.dataset.id, 10);
+            const ctx = contexts.find(c => c.id === id);
+            if (ctx) {
+              const formattedBlock = `\n---\nCONTEXT FROM PREVIOUS CHAT:\n${ctx.content}\n---\n\n`;
+              insertTextToChat(formattedBlock);
+              toast('Context inserted');
+            }
+          });
+        });
+
+        listEl.querySelectorAll('.tk-ctx-delete').forEach(btn => {
+          btn.addEventListener('click', async () => {
+            const id = parseInt(btn.dataset.id, 10);
+            const newContexts = contexts.filter(c => c.id !== id);
+            await StorageManager.setSavedContexts(newContexts);
+            renderContextList();
+          });
+        });
+      }
     });
 
     // ============================================
@@ -7478,7 +7539,126 @@ Be thorough and fair to both sides.`
     detailSection.appendChild(detailLabel); detailSection.appendChild(detailButtons);
     settingsContent.appendChild(detailSection);
 
+    
     // ============================================
+    // Response Calibrator Section
+    // ============================================
+    const calSection = document.createElement('div');
+    calSection.style.cssText = 'padding-bottom: 16px; border-bottom: 1px solid var(--cb-border);';
+    const calLabel = document.createElement('div');
+    calLabel.style.cssText = 'font-weight: 600; margin-bottom: 10px; color: var(--cb-white); display: flex; justify-content: space-between; align-items: center;';
+    
+    const calLabelText = document.createElement('span');
+    calLabelText.textContent = '🎛️ Response Calibrator';
+    
+    const calEnableBtn = document.createElement('button');
+    calEnableBtn.className = 'cb-btn';
+    calEnableBtn.style.cssText = 'padding: 4px 8px; font-size: 10px;';
+    
+    calLabel.appendChild(calLabelText);
+    calLabel.appendChild(calEnableBtn);
+    calSection.appendChild(calLabel);
+
+    const calTogglesWrap = document.createElement('div');
+    calTogglesWrap.style.cssText = 'display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 10px;';
+    const btnCalBeginner = document.createElement('button'); btnCalBeginner.className = 'cb-btn'; btnCalBeginner.textContent = 'Beginner'; btnCalBeginner.dataset.level = 'Beginner';
+    const btnCalNormal = document.createElement('button'); btnCalNormal.className = 'cb-btn'; btnCalNormal.textContent = 'Normal'; btnCalNormal.dataset.level = 'Normal';
+    const btnCalExpert = document.createElement('button'); btnCalExpert.className = 'cb-btn'; btnCalExpert.textContent = 'Expert'; btnCalExpert.dataset.level = 'Expert';
+    calTogglesWrap.appendChild(btnCalBeginner); calTogglesWrap.appendChild(btnCalNormal); calTogglesWrap.appendChild(btnCalExpert);
+    calSection.appendChild(calTogglesWrap);
+
+    const calDetailsWrap = document.createElement('div');
+    calDetailsWrap.style.cssText = 'display: flex; flex-direction: column; gap: 8px;';
+    
+    const createCtxInput = (label, placeholder) => {
+       const wrap = document.createElement('div');
+       const lbl = document.createElement('div');
+       lbl.style.cssText = 'font-size: 10px; color: var(--cb-subtext); margin-bottom: 4px; text-transform: uppercase;';
+       lbl.textContent = label;
+       const inp = document.createElement('input');
+       inp.type = 'text';
+       inp.placeholder = placeholder;
+       inp.style.cssText = 'width: 100%; background: var(--cb-bg); border: 1px solid var(--cb-border); color: var(--cb-white); padding: 8px; border-radius: 6px; font-size: 11px; outline:none; transition:border 0.2s; box-sizing: border-box;';
+       inp.addEventListener('focus', () => inp.style.borderColor = 'var(--cb-accent-primary)');
+       inp.addEventListener('blur', () => inp.style.borderColor = 'var(--cb-border)');
+       wrap.appendChild(lbl);
+       wrap.appendChild(inp);
+       return {wrap, inp};
+    };
+
+    const inpDomainWrap = createCtxInput('Domain / Profession', 'e.g. Software Engineering');
+    const inpYearsWrap = createCtxInput('Years Experience', 'e.g. 5');
+    const inpSubdomainsWrap = createCtxInput('Specialties', 'e.g. React, Node.js');
+
+    calDetailsWrap.appendChild(inpDomainWrap.wrap);
+    calDetailsWrap.appendChild(inpYearsWrap.wrap);
+    calDetailsWrap.appendChild(inpSubdomainsWrap.wrap);
+    calSection.appendChild(calDetailsWrap);
+    
+    settingsContent.appendChild(calSection);
+
+    let calState = {
+      enabled: localStorage.getItem('chatbridge:pref:calibratorEnabled') === 'true',
+      level: localStorage.getItem('chatbridge:pref:calibratorLevel') || 'Normal',
+      domain: localStorage.getItem('chatbridge:pref:calibratorDomain') || '',
+      years: localStorage.getItem('chatbridge:pref:calibratorYears') || '',
+      subdomains: localStorage.getItem('chatbridge:pref:calibratorSubdomains') || ''
+    };
+    
+    inpDomainWrap.inp.value = calState.domain;
+    inpYearsWrap.inp.value = calState.years;
+    inpSubdomainsWrap.inp.value = calState.subdomains;
+
+    const updateCalUI = () => {
+      calEnableBtn.textContent = calState.enabled ? 'Enabled ✅' : 'Disabled ❌';
+      calEnableBtn.style.color = calState.enabled ? '#4ade80' : 'var(--cb-subtext)';
+      calEnableBtn.style.borderColor = calState.enabled ? 'rgba(74, 222, 128, 0.3)' : 'var(--cb-border)';
+      calEnableBtn.style.background = calState.enabled ? 'rgba(74, 222, 128, 0.1)' : 'transparent';
+
+      [btnCalBeginner, btnCalNormal, btnCalExpert].forEach(b => {
+        const isActive = (b.dataset.level === calState.level);
+        b.style.background = isActive ? 'var(--cb-accent-primary)' : '';
+        b.style.color = isActive ? '#fff' : '';
+      });
+      
+      calDetailsWrap.style.opacity = calState.enabled ? '1' : '0.5';
+      calDetailsWrap.style.pointerEvents = calState.enabled ? 'auto' : 'none';
+      
+      window.ChatBridgeCalibratorState = () => calState;
+    };
+
+    calEnableBtn.addEventListener('click', () => {
+      calState.enabled = !calState.enabled;
+      localStorage.setItem('chatbridge:pref:calibratorEnabled', calState.enabled);
+      updateCalUI();
+    });
+
+    [btnCalBeginner, btnCalNormal, btnCalExpert].forEach(b => {
+      b.addEventListener('click', () => {
+        calState.level = b.dataset.level;
+        localStorage.setItem('chatbridge:pref:calibratorLevel', calState.level);
+        if(!calState.enabled) {
+           calState.enabled = true;
+           localStorage.setItem('chatbridge:pref:calibratorEnabled', 'true');
+        }
+        updateCalUI();
+      });
+    });
+
+    [inpDomainWrap.inp, inpYearsWrap.inp, inpSubdomainsWrap.inp].forEach(inp => {
+       inp.addEventListener('input', () => {
+         calState.domain = inpDomainWrap.inp.value;
+         calState.years = inpYearsWrap.inp.value;
+         calState.subdomains = inpSubdomainsWrap.inp.value;
+         localStorage.setItem('chatbridge:pref:calibratorDomain', calState.domain);
+         localStorage.setItem('chatbridge:pref:calibratorYears', calState.years);
+         localStorage.setItem('chatbridge:pref:calibratorSubdomains', calState.subdomains);
+       });
+    });
+
+    updateCalUI();
+
+// ============================================
     // Keyboard Shortcuts Section
     // ============================================
     const shortcutsSection = document.createElement('div'); shortcutsSection.style.cssText = 'padding-bottom: 16px; border-bottom: 1px solid var(--cb-border);';
@@ -12633,6 +12813,117 @@ Output ONLY the 5 numbered questions, no other text.`;
         });
         toolsGrid.appendChild(continueCard);
 
+        // 5. Memory Manager
+        const memoryCard = createToolCard('<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>', 'Memory Manager', 'Manage vector DB memory');
+        memoryCard.addEventListener('click', async () => {
+          showToolResult('<div style="text-align:center;color:var(--cb-subtext);font-size:12px;">Computing memory stats...</div>', 'Memory Manager');
+          
+          chrome.runtime.sendMessage({ type: 'vector_query', payload: { query: 'test', topK: 1 } }, (res) => {
+             const status = (res && res.ok !== false) ? 'OK' : 'Empty or Error';
+             const isOk = status === 'OK';
+             showToolResult(`
+               <div style="padding:10px;color:var(--cb-text);">
+                 <div style="margin-bottom:12px;font-size:13px;">
+                   <strong>Status:</strong> <span style="color:${isOk ? 'var(--cb-accent-success)' : 'var(--cb-accent-warning)'}">${status}</span>
+                 </div>
+                 <div style="font-size:11px;color:var(--cb-subtext);margin-bottom:16px;">
+                   ${isOk ? 'Vector index is built and active. This drives the Smart Query system and auto-context.' : 'No memory vectors recorded yet.'}
+                 </div>
+                 <button id="cb-mem-clear" style="padding:8px 16px;background:rgba(239,68,68,0.2);border:1px solid rgba(239,68,68,0.5);color:#EF4444;border-radius:6px;cursor:pointer;font-size:11px;">Clear All Memories</button>
+               </div>
+             `, 'Memory Manager');
+             
+             const clearBtn = toolResultArea.querySelector('#cb-mem-clear');
+             if (clearBtn) {
+               clearBtn.addEventListener('click', () => {
+                 chrome.runtime.sendMessage({ type: 'vector_clear_all' }, (clearRes) => {
+                    toast('Memory cleared');
+                    memoryCard.click();
+                 });
+               });
+             }
+          });
+        });
+        toolsGrid.appendChild(memoryCard);
+
+        // 6. Migration Kit
+        const migrateCard = createToolCard('<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>', 'Migration Kit', 'Export / Import settings');
+        migrateCard.addEventListener('click', async () => {
+          showToolResult(`
+            <div style="padding:10px;">
+              <div style="font-size:12px;color:var(--cb-subtext);margin-bottom:16px;">
+                Export your ChatBridge preferences, agents configuration, and saved contexts to a portable file. 
+              </div>
+              <div style="display:flex;gap:10px;margin-bottom:16px;">
+                <button id="cb-mig-export" class="cb-btn cb-btn-primary" style="flex:1;">Export to JSON</button>
+                <button id="cb-mig-import" class="cb-btn cb-btn-secondary" style="flex:1;">Import JSON</button>
+                <input type="file" id="cb-mig-file" accept=".json" style="display:none;" />
+              </div>
+              <div id="cb-mig-status" style="font-size:11px;color:var(--cb-accent-success);display:none;"></div>
+            </div>
+          `, 'Migration Kit');
+
+          const btnExport = toolResultArea.querySelector('#cb-mig-export');
+          const btnImport = toolResultArea.querySelector('#cb-mig-import');
+          const fileInput = toolResultArea.querySelector('#cb-mig-file');
+          const statusDiv = toolResultArea.querySelector('#cb-mig-status');
+
+          btnExport.addEventListener('click', async () => {
+            try {
+              const data = await StorageManager.getMigrationExports();
+              const payload = {
+                exportDate: new Date().toISOString(),
+                data: data || []
+              };
+              const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `chatbridge-export-${new Date().getTime()}.json`;
+              a.click();
+              URL.revokeObjectURL(url);
+              
+              if(data && data.length > 0) {
+                 statusDiv.textContent = `Exported ${data.length} records successfully.`;
+              } else {
+                 statusDiv.textContent = "Exported empty environment (no local context saved yet).";
+                 statusDiv.style.color = "var(--cb-subtext)";
+              }
+              statusDiv.style.display = 'block';
+            } catch (err) {
+              statusDiv.textContent = 'Export failed: ' + err.message;
+              statusDiv.style.color = 'var(--cb-accent-warning)';
+              statusDiv.style.display = 'block';
+            }
+          });
+
+          btnImport.addEventListener('click', () => fileInput.click());
+
+          fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = async (evt) => {
+              try {
+                const parsed = JSON.parse(evt.target.result);
+                if (parsed.data && Array.isArray(parsed.data)) {
+                  await StorageManager.setMigrationExports(parsed.data);
+                  statusDiv.textContent = `Successfully imported ${parsed.data.length} records!`;
+                  statusDiv.style.color = 'var(--cb-accent-success)';
+                } else {
+                  throw new Error("Invalid export format.");
+                }
+              } catch (err) {
+                statusDiv.textContent = 'Import failed: ' + err.message;
+                statusDiv.style.color = 'var(--cb-accent-warning)';
+              }
+              statusDiv.style.display = 'block';
+            };
+            reader.readAsText(file);
+          });
+        });
+        toolsGrid.appendChild(migrateCard);
+
         insightsContent.appendChild(toolsGrid);
         debugLog('[Insights Hub] Render complete (inline)');
       } catch (e) {
@@ -13758,8 +14049,13 @@ Respond with JSON only:
         agentContent.innerHTML = '';
         debugLog('Rendering Agent Hub...');
 
-        // Refresh badges
-        await checkAgentBadges();
+        // Refresh badges, but don't block render if storage/runtime is slow
+        try {
+          await Promise.race([
+            checkAgentBadges(),
+            new Promise(resolve => setTimeout(resolve, 1500))
+          ]);
+        } catch (_) { }
 
         // ── Agent Hub CSS (injected once) ──
         if (!shadow.getElementById('cb-agent-hub-styles')) {
@@ -15056,6 +15352,15 @@ One incredibly specific, actionable recommendation for what the user should do n
             <div class="cb-agent-result-header">Detected answer:</div>
             <div id="cb-so-auto-text" style="font-size:11px;color:var(--cb-white);max-height:80px;overflow:hidden;"></div>
           </div>
+          
+          <div style="margin-bottom:10px;">
+            <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--cb-white);cursor:pointer;margin-bottom:4px;">
+              <input type="radio" name="cb-so-mode" value="verify" checked> Verify Accuracy (Default)
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--cb-white);cursor:pointer;">
+              <input type="radio" name="cb-so-mode" value="critique"> Critique & Challenge
+            </label>
+          </div>
 
           <select id="cb-so-model" class="cb-agent-select" aria-label="Select option" style="margin-bottom:10px;">
             <option value="auto">Auto-select verification model</option>
@@ -15174,8 +15479,9 @@ One incredibly specific, actionable recommendation for what the user should do n
 
         try {
           const verifyModel = modelSelect.value === 'auto' ? 'auto' : modelSelect.value;
+          const critiqueMode = outputArea.querySelector('input[name="cb-so-mode"]:checked').value === 'critique';
 
-          const prompt = `You are Second Opinion, a verification agent inside ChatBridge.
+          const verifyPrompt = `You are Second Opinion, a verification agent inside ChatBridge.
 
 ${question ? `Original question: "${question}"` : 'Original question: [not available]'}
 
@@ -15200,6 +15506,34 @@ Important information, caveats, or alternative approaches the answer didn't ment
 A brief, improved version that fixes the issues found. Only include this if significant improvements are needed.
 
 Be rigorous but fair. Cite specific parts of the original answer when critiquing.`;
+
+          const critiquePrompt = `You are a critical "Red Team" AI serving inside ChatBridge.
+
+${question ? `Original question: "${question}"` : 'Original question: [not available]'}
+
+AI answer to critique:
+"${answer.slice(0, 3000)}"
+
+Tear this answer apart. Provide a rigorous critique:
+
+## Threat Score
+Give a percentage (0-100%) indicating how flawed, risky, or dangerous this answer might be if followed blindly. Format: **XX%**
+
+## Hidden Flaws & Risks
+Point out flaws, gaps, and risks. What could go wrong if someone acts on this?
+
+## Challenged Assumptions
+What untested assumptions is the AI making? Why might they be wrong?
+
+## The "But What If" 
+Propose a counter-narrative or edge case that completely breaks the AI's logic.
+
+## Better Alternatives
+How should this actually be handled? Provide a deeply contrasting or vastly superior approach.
+
+Be highly critical, direct, and unforgiving in your analysis.`;
+
+          const prompt = critiqueMode ? critiquePrompt : verifyPrompt;
 
           const res = await callAgentRouteWithRetry(prompt, { model: verifyModel, complexity: 'deep', maxTokens: 1200 });
 
@@ -15444,11 +15778,12 @@ Make this ready to send as-is. No meta-commentary. Clean markdown formatting.`;
                 <div class="cb-agent-stat"><div class="cb-agent-stat-val">${sectionCount}</div><div class="cb-agent-stat-label">Sections</div></div>
               </div>
               <div class="cb-agent-result-section"><div class="cb-agent-result-body">${formatted}</div></div>
-              <div class="cb-agent-action-row">
+              <div class="cb-agent-action-row" style="flex-wrap: wrap;">
                 <button id="cb-handoff-copy" class="cb-agent-btn-secondary">Copy</button>
                 <button id="cb-handoff-download" class="cb-agent-btn-secondary">Download .md</button>
                 <button id="cb-handoff-save" class="cb-agent-btn-secondary">Save Draft</button>
-                <button id="cb-handoff-insert" class="cb-agent-btn-primary">Insert</button>
+                <button id="cb-handoff-share" class="cb-agent-btn-secondary">Share Link</button>
+                <button id="cb-handoff-insert" class="cb-agent-btn-primary" style="flex: 1 1 100%;">Insert</button>
               </div>
               <div class="cb-agent-meta">For ${recipient} · ${detailLevel} · ${res.model_used || 'AI'} · ${res.latency_ms || 0}ms</div>
             `;
@@ -15478,6 +15813,61 @@ Make this ready to send as-is. No meta-commentary. Clean markdown formatting.`;
                 });
                 toast('Draft saved!');
               } catch (_) { toast('Save failed'); }
+            });
+            resultDiv.querySelector('#cb-handoff-share').addEventListener('click', () => {
+              try {
+                const title = `Handoff: ${recipient}`;
+                const rawMarkdownHtml = formatAgentMarkdown(res.result);
+                const htmlContent = `<!DOCTYPE html>
+                <html lang="en" data-theme="dark">
+                <head>
+                  <meta charset="UTF-8">
+                  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                  <title>${title}</title>
+                  <style>
+                    :root[data-theme="dark"] { --bg: #0b0f17; --card-bg: #141b25; --text: #f0f4f8; --subtext: #8c9baf; --border: #1f2937; --accent: #EC4899; }
+                    :root[data-theme="light"] { --bg: #f8fafc; --card-bg: #ffffff; --text: #0f172a; --subtext: #475569; --border: #e2e8f0; --accent: #EC4899; }
+                    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); padding: 40px 20px; line-height: 1.6; margin: 0; display: flex; justify-content: center; transition: all 0.3s ease; }
+                    .container { max-width: 800px; width: 100%; background: var(--card-bg); padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); border: 1px solid var(--border); position: relative; }
+                    .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 20px; margin-bottom: 24px; }
+                    .title { font-size: 24px; font-weight: 700; display: flex; align-items: center; gap: 10px; }
+                    .title svg { color: var(--accent); }
+                    .meta { color: var(--subtext); font-size: 13px; }
+                    .theme-toggle { background: transparent; border: 1px solid var(--border); color: var(--text); padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; }
+                    .content h2 { margin-top: 32px; font-size: 18px; color: var(--accent); border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+                    .content ul { padding-left: 20px; }
+                    .content li { margin-bottom: 8px; }
+                  </style>
+                </head>
+                <body>
+                  <div class="container">
+                    <div class="header">
+                      <div>
+                        <div class="title">
+                          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+                          ChatBridge Handoff
+                        </div>
+                        <div class="meta">For ${recipient} · Prepared ${new Date().toLocaleDateString()}</div>
+                      </div>
+                      <button class="theme-toggle" onclick="document.documentElement.setAttribute('data-theme', document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark')">Toggle Theme</button>
+                    </div>
+                    <div class="content">${rawMarkdownHtml}</div>
+                  </div>
+                </body>
+                </html>`.replace(/\s+/g, ' ').replace(/> </g, '><'); // Minify somewhat
+
+                const blob = new Blob([htmlContent], { type: 'text/html' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `share-handoff-${recipient.toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().slice(0, 10)}.html`;
+                a.click();
+                URL.revokeObjectURL(url);
+                toast('Shareable link (HTML) downloaded!');
+              } catch (err) {
+                console.error(err);
+                toast('Failed to create share link.');
+              }
             });
             resultDiv.querySelector('#cb-handoff-insert').addEventListener('click', () => {
               try { insertTextToChat(res.result); toast('Inserted!'); } catch (_) { toast('Insert failed'); }
@@ -17673,22 +18063,22 @@ ${bodyHtml}
     // ============================================
 
     // Agent: Open view
+    // Agent: Open view (Integrated into sidebar)
     btnKnowledgeGraph.addEventListener('click', async () => {
       try {
-        if (typeof window.renderAgentHubCore === 'function') {
-          // Close the main Sidebar by clicking the close button
-          if (panel.style.display !== 'none') {
-            btnClose.click();
-          }
-          window.renderAgentHubCore();
-        } else {
-          // Fallback to legacy inner view
-          closeAllViews();
-          agentView.classList.add('cb-view-active');
-          await renderAgentHub();
-          // Ambient: check agent badges on open
-          await checkAgentBadges();
-        }
+        // We always stay in the sidebar now for better consistency
+        closeAllViews();
+        agentView.classList.add('cb-view-active');
+        
+        // Populate the agent content
+        await renderAgentHub();
+        
+        // Ambient: check agent badges on open
+        await checkAgentBadges();
+        
+        // If the user REALLY wants the floating hub, they can still call it 
+        // manually or we could add a button inside the hub later.
+        // For now, the integrated experience is safer and more predictable.
       } catch (e) {
         toast('Failed to open Agent Hub');
         debugLog('Agent Hub open error', e);
@@ -17707,7 +18097,7 @@ ${bodyHtml}
         insightsView.classList.add('cb-view-active');
         await renderInsightsHub();
         // Scroll to top when opening inner content, and scroll main panel down
-        const contentEl = document.getElementById('cb-insights-content');
+        const contentEl = (shadow && typeof shadow.getElementById === 'function') ? shadow.getElementById('cb-insights-content') : null;
         if (contentEl) contentEl.scrollTop = 0;
         
         // Ensure main panel is scrolled to the bottom so the new view is visible
@@ -20894,12 +21284,24 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
     // Load conversations as a Promise with cache: prefer background persistent store, fallback to window.getConversations or localStorage
     function loadConversationsAsync() {
       return new Promise(res => {
+        let done = false;
+        const finish = (value) => {
+          if (done) return;
+          done = true;
+          res(value);
+        };
+
         // Return cached list if fresh (< 1000ms)
         try {
           if (Array.isArray(__cbConvCache.data) && __cbConvCache.ts && (Date.now() - __cbConvCache.ts) < 1000) {
-            return res(__cbConvCache.data);
+            return finish(__cbConvCache.data);
           }
         } catch (_) { }
+
+        const messageTimeout = setTimeout(() => {
+          fallbackLoad();
+        }, 2500);
+
         // Try background handler first
         try {
           chrome.runtime.sendMessage({ type: 'get_conversations', payload: {} }, (r) => {
@@ -20909,6 +21311,7 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
               return;
             }
             if (r && r.ok && Array.isArray(r.conversations)) {
+              clearTimeout(messageTimeout);
               // Merge with chrome.storage.local mirror to avoid race conditions
               if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
                 chrome.storage.local.get(['chatbridge:conversations'], (data) => {
@@ -20930,12 +21333,12 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
                     }
                     const merged = Array.from(m.values()).sort((a, b) => (b.ts || 0) - (a.ts || 0));
                     try { __cbConvCache.data = merged; __cbConvCache.ts = Date.now(); } catch (_) { }
-                    res(merged);
-                  } catch (e) { res(r.conversations); }
+                    finish(merged);
+                  } catch (e) { finish(r.conversations); }
                 });
               } else {
                 try { __cbConvCache.data = r.conversations; __cbConvCache.ts = Date.now(); } catch (_) { }
-                res(r.conversations);
+                finish(r.conversations);
               }
             } else {
               fallbackLoad();
@@ -20946,9 +21349,11 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
         }
 
         function fallbackLoad() {
+          clearTimeout(messageTimeout);
+          if (done) return;
           try {
             if (typeof window.getConversations === 'function') {
-              try { window.getConversations(list => res(Array.isArray(list) ? list : [])); } catch (e) { res([]); }
+              try { window.getConversations(list => finish(Array.isArray(list) ? list : [])); } catch (e) { finish([]); }
             } else if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
               // Try chrome.storage.local first (extension-wide)
               chrome.storage.local.get(['chatbridge:conversations'], (data) => {
@@ -20957,15 +21362,15 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
                   // Sort newest first
                   const sorted = arr.slice().sort((a, b) => (b.ts || 0) - (a.ts || 0));
                   try { __cbConvCache.data = sorted; __cbConvCache.ts = Date.now(); } catch (_) { }
-                  res(sorted);
+                  finish(sorted);
                 } else {
                   // Final fallback to localStorage
                   try {
                     const local = JSON.parse(localStorage.getItem('chatbridge:conversations') || '[]');
                     const sorted = (Array.isArray(local) ? local : []).slice().sort((a, b) => (b.ts || 0) - (a.ts || 0));
                     try { __cbConvCache.data = sorted; __cbConvCache.ts = Date.now(); } catch (_) { }
-                    res(sorted);
-                  } catch (e) { res([]); }
+                    finish(sorted);
+                  } catch (e) { finish([]); }
                 }
               });
             } else {
@@ -20973,9 +21378,9 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
               const arr = JSON.parse(localStorage.getItem('chatbridge:conversations') || '[]');
               const sorted = (Array.isArray(arr) ? arr : []).slice().sort((a, b) => (b.ts || 0) - (a.ts || 0));
               try { __cbConvCache.data = sorted; __cbConvCache.ts = Date.now(); } catch (_) { }
-              res(sorted);
+              finish(sorted);
             }
-          } catch (e) { res([]); }
+          } catch (e) { finish([]); }
         }
       });
     }
