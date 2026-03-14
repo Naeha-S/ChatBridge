@@ -45,11 +45,11 @@ product. Last updated: 2026-02-18
 
 ### 🛡️ Error Handling
 
-- [ ] Global error boundary in content script
-- [ ] Background service worker crash recovery
+- [x] Global error boundary in content script
+- [x] Background service worker crash recovery
 - [ ] Empty state handling (no conversations, no API key, no results)
-- [ ] User-facing error banner with retry + report
-- [ ] Structured error logging (severity, context, stack)
+- [x] User-facing error banner with retry + report
+- [x] Structured error logging (severity, context, stack)
 
 ### ⚡ Performance
 

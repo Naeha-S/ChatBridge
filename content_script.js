@@ -733,7 +733,9 @@
           try {
             // Legacy: Memory Architect removed — open Agent Hub instead
             try { const h = document.getElementById('cb-host'); if (h) h.style.display = 'block'; } catch (e) { }
-            if (typeof renderAgentHub === 'function') {
+            if (typeof queueAgentHubRender === 'function') {
+              queueAgentHubRender().catch(() => { });
+            } else if (typeof renderAgentHub === 'function') {
               await renderAgentHub();
             }
             if (sendResponse) sendResponse({ ok: true });
@@ -4030,7 +4032,7 @@
 }
 
   :host * { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important; letter-spacing: -0.01em; }
-  .cb-panel { box-sizing: border-box; position:fixed; top:var(--cb-space-md); right:var(--cb-space-md); width:400px; max-width:calc(100vw - 24px); max-height:calc(100vh - 120px); overflow-y:auto; overflow-x:hidden; border-radius:var(--cb-radius-xl); background: var(--cb-bg2); color:var(--cb-white) !important; z-index:2147483647; box-shadow: var(--cb-shadow-xl), 0 0 40px color-mix(in srgb, var(--cb-accent-primary) 10%, transparent); border: 1px solid var(--cb-border); backdrop-filter: blur(12px); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); word-wrap: break-word; pointer-events:auto; }
+  .cb-panel { box-sizing: border-box; position:fixed; top:var(--cb-space-md); right:var(--cb-space-md); width:400px; max-width:calc(100vw - 24px); max-height:calc(100vh - 120px); overflow-y:auto; overflow-x:hidden; border-radius:var(--cb-radius-xl); background: var(--cb-bg2); color:var(--cb-white) !important; z-index:2147483647; box-shadow: var(--cb-shadow-xl), 0 0 40px color-mix(in srgb, var(--cb-accent-primary) 10%, transparent); border: 1px solid var(--cb-border); backdrop-filter: blur(12px); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); word-wrap: break-word; pointer-events:auto; --cb-dynamic-content-max-height: calc(100vh - 250px); }
   .cb-panel * { max-width: 100%; word-wrap: break-word; overflow-wrap: break-word; }
   .cb-panel::-webkit-scrollbar { width: 10px; }
   .cb-panel::-webkit-scrollbar-track { background: var(--cb-bg); border-radius: 10px; }
@@ -4054,6 +4056,11 @@
   .cb-panel.cb-minimized { width: 68px !important; min-width: 68px !important; padding: 0 !important; transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1), min-width 0.35s cubic-bezier(0.4, 0, 0.2, 1); }
   .cb-panel { transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1), min-width 0.35s cubic-bezier(0.4, 0, 0.2, 1); }
   .cb-panel.cb-minimized > *:not(.cb-mini-toolbar) { display: none !important; opacity: 0; }
+  .cb-panel.cb-panel-resizing { transition: none !important; user-select: none; }
+  .cb-panel.cb-minimized .cb-resize-handle { display: none !important; }
+  .cb-resize-handle { position: absolute; right: 8px; bottom: 8px; width: 24px; height: 24px; border-radius: 8px; cursor: nwse-resize; display: flex; align-items: center; justify-content: center; color: var(--cb-white); background: color-mix(in srgb, var(--cb-accent-primary) 20%, var(--cb-bg2)); border: 1px solid color-mix(in srgb, var(--cb-accent-primary) 45%, var(--cb-border)); opacity: 0.95; box-shadow: 0 4px 14px color-mix(in srgb, var(--cb-accent-primary) 20%, transparent), inset 0 1px 0 rgba(255,255,255,0.08); z-index: 30; }
+  .cb-resize-handle:hover { opacity: 1; transform: scale(1.06); box-shadow: 0 8px 20px color-mix(in srgb, var(--cb-accent-primary) 35%, transparent), inset 0 1px 0 rgba(255,255,255,0.12); }
+  .cb-resize-handle svg { width: 14px; height: 14px; pointer-events: none; }
   .cb-mini-toolbar { display: none; flex-direction: column; align-items: center; padding: 14px 10px; gap: 10px; height: 100%; background: linear-gradient(180deg, var(--cb-bg) 0%, var(--cb-bg2) 100%); animation: cb-mini-fadein 0.3s ease-out; }
   @keyframes cb-mini-fadein { from { opacity: 0; } to { opacity: 1; } }
   .cb-panel.cb-minimized .cb-mini-toolbar { display: flex; }
@@ -4184,7 +4191,7 @@
   .cb-insight-list { margin: 8px 0 0 20px; padding: 0; font-size: 12px; color: var(--cb-white); }
   .cb-insight-list li { margin-bottom: 6px; line-height: 1.5; }
   /* Insights View Scrollbar - Themed */
-  #cb-insights-content { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--cb-accent-primary) 40%, transparent) var(--cb-bg3); overflow-x: hidden; }
+  #cb-insights-content { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--cb-accent-primary) 40%, transparent) var(--cb-bg3); overflow-x: hidden; max-height: var(--cb-dynamic-content-max-height); }
   #cb-insights-content::-webkit-scrollbar { width: 6px; }
   #cb-insights-content::-webkit-scrollbar-track { background: var(--cb-bg3); border-radius: 3px; }
   #cb-insights-content::-webkit-scrollbar-thumb { background: linear-gradient(180deg, color-mix(in srgb, var(--cb-accent-primary) 50%, transparent), color-mix(in srgb, var(--cb-accent-secondary) 50%, transparent)); border-radius: 3px; }
@@ -4450,11 +4457,26 @@
       panel.classList.add('cb-panel-left');
     }
 
-    // Load saved panel width
+    // Load saved panel dimensions (clamped so sidebar doesn't open too tall)
     try {
       const savedWidth = localStorage.getItem('chatbridge:panel_width');
       if (savedWidth) {
-        panel.style.width = savedWidth + 'px';
+        const parsedWidth = parseInt(savedWidth, 10);
+        if (!Number.isNaN(parsedWidth)) {
+          panel.style.width = Math.max(320, Math.min(window.innerWidth - 24, parsedWidth)) + 'px';
+        }
+      }
+
+      const defaultPanelHeight = Math.max(460, Math.min(640, window.innerHeight - 170));
+      panel.style.height = defaultPanelHeight + 'px';
+
+      const savedHeight = localStorage.getItem('chatbridge:panel_height');
+      if (savedHeight) {
+        const parsedHeight = parseInt(savedHeight, 10);
+        if (!Number.isNaN(parsedHeight)) {
+          const clampedHeight = Math.max(420, Math.min(window.innerHeight - 130, parsedHeight));
+          panel.style.height = clampedHeight + 'px';
+        }
       }
     } catch (e) { }
 
@@ -4470,59 +4492,82 @@
       <circle cx="6" cy="10" r="1.5" opacity="0.4"/>
       <circle cx="10" cy="10" r="1.5" opacity="0.6"/>
     </svg>`;
-    resizeHandle.style.cssText = `
-      position: absolute;
-      bottom: 8px;
-      right: 8px;
-      width: 20px;
-      height: 20px;
-      cursor: nwse-resize;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: var(--cb-subtext);
-      opacity: 0.4;
-      transition: opacity 0.2s, transform 0.2s;
-      z-index: 10;
-      user-select: none;
-      border-radius: 4px;
-    `;
-
-    resizeHandle.addEventListener('mouseenter', () => {
-      resizeHandle.style.opacity = '1';
-    });
-    resizeHandle.addEventListener('mouseleave', () => {
-      resizeHandle.style.opacity = '0.5';
-    });
+    resizeHandle.style.cssText = 'user-select:none;';
 
     // Resize functionality
     let isResizing = false;
-    let startX, startWidth;
+    let startX = 0;
+    let startY = 0;
+    let startWidth = 0;
+    let startHeight = 0;
+
+    function updatePanelDynamicLayout() {
+      try {
+        const panelHeight = panel.getBoundingClientRect().height || panel.offsetHeight || 0;
+        const contentMaxHeight = Math.max(220, Math.floor(panelHeight - 250));
+        panel.style.setProperty('--cb-dynamic-content-max-height', `${contentMaxHeight}px`);
+
+        const dynamicNodes = panel.querySelectorAll('#cb-insights-content, #cb-agent-content, .cb-history, .cb-preview');
+        dynamicNodes.forEach((node) => {
+          if (node.id === 'cb-insights-content' || node.id === 'cb-agent-content') {
+            node.style.maxHeight = `${contentMaxHeight}px`;
+            return;
+          }
+          if (node.classList.contains('cb-history')) {
+            node.style.maxHeight = `${Math.max(150, contentMaxHeight - 100)}px`;
+            return;
+          }
+          if (node.classList.contains('cb-preview')) {
+            node.style.maxHeight = `${Math.max(110, contentMaxHeight - 210)}px`;
+          }
+        });
+      } catch (e) { }
+    }
+
+    updatePanelDynamicLayout();
 
     resizeHandle.addEventListener('mousedown', (e) => {
+      if (panel.classList.contains('cb-minimized')) return;
       isResizing = true;
       startX = e.clientX;
+      startY = e.clientY;
       startWidth = parseInt(document.defaultView.getComputedStyle(panel).width, 10);
+      startHeight = parseInt(document.defaultView.getComputedStyle(panel).height, 10);
+      panel.classList.add('cb-panel-resizing');
       e.preventDefault();
     });
 
     document.addEventListener('mousemove', (e) => {
       if (!isResizing) return;
 
-      const deltaX = startX - e.clientX;
-      const newWidth = Math.max(300, Math.min(800, startWidth + deltaX));
+      const isLeftDocked = panel.classList.contains('cb-panel-left');
+      const deltaX = isLeftDocked ? (e.clientX - startX) : (startX - e.clientX);
+      const deltaY = e.clientY - startY;
+      const maxWidth = Math.max(320, window.innerWidth - 24);
+      const maxHeight = Math.max(420, window.innerHeight - 24);
+      const newWidth = Math.max(320, Math.min(maxWidth, startWidth + deltaX));
+      const newHeight = Math.max(420, Math.min(maxHeight, startHeight + deltaY));
       panel.style.width = newWidth + 'px';
+      panel.style.height = newHeight + 'px';
+      updatePanelDynamicLayout();
     });
 
     document.addEventListener('mouseup', () => {
       if (isResizing) {
         isResizing = false;
+        panel.classList.remove('cb-panel-resizing');
         // Save the new width
         try {
           const finalWidth = parseInt(document.defaultView.getComputedStyle(panel).width, 10);
+          const finalHeight = parseInt(document.defaultView.getComputedStyle(panel).height, 10);
           localStorage.setItem('chatbridge:panel_width', finalWidth);
+          localStorage.setItem('chatbridge:panel_height', finalHeight);
         } catch (e) { }
       }
+    });
+
+    window.addEventListener('resize', () => {
+      updatePanelDynamicLayout();
     });
 
     panel.appendChild(resizeHandle);
@@ -6771,7 +6816,7 @@
     // TOOLKIT VIEW — 8 forward-facing action tools
     // ============================================
     const toolkitView = document.createElement('div'); toolkitView.className = 'cb-internal-view'; toolkitView.id = 'cb-toolkit-view'; toolkitView.setAttribute('data-cb-ignore', 'true');
-    const toolkitTop = document.createElement('div'); toolkitTop.className = 'cb-view-top'; toolkitTop.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;';
+    const toolkitTop = document.createElement('div'); toolkitTop.className = 'cb-view-top'; toolkitTop.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;padding:2px 2px 0;';
     const toolkitTitle = document.createElement('div'); toolkitTitle.className = 'cb-view-title';
     toolkitTitle.innerHTML = '<span class="cb-gradient-text" style="display:inline-flex;align-items:center;gap:10px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>Toolkit</span>';
     const btnCloseToolkit = document.createElement('button'); btnCloseToolkit.className = 'cb-view-close';
@@ -6782,9 +6827,10 @@
 
     const toolkitIntro = document.createElement('div'); toolkitIntro.className = 'cb-view-intro';
     toolkitIntro.textContent = 'Action tools to transform your conversations into something useful right now.';
+    toolkitIntro.style.cssText = 'margin-bottom:10px;padding:10px 12px;border-radius:12px;border:1px solid color-mix(in srgb, var(--cb-border) 85%, transparent);background:linear-gradient(165deg, color-mix(in srgb, var(--cb-bg2) 82%, transparent), color-mix(in srgb, var(--cb-bg) 96%, transparent));font-size:11px;letter-spacing:0.01em;line-height:1.45;';
     toolkitView.appendChild(toolkitIntro);
 
-    const toolkitContent = document.createElement('div'); toolkitContent.id = 'cb-toolkit-content'; toolkitContent.style.cssText = 'padding:12px 0;overflow-y:auto;overflow-x:hidden;max-height:calc(100vh - 250px);';
+    const toolkitContent = document.createElement('div'); toolkitContent.id = 'cb-toolkit-content'; toolkitContent.style.cssText = 'padding:8px 0;overflow-y:auto;overflow-x:hidden;max-height:calc(100vh - 250px);';
 
     // Toolkit tools definition
     const toolkitTools = [
@@ -6800,13 +6846,13 @@
 
     // Render toolkit grid
     const tkGrid = document.createElement('div');
-    tkGrid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit, minmax(140px, 1fr));gap:12px;padding:4px;';
+    tkGrid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit, minmax(150px, 1fr));gap:12px;padding:4px;';
     const tkCards = {};
     toolkitTools.forEach(tool => {
       const card = document.createElement('div');
       card.className = 'cb-insight-block';
       card.id = tool.id;
-      card.style.cssText = 'cursor:pointer;transition:all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);padding:16px;border-radius:12px;background:linear-gradient(145deg, var(--cb-bg2), var(--cb-bg));border:1px solid var(--cb-border);position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:flex-start;';
+      card.style.cssText = 'cursor:pointer;transition:all 0.25s cubic-bezier(0.25, 0.8, 0.25, 1);padding:16px;border-radius:14px;background:linear-gradient(155deg, color-mix(in srgb, var(--cb-bg2) 90%, transparent), color-mix(in srgb, var(--cb-bg) 96%, transparent));border:1px solid color-mix(in srgb, var(--cb-border) 86%, transparent);position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:flex-start;box-shadow:0 8px 24px -18px color-mix(in srgb, var(--cb-accent-primary) 18%, transparent), inset 0 1px 0 color-mix(in srgb, var(--cb-text) 7%, transparent);';
       
       card.innerHTML = `
         <div style="width:32px;height:32px;border-radius:8px;background:color-mix(in srgb, var(--cb-accent-primary) 15%, transparent);display:flex;align-items:center;justify-content:center;margin-bottom:12px;color:var(--cb-accent-primary);transition:transform 0.3s ease;flex-shrink:0;">
@@ -6846,10 +6892,48 @@
     // Sub-panel area for individual tool UIs
     const tkSubPanel = document.createElement('div');
     tkSubPanel.id = 'cb-tk-subpanel';
-    tkSubPanel.style.cssText = 'display:none;margin-top:14px;';
+    tkSubPanel.style.cssText = 'display:none;margin-top:12px;padding:10px;border-radius:14px;background:linear-gradient(165deg, color-mix(in srgb, var(--cb-bg2) 90%, transparent), color-mix(in srgb, var(--cb-bg) 96%, transparent));border:1px solid color-mix(in srgb, var(--cb-border) 82%, transparent);box-shadow:0 10px 30px -20px color-mix(in srgb, var(--cb-accent-primary) 20%, transparent);';
     toolkitContent.appendChild(tkSubPanel);
     toolkitView.appendChild(toolkitContent);
     panel.appendChild(toolkitView);
+
+    const toolkitHandlerCoverage = new Set();
+    function bindToolkitHandler(toolId, handler) {
+      const card = tkCards[toolId];
+      if (!card) {
+        console.warn('[ChatBridge Toolkit] Missing card for handler:', toolId);
+        return;
+      }
+      card.addEventListener('click', handler);
+      card.dataset.tkHandlerBound = '1';
+      toolkitHandlerCoverage.add(toolId);
+    }
+
+    function tkApplyPremiumTheme(root) {
+      if (!root) return;
+      root.querySelectorAll('button.cb-btn').forEach((btn) => {
+        btn.style.borderRadius = btn.style.borderRadius || '9px';
+        btn.style.border = btn.style.border || '1px solid color-mix(in srgb, var(--cb-border) 82%, transparent)';
+        btn.style.background = btn.style.background || 'linear-gradient(155deg, color-mix(in srgb, var(--cb-bg3) 72%, transparent), color-mix(in srgb, var(--cb-bg2) 92%, transparent))';
+        btn.style.boxShadow = btn.style.boxShadow || '0 6px 16px -12px color-mix(in srgb, var(--cb-accent-primary) 26%, transparent)';
+      });
+
+      root.querySelectorAll('input, textarea, select').forEach((el) => {
+        if (el.type === 'checkbox') return;
+        el.style.borderRadius = el.style.borderRadius || '8px';
+        el.style.border = el.style.border || '1px solid color-mix(in srgb, var(--cb-border) 84%, transparent)';
+        el.style.background = el.style.background || 'color-mix(in srgb, var(--cb-bg2) 96%, transparent)';
+        el.style.boxShadow = el.style.boxShadow || 'inset 0 1px 0 color-mix(in srgb, var(--cb-text) 6%, transparent)';
+      });
+
+      root.querySelectorAll('pre').forEach((pre) => {
+        pre.style.borderRadius = pre.style.borderRadius || '10px';
+        pre.style.border = pre.style.border || '1px solid color-mix(in srgb, var(--cb-border) 86%, transparent)';
+      });
+    }
+
+    const tkObserver = new MutationObserver(() => tkApplyPremiumTheme(tkSubPanel));
+    tkObserver.observe(tkSubPanel, { childList: true, subtree: true });
 
     // ---- Toolkit sub-panel helpers ----
     function tkShowSub(title, icon, contentHTML) {
@@ -6865,6 +6949,7 @@
         </div>
         <div id="tk-sub-content">${contentHTML}</div>
       `;
+      tkApplyPremiumTheme(tkSubPanel);
       shadow.getElementById('tk-back-btn').addEventListener('click', tkShowGrid);
     }
     function tkShowGrid() {
@@ -6878,7 +6963,7 @@
     // ============================================
     // TOOLKIT TOOL 1: Podcast & Narrate
     // ============================================
-    tkCards['tk-podcast-narrate']?.addEventListener('click', async () => {
+    bindToolkitHandler('tk-podcast-narrate', async () => {
       const chatText = await getConversationText();
       if (!chatText) { toast('Scan a conversation first'); return; }
 
@@ -7226,7 +7311,7 @@
     // ============================================
     // TOOLKIT TOOL 4: Contradiction Finder
     // ============================================
-    tkCards['tk-contradictions']?.addEventListener('click', async () => {
+    bindToolkitHandler('tk-contradictions', async () => {
       const chatText = await getConversationText();
       if (!chatText) { toast('Scan a conversation first'); return; }
 
@@ -7370,7 +7455,7 @@ ${chatText.substring(0, 10000)}`
     // ============================================
     // TOOLKIT TOOL 5: Snippet Board
     // ============================================
-    tkCards['tk-snippetboard']?.addEventListener('click', async () => {
+    bindToolkitHandler('tk-snippetboard', async () => {
       const STORAGE_KEY = 'chatbridge_snippet_packs_v1';
       const LABELS = ['Context', 'Constraints', 'Examples', 'Questions'];
       let sourceMessages = [];
@@ -7669,7 +7754,7 @@ ${chatText.substring(0, 10000)}`
     // ============================================
     // TOOLKIT TOOL 7: Fact Checker
     // ============================================
-    tkCards['tk-factchecker']?.addEventListener('click', async () => {
+    bindToolkitHandler('tk-factchecker', async () => {
       const chatText = await getConversationText();
       if (!chatText) { toast('Scan a conversation first'); return; }
 
@@ -7797,7 +7882,7 @@ ${chatText.substring(0, 10000)}`
     // ============================================
     // TOOLKIT TOOL 2: Flashcard Maker
     // ============================================
-    tkCards['tk-flashcards']?.addEventListener('click', async () => {
+    bindToolkitHandler('tk-flashcards', async () => {
       const chatText = await getConversationText();
       if (!chatText) { toast('Scan a conversation first'); return; }
 
@@ -7865,7 +7950,7 @@ ${chatText.substring(0, 10000)}`
     // ============================================
     // TOOLKIT TOOL 3: Action Items
     // ============================================
-    tkCards['tk-actions']?.addEventListener('click', async () => {
+    bindToolkitHandler('tk-actions', async () => {
       const chatText = await getConversationText();
       if (!chatText) { toast('Scan a conversation first'); return; }
 
@@ -7928,7 +8013,7 @@ ${chatText.substring(0, 10000)}`
     // ============================================
     // TOOLKIT TOOL 6: Code Sandbox
     // ============================================
-    tkCards['tk-codesandbox']?.addEventListener('click', async () => {
+    bindToolkitHandler('tk-codesandbox', async () => {
       const chatText = await getConversationText();
 
       tkShowSub('Code Sandbox', '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/><line x1="14" y1="4" x2="10" y2="20"/></svg>', `
@@ -8063,7 +8148,7 @@ try {
     // ============================================
     // TOOLKIT TOOL 8: Quiz Me
     // ============================================
-    tkCards['tk-quizme']?.addEventListener('click', async () => {
+    bindToolkitHandler('tk-quizme', async () => {
       const chatText = await getConversationText();
       if (!chatText) { toast('Scan a conversation first'); return; }
 
@@ -8246,6 +8331,21 @@ ${chatText.substring(0, 10000)}`
         }
       });
     });
+
+    (function tkLogCoverageMap() {
+      try {
+        const expected = toolkitTools.map(t => t.id);
+        const bound = Array.from(toolkitHandlerCoverage);
+        const missing = expected.filter(id => !toolkitHandlerCoverage.has(id));
+        const extra = bound.filter(id => !expected.includes(id));
+        const map = expected.map(id => ({ id, hasCard: !!tkCards[id], hasHandler: toolkitHandlerCoverage.has(id) }));
+        console.info('[ChatBridge Toolkit] Handler coverage map', map);
+        if (missing.length) console.warn('[ChatBridge Toolkit] Missing handlers:', missing);
+        if (extra.length) console.warn('[ChatBridge Toolkit] Extra handlers:', extra);
+      } catch (e) {
+        console.warn('[ChatBridge Toolkit] Coverage map failed', e);
+      }
+    })();
 
     const geminiWrap = document.createElement('div'); geminiWrap.style.padding = '8px 18px'; geminiWrap.style.display = 'flex'; geminiWrap.style.flexDirection = 'column'; geminiWrap.style.gap = '8px';
     // Insert preview above (textarea removed - preview is the read-only display)
@@ -12617,6 +12717,43 @@ Output ONLY the 5 numbered questions, no other text.`;
     // ============================================
     // INSIGHTS HUB - ALL INLINE (NO MODALS)
     // ============================================
+    const INSIGHTS_HUB_CACHE_MS = 45000;
+    let insightsHubRenderPromise = null;
+    let insightsHubLastRenderTs = 0;
+
+    function renderInsightsHubLoading() {
+      if (!insightsContent) return;
+      insightsContent.innerHTML = `
+        <div id="cb-insights-loading" style="padding:10px 8px;display:grid;grid-template-columns:repeat(2,1fr);gap:8px;">
+          <div style="grid-column:1/-1;height:72px;border-radius:12px;background:linear-gradient(90deg,var(--cb-bg2),var(--cb-bg3),var(--cb-bg2));background-size:200% 100%;animation:cb-shimmer 1.2s linear infinite;"></div>
+          <div style="height:68px;border-radius:10px;background:linear-gradient(90deg,var(--cb-bg2),var(--cb-bg3),var(--cb-bg2));background-size:200% 100%;animation:cb-shimmer 1.2s linear infinite;"></div>
+          <div style="height:68px;border-radius:10px;background:linear-gradient(90deg,var(--cb-bg2),var(--cb-bg3),var(--cb-bg2));background-size:200% 100%;animation:cb-shimmer 1.2s linear infinite;"></div>
+          <div style="height:68px;border-radius:10px;background:linear-gradient(90deg,var(--cb-bg2),var(--cb-bg3),var(--cb-bg2));background-size:200% 100%;animation:cb-shimmer 1.2s linear infinite;"></div>
+          <div style="height:68px;border-radius:10px;background:linear-gradient(90deg,var(--cb-bg2),var(--cb-bg3),var(--cb-bg2));background-size:200% 100%;animation:cb-shimmer 1.2s linear infinite;"></div>
+        </div>
+      `;
+    }
+
+    function queueInsightsHubRender({ force = false } = {}) {
+      if (!insightsContent) return Promise.resolve();
+
+      const hasLiveContent = insightsContent.children.length > 0 && !insightsContent.querySelector('#cb-insights-loading');
+      const isFresh = hasLiveContent && (Date.now() - insightsHubLastRenderTs) < INSIGHTS_HUB_CACHE_MS;
+      if (!force && isFresh) return Promise.resolve();
+
+      if (insightsHubRenderPromise) return insightsHubRenderPromise;
+      if (!hasLiveContent || force) renderInsightsHubLoading();
+
+      insightsHubRenderPromise = (async () => {
+        await renderInsightsHub();
+        insightsHubLastRenderTs = Date.now();
+      })().finally(() => {
+        insightsHubRenderPromise = null;
+      });
+
+      return insightsHubRenderPromise;
+    }
+
     async function renderInsightsHub() {
       try {
         if (!insightsContent) {
@@ -12673,7 +12810,8 @@ Output ONLY the 5 numbered questions, no other text.`;
               // Clear cache to force fresh load
               __cbConvCache.data = [];
               __cbConvCache.ts = 0;
-              await renderInsightsHub();
+              insightsHubLastRenderTs = 0;
+              await queueInsightsHubRender({ force: true });
               toast('Refreshed');
             } catch (e) {
               toast('Refresh failed');
@@ -15018,6 +15156,42 @@ Respond with JSON only:
     }
 
     // Render Agent Hub UI — 6 Intelligence Agents in 2×3 grid
+    const AGENT_HUB_CACHE_MS = 45000;
+    let agentHubRenderPromise = null;
+    let agentHubLastRenderTs = 0;
+
+    function renderAgentHubLoading() {
+      if (!agentContent) return;
+      agentContent.innerHTML = `
+        <div id="cb-agent-loading" style="padding:8px 2px;display:grid;grid-template-columns:repeat(2,1fr);gap:10px;">
+          <div style="height:98px;border-radius:14px;background:linear-gradient(90deg,var(--cb-bg2),var(--cb-bg3),var(--cb-bg2));background-size:200% 100%;animation:cb-shimmer 1.1s linear infinite;"></div>
+          <div style="height:98px;border-radius:14px;background:linear-gradient(90deg,var(--cb-bg2),var(--cb-bg3),var(--cb-bg2));background-size:200% 100%;animation:cb-shimmer 1.1s linear infinite;"></div>
+          <div style="height:98px;border-radius:14px;background:linear-gradient(90deg,var(--cb-bg2),var(--cb-bg3),var(--cb-bg2));background-size:200% 100%;animation:cb-shimmer 1.1s linear infinite;"></div>
+          <div style="height:98px;border-radius:14px;background:linear-gradient(90deg,var(--cb-bg2),var(--cb-bg3),var(--cb-bg2));background-size:200% 100%;animation:cb-shimmer 1.1s linear infinite;"></div>
+        </div>
+      `;
+    }
+
+    function queueAgentHubRender({ force = false } = {}) {
+      if (!agentContent) return Promise.resolve();
+
+      const hasLiveContent = agentContent.children.length > 0 && !agentContent.querySelector('#cb-agent-loading');
+      const isFresh = hasLiveContent && (Date.now() - agentHubLastRenderTs) < AGENT_HUB_CACHE_MS;
+      if (!force && isFresh) return Promise.resolve();
+
+      if (agentHubRenderPromise) return agentHubRenderPromise;
+      if (!hasLiveContent || force) renderAgentHubLoading();
+
+      agentHubRenderPromise = (async () => {
+        await renderAgentHub();
+        agentHubLastRenderTs = Date.now();
+      })().finally(() => {
+        agentHubRenderPromise = null;
+      });
+
+      return agentHubRenderPromise;
+    }
+
     async function renderAgentHub() {
       try {
         if (!agentContent) {
@@ -19212,17 +19386,20 @@ ${bodyHtml}
 
     // Agent: Open view
     // Agent: Open view (Integrated into sidebar)
-    btnKnowledgeGraph.addEventListener('click', async () => {
+    btnKnowledgeGraph.addEventListener('click', () => {
       try {
         // We always stay in the sidebar now for better consistency
         closeAllViews();
         agentView.classList.add('cb-view-active');
-        
-        // Populate the agent content
-        await renderAgentHub();
-        
-        // Ambient: check agent badges on open
-        await checkAgentBadges();
+
+        // Populate the agent content asynchronously for instant tab open
+        queueAgentHubRender().catch((e) => {
+          toast('Failed to load Agent Hub');
+          debugLog('Agent Hub queued render error', e);
+        });
+
+        // Ambient: check agent badges on open (non-blocking)
+        checkAgentBadges().catch(() => { });
         
         // If the user REALLY wants the floating hub, they can still call it 
         // manually or we could add a button inside the hub later.
@@ -19239,14 +19416,18 @@ ${bodyHtml}
     });
 
     // Insights: Open Smart Workspace view
-    btnInsights.addEventListener('click', async () => {
+    btnInsights.addEventListener('click', () => {
       try {
         closeAllViews();
         insightsView.classList.add('cb-view-active');
-        await renderInsightsHub();
+        queueInsightsHubRender().catch((e) => {
+          toast('Failed to load Smart Workspace');
+          debugLog('Insights queued render error', e);
+        });
         // Scroll to top when opening inner content, and scroll main panel down
         const contentEl = (shadow && typeof shadow.getElementById === 'function') ? shadow.getElementById('cb-insights-content') : null;
         if (contentEl) contentEl.scrollTop = 0;
+        try { updatePanelDynamicLayout(); } catch (_) { }
         
         // Ensure main panel is scrolled to the bottom so the new view is visible
         if (typeof panel !== 'undefined' && panel) {
@@ -22464,6 +22645,40 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
     function loadConversationsAsync() {
       return new Promise(res => {
         let done = false;
+        const CONVERSATION_KEYS = ['chatbridge:conversations', 'chatbridge_conversations_v1'];
+        const normalizeConversationShape = (item) => {
+          if (!item || typeof item !== 'object') return null;
+          const normalized = { ...item };
+          if (!Array.isArray(normalized.conversation) && Array.isArray(normalized.messages)) {
+            normalized.conversation = normalized.messages;
+          }
+          if (!normalized.ts) {
+            normalized.ts = normalized.timestamp || normalized.createdAt || Date.now();
+          }
+          return normalized;
+        };
+
+        const mergeAndSortConversations = (...lists) => {
+          const merged = new Map();
+          for (const list of lists) {
+            if (!Array.isArray(list)) continue;
+            for (const raw of list) {
+              const c = normalizeConversationShape(raw);
+              if (!c) continue;
+              const id = String(c.id || c.ts || '');
+              if (!id) continue;
+              const prev = merged.get(id);
+              if (!prev) {
+                merged.set(id, c);
+                continue;
+              }
+              const prevLen = Array.isArray(prev.conversation) ? prev.conversation.length : 0;
+              const curLen = Array.isArray(c.conversation) ? c.conversation.length : 0;
+              merged.set(id, curLen >= prevLen ? c : prev);
+            }
+          }
+          return Array.from(merged.values()).sort((a, b) => (b.ts || 0) - (a.ts || 0));
+        };
         const finish = (value) => {
           if (done) return;
           done = true;
@@ -22493,24 +22708,11 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
               clearTimeout(messageTimeout);
               // Merge with chrome.storage.local mirror to avoid race conditions
               if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-                chrome.storage.local.get(['chatbridge:conversations'], (data) => {
+                chrome.storage.local.get(CONVERSATION_KEYS, (data) => {
                   try {
                     const mirror = Array.isArray(data['chatbridge:conversations']) ? data['chatbridge:conversations'] : [];
-                    const all = [].concat(r.conversations || [], mirror || []);
-                    // Dedupe by id/ts
-                    const m = new Map();
-                    for (const c of all) {
-                      const id = String((c && (c.id || c.ts)) || '');
-                      if (!id) continue;
-                      // prefer the version that has a conversation array/topics
-                      if (!m.has(id)) m.set(id, c);
-                      else {
-                        const prev = m.get(id);
-                        const better = (Array.isArray(c.conversation) && c.conversation.length >= (prev.conversation?.length || 0)) ? c : prev;
-                        m.set(id, better);
-                      }
-                    }
-                    const merged = Array.from(m.values()).sort((a, b) => (b.ts || 0) - (a.ts || 0));
+                    const v1 = Array.isArray(data['chatbridge_conversations_v1']) ? data['chatbridge_conversations_v1'] : [];
+                    const merged = mergeAndSortConversations(r.conversations || [], mirror, v1);
                     try { __cbConvCache.data = merged; __cbConvCache.ts = Date.now(); } catch (_) { }
                     finish(merged);
                   } catch (e) { finish(r.conversations); }
@@ -22532,21 +22734,30 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
           if (done) return;
           try {
             if (typeof window.getConversations === 'function') {
-              try { window.getConversations(list => finish(Array.isArray(list) ? list : [])); } catch (e) { finish([]); }
+              try {
+                window.getConversations(list => {
+                  const normalized = mergeAndSortConversations(Array.isArray(list) ? list : []);
+                  try { __cbConvCache.data = normalized; __cbConvCache.ts = Date.now(); } catch (_) { }
+                  finish(normalized);
+                });
+              } catch (e) { finish([]); }
             } else if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
               // Try chrome.storage.local first (extension-wide)
-              chrome.storage.local.get(['chatbridge:conversations'], (data) => {
+              chrome.storage.local.get(CONVERSATION_KEYS, (data) => {
                 const arr = Array.isArray(data['chatbridge:conversations']) ? data['chatbridge:conversations'] : [];
-                if (arr.length > 0) {
+                const v1 = Array.isArray(data['chatbridge_conversations_v1']) ? data['chatbridge_conversations_v1'] : [];
+                const mergedStore = mergeAndSortConversations(arr, v1);
+                if (mergedStore.length > 0) {
                   // Sort newest first
-                  const sorted = arr.slice().sort((a, b) => (b.ts || 0) - (a.ts || 0));
+                  const sorted = mergedStore;
                   try { __cbConvCache.data = sorted; __cbConvCache.ts = Date.now(); } catch (_) { }
                   finish(sorted);
                 } else {
                   // Final fallback to localStorage
                   try {
-                    const local = JSON.parse(localStorage.getItem('chatbridge:conversations') || '[]');
-                    const sorted = (Array.isArray(local) ? local : []).slice().sort((a, b) => (b.ts || 0) - (a.ts || 0));
+                    const localPrimary = JSON.parse(localStorage.getItem('chatbridge:conversations') || '[]');
+                    const localV1 = JSON.parse(localStorage.getItem('chatbridge_conversations_v1') || '[]');
+                    const sorted = mergeAndSortConversations(localPrimary, localV1);
                     try { __cbConvCache.data = sorted; __cbConvCache.ts = Date.now(); } catch (_) { }
                     finish(sorted);
                   } catch (e) { finish([]); }
@@ -22555,7 +22766,8 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
             } else {
               // Final fallback if chrome APIs not available
               const arr = JSON.parse(localStorage.getItem('chatbridge:conversations') || '[]');
-              const sorted = (Array.isArray(arr) ? arr : []).slice().sort((a, b) => (b.ts || 0) - (a.ts || 0));
+              const v1 = JSON.parse(localStorage.getItem('chatbridge_conversations_v1') || '[]');
+              const sorted = mergeAndSortConversations(arr, v1);
               try { __cbConvCache.data = sorted; __cbConvCache.ts = Date.now(); } catch (_) { }
               finish(sorted);
             }
@@ -23478,8 +23690,32 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
     }
 
     function refreshHistory(filterText = '') {
-      loadConversationsAsync().then(list => {
+      loadConversationsAsync().then(async (list) => {
         let arr = Array.isArray(list) ? list : [];
+
+        if (!arr.length) {
+          try {
+            const directFallback = await new Promise((resolve) => {
+              try {
+                if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+                  chrome.storage.local.get(['chatbridge:conversations', 'chatbridge_conversations_v1'], (data) => {
+                    const primary = Array.isArray(data['chatbridge:conversations']) ? data['chatbridge:conversations'] : [];
+                    const v1 = Array.isArray(data['chatbridge_conversations_v1']) ? data['chatbridge_conversations_v1'] : [];
+                    resolve([...(primary || []), ...(v1 || [])]);
+                  });
+                  return;
+                }
+              } catch (_) { }
+              resolve([]);
+            });
+
+            if (Array.isArray(directFallback) && directFallback.length > 0) {
+              arr = directFallback.sort((a, b) => (b.ts || b.timestamp || 0) - (a.ts || a.timestamp || 0));
+              try { __cbConvCache.data = arr; __cbConvCache.ts = Date.now(); } catch (_) { }
+            }
+          } catch (_) { }
+        }
+
         const filter = (filterText || '').toLowerCase().trim();
 
         if (filter) {
@@ -23862,10 +24098,14 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
     const toggleSidebar = () => {
       const isHidden = host.style.display === 'none';
       if (isHidden) {
+        try { closeAllViews(); } catch (_) { }
+        try { refreshHistory(); } catch (_) { }
         host.style.display = 'block';
         // Reset panel for entry animation
         panel.style.opacity = '0';
         panel.style.transform = 'translateY(10px)';
+        try { panel.scrollTop = 0; } catch (_) { }
+        try { updatePanelDynamicLayout(); } catch (_) { }
 
         requestAnimationFrame(() => {
           panel.style.transition = 'opacity 0.3s ease, transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)';
@@ -23886,7 +24126,7 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
     };
 
     // Attach functionality
-    avatar.onclick = (e) => {
+    const handleAvatarToggleClick = (e) => {
       e.preventDefault();
       e.stopPropagation();
       // Don't toggle if we just finished dragging
@@ -23895,6 +24135,8 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
       }
       toggleSidebar();
     };
+    avatar.onclick = null;
+    avatar.addEventListener('click', handleAvatarToggleClick);
 
     // Ensure Clean Closure
     if (typeof btnClose !== 'undefined') {

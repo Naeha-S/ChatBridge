@@ -1,0 +1,47 @@
+
+Read content.txt, lines 1 to 100
+
+Let me check the Image Generator backend and the current toolkit section to complete my analysis.
+
+Analyzing your answers...
+
+Q: Podcast converts a conversation to a 2-person dialogue and plays it with browser TTS. It's a fun novelty but not a core productivity tool. What would you prefer?
+A: Improve it — better formatting or export option
+Q: Code Sandbox runs JS/HTML in a sandboxed iframe but Python is display-only (copy/paste). Should we improve this?
+A: Yes — add an 'Open in Replit/Pyodide' button for Python
+Good. Now I have the full picture. Let me build the plan.
+
+Created memory file plan.md
+
+Here's the full audit and plan:
+
+Plan: Toolkit Overhaul — 3 Replacements + 2 Improvements
+The audit findings:
+
+Tool	Status	Why
+Voice Over	❌ Replace	Native browser/OS already does this. No unique value.
+Image Generator	❌ Replace	Broken for most users — uses imagen-3.0-generate-001 via the standard Gemini API key endpoint, but Imagen 3 is Vertex AI only. Also has a response field bug (imageBase64 vs expected imageData).
+AI Debate	❌ Replace	One-trick novelty. Users can do this by typing "argue both sides" into any AI chat. Doesn't solve a real pain point.
+Podcast	🔧 Improve	Fun but weak — no export, generic speaker names, no duration estimate, no voice customization.
+Code Sandbox (Python)	🔧 Improve	Display-only → add "Copy + Open Replit" button.
+Action Items, Flashcard Maker, Carry Forward, Code Sandbox (JS/HTML)	✅ Keep	Solid and genuinely useful.
+Voice Over overlaps with Podcast — both are "audio output from conversation" tools. Removing Voice Over eliminates the overlap entirely.
+
+Phase 1 — Rewire the Grid
+Remove tk-voiceover, tk-imagegen, tk-debate from the toolkitTools array and their click handlers. Remove generate_image from background.js (L3778–3851) — dead code cleanup.
+
+Phase 2 — Add: Quote Bank (replaces Voice Over)
+Pain point: "That answer was great but now I can't find it."
+
+Sub-panel shows saved AI quotes as cards with platform badge + date
+"Save from Scan" button — shows last 5 AI responses as a picker, tap one to save
+Delete per card, Export All as text block
+Storage: chatbridge_quote_bank in chrome.storage.local via StorageManager, shape { id, text, platform, date, sourceUrl }, max 100 rolling — add getQuoteBank / saveQuote / deleteQuote to storage.js
+Phase 3 — Add: Smart Export (replaces Image Generator)
+Pain point: "I want to use this conversation outside the chat."
+
+Format chips: Markdown / Plain Text / HTML / JSON
+Scope chips: Full / Q&A pairs / AI only / User only
+Metadata toggle: adds platform, date, message count as header
+Generates preview client-side (no AI call) → Copy + Download (Blob URL with correct extension)
+JSON format: [{ role, text }] array — clean for reuse
