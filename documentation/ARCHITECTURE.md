@@ -252,6 +252,77 @@ Background forwards to active tab:
 Content script handles command
 ```
 
+## Local Analytics Event Schema (Phase 5.2)
+
+ChatBridge uses opt-in, local-only analytics in `content_script.js` via `CBAnalytics.track(feature, action, meta)`.
+
+### Scope
+- Storage: `localStorage` key `chatbridge_analytics_v1`
+- Opt-in gate: `chrome.storage.local` key `cb_analytics_optin`
+- No external telemetry endpoint is used by this schema
+
+### Canonical Event Shape
+
+```javascript
+{
+  ts: number,                // epoch millis
+  feature: string,           // namespace/surface
+  action: string,            // canonical action key
+  host: string,              // location.hostname
+  meta: Record<string, any>  // optional diagnostics/context
+}
+```
+
+### Canonical Naming Convention
+
+- `feature`: one of
+  - `quick_action`
+  - `smart_workspace`
+  - `scan`
+  - `summarize`
+  - `rewrite`
+  - `sync_tone`
+  - `translate`
+- `action`: `<flow>_<stage>` or `<flow>_<stage>_<outcome>`
+  - Preferred stages/outcomes:
+    - `click`
+    - `confirm_click`
+    - `target_click`
+    - `success`
+    - `empty`
+    - `error`
+    - `failed`
+
+### Phase 5.2 Normalization Rules
+
+1. Keep `feature` stable as surface namespace (`quick_action` / `smart_workspace`).
+2. Encode outcome in `action` suffix (`_success`, `_empty`, `_error`) when applicable.
+3. Put variable detail in `meta` (target model, export format, counts), not in `action` where possible.
+4. Preserve legacy action keys for backward compatibility; treat them as aliases to canonical outcomes.
+
+### Legacy → Canonical Alias Mapping
+
+| Feature | Legacy Action | Canonical Intent |
+|---|---|---|
+| `quick_action` | `clean_save_failed` | `clean_failed` |
+| `quick_action` | `optimize_failed` | `optimize_failed` |
+| `quick_action` | `copy_fallback_success` | `copy_success` (`meta.path='fallback'`) |
+| `quick_action` | `export_json` / `export_markdown` / `export_text` / `export_csv` / `export_pdf` | `export_success` (`meta.format=...`) |
+| `smart_workspace` | `extract_empty_no_conversation` / `extract_empty_no_items` | `extract_empty` (`meta.reason=...`) |
+| `smart_workspace` | `carry_forward_target_click` | `carry_forward_target_click` |
+| `smart_workspace` | `migration_kit_export_click` / `migration_kit_export_success` / `migration_kit_export_empty` / `migration_kit_export_error` | unchanged (already normalized lifecycle) |
+| `smart_workspace` | `migration_kit_import_success` / `migration_kit_import_error` | unchanged (already normalized lifecycle) |
+
+### Example Queries Against Counters
+
+- Success rate per flow:
+  - numerator: `*_success`
+  - denominator: `*_click`
+- Empty-state rate:
+  - `*_empty` / `*_click`
+- Error rate:
+  - `*_error` or `*_failed` / `*_click`
+
 ## Extension Points
 
 ### Adding a New Platform

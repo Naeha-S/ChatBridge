@@ -14,6 +14,20 @@
   const MAX_SOURCE_CHARS = 3000; // Max chars from source context for embedding
   const MAX_REPAIR_ATTEMPTS = 2; // Max repair prompt injections per transfer
 
+  function hasChromeStorage() {
+    return typeof chrome !== 'undefined'
+      && !!chrome.storage
+      && !!chrome.storage.local
+      && typeof chrome.storage.local.get === 'function'
+      && typeof chrome.storage.local.set === 'function';
+  }
+
+  function hasChromeRuntimeMessaging() {
+    return typeof chrome !== 'undefined'
+      && !!chrome.runtime
+      && typeof chrome.runtime.sendMessage === 'function';
+  }
+
   // ─── DriftProfile: Per-platform statistics ──────────────────────────────────
   /**
    * Shape of a platform drift profile:
@@ -42,6 +56,13 @@
     /** Load profiles from chrome.storage */
     async load() {
       try {
+        if (!hasChromeStorage()) {
+          this.profiles = {};
+          this.driftLog = [];
+          this._loaded = true;
+          console.warn('[ChatBridge] DriftProfileManager: chrome.storage unavailable; using in-memory defaults');
+          return;
+        }
         const data = await new Promise((resolve) => {
           chrome.storage.local.get([STORAGE_KEY, DRIFT_LOG_KEY], (result) => {
             resolve(result || {});
@@ -61,6 +82,7 @@
     /** Save profiles to chrome.storage */
     async save() {
       try {
+        if (!hasChromeStorage()) return;
         // Trim drift log if too large
         if (this.driftLog.length > MAX_LOG_ENTRIES) {
           this.driftLog = this.driftLog.slice(-MAX_LOG_ENTRIES);
@@ -252,6 +274,10 @@
       // In background context: call embedding function directly
       const getEmbedding = async (text) => {
         return new Promise((resolve) => {
+          if (!hasChromeRuntimeMessaging()) {
+            resolve(null);
+            return;
+          }
           chrome.runtime.sendMessage(
             { type: 'get_drift_embedding', payload: { text } },
             (response) => {
@@ -328,6 +354,10 @@
      */
     async generateRepairPrompt(sourceContext, targetResponse, driftScore, severity) {
       return new Promise((resolve) => {
+        if (!hasChromeRuntimeMessaging()) {
+          resolve(null);
+          return;
+        }
         chrome.runtime.sendMessage({
           type: 'generate_repair_prompt',
           payload: {

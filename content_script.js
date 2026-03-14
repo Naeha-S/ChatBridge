@@ -365,6 +365,184 @@
     };
   })();
 
+  // --- Phase 3 Reliability: global error boundary + structured logging ------
+  const CBErrorBoundary = (function () {
+    const MAX_ERRORS = 50;
+    let lastSentAt = 0;
+
+    function normalizeError(err) {
+      if (!err) return { message: 'Unknown error', stack: '' };
+      if (typeof err === 'string') return { message: err, stack: '' };
+      return {
+        message: String(err.message || err.toString() || 'Unknown error'),
+        stack: String(err.stack || '')
+      };
+    }
+
+    function pushLocal(entry) {
+      try {
+        const current = Array.isArray(window.__CHATBRIDGE?.recentErrors)
+          ? window.__CHATBRIDGE.recentErrors
+          : [];
+        current.unshift(entry);
+        if (current.length > MAX_ERRORS) current.length = MAX_ERRORS;
+        window.__CHATBRIDGE = window.__CHATBRIDGE || {};
+        window.__CHATBRIDGE.recentErrors = current;
+      } catch (_) { }
+    }
+
+    function showGlobalErrorBanner(message) {
+      try {
+        const id = 'cb-global-fatal-banner';
+        const existing = document.getElementById(id);
+        if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
+        const banner = document.createElement('div');
+        banner.id = id;
+        banner.setAttribute('role', 'alert');
+        banner.style.cssText = 'position:fixed;top:14px;right:14px;z-index:2147483647;max-width:420px;background:rgba(155,44,44,0.95);color:#fff;border:1px solid rgba(255,255,255,0.2);border-radius:10px;padding:10px 12px;font-size:12px;line-height:1.5;box-shadow:0 8px 24px rgba(0,0,0,0.35);';
+        banner.textContent = message || 'ChatBridge hit an error. Please retry your last action.';
+        document.body.appendChild(banner);
+        setTimeout(() => { try { banner.remove(); } catch (_) { } }, 6500);
+      } catch (_) { }
+    }
+
+    function capture(error, context = {}) {
+      try {
+        const normalized = normalizeError(error);
+        const severity = context.severity || 'error';
+        const entry = {
+          ts: Date.now(),
+          source: 'content_script',
+          severity,
+          context: context.context || context.event || 'runtime',
+          message: normalized.message,
+          stack: normalized.stack,
+          url: location.href,
+          host: location.hostname,
+          extra: context.extra || null
+        };
+
+        pushLocal(entry);
+        CBLogger.error('[StructuredError]', entry.context, entry.message, entry);
+
+        const now = Date.now();
+        if (now - lastSentAt > 1500) {
+          lastSentAt = now;
+          try { chrome.runtime.sendMessage({ type: 'report_issue', payload: entry }, () => { }); } catch (_) { }
+        }
+
+        if (severity === 'critical' || severity === 'high') {
+          showGlobalErrorBanner('ChatBridge hit an internal error and recovered. You can retry the action.');
+        }
+      } catch (_) { }
+    }
+
+    function installGlobalHandlers() {
+      try {
+        if (window.__CHATBRIDGE_ERROR_BOUNDARY_INSTALLED) return;
+        window.__CHATBRIDGE_ERROR_BOUNDARY_INSTALLED = true;
+
+        window.addEventListener('error', (event) => {
+          capture(event && (event.error || event.message), {
+            severity: 'high',
+            event: 'window.error',
+            extra: {
+              filename: event && event.filename,
+              lineno: event && event.lineno,
+              colno: event && event.colno
+            }
+          });
+        }, true);
+
+        window.addEventListener('unhandledrejection', (event) => {
+          capture(event && event.reason, {
+            severity: 'high',
+            event: 'window.unhandledrejection'
+          });
+        }, true);
+      } catch (_) { }
+    }
+
+    function getRecent() {
+      try {
+        return Array.isArray(window.__CHATBRIDGE?.recentErrors)
+          ? window.__CHATBRIDGE.recentErrors.slice(0, 20)
+          : [];
+      } catch (_) {
+        return [];
+      }
+    }
+
+    return { capture, installGlobalHandlers, getRecent };
+  })();
+
+  CBErrorBoundary.installGlobalHandlers();
+
+  const CBAnalytics = (function () {
+    const STORAGE_KEY = 'chatbridge_analytics_v1';
+    const OPTIN_KEY = 'cb_analytics_optin';
+    let enabled = false;
+    let initialized = false;
+
+    function init() {
+      if (initialized) return;
+      initialized = true;
+      try {
+        chrome.storage.local.get([OPTIN_KEY], (res) => {
+          enabled = !!(res && res[OPTIN_KEY]);
+        });
+        chrome.storage.onChanged.addListener((changes, area) => {
+          if (area === 'local' && changes && changes[OPTIN_KEY]) {
+            enabled = !!changes[OPTIN_KEY].newValue;
+          }
+        });
+      } catch (_) { }
+    }
+
+    function setEnabled(v) {
+      enabled = !!v;
+      try { chrome.storage.local.set({ [OPTIN_KEY]: enabled }); } catch (_) { }
+    }
+
+    function track(feature, action, meta = {}) {
+      if (!enabled) return;
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        const state = raw ? JSON.parse(raw) : { events: [], counters: {}, updatedAt: 0 };
+        const event = {
+          ts: Date.now(),
+          feature: String(feature || 'unknown'),
+          action: String(action || 'unknown'),
+          host: location.hostname,
+          meta
+        };
+        state.events.unshift(event);
+        if (state.events.length > 1000) state.events.length = 1000;
+        const key = `${event.feature}:${event.action}`;
+        state.counters[key] = (state.counters[key] || 0) + 1;
+        state.updatedAt = Date.now();
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      } catch (_) { }
+    }
+
+    function exportData() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        return raw ? JSON.parse(raw) : { events: [], counters: {}, updatedAt: 0 };
+      } catch (_) {
+        return { events: [], counters: {}, updatedAt: 0 };
+      }
+    }
+
+    function clear() {
+      try { localStorage.removeItem(STORAGE_KEY); } catch (_) { }
+    }
+
+    return { init, setEnabled, track, exportData, clear };
+  })();
+
+  CBAnalytics.init();
+
   // --- Small, safe utilities (non-invasive; exported for future reuse) ------
   /** Sleep helper */
   function cbSleep(ms) { return new Promise(r => setTimeout(r, Number(ms) || 0)); }
@@ -393,7 +571,8 @@
   let restoreToChatFunction = null;
 
   console.log('[ChatBridge] Registering restore_to_chat listener early');
-  chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage && typeof chrome.runtime.onMessage.addListener === 'function') {
+    chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     try {
       if (msg && msg.type === 'restore_to_chat') {
         console.log('[ChatBridge] Received restore_to_chat message, text length:', msg.payload ? msg.payload.text ? msg.payload.text.length : 0 : 0);
@@ -598,6 +777,9 @@
       if (sendResponse) sendResponse({ ok: false, error: e && e.message });
     }
   });
+  } else {
+    console.warn('[ChatBridge] runtime messaging unavailable; restore listener not registered');
+  }
 
   // Ensure the floating avatar exists on the page. This is useful when the host
   // element is present (from a prior injection) but the avatar was removed by
@@ -4665,6 +4847,7 @@
 
     miniScan.addEventListener('click', async () => {
       if (miniScan.classList.contains('cb-mini-loading')) return;
+      CBAnalytics.track('scan', 'mini_click');
       try {
         setMiniState(miniScan, 'loading');
         toast('Scanning conversation...');
@@ -4675,13 +4858,16 @@
           const currentModel = detectCurrentModel();
           const conv = { platform: location.hostname, url: location.href, ts: Date.now(), id: String(Date.now()), model: currentModel, conversation: final };
           await saveConversation(conv);
+          CBAnalytics.track('scan', 'mini_success', { messages: final.length });
           setMiniState(miniScan, 'success');
           toast(`✓ Saved ${final.length} messages`);
         } else {
+          CBAnalytics.track('scan', 'mini_no_messages');
           setMiniState(miniScan, 'idle');
           toast('No messages found in chat');
         }
       } catch (e) {
+        CBAnalytics.track('scan', 'mini_error', { message: String(e && (e.message || e)) });
         setMiniState(miniScan, 'idle');
         toast('Scan failed - try again');
         debugLog('miniScan error', e);
@@ -5420,6 +5606,7 @@
     btnGoSumm.addEventListener('click', async (e) => {
       e.preventDefault();
       e.stopPropagation();
+      CBAnalytics.track('summarize', 'run_click');
       try {
         const text = summSourceText.textContent;
         if (!text || text.trim().length === 0) { toast('No content to summarize.'); return; }
@@ -5478,11 +5665,14 @@
           setTimeout(() => {
             summSourceText.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
           }, 50);
+          CBAnalytics.track('summarize', 'run_success', { length, style, deep });
         } else {
+          CBAnalytics.track('summarize', 'run_empty', { length, style, deep });
           toast('Summarization returned empty result');
           summProg.style.display = 'none';
         }
       } catch (e) {
+        CBAnalytics.track('summarize', 'run_error', { message: String(e && (e.message || e)) });
         console.error('[Summarize] Error:', e);
         debugLog('[Summarize] Full error details:', e);
         toast('Summarization failed: ' + (e.message || 'Unknown error'));
@@ -6598,14 +6788,14 @@
 
     // Toolkit tools definition
     const toolkitTools = [
-      { id: 'tk-voiceover', icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>', name: 'Voice Over', desc: 'Read conversation aloud with text-to-speech' },
+      { id: 'tk-podcast-narrate', icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>', name: 'Podcast & Narrate', desc: 'Listen to or podcast-ify your conversation' },
       { id: 'tk-flashcards', icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M12 8v8"/><path d="M8 12h8"/></svg>', name: 'Flashcard Maker', desc: 'Generate study flashcards from key concepts' },
       { id: 'tk-actions', icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>', name: 'Action Items', desc: 'Extract TODOs and next steps as a checklist' },
-      { id: 'tk-imagegen', icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>', name: 'Image Generator', desc: 'Create images from conversation context or prompts' },
-      { id: 'tk-context', icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>', name: 'Context Injector', desc: 'Save & load context across platforms' },
+      { id: 'tk-contradictions', icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3H5a2 2 0 0 0-2 2v5"/><path d="M14 21h5a2 2 0 0 0 2-2v-5"/><path d="M21 10V5a2 2 0 0 0-2-2h-5"/><path d="M3 14v5a2 2 0 0 0 2 2h5"/><line x1="8" y1="8" x2="16" y2="16"/><line x1="16" y1="8" x2="8" y2="16"/></svg>', name: 'Contradiction Finder', desc: 'Spot conflicting claims in the same conversation' },
+      { id: 'tk-snippetboard', icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6"/><path d="M10 8h4"/><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M12 12v6"/><path d="M9 15h6"/></svg>', name: 'Snippet Board', desc: 'Curate and reuse only the best chat snippets' },
       { id: 'tk-codesandbox', icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/><line x1="14" y1="4" x2="10" y2="20"/></svg>', name: 'Code Sandbox', desc: 'Extract and run code blocks from conversations' },
-      { id: 'tk-podcast', icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>', name: 'Podcast', desc: 'Convert conversation into a two-voice podcast script' },
-      { id: 'tk-debate', icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><line x1="9" y1="10" x2="15" y2="10"/></svg>', name: 'AI Debate', desc: 'Get both sides of any claim argued by AI' }
+      { id: 'tk-factchecker', icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4v5c0 5-3.4 9.7-8 11-4.6-1.3-8-6-8-11V7l8-4z"/><path d="M9 12l2 2 4-4"/></svg>', name: 'Fact Checker', desc: 'Rate reliability of claims from the conversation' },
+      { id: 'tk-quizme', icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 1 1 5.82 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>', name: 'Quiz Me', desc: 'Test understanding with scored questions' }
     ];
 
     // Render toolkit grid
@@ -6686,95 +6876,921 @@
     }
 
     // ============================================
-    // TOOLKIT TOOL 1: Voice Over (TTS)
+    // TOOLKIT TOOL 1: Podcast & Narrate
     // ============================================
-    tkCards['tk-voiceover']?.addEventListener('click', async () => {
+    tkCards['tk-podcast-narrate']?.addEventListener('click', async () => {
       const chatText = await getConversationText();
       if (!chatText) { toast('Scan a conversation first'); return; }
 
-      tkShowSub('Voice Over', '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>', `
-        <div style="margin-bottom:12px;">
-          <label style="font-size:11px;color:var(--cb-subtext);display:block;margin-bottom:6px;">Voice</label>
-          <select id="tk-voice-select" style="width:100%;padding:8px;border-radius:6px;background:var(--cb-bg2);border:1px solid var(--cb-border);color:var(--cb-text);font-size:12px;"></select>
+      tkShowSub('Podcast & Narrate', '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>', `
+        <div style="display:flex;gap:8px;margin-bottom:10px;">
+          <button id="tk-pn-tab-narrate" class="cb-btn" style="flex:1;padding:8px;font-size:12px;">🔊 Narrate</button>
+          <button id="tk-pn-tab-podcast" class="cb-btn" style="flex:1;padding:8px;font-size:12px;opacity:0.75;">🎙 Podcast</button>
         </div>
-        <div style="margin-bottom:12px;">
-          <label style="font-size:11px;color:var(--cb-subtext);display:block;margin-bottom:6px;">Speed: <span id="tk-speed-val">1.0</span>x</label>
-          <input type="range" id="tk-speed" min="0.5" max="2" step="0.1" value="1" style="width:100%;accent-color:var(--cb-accent-primary);">
-        </div>
-        <div style="display:flex;gap:8px;margin-bottom:12px;">
-          <button id="tk-tts-play" class="cb-btn" style="flex:1;padding:8px;font-size:12px;display:flex;align-items:center;justify-content:center;gap:6px;">▶ Play</button>
-          <button id="tk-tts-pause" class="cb-btn" style="flex:1;padding:8px;font-size:12px;" disabled>⏸ Pause</button>
-          <button id="tk-tts-stop" class="cb-btn" style="flex:1;padding:8px;font-size:12px;" disabled>⏹ Stop</button>
-        </div>
-        <div id="tk-tts-status" style="font-size:11px;color:var(--cb-subtext);text-align:center;">Ready to read ${chatText.split(/\s+/).length} words</div>
+        <div id="tk-pn-body"></div>
       `);
 
-      // Populate voices
-      const voiceSel = shadow.getElementById('tk-voice-select');
-      function loadVoices() {
-        const voices = speechSynthesis.getVoices();
-        voiceSel.innerHTML = '';
-        voices.filter(v => v.lang.startsWith('en')).forEach((v, i) => {
-          const opt = document.createElement('option'); opt.value = i;
-          opt.textContent = `${v.name} (${v.lang})`;
-          if (v.default) opt.selected = true;
-          voiceSel.appendChild(opt);
-        });
-        if (!voiceSel.children.length) {
-          voices.forEach((v, i) => {
-            const opt = document.createElement('option'); opt.value = i; opt.textContent = `${v.name} (${v.lang})`;
-            voiceSel.appendChild(opt);
-          });
-        }
+      let podcastScript = [];
+      let podcastPlaying = false;
+      let narratePaused = false;
+
+      const bodyEl = shadow.getElementById('tk-pn-body');
+      const tabNarrate = shadow.getElementById('tk-pn-tab-narrate');
+      const tabPodcast = shadow.getElementById('tk-pn-tab-podcast');
+
+      function getVoiceList() {
+        return speechSynthesis.getVoices() || [];
       }
-      loadVoices();
-      speechSynthesis.onvoiceschanged = loadVoices;
 
-      // Speed slider
-      const speedSlider = shadow.getElementById('tk-speed');
-      const speedVal = shadow.getElementById('tk-speed-val');
-      speedSlider?.addEventListener('input', () => { speedVal.textContent = parseFloat(speedSlider.value).toFixed(1); });
+      function updateTabState(active) {
+        tabNarrate.style.opacity = active === 'narrate' ? '1' : '0.75';
+        tabPodcast.style.opacity = active === 'podcast' ? '1' : '0.75';
+      }
 
-      // TTS controls
-      let currentUtterance = null;
-      shadow.getElementById('tk-tts-play')?.addEventListener('click', () => {
-        speechSynthesis.cancel();
-        const voices = speechSynthesis.getVoices();
-        const utter = new SpeechSynthesisUtterance(chatText);
-        const selIdx = parseInt(voiceSel.value) || 0;
-        if (voices[selIdx]) utter.voice = voices[selIdx];
-        utter.rate = parseFloat(speedSlider.value) || 1;
-        utter.onstart = () => {
-          shadow.getElementById('tk-tts-status').textContent = 'Playing...';
-          shadow.getElementById('tk-tts-pause').disabled = false;
-          shadow.getElementById('tk-tts-stop').disabled = false;
+      function populateVoiceSelect(selectId, preferredRegex) {
+        const sel = shadow.getElementById(selectId);
+        if (!sel) return;
+        const voices = getVoiceList();
+        const enVoices = voices.filter(v => v.lang && v.lang.startsWith('en'));
+        const list = enVoices.length ? enVoices : voices;
+        sel.innerHTML = '';
+        list.forEach((voice, idx) => {
+          const opt = document.createElement('option');
+          opt.value = String(idx);
+          opt.textContent = `${voice.name} (${voice.lang})`;
+          sel.appendChild(opt);
+        });
+        if (!list.length) return;
+        const preferred = list.findIndex(v => preferredRegex.test(v.name));
+        sel.value = String(preferred >= 0 ? preferred : 0);
+      }
+
+      function renderNarrateTab() {
+        updateTabState('narrate');
+        try { speechSynthesis.cancel(); } catch (_) { }
+        narratePaused = false;
+        const words = chatText.split(/\s+/).filter(Boolean).length;
+        bodyEl.innerHTML = `
+          <div style="margin-bottom:12px;">
+            <label style="font-size:11px;color:var(--cb-subtext);display:block;margin-bottom:6px;">Voice</label>
+            <select id="tk-pn-narrate-voice" style="width:100%;padding:8px;border-radius:6px;background:var(--cb-bg2);border:1px solid var(--cb-border);color:var(--cb-text);font-size:12px;"></select>
+          </div>
+          <div style="margin-bottom:12px;">
+            <label style="font-size:11px;color:var(--cb-subtext);display:block;margin-bottom:6px;">Speed: <span id="tk-pn-narrate-speed-val">1.0</span>x</label>
+            <input type="range" id="tk-pn-narrate-speed" min="0.5" max="2" step="0.1" value="1" style="width:100%;accent-color:var(--cb-accent-primary);">
+          </div>
+          <div style="display:flex;gap:8px;margin-bottom:12px;">
+            <button id="tk-pn-narrate-play" class="cb-btn" style="flex:1;padding:8px;font-size:12px;">▶ Play</button>
+            <button id="tk-pn-narrate-pause" class="cb-btn" style="flex:1;padding:8px;font-size:12px;" disabled>⏸ Pause</button>
+            <button id="tk-pn-narrate-stop" class="cb-btn" style="flex:1;padding:8px;font-size:12px;" disabled>⏹ Stop</button>
+          </div>
+          <div id="tk-pn-narrate-status" style="font-size:11px;color:var(--cb-subtext);text-align:center;">Ready to read ${words} words</div>
+        `;
+
+        populateVoiceSelect('tk-pn-narrate-voice', /female|zira|samantha|aria|jenny/i);
+        speechSynthesis.onvoiceschanged = () => populateVoiceSelect('tk-pn-narrate-voice', /female|zira|samantha|aria|jenny/i);
+
+        const speed = shadow.getElementById('tk-pn-narrate-speed');
+        const speedVal = shadow.getElementById('tk-pn-narrate-speed-val');
+        const status = shadow.getElementById('tk-pn-narrate-status');
+
+        speed?.addEventListener('input', () => { speedVal.textContent = parseFloat(speed.value).toFixed(1); });
+
+        shadow.getElementById('tk-pn-narrate-play')?.addEventListener('click', () => {
+          const voiceSel = shadow.getElementById('tk-pn-narrate-voice');
+          const voices = getVoiceList();
+          const enVoices = voices.filter(v => v.lang && v.lang.startsWith('en'));
+          const list = enVoices.length ? enVoices : voices;
+          try { speechSynthesis.cancel(); } catch (_) { }
+          narratePaused = false;
+          const utter = new SpeechSynthesisUtterance(chatText);
+          const selIdx = parseInt(voiceSel?.value || '0', 10) || 0;
+          if (list[selIdx]) utter.voice = list[selIdx];
+          utter.rate = parseFloat(speed?.value || '1') || 1;
+          utter.onstart = () => {
+            status.textContent = 'Playing...';
+            shadow.getElementById('tk-pn-narrate-pause').disabled = false;
+            shadow.getElementById('tk-pn-narrate-stop').disabled = false;
+          };
+          utter.onend = () => {
+            status.textContent = 'Finished';
+            shadow.getElementById('tk-pn-narrate-pause').disabled = true;
+            shadow.getElementById('tk-pn-narrate-stop').disabled = true;
+            shadow.getElementById('tk-pn-narrate-pause').textContent = '⏸ Pause';
+            narratePaused = false;
+          };
+          speechSynthesis.speak(utter);
+        });
+
+        shadow.getElementById('tk-pn-narrate-pause')?.addEventListener('click', () => {
+          if (!narratePaused) {
+            try { speechSynthesis.pause(); } catch (_) { }
+            narratePaused = true;
+            status.textContent = 'Paused';
+            shadow.getElementById('tk-pn-narrate-pause').textContent = '▶ Resume';
+          } else {
+            try { speechSynthesis.resume(); } catch (_) { }
+            narratePaused = false;
+            status.textContent = 'Playing...';
+            shadow.getElementById('tk-pn-narrate-pause').textContent = '⏸ Pause';
+          }
+        });
+
+        shadow.getElementById('tk-pn-narrate-stop')?.addEventListener('click', () => {
+          try { speechSynthesis.cancel(); } catch (_) { }
+          narratePaused = false;
+          status.textContent = 'Stopped';
+          shadow.getElementById('tk-pn-narrate-pause').disabled = true;
+          shadow.getElementById('tk-pn-narrate-stop').disabled = true;
+          shadow.getElementById('tk-pn-narrate-pause').textContent = '⏸ Pause';
+        });
+      }
+
+      function estimateDuration(lines) {
+        const totalWords = (lines || []).map(l => String(l?.text || '')).join(' ').split(/\s+/).filter(Boolean).length;
+        return Math.max(1, Math.round(totalWords / 130));
+      }
+
+      function renderPodcastScript(hostName, expertName) {
+        const scriptEl = shadow.getElementById('tk-pn-podcast-script');
+        if (!scriptEl) return;
+        scriptEl.innerHTML = '';
+        podcastScript.forEach((line, idx) => {
+          const speaker = String(line.speaker || 'Host').trim();
+          const isHost = speaker.toLowerCase() === hostName.toLowerCase() || (speaker.toLowerCase() === 'host' && hostName);
+          const displaySpeaker = isHost ? hostName : (speaker.toLowerCase() === 'expert' ? expertName : speaker);
+          const row = document.createElement('div');
+          row.id = `tk-pn-line-${idx}`;
+          row.style.cssText = `padding:10px;border-radius:8px;background:${isHost ? 'color-mix(in srgb, var(--cb-accent-primary) 8%, var(--cb-bg2))' : 'color-mix(in srgb, var(--cb-accent-secondary) 8%, var(--cb-bg2))'};border:1px solid var(--cb-border);`;
+          const speakerEl = document.createElement('div');
+          speakerEl.style.cssText = `font-size:10px;font-weight:600;color:${isHost ? 'var(--cb-accent-primary)' : 'var(--cb-accent-secondary)'};margin-bottom:4px;`;
+          speakerEl.textContent = displaySpeaker;
+          const textEl = document.createElement('div');
+          textEl.style.cssText = 'font-size:12px;color:var(--cb-text);line-height:1.4;';
+          textEl.textContent = line.text || '';
+          row.appendChild(speakerEl);
+          row.appendChild(textEl);
+          scriptEl.appendChild(row);
+        });
+
+        const mins = estimateDuration(podcastScript);
+        const meta = shadow.getElementById('tk-pn-podcast-meta');
+        if (meta) meta.textContent = `${podcastScript.length} exchanges • ~${mins} min`;
+      }
+
+      function renderPodcastTab() {
+        updateTabState('podcast');
+        try { speechSynthesis.cancel(); } catch (_) { }
+        podcastPlaying = false;
+        bodyEl.innerHTML = `
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+            <div>
+              <label style="font-size:11px;color:var(--cb-subtext);display:block;margin-bottom:5px;">Speaker 1 Name</label>
+              <input id="tk-pn-host-name" value="Host" style="width:100%;padding:7px;border-radius:6px;background:var(--cb-bg2);border:1px solid var(--cb-border);color:var(--cb-text);font-size:12px;">
+            </div>
+            <div>
+              <label style="font-size:11px;color:var(--cb-subtext);display:block;margin-bottom:5px;">Speaker 2 Name</label>
+              <input id="tk-pn-expert-name" value="Expert" style="width:100%;padding:7px;border-radius:6px;background:var(--cb-bg2);border:1px solid var(--cb-border);color:var(--cb-text);font-size:12px;">
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+            <div>
+              <label style="font-size:11px;color:var(--cb-subtext);display:block;margin-bottom:5px;">Speaker 1 Voice</label>
+              <select id="tk-pn-host-voice" style="width:100%;padding:7px;border-radius:6px;background:var(--cb-bg2);border:1px solid var(--cb-border);color:var(--cb-text);font-size:12px;"></select>
+            </div>
+            <div>
+              <label style="font-size:11px;color:var(--cb-subtext);display:block;margin-bottom:5px;">Speaker 2 Voice</label>
+              <select id="tk-pn-expert-voice" style="width:100%;padding:7px;border-radius:6px;background:var(--cb-bg2);border:1px solid var(--cb-border);color:var(--cb-text);font-size:12px;"></select>
+            </div>
+          </div>
+          <button id="tk-pn-generate" class="cb-btn" style="width:100%;padding:8px;font-size:12px;margin-bottom:10px;">✨ Generate Podcast Script</button>
+          <div style="display:flex;gap:8px;margin-bottom:8px;">
+            <button id="tk-pn-play" class="cb-btn" style="flex:1;padding:8px;font-size:12px;" disabled>▶ Play</button>
+            <button id="tk-pn-stop" class="cb-btn" style="flex:1;padding:8px;font-size:12px;" disabled>⏹ Stop</button>
+          </div>
+          <div style="display:flex;gap:8px;margin-bottom:8px;">
+            <button id="tk-pn-copy" class="cb-btn" style="flex:1;padding:8px;font-size:11px;" disabled>📋 Copy Script</button>
+            <button id="tk-pn-download" class="cb-btn" style="flex:1;padding:8px;font-size:11px;" disabled>💾 Download Script</button>
+          </div>
+          <div id="tk-pn-podcast-meta" style="font-size:11px;color:var(--cb-subtext);text-align:center;margin-bottom:8px;">No script generated yet</div>
+          <div id="tk-pn-podcast-status" style="font-size:11px;color:var(--cb-subtext);text-align:center;margin-bottom:8px;">Ready</div>
+          <div id="tk-pn-podcast-script" style="display:flex;flex-direction:column;gap:8px;max-height:280px;overflow-y:auto;"></div>
+        `;
+
+        populateVoiceSelect('tk-pn-host-voice', /female|zira|samantha|aria|jenny/i);
+        populateVoiceSelect('tk-pn-expert-voice', /male|david|daniel|guy|matthew/i);
+        speechSynthesis.onvoiceschanged = () => {
+          populateVoiceSelect('tk-pn-host-voice', /female|zira|samantha|aria|jenny/i);
+          populateVoiceSelect('tk-pn-expert-voice', /male|david|daniel|guy|matthew/i);
         };
-        utter.onend = () => {
-          shadow.getElementById('tk-tts-status').textContent = 'Finished';
-          shadow.getElementById('tk-tts-pause').disabled = true;
-          shadow.getElementById('tk-tts-stop').disabled = true;
-        };
-        currentUtterance = utter;
-        speechSynthesis.speak(utter);
+
+        shadow.getElementById('tk-pn-generate')?.addEventListener('click', async () => {
+          const hostName = (shadow.getElementById('tk-pn-host-name')?.value || 'Host').trim() || 'Host';
+          const expertName = (shadow.getElementById('tk-pn-expert-name')?.value || 'Expert').trim() || 'Expert';
+          const status = shadow.getElementById('tk-pn-podcast-status');
+          status.textContent = 'Generating script...';
+          const scriptEl = shadow.getElementById('tk-pn-podcast-script');
+          scriptEl.innerHTML = '<div style="text-align:center;padding:16px;"><div class="cb-spinner"></div></div>';
+
+          try {
+            const res = await callGeminiAsync({
+              action: 'prompt',
+              text: `Convert this conversation into an engaging 2-person podcast script between "${hostName}" and "${expertName}". Make it natural and conversational, with clear transitions and emphasis on key insights. Return ONLY a JSON array where each item has "speaker" ("${hostName}" or "${expertName}") and "text" (dialogue). Keep it 8-15 exchanges.\n\nConversation:\n${chatText.substring(0, 8000)}`
+            });
+
+            if (!res || !res.ok || !res.result) throw new Error(res?.error || 'No result');
+            let parsed;
+            try {
+              const cleaned = res.result.replace(/```json?\s*/g, '').replace(/```/g, '').trim();
+              parsed = JSON.parse(cleaned);
+            } catch (_) { throw new Error('Could not parse podcast script'); }
+
+            if (!Array.isArray(parsed) || !parsed.length) throw new Error('No podcast script generated');
+
+            podcastScript = parsed.map((line, idx) => ({
+              speaker: String(line?.speaker || (idx % 2 === 0 ? hostName : expertName)),
+              text: String(line?.text || '').trim()
+            })).filter(line => line.text);
+
+            if (!podcastScript.length) throw new Error('Podcast script was empty');
+
+            renderPodcastScript(hostName, expertName);
+            status.textContent = 'Script ready';
+            shadow.getElementById('tk-pn-play').disabled = false;
+            shadow.getElementById('tk-pn-copy').disabled = false;
+            shadow.getElementById('tk-pn-download').disabled = false;
+          } catch (e) {
+            scriptEl.innerHTML = `<div style="color:var(--cb-error);font-size:12px;text-align:center;padding:14px;">${escapeHtml(e.message || 'Failed to generate script')}</div>`;
+            status.textContent = 'Generation failed';
+          }
+        });
+
+        shadow.getElementById('tk-pn-play')?.addEventListener('click', () => {
+          if (!podcastScript.length || podcastPlaying) return;
+          const hostName = (shadow.getElementById('tk-pn-host-name')?.value || 'Host').trim() || 'Host';
+          const expertName = (shadow.getElementById('tk-pn-expert-name')?.value || 'Expert').trim() || 'Expert';
+          const status = shadow.getElementById('tk-pn-podcast-status');
+          const voices = getVoiceList();
+          const enVoices = voices.filter(v => v.lang && v.lang.startsWith('en'));
+          const list = enVoices.length ? enVoices : voices;
+          const hostSel = parseInt(shadow.getElementById('tk-pn-host-voice')?.value || '0', 10) || 0;
+          const expertSel = parseInt(shadow.getElementById('tk-pn-expert-voice')?.value || '0', 10) || 0;
+          const hostVoice = list[hostSel] || list[0];
+          const expertVoice = list[expertSel] || list[1] || list[0];
+
+          podcastPlaying = true;
+          shadow.getElementById('tk-pn-play').disabled = true;
+          shadow.getElementById('tk-pn-stop').disabled = false;
+
+          const speakLine = (idx) => {
+            if (!podcastPlaying || idx >= podcastScript.length) {
+              podcastPlaying = false;
+              status.textContent = idx >= podcastScript.length ? 'Finished' : 'Stopped';
+              shadow.getElementById('tk-pn-play').disabled = false;
+              shadow.getElementById('tk-pn-stop').disabled = true;
+              podcastScript.forEach((_, j) => {
+                const lineEl = shadow.getElementById(`tk-pn-line-${j}`);
+                if (lineEl) lineEl.style.opacity = '1';
+              });
+              return;
+            }
+
+            podcastScript.forEach((_, j) => {
+              const lineEl = shadow.getElementById(`tk-pn-line-${j}`);
+              if (lineEl) lineEl.style.opacity = j === idx ? '1' : '0.55';
+            });
+            status.textContent = `Playing ${idx + 1}/${podcastScript.length}...`;
+
+            const row = podcastScript[idx];
+            const speaker = String(row.speaker || '').trim().toLowerCase();
+            const isHost = speaker === hostName.toLowerCase() || speaker === 'host';
+            const utter = new SpeechSynthesisUtterance(row.text);
+            if (isHost && hostVoice) utter.voice = hostVoice;
+            if (!isHost && expertVoice) utter.voice = expertVoice;
+            utter.rate = 1.05;
+            utter.pitch = isHost ? 1.0 : 0.92;
+            utter.onend = () => speakLine(idx + 1);
+            speechSynthesis.speak(utter);
+          };
+
+          try { speechSynthesis.cancel(); } catch (_) { }
+          speakLine(0);
+        });
+
+        shadow.getElementById('tk-pn-stop')?.addEventListener('click', () => {
+          podcastPlaying = false;
+          try { speechSynthesis.cancel(); } catch (_) { }
+          shadow.getElementById('tk-pn-play').disabled = !podcastScript.length;
+          shadow.getElementById('tk-pn-stop').disabled = true;
+          shadow.getElementById('tk-pn-podcast-status').textContent = 'Stopped';
+        });
+
+        shadow.getElementById('tk-pn-copy')?.addEventListener('click', async () => {
+          if (!podcastScript.length) return;
+          const hostName = (shadow.getElementById('tk-pn-host-name')?.value || 'Host').trim() || 'Host';
+          const expertName = (shadow.getElementById('tk-pn-expert-name')?.value || 'Expert').trim() || 'Expert';
+          const text = podcastScript.map((line, idx) => {
+            const sp = String(line.speaker || '').trim().toLowerCase();
+            const isHost = sp === hostName.toLowerCase() || sp === 'host' || (!sp && idx % 2 === 0);
+            return `${isHost ? hostName : expertName}: ${line.text}`;
+          }).join('\n\n');
+          await navigator.clipboard.writeText(text);
+          toast('Podcast script copied!');
+        });
+
+        shadow.getElementById('tk-pn-download')?.addEventListener('click', () => {
+          if (!podcastScript.length) return;
+          const hostName = (shadow.getElementById('tk-pn-host-name')?.value || 'Host').trim() || 'Host';
+          const expertName = (shadow.getElementById('tk-pn-expert-name')?.value || 'Expert').trim() || 'Expert';
+          const text = podcastScript.map((line, idx) => {
+            const sp = String(line.speaker || '').trim().toLowerCase();
+            const isHost = sp === hostName.toLowerCase() || sp === 'host' || (!sp && idx % 2 === 0);
+            return `${isHost ? hostName : expertName}: ${line.text}`;
+          }).join('\n\n');
+          const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `chatbridge-podcast-${Date.now()}.txt`;
+          a.click();
+          setTimeout(() => URL.revokeObjectURL(url), 500);
+          toast('Script downloaded');
+        });
+      }
+
+      tabNarrate?.addEventListener('click', renderNarrateTab);
+      tabPodcast?.addEventListener('click', renderPodcastTab);
+      renderNarrateTab();
+    });
+
+    // ============================================
+    // TOOLKIT TOOL 4: Contradiction Finder
+    // ============================================
+    tkCards['tk-contradictions']?.addEventListener('click', async () => {
+      const chatText = await getConversationText();
+      if (!chatText) { toast('Scan a conversation first'); return; }
+
+      tkShowSub('Contradiction Finder', '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3H5a2 2 0 0 0-2 2v5"/><path d="M14 21h5a2 2 0 0 0 2-2v-5"/><path d="M21 10V5a2 2 0 0 0-2-2h-5"/><path d="M3 14v5a2 2 0 0 0 2 2h5"/><line x1="8" y1="8" x2="16" y2="16"/><line x1="16" y1="8" x2="8" y2="16"/></svg>', `
+        <div style="font-size:11px;color:var(--cb-subtext);margin-bottom:10px;">Scan this thread for conflicting claims or changed positions in AI answers.</div>
+        <button id="tk-cf-scan" class="cb-btn" style="width:100%;padding:8px;font-size:12px;margin-bottom:10px;">🔍 Scan Contradictions</button>
+        <div id="tk-cf-status" style="font-size:11px;color:var(--cb-subtext);text-align:center;margin-bottom:8px;">Ready</div>
+        <div id="tk-cf-results" style="display:flex;flex-direction:column;gap:10px;"></div>
+      `);
+
+      const severityColor = {
+        high: '#ef4444',
+        medium: '#f59e0b',
+        low: '#22c55e'
+      };
+
+      shadow.getElementById('tk-cf-scan')?.addEventListener('click', async () => {
+        const statusEl = shadow.getElementById('tk-cf-status');
+        const resultsEl = shadow.getElementById('tk-cf-results');
+        statusEl.textContent = 'Scanning...';
+        resultsEl.innerHTML = '<div style="text-align:center;padding:16px;"><div class="cb-spinner"></div></div>';
+
+        try {
+          const res = await callGeminiAsync({
+            action: 'prompt',
+            text: `Analyze this conversation and find internal contradictions or changed positions in AI answers. Return ONLY valid JSON in this exact shape:
+{
+  "contradictions": [
+    {
+      "claimA": "first claim text",
+      "claimB": "second conflicting claim text",
+      "why_conflict": "why they conflict",
+      "severity": "low|medium|high",
+      "suggestion": "a follow-up question the user should ask"
+    }
+  ],
+  "unresolved_assumptions": ["assumption 1", "assumption 2"]
+}
+
+If none found, return {"contradictions":[],"unresolved_assumptions":[]}. Keep claims concise.
+
+Conversation:
+${chatText.substring(0, 10000)}`
+          });
+
+          if (!res || !res.ok || !res.result) throw new Error(res?.error || 'No result');
+
+          let parsed;
+          try {
+            const cleaned = res.result.replace(/```json?\s*/g, '').replace(/```/g, '').trim();
+            parsed = JSON.parse(cleaned);
+          } catch (_) { throw new Error('Could not parse contradiction report'); }
+
+          const contradictions = Array.isArray(parsed?.contradictions) ? parsed.contradictions : [];
+          const assumptions = Array.isArray(parsed?.unresolved_assumptions) ? parsed.unresolved_assumptions : [];
+
+          statusEl.textContent = contradictions.length ? `${contradictions.length} contradiction${contradictions.length > 1 ? 's' : ''} found` : 'No clear contradictions found';
+
+          if (!contradictions.length && !assumptions.length) {
+            resultsEl.innerHTML = '<div style="padding:12px;border-radius:8px;background:var(--cb-bg2);border:1px solid var(--cb-border);font-size:12px;color:var(--cb-subtext);text-align:center;">No clear contradictions found in this conversation.</div>';
+            return;
+          }
+
+          const wrap = document.createElement('div');
+          wrap.style.cssText = 'display:flex;flex-direction:column;gap:10px;';
+
+          contradictions.forEach((entry, idx) => {
+            const sev = String(entry?.severity || 'medium').toLowerCase();
+            const sevColor = severityColor[sev] || severityColor.medium;
+            const card = document.createElement('div');
+            card.style.cssText = 'padding:10px;border-radius:10px;background:var(--cb-bg2);border:1px solid var(--cb-border);';
+            card.innerHTML = `
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:8px;">
+                <div style="font-size:12px;font-weight:600;color:var(--cb-text);">Conflict ${idx + 1}</div>
+                <span style="font-size:10px;padding:2px 8px;border-radius:999px;background:${sevColor}22;color:${sevColor};border:1px solid ${sevColor}55;">${escapeHtml(sev)}</span>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+                <div style="padding:8px;border-radius:8px;background:color-mix(in srgb, #22c55e 6%, var(--cb-bg3));border:1px solid var(--cb-border);font-size:11px;color:var(--cb-text);line-height:1.4;"><strong style="display:block;font-size:10px;color:#22c55e;margin-bottom:4px;">Claim A</strong>${escapeHtml(entry?.claimA || '—')}</div>
+                <div style="padding:8px;border-radius:8px;background:color-mix(in srgb, #ef4444 6%, var(--cb-bg3));border:1px solid var(--cb-border);font-size:11px;color:var(--cb-text);line-height:1.4;"><strong style="display:block;font-size:10px;color:#ef4444;margin-bottom:4px;">Claim B</strong>${escapeHtml(entry?.claimB || '—')}</div>
+              </div>
+              <div style="font-size:11px;color:var(--cb-subtext);line-height:1.4;margin-bottom:8px;"><strong style="color:var(--cb-text);">Why this conflicts:</strong> ${escapeHtml(entry?.why_conflict || 'Not specified')}</div>
+              <button class="cb-btn tk-cf-insert" data-q="${escapeHtml(String(entry?.suggestion || '').replace(/"/g, '&quot;'))}" style="width:100%;padding:7px;font-size:11px;">💬 Ask suggested follow-up</button>
+            `;
+            wrap.appendChild(card);
+          });
+
+          if (assumptions.length) {
+            const assump = document.createElement('div');
+            assump.style.cssText = 'padding:10px;border-radius:10px;background:var(--cb-bg2);border:1px solid var(--cb-border);';
+            assump.innerHTML = `
+              <div style="font-size:12px;font-weight:600;color:var(--cb-text);margin-bottom:6px;">Unresolved Assumptions</div>
+              <div style="display:flex;flex-direction:column;gap:5px;">
+                ${assumptions.map(a => `<div style="font-size:11px;color:var(--cb-subtext);line-height:1.4;">• ${escapeHtml(String(a || ''))}</div>`).join('')}
+              </div>
+            `;
+            wrap.appendChild(assump);
+          }
+
+          const copyBtn = document.createElement('button');
+          copyBtn.className = 'cb-btn';
+          copyBtn.style.cssText = 'width:100%;padding:8px;font-size:11px;';
+          copyBtn.textContent = '📋 Copy Report';
+          copyBtn.addEventListener('click', async () => {
+            const text = [
+              `Contradiction Finder Report`,
+              `Found: ${contradictions.length}`,
+              '',
+              ...contradictions.map((entry, i) => [
+                `Conflict ${i + 1} [${String(entry?.severity || 'medium').toUpperCase()}]`,
+                `A: ${entry?.claimA || ''}`,
+                `B: ${entry?.claimB || ''}`,
+                `Why: ${entry?.why_conflict || ''}`,
+                `Follow-up: ${entry?.suggestion || ''}`,
+                ''
+              ].join('\n')),
+              assumptions.length ? `Unresolved assumptions:\n${assumptions.map(a => `- ${a}`).join('\n')}` : ''
+            ].join('\n');
+            await navigator.clipboard.writeText(text);
+            toast('Report copied');
+          });
+          wrap.appendChild(copyBtn);
+
+          resultsEl.innerHTML = '';
+          resultsEl.appendChild(wrap);
+
+          shadow.querySelectorAll('.tk-cf-insert').forEach((button) => {
+            button.addEventListener('click', async () => {
+              const prompt = (button.getAttribute('data-q') || '').trim();
+              if (!prompt) { toast('No suggestion available'); return; }
+              await insertTextToChat(prompt);
+              toast('Inserted suggested follow-up');
+            });
+          });
+        } catch (e) {
+          resultsEl.innerHTML = `<div style="color:var(--cb-error);font-size:12px;text-align:center;padding:14px;">${escapeHtml(e.message || 'Scan failed')}</div>`;
+          statusEl.textContent = 'Scan failed';
+        }
       });
+    });
 
-      shadow.getElementById('tk-tts-pause')?.addEventListener('click', () => {
-        if (speechSynthesis.paused) {
-          speechSynthesis.resume();
-          shadow.getElementById('tk-tts-pause').textContent = '⏸ Pause';
-          shadow.getElementById('tk-tts-status').textContent = 'Playing...';
-        } else {
-          speechSynthesis.pause();
-          shadow.getElementById('tk-tts-pause').textContent = '▶ Resume';
-          shadow.getElementById('tk-tts-status').textContent = 'Paused';
+    // ============================================
+    // TOOLKIT TOOL 5: Snippet Board
+    // ============================================
+    tkCards['tk-snippetboard']?.addEventListener('click', async () => {
+      const STORAGE_KEY = 'chatbridge_snippet_packs_v1';
+      const LABELS = ['Context', 'Constraints', 'Examples', 'Questions'];
+      let sourceMessages = [];
+      let selectedSnippets = [];
+      let savedPacks = [];
+
+      tkShowSub('Snippet Board', '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6"/><path d="M10 8h4"/><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M12 12v6"/><path d="M9 15h6"/></svg>', `
+        <div style="font-size:11px;color:var(--cb-subtext);margin-bottom:8px;">Capture only the best snippets, organize them, then reuse as a compact prompt pack.</div>
+        <button id="tk-sb-capture" class="cb-btn" style="width:100%;padding:8px;font-size:12px;margin-bottom:10px;">📥 Capture from conversation</button>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:start;">
+          <div>
+            <div style="font-size:11px;font-weight:600;color:var(--cb-text);margin-bottom:6px;">Available snippets (last 20)</div>
+            <div id="tk-sb-source" style="display:flex;flex-direction:column;gap:6px;max-height:220px;overflow-y:auto;padding:2px;"></div>
+          </div>
+          <div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+              <div style="font-size:11px;font-weight:600;color:var(--cb-text);">Snippet board</div>
+              <span id="tk-sb-count" style="font-size:10px;color:var(--cb-subtext);">0 selected</span>
+            </div>
+            <div id="tk-sb-board" style="display:flex;flex-direction:column;gap:6px;max-height:220px;overflow-y:auto;padding:2px;"></div>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:8px;margin-top:10px;">
+          <button id="tk-sb-copy" class="cb-btn" style="flex:1;padding:8px;font-size:11px;" disabled>📋 Copy Snippet Pack</button>
+          <button id="tk-sb-insert" class="cb-btn" style="flex:1;padding:8px;font-size:11px;" disabled>💬 Insert Snippet Pack</button>
+          <button id="tk-sb-save" class="cb-btn" style="flex:1;padding:8px;font-size:11px;" disabled>💾 Save Pack</button>
+        </div>
+
+        <div style="margin-top:10px;">
+          <div style="font-size:11px;font-weight:600;color:var(--cb-text);margin-bottom:6px;">Saved packs (latest 10)</div>
+          <div id="tk-sb-saved" style="display:flex;flex-direction:column;gap:6px;"></div>
+        </div>
+      `);
+
+      const sourceEl = shadow.getElementById('tk-sb-source');
+      const boardEl = shadow.getElementById('tk-sb-board');
+      const savedEl = shadow.getElementById('tk-sb-saved');
+      const countEl = shadow.getElementById('tk-sb-count');
+      const copyBtn = shadow.getElementById('tk-sb-copy');
+      const insertBtn = shadow.getElementById('tk-sb-insert');
+      const saveBtn = shadow.getElementById('tk-sb-save');
+
+      function readPacks() {
+        return new Promise((resolve) => {
+          try {
+            chrome.storage.local.get([STORAGE_KEY], (res) => {
+              if (chrome.runtime.lastError) return resolve([]);
+              const list = Array.isArray(res?.[STORAGE_KEY]) ? res[STORAGE_KEY] : [];
+              resolve(list);
+            });
+          } catch (_) { resolve([]); }
+        });
+      }
+
+      function writePacks(packs) {
+        return new Promise((resolve) => {
+          try {
+            chrome.storage.local.set({ [STORAGE_KEY]: packs.slice(0, 10) }, () => resolve());
+          } catch (_) { resolve(); }
+        });
+      }
+
+      function composePackText() {
+        const now = new Date();
+        const header = `[Snippet Pack | ${selectedSnippets.length} snippets | ${now.toLocaleString()}]`;
+        const sections = LABELS.map((label) => {
+          const lines = selectedSnippets.filter(s => s.label === label);
+          if (!lines.length) return '';
+          const body = lines.map((s) => `- (${s.role}) ${s.text}`).join('\n');
+          return `## ${label}\n${body}`;
+        }).filter(Boolean);
+        if (!sections.length) return `${header}\n\n(No snippets selected)`;
+        return `${header}\n\n${sections.join('\n\n')}`;
+      }
+
+      function updateActions() {
+        const has = selectedSnippets.length > 0;
+        copyBtn.disabled = !has;
+        insertBtn.disabled = !has;
+        saveBtn.disabled = !has;
+        countEl.textContent = `${selectedSnippets.length} selected`;
+      }
+
+      function renderSaved() {
+        if (!savedPacks.length) {
+          savedEl.innerHTML = '<div style="font-size:11px;color:var(--cb-subtext);padding:8px;border:1px dashed var(--cb-border);border-radius:8px;">No saved packs yet.</div>';
+          return;
+        }
+        savedEl.innerHTML = '';
+        savedPacks.forEach((pack) => {
+          const row = document.createElement('div');
+          row.style.cssText = 'display:flex;align-items:center;gap:6px;padding:8px;border-radius:8px;background:var(--cb-bg2);border:1px solid var(--cb-border);';
+          row.innerHTML = `
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:11px;color:var(--cb-text);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(pack.title || 'Snippet Pack')}</div>
+              <div style="font-size:10px;color:var(--cb-subtext);">${pack.items?.length || 0} snippets</div>
+            </div>
+            <button class="cb-btn tk-sb-load" data-id="${escapeHtml(String(pack.id))}" style="padding:6px 8px;font-size:10px;">Load</button>
+            <button class="cb-btn tk-sb-delete" data-id="${escapeHtml(String(pack.id))}" style="padding:6px 8px;font-size:10px;">Delete</button>
+          `;
+          savedEl.appendChild(row);
+        });
+
+        shadow.querySelectorAll('.tk-sb-load').forEach((button) => {
+          button.addEventListener('click', () => {
+            const id = button.getAttribute('data-id');
+            const pack = savedPacks.find(p => String(p.id) === String(id));
+            if (!pack || !Array.isArray(pack.items)) return;
+            selectedSnippets = pack.items.map((item, idx) => ({
+              id: item.id || `saved-${Date.now()}-${idx}`,
+              role: item.role || 'assistant',
+              text: String(item.text || ''),
+              label: LABELS.includes(item.label) ? item.label : 'Context'
+            })).filter(s => s.text.trim());
+            renderBoard();
+            updateActions();
+            toast('Snippet pack loaded');
+          });
+        });
+
+        shadow.querySelectorAll('.tk-sb-delete').forEach((button) => {
+          button.addEventListener('click', async () => {
+            const id = button.getAttribute('data-id');
+            savedPacks = savedPacks.filter(p => String(p.id) !== String(id));
+            await writePacks(savedPacks);
+            renderSaved();
+            toast('Pack removed');
+          });
+        });
+      }
+
+      function renderSource() {
+        if (!sourceMessages.length) {
+          sourceEl.innerHTML = '<div style="font-size:11px;color:var(--cb-subtext);padding:8px;border:1px dashed var(--cb-border);border-radius:8px;">Capture conversation to load snippets.</div>';
+          return;
+        }
+
+        sourceEl.innerHTML = '';
+        sourceMessages.forEach((msg, idx) => {
+          const already = selectedSnippets.some(s => s.id === msg.id);
+          const row = document.createElement('div');
+          row.style.cssText = 'padding:8px;border-radius:8px;background:var(--cb-bg2);border:1px solid var(--cb-border);';
+          row.innerHTML = `
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:4px;">
+              <span style="font-size:10px;color:var(--cb-subtext);text-transform:uppercase;">${escapeHtml(msg.role)}</span>
+              <button class="cb-btn tk-sb-toggle" data-id="${escapeHtml(msg.id)}" style="padding:4px 8px;font-size:10px;">${already ? 'Remove' : 'Add'}</button>
+            </div>
+            <div style="font-size:11px;color:var(--cb-text);line-height:1.35;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;">${escapeHtml(msg.text)}</div>
+          `;
+          sourceEl.appendChild(row);
+        });
+
+        shadow.querySelectorAll('.tk-sb-toggle').forEach((button) => {
+          button.addEventListener('click', () => {
+            const id = button.getAttribute('data-id');
+            const existingIdx = selectedSnippets.findIndex(s => s.id === id);
+            if (existingIdx >= 0) {
+              selectedSnippets.splice(existingIdx, 1);
+            } else {
+              const src = sourceMessages.find(m => m.id === id);
+              if (!src) return;
+              selectedSnippets.push({ id: src.id, role: src.role, text: src.text, label: 'Context' });
+            }
+            renderSource();
+            renderBoard();
+            updateActions();
+          });
+        });
+      }
+
+      function renderBoard() {
+        if (!selectedSnippets.length) {
+          boardEl.innerHTML = '<div style="font-size:11px;color:var(--cb-subtext);padding:8px;border:1px dashed var(--cb-border);border-radius:8px;">No snippets selected yet.</div>';
+          return;
+        }
+
+        boardEl.innerHTML = '';
+        selectedSnippets.forEach((snip, idx) => {
+          const row = document.createElement('div');
+          row.style.cssText = 'padding:8px;border-radius:8px;background:var(--cb-bg2);border:1px solid var(--cb-border);';
+          row.innerHTML = `
+            <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">
+              <span style="font-size:10px;color:var(--cb-subtext);">${idx + 1}.</span>
+              <select class="tk-sb-label" data-id="${escapeHtml(snip.id)}" style="flex:1;padding:4px 6px;border-radius:6px;background:var(--cb-bg3);border:1px solid var(--cb-border);color:var(--cb-text);font-size:10px;">
+                ${LABELS.map(l => `<option value="${l}" ${snip.label === l ? 'selected' : ''}>${l}</option>`).join('')}
+              </select>
+              <button class="cb-btn tk-sb-up" data-id="${escapeHtml(snip.id)}" style="padding:4px 6px;font-size:10px;" ${idx === 0 ? 'disabled' : ''}>↑</button>
+              <button class="cb-btn tk-sb-down" data-id="${escapeHtml(snip.id)}" style="padding:4px 6px;font-size:10px;" ${idx === selectedSnippets.length - 1 ? 'disabled' : ''}>↓</button>
+              <button class="cb-btn tk-sb-remove" data-id="${escapeHtml(snip.id)}" style="padding:4px 6px;font-size:10px;">✕</button>
+            </div>
+            <div style="font-size:11px;color:var(--cb-text);line-height:1.35;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;">${escapeHtml(snip.text)}</div>
+          `;
+          boardEl.appendChild(row);
+        });
+
+        shadow.querySelectorAll('.tk-sb-label').forEach((selectEl) => {
+          selectEl.addEventListener('change', () => {
+            const id = selectEl.getAttribute('data-id');
+            const item = selectedSnippets.find(s => s.id === id);
+            if (item) item.label = selectEl.value;
+          });
+        });
+
+        shadow.querySelectorAll('.tk-sb-up').forEach((button) => {
+          button.addEventListener('click', () => {
+            const id = button.getAttribute('data-id');
+            const idx = selectedSnippets.findIndex(s => s.id === id);
+            if (idx > 0) {
+              const tmp = selectedSnippets[idx - 1];
+              selectedSnippets[idx - 1] = selectedSnippets[idx];
+              selectedSnippets[idx] = tmp;
+              renderBoard();
+            }
+          });
+        });
+
+        shadow.querySelectorAll('.tk-sb-down').forEach((button) => {
+          button.addEventListener('click', () => {
+            const id = button.getAttribute('data-id');
+            const idx = selectedSnippets.findIndex(s => s.id === id);
+            if (idx >= 0 && idx < selectedSnippets.length - 1) {
+              const tmp = selectedSnippets[idx + 1];
+              selectedSnippets[idx + 1] = selectedSnippets[idx];
+              selectedSnippets[idx] = tmp;
+              renderBoard();
+            }
+          });
+        });
+
+        shadow.querySelectorAll('.tk-sb-remove').forEach((button) => {
+          button.addEventListener('click', () => {
+            const id = button.getAttribute('data-id');
+            selectedSnippets = selectedSnippets.filter(s => s.id !== id);
+            renderSource();
+            renderBoard();
+            updateActions();
+          });
+        });
+      }
+
+      shadow.getElementById('tk-sb-capture')?.addEventListener('click', async () => {
+        try {
+          const msgs = await scanChat();
+          if (!msgs || !msgs.length) { toast('No conversation found'); return; }
+          const recent = msgs.slice(-20);
+          sourceMessages = recent.map((m, idx) => ({
+            id: `msg-${Date.now()}-${idx}`,
+            role: String(m?.role || 'assistant'),
+            text: String(m?.text || '').trim()
+          })).filter(m => m.text);
+          renderSource();
+          toast(`Loaded ${sourceMessages.length} snippets`);
+        } catch (_) {
+          toast('Could not capture snippets');
         }
       });
 
-      shadow.getElementById('tk-tts-stop')?.addEventListener('click', () => {
-        speechSynthesis.cancel();
-        shadow.getElementById('tk-tts-status').textContent = 'Stopped';
-        shadow.getElementById('tk-tts-pause').disabled = true;
-        shadow.getElementById('tk-tts-stop').disabled = true;
+      copyBtn?.addEventListener('click', async () => {
+        if (!selectedSnippets.length) return;
+        await navigator.clipboard.writeText(composePackText());
+        toast('Snippet pack copied');
+      });
+
+      insertBtn?.addEventListener('click', async () => {
+        if (!selectedSnippets.length) return;
+        await insertTextToChat(composePackText());
+        toast('Snippet pack inserted');
+      });
+
+      saveBtn?.addEventListener('click', async () => {
+        if (!selectedSnippets.length) return;
+        const firstLine = selectedSnippets[0]?.text || 'Snippet Pack';
+        const title = `Pack: ${firstLine.slice(0, 42)}${firstLine.length > 42 ? '…' : ''}`;
+        const pack = {
+          id: Date.now(),
+          title,
+          createdAt: Date.now(),
+          items: selectedSnippets.map(s => ({ id: s.id, role: s.role, text: s.text, label: s.label }))
+        };
+        savedPacks.unshift(pack);
+        savedPacks = savedPacks.slice(0, 10);
+        await writePacks(savedPacks);
+        renderSaved();
+        toast('Snippet pack saved');
+      });
+
+      savedPacks = await readPacks();
+      renderSource();
+      renderBoard();
+      renderSaved();
+      updateActions();
+    });
+
+    // ============================================
+    // TOOLKIT TOOL 7: Fact Checker
+    // ============================================
+    tkCards['tk-factchecker']?.addEventListener('click', async () => {
+      const chatText = await getConversationText();
+      if (!chatText) { toast('Scan a conversation first'); return; }
+
+      tkShowSub('Fact Checker', '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4v5c0 5-3.4 9.7-8 11-4.6-1.3-8-6-8-11V7l8-4z"/><path d="M9 12l2 2 4-4"/></svg>', `
+        <div style="font-size:11px;color:var(--cb-subtext);margin-bottom:10px;">Scan AI responses for factual claims and reliability risk.</div>
+        <button id="tk-fact-scan" class="cb-btn" style="width:100%;padding:8px;font-size:12px;margin-bottom:10px;">🛡 Scan for Claims</button>
+        <div id="tk-fact-status" style="font-size:11px;color:var(--cb-subtext);text-align:center;margin-bottom:10px;">Ready</div>
+        <div id="tk-fact-results" style="display:flex;flex-direction:column;gap:10px;"></div>
+      `);
+
+      const categoryMeta = {
+        established: { icon: '✅', color: '#22c55e' },
+        verify: { icon: '⚠️', color: '#f59e0b' },
+        questionable: { icon: '❌', color: '#ef4444' },
+        opinion: { icon: '💭', color: '#94a3b8' }
+      };
+
+      function scoreColor(score) {
+        if (score >= 75) return '#22c55e';
+        if (score >= 40) return '#f59e0b';
+        return '#ef4444';
+      }
+
+      shadow.getElementById('tk-fact-scan')?.addEventListener('click', async () => {
+        const statusEl = shadow.getElementById('tk-fact-status');
+        const resultsEl = shadow.getElementById('tk-fact-results');
+        statusEl.textContent = 'Scanning...';
+        resultsEl.innerHTML = '<div style="text-align:center;padding:16px;"><div class="cb-spinner"></div></div>';
+
+        try {
+          const res = await callGeminiAsync({
+            action: 'prompt',
+            text: `Scan this AI conversation and extract factual claims made by the AI. For each claim categorize as one of: "established", "verify", "questionable", or "opinion". Also return an overall reliability score from 0 to 100.
+
+Return ONLY valid JSON in this exact shape:
+{
+  "score": 0,
+  "claims": [
+    { "text": "claim", "category": "established|verify|questionable|opinion", "note": "short reason" }
+  ]
+}
+
+If no claims, return {"score":50,"claims":[]}.
+
+Conversation:
+${chatText.substring(0, 10000)}`
+          });
+
+          if (!res || !res.ok || !res.result) throw new Error(res?.error || 'No result');
+
+          let parsed;
+          try {
+            const cleaned = res.result.replace(/```json?\s*/g, '').replace(/```/g, '').trim();
+            parsed = JSON.parse(cleaned);
+          } catch (_) { throw new Error('Could not parse fact check report'); }
+
+          const claims = Array.isArray(parsed?.claims) ? parsed.claims : [];
+          const scoreRaw = Number(parsed?.score);
+          const score = Number.isFinite(scoreRaw) ? Math.max(0, Math.min(100, Math.round(scoreRaw))) : 50;
+          const ringColor = scoreColor(score);
+
+          statusEl.textContent = `${claims.length} claim${claims.length === 1 ? '' : 's'} analyzed`;
+          resultsEl.innerHTML = `
+            <div style="display:flex;align-items:center;justify-content:center;gap:14px;padding:10px;border-radius:10px;background:var(--cb-bg2);border:1px solid var(--cb-border);">
+              <div style="width:74px;height:74px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:conic-gradient(${ringColor} ${score * 3.6}deg, color-mix(in srgb, var(--cb-border) 80%, transparent) 0deg);position:relative;">
+                <div style="position:absolute;width:56px;height:56px;border-radius:50%;background:var(--cb-bg);display:flex;align-items:center;justify-content:center;font-weight:700;color:${ringColor};font-size:14px;">${score}</div>
+              </div>
+              <div>
+                <div style="font-size:12px;font-weight:600;color:var(--cb-text);">Reliability Score</div>
+                <div style="font-size:11px;color:var(--cb-subtext);">Higher means lower contradiction/risk signals</div>
+              </div>
+            </div>
+            <div style="padding:8px 10px;border-radius:8px;background:color-mix(in srgb, #f59e0b 12%, var(--cb-bg2));border:1px solid #f59e0b55;font-size:11px;color:var(--cb-subtext);line-height:1.4;">
+              ChatBridge doesn't browse the web — these categories are AI self-assessment signals for your review.
+            </div>
+            <div id="tk-fact-claims" style="display:flex;flex-direction:column;gap:8px;"></div>
+            <button id="tk-fact-copy" class="cb-btn" style="width:100%;padding:8px;font-size:11px;">📋 Copy Report</button>
+          `;
+
+          const claimsEl = shadow.getElementById('tk-fact-claims');
+          if (!claims.length) {
+            claimsEl.innerHTML = '<div style="padding:10px;border-radius:8px;background:var(--cb-bg2);border:1px dashed var(--cb-border);font-size:11px;color:var(--cb-subtext);text-align:center;">No clear factual claims detected.</div>';
+          } else {
+            claims.forEach((claim) => {
+              const category = String(claim?.category || 'verify').toLowerCase();
+              const meta = categoryMeta[category] || categoryMeta.verify;
+              const row = document.createElement('div');
+              row.style.cssText = 'padding:10px;border-radius:8px;background:var(--cb-bg2);border:1px solid var(--cb-border);';
+              row.innerHTML = `
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;">
+                  <div style="font-size:11px;font-weight:600;color:${meta.color};">${meta.icon} ${escapeHtml(category)}</div>
+                </div>
+                <div style="font-size:12px;color:var(--cb-text);line-height:1.4;margin-bottom:6px;">${escapeHtml(String(claim?.text || ''))}</div>
+                <div style="font-size:10px;color:var(--cb-subtext);line-height:1.35;">${escapeHtml(String(claim?.note || 'No note provided'))}</div>
+              `;
+              claimsEl.appendChild(row);
+            });
+          }
+
+          shadow.getElementById('tk-fact-copy')?.addEventListener('click', async () => {
+            const report = [
+              `Fact Checker Report`,
+              `Reliability Score: ${score}/100`,
+              '',
+              ...claims.map((claim, idx) => {
+                const category = String(claim?.category || 'verify').toLowerCase();
+                return [
+                  `${idx + 1}. [${category.toUpperCase()}] ${claim?.text || ''}`,
+                  `   Note: ${claim?.note || ''}`
+                ].join('\n');
+              }),
+              '',
+              `Note: ChatBridge does not browse the web; verify high-impact claims independently.`
+            ].join('\n');
+            await navigator.clipboard.writeText(report);
+            toast('Report copied');
+          });
+        } catch (e) {
+          statusEl.textContent = 'Scan failed';
+          resultsEl.innerHTML = `<div style="color:var(--cb-error);font-size:12px;text-align:center;padding:14px;">${escapeHtml(e.message || 'Fact check failed')}</div>`;
+        }
       });
     });
 
@@ -6910,221 +7926,6 @@
     });
 
     // ============================================
-    // TOOLKIT TOOL 4: Image Generator
-    // ============================================
-    tkCards['tk-imagegen']?.addEventListener('click', async () => {
-      tkShowSub('Image Generator', '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>', `
-        <div style="margin-bottom:12px;">
-          <label style="font-size:11px;color:var(--cb-subtext);display:block;margin-bottom:6px;">Image Prompt</label>
-          <textarea id="tk-img-prompt" style="width:100%;min-height:60px;padding:8px;border-radius:6px;background:var(--cb-bg2);border:1px solid var(--cb-border);color:var(--cb-text);font-size:12px;resize:vertical;font-family:inherit;" placeholder="Describe the image you want to generate..."></textarea>
-        </div>
-        <button id="tk-img-from-chat" class="cb-btn" style="width:100%;padding:6px;font-size:11px;margin-bottom:8px;">✨ Auto-suggest from conversation</button>
-        <button id="tk-img-generate" class="cb-btn" style="width:100%;padding:8px;font-size:12px;">🎨 Generate Image</button>
-        <div id="tk-img-result" style="margin-top:12px;"></div>
-      `);
-
-      // Auto-suggest prompt from conversation
-      shadow.getElementById('tk-img-from-chat')?.addEventListener('click', async () => {
-        const chatText = await getConversationText();
-        if (!chatText) { toast('Scan a conversation first'); return; }
-        const promptEl = shadow.getElementById('tk-img-prompt');
-        promptEl.value = 'Generating suggestion...';
-        try {
-          const res = await callGeminiAsync({
-            action: 'prompt',
-            text: `Based on this conversation, suggest a single vivid image prompt (1-2 sentences) that would make a great visual companion. Return ONLY the prompt text, no quotes or explanation.\n\nConversation:\n${chatText.substring(0, 4000)}`
-          });
-          promptEl.value = (res && res.ok && res.result) ? res.result.trim() : 'A creative visualization of the conversation topics';
-        } catch (_) { promptEl.value = ''; }
-      });
-
-      // Generate image via Gemini
-      shadow.getElementById('tk-img-generate')?.addEventListener('click', async () => {
-        const promptEl = shadow.getElementById('tk-img-prompt');
-        const prompt = promptEl.value.trim();
-        if (!prompt) { toast('Enter a prompt first'); return; }
-
-        const resultEl = shadow.getElementById('tk-img-result');
-        resultEl.innerHTML = '<div style="text-align:center;padding:20px;"><div class="cb-spinner"></div><div style="margin-top:8px;font-size:11px;color:var(--cb-subtext);">Generating image...</div></div>';
-
-        try {
-          const res = await new Promise(resolve => {
-            chrome.runtime.sendMessage({ type: 'generate_image', payload: { prompt } }, resolve);
-          });
-
-          if (res && res.ok && res.imageData) {
-            resultEl.innerHTML = `
-              <div style="border-radius:8px;overflow:hidden;border:1px solid var(--cb-border);">
-                <img id="tk-img-preview" src="${res.imageData}" style="width:100%;display:block;" alt="Generated image">
-              </div>
-              <div style="display:flex;gap:8px;margin-top:8px;">
-                <button id="tk-img-download" class="cb-btn" style="flex:1;padding:8px;font-size:11px;">💾 Download</button>
-                <button id="tk-img-copy" class="cb-btn" style="flex:1;padding:8px;font-size:11px;">📋 Copy</button>
-              </div>
-            `;
-            shadow.getElementById('tk-img-download')?.addEventListener('click', () => {
-              const a = document.createElement('a');
-              a.href = res.imageData;
-              a.download = `chatbridge-image-${Date.now()}.png`;
-              a.click();
-              toast('Image downloaded!');
-            });
-            shadow.getElementById('tk-img-copy')?.addEventListener('click', async () => {
-              try {
-                const resp = await fetch(res.imageData);
-                const blob = await resp.blob();
-                await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
-                toast('Image copied!');
-              } catch (_) { toast('Copy failed — try download instead'); }
-            });
-          } else {
-            // Fallback: describe image as text since generation not available
-            resultEl.innerHTML = `<div style="padding:14px;border-radius:8px;background:var(--cb-bg2);border:1px solid var(--cb-border);font-size:12px;color:var(--cb-subtext);text-align:center;">Image generation requires a Gemini API key with Imagen access. Try describing your prompt to an AI chat with image generation capabilities.</div>`;
-          }
-        } catch (e) {
-          resultEl.innerHTML = `<div style="color:var(--cb-error);font-size:12px;text-align:center;padding:14px;">${escapeHtml(e.message || 'Image generation failed')}</div>`;
-        }
-      });
-    });
-
-    // ============================================
-    // TOOLKIT TOOL 5: Context Injector
-    // ============================================
-    tkCards['tk-context']?.addEventListener('click', async () => {
-      const chatText = await getConversationText();
-
-      tkShowSub('Context Injector', '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>', `
-        <div style="display:flex;gap:8px;margin-bottom:12px;">
-          <button id="tk-ctx-tab-save" class="cb-btn" style="flex:1;padding:8px;font-size:12px;border-color:var(--cb-accent-primary);">Save New</button>
-          <button id="tk-ctx-tab-load" class="cb-btn" style="flex:1;padding:8px;font-size:12px;">Load Saved</button>
-        </div>
-        <div id="tk-ctx-view-save" style="display:block;">
-          <div style="font-size:11px;color:var(--cb-subtext);margin-bottom:8px;">Extract context from this chat to carry into other platforms.</div>
-          <button id="tk-ctx-extract" class="cb-btn" style="width:100%;padding:8px;font-size:11px;margin-bottom:8px;">✨ Extract Key Context</button>
-          <div id="tk-ctx-editor-area" style="display:none;margin-top:12px;">
-            <input type="text" id="tk-ctx-title" placeholder="Context Title" style="width:100%;padding:8px;border-radius:6px;background:var(--cb-bg2);border:1px solid var(--cb-border);color:var(--cb-text);font-size:12px;margin-bottom:8px;">
-            <textarea id="tk-ctx-content" rows="6" style="width:100%;padding:8px;border-radius:6px;background:var(--cb-bg2);border:1px solid var(--cb-border);color:var(--cb-text);font-size:12px;resize:vertical;"></textarea>
-            <button id="tk-ctx-save-btn" class="cb-btn cb-btn-primary" style="width:100%;padding:8px;font-size:12px;margin-top:8px;background:var(--cb-accent-primary);color:#fff;border:none;">Save Context</button>
-          </div>
-        </div>
-        <div id="tk-ctx-view-load" style="display:none;">
-          <div id="tk-ctx-list" style="display:flex;flex-direction:column;gap:8px;"></div>
-        </div>
-      `);
-
-      const tabSave = shadow.getElementById('tk-ctx-tab-save');
-      const tabLoad = shadow.getElementById('tk-ctx-tab-load');
-      const viewSave = shadow.getElementById('tk-ctx-view-save');
-      const viewLoad = shadow.getElementById('tk-ctx-view-load');
-
-      tabSave?.addEventListener('click', () => {
-        tabSave.style.borderColor = 'var(--cb-accent-primary)'; tabLoad.style.borderColor = '';
-        viewSave.style.display = 'block'; viewLoad.style.display = 'none';
-      });
-
-      tabLoad?.addEventListener('click', async () => {
-        tabLoad.style.borderColor = 'var(--cb-accent-primary)'; tabSave.style.borderColor = '';
-        viewLoad.style.display = 'block'; viewSave.style.display = 'none';
-        await renderContextList();
-      });
-
-      // Extract Context
-      shadow.getElementById('tk-ctx-extract')?.addEventListener('click', async (e) => {
-        if (!chatText) return toast('No conversation text found');
-        const btn = e.target;
-        btn.textContent = 'Extracting...';
-        btn.disabled = true;
-
-        try {
-          const prompt = `Analyze the following conversation and extract the most critical context to carry forward. Include decisions made, key data, code snippets if relevant, open questions, and a brief summary.\n\nConversation:\n${chatText.substring(0, 8000)}`;
-          const res = await callAgentRouteWithRetry(prompt, { complexity: 'deep', maxTokens: 800 });
-          
-          if (res && res.result) {
-            shadow.getElementById('tk-ctx-editor-area').style.display = 'block';
-            shadow.getElementById('tk-ctx-title').value = `Context: ${new Date().toLocaleDateString()}`;
-            shadow.getElementById('tk-ctx-content').value = res.result.trim();
-            btn.style.display = 'none';
-          } else {
-            toast('Failed to extract context');
-          }
-        } catch (err) {
-          toast('Error: ' + err.message);
-        } finally {
-          btn.textContent = '✨ Extract Key Context';
-          btn.disabled = false;
-        }
-      });
-
-      // Save Context
-      shadow.getElementById('tk-ctx-save-btn')?.addEventListener('click', async () => {
-        const title = shadow.getElementById('tk-ctx-title').value.trim();
-        const content = shadow.getElementById('tk-ctx-content').value.trim();
-        if (!title || !content) return toast('Need title and content');
-        
-        const contexts = await StorageManager.getSavedContexts();
-        contexts.unshift({ id: Date.now(), title, content, date: Date.now() });
-        await StorageManager.setSavedContexts(contexts);
-        toast('Context saved');
-        
-        // Reset and switch to load view
-        shadow.getElementById('tk-ctx-editor-area').style.display = 'none';
-        shadow.getElementById('tk-ctx-extract').style.display = 'block';
-        tabLoad.click();
-      });
-
-      async function renderContextList() {
-        const listEl = shadow.getElementById('tk-ctx-list');
-        const contexts = await StorageManager.getSavedContexts();
-        
-        if (contexts.length === 0) {
-          listEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--cb-subtext);font-size:12px;">No saved contexts</div>';
-          return;
-        }
-
-        listEl.innerHTML = '';
-        contexts.forEach(ctx => {
-          const card = document.createElement('div');
-          card.className = 'cb-context-card';
-          card.style.cssText = 'border:1px solid var(--cb-border);border-radius:6px;background:var(--cb-bg2);padding:10px;';
-          card.innerHTML = `
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-              <div style="font-weight:600;font-size:12px;color:var(--cb-text);">${escapeHtml(ctx.title)}</div>
-              <div style="font-size:10px;color:var(--cb-subtext);">${new Date(ctx.date).toLocaleDateString()}</div>
-            </div>
-            <div style="font-size:11px;color:var(--cb-subtext);max-height:40px;overflow:hidden;text-overflow:ellipsis;margin-bottom:8px;">${escapeHtml(ctx.content.substring(0, 100))}...</div>
-            <div style="display:flex;gap:6px;">
-              <button class="cb-btn tk-ctx-insert" data-id="${ctx.id}" style="flex:1;padding:6px;font-size:11px;">Insert to Chat</button>
-              <button class="cb-btn tk-ctx-delete" data-id="${ctx.id}" style="padding:6px;font-size:11px;color:#ef4444;border-color:transparent;" title="Delete Context"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
-            </div>
-          `;
-          listEl.appendChild(card);
-        });
-
-        // Attach listeners
-        listEl.querySelectorAll('.tk-ctx-insert').forEach(btn => {
-          btn.addEventListener('click', () => {
-            const id = parseInt(btn.dataset.id, 10);
-            const ctx = contexts.find(c => c.id === id);
-            if (ctx) {
-              const formattedBlock = `\n---\nCONTEXT FROM PREVIOUS CHAT:\n${ctx.content}\n---\n\n`;
-              insertTextToChat(formattedBlock);
-              toast('Context inserted');
-            }
-          });
-        });
-
-        listEl.querySelectorAll('.tk-ctx-delete').forEach(btn => {
-          btn.addEventListener('click', async () => {
-            const id = parseInt(btn.dataset.id, 10);
-            const newContexts = contexts.filter(c => c.id !== id);
-            await StorageManager.setSavedContexts(newContexts);
-            renderContextList();
-          });
-        });
-      }
-    });
-
-    // ============================================
     // TOOLKIT TOOL 6: Code Sandbox
     // ============================================
     tkCards['tk-codesandbox']?.addEventListener('click', async () => {
@@ -7136,7 +7937,7 @@
           <select id="tk-code-lang" style="width:100%;padding:6px;border-radius:6px;background:var(--cb-bg2);border:1px solid var(--cb-border);color:var(--cb-text);font-size:12px;">
             <option value="javascript">JavaScript</option>
             <option value="html">HTML (runs in iframe)</option>
-            <option value="python">Python (display only)</option>
+            <option value="python">Python (copy + open editor)</option>
           </select>
         </div>
         ${chatText ? '<button id="tk-code-extract" class="cb-btn" style="width:100%;padding:6px;font-size:11px;margin-bottom:8px;">✨ Extract code from conversation</button>' : ''}
@@ -7223,235 +8024,229 @@ try {
           outputEl.innerHTML = '';
           outputEl.appendChild(preEl);
           const pyNote = document.createElement('div');
-          pyNote.style.cssText = 'font-size:10px;color:var(--cb-subtext);margin-top:4px;';
-          pyNote.textContent = 'Python display only \u2014 paste into a Python environment to execute.';
+          pyNote.style.cssText = 'font-size:10px;color:var(--cb-subtext);margin-top:6px;';
+          pyNote.textContent = 'Use quick open to run this in an online Python editor.';
           outputEl.appendChild(pyNote);
+
+          const pyActions = document.createElement('div');
+          pyActions.style.cssText = 'display:flex;gap:8px;margin-top:8px;';
+
+          const btnReplit = document.createElement('button');
+          btnReplit.className = 'cb-btn';
+          btnReplit.style.cssText = 'flex:1;padding:8px;font-size:11px;';
+          btnReplit.textContent = '📋 + Open Replit';
+          btnReplit.addEventListener('click', async () => {
+            try {
+              await navigator.clipboard.writeText(code);
+              window.open('https://replit.com/new/python3', '_blank', 'noopener,noreferrer');
+              toast('Python code copied — paste it when Replit loads');
+            } catch (_) {
+              toast('Could not copy code to clipboard');
+            }
+          });
+
+          const btnProgramiz = document.createElement('button');
+          btnProgramiz.className = 'cb-btn';
+          btnProgramiz.style.cssText = 'flex:1;padding:8px;font-size:11px;';
+          btnProgramiz.textContent = '🌐 Open Programiz';
+          btnProgramiz.addEventListener('click', () => {
+            window.open('https://www.programiz.com/python-programming/online-compiler/', '_blank', 'noopener,noreferrer');
+          });
+
+          pyActions.appendChild(btnReplit);
+          pyActions.appendChild(btnProgramiz);
+          outputEl.appendChild(pyActions);
         }
       });
     });
 
     // ============================================
-    // TOOLKIT TOOL 7: Conversation to Podcast
+    // TOOLKIT TOOL 8: Quiz Me
     // ============================================
-    tkCards['tk-podcast']?.addEventListener('click', async () => {
+    tkCards['tk-quizme']?.addEventListener('click', async () => {
       const chatText = await getConversationText();
       if (!chatText) { toast('Scan a conversation first'); return; }
 
-      tkShowSub('Podcast', '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>', `
-        <div style="text-align:center;padding:20px;"><div class="cb-spinner"></div><div style="margin-top:8px;font-size:11px;color:var(--cb-subtext);">Converting conversation to podcast script...</div></div>
+      tkShowSub('Quiz Me', '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 1 1 5.82 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>', `
+        <div style="font-size:11px;color:var(--cb-subtext);margin-bottom:10px;">Test your understanding with AI-generated multiple-choice questions.</div>
+        <button id="tk-quiz-generate" class="cb-btn" style="width:100%;padding:8px;font-size:12px;margin-bottom:10px;">🧠 Generate Quiz</button>
+        <div id="tk-quiz-status" style="font-size:11px;color:var(--cb-subtext);text-align:center;margin-bottom:8px;">Ready</div>
+        <div id="tk-quiz-body" style="display:flex;flex-direction:column;gap:10px;"></div>
       `);
 
-      try {
-        const res = await callGeminiAsync({
-          action: 'prompt',
-          text: `Convert this conversation into an engaging 2-person podcast script between "Host" and "Expert". Make it natural and conversational, with transitions, humor, and emphasis on key insights. Return ONLY a JSON array where each item has "speaker" ("Host" or "Expert") and "text" (their dialogue line). Keep it 8-15 exchanges.\n\nConversation:\n${chatText.substring(0, 8000)}`
-        });
+      let questions = [];
+      let currentIndex = 0;
+      let score = 0;
+      let answered = false;
 
-        if (!res || !res.ok || !res.result) throw new Error(res?.error || 'No result');
-        let script;
-        try {
-          const cleaned = res.result.replace(/```json?\s*/g, '').replace(/```/g, '').trim();
-          script = JSON.parse(cleaned);
-        } catch (_) { throw new Error('Could not parse podcast script'); }
+      const statusEl = shadow.getElementById('tk-quiz-status');
+      const bodyEl = shadow.getElementById('tk-quiz-body');
 
-        if (!Array.isArray(script) || !script.length) throw new Error('No podcast generated');
+      function normalizeQuestions(raw) {
+        if (!Array.isArray(raw)) return [];
+        return raw.map((item) => {
+          const opts = Array.isArray(item?.options) ? item.options.map(o => String(o || '').trim()).filter(Boolean) : [];
+          const fixedOpts = opts.slice(0, 4);
+          while (fixedOpts.length < 4) fixedOpts.push(`Option ${fixedOpts.length + 1}`);
+          const correct = Number.isFinite(Number(item?.correct)) ? Number(item.correct) : 0;
+          return {
+            question: String(item?.question || '').trim(),
+            options: fixedOpts,
+            correct: Math.max(0, Math.min(3, Math.round(correct))),
+            explanation: String(item?.explanation || '').trim()
+          };
+        }).filter(q => q.question);
+      }
 
-        const subContent = shadow.getElementById('tk-sub-content');
-        subContent.innerHTML = `
-          <div style="margin-bottom:12px;">
-            <div style="display:flex;gap:8px;margin-bottom:10px;">
-              <button id="tk-pod-play" class="cb-btn" style="flex:1;padding:8px;font-size:12px;">▶ Play Podcast</button>
-              <button id="tk-pod-stop" class="cb-btn" style="flex:1;padding:8px;font-size:12px;" disabled>⏹ Stop</button>
-            </div>
-            <div id="tk-pod-status" style="font-size:11px;color:var(--cb-subtext);text-align:center;margin-bottom:10px;">${script.length} exchanges ready</div>
+      function renderFinal() {
+        const total = questions.length || 0;
+        const pct = total ? Math.round((score / total) * 100) : 0;
+        bodyEl.innerHTML = `
+          <div style="padding:12px;border-radius:10px;background:var(--cb-bg2);border:1px solid var(--cb-border);text-align:center;">
+            <div style="font-size:14px;font-weight:700;color:var(--cb-text);margin-bottom:4px;">Quiz complete</div>
+            <div style="font-size:12px;color:var(--cb-subtext);">Score: <strong style="color:var(--cb-text);">${score}/${total}</strong> (${pct}%)</div>
           </div>
-          <div id="tk-pod-script" style="display:flex;flex-direction:column;gap:8px;max-height:300px;overflow-y:auto;"></div>
-          <button id="tk-pod-copy" class="cb-btn" style="width:100%;margin-top:10px;padding:8px;font-size:11px;">📋 Copy Script</button>
+          <div style="display:flex;gap:8px;">
+            <button id="tk-quiz-restart" class="cb-btn" style="flex:1;padding:8px;font-size:11px;">↺ Restart</button>
+            <button id="tk-quiz-copy" class="cb-btn" style="flex:1;padding:8px;font-size:11px;">📋 Copy All Questions</button>
+          </div>
         `;
 
-        const scriptEl = shadow.getElementById('tk-pod-script');
-        script.forEach((line, i) => {
-          const isHost = line.speaker === 'Host';
-          const el = document.createElement('div');
-          el.id = `tk-pod-line-${i}`;
-          el.style.cssText = `padding:10px;border-radius:8px;background:${isHost ? 'color-mix(in srgb, var(--cb-accent-primary) 8%, var(--cb-bg2))' : 'color-mix(in srgb, var(--cb-accent-secondary) 8%, var(--cb-bg2))'};border:1px solid var(--cb-border);`;
-          // Build with DOM nodes — line.speaker and line.text come from AI output
-          const speakerEl = document.createElement('div');
-          speakerEl.style.cssText = `font-size:10px;font-weight:600;color:${isHost ? 'var(--cb-accent-primary)' : 'var(--cb-accent-secondary)'};margin-bottom:4px;`;
-          speakerEl.textContent = line.speaker;
-          const lineTextEl = document.createElement('div');
-          lineTextEl.style.cssText = 'font-size:12px;color:var(--cb-text);line-height:1.4;';
-          lineTextEl.textContent = line.text;
-          el.appendChild(speakerEl);
-          el.appendChild(lineTextEl);
-          scriptEl.appendChild(el);
+        shadow.getElementById('tk-quiz-restart')?.addEventListener('click', () => {
+          currentIndex = 0;
+          score = 0;
+          answered = false;
+          renderQuestion();
         });
 
-        // Play podcast with TTS - alternate voices
-        let podPlaying = false;
-        let podIndex = 0;
-
-        shadow.getElementById('tk-pod-play')?.addEventListener('click', () => {
-          if (podPlaying) return;
-          podPlaying = true;
-          podIndex = 0;
-          shadow.getElementById('tk-pod-play').disabled = true;
-          shadow.getElementById('tk-pod-stop').disabled = false;
-
-          const voices = speechSynthesis.getVoices();
-          const enVoices = voices.filter(v => v.lang.startsWith('en'));
-          const voice1 = enVoices.find(v => /female|zira|samantha/i.test(v.name)) || enVoices[0] || voices[0];
-          const voice2 = enVoices.find(v => /male|david|daniel/i.test(v.name) && v !== voice1) || enVoices[1] || voices[1] || voice1;
-
-          function speakLine(idx) {
-            if (!podPlaying || idx >= script.length) {
-              podPlaying = false;
-              shadow.getElementById('tk-pod-play').disabled = false;
-              shadow.getElementById('tk-pod-stop').disabled = true;
-              shadow.getElementById('tk-pod-status').textContent = idx >= script.length ? 'Finished' : 'Stopped';
-              return;
-            }
-
-            // Highlight current line
-            script.forEach((_, j) => {
-              const el = shadow.getElementById(`tk-pod-line-${j}`);
-              if (el) el.style.opacity = j === idx ? '1' : '0.5';
-            });
-            shadow.getElementById('tk-pod-status').textContent = `Playing ${idx + 1}/${script.length}...`;
-
-            const utter = new SpeechSynthesisUtterance(script[idx].text);
-            utter.voice = script[idx].speaker === 'Host' ? voice1 : voice2;
-            utter.rate = 1.05;
-            utter.pitch = script[idx].speaker === 'Host' ? 1.0 : 0.9;
-            utter.onend = () => { podIndex = idx + 1; speakLine(idx + 1); };
-            speechSynthesis.speak(utter);
-          }
-          speakLine(0);
-        });
-
-        shadow.getElementById('tk-pod-stop')?.addEventListener('click', () => {
-          podPlaying = false;
-          speechSynthesis.cancel();
-          shadow.getElementById('tk-pod-play').disabled = false;
-          shadow.getElementById('tk-pod-stop').disabled = true;
-          shadow.getElementById('tk-pod-status').textContent = 'Stopped';
-          script.forEach((_, j) => {
-            const el = shadow.getElementById(`tk-pod-line-${j}`);
-            if (el) el.style.opacity = '1';
-          });
-        });
-
-        shadow.getElementById('tk-pod-copy')?.addEventListener('click', async () => {
-          const text = script.map(l => `[${l.speaker}] ${l.text}`).join('\n\n');
+        shadow.getElementById('tk-quiz-copy')?.addEventListener('click', async () => {
+          const text = questions.map((q, idx) => {
+            const letters = ['A', 'B', 'C', 'D'];
+            const opts = q.options.map((o, i) => `${letters[i]}. ${o}`).join('\n');
+            return `${idx + 1}) ${q.question}\n${opts}\nAnswer: ${letters[q.correct]}\nWhy: ${q.explanation || '—'}`;
+          }).join('\n\n');
           await navigator.clipboard.writeText(text);
-          toast('Podcast script copied!');
+          toast('Questions copied');
         });
-      } catch (e) {
-        shadow.getElementById('tk-sub-content').innerHTML = `<div style="color:var(--cb-error);font-size:12px;text-align:center;padding:20px;">Failed: ${escapeHtml(e.message)}</div>`;
       }
-    });
 
-    // ============================================
-    // TOOLKIT TOOL 8: AI Debate
-    // ============================================
-    tkCards['tk-debate']?.addEventListener('click', async () => {
-      const chatText = await getConversationText();
+      function renderQuestion() {
+        const total = questions.length;
+        if (!total) {
+          bodyEl.innerHTML = '';
+          return;
+        }
+        if (currentIndex >= total) {
+          renderFinal();
+          return;
+        }
 
-      tkShowSub('AI Debate', '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><line x1="9" y1="10" x2="15" y2="10"/></svg>', `
-        <div style="margin-bottom:12px;">
-          <label style="font-size:11px;color:var(--cb-subtext);display:block;margin-bottom:6px;">Claim or topic to debate</label>
-          <input type="text" id="tk-debate-topic" style="width:100%;padding:8px;border-radius:6px;background:var(--cb-bg2);border:1px solid var(--cb-border);color:var(--cb-text);font-size:12px;" placeholder="e.g. &quot;AI will replace most jobs within 10 years&quot;">
-        </div>
-        ${chatText ? '<button id="tk-debate-extract" class="cb-btn" style="width:100%;padding:6px;font-size:11px;margin-bottom:8px;">✨ Extract debatable claim from conversation</button>' : ''}
-        <button id="tk-debate-go" class="cb-btn" style="width:100%;padding:8px;font-size:12px;">⚔️ Start Debate</button>
-        <div id="tk-debate-result" style="margin-top:12px;"></div>
-      `);
+        answered = false;
+        const q = questions[currentIndex];
+        const progressPct = Math.round((currentIndex / total) * 100);
+        bodyEl.innerHTML = `
+          <div style="font-size:11px;color:var(--cb-subtext);display:flex;justify-content:space-between;">
+            <span>Question ${currentIndex + 1} of ${total}</span>
+            <span>Score: ${score}/${total}</span>
+          </div>
+          <div style="height:6px;border-radius:999px;background:var(--cb-bg2);border:1px solid var(--cb-border);overflow:hidden;">
+            <div style="height:100%;width:${progressPct}%;background:var(--cb-accent-primary);"></div>
+          </div>
+          <div style="padding:10px;border-radius:8px;background:var(--cb-bg2);border:1px solid var(--cb-border);font-size:12px;color:var(--cb-text);line-height:1.45;">${escapeHtml(q.question)}</div>
+          <div id="tk-quiz-options" style="display:flex;flex-direction:column;gap:7px;">
+            ${q.options.map((opt, idx) => `<button class="cb-btn tk-quiz-opt" data-idx="${idx}" style="text-align:left;padding:8px;font-size:11px;">${String.fromCharCode(65 + idx)}. ${escapeHtml(opt)}</button>`).join('')}
+          </div>
+          <div id="tk-quiz-feedback" style="display:none;padding:8px;border-radius:8px;font-size:11px;line-height:1.4;"></div>
+          <button id="tk-quiz-next" class="cb-btn" style="width:100%;padding:8px;font-size:11px;" disabled>${currentIndex === total - 1 ? 'Finish' : 'Next Question'}</button>
+        `;
 
-      // Extract claim
-      shadow.getElementById('tk-debate-extract')?.addEventListener('click', async () => {
-        const topicInput = shadow.getElementById('tk-debate-topic');
-        topicInput.value = 'Extracting...';
-        try {
-          const res = await callGeminiAsync({
-            action: 'prompt',
-            text: `From this conversation, identify the most debatable or controversial claim. Return ONLY the claim as a single statement.\n\n${chatText.substring(0, 4000)}`
+        shadow.querySelectorAll('.tk-quiz-opt').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            if (answered) return;
+            answered = true;
+
+            const picked = parseInt(btn.getAttribute('data-idx') || '0', 10) || 0;
+            const correct = q.correct;
+            const feedback = shadow.getElementById('tk-quiz-feedback');
+
+            shadow.querySelectorAll('.tk-quiz-opt').forEach((optionBtn) => {
+              const idx = parseInt(optionBtn.getAttribute('data-idx') || '0', 10) || 0;
+              optionBtn.disabled = true;
+              if (idx === correct) {
+                optionBtn.style.background = 'color-mix(in srgb, #22c55e 20%, var(--cb-bg2))';
+                optionBtn.style.borderColor = '#22c55e';
+              } else if (idx === picked) {
+                optionBtn.style.background = 'color-mix(in srgb, #ef4444 20%, var(--cb-bg2))';
+                optionBtn.style.borderColor = '#ef4444';
+              }
+            });
+
+            if (picked === correct) score += 1;
+
+            feedback.style.display = 'block';
+            feedback.style.background = picked === correct ? 'color-mix(in srgb, #22c55e 12%, var(--cb-bg2))' : 'color-mix(in srgb, #ef4444 10%, var(--cb-bg2))';
+            feedback.style.border = `1px solid ${picked === correct ? '#22c55e66' : '#ef444466'}`;
+            feedback.style.color = 'var(--cb-text)';
+            feedback.innerHTML = `${picked === correct ? '✅ Correct.' : '❌ Not quite.'} ${escapeHtml(q.explanation || '')}`;
+
+            shadow.getElementById('tk-quiz-next').disabled = false;
           });
-          topicInput.value = (res && res.ok && res.result) ? res.result.trim().replace(/^["']|["']$/g, '') : '';
-        } catch (_) { topicInput.value = ''; }
-      });
+        });
 
-      // Run debate
-      shadow.getElementById('tk-debate-go')?.addEventListener('click', async () => {
-        const topic = shadow.getElementById('tk-debate-topic').value.trim();
-        if (!topic) { toast('Enter a claim to debate'); return; }
+        shadow.getElementById('tk-quiz-next')?.addEventListener('click', () => {
+          currentIndex += 1;
+          renderQuestion();
+        });
+      }
 
-        const resultEl = shadow.getElementById('tk-debate-result');
-        resultEl.innerHTML = '<div style="text-align:center;padding:20px;"><div class="cb-spinner"></div><div style="margin-top:8px;font-size:11px;color:var(--cb-subtext);">Generating debate...</div></div>';
-
+      shadow.getElementById('tk-quiz-generate')?.addEventListener('click', async () => {
+        statusEl.textContent = 'Generating quiz...';
+        bodyEl.innerHTML = '<div style="text-align:center;padding:16px;"><div class="cb-spinner"></div></div>';
         try {
           const res = await callGeminiAsync({
             action: 'prompt',
-            text: `Debate this claim: "${topic}"
+            text: `Based on the AI explanations in this conversation, create 5 multiple-choice comprehension questions.
 
-Return ONLY valid JSON with this structure:
-{
-  "claim": "the claim being debated",
-  "for": {
-    "summary": "1-2 sentence position",
-    "arguments": ["arg1", "arg2", "arg3"],
-    "evidence": "key supporting evidence"
-  },
-  "against": {
-    "summary": "1-2 sentence position",
-    "arguments": ["arg1", "arg2", "arg3"],
-    "evidence": "key opposing evidence"
-  },
-  "verdict": "balanced 1-2 sentence conclusion noting which side is stronger and why"
-}
+Return ONLY valid JSON array with this exact schema:
+[
+  {
+    "question": "question text",
+    "options": ["option A", "option B", "option C", "option D"],
+    "correct": 0,
+    "explanation": "1-line explanation"
+  }
+]
 
-Be thorough and fair to both sides.`
+Constraints:
+- Exactly 5 questions
+- "correct" must be an index 0-3
+- Keep each explanation under 140 characters
+
+Conversation:
+${chatText.substring(0, 10000)}`
           });
 
           if (!res || !res.ok || !res.result) throw new Error(res?.error || 'No result');
-          let debate;
+          let parsed;
           try {
             const cleaned = res.result.replace(/```json?\s*/g, '').replace(/```/g, '').trim();
-            debate = JSON.parse(cleaned);
-          } catch (_) { throw new Error('Could not parse debate'); }
+            parsed = JSON.parse(cleaned);
+          } catch (_) { throw new Error('Could not parse quiz questions'); }
 
-          resultEl.innerHTML = `
-            <div style="font-size:12px;color:var(--cb-text);text-align:center;padding:10px;margin-bottom:12px;font-style:italic;border-bottom:1px solid var(--cb-border);">&ldquo;${escapeHtml(debate.claim || topic)}&rdquo;</div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
-              <div style="padding:12px;border-radius:8px;background:color-mix(in srgb, #22c55e 8%, var(--cb-bg2));border:1px solid #22c55e44;">
-                <div style="font-weight:600;font-size:12px;color:#22c55e;margin-bottom:8px;">👍 FOR</div>
-                <div style="font-size:11px;color:var(--cb-text);margin-bottom:8px;line-height:1.4;">${escapeHtml(debate.for?.summary || '')}</div>
-                ${(debate.for?.arguments || []).map(a => `<div style="font-size:11px;color:var(--cb-text);padding:3px 0;display:flex;gap:4px;"><span style="color:#22c55e;">•</span>${escapeHtml(a)}</div>`).join('')}
-                <div style="font-size:10px;color:var(--cb-subtext);margin-top:6px;padding-top:6px;border-top:1px solid var(--cb-border);line-height:1.3;">📊 ${escapeHtml(debate.for?.evidence || '')}</div>
-              </div>
-              <div style="padding:12px;border-radius:8px;background:color-mix(in srgb, #ef4444 8%, var(--cb-bg2));border:1px solid #ef444444;">
-                <div style="font-weight:600;font-size:12px;color:#ef4444;margin-bottom:8px;">👎 AGAINST</div>
-                <div style="font-size:11px;color:var(--cb-text);margin-bottom:8px;line-height:1.4;">${debate.against?.summary || ''}</div>
-                ${(debate.against?.arguments || []).map(a => `<div style="font-size:11px;color:var(--cb-text);padding:3px 0;display:flex;gap:4px;"><span style="color:#ef4444;">•</span>${a}</div>`).join('')}
-                <div style="font-size:10px;color:var(--cb-subtext);margin-top:6px;padding-top:6px;border-top:1px solid var(--cb-border);line-height:1.3;">📊 ${debate.against?.evidence || ''}</div>
-              </div>
-            </div>
-            <div style="padding:12px;border-radius:8px;background:color-mix(in srgb, var(--cb-accent-primary) 8%, var(--cb-bg2));border:1px solid var(--cb-accent-primary);text-align:center;">
-              <div style="font-weight:600;font-size:12px;color:var(--cb-accent-primary);margin-bottom:6px;">⚖️ Verdict</div>
-              <div style="font-size:12px;color:var(--cb-text);line-height:1.4;">${debate.verdict || ''}</div>
-            </div>
-            <button id="tk-debate-copy" class="cb-btn" style="width:100%;margin-top:10px;padding:8px;font-size:11px;">📋 Copy Debate</button>
-          `;
+          questions = normalizeQuestions(parsed).slice(0, 5);
+          if (!questions.length) throw new Error('No quiz questions generated');
 
-          shadow.getElementById('tk-debate-copy')?.addEventListener('click', async () => {
-            const text = `DEBATE: ${debate.claim}\n\n👍 FOR:\n${debate.for?.summary}\n${(debate.for?.arguments || []).map(a => `• ${a}`).join('\n')}\nEvidence: ${debate.for?.evidence}\n\n👎 AGAINST:\n${debate.against?.summary}\n${(debate.against?.arguments || []).map(a => `• ${a}`).join('\n')}\nEvidence: ${debate.against?.evidence}\n\n⚖️ VERDICT: ${debate.verdict}`;
-            await navigator.clipboard.writeText(text);
-            toast('Debate copied!');
-          });
+          currentIndex = 0;
+          score = 0;
+          statusEl.textContent = `${questions.length} questions ready`;
+          renderQuestion();
         } catch (e) {
-          resultEl.innerHTML = `<div style="color:var(--cb-error);font-size:12px;text-align:center;padding:20px;">Failed: ${escapeHtml(e.message)}</div>`;
+          statusEl.textContent = 'Generation failed';
+          bodyEl.innerHTML = `<div style="color:var(--cb-error);font-size:12px;text-align:center;padding:14px;">${escapeHtml(e.message || 'Quiz generation failed')}</div>`;
         }
       });
     });
+
     const geminiWrap = document.createElement('div'); geminiWrap.style.padding = '8px 18px'; geminiWrap.style.display = 'flex'; geminiWrap.style.flexDirection = 'column'; geminiWrap.style.gap = '8px';
     // Insert preview above (textarea removed - preview is the read-only display)
     geminiWrap.appendChild(preview);
@@ -7525,6 +8320,26 @@ Be thorough and fair to both sides.`
     saveKeysBtn.style.cssText = 'width: 100%; padding: 8px;';
     apiSection.appendChild(saveKeysBtn);
     settingsContent.appendChild(apiSection);
+
+    // ============================================
+    // Analytics Section (Phase 4)
+    // ============================================
+    const analyticsSection = document.createElement('div'); analyticsSection.style.cssText = 'padding-bottom: 16px; border-bottom: 1px solid var(--cb-border);';
+    const analyticsLabel = document.createElement('div'); analyticsLabel.style.cssText = 'font-weight: 600; margin-bottom: 10px; color: var(--cb-white);'; analyticsLabel.textContent = '📊 Privacy Analytics';
+    const analyticsHint = document.createElement('div'); analyticsHint.style.cssText = 'font-size:11px;color:var(--cb-subtext);line-height:1.5;margin-bottom:10px;'; analyticsHint.textContent = 'Opt-in only. Usage events remain local in your browser.';
+    const analyticsToggleRow = document.createElement('label'); analyticsToggleRow.style.cssText = 'display:flex;align-items:center;gap:8px;font-size:11px;color:var(--cb-white);margin-bottom:10px;cursor:pointer;';
+    const analyticsToggle = document.createElement('input'); analyticsToggle.type = 'checkbox'; analyticsToggle.id = 'cb-analytics-optin'; analyticsToggle.style.accentColor = 'var(--cb-accent-primary)';
+    const analyticsToggleText = document.createElement('span'); analyticsToggleText.textContent = 'Enable local usage analytics';
+    analyticsToggleRow.appendChild(analyticsToggle); analyticsToggleRow.appendChild(analyticsToggleText);
+    const analyticsActions = document.createElement('div'); analyticsActions.style.cssText = 'display:flex;gap:8px;';
+    const analyticsExportBtn = document.createElement('button'); analyticsExportBtn.className = 'cb-btn'; analyticsExportBtn.style.cssText = 'flex:1;padding:8px;font-size:11px;'; analyticsExportBtn.textContent = 'Export Analytics';
+    const analyticsClearBtn = document.createElement('button'); analyticsClearBtn.className = 'cb-btn'; analyticsClearBtn.style.cssText = 'flex:1;padding:8px;font-size:11px;'; analyticsClearBtn.textContent = 'Clear Analytics';
+    analyticsActions.appendChild(analyticsExportBtn); analyticsActions.appendChild(analyticsClearBtn);
+    analyticsSection.appendChild(analyticsLabel);
+    analyticsSection.appendChild(analyticsHint);
+    analyticsSection.appendChild(analyticsToggleRow);
+    analyticsSection.appendChild(analyticsActions);
+    settingsContent.appendChild(analyticsSection);
 
     // ============================================
     // Detail Level Section
@@ -8012,7 +8827,8 @@ Be thorough and fair to both sides.`
           ua: navigator.userAgent,
           platform: navigator.platform,
           lastScan: (window.ChatBridge && window.ChatBridge._lastScan) ? window.ChatBridge._lastScan : null,
-          localStorageSnapshot: {}
+          localStorageSnapshot: {},
+          recentErrors: CBErrorBoundary.getRecent()
         };
         try { Object.keys(localStorage).filter(k => k && k.toLowerCase && k.toLowerCase().includes('chatbridge')).forEach(k => { dbg.localStorageSnapshot[k] = localStorage.getItem(k); }); } catch (e) { }
         return dbg;
@@ -8132,9 +8948,11 @@ Be thorough and fair to both sides.`
     // Load saved keys when settings opens
     btnSettings.addEventListener('click', async () => {
       try {
-        chrome.storage.local.get(['chatbridge_gemini_key', 'chatbridge_hf_key', 'cb_detail_level'], (result) => {
+        chrome.storage.local.get(['chatbridge_gemini_key', 'chatbridge_hf_key', 'cb_detail_level', 'cb_analytics_optin'], (result) => {
           if (result.chatbridge_gemini_key) geminiKeyInput.value = result.chatbridge_gemini_key;
           if (result.chatbridge_hf_key) hfKeyInput.value = result.chatbridge_hf_key;
+          analyticsToggle.checked = !!result.cb_analytics_optin;
+          CBAnalytics.setEnabled(analyticsToggle.checked);
 
           // Highlight current detail level
           const level = result.cb_detail_level || 'concise';
@@ -8144,6 +8962,30 @@ Be thorough and fair to both sides.`
           });
         });
       } catch (e) { debugLog('load settings failed', e); }
+    });
+
+    analyticsToggle.addEventListener('change', () => {
+      CBAnalytics.setEnabled(analyticsToggle.checked);
+      toast(analyticsToggle.checked ? 'Analytics enabled (local-only)' : 'Analytics disabled');
+    });
+
+    analyticsExportBtn.addEventListener('click', async () => {
+      try {
+        const data = CBAnalytics.exportData();
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `chatbridge-analytics-${new Date().toISOString().slice(0, 10)}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        toast('Analytics exported');
+      } catch (_) { toast('Export failed'); }
+    });
+
+    analyticsClearBtn.addEventListener('click', () => {
+      CBAnalytics.clear();
+      toast('Analytics cleared');
     });
 
     // ============================================
@@ -9172,6 +10014,7 @@ Be thorough and fair to both sides.`
           finalCount: cleaned.length
         }
       };
+
     }
 
     // Save cleaned conversations back to ALL storage locations
@@ -12273,6 +13116,7 @@ Output ONLY the 5 numbered questions, no other text.`;
         // 3. Extract Content - REDESIGNED PREMIUM UI
         const extractCard = createToolCard('<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>', 'Extract Content', 'URLs, numbers, code, lists');
         extractCard.addEventListener('click', async () => {
+          CBAnalytics.track('smart_workspace', 'extract_click');
           // PERFORMANCE CACHING - Check if we can use cached extraction
           let extracted = null;
           const currentMsgs = window.ChatBridge?._lastScanData?.messages;
@@ -12293,6 +13137,7 @@ Output ONLY the 5 numbered questions, no other text.`;
             showToolResult('<div style="text-align:center;padding:20px;"><div class="cb-spinner"></div><div style="margin-top:8px;color:var(--cb-subtext);">Scanning conversation...</div></div>', 'Extract Content');
             const msgs = await scanChat();
             if (!msgs || msgs.length === 0) {
+              CBAnalytics.track('smart_workspace', 'extract_empty_no_conversation');
               showToolResult('<div style="text-align:center;padding:30px;color:var(--cb-subtext);"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom:12px;opacity:0.5;"><rect x="3" y="5" width="18" height="14" rx="2"/><polyline points="7 15 7 10 12 10"/></svg><br>No conversation found.<br><br><span style="font-size:10px;">Open a chat and try again.</span></div>', 'Extract Content');
               return;
             }
@@ -12332,6 +13177,7 @@ Output ONLY the 5 numbered questions, no other text.`;
             .filter(c => c.count > 0);
 
           if (categories.length === 0) {
+            CBAnalytics.track('smart_workspace', 'extract_empty_no_items');
             showToolResult(`
               <div style="text-align:center;padding:20px;color:var(--cb-subtext);">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom:8px;opacity:0.5;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -12344,6 +13190,7 @@ Output ONLY the 5 numbered questions, no other text.`;
 
           // Calculate totals
           const totalItems = categories.reduce((sum, c) => sum + c.count, 0);
+          CBAnalytics.track('smart_workspace', 'extract_success', { categories: categories.length, items: totalItems });
 
           // Build category pills with labels (text only, no icons)
           const categoryPillsHTML = categories.map((c, i) => `
@@ -12677,11 +13524,13 @@ Output ONLY the 5 numbered questions, no other text.`;
         });
         toolsGrid.appendChild(extractCard);
 
-        // 6. Continue With - ALL 10 PLATFORMS + AUTO-INSERT
-        const continueCard = createToolCard('<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>', 'Continue With', 'Open chat in another AI');
+        // 6. Carry Forward - one-click context transfer to another AI
+        const continueCard = createToolCard('<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>', 'Carry Forward', 'One-click continue in another AI');
         continueCard.addEventListener('click', async () => {
+          CBAnalytics.track('smart_workspace', 'carry_forward_click');
           const msgs = await scanChat();
           if (!msgs || msgs.length === 0) {
+            CBAnalytics.track('smart_workspace', 'carry_forward_empty');
             toast('No conversation to continue');
             return;
           }
@@ -12718,14 +13567,15 @@ Output ONLY the 5 numbered questions, no other text.`;
               ${platformsHTML}
             </div>
             <div style="margin-top:10px;font-size:9px;color:var(--cb-subtext);text-align:center;">
-              Context will be auto-inserted when you open the target AI
+              One click per platform to carry context and auto-insert on open
             </div>
-          `, 'Continue With');
+          `, 'Carry Forward');
 
           toolResultArea.querySelectorAll('.cb-continue-btn').forEach(btn => {
             btn.addEventListener('click', async () => {
               const targetUrl = btn.dataset.url;
               const targetId = btn.dataset.id;
+              CBAnalytics.track('smart_workspace', 'carry_forward_target_click', { target: targetId, messages: msgs.length });
 
               btn.innerHTML = '<span class="cb-spinner" style="display:inline-block;width:10px;height:10px;margin-right:6px;vertical-align:middle;"></span><span style="font-size:11px;">Preparing...</span>';
               btn.disabled = true;
@@ -12796,13 +13646,19 @@ Output ONLY the 5 numbered questions, no other text.`;
                 // Copy to clipboard as backup
                 await navigator.clipboard.writeText(contextText);
 
-                // Open target site
-                window.open(targetUrl, '_blank');
+                // Open target site and actively restore text
+                chrome.runtime.sendMessage({
+                  type: 'open_and_restore',
+                  payload: { url: targetUrl, text: contextText }
+                }, () => { });
 
-                toast(`Opening ${btn.querySelector('span:last-child').textContent}. Context ready!`);
+                CBAnalytics.track('smart_workspace', 'carry_forward_success', { target: targetId, summarized: msgs.length > 20, messages: msgs.length });
+
+                toast(`Carry forward ready for ${btn.querySelector('span:last-child').textContent}`);
                 toolResultArea.style.display = 'none';
 
               } catch (e) {
+                CBAnalytics.track('smart_workspace', 'carry_forward_error', { target: targetId, message: String(e && (e.message || e)) });
                 console.error('[ChatBridge] Continue With error:', e);
                 toast('Failed to prepare context');
                 btn.innerHTML = `<span style="width:22px;height:22px;display:flex;align-items:center;justify-content:center;background:${platforms.find(p => p.id === targetId)?.color || '#666'}20;border-radius:6px;">${platforms.find(p => p.id === targetId)?.svg || ''}</span><span>${platforms.find(p => p.id === targetId)?.name || 'Retry'}</span>`;
@@ -12814,41 +13670,158 @@ Output ONLY the 5 numbered questions, no other text.`;
         toolsGrid.appendChild(continueCard);
 
         // 5. Memory Manager
-        const memoryCard = createToolCard('<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>', 'Memory Manager', 'Manage vector DB memory');
+        const memoryCard = createToolCard('<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>', 'Memory Manager', 'Unified memory dashboard');
         memoryCard.addEventListener('click', async () => {
-          showToolResult('<div style="text-align:center;color:var(--cb-subtext);font-size:12px;">Computing memory stats...</div>', 'Memory Manager');
-          
-          chrome.runtime.sendMessage({ type: 'vector_query', payload: { query: 'test', topK: 1 } }, (res) => {
-             const status = (res && res.ok !== false) ? 'OK' : 'Empty or Error';
-             const isOk = status === 'OK';
-             showToolResult(`
-               <div style="padding:10px;color:var(--cb-text);">
-                 <div style="margin-bottom:12px;font-size:13px;">
-                   <strong>Status:</strong> <span style="color:${isOk ? 'var(--cb-accent-success)' : 'var(--cb-accent-warning)'}">${status}</span>
-                 </div>
-                 <div style="font-size:11px;color:var(--cb-subtext);margin-bottom:16px;">
-                   ${isOk ? 'Vector index is built and active. This drives the Smart Query system and auto-context.' : 'No memory vectors recorded yet.'}
-                 </div>
-                 <button id="cb-mem-clear" style="padding:8px 16px;background:rgba(239,68,68,0.2);border:1px solid rgba(239,68,68,0.5);color:#EF4444;border-radius:6px;cursor:pointer;font-size:11px;">Clear All Memories</button>
-               </div>
-             `, 'Memory Manager');
-             
-             const clearBtn = toolResultArea.querySelector('#cb-mem-clear');
-             if (clearBtn) {
-               clearBtn.addEventListener('click', () => {
-                 chrome.runtime.sendMessage({ type: 'vector_clear_all' }, (clearRes) => {
-                    toast('Memory cleared');
-                    memoryCard.click();
-                 });
-               });
-             }
-          });
+          CBAnalytics.track('smart_workspace', 'memory_manager_click');
+          showToolResult('<div style="text-align:center;color:var(--cb-subtext);font-size:12px;">Loading unified memory dashboard...</div>', 'Memory Manager');
+
+          try {
+            const sendBg = (msg) => new Promise(resolve => {
+              try { chrome.runtime.sendMessage(msg, (res) => resolve(res)); }
+              catch (_) { resolve(null); }
+            });
+
+            const [convs, contexts, trackedTopics, handoffDrafts, pulseSessions, migrationExports, vectorRes] = await Promise.all([
+              loadConversationsAsync().catch(() => []),
+              StorageManager.getSavedContexts().catch(() => []),
+              StorageManager.getTrackedTopics().catch(() => []),
+              StorageManager.getHandoffDrafts().catch(() => []),
+              StorageManager.getPulseSessions().catch(() => []),
+              StorageManager.getMigrationExports().catch(() => []),
+              sendBg({ type: 'vector_query', payload: { query: 'diagnostic', topK: 1 } })
+            ]);
+
+            CBAnalytics.track('smart_workspace', 'memory_manager_success', {
+              conversations: Array.isArray(convs) ? convs.length : 0,
+              contexts: Array.isArray(contexts) ? contexts.length : 0,
+              trackedTopics: Array.isArray(trackedTopics) ? trackedTopics.length : 0,
+              handoffDrafts: Array.isArray(handoffDrafts) ? handoffDrafts.length : 0,
+              pulseSessions: Array.isArray(pulseSessions) ? pulseSessions.length : 0,
+              migrationExports: Array.isArray(migrationExports) ? migrationExports.length : 0,
+              vectorHealthy: !!(vectorRes && vectorRes.ok !== false)
+            });
+
+            const vectorHealthy = !!(vectorRes && vectorRes.ok !== false);
+            const row = (label, count, controlsHtml, subtitle = '') => `
+              <div style="padding:10px;border:1px solid var(--cb-border);border-radius:8px;background:var(--cb-bg2);margin-bottom:8px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+                  <div>
+                    <div style="font-size:12px;color:var(--cb-white);font-weight:600;">${label}</div>
+                    <div style="font-size:10px;color:var(--cb-subtext);">${subtitle || `${count} item${count === 1 ? '' : 's'}`}</div>
+                  </div>
+                  <div style="font-size:18px;font-weight:700;color:var(--cb-accent-primary);">${count}</div>
+                </div>
+                ${controlsHtml ? `<div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;">${controlsHtml}</div>` : ''}
+              </div>
+            `;
+
+            const tinyBtn = (id, label, tone = 'normal') => {
+              const danger = tone === 'danger';
+              return `<button id="${id}" style="padding:6px 10px;border-radius:6px;font-size:10px;cursor:pointer;border:1px solid ${danger ? 'rgba(239,68,68,0.4)' : 'var(--cb-border)'};background:${danger ? 'rgba(239,68,68,0.12)' : 'var(--cb-bg3)'};color:${danger ? '#f87171' : 'var(--cb-white)'};">${label}</button>`;
+            };
+
+            showToolResult(`
+              <div style="padding:10px;color:var(--cb-text);">
+                <div style="margin-bottom:10px;font-size:12px;color:var(--cb-subtext);">Single place to inspect and control ChatBridge memory buckets.</div>
+
+                ${row('Conversation History', Array.isArray(convs) ? convs.length : 0, tinyBtn('cb-mem-clear-convs', 'Clear History', 'danger'), 'Saved chat threads')}
+                ${row('Saved Contexts', Array.isArray(contexts) ? contexts.length : 0, tinyBtn('cb-mem-clear-contexts', 'Clear Contexts', 'danger'), 'Context Injector memory')}
+                ${row('Tracked Topics', Array.isArray(trackedTopics) ? trackedTopics.length : 0, tinyBtn('cb-mem-clear-topics', 'Clear Topics', 'danger'), 'Track This memory')}
+                ${row('Handoff Drafts', Array.isArray(handoffDrafts) ? handoffDrafts.length : 0, tinyBtn('cb-mem-clear-handoff', 'Clear Drafts', 'danger'), 'Generated handoff docs')}
+                ${row('Pulse Sessions', Array.isArray(pulseSessions) ? pulseSessions.length : 0, tinyBtn('cb-mem-clear-pulse', 'Clear Pulse', 'danger'), 'Usage analytics sessions')}
+                ${row('Migration Exports', Array.isArray(migrationExports) ? migrationExports.length : 0, `${tinyBtn('cb-mem-export-snapshot', 'Export Snapshot')} ${tinyBtn('cb-mem-clear-exports', 'Clear Exports', 'danger')}`, 'Migration kit snapshots')}
+                ${row('Vector Memory', vectorHealthy ? 1 : 0, tinyBtn('cb-mem-clear-vector', 'Clear Vector Index', 'danger'), vectorHealthy ? 'Healthy index for semantic search' : 'Empty or unavailable')}
+
+                <div style="display:flex;gap:8px;margin-top:10px;">
+                  <button id="cb-mem-refresh" class="cb-btn cb-btn-primary" style="flex:1;">Refresh</button>
+                </div>
+              </div>
+            `, 'Memory Manager');
+
+            const q = (id) => toolResultArea.querySelector(`#${id}`);
+
+            q('cb-mem-clear-convs')?.addEventListener('click', async () => {
+              try {
+                await saveConversationsAsync([]);
+                try { chrome.runtime.sendMessage({ type: 'replace_conversations', payload: { conversations: [] } }); } catch (_) { }
+                toast('Conversation history cleared');
+                memoryCard.click();
+              } catch (_) { toast('Failed to clear history'); }
+            });
+
+            q('cb-mem-clear-contexts')?.addEventListener('click', async () => {
+              try { await StorageManager.setSavedContexts([]); toast('Saved contexts cleared'); memoryCard.click(); } catch (_) { toast('Failed to clear contexts'); }
+            });
+
+            q('cb-mem-clear-topics')?.addEventListener('click', async () => {
+              try { await StorageManager.setTrackedTopics([]); toast('Tracked topics cleared'); memoryCard.click(); } catch (_) { toast('Failed to clear topics'); }
+            });
+
+            q('cb-mem-clear-handoff')?.addEventListener('click', async () => {
+              try {
+                const drafts = await StorageManager.getHandoffDrafts().catch(() => []);
+                if (!Array.isArray(drafts) || drafts.length === 0) { toast('No drafts to clear'); return; }
+                await chrome.storage.local.set({ chatbridge_agent_handoff_drafts: [] });
+                toast('Handoff drafts cleared');
+                memoryCard.click();
+              } catch (_) { toast('Failed to clear drafts'); }
+            });
+
+            q('cb-mem-clear-pulse')?.addEventListener('click', async () => {
+              try {
+                await chrome.storage.local.set({ chatbridge_agent_pulse_sessions: [] });
+                toast('Pulse sessions cleared');
+                memoryCard.click();
+              } catch (_) { toast('Failed to clear pulse sessions'); }
+            });
+
+            q('cb-mem-clear-exports')?.addEventListener('click', async () => {
+              try { await StorageManager.setMigrationExports([]); toast('Migration exports cleared'); memoryCard.click(); } catch (_) { toast('Failed to clear exports'); }
+            });
+
+            q('cb-mem-export-snapshot')?.addEventListener('click', async () => {
+              try {
+                const snapshot = {
+                  ts: Date.now(),
+                  conversations: Array.isArray(convs) ? convs.length : 0,
+                  contexts: Array.isArray(contexts) ? contexts.length : 0,
+                  trackedTopics: Array.isArray(trackedTopics) ? trackedTopics.length : 0,
+                  handoffDrafts: Array.isArray(handoffDrafts) ? handoffDrafts.length : 0,
+                  pulseSessions: Array.isArray(pulseSessions) ? pulseSessions.length : 0,
+                  migrationExports: Array.isArray(migrationExports) ? migrationExports.length : 0,
+                  vectorHealthy
+                };
+                const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `chatbridge-memory-snapshot-${new Date().toISOString().slice(0, 10)}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+                toast('Memory snapshot exported');
+              } catch (_) { toast('Failed to export snapshot'); }
+            });
+
+            q('cb-mem-clear-vector')?.addEventListener('click', async () => {
+              try {
+                await sendBg({ type: 'vector_clear_all' });
+                toast('Vector index cleared');
+                memoryCard.click();
+              } catch (_) { toast('Failed to clear vector index'); }
+            });
+
+            q('cb-mem-refresh')?.addEventListener('click', () => memoryCard.click());
+          } catch (err) {
+            CBAnalytics.track('smart_workspace', 'memory_manager_error', { message: String(err && (err.message || err)) });
+            showToolResult(`<div class="cb-agent-error">Failed to load unified memory dashboard: ${escapeHtml((err && err.message) || 'unknown error')}</div>`, 'Memory Manager');
+          }
         });
         toolsGrid.appendChild(memoryCard);
 
         // 6. Migration Kit
         const migrateCard = createToolCard('<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>', 'Migration Kit', 'Export / Import settings');
         migrateCard.addEventListener('click', async () => {
+          CBAnalytics.track('smart_workspace', 'migration_kit_click');
           showToolResult(`
             <div style="padding:10px;">
               <div style="font-size:12px;color:var(--cb-subtext);margin-bottom:16px;">
@@ -12869,6 +13842,7 @@ Output ONLY the 5 numbered questions, no other text.`;
           const statusDiv = toolResultArea.querySelector('#cb-mig-status');
 
           btnExport.addEventListener('click', async () => {
+            CBAnalytics.track('smart_workspace', 'migration_kit_export_click');
             try {
               const data = await StorageManager.getMigrationExports();
               const payload = {
@@ -12884,13 +13858,16 @@ Output ONLY the 5 numbered questions, no other text.`;
               URL.revokeObjectURL(url);
               
               if(data && data.length > 0) {
+                  CBAnalytics.track('smart_workspace', 'migration_kit_export_success', { records: data.length });
                  statusDiv.textContent = `Exported ${data.length} records successfully.`;
               } else {
+                  CBAnalytics.track('smart_workspace', 'migration_kit_export_empty');
                  statusDiv.textContent = "Exported empty environment (no local context saved yet).";
                  statusDiv.style.color = "var(--cb-subtext)";
               }
               statusDiv.style.display = 'block';
             } catch (err) {
+                CBAnalytics.track('smart_workspace', 'migration_kit_export_error', { message: String(err && (err.message || err)) });
               statusDiv.textContent = 'Export failed: ' + err.message;
               statusDiv.style.color = 'var(--cb-accent-warning)';
               statusDiv.style.display = 'block';
@@ -12908,12 +13885,14 @@ Output ONLY the 5 numbered questions, no other text.`;
                 const parsed = JSON.parse(evt.target.result);
                 if (parsed.data && Array.isArray(parsed.data)) {
                   await StorageManager.setMigrationExports(parsed.data);
+                  CBAnalytics.track('smart_workspace', 'migration_kit_import_success', { records: parsed.data.length });
                   statusDiv.textContent = `Successfully imported ${parsed.data.length} records!`;
                   statusDiv.style.color = 'var(--cb-accent-success)';
                 } else {
                   throw new Error("Invalid export format.");
                 }
               } catch (err) {
+                CBAnalytics.track('smart_workspace', 'migration_kit_import_error', { message: String(err && (err.message || err)) });
                 statusDiv.textContent = 'Import failed: ' + err.message;
                 statusDiv.style.color = 'var(--cb-accent-warning)';
               }
@@ -14531,10 +15510,10 @@ Respond with JSON only:
             color: '#00D4FF', ambient: true, action: showCatchMeUp
           },
           {
-            id: 'prepareme', name: 'Prepare Me',
-            desc: 'Task-specific prep packs on demand',
-            icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><line x1="8" y1="7" x2="16" y2="7"/><line x1="8" y1="11" x2="14" y2="11"/></svg>',
-            color: '#10B981', ambient: false, action: showPrepareMe
+            id: 'executioncoach', name: 'Execution Coach',
+            desc: 'Turn chat context into immediate next actions',
+            icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 15l2 2 4-4"/></svg>',
+            color: '#10B981', ambient: false, action: showExecutionCoach
           },
           {
             id: 'trackthis', name: 'Track This',
@@ -14832,10 +15811,10 @@ The singular most important action the user should focus on next based on the re
     }
 
     // ============================================
-    // AGENT 2: PREPARE ME — Task-Specific Prep Pack
-    // "Get me ready for anything" — assembles intelligence for upcoming tasks
+    // AGENT 2: EXECUTION COACH — Next Action Planner
+    // "What should I do next?" — converts conversation context into execution steps
     // ============================================
-    async function showPrepareMe() {
+    async function showExecutionCoach() {
       const outputArea = (agentContent && agentContent.querySelector('#cb-agent-output')) || (shadow && shadow.getElementById && shadow.getElementById('cb-agent-output'));
       if (!outputArea) return;
 
@@ -14843,23 +15822,34 @@ The singular most important action the user should focus on next based on the re
       outputArea.innerHTML = `
         <div class="cb-agent-sub">
           <div class="cb-agent-header">
-            <button class="cb-agent-back" aria-label="Go back to agent list" tabindex="0" id="cb-prep-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>Back</button>
-            <div class="cb-agent-header-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div>
-            <div class="cb-agent-header-title">Prepare Me</div>
+            <button class="cb-agent-back" aria-label="Go back to agent list" tabindex="0" id="cb-exec-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>Back</button>
+            <div class="cb-agent-header-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 15l2 2 4-4"/></svg></div>
+            <div class="cb-agent-header-title">Execution Coach</div>
           </div>
-          <div class="cb-agent-desc">Tell me what you're preparing for and I'll assemble a ready-to-use prep pack from your conversation history.</div>
+          <div class="cb-agent-desc">Define your objective and constraints, and I’ll generate a focused execution plan with next actions, risk checks, and follow-up prompts.</div>
 
-          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;" id="cb-prep-chips"></div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;" id="cb-exec-chips"></div>
 
-          <input type="text" id="cb-prep-task" class="cb-agent-input" placeholder="E.g., Meeting about project X, Job interview, Study session..." style="margin-bottom:8px;" />
-          <input type="text" id="cb-prep-details" class="cb-agent-input" placeholder="Optional: specific names, topics, dates..." style="margin-bottom:10px;" />
-          <button id="cb-prep-run" class="cb-agent-btn-primary">Build Prep Pack</button>
-          <div id="cb-prep-result" style="display:none;margin-top:14px;"></div>
+          <input type="text" id="cb-exec-objective" class="cb-agent-input" placeholder="Objective (e.g., Ship onboarding flow this week)" style="margin-bottom:8px;" />
+          <input type="text" id="cb-exec-constraints" class="cb-agent-input" placeholder="Constraints (time, scope, dependencies)" style="margin-bottom:8px;" />
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+            <select id="cb-exec-urgency" class="cb-agent-select" aria-label="Urgency">
+              <option value="today">Urgency: Today</option>
+              <option value="this-week" selected>Urgency: This Week</option>
+              <option value="this-month">Urgency: This Month</option>
+            </select>
+            <select id="cb-exec-source" class="cb-agent-select" aria-label="Context source">
+              <option value="relevant" selected>Use Relevant History</option>
+              <option value="current">Use Current Chat Only</option>
+            </select>
+          </div>
+          <button id="cb-exec-run" class="cb-agent-btn-primary">Generate Execution Plan</button>
+          <div id="cb-exec-result" style="display:none;margin-top:14px;"></div>
         </div>
       `;
 
       // Back button
-      outputArea.querySelector('#cb-prep-back').addEventListener('click', () => {
+      outputArea.querySelector('#cb-exec-back').addEventListener('click', () => {
         const grid = shadow.getElementById('cb-agents-grid');
         if (grid) grid.style.display = '';
         outputArea.style.display = 'none';
@@ -14867,9 +15857,9 @@ The singular most important action the user should focus on next based on the re
       });
 
       // Suggestion chips
-      const chipsContainer = outputArea.querySelector('#cb-prep-chips');
-      const taskInput = outputArea.querySelector('#cb-prep-task');
-      const chips = ['Meeting', 'Email', 'Proposal', 'Study Session', 'Presentation', 'Job Interview'];
+      const chipsContainer = outputArea.querySelector('#cb-exec-chips');
+      const objectiveInput = outputArea.querySelector('#cb-exec-objective');
+      const chips = ['Ship Feature', 'Debug Issue', 'Client Update', 'Design Plan', 'Roadmap', 'Launch Prep'];
       chips.forEach(label => {
         const chip = document.createElement('span');
         chip.className = 'cb-agent-chip';
@@ -14877,103 +15867,115 @@ The singular most important action the user should focus on next based on the re
         chip.addEventListener('click', () => {
           chipsContainer.querySelectorAll('.cb-agent-chip').forEach(c => c.classList.remove('cb-agent-chip-active'));
           chip.classList.add('cb-agent-chip-active');
-          taskInput.value = label;
+          objectiveInput.value = label;
         });
         chipsContainer.appendChild(chip);
       });
 
-      const runBtn = outputArea.querySelector('#cb-prep-run');
-      const detailsInput = outputArea.querySelector('#cb-prep-details');
-      const resultDiv = outputArea.querySelector('#cb-prep-result');
+      const runBtn = outputArea.querySelector('#cb-exec-run');
+      const constraintsInput = outputArea.querySelector('#cb-exec-constraints');
+      const urgencySelect = outputArea.querySelector('#cb-exec-urgency');
+      const sourceSelect = outputArea.querySelector('#cb-exec-source');
+      const resultDiv = outputArea.querySelector('#cb-exec-result');
 
       runBtn.addEventListener('click', async () => {
-        const task = taskInput.value.trim();
-        if (!task) { toast('Please describe what you\'re preparing for'); return; }
+        const objective = objectiveInput.value.trim();
+        if (!objective) { toast('Please enter an objective first'); return; }
 
         runBtn.disabled = true;
-        runBtn.textContent = 'Assembling prep pack...';
+        runBtn.textContent = 'Generating execution plan...';
         resultDiv.style.display = 'block';
-        let prepTimer;
+        let execTimer;
         resultDiv.innerHTML = `
           <div class="cb-agent-loading">
             <div class="cb-agent-skeleton cb-agent-skeleton-lg"></div>
             <div class="cb-agent-skeleton cb-agent-skeleton-md"></div>
             <div class="cb-agent-skeleton cb-agent-skeleton-sm"></div>
-            <div class="cb-agent-loading-text" id="cb-prep-load-text">Searching your conversation history...</div>
+            <div class="cb-agent-loading-text" id="cb-exec-load-text">Gathering relevant context...</div>
           </div>`;
 
-        const loadTexts = ['Analyzing prior knowledge...', 'Synthesizing relevant data...', 'Drafting your prep pack...'];
+        const loadTexts = ['Analyzing dependencies...', 'Prioritizing actions...', 'Drafting your execution plan...'];
         let loadIdx = 0;
-        prepTimer = setInterval(() => {
-          const lt = resultDiv.querySelector('#cb-prep-load-text');
+        execTimer = setInterval(() => {
+          const lt = resultDiv.querySelector('#cb-exec-load-text');
           if (lt) { loadIdx = (loadIdx + 1) % loadTexts.length; lt.textContent = loadTexts[loadIdx]; }
         }, 1500);
 
         try {
-          const convos = await loadConversationsAsync();
-          const details = detailsInput.value.trim();
-          const searchTerms = (task + ' ' + details).toLowerCase().split(/\s+/).filter(w => w.length > 2);
-
-          const scored = convos.map(c => {
-            const text = (c.conversation || []).map(m => m.text || '').join(' ').toLowerCase();
-            let score = 0;
-            searchTerms.forEach(term => {
-              const matches = (text.match(new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi')) || []).length;
-              score += matches;
-            });
-            return { conv: c, score };
-          }).filter(s => s.score > 0).sort((a, b) => b.score - a.score).slice(0, 10);
-
+          const constraints = constraintsInput.value.trim();
+          const urgency = urgencySelect.value;
+          const sourceMode = sourceSelect.value;
+          let scored = [];
           let contextBlock = '';
-          if (scored.length > 0) {
-            contextBlock = scored.map((s, i) => {
-              const msgs = s.conv.conversation || [];
-              const userMsgs = msgs.filter(m => m.role === 'user').map(m => m.text).join('\n---\n').slice(0, 1000);
-              const aiMsgs = msgs.filter(m => m.role === 'assistant').map(m => m.text).join('\n---\n').slice(0, 1000);
-              const platform = s.conv.platform || location.hostname || 'unknown';
-              return `[Source ${i + 1}] Platform: ${platform} | ${getTimeAgo(s.conv.ts)}
-User said: ${userMsgs}
-AI replied: ${aiMsgs}`;
-            }).join('\n\n========================\n\n');
+
+          if (sourceMode === 'current') {
+            const currentText = await getConversationText();
+            contextBlock = currentText && currentText.trim()
+              ? `[Current Conversation]\n${currentText.slice(0, 5000)}`
+              : 'No active current conversation found. Use objective + constraints only.';
           } else {
-            contextBlock = 'No directly relevant past conversations found. Generate general, highly professional guidance based on the task type.';
+            const convos = await loadConversationsAsync();
+            const searchTerms = (objective + ' ' + constraints).toLowerCase().split(/\s+/).filter(w => w.length > 2);
+            scored = convos.map(c => {
+              const text = (c.conversation || []).map(m => m.text || '').join(' ').toLowerCase();
+              let score = 0;
+              searchTerms.forEach(term => {
+                const matches = (text.match(new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi')) || []).length;
+                score += matches;
+              });
+              return { conv: c, score };
+            }).filter(s => s.score > 0).sort((a, b) => b.score - a.score).slice(0, 8);
+
+            if (scored.length > 0) {
+              contextBlock = scored.map((s, i) => {
+                const msgs = s.conv.conversation || [];
+                const userMsgs = msgs.filter(m => m.role === 'user').map(m => m.text).join('\n---\n').slice(0, 900);
+                const aiMsgs = msgs.filter(m => m.role === 'assistant').map(m => m.text).join('\n---\n').slice(0, 900);
+                const platform = s.conv.platform || location.hostname || 'unknown';
+                return `[Source ${i + 1}] Platform: ${platform} | ${getTimeAgo(s.conv.ts)}\nUser said: ${userMsgs}\nAI replied: ${aiMsgs}`;
+              }).join('\n\n========================\n\n');
+            } else {
+              contextBlock = 'No strongly relevant history found. Build an execution plan from objective and constraints only.';
+            }
           }
 
-          const prompt = `You are "Prepare Me" — an elite preparation assistant inside ChatBridge.
+          const prompt = `You are "Execution Coach" inside ChatBridge.
 
-USER'S UPCOMING TASK: 
-${task}
-${details ? `Additional Context provided by user: ${details}` : ''}
+OBJECTIVE:
+${objective}
 
-RELEVANT PRIOR CONVERSATIONS FOUND (${scored.length}):
+CONSTRAINTS:
+${constraints || 'None provided'}
+
+URGENCY:
+${urgency}
+
+CONTEXT INPUT:
 ========================
 ${contextBlock}
 ========================
 
-YOUR INSTRUCTIONS:
-Assemble a highly professional, comprehensive PREP PACK for the user's upcoming task.
-Synthesize the provided conversation history. If no exact matches are found, provide expert general guidance for the task.
-CRITICAL RULES:
-- Start directly with the first markdown heading. No intro fluff.
-- Use explicit bullet points. 
-- Do NOT hallucinate specifics; infer what you can logically.
-- Mention the platform [Like This] at the beginning of bullet points when referencing past AI discussions.
+Generate a concise, high-utility execution response with these exact sections:
 
-REQUIRED SECTIONS:
-## Key Background
-The crucial context and history the user needs to remember before starting this task.
+## Decision Snapshot
+State what should happen next in 2-3 lines.
 
-## Talking Points
-5 ready-to-use, specific, and actionable points synthesized for this task. 
+## Next 3 Actions
+Three concrete, sequenced actions the user can execute now.
 
-## Questions to Ask
-Critical questions the user should ask during this task to uncover gaps or resolve ambiguities.
+## Risk Radar
+Top risks, blockers, or assumptions that could derail execution.
 
-## Watch Out
-Potential risks, pitfalls, or contradictions to be aware of.
+## Ask This Next
+2-4 follow-up prompts/questions the user should ask an AI or teammate next.
 
-## Quick Reference
-A hyper-dense cheat sheet of key facts, numbers, names, or deadlines pulled from their context or relevant to the task.`;
+## 24h Plan
+A realistic plan for the next 24 hours based on urgency.
+
+Rules:
+- No fluff. No motivational language.
+- Use bullets and clear action verbs.
+- If data is missing, explicitly say what is missing.`;
 
           const res = await callAgentRouteWithRetry(prompt, { complexity: 'deep', maxTokens: 1500 });
 
@@ -14986,42 +15988,53 @@ A hyper-dense cheat sheet of key facts, numbers, names, or deadlines pulled from
                 <span style="color:var(--cb-white);">${getTimeAgo(s.conv.ts)}</span>
                 <span style="color:var(--cb-subtext);font-size:9px;">score: ${s.score}</span>
               </div>`;
-            }).join('') : '<div style="font-size:10px;color:var(--cb-subtext);">General guidance (no matching conversations)</div>';
+            }).join('') : `<div style="font-size:10px;color:var(--cb-subtext);">${sourceMode === 'current' ? 'Using current chat context only' : 'No matching conversations found'}</div>`;
 
             const formattedResult = formatAgentMarkdown(res.result);
             resultDiv.innerHTML = `
               <div class="cb-agent-stats">
-                <div class="cb-agent-stat"><div class="cb-agent-stat-val">${scored.length}</div><div class="cb-agent-stat-label">Sources Found</div></div>
-                <div class="cb-agent-stat"><div class="cb-agent-stat-val">5</div><div class="cb-agent-stat-label">Sections</div></div>
+                <div class="cb-agent-stat"><div class="cb-agent-stat-val">${sourceMode === 'current' ? '1' : scored.length}</div><div class="cb-agent-stat-label">Sources</div></div>
+                <div class="cb-agent-stat"><div class="cb-agent-stat-val">5</div><div class="cb-agent-stat-label">Actions/Sections</div></div>
               </div>
               <div class="cb-agent-result-section"><div class="cb-agent-result-body">${formattedResult}</div></div>
               <div class="cb-agent-result-section"><div class="cb-agent-result-header">📎 Sources</div>${sourcesHtml}</div>
               <div class="cb-agent-action-row">
-                <button id="cb-prep-copy" class="cb-agent-btn-secondary">Copy Pack</button>
-                <button id="cb-prep-insert" class="cb-agent-btn-primary">Insert to Chat</button>
+                <button id="cb-exec-copy" class="cb-agent-btn-secondary">Copy Plan</button>
+                <button id="cb-exec-insert" class="cb-agent-btn-primary">Insert to Chat</button>
+                <button id="cb-exec-handoff" class="cb-agent-btn-secondary">Open Handoff</button>
               </div>
-              <div class="cb-agent-meta">Based on ${scored.length} conversation${scored.length !== 1 ? 's' : ''} · ${res.model_used || 'AI'} · ${res.latency_ms || 0}ms</div>
+              <div class="cb-agent-meta">Urgency: ${urgency} · ${res.model_used || 'AI'} · ${res.latency_ms || 0}ms</div>
             `;
 
-            const copyBtn = resultDiv.querySelector('#cb-prep-copy');
-            const insertBtn = resultDiv.querySelector('#cb-prep-insert');
+            const copyBtn = resultDiv.querySelector('#cb-exec-copy');
+            const insertBtn = resultDiv.querySelector('#cb-exec-insert');
+            const handoffBtn = resultDiv.querySelector('#cb-exec-handoff');
             if (copyBtn) copyBtn.addEventListener('click', async () => {
-              try { await navigator.clipboard.writeText(res.result); toast('Prep pack copied!'); } catch (_) { toast('Copy failed'); }
+              try { await navigator.clipboard.writeText(res.result); toast('Execution plan copied!'); } catch (_) { toast('Copy failed'); }
             });
             if (insertBtn) insertBtn.addEventListener('click', () => {
               try { insertTextToChat(res.result); toast('Inserted!'); } catch (_) { toast('Insert failed'); }
             });
-            toast('Prep pack ready!');
+            if (handoffBtn) handoffBtn.addEventListener('click', async () => {
+              try {
+                await navigator.clipboard.writeText(res.result);
+                toast('Plan copied. Opening Handoff...');
+                try { showHandoff(); } catch (_) { }
+              } catch (_) {
+                toast('Could not open Handoff');
+              }
+            });
+            toast('Execution plan ready!');
           } else {
             resultDiv.innerHTML = `<div class="cb-agent-error">Failed: ${res && res.error ? escapeHtml(res.error) : 'Unknown error'}</div>`;
           }
         } catch (e) {
           resultDiv.innerHTML = `<div class="cb-agent-error">Error: ${escapeHtml(e.message || 'Unknown error')}</div>`;
-          debugLog('Prepare Me error', e);
+          debugLog('Execution Coach error', e);
         } finally {
-          if (typeof prepTimer !== 'undefined') clearInterval(prepTimer);
+          if (typeof execTimer !== 'undefined') clearInterval(execTimer);
           runBtn.disabled = false;
-          runBtn.textContent = 'Build Prep Pack';
+          runBtn.textContent = 'Generate Execution Plan';
         }
       });
     }
@@ -15362,6 +16375,10 @@ One incredibly specific, actionable recommendation for what the user should do n
             </label>
           </div>
 
+          <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--cb-white);cursor:pointer;margin-bottom:10px;">
+            <input type="checkbox" id="cb-so-honesty"> Honesty Mode (Devil's Advocate)
+          </label>
+
           <select id="cb-so-model" class="cb-agent-select" aria-label="Select option" style="margin-bottom:10px;">
             <option value="auto">Auto-select verification model</option>
             <option value="gemini">Verify with Gemini</option>
@@ -15392,6 +16409,7 @@ One incredibly specific, actionable recommendation for what the user should do n
       const autoText = outputArea.querySelector('#cb-so-auto-text');
       const questionInput = outputArea.querySelector('#cb-so-question');
       const answerInput = outputArea.querySelector('#cb-so-answer');
+      const honestyToggle = outputArea.querySelector('#cb-so-honesty');
       const modelSelect = outputArea.querySelector('#cb-so-model');
       const runBtn = outputArea.querySelector('#cb-so-run');
       const resultDiv = outputArea.querySelector('#cb-so-result');
@@ -15480,6 +16498,7 @@ One incredibly specific, actionable recommendation for what the user should do n
         try {
           const verifyModel = modelSelect.value === 'auto' ? 'auto' : modelSelect.value;
           const critiqueMode = outputArea.querySelector('input[name="cb-so-mode"]:checked').value === 'critique';
+          const honestyMode = !!(honestyToggle && honestyToggle.checked);
 
           const verifyPrompt = `You are Second Opinion, a verification agent inside ChatBridge.
 
@@ -15533,13 +16552,8 @@ How should this actually be handled? Provide a deeply contrasting or vastly supe
 
 Be highly critical, direct, and unforgiving in your analysis.`;
 
-          const prompt = critiqueMode ? critiquePrompt : verifyPrompt;
-
-          const res = await callAgentRouteWithRetry(prompt, { model: verifyModel, complexity: 'deep', maxTokens: 1200 });
-
-          if (res && res.ok && res.result) {
-            // Extract agreement score for visual traffic light
-            const scoreMatch = res.result.match(/\*\*(\d+)%?\*\*/);
+          const renderSingleAnalysis = (resObj) => {
+            const scoreMatch = (resObj.result || '').match(/\*\*(\d+)%?\*\*/);
             const score = scoreMatch ? parseInt(scoreMatch[1], 10) : null;
 
             let trafficHtml = '';
@@ -15557,7 +16571,7 @@ Be highly critical, direct, and unforgiving in your analysis.`;
               `;
             }
 
-            const formatted = formatAgentMarkdown(res.result);
+            const formatted = formatAgentMarkdown(resObj.result || 'No result returned.');
             resultDiv.innerHTML = `
               ${trafficHtml}
               <div class="cb-agent-result-section"><div class="cb-agent-result-body">${formatted}</div></div>
@@ -15565,18 +16579,125 @@ Be highly critical, direct, and unforgiving in your analysis.`;
                 <button id="cb-so-copy" class="cb-agent-btn-secondary">Copy Analysis</button>
                 <button id="cb-so-insert" class="cb-agent-btn-primary">Insert Improved</button>
               </div>
-              <div class="cb-agent-meta">Verified by ${res.model_used || 'AI'} · ${res.latency_ms || 0}ms</div>
+              <div class="cb-agent-meta">Verified by ${resObj.model_used || 'AI'} · ${resObj.latency_ms || 0}ms</div>
             `;
 
             resultDiv.querySelector('#cb-so-copy').addEventListener('click', async () => {
-              try { await navigator.clipboard.writeText(res.result); toast('Analysis copied!'); } catch (_) { toast('Copy failed'); }
+              try { await navigator.clipboard.writeText(resObj.result || ''); toast('Analysis copied!'); } catch (_) { toast('Copy failed'); }
             });
             resultDiv.querySelector('#cb-so-insert').addEventListener('click', () => {
-              try { insertTextToChat(res.result); toast('Inserted!'); } catch (_) { toast('Insert failed'); }
+              try { insertTextToChat(resObj.result || ''); toast('Inserted!'); } catch (_) { toast('Insert failed'); }
             });
-            toast('Verification complete!');
+          };
+
+          if (critiqueMode) {
+            const critiqueRes = await callAgentRouteWithRetry(critiquePrompt, { model: verifyModel, complexity: 'deep', maxTokens: 1200 });
+            if (critiqueRes && critiqueRes.ok && critiqueRes.result) {
+              renderSingleAnalysis(critiqueRes);
+              toast('Critique complete!');
+            } else {
+              resultDiv.innerHTML = `<div class="cb-agent-error">Failed: ${critiqueRes && critiqueRes.error ? escapeHtml(critiqueRes.error) : 'Unknown error'}</div>`;
+            }
           } else {
-            resultDiv.innerHTML = `<div class="cb-agent-error">Failed: ${res && res.error ? escapeHtml(res.error) : 'Unknown error'}</div>`;
+            // Explicit cross-check: Gemini + Llama
+            const geminiRes = await callAgentRouteWithRetry(verifyPrompt, { model: 'gemini', complexity: 'deep', maxTokens: 900 });
+            const llamaRes = await callAgentRouteWithRetry(verifyPrompt, { model: 'llama', complexity: 'deep', maxTokens: 900 });
+
+            if ((!geminiRes || !geminiRes.ok) && (!llamaRes || !llamaRes.ok)) {
+              const fallback = await callAgentRouteWithRetry(verifyPrompt, { model: verifyModel, complexity: 'deep', maxTokens: 1200 });
+              if (fallback && fallback.ok && fallback.result) {
+                renderSingleAnalysis(fallback);
+                toast('Verification complete!');
+              } else {
+                resultDiv.innerHTML = `<div class="cb-agent-error">Failed: ${fallback && fallback.error ? escapeHtml(fallback.error) : 'Unable to get verification from any model.'}</div>`;
+              }
+            } else {
+              const geminiText = geminiRes && geminiRes.ok ? geminiRes.result : 'Gemini unavailable.';
+              const llamaText = llamaRes && llamaRes.ok ? llamaRes.result : 'Llama unavailable.';
+
+              const comparePrompt = `You are a strict comparison judge.
+
+Original answer to verify:
+${answer.slice(0, 3000)}
+
+Gemini verification output:
+${geminiText}
+
+Llama verification output:
+${llamaText}
+
+Return exactly these sections:
+VERDICT: AGREE | CONTRADICT | PARTIAL
+CONFIDENCE: <0-100>
+
+## Why
+Short reason for verdict.
+
+## Key Differences
+What one model flagged that the other didn't.
+
+## Recommended Next Move
+What the user should do now.
+
+Keep it concise and concrete.`;
+
+              const compareRes = await callAgentRouteWithRetry(comparePrompt, { model: 'auto', complexity: 'deep', maxTokens: 700 });
+              const compareText = compareRes && compareRes.ok ? compareRes.result : 'VERDICT: PARTIAL\nCONFIDENCE: 50\n\nCould not complete structured comparison.';
+
+              const verdictMatch = compareText.match(/VERDICT:\s*(AGREE|CONTRADICT|PARTIAL)/i);
+              const confidenceMatch = compareText.match(/CONFIDENCE:\s*(\d{1,3})/i);
+              const verdict = verdictMatch ? verdictMatch[1].toUpperCase() : 'PARTIAL';
+              const confidence = confidenceMatch ? Math.max(0, Math.min(100, parseInt(confidenceMatch[1], 10))) : 50;
+
+              const verdictColor = verdict === 'AGREE' ? '#10B981' : (verdict === 'CONTRADICT' ? '#EF4444' : '#F59E0B');
+              const verdictLabel = verdict === 'AGREE' ? 'Models Agree' : (verdict === 'CONTRADICT' ? 'Models Contradict' : 'Partial Agreement');
+
+              let honestyBlock = '';
+              if (honestyMode) {
+                const honestyPrompt = `${critiquePrompt}\n\nKeep this response under 8 bullet points and prioritize hidden risks.`;
+                const honestyRes = await callAgentRouteWithRetry(honestyPrompt, { model: 'auto', complexity: 'deep', maxTokens: 700 });
+                if (honestyRes && honestyRes.ok && honestyRes.result) {
+                  honestyBlock = `<div class="cb-agent-result-section"><div class="cb-agent-result-header">🧪 Honesty Mode Addendum</div><div class="cb-agent-result-body">${formatAgentMarkdown(honestyRes.result)}</div></div>`;
+                }
+              }
+
+              const sanitizedCompare = compareText
+                .replace(/VERDICT:\s*(AGREE|CONTRADICT|PARTIAL)/i, '')
+                .replace(/CONFIDENCE:\s*\d{1,3}/i, '')
+                .trim();
+
+              resultDiv.innerHTML = `
+                <div class="cb-agent-result-section" style="border-color:${verdictColor};background:color-mix(in srgb, ${verdictColor} 10%, transparent);">
+                  <div class="cb-traffic-light">
+                    <div class="cb-traffic-dot" style="color:${verdictColor};background:${verdictColor};"></div>
+                    <div class="cb-traffic-label" style="color:${verdictColor};">${verdictLabel} · ${confidence}% confidence</div>
+                  </div>
+                  <div class="cb-confidence-meter">
+                    <div class="cb-confidence-fill" style="width:${confidence}%;background:${verdictColor};"></div>
+                  </div>
+                  <div class="cb-agent-result-body">${formatAgentMarkdown(sanitizedCompare)}</div>
+                </div>
+
+                <div class="cb-agent-result-section"><div class="cb-agent-result-header">Gemini Analysis</div><div class="cb-agent-result-body">${formatAgentMarkdown(geminiText)}</div></div>
+                <div class="cb-agent-result-section"><div class="cb-agent-result-header">Llama Analysis</div><div class="cb-agent-result-body">${formatAgentMarkdown(llamaText)}</div></div>
+                ${honestyBlock}
+
+                <div class="cb-agent-action-row">
+                  <button id="cb-so-copy" class="cb-agent-btn-secondary">Copy Cross-Check</button>
+                  <button id="cb-so-insert" class="cb-agent-btn-primary">Insert Summary</button>
+                </div>
+                <div class="cb-agent-meta">Cross-check completed${honestyMode ? ' · Honesty Mode ON' : ''}</div>
+              `;
+
+              const summaryForClipboard = `VERDICT: ${verdict}\nCONFIDENCE: ${confidence}%\n\n${sanitizedCompare}\n\n--- GEMINI ---\n${geminiText}\n\n--- LLAMA ---\n${llamaText}`;
+              resultDiv.querySelector('#cb-so-copy').addEventListener('click', async () => {
+                try { await navigator.clipboard.writeText(summaryForClipboard); toast('Cross-check copied!'); } catch (_) { toast('Copy failed'); }
+              });
+              resultDiv.querySelector('#cb-so-insert').addEventListener('click', () => {
+                try { insertTextToChat(summaryForClipboard); toast('Inserted!'); } catch (_) { toast('Insert failed'); }
+              });
+              toast('Cross-check complete!');
+            }
           }
         } catch (e) {
           resultDiv.innerHTML = `<div class="cb-agent-error">Error: ${escapeHtml(e.message || 'Unknown error')}</div>`;
@@ -16997,6 +18118,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
     // Scan button handler: scan first, then save, then background tasks (RAG/MCP)
     btnScan.addEventListener('click', async () => {
       const scanStartTime = Date.now();
+      CBAnalytics.track('scan', 'main_click');
       addLoadingToButton(btnScan, 'Scanning');
       status.textContent = 'Status: scanning...';
       preview.textContent = 'Preview: Scanning messages...';
@@ -17017,6 +18139,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         } catch (e) { }
 
         if (!msgs || !msgs.length) {
+          CBAnalytics.track('scan', 'main_no_messages');
           // Check if there were errors during scan
           let errorMsg = 'No messages found in current chat';
           try {
@@ -17088,6 +18211,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           try {
             await saveConversation(conv);
             const totalDuration = Date.now() - scanStartTime;
+            CBAnalytics.track('scan', 'main_success', { messages: final.length, durationMs: totalDuration, userMessages: userMsgs, aiMessages: aiMsgs });
 
             // IMMEDIATELY update UI to show completion
             removeLoadingFromButton(btnScan, '🔍 Scan Chat');
@@ -17125,6 +18249,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
             refreshHistory();
             announce('Scan complete, conversation saved');
           } catch (saveError) {
+            CBAnalytics.track('scan', 'main_save_error', { message: String(saveError && (saveError.message || saveError)) });
             debugLog('Save failed', saveError);
             removeLoadingFromButton(btnScan, '🔍 Scan Chat');
             toast('Save failed: ' + (saveError.message || 'unknown error'));
@@ -17322,6 +18447,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           }, 50); // Small delay to let UI update first
         }
       } catch (e) {
+        CBAnalytics.track('scan', 'main_error', { message: String(e && (e.message || e)) });
         console.error('[ChatBridge] Scan error:', e);
         status.textContent = 'Status: error';
         toast('Scan failed: ' + (e && e.message));
@@ -17363,6 +18489,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
 
     // Copy quick pill — same logic as old clipboard button
     shadow.getElementById('qa-sidebar-copy')?.addEventListener('click', async () => {
+      CBAnalytics.track('quick_action', 'copy_click');
       try {
         let txt = '';
         if (summView.classList.contains('cb-view-active') && summSourceText && summSourceText.textContent && summSourceText.textContent !== '(no conversation found)' && summSourceText.textContent !== '(no result)') {
@@ -17378,16 +18505,25 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           txt = preview.textContent;
         }
         if (!txt) txt = lastScannedText || '';
-        if (!txt) { toast('Nothing to copy'); return; }
+        if (!txt) { CBAnalytics.track('quick_action', 'copy_empty'); toast('Nothing to copy'); return; }
         await navigator.clipboard.writeText(txt);
+        CBAnalytics.track('quick_action', 'copy_success', { chars: txt.length });
         toast('Copied to clipboard');
       } catch (e) {
-        try { await navigator.clipboard.writeText(lastScannedText || ''); toast('Copied to clipboard (fallback)'); } catch (_) { toast('Copy failed'); }
+        try {
+          await navigator.clipboard.writeText(lastScannedText || '');
+          CBAnalytics.track('quick_action', 'copy_fallback_success', { chars: (lastScannedText || '').length });
+          toast('Copied to clipboard (fallback)');
+        } catch (_) {
+          CBAnalytics.track('quick_action', 'copy_error', { message: String(e && (e.message || e)) });
+          toast('Copy failed');
+        }
       }
     });
 
 
     shadow.getElementById('qa-sidebar-clean')?.addEventListener('click', async () => {
+      CBAnalytics.track('quick_action', 'clean_click');
       try {
         // Check if clean panel already exists
         let cleanPanel = shadow.getElementById('cb-clean-panel');
@@ -17477,6 +18613,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
 
         // Confirm button (EXACT SAME AS SMART WORKSPACE + REFRESH HISTORY/INSIGHTS)
         shadow.getElementById('cb-clean-confirm-inline')?.addEventListener('click', async () => {
+          CBAnalytics.track('quick_action', 'clean_confirm_click');
           const confirmBtn = shadow.getElementById('cb-clean-confirm-inline');
           if (confirmBtn) {
             confirmBtn.disabled = true;
@@ -17517,6 +18654,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
 
               shadow.getElementById('close-clean-panel-final')?.addEventListener('click', () => cleanPanel.remove());
               toast(`✅ Cleaned! ${totalToRemove} conversations removed`);
+              CBAnalytics.track('quick_action', 'clean_success', { removed: totalToRemove, finalCount: stats.finalCount });
 
               // REFRESH HISTORY AND INSIGHTS (same as Smart Workspace)
               setTimeout(async () => {
@@ -17539,6 +18677,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
               }, 1500);
 
             } else {
+              CBAnalytics.track('quick_action', 'clean_save_failed');
               toast('Failed to save cleaned data');
               if (confirmBtn) {
                 confirmBtn.disabled = false;
@@ -17546,6 +18685,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
               }
             }
           } catch (e) {
+            CBAnalytics.track('quick_action', 'clean_error', { message: String(e && (e.message || e)) });
             console.error('[ChatBridge] Clean failed:', e);
             toast('Clean operation failed');
             cleanPanel.remove();
@@ -17553,6 +18693,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         });
 
       } catch (e) {
+        CBAnalytics.track('quick_action', 'clean_error', { message: String(e && (e.message || e)) });
         toast('Clean & Organize failed');
         console.error('[ChatBridge] Clean error:', e);
         const panel = shadow.getElementById('cb-clean-panel');
@@ -17561,9 +18702,11 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
     });
 
     shadow.getElementById('qa-sidebar-export')?.addEventListener('click', async () => {
+      CBAnalytics.track('quick_action', 'export_click');
       try {
         const convs = await loadConversationsAsync();
         if (!convs || convs.length === 0) {
+          CBAnalytics.track('quick_action', 'export_empty');
           toast('No conversations to export');
           return;
         }
@@ -17686,6 +18829,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
 
           // ===== JSON Export =====
           shadow.getElementById('format-json')?.addEventListener('click', () => {
+            CBAnalytics.track('quick_action', 'export_json', { label, conversations: dataToExport.length });
             downloadFile(
               JSON.stringify(dataToExport, null, 2),
               `chatbridge-${fileSlug(label)}-${dateStamp()}.json`,
@@ -17697,6 +18841,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
 
           // ===== Markdown Export (rich) =====
           shadow.getElementById('format-md')?.addEventListener('click', () => {
+            CBAnalytics.track('quick_action', 'export_markdown', { label, conversations: dataToExport.length });
             let md = `# ChatBridge Export \u2014 ${label}\n\n`;
             md += `> Exported on ${new Date().toLocaleString()}\n\n---\n\n`;
 
@@ -17742,6 +18887,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
 
           // ===== Plain Text Export =====
           shadow.getElementById('format-txt')?.addEventListener('click', () => {
+            CBAnalytics.track('quick_action', 'export_text', { label, conversations: dataToExport.length });
             const divider = '='.repeat(60);
             let txt = `CHATBRIDGE EXPORT \u2014 ${label}\n`;
             txt += `Exported: ${new Date().toLocaleString()}\n${divider}\n\n`;
@@ -17788,6 +18934,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
 
           // ===== CSV Export =====
           shadow.getElementById('format-csv')?.addEventListener('click', () => {
+            CBAnalytics.track('quick_action', 'export_csv', { label, conversations: dataToExport.length });
             const escCsv = (val) => {
               if (val == null) return '';
               const s = String(val).replace(/"/g, '""');
@@ -17819,6 +18966,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
 
           // ===== PDF Export =====
           shadow.getElementById('format-pdf')?.addEventListener('click', () => {
+            CBAnalytics.track('quick_action', 'export_pdf', { label, conversations: dataToExport.length });
             // Build a styled HTML document and open print dialog (Save as PDF)
             let totalMessages = 0;
             let totalCodeBlocks = 0;
@@ -19878,6 +21026,7 @@ ${bodyHtml}
 
         return { intercepted: false, payload, cacheKey: key };
       } catch (_) {
+        CBAnalytics.track('quick_action', 'export_error', { message: String(e && (e.message || e)) });
         return { intercepted: false, payload, cacheKey: null };
       }
     }
@@ -20320,6 +21469,7 @@ ${bodyHtml}
 
     btnSummarize.addEventListener('click', async () => {
       closeAllViews();
+      CBAnalytics.track('summarize', 'open_view');
       try {
         // Check if we have saved state to restore
         if (__cbViewStates.summ.sourceText) {
@@ -20497,6 +21647,7 @@ ${bodyHtml}
 
     btnRewrite.addEventListener('click', async () => {
       closeAllViews();
+      CBAnalytics.track('rewrite', 'open_view');
       try {
         // Check if we have saved state to restore
         if (__cbViewStates.rew.result) {
@@ -20557,6 +21708,7 @@ ${bodyHtml}
 
 
     btnGoRew.addEventListener('click', async () => {
+      CBAnalytics.track('rewrite', 'run_click');
       try {
         btnGoRew.disabled = true;
         addLoadingToButton(btnGoRew, 'Refining...');
@@ -20595,6 +21747,7 @@ ${bodyHtml}
         let result = '';
         // If target model is selected, use syncTone logic (cross-model adaptation)
         if (targetModel) {
+          CBAnalytics.track('sync_tone', 'run_click', { targetModel });
           updateProgress(rewProg, 'sync', { phase: 'preparing' });
           result = await hierarchicalProcess(textToRewrite, 'syncTone', {
             chunkSize: 12000,
@@ -20635,11 +21788,26 @@ ${bodyHtml}
           btnCopyRew.style.display = 'inline-flex';
           btnInsertRew.style.display = 'inline-flex';
           toast('Rewrite complete');
+          if (targetModel) {
+            CBAnalytics.track('sync_tone', 'run_success', { targetModel });
+          } else {
+            CBAnalytics.track('rewrite', 'run_success', { style });
+          }
 
         } else {
+          if (targetModel) {
+            CBAnalytics.track('sync_tone', 'run_empty', { targetModel });
+          } else {
+            CBAnalytics.track('rewrite', 'run_empty', { style });
+          }
           toast('Transformation returned no result');
         }
       } catch (err) {
+        if (rewTargetSelect && rewTargetSelect.value && rewTargetSelect.value !== 'None') {
+          CBAnalytics.track('sync_tone', 'run_error', { message: String(err && (err.message || err)), targetModel: rewTargetSelect.value });
+        } else {
+          CBAnalytics.track('rewrite', 'run_error', { message: String(err && (err.message || err)) });
+        }
         toast('Transformation failed: ' + (err && err.message ? err.message : err));
         debugLog('rewrite error', err);
       } finally {
@@ -20660,6 +21828,7 @@ ${bodyHtml}
 
     btnTranslate.addEventListener('click', async () => {
       closeAllViews();
+      CBAnalytics.track('translate', 'open_view');
       try {
         // Check if we have saved state to restore
         if (__cbViewStates.trans.sourceText || __cbViewStates.trans.result) {
@@ -20690,6 +21859,7 @@ ${bodyHtml}
       const qaOptimize = panel.querySelector('#qa-sidebar-optimize');
       if (qaOptimize) {
         qaOptimize.addEventListener('click', async () => {
+          CBAnalytics.track('quick_action', 'optimize_click');
           try {
             // Find the chat input (textarea or contenteditable)
             let input = null;
@@ -20709,6 +21879,7 @@ ${bodyHtml}
             }
 
             if (!input) {
+              CBAnalytics.track('quick_action', 'optimize_no_input');
               toast('No chat input found');
               return;
             }
@@ -20723,6 +21894,7 @@ ${bodyHtml}
             originalText = originalText.trim();
 
             if (!originalText || originalText.length < 3) {
+              CBAnalytics.track('quick_action', 'optimize_empty_input');
               toast('Type something in the chat first');
               return;
             }
@@ -20781,11 +21953,14 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
                 input.dispatchEvent(new Event('input', { bubbles: true }));
               }
 
+              CBAnalytics.track('quick_action', 'optimize_success', { inputChars: originalText.length, outputChars: optimizedText.length });
               toast('✓ Prompt optimized!');
             } else {
+              CBAnalytics.track('quick_action', 'optimize_failed', { message: String(result?.error || 'Unknown error') });
               toast('Optimization failed: ' + (result?.error || 'Unknown error'));
             }
           } catch (err) {
+            CBAnalytics.track('quick_action', 'optimize_error', { message: String(err && (err.message || err)) });
             toast('Optimization error: ' + (err?.message || err));
             debugLog('[Prompt Optimizer] Error:', err);
           }
@@ -20892,6 +22067,7 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
     });
 
     btnGoTrans.addEventListener('click', async () => {
+      CBAnalytics.track('translate', 'run_click');
       try {
         // UI setup
         btnGoTrans.disabled = true;
@@ -21019,6 +22195,7 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
           btnInsertTrans.style.display = 'inline-flex';
           btnCopyTrans.style.display = 'inline-flex';
           transProg.style.display = 'none';
+          CBAnalytics.track('translate', 'run_success', { targetLanguage, mode, shorten, deepThinking });
           toast('✓ Translation complete');
         } else if (result) {
           // Partial data with formatting
@@ -21036,12 +22213,14 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
           btnInsertTrans.style.display = 'inline-flex';
           btnCopyTrans.style.display = 'inline-flex';
           transProg.style.display = 'none';
+          CBAnalytics.track('translate', 'run_partial', { targetLanguage, mode, shorten, deepThinking });
           toast('⚠️ Translation completed with errors');
         } else {
           throw new Error('All translation services failed to return a result');
         }
 
       } catch (err) {
+        CBAnalytics.track('translate', 'run_error', { message: String(err && (err.message || err)) });
         toast('Translation failed: ' + (err && err.message ? err.message : String(err)));
         debugLog('[Translation error]', err);
         transProg.style.display = 'none';
@@ -21792,6 +22971,17 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
       } catch (e) { debugLog('renderSmartResults', e); smartResults.textContent = '(render error)'; }
     }
 
+    function renderSidebarEmptyCard({ icon = 'ℹ️', title = 'Nothing here yet', message = '', actionId = '', actionLabel = '' }) {
+      return `
+        <div style="padding:14px;border:1px solid var(--cb-border);border-radius:12px;background:linear-gradient(145deg,var(--cb-bg2),var(--cb-bg));text-align:center;display:flex;flex-direction:column;align-items:center;gap:8px;">
+          <div style="width:34px;height:34px;border-radius:999px;display:flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--cb-accent-primary) 15%, transparent);font-size:16px;">${icon}</div>
+          <div style="font-weight:600;font-size:12px;color:var(--cb-white);">${title}</div>
+          <div style="font-size:11px;color:var(--cb-subtext);line-height:1.5;max-width:280px;">${message}</div>
+          ${actionId && actionLabel ? `<button id="${actionId}" class="cb-btn" style="padding:6px 12px;font-size:11px;margin-top:2px;">${actionLabel}</button>` : ''}
+        </div>
+      `;
+    }
+
     // Add Enter key handler for smart search input
     smartInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
@@ -21887,7 +23077,15 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
 
         const convs = await loadConversationsAsync();
         if (!convs || convs.length === 0) {
-          smartResults.textContent = '(No saved conversations yet. Scan and save some chats first!)';
+          smartResults.innerHTML = renderSidebarEmptyCard({
+            icon: '🗂️',
+            title: 'No saved conversations yet',
+            message: 'Scan a chat first so Universal Search can index and query it.',
+            actionId: 'cb-smart-empty-scan',
+            actionLabel: 'Scan Chat'
+          });
+          const scanBtn = shadow.getElementById('cb-smart-empty-scan');
+          if (scanBtn) scanBtn.addEventListener('click', () => { try { btnScan.click(); } catch (_) { } });
           announce('No saved conversations found');
           return;
         }
@@ -21942,13 +23140,49 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
           }
           announce(`Found ${filtered.length || mapped.length} results`);
         } catch (e) { renderSmartResults(mapped); }
-      } catch (e) { debugLog('smart search error', e); smartResults.textContent = '(Search failed: ' + (e.message || 'unknown error') + ')'; toast('Search failed'); }
+      } catch (e) {
+        debugLog('smart search error', e);
+        smartResults.innerHTML = renderSidebarEmptyCard({
+          icon: '⚠️',
+          title: 'Search failed',
+          message: escapeHtml(e.message || 'Unexpected error'),
+          actionId: 'cb-smart-search-retry',
+          actionLabel: 'Retry'
+        });
+        const retryBtn = shadow.getElementById('cb-smart-search-retry');
+        if (retryBtn) retryBtn.addEventListener('click', () => { try { btnSmartSearch.click(); } catch (_) { } });
+        toast('Search failed');
+      }
     });
 
     btnSmartAsk.addEventListener('click', async () => {
       try {
         const q = (smartInput && smartInput.value) ? smartInput.value.trim() : '';
         if (!q) { toast('Type a question to ask'); return; }
+
+        const hasApiKey = await new Promise((resolve) => {
+          try {
+            chrome.storage.local.get(['chatbridge_gemini_key', 'chatbridge_hf_key'], (result) => {
+              const gemini = result && result.chatbridge_gemini_key ? String(result.chatbridge_gemini_key).trim() : '';
+              const hf = result && result.chatbridge_hf_key ? String(result.chatbridge_hf_key).trim() : '';
+              resolve(!!(gemini || hf));
+            });
+          } catch (_) { resolve(false); }
+        });
+
+        if (!hasApiKey) {
+          smartAnswer.innerHTML = renderSidebarEmptyCard({
+            icon: '🔑',
+            title: 'API key required',
+            message: 'Add a Gemini or Hugging Face key in Settings to use Ask AI on saved conversations.',
+            actionId: 'cb-smart-ask-open-settings',
+            actionLabel: 'Open Settings'
+          });
+          const openBtn = shadow.getElementById('cb-smart-ask-open-settings');
+          if (openBtn) openBtn.addEventListener('click', () => { try { btnSettings.click(); } catch (_) { } });
+          announce('Missing API key for Ask AI');
+          return;
+        }
 
         btnSmartAsk.disabled = true; addLoadingToButton(btnSmartAsk, 'Searching chats…'); smartAnswer.textContent = ''; announce('Searching saved chats for relevant info');
 
@@ -22257,7 +23491,35 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
         }
 
         if (!arr.length) {
-          historyEl.innerHTML = `<div class="cb-history-empty">${filter ? 'No matching conversations' : 'No conversations yet'}</div>`;
+          historyEl.innerHTML = filter
+            ? `<div class="cb-history-empty">${renderSidebarEmptyCard({
+              icon: '🔎',
+              title: 'No matching conversations',
+              message: 'Try a different keyword or clear the search filter.',
+              actionId: 'cb-history-clear-filter',
+              actionLabel: 'Clear Search'
+            })}</div>`
+            : `<div class="cb-history-empty">${renderSidebarEmptyCard({
+              icon: '🧠',
+              title: 'No conversations yet',
+              message: 'Scan a conversation to start building memory and history.',
+              actionId: 'cb-history-scan-empty',
+              actionLabel: 'Scan Chat'
+            })}</div>`;
+
+          const clearFilterBtn = shadow.getElementById('cb-history-clear-filter');
+          if (clearFilterBtn) {
+            clearFilterBtn.addEventListener('click', () => {
+              try {
+                historySearchInput.value = '';
+                refreshHistory('');
+              } catch (_) { }
+            });
+          }
+
+          const scanEmptyBtn = shadow.getElementById('cb-history-scan-empty');
+          if (scanEmptyBtn) scanEmptyBtn.addEventListener('click', () => { try { btnScan.click(); } catch (_) { } });
+
           if (!filter) preview.textContent = 'Preview: (none)';
           return;
         }
@@ -23489,10 +24751,11 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
 
       // Keyboard command handlers
       if (ui && ui.avatar && ui.panel) {
-        chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-          if (!msg || !msg.type) return;
+        if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage && typeof chrome.runtime.onMessage.addListener === 'function') {
+          chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+            if (!msg || !msg.type) return;
 
-          try {
+            try {
             if (msg.type === 'keyboard_command') {
               const command = msg.command;
 
@@ -23584,7 +24847,8 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
             debugLog('keyboard command error', e);
             sendResponse({ ok: false, error: String(e) });
           }
-        });
+          });
+        }
         // Note: restore_to_chat listener is registered earlier at the top level
         // to ensure it's ready when the tab opens
 

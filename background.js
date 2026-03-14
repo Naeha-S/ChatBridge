@@ -1,4 +1,4 @@
-// background.js
+﻿// background.js
 
 // Note: Service worker modules don't support importScripts.
 // Security, RAG, and MCP features are available in content scripts instead.
@@ -167,6 +167,65 @@ async function markModelSuccess(model) {
   console.log(`[Gemini] ✓ Success with ${model}, reset all failure counts`);
 }
 
+// --- Phase 3 Reliability: structured error logging + recovery hooks ---------
+const BG_ERROR_LOG_KEY = 'chatbridge_bg_error_logs';
+
+async function appendBackgroundErrorLog(entry) {
+  try {
+    const data = await chrome.storage.local.get([BG_ERROR_LOG_KEY]);
+    const logs = Array.isArray(data[BG_ERROR_LOG_KEY]) ? data[BG_ERROR_LOG_KEY] : [];
+    logs.unshift(entry);
+    if (logs.length > 200) logs.length = 200;
+    await chrome.storage.local.set({ [BG_ERROR_LOG_KEY]: logs });
+  } catch (_) { }
+}
+
+async function reportBackgroundError(error, context = 'background', severity = 'error', extra = null) {
+  try {
+    const message = typeof error === 'string' ? error : (error && error.message) ? error.message : 'Unknown background error';
+    const stack = error && error.stack ? String(error.stack) : '';
+    const entry = {
+      ts: Date.now(),
+      source: 'background',
+      severity,
+      context,
+      message: String(message),
+      stack,
+      extra
+    };
+    console.error('[ChatBridge BG StructuredError]', context, message, extra || '');
+    await appendBackgroundErrorLog(entry);
+  } catch (_) { }
+}
+
+async function recoverBackgroundState() {
+  try {
+    const session = await chrome.storage.session.get(['cb_vector_index_in_progress', 'cb_vector_index_started_at']);
+    const inProgress = !!session.cb_vector_index_in_progress;
+    const startedAt = Number(session.cb_vector_index_started_at || 0);
+    const stale = inProgress && startedAt && (Date.now() - startedAt > 2 * 60 * 1000);
+
+    if (inProgress || stale) {
+      await chrome.storage.session.set({ cb_vector_index_in_progress: false, cb_vector_index_started_at: 0 });
+      await reportBackgroundError('Recovered stale vector indexing lock after worker restart', 'startup.recovery', 'warn', { inProgress, startedAt, stale });
+    }
+  } catch (e) {
+    await reportBackgroundError(e, 'startup.recovery', 'warn');
+  }
+}
+
+self.addEventListener('error', (event) => {
+  reportBackgroundError(event && (event.error || event.message), 'service_worker.error', 'critical', {
+    filename: event && event.filename,
+    lineno: event && event.lineno,
+    colno: event && event.colno
+  });
+});
+
+self.addEventListener('unhandledrejection', (event) => {
+  reportBackgroundError(event && event.reason, 'service_worker.unhandledrejection', 'critical');
+});
+
 chrome.runtime.onInstalled.addListener((details) => {
   console.log("ChatBridge installed/updated");
 
@@ -174,6 +233,12 @@ chrome.runtime.onInstalled.addListener((details) => {
   if (details.reason === 'install') {
     chrome.tabs.create({ url: chrome.runtime.getURL('welcome.html') });
   }
+
+  recoverBackgroundState();
+});
+
+chrome.runtime.onStartup.addListener(() => {
+  recoverBackgroundState();
 });
 
 // Migration endpoint: content script can send stored conversations to background for persistent storage
@@ -271,80 +336,22 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
 
   if (msg.type === 'report_issue') {
-    // simple logging; background can forward to a server if configured
-    try { console.warn('REPORT_ISSUE', msg.payload || {}); } catch (e) { }
-    sendResponse({ ok: true });
-    return true;
-  }
-
-  if (msg.type === 'delete_conversation') {
-    (async () => {
-      try {
-        const id = String(msg.payload && msg.payload.id);
-        if (!id) { sendResponse({ ok: false, error: 'no_id' }); return; }
-        const ok = await convoDelete(id);
-        sendResponse({ ok: !!ok });
-      } catch (e) { sendResponse({ ok: false, error: e && e.message }); }
-    })();
-    return true;
-  }
-});
-
-// OPTIMIZATION: Precompute embeddings during idle time with batching and throttling
-// This runs ONLY when the browser is idle to avoid impacting user experience
-async function precomputeEmbeddingsIdle(batch = 3) {
-  try {
-    const convs = await convoAll();
-    if (!convs || !convs.length) return;
-    let processed = 0;
-    for (const c of convs) {
-      if (processed >= batch) break;
-      try {
-        const id = String(c.ts || c.id || Date.now());
-        const existing = await idbGet(id);
-        if (existing && existing.vector && existing.vector.length) continue;
-        const text = (c.conversation || []).map(m => `${m.role}: ${m.text}`).join('\n\n');
-        if (!text || text.length < 30) continue;
-        const embOut = await fetchEmbeddingPreferred(text);
-        if (embOut && Array.isArray(embOut.vector)) {
-          await idbPut({
-            id,
-            vector: embOut.vector,
-            metadata: {
-              platform: c.platform || '',
-              url: c.url || '',
-              ts: c.ts || 0,
-              topics: c.topics || [],
-              embeddingProvider: embOut.provider,
-              embeddingModel: embOut.model
-            },
-            ts: Date.now()
-          });
-          processed++;
-        }
-        // OPTIMIZATION: Small delay to avoid CPU burst even during idle
-        await new Promise(r => setTimeout(r, 300)); // Increased from 200ms to 300ms
-      } catch (e) { /* ignore per-item */ }
-    }
-    if (processed) console.log('[ChatBridge] precomputed embeddings for', processed, 'conversations during idle');
-  } catch (e) { console.warn('precomputeEmbeddingsIdle err', e); }
-}
-
-// OPTIMIZATION: Use chrome.idle API to trigger background tasks only when truly idle
-// This prevents CPU usage when user is actively working
-if (chrome.idle && chrome.idle.onStateChanged) {
-  chrome.idle.setDetectionInterval(300); // Consider idle after 5 minutes
-  chrome.idle.onStateChanged.addListener((state) => {
     try {
-      if (state === 'idle') {
-        // User is idle - safe to do background work
-        precomputeEmbeddingsIdle(3); // Reduced batch from 4 to 3
-      }
-      // When state === 'active' or 'locked', do nothing to save CPU
-    } catch (e) { }
-  });
-}
-
+      const payload = msg.payload || {};
+      const entry = {
+        ts: payload.ts || Date.now(),
+        source: payload.source || 'content_script',
+        severity: payload.severity || 'error',
+        context: payload.context || 'user_report',
+        message: payload.message || 'Issue reported from content script',
+        stack: payload.stack || '',
+        url: payload.url || '',
+        host: payload.host || '',
+        extra: payload.extra || payload
+      };
+      appendBackgroundErrorLog(entry);
+      console.warn('REPORT_ISSUE', entry);
+    } catch (e) {
 // ─── MV3-Safe Alarms for Background Tasks ────────────────────────────────
 // setInterval cannot work in MV3 because the worker dies after ~30s.
 // Use chrome.alarms instead — they fire even if the worker was terminated.
@@ -1062,8 +1069,47 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       return true;
     }
 
+    if (msg.type === 'vector_index_stats') {
+      (async () => {
+        try {
+          const all = await idbAll();
+          const providers = {};
+          const models = {};
+          const platforms = {};
+          let lastIndexed = 0;
+
+          for (const item of all) {
+            const meta = item && item.metadata ? item.metadata : {};
+            const provider = String(meta.embeddingProvider || 'unknown');
+            const model = String(meta.embeddingModel || 'unknown');
+            const platform = String(meta.platform || 'unknown');
+
+            providers[provider] = (providers[provider] || 0) + 1;
+            models[model] = (models[model] || 0) + 1;
+            platforms[platform] = (platforms[platform] || 0) + 1;
+
+            const candidateTs = Number(item.ts || meta.ts || 0);
+            if (candidateTs > lastIndexed) lastIndexed = candidateTs;
+          }
+
+          return sendResponse({
+            ok: true,
+            total: all.length,
+            providers,
+            models,
+            platforms,
+            lastIndexed
+          });
+        } catch (e) {
+          return sendResponse({ ok: false, error: e && e.message });
+        }
+      })();
+      return true;
+    }
+
     if (msg.type === 'vector_index_all') {
       (async () => {
+        await chrome.storage.session.set({ cb_vector_index_in_progress: true, cb_vector_index_started_at: Date.now() });
         try {
           const clearExisting = !!(msg.payload && msg.payload.clearExisting);
           if (clearExisting) {
@@ -1106,8 +1152,13 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
               indexed++;
             } catch (e) { /* continue on per-item error */ }
           }
+          await chrome.storage.session.set({ cb_vector_index_in_progress: false, cb_vector_index_started_at: 0 });
           return sendResponse({ ok: true, indexed });
-        } catch (e) { return sendResponse({ ok: false, error: e && e.message }); }
+        } catch (e) {
+          await chrome.storage.session.set({ cb_vector_index_in_progress: false, cb_vector_index_started_at: 0 });
+          reportBackgroundError(e, 'vector_index_all', 'error');
+          return sendResponse({ ok: false, error: e && e.message });
+        }
       })();
       return true;
     }
@@ -3649,77 +3700,4 @@ Output ONLY the friendly revision.`
     return true;
   }
 
-  // Image generation via Gemini (optional - if API supports model)
-  if (msg && msg.type === 'generate_image') {
-    if (!limiterTry()) return sendResponse({ ok: false, error: 'rate_limited' });
-    (async () => {
-      try {
-        const GEMINI_API_KEY = await getGeminiApiKey();
-        if (!GEMINI_API_KEY) {
-          return sendResponse({ ok: false, error: 'no_api_key', message: 'Gemini API key not configured. Open ChatBridge Options to set it.' });
-        }
-        const payload = msg.payload || {};
-        const model = payload.model || 'imagen-3.0-generate-001';
-        const prompt = payload.prompt || '';
-
-        // Imagen 3 API endpoint for Google Generative AI
-        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
-
-        const body = {
-          contents: [{
-            parts: [{
-              text: prompt
-            }]
-          }],
-          generationConfig: {
-            temperature: 0.4,
-            topK: 32,
-            topP: 1,
-            maxOutputTokens: 2048
-          }
-        };
-
-        const res = await fetch(`${endpoint}?key=${GEMINI_API_KEY}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body)
-        });
-
-        const json = await res.json();
-        console.log('[ChatBridge BG] Imagen response:', json);
-
-        if (!res.ok) {
-          return sendResponse({ ok: false, error: 'image_http_error', status: res.status, body: json });
-        }
-
-        // Parse image from response - Imagen returns base64 in inlineData
-        let b64 = null;
-        try {
-          if (json && json.candidates && json.candidates[0] && json.candidates[0].content && json.candidates[0].content.parts) {
-            const parts = json.candidates[0].content.parts;
-            for (const part of parts) {
-              if (part.inlineData && part.inlineData.data) {
-                b64 = part.inlineData.data;
-                break;
-              }
-            }
-          }
-        } catch (e) {
-          console.error('[ChatBridge BG] Parse image failed:', e);
-          b64 = null;
-        }
-
-        if (!b64) {
-          // Fallback: return empty/error so content script uses canvas
-          return sendResponse({ ok: false, error: 'no_image_in_response', body: json });
-        }
-
-        return sendResponse({ ok: true, imageBase64: b64 });
-      } catch (e) {
-        console.error('[ChatBridge BG] Image generation error:', e);
-        return sendResponse({ ok: false, error: 'image_fetch_error', message: (e && e.message) || String(e) });
-      }
-    })();
-    return true;
-  }
 });

@@ -780,6 +780,8 @@
       this.history = []; // Query history
       this.savedSearches = [];
       this.currentResults = [];
+      this.lastDiagnostics = null;
+      this.availableSources = [];
       this.currentPage = 1;
       this.resultsPerPage = 5;
       this.debounceTimer = null;
@@ -951,6 +953,20 @@
                       <input type="date" class="sq-filter-input" id="sq-date-to" style="font-size:11px;padding:6px 8px;">
                     </div>
                   </div>
+                  <div class="sq-filter-group">
+                    <label class="sq-filter-label" style="display:flex;justify-content:space-between;align-items:center;">
+                      <span>Source Filters</span>
+                      <button class="sq-btn sq-btn-secondary sq-btn-sm" id="sq-reset-sources" style="padding:2px 8px;height:22px;">Reset</button>
+                    </label>
+                    <div id="sq-source-filters" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+                  </div>
+                  <div class="sq-filter-group" style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                    <label class="sq-filter-label" style="margin:0;">Index Diagnostics</label>
+                    <button class="sq-btn sq-btn-secondary sq-btn-sm" id="sq-refresh-diagnostics" style="padding:4px 10px;">Refresh</button>
+                  </div>
+                  <div id="sq-index-diagnostics" style="font-size:11px;color:var(--sq-subtext);padding:8px;border:1px solid var(--sq-border);border-radius:8px;background:var(--sq-surface);">
+                    Diagnostics available after memory search.
+                  </div>
                 </div>
 
                 <!-- Response Area -->
@@ -1009,6 +1025,13 @@
       const filtersPanel = this.container.querySelector('#sq-filters-panel');
       const indexBtn = this.container.querySelector('#btn-index-now');
       const modeHelper = this.container.querySelector('#sq-mode-helper');
+      const sourceFiltersHost = this.container.querySelector('#sq-source-filters');
+      const resetSourcesBtn = this.container.querySelector('#sq-reset-sources');
+      const diagnosticsBtn = this.container.querySelector('#sq-refresh-diagnostics');
+      const diagnosticsHost = this.container.querySelector('#sq-index-diagnostics');
+
+      this.renderSourceFilters(sourceFiltersHost);
+      this.renderIndexDiagnostics(diagnosticsHost, null);
 
       // Index Button
       if (indexBtn) {
@@ -1057,6 +1080,18 @@
       if (toggleFilters) {
         toggleFilters.addEventListener('click', () => {
           filtersPanel.classList.toggle('active');
+        });
+      }
+
+      if (resetSourcesBtn) {
+        resetSourcesBtn.addEventListener('click', () => {
+          this.container.querySelectorAll('.sq-source-filter').forEach(cb => { cb.checked = true; });
+        });
+      }
+
+      if (diagnosticsBtn) {
+        diagnosticsBtn.addEventListener('click', async () => {
+          await this.refreshIndexDiagnostics(diagnosticsHost);
         });
       }
 
@@ -1143,8 +1178,10 @@
             const sortBy = this.container.querySelector('#sq-sort-by')?.value || 'relevance';
             const dateFrom = this.container.querySelector('#sq-date-from')?.value;
             const dateTo = this.container.querySelector('#sq-date-to')?.value;
+            const sources = this.getSelectedSources();
 
-            await this.runMemorySearch(query, resultsArea, synth, { sortBy, dateFrom, dateTo });
+            await this.runMemorySearch(query, resultsArea, synth, { sortBy, dateFrom, dateTo, sources });
+            this.renderIndexDiagnostics(diagnosticsHost, this.lastDiagnostics);
           }
         } catch (e) {
           // Show friendly toast instead of an error card
@@ -1285,6 +1322,14 @@
       }
       if (!query.trim()) return;
       const context = this.getContext();
+      if (!context || context.trim().length < 20) {
+        this.renderEmptyState(container, {
+          icon: '🧠',
+          title: 'No conversation context',
+          message: 'Current Chat mode needs an active scanned conversation. Scan chat first, then ask again.'
+        });
+        return;
+      }
       const promptContextStr = window.ChatBridgeCalibratorState ? window.ChatBridgeCalibratorState() : '';
       const calibratorInstruction = promptContextStr ? `\n\nCALIBRATOR SETTINGS (apply these to your response persona in the language/detail level requested):\n${promptContextStr}` : '';
 
@@ -1301,8 +1346,22 @@ Provide a clear, thorough answer. If the question is about continuing the conver
 
       // If callLlama returned empty (toast already shown), clear results area
       if (!response) {
-        container.innerHTML = '';
-        container.style.display = 'none';
+        const hasKey = await this.hasConfiguredApiKey();
+        if (!hasKey) {
+          this.renderEmptyState(container, {
+            icon: '🔑',
+            title: 'API key required',
+            message: 'Configure Gemini or Hugging Face key to run AI answers in Smart Query.',
+            actionLabel: 'Open Options',
+            action: () => this.openApiSettings()
+          });
+        } else {
+          this.renderEmptyState(container, {
+            icon: '⚠️',
+            title: 'No answer available',
+            message: 'The model did not return a response. Please retry your query.'
+          });
+        }
         return;
       }
 
@@ -1361,7 +1420,11 @@ Provide a clear, thorough answer. If the question is about continuing the conver
       const rawResults = await this.memoryRetrieval.search(query, { limit: 50 });
 
       if (!rawResults || rawResults.length === 0) {
-        container.innerHTML = `<div class="sq-empty">No relevant memories found.</div>`;
+        this.renderEmptyState(container, {
+          icon: '🔎',
+          title: 'No memories found',
+          message: 'No saved memory matches this query yet. Try Train, adjust wording, or widen filters.'
+        });
         return;
       }
 
@@ -1385,6 +1448,9 @@ Provide a clear, thorough answer. If the question is about continuing the conver
 
       // 2. Filter by Date
       let filtered = uniqueResults;
+      this.availableSources = this.extractSources(uniqueResults);
+      this.renderSourceFilters(this.container.querySelector('#sq-source-filters'));
+
       if (filters.dateFrom) {
         const fromDate = new Date(filters.dateFrom);
         filtered = filtered.filter(r => new Date(r.segment.timestamp) >= fromDate);
@@ -1394,12 +1460,37 @@ Provide a clear, thorough answer. If the question is about continuing the conver
         filtered = filtered.filter(r => new Date(r.segment.timestamp) <= toDate);
       }
 
+      if (Array.isArray(filters.sources) && filters.sources.length) {
+        const allow = new Set(filters.sources.map(s => String(s).toLowerCase()));
+        filtered = filtered.filter(r => {
+          const source = (r.segment && r.segment.platform ? r.segment.platform : 'unknown').toLowerCase();
+          return allow.has(source);
+        });
+      }
+
       // 3. Sorting
       if (filters.sortBy === 'recent') {
         filtered.sort((a, b) => new Date(b.segment.timestamp) - new Date(a.segment.timestamp));
       } else if (filters.sortBy === 'oldest') {
         filtered.sort((a, b) => new Date(a.segment.timestamp) - new Date(b.segment.timestamp));
       }
+
+      const sourceCounts = {};
+      filtered.forEach(r => {
+        const source = (r.segment && r.segment.platform) ? r.segment.platform : 'unknown';
+        sourceCounts[source] = (sourceCounts[source] || 0) + 1;
+      });
+
+      this.lastDiagnostics = {
+        query,
+        rawCount: rawResults.length,
+        dedupedCount: uniqueResults.length,
+        filteredCount: filtered.length,
+        sortBy: filters.sortBy || 'relevance',
+        selectedSources: Array.isArray(filters.sources) ? filters.sources.slice() : [],
+        sourceCounts,
+        timestamp: Date.now()
+      };
 
       this.currentResults = filtered;
       this.currentPage = 1;
@@ -1410,7 +1501,11 @@ Provide a clear, thorough answer. If the question is about continuing the conver
       let html = '';
 
       if (this.currentResults.length === 0) {
-        container.innerHTML = `<div class="sq-empty">No results match your filters.</div>`;
+        this.renderEmptyState(container, {
+          icon: '🧭',
+          title: 'No results match filters',
+          message: 'Try broadening date/source filters or reset them and run search again.'
+        });
         return;
       }
 
@@ -1520,6 +1615,16 @@ Synthesize now:`;
         html += `<div class="sq-dedupe-notice">Merged ${mergedCount} similar segments</div>`;
       }
 
+      if (this.lastDiagnostics) {
+        const selected = this.lastDiagnostics.selectedSources && this.lastDiagnostics.selectedSources.length
+          ? this.lastDiagnostics.selectedSources.join(', ')
+          : 'all';
+        html += `<div style="margin:6px 0 10px 0;padding:8px 10px;border:1px solid var(--sq-border);border-radius:8px;background:var(--sq-surface);font-size:11px;color:var(--sq-subtext);">
+          <div><strong style="color:var(--sq-white);">Ranking transparency</strong> · raw ${this.lastDiagnostics.rawCount} → deduped ${this.lastDiagnostics.dedupedCount} → shown ${this.lastDiagnostics.filteredCount}</div>
+          <div style="margin-top:4px;opacity:0.9;">Sort: ${this.lastDiagnostics.sortBy} · Sources: ${this.escapeHTML(selected)}</div>
+        </div>`;
+      }
+
       html += `<div style="font-size:10px; color:var(--sq-subtext); text-transform:uppercase; font-weight:700; letter-spacing:0.08em; display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
         <span>${this.currentResults.length} Memories</span>
         ${this.currentResults.length > pagedResults.length ? `<span style="opacity:0.6;">Page ${this.currentPage}</span>` : ''}
@@ -1538,9 +1643,13 @@ Synthesize now:`;
             <div class="sq-res-meta">
                <div style="display:flex; gap:5px; align-items:center;">
                  ${tags}
+                 <span style="font-size:10px;padding:2px 6px;border:1px solid var(--sq-border);border-radius:999px;opacity:0.8;">${this.escapeHTML((r.segment && r.segment.platform) ? r.segment.platform : 'unknown')}</span>
                  <span style="font-size:10px; opacity:0.7;">${new Date(r.segment.timestamp).toLocaleDateString()}</span>
                </div>
                <button class="sq-btn sq-btn-secondary sq-btn-sm sq-expand-btn" style="padding:2px 8px; height:22px; font-size:10px;">Details</button>
+            </div>
+            <div style="font-size:10px;color:var(--sq-subtext);margin:4px 0 6px 0;line-height:1.4;">
+              Rank #${r.rank || (start + idx + 1)} · Score ${(typeof r.score === 'number' ? r.score.toFixed(3) : 'n/a')} · ${this.escapeHTML(r.relevanceLevel || 'exploratory')} · ${this.escapeHTML(r.relevanceReason || 'Relevant content')}
             </div>
             <div class="sq-res-preview" style="font-size:12px;">
               <div class="sq-res-content">
@@ -1598,6 +1707,74 @@ Synthesize now:`;
           container.scrollIntoView({ behavior: 'smooth' });
         }
       });
+    }
+
+    extractSources(results) {
+      const set = new Set();
+      (results || []).forEach(r => {
+        const source = (r.segment && r.segment.platform) ? String(r.segment.platform).toLowerCase() : 'unknown';
+        set.add(source);
+      });
+      return Array.from(set).sort();
+    }
+
+    getSelectedSources() {
+      const boxes = this.container ? this.container.querySelectorAll('.sq-source-filter') : [];
+      const picked = Array.from(boxes).filter(cb => cb.checked).map(cb => cb.value);
+      return picked;
+    }
+
+    renderSourceFilters(host) {
+      if (!host) return;
+      const sources = (this.availableSources && this.availableSources.length)
+        ? this.availableSources
+        : ['chatgpt', 'claude', 'gemini', 'copilot', 'perplexity', 'unknown'];
+
+      host.innerHTML = sources.map(src => `
+        <label style="display:inline-flex;align-items:center;gap:4px;padding:4px 8px;border:1px solid var(--sq-border);border-radius:999px;font-size:10px;color:var(--sq-subtext);cursor:pointer;">
+          <input class="sq-source-filter" type="checkbox" value="${this.escapeHTML(src)}" checked style="accent-color:var(--sq-accent);">
+          <span>${this.escapeHTML(src)}</span>
+        </label>
+      `).join('');
+    }
+
+    async refreshIndexDiagnostics(host) {
+      if (!host) return;
+      host.textContent = 'Refreshing diagnostics...';
+      try {
+        const vectorStats = await new Promise((resolve) => {
+          chrome.runtime.sendMessage({ type: 'vector_index_stats' }, (res) => resolve(res || null));
+        });
+        this.renderIndexDiagnostics(host, this.lastDiagnostics, vectorStats);
+      } catch (_) {
+        this.renderIndexDiagnostics(host, this.lastDiagnostics, null);
+      }
+    }
+
+    renderIndexDiagnostics(host, localDiag, vectorStats) {
+      if (!host) return;
+
+      const vec = vectorStats && vectorStats.ok ? vectorStats : null;
+      const local = localDiag || null;
+
+      if (!local && !vec) {
+        host.textContent = 'Diagnostics available after memory search.';
+        return;
+      }
+
+      const vecLine = vec
+        ? `Index size: ${vec.total || 0} · Providers: ${Object.keys(vec.providers || {}).length || 0} · Last update: ${vec.lastIndexed ? new Date(vec.lastIndexed).toLocaleString() : 'n/a'}`
+        : 'Index stats unavailable';
+
+      const localLine = local
+        ? `Query flow: raw ${local.rawCount} → deduped ${local.dedupedCount} → shown ${local.filteredCount}`
+        : 'Run a memory search to see query-stage diagnostics';
+
+      host.innerHTML = `
+        <div style="font-size:11px;color:var(--sq-white);margin-bottom:4px;">${this.escapeHTML(local && local.query ? local.query : 'Index Health')}</div>
+        <div style="font-size:10px;color:var(--sq-subtext);line-height:1.5;">${this.escapeHTML(localLine)}</div>
+        <div style="font-size:10px;color:var(--sq-subtext);line-height:1.5;">${this.escapeHTML(vecLine)}</div>
+      `;
     }
 
     // --- Helpers ---
@@ -1809,6 +1986,45 @@ Synthesize now:`;
           resolve('');
         }
       });
+    }
+
+    async hasConfiguredApiKey() {
+      return new Promise((resolve) => {
+        try {
+          chrome.storage.local.get(['chatbridge_gemini_key', 'chatbridge_hf_key'], (res) => {
+            const gemini = res && res.chatbridge_gemini_key ? String(res.chatbridge_gemini_key).trim() : '';
+            const hf = res && res.chatbridge_hf_key ? String(res.chatbridge_hf_key).trim() : '';
+            resolve(!!(gemini || hf));
+          });
+        } catch (_) { resolve(false); }
+      });
+    }
+
+    openApiSettings() {
+      try {
+        if (chrome.runtime && typeof chrome.runtime.openOptionsPage === 'function') {
+          chrome.runtime.openOptionsPage();
+          return;
+        }
+      } catch (_) { }
+      this.showToast('Open extension Options to configure API keys.');
+    }
+
+    renderEmptyState(container, { icon = 'ℹ️', title, message, actionLabel, action }) {
+      if (!container) return;
+      const actionId = actionLabel ? `sq-empty-action-${Date.now()}` : '';
+      container.innerHTML = `
+        <div class="sq-empty" style="padding:16px;border:1px solid var(--sq-border);border-radius:10px;background:var(--sq-surface);text-align:center;">
+          <div style="font-size:18px;line-height:1;margin-bottom:8px;">${this.escapeHTML(icon)}</div>
+          <div style="font-weight:600;font-size:13px;color:var(--sq-white);margin-bottom:6px;">${this.escapeHTML(title || 'Nothing to show')}</div>
+          <div style="font-size:12px;color:var(--sq-subtext);line-height:1.5;">${this.escapeHTML(message || '')}</div>
+          ${actionLabel ? `<button id="${actionId}" class="sq-btn sq-btn-secondary sq-btn-sm" style="margin-top:10px;padding:6px 10px;">${this.escapeHTML(actionLabel)}</button>` : ''}
+        </div>
+      `;
+      if (actionLabel && typeof action === 'function') {
+        const btn = container.querySelector(`#${actionId}`);
+        if (btn) btn.addEventListener('click', action);
+      }
     }
 
     showToast(msg) {
