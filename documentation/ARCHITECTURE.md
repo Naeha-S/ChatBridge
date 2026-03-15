@@ -61,6 +61,10 @@ ChatBridge follows a Chrome Extension Manifest V3 architecture with clear separa
 - `cbWaitFor(predicate, opts)`: Polling with timeout
 - `cbQS/cbQSA`: Safe DOM queries
 
+**Supporting Modules:**
+- `content/bootstrap.js`: Early injection guard, site approval, continue-with auto-insert bootstrap
+- `utils/platformRegistry.js`: Shared platform metadata used by popup and content script
+
 ### 2. Background Script (`background.js`)
 
 **Responsibilities:**

@@ -1,19 +1,21 @@
 const ChatBridgeConstants = {
-  APPROVED_SITES: [
-    'chat.openai.com',
-    'chatgpt.com',
-    'gemini.google.com',
-    'claude.ai',
-    'chat.mistral.ai',
-    'deepseek.ai',
-    'www.perplexity.ai',
-    'perplexity.ai',
-    'poe.com',
-    'x.ai',
-    'copilot.microsoft.com',
-    'www.bing.com',
-    'meta.ai'
-  ],
+  APPROVED_SITES: (typeof ChatBridgePlatformRegistry !== 'undefined' && ChatBridgePlatformRegistry.approvedSites)
+    ? [...ChatBridgePlatformRegistry.approvedSites]
+    : [
+      'chat.openai.com',
+      'chatgpt.com',
+      'gemini.google.com',
+      'claude.ai',
+      'chat.mistral.ai',
+      'deepseek.ai',
+      'www.perplexity.ai',
+      'perplexity.ai',
+      'poe.com',
+      'x.ai',
+      'copilot.microsoft.com',
+      'www.bing.com',
+      'meta.ai'
+    ],
 
   TIMING: {
     DOM_STABLE_MS: 150,

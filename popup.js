@@ -3,28 +3,7 @@
 (function () {
   'use strict';
 
-  // Platform detection mapping
-  const PLATFORM_NAMES = {
-    'chat.openai.com': 'ChatGPT',
-    'chatgpt.com': 'ChatGPT',
-    'gemini.google.com': 'Gemini',
-    'claude.ai': 'Claude',
-    'chat.mistral.ai': 'Mistral',
-    'deepseek.ai': 'DeepSeek',
-    'chat.deepseek.com': 'DeepSeek',
-    'perplexity.ai': 'Perplexity',
-    'www.perplexity.ai': 'Perplexity',
-    'poe.com': 'Poe',
-    'x.ai': 'Grok',
-    'copilot.microsoft.com': 'Copilot',
-    'www.bing.com': 'Bing AI',
-    'meta.ai': 'Meta AI',
-    'huggingface.co': 'HuggingChat',
-    'you.com': 'You.com',
-    'phind.com': 'Phind',
-    'character.ai': 'Character AI',
-    'beta.character.ai': 'Character AI'
-  };
+  const platformRegistry = window.ChatBridgePlatformRegistry || null;
 
   // DOM Elements
   const statusDot = document.getElementById('status-dot');
@@ -90,10 +69,7 @@
 
       if (tab && tab.url) {
         const url = new URL(tab.url);
-        const hostname = url.hostname.replace('www.', '');
-
-        // Check if on a supported platform
-        const platformName = PLATFORM_NAMES[hostname] || PLATFORM_NAMES['www.' + hostname];
+        const platformName = platformRegistry ? platformRegistry.getPlatformName(url.hostname) : null;
 
         if (platformName) {
           statusDot.classList.add('active');

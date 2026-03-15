@@ -1,100 +1,18 @@
 ﻿// wrap everything in an IIFE and exit early if already injected to avoid redeclaration
 (function () {
   'use strict';
-  if (typeof window !== 'undefined' && window.__CHATBRIDGE_INJECTED) {
-    try { console.debug && console.debug('[ChatBridge] double-injection detected, skipping init'); } catch (e) { }
-    return;
-  }
-  if (typeof window !== 'undefined') {
-    window.__CHATBRIDGE_INJECTED = true;
-    window.__CHATBRIDGE = window.__CHATBRIDGE || {};
-    // allow previously stored value to persist
-    window.__CHATBRIDGE.MAX_MESSAGES = window.__CHATBRIDGE.MAX_MESSAGES || 200;
-
-    // Initialize global ChatBridge early to ensure scoped functions can be attached
-    window.ChatBridge = window.ChatBridge || {};
-  }
-
-  const APPROVED_SITES = [
-    // Major AI Assistants
-    'chat.openai.com',
-    'chatgpt.com',
-    'gemini.google.com',
-    'claude.ai',
-    'chat.mistral.ai',
-    'copilot.microsoft.com',
-    'www.bing.com',
-
-    // Search-focused AI
-    'perplexity.ai',
-    'www.perplexity.ai',
-    'you.com',
-    'phind.com',
-
-    // Multi-model platforms
-    'poe.com',
-    'huggingface.co',
-    'forefront.ai',
-
-    // Research & Open Source
-    'deepseek.ai',
-    'chat.deepseek.com',
-    'open-assistant.io',
-
-    // Social AI
-    'x.ai',
-    'meta.ai',
-
-    // Character & Companion AI
-    'character.ai',
-    'beta.character.ai',
-    'replika.ai',
-
-    // Marketing & Content AI
-    'jasper.ai',
-    'writesonic.com',
-    'app.writesonic.com',
-
-    // Developer AI
-    'kuki.ai'
-  ];
-
-  // Check if current site is approved
-  function isApprovedSite() {
-    const hostname = window.location.hostname;
-    return APPROVED_SITES.some(site => hostname === site || hostname.endsWith('.' + site)) || hostname === 'localhost';
-  }
+  const bootstrap = window.ChatBridgeContentBootstrap;
+  if (!bootstrap || !bootstrap.ensureSingleInjection()) return;
+  bootstrap.initGlobalState();
+  const { escapeHtml, isSafeUrl } = bootstrap;
 
   // Exit early if not on approved site
-  if (!isApprovedSite()) {
+  if (!bootstrap.shouldInjectOnCurrentSite()) {
     console.log('[ChatBridge] Not on approved site, skipping injection. Current:', window.location.hostname);
     return; // Early exit if not approved
   }
 
   console.log('[ChatBridge] Injecting on approved site:', window.location.hostname);
-
-  // Fix: Polyfill missing Rewrite functions referenced in UI
-  // Utility: escape HTML special chars to prevent XSS when setting innerHTML
-  function escapeHtml(str) {
-    if (str == null) return '';
-    return String(str)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#x27;');
-  }
-
-  // Security: validate URLs before opening in new tabs — block javascript:, data:, etc.
-  function isSafeUrl(url) {
-    if (!url || typeof url !== 'string') return false;
-    try {
-      const parsed = new URL(url);
-      return parsed.protocol === 'https:' || parsed.protocol === 'http:';
-    } catch (_) {
-      return false;
-    }
-  }
 
   // Early-scope polyfills — defined here so code that runs before the main IIFE
   // can call them; the canonical implementations inside the IIFE shadow these.
@@ -135,124 +53,7 @@
   }
 
   // AUTO-INSERT: Check if we arrived from "Continue With" and should auto-insert context
-  (async function checkContinueWithAutoInsert() {
-    try {
-      // Wait for page to be fully loaded
-      await new Promise(r => setTimeout(r, 2000));
-
-      // Check for stored continue context
-      let continueData = null;
-
-      // Try chrome.storage first (cross-tab)
-      try {
-        if (chrome.storage && chrome.storage.local) {
-          continueData = await new Promise(resolve => {
-            chrome.storage.local.get(['chatbridge:continue_context'], (data) => {
-              resolve(data['chatbridge:continue_context'] || null);
-            });
-          });
-        }
-      } catch (e) { }
-
-      // Fallback to localStorage
-      if (!continueData) {
-        try {
-          const stored = localStorage.getItem('chatbridge:continue_context');
-          if (stored) {
-            continueData = JSON.parse(stored);
-          }
-        } catch (e) { }
-      }
-
-      // If no context or too old (>5 minutes), skip
-      if (!continueData || !continueData.text || !continueData.timestamp) return;
-
-      // Ensure we only auto-insert on the intended target platform.
-      try {
-        const _target = String(continueData.target || '').toLowerCase();
-        const _host = String(window.location.hostname || '').toLowerCase();
-        const _targetHosts = {
-          chatgpt: ['chat.openai.com', 'chatgpt.com'],
-          claude: ['claude.ai'],
-          gemini: ['gemini.google.com'],
-          copilot: ['copilot.microsoft.com'],
-          perplexity: ['perplexity.ai', 'www.perplexity.ai'],
-          mistral: ['chat.mistral.ai'],
-          poe: ['poe.com'],
-          deepseek: ['chat.deepseek.com', 'deepseek.ai'],
-          grok: ['x.ai'],
-          meta: ['meta.ai'],
-        };
-        const _allowed = (_targetHosts[_target] || []).some(h => _host === h || _host.endsWith('.' + h));
-        if (_target && !_allowed) {
-          console.log('[ChatBridge] Auto-insert skipped: current host does not match target', _target);
-          return;
-        }
-      } catch (_) { }
-
-      if (Date.now() - continueData.timestamp > 5 * 60 * 1000) {
-        // Clear old context
-        localStorage.removeItem('chatbridge:continue_context');
-        try { chrome.storage.local.remove(['chatbridge:continue_context']); } catch (e) { }
-        return;
-      }
-
-      console.log('[ChatBridge] Found continue context, attempting auto-insert...');
-
-      // Wait a bit more for the input to be ready
-      await new Promise(r => setTimeout(r, 1500));
-
-      // Find the chat input
-      const selectors = [
-        'textarea[data-id="root"]', // ChatGPT
-        'textarea#prompt-textarea', // ChatGPT
-        'div[contenteditable="true"]', // Claude, Gemini
-        'textarea', // Generic
-        '[role="textbox"]', // Copilot
-        'input[type="text"]' // Fallback
-      ];
-
-      let input = null;
-      for (const sel of selectors) {
-        input = document.querySelector(sel);
-        if (input) break;
-      }
-
-      if (input) {
-        // Insert the context
-        if (input.isContentEditable || input.contentEditable === 'true') {
-          input.focus();
-          input.textContent = continueData.text;
-          input.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true }));
-        } else {
-          input.focus();
-          input.value = continueData.text;
-          input.dispatchEvent(new Event('input', { bubbles: true }));
-        }
-
-        // Clear the stored context (one-time use)
-        localStorage.removeItem('chatbridge:continue_context');
-        try { chrome.storage.local.remove(['chatbridge:continue_context']); } catch (e) { }
-
-        console.log('[ChatBridge] Auto-inserted continue context!');
-
-        // Show a subtle notification
-        const notif = document.createElement('div');
-        notif.style.cssText = 'position:fixed;top:20px;right:20px;background:linear-gradient(135deg,rgba(16,163,127,0.95),rgba(0,100,80,0.95));color:white;padding:12px 20px;border-radius:10px;font-size:13px;z-index:999999;box-shadow:0 4px 20px rgba(0,0,0,0.3);animation:slideIn 0.3s ease;';
-        notif.innerHTML = '✨ <strong>ChatBridge</strong>: Conversation context inserted!';
-        document.body.appendChild(notif);
-
-        // Add slide animation
-        const style = document.createElement('style');
-        style.textContent = '@keyframes slideIn { from { transform: translateX(100px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }';
-        document.head.appendChild(style);
-
-        setTimeout(() => notif.remove(), 4000);
-      }
-    } catch (e) {
-      console.warn('[ChatBridge] Continue auto-insert error:', e);
-    }
-  })();
+  bootstrap.checkContinueWithAutoInsert();
 
   // CLOUDFLARE FIX: Defer UI injection until page is fully loaded to avoid triggering security checks
   let _pageFullyLoaded = document.readyState === 'complete';
