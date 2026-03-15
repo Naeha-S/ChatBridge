@@ -352,6 +352,15 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       appendBackgroundErrorLog(entry);
       console.warn('REPORT_ISSUE', entry);
     } catch (e) {
+      console.warn('REPORT_ISSUE_FAILED', e && (e.message || e));
+    }
+    sendResponse({ ok: true });
+    return true;
+  }
+
+  return false;
+});
+
 // ─── MV3-Safe Alarms for Background Tasks ────────────────────────────────
 // setInterval cannot work in MV3 because the worker dies after ~30s.
 // Use chrome.alarms instead — they fire even if the worker was terminated.
@@ -790,7 +799,14 @@ try {
 /** @typedef {{ ratePerSec: number, maxBurst: number }} TokenBucketConfig */
 
 const Config = (function () {
-  const DEFAULTS = { ratePerSec: 1, maxBurst: 5, debug: false };
+  const DEFAULTS = {
+    ratePerSec: 1,
+    maxBurst: 5,
+    debug: false,
+    agentPhaseRoutingBeta: true,
+    agentPhaseRagBeta: true,
+    agentPhaseScorecardsBeta: true
+  };
   let cache = { value: DEFAULTS, ts: 0 };
   async function _load() {
     try {
@@ -3055,6 +3071,7 @@ Rewritten conversation (optimized for ${tgt}):`;
     (async () => {
       const startMs = Date.now();
       try {
+        const config = await Config.getAll();
         const payload = msg.payload || {};
         const preferredModel = payload.model || 'auto'; // 'gemini', 'llama', 'hybrid', 'auto'
         const routeMode = payload.routeMode || preferredModel;
@@ -3063,6 +3080,21 @@ Rewritten conversation (optimized for ${tgt}):`;
         const temperature = payload.temperature != null ? payload.temperature : 0.4;
         const complexity = payload.complexity || 'auto'; // 'deep', 'fast', 'auto'
         const retrievalEnabled = payload.enableRetrieval !== false;
+        const agentTab = payload.agentTab || 'generic';
+        const retrievalScope = payload.retrievalScope || 'recent';
+        const routeHints = payload.routeHints || {};
+        const preprocessedContext = payload.preprocessedContext || null;
+        const featureFlags = {
+          agentPhaseRoutingBeta: payload.stagedFlags && Object.prototype.hasOwnProperty.call(payload.stagedFlags, 'agentPhaseRoutingBeta')
+            ? !!payload.stagedFlags.agentPhaseRoutingBeta
+            : config.agentPhaseRoutingBeta !== false,
+          agentPhaseRagBeta: payload.stagedFlags && Object.prototype.hasOwnProperty.call(payload.stagedFlags, 'agentPhaseRagBeta')
+            ? !!payload.stagedFlags.agentPhaseRagBeta
+            : config.agentPhaseRagBeta !== false,
+          agentPhaseScorecardsBeta: payload.stagedFlags && Object.prototype.hasOwnProperty.call(payload.stagedFlags, 'agentPhaseScorecardsBeta')
+            ? !!payload.stagedFlags.agentPhaseScorecardsBeta
+            : config.agentPhaseScorecardsBeta !== false
+        };
 
         if (!prompt) {
           return sendResponse({ ok: false, error: 'empty_prompt', message: 'No prompt provided to agent_route.' });
@@ -3182,17 +3214,70 @@ Rewritten conversation (optimized for ${tgt}):`;
           };
         }
 
-        // Determine model: auto-select based on complexity heuristics
-        let selectedModel = routeMode;
-        if (selectedModel === 'auto') {
-          const isDeep = complexity === 'deep' || prompt.length > 2000 || /synthesiz|analyz|compar|evaluat|briefing|handoff|comprehensive/i.test(prompt);
-          selectedModel = isDeep ? 'hybrid' : 'llama';
+        function selectPhaseRouteMode() {
+          if (routeMode && routeMode !== 'auto') return routeMode;
+          if (preferredModel && preferredModel !== 'auto') return preferredModel;
+
+          const preferredRoute = (routeHints.preferredRoute || '').toLowerCase();
+          if (featureFlags.agentPhaseRoutingBeta && ['gemini', 'llama', 'hybrid'].includes(preferredRoute)) {
+            return preferredRoute;
+          }
+
+          if (!featureFlags.agentPhaseRoutingBeta) {
+            const isDeep = complexity === 'deep' || prompt.length > 2000 || /synthesiz|analyz|compar|evaluat|briefing|handoff|comprehensive/i.test(prompt);
+            return isDeep ? 'hybrid' : 'llama';
+          }
+
+          const hasStructuredPreprocess = !!(preprocessedContext && (preprocessedContext.retrievalContextText || preprocessedContext.liveSegmentContext));
+          const profile = routeHints.routeProfile || agentTab;
+          const phaseRoutes = {
+            catch_me_up: complexity === 'fast' ? 'llama' : 'hybrid',
+            prepare_me: complexity === 'deep' ? 'hybrid' : 'gemini',
+            track_this: hasStructuredPreprocess ? 'gemini' : 'llama',
+            second_opinion: routeHints.preferAlternateProvider ? 'llama' : 'hybrid',
+            handoff: 'hybrid',
+            my_pulse: 'hybrid'
+          };
+          return phaseRoutes[profile] || (hasStructuredPreprocess || complexity === 'deep' ? 'hybrid' : 'llama');
         }
 
-        const retrieval = await getRetrievedContext(prompt, payload.topK || 4);
-        const enrichedPrompt = retrieval.contextText
+        function buildPreprocessedPrompt() {
+          if (!featureFlags.agentPhaseRagBeta || !preprocessedContext) return null;
+          const blocks = [];
+          if (preprocessedContext.intentAnalysis) {
+            const intent = preprocessedContext.intentAnalysis;
+            blocks.push([
+              'Agent Route Intent Analysis:',
+              `- intent: ${intent.intent || 'find_specific'}`,
+              `- confidence: ${Math.round((Number(intent.confidence) || 0) * 100)}%`,
+              `- topicFocus: ${intent.topicFocus || 'none'}`,
+              `- modifiers: ${(intent.modifiers || []).join(', ') || 'none'}`,
+              `- keywords: ${(intent.keywords || []).slice(0, 8).join(', ') || 'none'}`
+            ].join('\n'));
+          }
+          if (preprocessedContext.retrievalContextText) {
+            blocks.push(`Scoped Memory Retrieval (${retrievalScope}):\n${preprocessedContext.retrievalContextText}`);
+          }
+          if (preprocessedContext.liveSegmentContext) {
+            blocks.push(`Live Segment Context:\n${preprocessedContext.liveSegmentContext}`);
+          }
+          if (!blocks.length) return null;
+          return `${prompt}\n\nStructured pre-processing for this agent phase:\n${blocks.join('\n\n')}\n\nUse this context only when directly relevant. Preserve provenance and avoid fabricating missing details.`;
+        }
+
+        // Determine model: auto-select based on complexity heuristics
+        const selectedModel = selectPhaseRouteMode();
+
+        const preprocessedPrompt = buildPreprocessedPrompt();
+        const retrieval = (!preprocessedPrompt && retrievalEnabled)
+          ? await getRetrievedContext(prompt, payload.topK || 4)
+          : {
+            contextText: '',
+            sources: Array.isArray(preprocessedContext?.retrievalSources) ? preprocessedContext.retrievalSources : []
+          };
+        const enrichedPrompt = preprocessedPrompt || (retrieval.contextText
           ? `${prompt}\n\nRelevant memory retrieved from previous conversations:\n${retrieval.contextText}\n\nUse this context if helpful, but do not fabricate details.`
-          : prompt;
+          : prompt);
 
         let result = null;
 
@@ -3268,8 +3353,15 @@ Rewritten conversation (optimized for ${tgt}):`;
           ok: true,
           route_mode: selectedModel,
           latency_ms: Date.now() - startMs,
-          retrieval_used: !!retrieval.contextText,
-          retrieval_sources: retrieval.sources
+          retrieval_used: !!(preprocessedPrompt || retrieval.contextText),
+          retrieval_scope: retrievalScope,
+          retrieval_sources: retrieval.sources,
+          preprocess_used: !!preprocessedPrompt,
+          intent_used: preprocessedContext && preprocessedContext.intentAnalysis ? preprocessedContext.intentAnalysis.intent : '',
+          phase_flags: featureFlags,
+          route_profile: routeHints.routeProfile || agentTab,
+          route_strategy: routeHints.modelStrategy || complexity,
+          route_preferred: routeHints.preferredRoute || ''
         }));
       } catch (e) {
         return sendResponse({ ok: false, error: 'agent_route_error', message: (e && e.message) || String(e), latency_ms: Date.now() - startMs });

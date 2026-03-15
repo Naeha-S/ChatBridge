@@ -321,7 +321,12 @@
 
   // --- Lightweight Config & Logger (non-invasive) ---------------------------
   const CBConfig = (function () {
-    const DEFAULTS = { debug: DEBUG === true };
+    const DEFAULTS = {
+      debug: DEBUG === true,
+      agentPhaseRoutingBeta: true,
+      agentPhaseRagBeta: true,
+      agentPhaseScorecardsBeta: true
+    };
     let cache = { value: DEFAULTS, ts: 0 };
     function getAll(force) {
       if (!force && (Date.now() - cache.ts) < 60_000) return Promise.resolve(cache.value);
@@ -336,6 +341,19 @@
       });
     }
     function get(key) { return getAll(false).then(c => c[key]); }
+    function set(partial) {
+      return new Promise((resolve) => {
+        try {
+          getAll(true).then((cur) => {
+            const next = Object.assign({}, cur, partial || {});
+            chrome.storage && chrome.storage.local.set({ chatbridge_config: next }, () => {
+              cache = { value: next, ts: Date.now() };
+              resolve(next);
+            });
+          }).catch(() => resolve(cache.value));
+        } catch (_) { resolve(cache.value); }
+      });
+    }
     try {
       chrome.storage && chrome.storage.onChanged && chrome.storage.onChanged.addListener((changes, area) => {
         if (area === 'local' && changes && changes.chatbridge_config) {
@@ -343,7 +361,7 @@
         }
       });
     } catch (_) { }
-    return { getAll, get };
+    return { getAll, get, set };
   })();
 
   const CBLogger = (function () {
@@ -373,6 +391,33 @@
     function normalizeError(err) {
       if (!err) return { message: 'Unknown error', stack: '' };
       if (typeof err === 'string') return { message: err, stack: '' };
+      if (typeof err === 'object') {
+        const stack = String(err.stack || '');
+        if (err.message) {
+          return {
+            message: String(err.message),
+            stack
+          };
+        }
+        try {
+          const json = JSON.stringify(err);
+          if (json && json !== '{}') {
+            return {
+              message: `Unknown error ${json}`,
+              stack
+            };
+          }
+        } catch (_) { }
+        try {
+          const keys = Object.keys(err || {});
+          if (keys.length) {
+            return {
+              message: `Unknown error object (keys: ${keys.join(', ')})`,
+              stack
+            };
+          }
+        } catch (_) { }
+      }
       return {
         message: String(err.message || err.toString() || 'Unknown error'),
         stack: String(err.stack || '')
@@ -5164,7 +5209,7 @@
       { id: 'qa-sidebar-optimize', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v5m0 4v8m-4-4l4-4 4 4"/><circle cx="12" cy="12" r="10"/></svg>', label: 'Optimize', title: 'Transform raw prompts into high-performance AI prompts' },
       { id: 'qa-sidebar-copy', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>', label: 'Copy', title: 'Copy conversation to clipboard' },
       { id: 'qa-sidebar-clean', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>', label: 'Clean', title: 'Remove duplicates and organize saved conversations' },
-      { id: 'qa-sidebar-export', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>', label: 'Export', title: 'Export conversations as PDF, Markdown, Text, CSV, or JSON' }
+      { id: 'qa-sidebar-export', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>', label: 'Export', title: 'Preview and export the active chat as Markdown, Text, HTML, or JSON' }
     ];
 
     qaButtons.forEach(qa => {
@@ -15021,23 +15066,289 @@ Respond with JSON only:
     // Cross-platform, proactive, consumer-grade productivity agents
     // ============================================
 
+    const AGENT_PHASE_FLAGS_DEFAULTS = {
+      agentPhaseRoutingBeta: true,
+      agentPhaseRagBeta: true,
+      agentPhaseScorecardsBeta: true
+    };
+
+    const AGENT_ROUTE_POLICY_MATRIX = {
+      catchmeup: { fast: 'llama', balanced: 'hybrid', deep: 'hybrid' },
+      executioncoach: { fast: 'llama', balanced: 'gemini', deep: 'hybrid' },
+      trackthis: { fast: 'llama', balanced: 'gemini', deep: 'hybrid' },
+      secondopinion: { fast: 'llama', balanced: 'hybrid', deep: 'hybrid' },
+      handoff: { fast: 'gemini', balanced: 'hybrid', deep: 'hybrid' },
+      mypulse: { fast: 'gemini', balanced: 'hybrid', deep: 'hybrid' }
+    };
+
+    async function getAgentPhaseFlags(force = false) {
+      try {
+        const cfg = await CBConfig.getAll(force);
+        return {
+          agentPhaseRoutingBeta: cfg.agentPhaseRoutingBeta !== false,
+          agentPhaseRagBeta: cfg.agentPhaseRagBeta !== false,
+          agentPhaseScorecardsBeta: cfg.agentPhaseScorecardsBeta !== false
+        };
+      } catch (_) {
+        return Object.assign({}, AGENT_PHASE_FLAGS_DEFAULTS);
+      }
+    }
+
+    function getAgentTabForRoute(opts = {}) {
+      return opts.agentTab || __agentHubState.activeTab || 'catchmeup';
+    }
+
+    function mapAgentTabToRouteProfile(tabId) {
+      switch (tabId) {
+        case 'catchmeup': return 'catch_me_up';
+        case 'executioncoach': return 'prepare_me';
+        case 'trackthis': return 'track_this';
+        case 'secondopinion': return 'second_opinion';
+        case 'handoff': return 'handoff';
+        case 'mypulse': return 'my_pulse';
+        default: return 'generic';
+      }
+    }
+
+    function normalizeRouteStrategy(strategy = 'balanced') {
+      if (strategy === 'fast' || strategy === 'deep') return strategy;
+      return 'balanced';
+    }
+
+    function getPreferredRouteForTab(tabId, strategy = 'balanced') {
+      const policy = AGENT_ROUTE_POLICY_MATRIX[tabId] || AGENT_ROUTE_POLICY_MATRIX.catchmeup;
+      const lane = normalizeRouteStrategy(strategy);
+      return {
+        lane,
+        routeMode: policy[lane] || policy.balanced || 'hybrid',
+        matrix: policy
+      };
+    }
+
+    function getAgentRouteTopK(tabId, retrievalScope, opts = {}) {
+      if (typeof opts.topK === 'number' && opts.topK > 0) return opts.topK;
+      const base = {
+        catchmeup: 6,
+        executioncoach: 5,
+        trackthis: 8,
+        secondopinion: 6,
+        handoff: 7,
+        mypulse: 6
+      }[tabId] || 5;
+      if (retrievalScope === 'topic') return Math.max(base, 8);
+      if (retrievalScope === 'all') return Math.max(base, 10);
+      return base;
+    }
+
+    function buildLiveSegmentContextForAgent() {
+      try {
+        if (typeof window.SegmentEngine === 'undefined') return '';
+        const scanMessages = Array.isArray(window.ChatBridge?._lastScanData?.messages) ? window.ChatBridge._lastScanData.messages : [];
+        const selectedMessages = Array.isArray(window.ChatBridge?.selectedConversation?.conversation) ? window.ChatBridge.selectedConversation.conversation : [];
+        const sourceMessages = selectedMessages.length ? selectedMessages : scanMessages;
+        if (!sourceMessages.length || sourceMessages.length < 3) return '';
+
+        const segmentEngine = new window.SegmentEngine();
+        const tempConversation = {
+          platform: location.hostname,
+          ts: Date.now(),
+          conversation: sourceMessages.map((msg) => ({
+            role: msg.role,
+            text: msg.text || '',
+            timestamp: msg.timestamp || null
+          }))
+        };
+        const segments = segmentEngine.extractSegments(tempConversation, location.hostname).slice(0, 3);
+        if (!segments.length) return '';
+
+        return segments.map((segment, index) => {
+          const summary = String(segment.summary || '').trim() || (segment.messages || []).map((m) => m.text).join(' ').slice(0, 180);
+          return `- Segment ${index + 1}: [${segment.topic || 'General Discussion'}] role=${segment.role || 'general'}, type=${segment.type || 'discussion'}, summary=${summary}`;
+        }).join('\n');
+      } catch (e) {
+        debugLog('buildLiveSegmentContextForAgent error', e);
+        return '';
+      }
+    }
+
+    async function ensureAgentMemoryRetrieval() {
+      try {
+        if (!window.MemoryRetrieval) return null;
+        if (__agentHubState.memoryRetrieval && __agentHubState.memoryRetrievalReady) return __agentHubState.memoryRetrieval;
+        if (__agentHubState.memoryRetrievalInitPromise) {
+          await __agentHubState.memoryRetrievalInitPromise;
+          return __agentHubState.memoryRetrieval;
+        }
+
+        const instance = new window.MemoryRetrieval();
+        __agentHubState.memoryRetrieval = instance;
+        __agentHubState.memoryRetrievalInitPromise = instance.initialize()
+          .then(() => {
+            __agentHubState.memoryRetrievalReady = true;
+            return instance;
+          })
+          .catch((error) => {
+            __agentHubState.memoryRetrieval = null;
+            __agentHubState.memoryRetrievalReady = false;
+            throw error;
+          })
+          .finally(() => {
+            __agentHubState.memoryRetrievalInitPromise = null;
+          });
+
+        await __agentHubState.memoryRetrievalInitPromise;
+        return __agentHubState.memoryRetrieval;
+      } catch (e) {
+        debugLog('ensureAgentMemoryRetrieval error', e);
+        return null;
+      }
+    }
+
+    function filterAgentRetrievalResults(results, intentAnalysis, retrievalScope) {
+      const items = Array.isArray(results) ? results.slice() : [];
+      if (!items.length) return items;
+      if (retrievalScope === 'all') return items;
+
+      let filtered = items;
+      if (retrievalScope === 'recent') {
+        const cutoff = Date.now() - (21 * 24 * 3600000);
+        filtered = filtered.filter((item) => Number(item?.segment?.timestamp || 0) >= cutoff);
+      }
+
+      if (retrievalScope === 'topic') {
+        const topicNeedle = String(intentAnalysis?.topicFocus || '').toLowerCase().trim();
+        const keywords = Array.isArray(intentAnalysis?.keywords) ? intentAnalysis.keywords.map((kw) => String(kw).toLowerCase()) : [];
+        filtered = filtered.filter((item) => {
+          const topic = String(item?.segment?.topic || '').toLowerCase();
+          const segmentKeywords = Array.isArray(item?.segment?.keywords) ? item.segment.keywords.map((kw) => String(kw).toLowerCase()) : [];
+          const haystack = `${topic} ${segmentKeywords.join(' ')}`;
+          if (topicNeedle && haystack.includes(topicNeedle)) return true;
+          return keywords.some((kw) => haystack.includes(kw));
+        });
+      }
+
+      return filtered.length ? filtered : items;
+    }
+
+    function formatAgentRetrievedContext(results, limit = 6) {
+      const rows = (Array.isArray(results) ? results : []).slice(0, limit);
+      return {
+        contextText: rows.map((item) => {
+          const segment = item.segment || {};
+          const snippet = String(segment.summary || (segment.messages || []).map((m) => m.text).join(' ') || '').replace(/\s+/g, ' ').trim().slice(0, 220);
+          const topic = segment.topic || 'General Discussion';
+          const source = segment.platform || 'history';
+          const confidence = Math.round(((item.relevanceScore != null ? item.relevanceScore : item.combinedScore) || 0.7) * 100);
+          return `- [${source}] ${topic} | ${confidence}% | ${snippet}`;
+        }).join('\n'),
+        sources: rows.map((item) => ({
+          topic: item?.segment?.topic || '',
+          platform: item?.segment?.platform || '',
+          timestamp: item?.segment?.timestamp || 0,
+          score: Number((((item?.relevanceScore != null ? item.relevanceScore : item?.combinedScore) || 0)).toFixed(4))
+        }))
+      };
+    }
+
+    async function buildAgentRoutePreprocess(prompt, opts = {}) {
+      const phaseFlags = await getAgentPhaseFlags();
+      const tabId = getAgentTabForRoute(opts);
+      const retrievalScope = opts.retrievalScope || __agentHubState.retrievalScope || 'recent';
+      const strategy = normalizeRouteStrategy(opts.complexity || __agentHubState.modelStrategy || 'balanced');
+      const routePolicy = getPreferredRouteForTab(tabId, strategy);
+      const topK = getAgentRouteTopK(tabId, retrievalScope, opts);
+      const preprocess = {
+        stagedFlags: phaseFlags,
+        agentTab: tabId,
+        retrievalScope,
+        topK,
+        enableRetrieval: (opts.enableRetrieval !== false) && phaseFlags.agentPhaseRagBeta,
+        routeHints: {
+          routeProfile: mapAgentTabToRouteProfile(tabId),
+          preferAlternateProvider: tabId === 'secondopinion',
+          retrievalScope,
+          modelStrategy: strategy,
+          routePolicy: routePolicy.matrix,
+          preferredRoute: routePolicy.routeMode
+        },
+        preprocessedContext: null
+      };
+
+      if (!phaseFlags.agentPhaseRoutingBeta && !phaseFlags.agentPhaseRagBeta) {
+        return preprocess;
+      }
+
+      let intentAnalysis = null;
+      try {
+        if (typeof window.IntentAnalyzer !== 'undefined') {
+          intentAnalysis = new window.IntentAnalyzer().analyzeQuery(prompt || 'recent context');
+        }
+      } catch (e) {
+        debugLog('IntentAnalyzer preprocess error', e);
+      }
+
+      let retrievalContextText = '';
+      let retrievalSources = [];
+      if (preprocess.enableRetrieval) {
+        try {
+          const memoryRetrieval = await ensureAgentMemoryRetrieval();
+          if (memoryRetrieval && typeof memoryRetrieval.search === 'function') {
+            const rawResults = await memoryRetrieval.search(prompt || 'recent context', {
+              limit: Math.max(8, topK * 2),
+              threshold: retrievalScope === 'topic' ? 0.35 : 0.2
+            });
+            const filteredResults = filterAgentRetrievalResults(rawResults, intentAnalysis, retrievalScope);
+            const formatted = formatAgentRetrievedContext(filteredResults, topK);
+            retrievalContextText = formatted.contextText;
+            retrievalSources = formatted.sources;
+          }
+        } catch (e) {
+          debugLog('MemoryRetrieval preprocess error', e);
+        }
+      }
+
+      const liveSegmentContext = phaseFlags.agentPhaseRagBeta ? buildLiveSegmentContextForAgent() : '';
+      preprocess.routeHints.intent = intentAnalysis ? intentAnalysis.intent : 'find_specific';
+      preprocess.routeHints.hasStructuredPreprocess = !!(retrievalContextText || liveSegmentContext);
+      preprocess.preprocessedContext = {
+        intentAnalysis,
+        retrievalContextText,
+        retrievalSources,
+        liveSegmentContext
+      };
+      return preprocess;
+    }
+
     // Agent Route helper — intelligent multi-model routing via background.js
     function callAgentRoute(prompt, opts = {}) {
       return new Promise((resolve) => {
-        try {
-          chrome.runtime.sendMessage({
-            type: 'agent_route',
-            payload: {
-              prompt,
-              model: opts.model || 'auto',
-              complexity: opts.complexity || 'auto',
-              maxTokens: opts.maxTokens || 1024,
-              temperature: opts.temperature != null ? opts.temperature : 0.4
-            }
-          }, res => {
-            resolve(res || { ok: false, error: 'no-response' });
-          });
-        } catch (e) { resolve({ ok: false, error: e && e.message }); }
+        (async () => {
+          try {
+            const preprocess = await buildAgentRoutePreprocess(prompt, opts);
+            chrome.runtime.sendMessage({
+              type: 'agent_route',
+              payload: {
+                prompt,
+                model: opts.model || 'auto',
+                routeMode: opts.routeMode || opts.model || 'auto',
+                complexity: opts.complexity || 'auto',
+                maxTokens: opts.maxTokens || 1024,
+                temperature: opts.temperature != null ? opts.temperature : 0.4,
+                enableRetrieval: preprocess.enableRetrieval,
+                topK: preprocess.topK,
+                agentTab: preprocess.agentTab,
+                retrievalScope: preprocess.retrievalScope,
+                stagedFlags: preprocess.stagedFlags,
+                routeHints: preprocess.routeHints,
+                preprocessedContext: preprocess.preprocessedContext
+              }
+            }, res => {
+              resolve(res || { ok: false, error: 'no-response' });
+            });
+          } catch (e) {
+            resolve({ ok: false, error: e && e.message ? e.message : String(e) });
+          }
+        })();
       });
     }
 
@@ -15078,6 +15389,451 @@ Respond with JSON only:
     // Agent badge state (in-memory, synced from storage on sidebar open)
     const __agentBadges = { catchmeup: 0, trackthis: 0 };
 
+    // Phase 1: Agent Hub tab-shell state
+    const __agentHubState = {
+      activeTab: 'catchmeup',
+      agentMap: {},
+      sharedContext: null,
+      sharedContextTs: 0,
+      modelStrategy: 'balanced',
+      retrievalScope: 'recent',
+      memoryRetrieval: null,
+      memoryRetrievalReady: false,
+      memoryRetrievalInitPromise: null
+    };
+
+    async function buildAgentSharedContext({ force = false } = {}) {
+      const maxAgeMs = 25000;
+      if (!force && __agentHubState.sharedContext && (Date.now() - __agentHubState.sharedContextTs) < maxAgeMs) {
+        return __agentHubState.sharedContext;
+      }
+
+      let sourceMessages = [];
+      try {
+        const scan = window.ChatBridge?._lastScanData;
+        if (Array.isArray(scan?.messages)) sourceMessages = scan.messages;
+        else if (Array.isArray(scan)) sourceMessages = scan;
+      } catch (_) { }
+
+      let selectedMessages = [];
+      try {
+        const selected = window.ChatBridge?.selectedConversation;
+        if (Array.isArray(selected?.conversation)) selectedMessages = selected.conversation;
+        else if (Array.isArray(selected?.messages)) selectedMessages = selected.messages;
+      } catch (_) { }
+
+      let storedConversations = [];
+      try { storedConversations = await loadConversationsAsync(); } catch (_) { storedConversations = []; }
+
+      const activeMessages = (sourceMessages.length ? sourceMessages : selectedMessages).slice(0, 80);
+      const recentMessages = (storedConversations[0]?.conversation || storedConversations[0]?.messages || []).slice(0, 50);
+      const normalized = (activeMessages.length ? activeMessages : recentMessages)
+        .map((m) => ({
+          role: String(m?.role || m?.type || 'user').toLowerCase().includes('assistant') ? 'assistant' : 'user',
+          text: String(m?.text || m?.content || '').trim()
+        }))
+        .filter((m) => m.text.length > 0);
+
+      const totalChars = normalized.reduce((acc, m) => acc + m.text.length, 0);
+      const activePlatform = (window.ChatBridge?.selectedPlatform || location.hostname || 'unknown').replace(/^www\./, '');
+      const lastStoredTs = storedConversations[0]?.ts || 0;
+
+      const context = {
+        activePlatform,
+        activeMessageCount: normalized.length,
+        totalStoredConversations: Array.isArray(storedConversations) ? storedConversations.length : 0,
+        lastActivityAgo: lastStoredTs ? getTimeAgo(lastStoredTs) : 'unknown',
+        estimatedWords: Math.max(0, Math.round(totalChars / 5)),
+        sample: normalized.slice(0, 8).map((m) => `${m.role}: ${m.text.slice(0, 180)}`),
+        retrievalScope: __agentHubState.retrievalScope || 'recent',
+        modelStrategy: __agentHubState.modelStrategy || 'balanced'
+      };
+
+      context.promptContext = [
+        'Shared Context (ChatBridge Phase 1):',
+        `- Platform: ${context.activePlatform}`,
+        `- Active messages: ${context.activeMessageCount}`,
+        `- Stored conversations: ${context.totalStoredConversations}`,
+        `- Last activity: ${context.lastActivityAgo}`,
+        `- Estimated words: ${context.estimatedWords}`,
+        `- Model strategy: ${context.modelStrategy}`,
+        `- Retrieval scope: ${context.retrievalScope}`,
+        context.sample.length ? `- Sample:\n${context.sample.join('\n')}` : '- Sample: none'
+      ].join('\n');
+
+      __agentHubState.sharedContext = context;
+      __agentHubState.sharedContextTs = Date.now();
+      return context;
+    }
+
+    function setActiveAgentTab(tabId, { focus = false } = {}) {
+      if (!shadow || !tabId || !__agentHubState.agentMap[tabId]) return;
+
+      __agentHubState.activeTab = tabId;
+      const tabShell = shadow.getElementById && shadow.getElementById('cb-agent-tab-shell');
+      const grid = shadow.getElementById && shadow.getElementById('cb-agents-grid');
+      if (tabShell) tabShell.style.display = 'none';
+      if (grid) grid.style.display = 'none';
+      shadow.querySelectorAll('.cb-agent-tab-btn').forEach((btn) => {
+        const active = btn.getAttribute('data-agent-id') === tabId;
+        btn.classList.toggle('cb-agent-tab-btn-active', active);
+        btn.setAttribute('aria-selected', active ? 'true' : 'false');
+        if (active && focus) btn.focus();
+      });
+
+      const outputArea = (agentContent && agentContent.querySelector('#cb-agent-output')) || shadow.getElementById('cb-agent-output');
+      if (!outputArea) return;
+      outputArea.style.display = 'block';
+      outputArea.setAttribute('aria-busy', 'true');
+
+      Promise.resolve(__agentHubState.agentMap[tabId].action())
+        .catch((e) => {
+          outputArea.innerHTML = `<div class="cb-agent-error">${escapeHtml((e && e.message) || 'Failed to open agent tab')}</div>`;
+          debugLog('setActiveAgentTab error', e);
+        })
+        .finally(() => {
+          outputArea.setAttribute('aria-busy', 'false');
+        });
+    }
+
+    function goBackToAgentTabs(defaultTab = 'catchmeup') {
+      if (__agentHubState.agentMap[defaultTab]) __agentHubState.activeTab = defaultTab;
+      const tabShell = shadow && shadow.getElementById ? shadow.getElementById('cb-agent-tab-shell') : null;
+      const grid = shadow && shadow.getElementById ? shadow.getElementById('cb-agents-grid') : null;
+      const outputArea = (agentContent && agentContent.querySelector('#cb-agent-output')) || (shadow && shadow.getElementById && shadow.getElementById('cb-agent-output'));
+      if (tabShell) tabShell.style.display = 'none';
+      if (grid) grid.style.display = 'grid';
+      if (outputArea) {
+        outputArea.style.display = 'none';
+        outputArea.innerHTML = '';
+      }
+    }
+
+    function withAgentRouteStrategy(baseOpts = {}) {
+      const strategy = __agentHubState.modelStrategy || 'balanced';
+      const complexity = strategy === 'fast' ? 'fast' : (strategy === 'deep' ? 'deep' : 'auto');
+      return Object.assign({ complexity, agentTab: __agentHubState.activeTab, retrievalScope: __agentHubState.retrievalScope }, baseOpts);
+    }
+
+    function formatRouteDiagnostics(res) {
+      try {
+        if (!res || !res.route_mode) return '';
+        const bits = [];
+        if (res.route_profile) bits.push(`${res.route_profile}`);
+        bits.push(`route ${res.route_mode}`);
+        if (res.intent_used) bits.push(`intent ${res.intent_used}`);
+        if (res.retrieval_scope) bits.push(`scope ${res.retrieval_scope}`);
+        if (res.preprocess_used) bits.push('preprocess on');
+        return bits.length ? ` · ${bits.join(' · ')}` : '';
+      } catch (_) {
+        return '';
+      }
+    }
+
+    const AGENT_TAB_CONTRACTS = {
+      catchmeup: {
+        artifact: 'Briefing Card',
+        uniqueness: 'timeline-first digest with deltas and one priority action',
+        requiredSections: ['Active Threads', 'Pending Items', 'What Changed', 'Priority Action']
+      },
+      executioncoach: {
+        artifact: 'Execution Plan',
+        uniqueness: 'sequenced action plan with risk radar and 24h execution steps',
+        requiredSections: ['Decision Snapshot', 'Next 3 Actions', 'Risk Radar', 'Ask This Next', '24h Plan']
+      },
+      trackthis: {
+        artifact: 'Monitoring Report',
+        uniqueness: 'topic-status report with timeline and unresolved items',
+        requiredSections: ['Current Status', 'Timeline', 'Key Updates & Discoveries', 'Open Items', 'Suggested Next Step']
+      },
+      secondopinion: {
+        artifact: 'Verification Report',
+        uniqueness: 'claim-check and contradiction analysis with explicit confidence',
+        requiredSections: ['Agreement Score', 'Confirmed Correct', 'Potential Issues', 'What\'s Missing']
+      },
+      handoff: {
+        artifact: 'Transfer Brief',
+        uniqueness: 'recipient-ready handoff with decisions, status, open questions, and ownership-friendly actions',
+        requiredSections: ['Executive Summary', 'Background & Decisions', 'Current Status', 'Open Questions', 'Action Items', 'Key Reference']
+      },
+      mypulse: {
+        artifact: 'Optimization Dashboard Narrative',
+        uniqueness: 'behavior and platform-usage analysis with targeted optimization suggestions',
+        requiredSections: ['Work Habits', 'Topic Intelligence', 'Tool Efficacy', 'Productivity Score', '3 Radical Suggestions']
+      }
+    };
+
+    function buildAgentPromptContract(tabId, extraRules = []) {
+      const contract = AGENT_TAB_CONTRACTS[tabId] || AGENT_TAB_CONTRACTS.catchmeup;
+      const baseRules = [
+        `Tab Artifact Contract: Output must be a ${contract.artifact}.`,
+        `Uniqueness Contract: Make this output materially different from other tabs by focusing on ${contract.uniqueness}.`,
+        'Non-repetition Contract: Do not repeat headings, bullets, or near-identical sentences.',
+        'Every bullet must add net-new information. Merge duplicates instead of repeating.',
+        'If content is missing, explicitly mark the missing area once; do not repeat missing-data lines in multiple sections.',
+        `Required Sections (exact headings): ${contract.requiredSections.map(s => `## ${s}`).join(' | ')}`
+      ];
+      const rules = baseRules.concat(Array.isArray(extraRules) ? extraRules.filter(Boolean) : []);
+      return `PHASE CONTRACT:\n${rules.map(r => `- ${r}`).join('\n')}`;
+    }
+
+    function enforceAgentNonRepetition(tabId, rawText) {
+      const text = String(rawText || '').trim();
+      if (!text) return text;
+
+      const lines = text.split(/\r?\n/);
+      const seen = new Set();
+      const deduped = [];
+      const normalize = (line) => line
+        .toLowerCase()
+        .replace(/^\s*[-*•\d.)\]]+\s*/, '')
+        .replace(/[`*_~>#\[\](){}:;,.!?"']/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+      let repeatedSectionGuard = new Set();
+      lines.forEach((line) => {
+        const trimmed = line.trim();
+        if (!trimmed) {
+          if (deduped.length && deduped[deduped.length - 1] !== '') deduped.push('');
+          return;
+        }
+
+        if (trimmed.startsWith('## ')) {
+          const sectionKey = normalize(trimmed);
+          if (repeatedSectionGuard.has(sectionKey)) return;
+          repeatedSectionGuard.add(sectionKey);
+          deduped.push(trimmed);
+          return;
+        }
+
+        const key = normalize(trimmed);
+        if (!key) return;
+        if (seen.has(key)) return;
+        seen.add(key);
+        deduped.push(line);
+      });
+
+      const cleaned = deduped.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+      const contract = AGENT_TAB_CONTRACTS[tabId];
+      if (!contract) return cleaned;
+
+      const hasAnyHeading = /^##\s+/m.test(cleaned);
+      if (hasAnyHeading) return cleaned;
+      return `${contract.requiredSections.map(s => `## ${s}\nNo notable items identified.`).join('\n\n')}\n`;
+    }
+
+    function classifyPrepareMeBlockers({ objective = '', constraints = '', contextBlock = '' } = {}) {
+      const source = `${objective}\n${constraints}\n${contextBlock}`.toLowerCase();
+      const categories = [
+        { id: 'dependency', label: 'Dependency', terms: ['dependency', 'depends', 'blocked by', 'waiting', 'approval', 'review', 'api', 'vendor'] },
+        { id: 'scope', label: 'Scope', terms: ['scope', 'too much', 'unclear', 'requirements', 'undefined', 'change request', 'out of scope'] },
+        { id: 'resource', label: 'Resources', terms: ['time', 'deadline', 'bandwidth', 'capacity', 'staff', 'team', 'budget', 'cost'] },
+        { id: 'technical', label: 'Technical', terms: ['bug', 'error', 'failing', 'test', 'migration', 'refactor', 'integration', 'performance'] },
+        { id: 'alignment', label: 'Alignment', terms: ['stakeholder', 'decision', 'priority', 'conflict', 'misaligned', 'expectation', 'ownership'] }
+      ];
+
+      const items = categories.map((cat) => {
+        let hits = 0;
+        cat.terms.forEach((term) => {
+          const matches = source.match(new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi')) || [];
+          hits += matches.length;
+        });
+        return {
+          id: cat.id,
+          label: cat.label,
+          hits
+        };
+      }).filter((item) => item.hits > 0).sort((a, b) => b.hits - a.hits);
+
+      const severityScore = Math.min(100, items.reduce((acc, item) => acc + (item.hits * 8), 0));
+      const severity = severityScore >= 60 ? 'high' : (severityScore >= 30 ? 'medium' : 'low');
+      return {
+        items,
+        severity,
+        severityScore,
+        summary: items.length
+          ? items.map((item) => `${item.label}(${item.hits})`).join(', ')
+          : 'No major blockers detected from provided context.'
+      };
+    }
+
+    function getPrepareMeContractConfig(mode = 'deterministic') {
+      if (mode === 'strict') {
+        return {
+          mode,
+          contractText: 'Strict deterministic contract: Next 3 Actions MUST be exactly three bullets in this schema: [A1|A2|A3] ACTION VERB phrase | OWNER | ETA | DEPENDENCY.',
+          parsePattern: /\[A[1-3]\].*\|.*\|.*\|.*/g
+        };
+      }
+      if (mode === 'balanced') {
+        return {
+          mode,
+          contractText: 'Balanced contract: Next 3 Actions should include owner and ETA for each action.',
+          parsePattern: /\b(owner|eta)\b/gi
+        };
+      }
+      return {
+        mode: 'deterministic',
+        contractText: 'Deterministic contract: Next 3 Actions should follow schema [A#] action | owner | ETA | dependency when possible.',
+        parsePattern: /\[A\d\].*\|.*\|.*\|.*/g
+      };
+    }
+
+    function scorePrepareMeContractOutput(text, contractConfig) {
+      const content = String(text || '');
+      if (!content) return { score: 0, matched: 0 };
+      const matches = content.match(contractConfig.parsePattern) || [];
+      const score = Math.min(100, Math.round((matches.length / 3) * 100));
+      return {
+        score,
+        matched: matches.length
+      };
+    }
+
+    function updateTopicTrendHistory(topic, timestamp = Date.now(), increment = 1) {
+      if (!topic || !timestamp) return topic;
+      const bucketDay = new Date(timestamp);
+      bucketDay.setHours(0, 0, 0, 0);
+      const bucketTs = bucketDay.getTime();
+      const history = Array.isArray(topic.trendHistory) ? topic.trendHistory.slice() : [];
+      const existing = history.find((item) => item.ts === bucketTs);
+      if (existing) existing.count = (existing.count || 0) + increment;
+      else history.push({ ts: bucketTs, count: increment });
+      topic.trendHistory = history.sort((a, b) => a.ts - b.ts).slice(-30);
+      return topic;
+    }
+
+    function computeTopicTrendFromHistory(topic) {
+      const history = Array.isArray(topic?.trendHistory) ? topic.trendHistory : [];
+      if (!history.length) return { label: 'Flat', last7: 0, prev7: 0, alertState: 'Dormant' };
+      const now = Date.now();
+      const sevenDaysAgo = now - (7 * 24 * 3600000);
+      const fourteenDaysAgo = now - (14 * 24 * 3600000);
+      const last7 = history.filter((h) => h.ts >= sevenDaysAgo).reduce((acc, h) => acc + (h.count || 0), 0);
+      const prev7 = history.filter((h) => h.ts >= fourteenDaysAgo && h.ts < sevenDaysAgo).reduce((acc, h) => acc + (h.count || 0), 0);
+      const label = last7 > prev7 ? 'Upward' : (last7 < prev7 ? 'Downward' : 'Flat');
+      const alertState = last7 >= 4 ? 'High activity' : (last7 === 0 ? 'Dormant' : 'Normal');
+      return { label, last7, prev7, alertState };
+    }
+
+    function computeArtifactOverlap(textA, textB) {
+      const normalize = (text) => String(text || '')
+        .toLowerCase()
+        .replace(/[`*_~>#\[\](){}:;,.!?"']/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+      const aTokens = new Set(normalize(textA).split(' ').filter((t) => t.length > 3));
+      const bTokens = new Set(normalize(textB).split(' ').filter((t) => t.length > 3));
+      if (!aTokens.size || !bTokens.size) return 0;
+      let intersection = 0;
+      aTokens.forEach((token) => { if (bTokens.has(token)) intersection++; });
+      const union = new Set([...aTokens, ...bTokens]).size || 1;
+      return Math.round((intersection / union) * 100);
+    }
+
+    async function recordAgentArtifactTelemetry(tabId, artifactText) {
+      try {
+        __agentHubState.artifactSnapshots = __agentHubState.artifactSnapshots || {};
+        const comparisons = Object.entries(__agentHubState.artifactSnapshots)
+          .filter(([otherTab]) => otherTab !== tabId)
+          .map(([otherTab, otherText]) => ({ tab: otherTab, overlap: computeArtifactOverlap(artifactText, otherText) }));
+        const maxOverlap = comparisons.reduce((acc, item) => Math.max(acc, item.overlap), 0);
+        __agentHubState.artifactSnapshots[tabId] = artifactText;
+        await StorageManager.appendShadowSignal({
+          type: 'artifact_overlap',
+          tabId,
+          overlap: maxOverlap,
+          comparisons,
+          timestamp: Date.now()
+        });
+        return { maxOverlap, comparisons };
+      } catch (_) {
+        return { maxOverlap: 0, comparisons: [] };
+      }
+    }
+
+    function computeUniquenessScore(overlapTelemetry) {
+      const overlap = Math.max(0, Math.min(100, overlapTelemetry?.maxOverlap || 0));
+      return Math.max(0, 100 - overlap);
+    }
+
+    function countRequiredSectionCoverage(tabId, text) {
+      const contract = AGENT_TAB_CONTRACTS[tabId];
+      if (!contract) return { matched: 0, total: 0 };
+      const source = String(text || '');
+      const matched = contract.requiredSections.filter((section) => source.includes(`## ${section}`)).length;
+      return { matched, total: contract.requiredSections.length };
+    }
+
+    function computeHandoffQualityScorecard(text, options = {}) {
+      const source = String(text || '');
+      const sectionCoverage = countRequiredSectionCoverage('handoff', source);
+      const actionCount = (source.match(/^[-*•]\s+/gm) || []).length;
+      const openQuestionSignals = (source.match(/\?/g) || []).length;
+      const uniquenessScore = computeUniquenessScore(options.overlapTelemetry);
+      const audienceFit = options.recipient === 'Client' ? 'Client-ready'
+        : options.recipient === 'Manager' ? 'Exec-ready'
+          : options.recipient === 'My Future Self' ? 'Reference-ready'
+            : 'Team-ready';
+      const detailBonus = options.detailLevel === 'comprehensive' ? 8 : 4;
+      const score = Math.max(0, Math.min(100,
+        Math.round(
+          (sectionCoverage.total ? (sectionCoverage.matched / sectionCoverage.total) * 55 : 0) +
+          Math.min(20, actionCount * 4) +
+          Math.min(10, openQuestionSignals * 2) +
+          (uniquenessScore * 0.15) +
+          detailBonus
+        )
+      ));
+      return {
+        score,
+        audienceFit,
+        uniquenessScore,
+        sectionCoverage,
+        actionCount,
+        openQuestionSignals
+      };
+    }
+
+    function computePulseQualityScorecard(text, options = {}) {
+      const source = String(text || '');
+      const sectionCoverage = countRequiredSectionCoverage('mypulse', source);
+      const suggestionCount = Math.max(
+        (source.match(/## 3 Radical Suggestions([\s\S]*?)(?=\n## |$)/)?.[1]?.match(/^[-*•]|^\d+\./gm) || []).length,
+        0
+      );
+      const platformCount = options.platformCount || 0;
+      const sourceCoverage = Math.min(100, Math.round(((options.recentConvoCount || 0) * 4) + ((options.pulseSessionCount || 0) * 2)));
+      const uniquenessScore = computeUniquenessScore(options.overlapTelemetry);
+      const score = Math.max(0, Math.min(100,
+        Math.round(
+          (sectionCoverage.total ? (sectionCoverage.matched / sectionCoverage.total) * 50 : 0) +
+          Math.min(20, platformCount * 5) +
+          Math.min(15, suggestionCount * 5) +
+          (uniquenessScore * 0.15) +
+          Math.min(10, sourceCoverage * 0.1)
+        )
+      ));
+      return {
+        score,
+        uniquenessScore,
+        sourceCoverage,
+        sectionCoverage,
+        suggestionCount,
+        platformCount
+      };
+    }
+
+    function extractSecondOpinionMarkers(text) {
+      const source = String(text || '');
+      const claims = (source.match(/^-\s*Claim:/gmi) || []).length;
+      const conflicts = (source.match(/^-\s*Conflict:/gmi) || []).length;
+      const evidence = (source.match(/^-\s*Evidence:/gmi) || []).length;
+      const risks = (source.match(/^-\s*Risk:/gmi) || []).length;
+      return { claims, conflicts, evidence, risks };
+    }
+
     // Check and update agent badges (called on sidebar open + after scan)
     async function checkAgentBadges() {
       try {
@@ -15103,16 +15859,19 @@ Respond with JSON only:
     function updateAgentBadgeUI() {
       try {
         if (!shadow) return;
-        const catchBadge = shadow.querySelector('#cb-agent-badge-catchmeup');
-        const trackBadge = shadow.querySelector('#cb-agent-badge-trackthis');
-        if (catchBadge) {
-          catchBadge.textContent = __agentBadges.catchmeup > 0 ? __agentBadges.catchmeup : '';
-          catchBadge.style.display = __agentBadges.catchmeup > 0 ? 'flex' : 'none';
-        }
-        if (trackBadge) {
-          trackBadge.textContent = __agentBadges.trackthis > 0 ? __agentBadges.trackthis : '';
-          trackBadge.style.display = __agentBadges.trackthis > 0 ? 'flex' : 'none';
-        }
+        const badgeBindings = [
+          { id: 'catchmeup', count: __agentBadges.catchmeup },
+          { id: 'trackthis', count: __agentBadges.trackthis }
+        ];
+        badgeBindings.forEach(({ id, count }) => {
+          const tabBadge = shadow.querySelector(`#cb-agent-badge-${id}`);
+          const tileBadge = shadow.querySelector(`#cb-agent-card-badge-${id}`);
+          [tabBadge, tileBadge].forEach((badgeEl) => {
+            if (!badgeEl) return;
+            badgeEl.textContent = count > 0 ? count : '';
+            badgeEl.style.display = count > 0 ? 'flex' : 'none';
+          });
+        });
       } catch (e) { /* ignore badge UI errors */ }
     }
 
@@ -15129,6 +15888,7 @@ Respond with JSON only:
           const matched = (t.keywords || []).some(kw => lowerText.includes(kw.toLowerCase()));
           if (matched) {
             t.lastActivity = Date.now();
+            updateTopicTrendHistory(t, Date.now(), 1);
             if (!t.platforms) t.platforms = [];
             if (!t.platforms.includes(currentPlatform)) t.platforms.push(currentPlatform);
             if (!t.hitCount) t.hitCount = 0;
@@ -15232,6 +15992,50 @@ Respond with JSON only:
             /* Agent Hub Grid */
             .cb-ah-grid { display:grid;grid-template-columns:repeat(2,1fr);gap:12px;padding:4px 2px; }
 
+            /* Phase 1: Persistent tab shell */
+            .cb-agent-tab-shell {
+              display:flex;flex-direction:column;gap:10px;
+              padding:2px 2px 0;
+            }
+            .cb-agent-tab-row {
+              display:flex;gap:8px;overflow-x:auto;padding-bottom:2px;
+              scrollbar-width:thin;
+            }
+            .cb-agent-tab-btn {
+              position:relative;display:inline-flex;align-items:center;gap:6px;
+              padding:8px 12px;border-radius:999px;white-space:nowrap;
+              border:1px solid rgba(255,255,255,0.08);
+              background:rgba(255,255,255,0.03);color:var(--cb-subtext);
+              cursor:pointer;font-size:11px;font-weight:600;transition:all 0.2s;
+            }
+            .cb-agent-tab-btn:hover {
+              border-color:rgba(255,255,255,0.18);color:var(--cb-white);
+              background:rgba(255,255,255,0.05);
+            }
+            .cb-agent-tab-btn-active {
+              color:var(--_agent-clr, var(--cb-accent-primary));
+              border-color:color-mix(in srgb, var(--_agent-clr, var(--cb-accent-primary)) 38%, transparent);
+              background:color-mix(in srgb, var(--_agent-clr, var(--cb-accent-primary)) 14%, transparent);
+              box-shadow:0 0 14px color-mix(in srgb, var(--_agent-clr, var(--cb-accent-primary)) 14%, transparent);
+            }
+            .cb-agent-tab-badge {
+              min-width:16px;height:16px;padding:0 4px;border-radius:999px;
+              display:none;align-items:center;justify-content:center;
+              background:linear-gradient(135deg, #ef4444, #dc2626);
+              color:#fff;font-size:9px;font-weight:700;
+            }
+            .cb-agent-tab-subline {
+              font-size:10px;color:var(--cb-subtext);padding:0 4px;
+              display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+            }
+            .cb-agent-scope-pill {
+              display:inline-flex;align-items:center;gap:4px;
+              padding:3px 8px;border-radius:999px;
+              border:1px solid rgba(255,255,255,0.08);
+              background:rgba(255,255,255,0.03);color:var(--cb-subtext);
+              font-size:10px;
+            }
+
             /* ── Premium Glass Card ── */
             .cb-ah-card {
               position:relative;padding:18px 16px;
@@ -15307,10 +16111,71 @@ Respond with JSON only:
             }
 
             /* ── Agent Sub-view ── */
-            .cb-agent-sub { animation:cb-agent-slide-in 0.35s cubic-bezier(0.2,0.8,0.2,1) forwards; }
+            .cb-agent-sub {
+              animation:cb-agent-slide-in 0.35s cubic-bezier(0.2,0.8,0.2,1) forwards;
+              padding:14px;border-radius:14px;
+              background:linear-gradient(165deg, rgba(255,255,255,0.045), rgba(255,255,255,0.015));
+              border:1px solid rgba(255,255,255,0.08);
+              box-shadow:inset 0 1px 0 rgba(255,255,255,0.05), 0 10px 28px rgba(0,0,0,0.22);
+              backdrop-filter:blur(10px);
+            }
+            .cb-agent-sub[class*="cb-agent-sub-agent-"] {
+              --_agent-lux-alpha: 1;
+              --_agent-lux-line-opacity: 0.55;
+              position:relative;overflow:hidden;
+              background:
+                radial-gradient(
+                  140% 90% at 110% -10%,
+                  color-mix(in srgb, var(--_agent-lux, rgba(255,255,255,0.06)) calc(var(--_agent-lux-alpha) * 100%), transparent),
+                  transparent 58%
+                ),
+                linear-gradient(165deg, rgba(255,255,255,0.05), rgba(255,255,255,0.016));
+            }
+            .cb-agent-sub[class*="cb-agent-sub-agent-"]::before {
+              content:'';position:absolute;left:0;right:0;top:0;height:2px;
+              background:linear-gradient(90deg, transparent, color-mix(in srgb, var(--_agent-clr, var(--cb-accent-primary)) 60%, transparent), transparent);
+              opacity:var(--_agent-lux-line-opacity);pointer-events:none;
+            }
+            .cb-agent-sub-agent-catchmeup { --_agent-lux: rgba(0,212,255,0.14); }
+            .cb-agent-sub-agent-prepareme { --_agent-lux: rgba(16,185,129,0.14); }
+            .cb-agent-sub-agent-trackthis { --_agent-lux: rgba(139,92,246,0.16); }
+            .cb-agent-sub-agent-secondopinion { --_agent-lux: rgba(245,158,11,0.16); }
+            .cb-agent-sub-agent-handoff { --_agent-lux: rgba(236,72,153,0.16); }
+            .cb-agent-sub-agent-mypulse { --_agent-lux: rgba(99,102,241,0.16); }
+
+            :host(.cb-theme-light) .cb-agent-sub[class*="cb-agent-sub-agent-"] {
+              --_agent-lux-alpha: 0.62;
+              --_agent-lux-line-opacity: 0.36;
+            }
+            :host(.cb-theme-skeuomorphic) .cb-agent-sub[class*="cb-agent-sub-agent-"] {
+              --_agent-lux-alpha: 0.5;
+              --_agent-lux-line-opacity: 0.28;
+            }
+            :host(.cb-theme-brutalism) .cb-agent-sub[class*="cb-agent-sub-agent-"] {
+              --_agent-lux-alpha: 0.42;
+              --_agent-lux-line-opacity: 0.9;
+            }
+            :host(.cb-theme-synthwave) .cb-agent-sub[class*="cb-agent-sub-agent-"] {
+              --_agent-lux-alpha: 0.82;
+              --_agent-lux-line-opacity: 0.64;
+            }
+            :host(.cb-theme-glass) .cb-agent-sub[class*="cb-agent-sub-agent-"] {
+              --_agent-lux-alpha: 0.58;
+              --_agent-lux-line-opacity: 0.42;
+            }
+            :host(.cb-theme-dark) .cb-agent-sub[class*="cb-agent-sub-agent-"] {
+              --_agent-lux-alpha: 0.74;
+              --_agent-lux-line-opacity: 0.52;
+            }
+            .cb-agent-sub-agent-catchmeup .cb-agent-header-icon { border-radius:12px; }
+            .cb-agent-sub-agent-prepareme .cb-agent-header-icon { border-radius:9px; }
+            .cb-agent-sub-agent-trackthis .cb-agent-header-icon { border-radius:14px; }
+            .cb-agent-sub-agent-secondopinion .cb-agent-header-icon { border-radius:10px; }
+            .cb-agent-sub-agent-handoff .cb-agent-header-icon { border-radius:11px; }
+            .cb-agent-sub-agent-mypulse .cb-agent-header-icon { border-radius:13px; }
             .cb-agent-header {
               display:flex;align-items:center;gap:10px;margin-bottom:16px;padding-bottom:14px;
-              border-bottom:1px solid rgba(255,255,255,0.06);
+              border-bottom:1px solid color-mix(in srgb, var(--_agent-clr, var(--cb-accent-primary)) 16%, rgba(255,255,255,0.05));
             }
             .cb-agent-header-icon {
               width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;
@@ -15390,21 +16255,23 @@ Respond with JSON only:
             .cb-agent-btn-primary:disabled { opacity:0.45;cursor:not-allowed;transform:none;filter:none; }
             .cb-agent-btn-secondary {
               padding:9px 16px;border-radius:10px;
-              background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);
+              background:linear-gradient(135deg, rgba(255,255,255,0.055), rgba(255,255,255,0.02));border:1px solid rgba(255,255,255,0.1);
               color:var(--cb-white);font-size:11.5px;font-family:inherit;
-              cursor:pointer;transition:all 0.2s;
+              cursor:pointer;transition:all 0.24s;
             }
             .cb-agent-btn-secondary:hover {
               border-color:color-mix(in srgb, var(--_agent-clr, var(--cb-accent-primary)) 40%, transparent);
-              background:rgba(255,255,255,0.06);
+              background:linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03));
+              transform:translateY(-1px);
             }
 
             /* ── Result sections ── */
             .cb-agent-result-section {
               padding:16px;border-radius:12px;
-              background:linear-gradient(135deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
-              border:1px solid rgba(255,255,255,0.06);
-              margin-bottom:10px;backdrop-filter:blur(8px);
+              background:linear-gradient(145deg, rgba(255,255,255,0.045), rgba(255,255,255,0.015));
+              border:1px solid rgba(255,255,255,0.085);
+              margin-bottom:10px;backdrop-filter:blur(9px);
+              box-shadow:inset 0 1px 0 rgba(255,255,255,0.045), 0 6px 18px rgba(0,0,0,0.14);
             }
             .cb-agent-result-header {
               font-weight:700;font-size:12px;margin-bottom:8px;padding-bottom:6px;
@@ -15434,7 +16301,7 @@ Respond with JSON only:
             .cb-agent-action-row > * { flex:1; }
             .cb-agent-meta {
               font-size:9px;color:var(--cb-subtext);text-align:center;margin-top:10px;
-              padding-top:8px;border-top:1px solid rgba(255,255,255,0.04);opacity:0.7;
+              padding-top:8px;border-top:1px solid rgba(255,255,255,0.06);opacity:0.82;
             }
 
             /* ── Loading & States ── */
@@ -15515,8 +16382,9 @@ Respond with JSON only:
             .cb-agent-stats { display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:14px; }
             .cb-agent-stat {
               padding:12px;border-radius:12px;text-align:center;
-              background:linear-gradient(135deg, color-mix(in srgb, var(--_agent-clr, var(--cb-accent-primary)) 6%, transparent), color-mix(in srgb, var(--_agent-clr, var(--cb-accent-primary)) 2%, transparent));
-              border:1px solid color-mix(in srgb, var(--_agent-clr, var(--cb-accent-primary)) 12%, transparent);
+              background:linear-gradient(145deg, color-mix(in srgb, var(--_agent-clr, var(--cb-accent-primary)) 9%, transparent), color-mix(in srgb, var(--_agent-clr, var(--cb-accent-primary)) 3%, transparent));
+              border:1px solid color-mix(in srgb, var(--_agent-clr, var(--cb-accent-primary)) 18%, transparent);
+              box-shadow:inset 0 1px 0 rgba(255,255,255,0.04);
             }
             .cb-agent-stat-val { font-size:22px;font-weight:700;color:var(--cb-white);letter-spacing:-0.5px; }
             .cb-agent-stat-label { font-size:9px;color:var(--cb-subtext);margin-top:3px;text-transform:uppercase;letter-spacing:0.5px; }
@@ -15671,10 +16539,13 @@ Respond with JSON only:
         const mainContainer = document.createElement('div');
         mainContainer.style.cssText = 'padding:4px 0;display:flex;flex-direction:column;gap:12px;';
 
-        // Agents Grid — 2×3 layout
-        const agentsGrid = document.createElement('div');
-        agentsGrid.id = 'cb-agents-grid';
-        agentsGrid.className = 'cb-ah-grid';
+        const tabShell = document.createElement('div');
+        tabShell.id = 'cb-agent-tab-shell';
+        tabShell.className = 'cb-agent-tab-shell';
+        const tabRow = document.createElement('div');
+        tabRow.className = 'cb-agent-tab-row';
+        tabRow.setAttribute('role', 'tablist');
+        tabRow.setAttribute('aria-label', 'Agent phases');
 
         const agents = [
           {
@@ -15684,7 +16555,7 @@ Respond with JSON only:
             color: '#00D4FF', ambient: true, action: showCatchMeUp
           },
           {
-            id: 'executioncoach', name: 'Execution Coach',
+            id: 'executioncoach', name: 'Prepare Me',
             desc: 'Turn chat context into immediate next actions',
             icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 15l2 2 4-4"/></svg>',
             color: '#10B981', ambient: false, action: showExecutionCoach
@@ -15715,62 +16586,97 @@ Respond with JSON only:
           }
         ];
 
-        agents.forEach((agent, idx) => {
-          const card = document.createElement('div');
-          card.className = 'cb-ah-card';
-          card.style.setProperty('--_agent-clr', agent.color);
-          // Accessibility
-          card.setAttribute('role', 'button');
-          card.setAttribute('tabindex', '0');
-          card.setAttribute('aria-label', `Open ${agent.name}: ${agent.desc}`);
+        __agentHubState.agentMap = agents.reduce((acc, agent) => {
+          acc[agent.id] = agent;
+          return acc;
+        }, {});
 
-          let badgeHtml = '';
-          if (agent.ambient) {
-            const count = __agentBadges[agent.id] || 0;
-            if (count > 0) {
-              badgeHtml = `<div id="cb-agent-badge-${agent.id}" class="cb-ah-badge" style="display:flex;" aria-label="${count} new">${count}</div>`;
-            } else {
-              badgeHtml = `<div class="cb-ah-pulse-dot" aria-hidden="true"></div>`;
-            }
-          }
-
-          card.innerHTML = `
-            ${badgeHtml}
-            <div class="cb-ah-icon" aria-hidden="true">${agent.icon}</div>
-            <div class="cb-ah-name">${agent.name}</div>
-            <div class="cb-ah-desc">${agent.desc}</div>
-          `;
-
-          const activateAgent = async () => {
-            card.style.transform = 'scale(0.96)';
-            setTimeout(() => { card.style.transform = ''; }, 150);
-            try {
-              agentsGrid.style.display = 'none';
-              outputArea.style.display = 'block';
-              outputArea.setAttribute('aria-busy', 'true');
-              await agent.action();
-              outputArea.setAttribute('aria-busy', 'false');
-            } catch (e) {
-              outputArea.setAttribute('aria-busy', 'false');
-              renderAgentError(outputArea, e.message || `${agent.name} failed`, () => activateAgent());
-              debugLog(`${agent.name} error`, e);
-            }
-          };
-
-          card.addEventListener('click', activateAgent);
-          card.addEventListener('keydown', (e) => {
+        agents.forEach((agent) => {
+          const btn = document.createElement('button');
+          btn.className = 'cb-agent-tab-btn';
+          btn.setAttribute('role', 'tab');
+          btn.setAttribute('data-agent-id', agent.id);
+          btn.setAttribute('aria-selected', 'false');
+          btn.style.setProperty('--_agent-clr', agent.color);
+          btn.innerHTML = `<span>${agent.name}</span>${agent.ambient ? `<span id="cb-agent-badge-${agent.id}" class="cb-agent-tab-badge"></span>` : ''}`;
+          btn.addEventListener('click', () => setActiveAgentTab(agent.id));
+          btn.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' || e.key === ' ') {
               e.preventDefault();
-              activateAgent();
+              setActiveAgentTab(agent.id, { focus: true });
             }
           });
-
-          agentsGrid.appendChild(card);
+          tabRow.appendChild(btn);
         });
 
+        const tabMeta = document.createElement('div');
+        tabMeta.className = 'cb-agent-tab-subline';
+        tabMeta.id = 'cb-agent-tab-subline';
+        tabMeta.innerHTML = `
+          <span class="cb-agent-scope-pill">Phase 1</span>
+          <label class="cb-agent-scope-pill" for="cb-agent-model-strategy">Model
+            <select id="cb-agent-model-strategy" style="background:transparent;border:none;color:inherit;font-size:10px;outline:none;">
+              <option value="fast">Fast</option>
+              <option value="balanced" selected>Balanced</option>
+              <option value="deep">Deep</option>
+            </select>
+          </label>
+          <label class="cb-agent-scope-pill" for="cb-agent-retrieval-scope">RAG
+            <select id="cb-agent-retrieval-scope" style="background:transparent;border:none;color:inherit;font-size:10px;outline:none;">
+              <option value="recent" selected>Recent</option>
+              <option value="all">All Memory</option>
+              <option value="topic">Topic</option>
+            </select>
+          </label>
+        `;
+
+        tabShell.appendChild(tabRow);
+        tabShell.appendChild(tabMeta);
+        mainContainer.appendChild(tabShell);
+
+        const modelStrategySelect = tabMeta.querySelector('#cb-agent-model-strategy');
+        const retrievalScopeSelect = tabMeta.querySelector('#cb-agent-retrieval-scope');
+        if (modelStrategySelect) {
+          modelStrategySelect.value = __agentHubState.modelStrategy;
+          modelStrategySelect.addEventListener('change', async (event) => {
+            __agentHubState.modelStrategy = event.target.value || 'balanced';
+            await buildAgentSharedContext({ force: true });
+          });
+        }
+        if (retrievalScopeSelect) {
+          retrievalScopeSelect.value = __agentHubState.retrievalScope;
+          retrievalScopeSelect.addEventListener('change', async (event) => {
+            __agentHubState.retrievalScope = event.target.value || 'recent';
+            await buildAgentSharedContext({ force: true });
+          });
+        }
+
+        // Compatibility fallback grid (hidden in tab-first mode)
+        const agentsGrid = document.createElement('div');
+        agentsGrid.id = 'cb-agents-grid';
+        agentsGrid.className = 'cb-ah-grid';
+        agentsGrid.style.display = 'grid';
+        agents.forEach((agent) => {
+          const card = document.createElement('button');
+          card.type = 'button';
+          card.className = 'cb-ah-card';
+          card.style.setProperty('--_agent-clr', agent.color);
+          card.setAttribute('data-agent-id', agent.id);
+          card.setAttribute('aria-label', `Open ${agent.name}`);
+          card.innerHTML = `
+            ${agent.ambient ? '<span class="cb-ah-pulse-dot"></span>' : ''}
+            <span id="cb-agent-card-badge-${agent.id}" class="cb-ah-badge"></span>
+            <div class="cb-ah-icon">${agent.icon}</div>
+            <div class="cb-ah-name">${agent.name}</div>
+            <div class="cb-ah-desc">${agent.desc}</div>
+            ${agent.ambient ? '<div class="cb-ah-ambient">Ambient</div>' : ''}
+          `;
+          card.addEventListener('click', () => setActiveAgentTab(agent.id, { focus: true }));
+          agentsGrid.appendChild(card);
+        });
         mainContainer.appendChild(agentsGrid);
 
-        // Output Area — hidden by default, shown when agent is clicked
+        // Output Area — tab content mount
         const outputArea = document.createElement('div');
         outputArea.id = 'cb-agent-output';
         outputArea.style.cssText = 'display:none;';
@@ -15779,20 +16685,18 @@ Respond with JSON only:
         outputArea.setAttribute('aria-live', 'polite');
         mainContainer.appendChild(outputArea);
 
-        // Escape key → return to agent grid
+        // Escape key → return to default tab
         const handleEscape = (e) => {
-          if (e.key === 'Escape' && outputArea.style.display !== 'none') {
-            outputArea.style.display = 'none';
-            outputArea.innerHTML = '';
-            agentsGrid.style.display = 'grid';
-            // Return focus to first card
-            const firstCard = agentsGrid.querySelector('.cb-ah-card');
-            if (firstCard) firstCard.focus();
+          if (e.key === 'Escape') {
+            goBackToAgentTabs('catchmeup');
           }
         };
         shadow.addEventListener('keydown', handleEscape);
 
         agentContent.appendChild(mainContainer);
+        await buildAgentSharedContext();
+        tabShell.style.display = 'none';
+        updateAgentBadgeUI();
         debugLog('Agent Hub rendered successfully');
 
       } catch (e) {
@@ -15813,7 +16717,7 @@ Respond with JSON only:
 
       outputArea.style.setProperty('--_agent-clr', '#00D4FF');
       outputArea.innerHTML = `
-        <div class="cb-agent-sub">
+        <div class="cb-agent-sub cb-agent-sub-agent-catchmeup">
           <div class="cb-agent-header">
             <button class="cb-agent-back" aria-label="Go back to agent list" tabindex="0" id="cb-catchmeup-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>Back</button>
             <div class="cb-agent-header-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
@@ -15827,10 +16731,7 @@ Respond with JSON only:
 
       // Back button
       outputArea.querySelector('#cb-catchmeup-back').addEventListener('click', () => {
-        const grid = shadow.getElementById('cb-agents-grid');
-        if (grid) grid.style.display = '';
-        outputArea.style.display = 'none';
-        outputArea.innerHTML = '';
+        goBackToAgentTabs('catchmeup');
       });
 
       const runBtn = outputArea.querySelector('#cb-catchmeup-run');
@@ -15871,7 +16772,25 @@ Respond with JSON only:
           const lastBriefed = catchState.lastBriefedAt || 0;
           const newConvos = lastBriefed > 0 ? convos.filter(c => c.ts > lastBriefed) : convos.slice(0, 10);
           const hasNew = newConvos.length > 0;
-          const targetConvos = hasNew ? newConvos : convos.slice(0, 5);
+
+          const scoreConversationPriority = (conv, nowTs) => {
+            const msgs = Array.isArray(conv.conversation) ? conv.conversation : [];
+            const allText = msgs.map(m => String(m.text || '')).join(' ').toLowerCase();
+            const ageHours = Math.max(1, (nowTs - (conv.ts || nowTs)) / 3600000);
+            const recencyScore = Math.max(0, 40 - Math.min(40, ageHours));
+            const actionSignals = (allText.match(/todo|next step|deadline|ship|fix|blocker|pending|follow up|risk|urgent|asap|milestone/gi) || []).length;
+            const decisionSignals = (allText.match(/decided|chosen|concluded|resolved|merged|approved|committed/gi) || []).length;
+            const questionSignals = (allText.match(/\?/g) || []).length;
+            const msgDepth = Math.min(20, msgs.length * 2);
+            return recencyScore + (actionSignals * 4) + (decisionSignals * 5) + Math.min(10, questionSignals) + msgDepth;
+          };
+
+          const nowTs = Date.now();
+          const analysisPool = (hasNew ? newConvos : convos.slice(0, 12)).slice(0, 24);
+          const rankedConvos = analysisPool
+            .map((conv) => ({ conv, score: scoreConversationPriority(conv, nowTs) }))
+            .sort((a, b) => b.score - a.score);
+          const targetConvos = rankedConvos.slice(0, 8).map(r => r.conv);
 
           const convoSummaries = targetConvos.map((c, i) => {
             const msgs = c.conversation || [];
@@ -15891,11 +16810,27 @@ ${aiMsgs}`;
           const timeContext = lastBriefed > 0 && hasNew
             ? `Timeframe: Since user was last briefed (${getTimeAgo(lastBriefed)}). ${newConvos.length} new conversation(s) to analyze.`
             : `Timeframe: This is the user's first briefing, analyzing their ${targetConvos.length} most recent conversations.`;
+          const sharedCtx = await buildAgentSharedContext();
+
+          const coveragePct = Math.max(10, Math.round((targetConvos.length / Math.max(1, analysisPool.length)) * 100));
+          const freshnessPct = hasNew
+            ? Math.min(100, Math.round((newConvos.length / Math.max(1, convos.length)) * 100) + 35)
+            : Math.min(80, Math.round((targetConvos.length / Math.max(1, convos.length)) * 100) + 20);
+          const confidenceScore = Math.min(98, Math.max(42, Math.round((coveragePct * 0.45) + (freshnessPct * 0.55))));
+          const deltaLabel = hasNew
+            ? `${newConvos.length} new conversation${newConvos.length === 1 ? '' : 's'} since last briefing`
+            : 'No new conversations since last briefing';
 
           const prompt = `You are "Catch Me Up" — an elite personal AI briefing agent inside ChatBridge.
 
+${sharedCtx.promptContext}
+${buildAgentPromptContract('catchmeup', ['Keep sections concise and high-signal.', 'Never repeat the same conversation event in multiple sections.'])}
+
 CONTEXT:
 ${timeContext}
+Delta focus: ${deltaLabel}
+Confidence target for this briefing: ${confidenceScore}%
+Coverage target: ${coveragePct}% of candidate conversations
 
 CONVERSATION DATA TO ANALYZE:
 ========================
@@ -15923,9 +16858,13 @@ Synthesize key decisions made, problems solved, or new information learned.
 ## Priority Action
 The singular most important action the user should focus on next based on the recent history, and in one sentence, why.`;
 
-          const res = await callAgentRouteWithRetry(prompt, { complexity: 'deep', maxTokens: 1500 });
+          const briefingRoute = withAgentRouteStrategy({ maxTokens: 1500 });
+          if (confidenceScore < 60) briefingRoute.complexity = 'deep';
+          const res = await callAgentRouteWithRetry(prompt, briefingRoute);
 
           if (res && res.ok && res.result) {
+            const normalizedResult = enforceAgentNonRepetition('catchmeup', res.result);
+            const overlapTelemetry = await recordAgentArtifactTelemetry('catchmeup', normalizedResult);
             // Build stats
             const platforms = [...new Set(targetConvos.map(c => (c.platform || 'unknown').replace(/^www\./, '').split('.')[0]))];
             const oldest = targetConvos.reduce((min, c) => c.ts < min ? c.ts : min, Date.now());
@@ -15942,11 +16881,22 @@ The singular most important action the user should focus on next based on the re
               </div>`;
             }).join('');
 
-            const formattedResult = formatAgentMarkdown(res.result);
+            const formattedResult = formatAgentMarkdown(normalizedResult);
             resultDiv.innerHTML = `
               <div class="cb-agent-stats">
                 <div class="cb-agent-stat"><div class="cb-agent-stat-val">${targetConvos.length}</div><div class="cb-agent-stat-label">Conversations</div></div>
                 <div class="cb-agent-stat"><div class="cb-agent-stat-val">${platforms.length}</div><div class="cb-agent-stat-label">Platforms</div></div>
+              </div>
+              <div class="cb-agent-meter">
+                <div class="cb-agent-meter-top">
+                  <span class="cb-agent-meter-label">Briefing confidence</span>
+                  <span class="cb-agent-meter-value" style="color:#00D4FF;">${confidenceScore}%</span>
+                </div>
+                <div class="cb-agent-meter-bar"><div class="cb-agent-meter-fill" style="width:${confidenceScore}%;background:#00D4FF;"></div></div>
+                <div style="display:flex;justify-content:space-between;margin-top:8px;font-size:10px;color:var(--cb-subtext);">
+                  <span>Coverage: ${coveragePct}%</span>
+                  <span>${escapeHtml(deltaLabel)}</span>
+                </div>
               </div>
               <div class="cb-agent-result-section"><div class="cb-agent-result-body">${formattedResult}</div></div>
               ${timelineHtml ? `<div class="cb-agent-result-section"><div class="cb-agent-result-header">📋 Source Conversations</div><div class="cb-timeline">${timelineHtml}</div></div>` : ''}
@@ -15954,16 +16904,16 @@ The singular most important action the user should focus on next based on the re
                 <button id="cb-catchmeup-copy" class="cb-agent-btn-secondary">Copy Briefing</button>
                 <button id="cb-catchmeup-insert" class="cb-agent-btn-primary">Insert to Chat</button>
               </div>
-              <div class="cb-agent-meta">Powered by ${res.model_used || 'AI'} · ${res.latency_ms || 0}ms · since ${timeRange}</div>
+              <div class="cb-agent-meta">Powered by ${res.model_used || 'AI'} · ${res.latency_ms || 0}ms · since ${timeRange} · max overlap ${overlapTelemetry.maxOverlap}%${formatRouteDiagnostics(res)}</div>
             `;
 
             const copyBtn = resultDiv.querySelector('#cb-catchmeup-copy');
             const insertBtn = resultDiv.querySelector('#cb-catchmeup-insert');
             if (copyBtn) copyBtn.addEventListener('click', async () => {
-              try { await navigator.clipboard.writeText(res.result); toast('Briefing copied!'); } catch (_) { toast('Copy failed'); }
+              try { await navigator.clipboard.writeText(normalizedResult); toast('Briefing copied!'); } catch (_) { toast('Copy failed'); }
             });
             if (insertBtn) insertBtn.addEventListener('click', () => {
-              try { insertTextToChat(res.result); toast('Inserted!'); } catch (_) { toast('Insert failed'); }
+              try { insertTextToChat(normalizedResult); toast('Inserted!'); } catch (_) { toast('Insert failed'); }
             });
 
             await StorageManager.setAgentCatchMeUp({ lastBriefedAt: Date.now(), unreadCount: 0 });
@@ -15985,7 +16935,7 @@ The singular most important action the user should focus on next based on the re
     }
 
     // ============================================
-    // AGENT 2: EXECUTION COACH — Next Action Planner
+    // AGENT 2: PREPARE ME — Next Action Planner
     // "What should I do next?" — converts conversation context into execution steps
     // ============================================
     async function showExecutionCoach() {
@@ -15994,11 +16944,11 @@ The singular most important action the user should focus on next based on the re
 
       outputArea.style.setProperty('--_agent-clr', '#10B981');
       outputArea.innerHTML = `
-        <div class="cb-agent-sub">
+        <div class="cb-agent-sub cb-agent-sub-agent-prepareme">
           <div class="cb-agent-header">
             <button class="cb-agent-back" aria-label="Go back to agent list" tabindex="0" id="cb-exec-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>Back</button>
             <div class="cb-agent-header-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 15l2 2 4-4"/></svg></div>
-            <div class="cb-agent-header-title">Execution Coach</div>
+            <div class="cb-agent-header-title">Prepare Me</div>
           </div>
           <div class="cb-agent-desc">Define your objective and constraints, and I’ll generate a focused execution plan with next actions, risk checks, and follow-up prompts.</div>
 
@@ -16006,7 +16956,7 @@ The singular most important action the user should focus on next based on the re
 
           <input type="text" id="cb-exec-objective" class="cb-agent-input" placeholder="Objective (e.g., Ship onboarding flow this week)" style="margin-bottom:8px;" />
           <input type="text" id="cb-exec-constraints" class="cb-agent-input" placeholder="Constraints (time, scope, dependencies)" style="margin-bottom:8px;" />
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px;">
             <select id="cb-exec-urgency" class="cb-agent-select" aria-label="Urgency">
               <option value="today">Urgency: Today</option>
               <option value="this-week" selected>Urgency: This Week</option>
@@ -16016,6 +16966,11 @@ The singular most important action the user should focus on next based on the re
               <option value="relevant" selected>Use Relevant History</option>
               <option value="current">Use Current Chat Only</option>
             </select>
+            <select id="cb-exec-contract" class="cb-agent-select" aria-label="Action contract mode">
+              <option value="deterministic" selected>Contract: Deterministic</option>
+              <option value="balanced">Contract: Balanced</option>
+              <option value="strict">Contract: Strict</option>
+            </select>
           </div>
           <button id="cb-exec-run" class="cb-agent-btn-primary">Generate Execution Plan</button>
           <div id="cb-exec-result" style="display:none;margin-top:14px;"></div>
@@ -16024,10 +16979,7 @@ The singular most important action the user should focus on next based on the re
 
       // Back button
       outputArea.querySelector('#cb-exec-back').addEventListener('click', () => {
-        const grid = shadow.getElementById('cb-agents-grid');
-        if (grid) grid.style.display = '';
-        outputArea.style.display = 'none';
-        outputArea.innerHTML = '';
+        goBackToAgentTabs('executioncoach');
       });
 
       // Suggestion chips
@@ -16050,6 +17002,7 @@ The singular most important action the user should focus on next based on the re
       const constraintsInput = outputArea.querySelector('#cb-exec-constraints');
       const urgencySelect = outputArea.querySelector('#cb-exec-urgency');
       const sourceSelect = outputArea.querySelector('#cb-exec-source');
+      const contractSelect = outputArea.querySelector('#cb-exec-contract');
       const resultDiv = outputArea.querySelector('#cb-exec-result');
 
       runBtn.addEventListener('click', async () => {
@@ -16079,6 +17032,8 @@ The singular most important action the user should focus on next based on the re
           const constraints = constraintsInput.value.trim();
           const urgency = urgencySelect.value;
           const sourceMode = sourceSelect.value;
+          const contractMode = contractSelect ? contractSelect.value : 'deterministic';
+          const sharedCtx = await buildAgentSharedContext();
           let scored = [];
           let contextBlock = '';
 
@@ -16113,7 +17068,14 @@ The singular most important action the user should focus on next based on the re
             }
           }
 
-          const prompt = `You are "Execution Coach" inside ChatBridge.
+          const blockerProfile = classifyPrepareMeBlockers({ objective, constraints, contextBlock });
+          const contractConfig = getPrepareMeContractConfig(contractMode);
+
+          const prompt = `You are "Prepare Me" inside ChatBridge.
+
+${sharedCtx.promptContext}
+${buildAgentPromptContract('executioncoach', ['Use imperative verbs for action steps.', 'Do not duplicate an action in both Risk Radar and 24h Plan.'])}
+${contractConfig.contractText}
 
 OBJECTIVE:
 ${objective}
@@ -16123,6 +17085,10 @@ ${constraints || 'None provided'}
 
 URGENCY:
 ${urgency}
+
+BLOCKER SIGNALS:
+- Severity: ${blockerProfile.severity} (${blockerProfile.severityScore}/100)
+- Categories: ${blockerProfile.summary}
 
 CONTEXT INPUT:
 ========================
@@ -16140,6 +17106,9 @@ Three concrete, sequenced actions the user can execute now.
 ## Risk Radar
 Top risks, blockers, or assumptions that could derail execution.
 
+## Blocker Classification
+Classify blockers into Dependency / Scope / Resources / Technical / Alignment, and rate each as Low / Medium / High.
+
 ## Ask This Next
 2-4 follow-up prompts/questions the user should ask an AI or teammate next.
 
@@ -16151,9 +17120,12 @@ Rules:
 - Use bullets and clear action verbs.
 - If data is missing, explicitly say what is missing.`;
 
-          const res = await callAgentRouteWithRetry(prompt, { complexity: 'deep', maxTokens: 1500 });
+          const res = await callAgentRouteWithRetry(prompt, withAgentRouteStrategy({ maxTokens: 1500 }));
 
           if (res && res.ok && res.result) {
+            const normalizedResult = enforceAgentNonRepetition('executioncoach', res.result);
+            const overlapTelemetry = await recordAgentArtifactTelemetry('executioncoach', normalizedResult);
+            const contractScore = scorePrepareMeContractOutput(normalizedResult, contractConfig);
             // Build sources list
             const sourcesHtml = scored.length > 0 ? scored.slice(0, 5).map(s => {
               const p = (s.conv.platform || 'unknown').replace(/^www\./, '').split('.')[0];
@@ -16164,11 +17136,29 @@ Rules:
               </div>`;
             }).join('') : `<div style="font-size:10px;color:var(--cb-subtext);">${sourceMode === 'current' ? 'Using current chat context only' : 'No matching conversations found'}</div>`;
 
-            const formattedResult = formatAgentMarkdown(res.result);
+            const formattedResult = formatAgentMarkdown(normalizedResult);
             resultDiv.innerHTML = `
               <div class="cb-agent-stats">
                 <div class="cb-agent-stat"><div class="cb-agent-stat-val">${sourceMode === 'current' ? '1' : scored.length}</div><div class="cb-agent-stat-label">Sources</div></div>
                 <div class="cb-agent-stat"><div class="cb-agent-stat-val">5</div><div class="cb-agent-stat-label">Actions/Sections</div></div>
+              </div>
+              <div class="cb-agent-meter">
+                <div class="cb-agent-meter-top">
+                  <span class="cb-agent-meter-label">Action contract quality</span>
+                  <span class="cb-agent-meter-value" style="color:#10B981;">${contractScore.score}%</span>
+                </div>
+                <div class="cb-agent-meter-bar"><div class="cb-agent-meter-fill" style="width:${contractScore.score}%;background:#10B981;"></div></div>
+                <div style="display:flex;justify-content:space-between;margin-top:8px;font-size:10px;color:var(--cb-subtext);">
+                  <span>Mode: ${contractConfig.mode}</span>
+                  <span>Matched actions: ${contractScore.matched}/3</span>
+                </div>
+              </div>
+              <div class="cb-agent-result-section">
+                <div class="cb-agent-result-header">🚧 Blocker Classification</div>
+                <div class="cb-agent-result-body">
+                  <div>Severity: <strong>${blockerProfile.severity.toUpperCase()}</strong> (${blockerProfile.severityScore}/100)</div>
+                  <div style="margin-top:6px;">${escapeHtml(blockerProfile.summary)}</div>
+                </div>
               </div>
               <div class="cb-agent-result-section"><div class="cb-agent-result-body">${formattedResult}</div></div>
               <div class="cb-agent-result-section"><div class="cb-agent-result-header">📎 Sources</div>${sourcesHtml}</div>
@@ -16177,23 +17167,23 @@ Rules:
                 <button id="cb-exec-insert" class="cb-agent-btn-primary">Insert to Chat</button>
                 <button id="cb-exec-handoff" class="cb-agent-btn-secondary">Open Handoff</button>
               </div>
-              <div class="cb-agent-meta">Urgency: ${urgency} · ${res.model_used || 'AI'} · ${res.latency_ms || 0}ms</div>
+              <div class="cb-agent-meta">Urgency: ${urgency} · ${res.model_used || 'AI'} · ${res.latency_ms || 0}ms · max overlap ${overlapTelemetry.maxOverlap}%${formatRouteDiagnostics(res)}</div>
             `;
 
             const copyBtn = resultDiv.querySelector('#cb-exec-copy');
             const insertBtn = resultDiv.querySelector('#cb-exec-insert');
             const handoffBtn = resultDiv.querySelector('#cb-exec-handoff');
             if (copyBtn) copyBtn.addEventListener('click', async () => {
-              try { await navigator.clipboard.writeText(res.result); toast('Execution plan copied!'); } catch (_) { toast('Copy failed'); }
+              try { await navigator.clipboard.writeText(normalizedResult); toast('Execution plan copied!'); } catch (_) { toast('Copy failed'); }
             });
             if (insertBtn) insertBtn.addEventListener('click', () => {
-              try { insertTextToChat(res.result); toast('Inserted!'); } catch (_) { toast('Insert failed'); }
+              try { insertTextToChat(normalizedResult); toast('Inserted!'); } catch (_) { toast('Insert failed'); }
             });
             if (handoffBtn) handoffBtn.addEventListener('click', async () => {
               try {
-                await navigator.clipboard.writeText(res.result);
+                await navigator.clipboard.writeText(normalizedResult);
                 toast('Plan copied. Opening Handoff...');
-                try { showHandoff(); } catch (_) { }
+                try { setActiveAgentTab('handoff'); } catch (_) { }
               } catch (_) {
                 toast('Could not open Handoff');
               }
@@ -16204,7 +17194,7 @@ Rules:
           }
         } catch (e) {
           resultDiv.innerHTML = `<div class="cb-agent-error">Error: ${escapeHtml(e.message || 'Unknown error')}</div>`;
-          debugLog('Execution Coach error', e);
+          debugLog('Prepare Me error', e);
         } finally {
           if (typeof execTimer !== 'undefined') clearInterval(execTimer);
           runBtn.disabled = false;
@@ -16225,7 +17215,7 @@ Rules:
 
       outputArea.style.setProperty('--_agent-clr', '#8B5CF6');
       outputArea.innerHTML = `
-        <div class="cb-agent-sub">
+        <div class="cb-agent-sub cb-agent-sub-agent-trackthis">
           <div class="cb-agent-header">
             <button class="cb-agent-back" aria-label="Go back to agent list" tabindex="0" id="cb-track-goback"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>Back</button>
             <div class="cb-agent-header-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></div>
@@ -16238,6 +17228,16 @@ Rules:
             <button id="cb-track-add" class="cb-agent-btn-primary" style="white-space:nowrap;padding:0 14px;">+ Track</button>
           </div>
 
+          <div style="display:flex;gap:6px;margin-bottom:12px;">
+            <select id="cb-track-window" class="cb-agent-select" style="flex:1;">
+              <option value="7d">Window: 7 days</option>
+              <option value="30d" selected>Window: 30 days</option>
+              <option value="90d">Window: 90 days</option>
+              <option value="all">Window: All time</option>
+            </select>
+            <button id="cb-track-prune" class="cb-agent-btn-secondary" style="white-space:nowrap;padding:0 14px;">Prune Stale</button>
+          </div>
+
           <div id="cb-track-list" style="display:flex;flex-direction:column;gap:8px;"></div>
           <div id="cb-track-detail" style="display:none;"></div>
         </div>
@@ -16245,16 +17245,43 @@ Rules:
 
       // Back button
       outputArea.querySelector('#cb-track-goback').addEventListener('click', () => {
-        const grid = shadow.getElementById('cb-agents-grid');
-        if (grid) grid.style.display = '';
-        outputArea.style.display = 'none';
-        outputArea.innerHTML = '';
+        goBackToAgentTabs('trackthis');
       });
 
       const trackInput = outputArea.querySelector('#cb-track-input');
       const addBtn = outputArea.querySelector('#cb-track-add');
+      const windowSelect = outputArea.querySelector('#cb-track-window');
+      const pruneBtn = outputArea.querySelector('#cb-track-prune');
       const listDiv = outputArea.querySelector('#cb-track-list');
       const detailDiv = outputArea.querySelector('#cb-track-detail');
+
+      const synonymMap = {
+        api: ['endpoint', 'integration', 'service'],
+        bug: ['issue', 'error', 'failure', 'regression'],
+        roadmap: ['plan', 'timeline', 'milestone'],
+        launch: ['release', 'ship', 'go-live'],
+        auth: ['authentication', 'login', 'oauth', 'token'],
+        performance: ['latency', 'slow', 'optimization', 'speed']
+      };
+
+      const getWindowMs = () => {
+        const val = (windowSelect && windowSelect.value) || '30d';
+        if (val === '7d') return 7 * 24 * 3600000;
+        if (val === '90d') return 90 * 24 * 3600000;
+        if (val === 'all') return Number.POSITIVE_INFINITY;
+        return 30 * 24 * 3600000;
+      };
+
+      const computeTopicHealth = (topic) => {
+        const now = Date.now();
+        const days = topic.lastActivity ? Math.floor((now - topic.lastActivity) / 86400000) : 999;
+        const recency = days <= 1 ? 45 : days <= 7 ? 30 : days <= 30 ? 15 : 5;
+        const depth = Math.min(30, (topic.hitCount || 0) * 3);
+        const spread = Math.min(25, ((topic.platforms || []).length || 0) * 6);
+        const score = Math.max(0, Math.min(100, recency + depth + spread));
+        const status = score >= 70 ? 'Rising' : score >= 40 ? 'Watching' : 'Stale';
+        return { score, status };
+      };
 
       function renderTopicsList(topicsArr) {
         if (!topicsArr || topicsArr.length === 0) {
@@ -16267,6 +17294,7 @@ Rules:
           card.className = 'cb-track-card';
           const hasActivity = topic.lastActivity > (topic.lastViewedAt || 0);
           if (hasActivity) card.classList.add('cb-track-card-active');
+          const health = computeTopicHealth(topic);
           const platforms = (topic.platforms || []).map(p => p.replace(/^www\./, '').split('.')[0]).join(', ') || 'no hits yet';
           const lastSeen = topic.lastActivity ? getTimeAgo(topic.lastActivity) : 'never';
 
@@ -16292,6 +17320,8 @@ Rules:
                 </div>
                 <div class="cb-track-card-meta" style="font-size:11px;color:var(--cb-subtext);display:flex;gap:5px;flex-wrap:wrap;align-items:center;">
                   <span style="display:flex;align-items:center;gap:3px;"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>${topic.hitCount || 0} hits</span>
+                  <span style="opacity:0.5;">•</span>
+                  <span style="color:${health.status === 'Rising' ? '#10B981' : (health.status === 'Watching' ? '#F59E0B' : '#9CA3AF')};">${health.status} (${health.score})</span>
                   <span style="opacity:0.5;">•</span>
                   <span>${platforms}</span>
                   <span style="opacity:0.5;">•</span>
@@ -16326,6 +17356,20 @@ Rules:
         });
       }
 
+      if (pruneBtn) {
+        pruneBtn.addEventListener('click', async () => {
+          try {
+            const current = await StorageManager.getTrackedTopics();
+            const cutoff = Date.now() - (45 * 24 * 3600000);
+            const kept = current.filter((topic) => (topic.lastActivity || topic.createdAt || 0) >= cutoff);
+            const removed = Math.max(0, current.length - kept.length);
+            await StorageManager.setTrackedTopics(kept);
+            renderTopicsList(kept);
+            toast(removed > 0 ? `Pruned ${removed} stale topic${removed === 1 ? '' : 's'}` : 'No stale topics to prune');
+          } catch (_) { toast('Prune failed'); }
+        });
+      }
+
       async function showTopicDetail(topicId) {
         const allTopics = await StorageManager.getTrackedTopics();
         const topic = allTopics.find(t => t.id === topicId);
@@ -16353,12 +17397,30 @@ Rules:
         }, 1500);
 
         try {
+          const sharedCtx = await buildAgentSharedContext();
           const convos = await loadConversationsAsync();
+          const windowMs = getWindowMs();
+          const now = Date.now();
           const keywords = topic.keywords || [topic.label.toLowerCase()];
           const relevant = convos.filter(c => {
+            if (windowMs !== Number.POSITIVE_INFINITY && c.ts && (now - c.ts) > windowMs) return false;
             const text = (c.conversation || []).map(m => m.text || '').join(' ').toLowerCase();
             return keywords.some(kw => text.includes(kw));
           }).slice(0, 15);
+
+          relevant.forEach((conv) => {
+            if (conv.ts) updateTopicTrendHistory(topic, conv.ts, 1);
+          });
+          const trend = computeTopicTrendFromHistory(topic);
+          const last7 = trend.last7;
+          const prev7 = trend.prev7;
+          const trendLabel = trend.label;
+          const alertState = trend.alertState;
+          const existingTopic = allTopics.find((item) => item.id === topic.id);
+          if (existingTopic) {
+            existingTopic.trendHistory = topic.trendHistory;
+            await StorageManager.setTrackedTopics(allTopics);
+          }
 
           const contextBlock = relevant.map((c, i) => {
             const msgs = c.conversation || [];
@@ -16371,11 +17433,17 @@ AI replied: ${aiMsgs}`;
 
           const prompt = `You are "Track This" — an elite AI tracking agent inside ChatBridge.
 
+${sharedCtx.promptContext}
+${buildAgentPromptContract('trackthis', ['Keep each timeline point unique by date or platform.', 'Avoid repeating the same update wording across sections.'])}
+
 TOPIC YOU ARE TRACKING: "${topic.label}"
 KEYWORDS: ${keywords.join(', ')}
 FIRST TRACKED: ${getTimeAgo(topic.createdAt)}
 TOTAL HITS: ${topic.hitCount || 0}
 PLATFORMS FOUND ON: ${(topic.platforms || []).join(', ') || 'None yet'}
+WINDOW: ${windowSelect ? windowSelect.value : '30d'}
+TREND SIGNAL: ${trendLabel} (last7=${last7}, prev7=${prev7})
+ALERT STATE: ${alertState}
 
 CONVERSATIONAL DATA MATCHING TOPIC (${relevant.length} found):
 ========================
@@ -16407,10 +17475,12 @@ Specific pending actions, bugs, or unresolved debates related to the topic.
 ## Suggested Next Step
 One incredibly specific, actionable recommendation for what the user should do next with this topic.`;
 
-          const res = await callAgentRouteWithRetry(prompt, { complexity: 'deep', maxTokens: 1500 });
+          const res = await callAgentRouteWithRetry(prompt, withAgentRouteStrategy({ maxTokens: 1500 }));
 
           if (res && res.ok && res.result) {
-            const formatted = formatAgentMarkdown(res.result);
+            const normalizedResult = enforceAgentNonRepetition('trackthis', res.result);
+            const overlapTelemetry = await recordAgentArtifactTelemetry('trackthis', normalizedResult);
+            const formatted = formatAgentMarkdown(normalizedResult);
             detailDiv.innerHTML = `
               <div class="cb-agent-header" style="margin-bottom:10px;">
                 <button id="cb-track-back" class="cb-agent-back" aria-label="Go back to agent list" tabindex="0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>Back</button>
@@ -16420,12 +17490,20 @@ One incredibly specific, actionable recommendation for what the user should do n
                 <div class="cb-agent-stat"><div class="cb-agent-stat-val">${topic.hitCount || 0}</div><div class="cb-agent-stat-label">Total Hits</div></div>
                 <div class="cb-agent-stat"><div class="cb-agent-stat-val">${relevant.length}</div><div class="cb-agent-stat-label">Conversations</div></div>
                 <div class="cb-agent-stat"><div class="cb-agent-stat-val">${(topic.platforms || []).length}</div><div class="cb-agent-stat-label">Platforms</div></div>
+                <div class="cb-agent-stat"><div class="cb-agent-stat-val">${Array.isArray(topic.trendHistory) ? topic.trendHistory.length : 0}</div><div class="cb-agent-stat-label">Trend Days</div></div>
+              </div>
+              <div class="cb-agent-result-section">
+                <div class="cb-agent-result-header">📈 Trend & Alerts</div>
+                <div class="cb-agent-result-body">
+                  <div>Trend: <strong>${trendLabel}</strong> (last7=${last7}, prev7=${prev7})</div>
+                  <div style="margin-top:6px;">Alert: <strong>${alertState}</strong></div>
+                </div>
               </div>
               <div class="cb-agent-result-section"><div class="cb-agent-result-body">${formatted}</div></div>
               <div class="cb-agent-action-row">
                 <button id="cb-track-copy" class="cb-agent-btn-secondary">Copy Report</button>
               </div>
-              <div class="cb-agent-meta">Tracked since ${getTimeAgo(topic.createdAt)} · ${res.model_used || 'AI'} · ${res.latency_ms || 0}ms</div>
+              <div class="cb-agent-meta">Tracked since ${getTimeAgo(topic.createdAt)} · ${res.model_used || 'AI'} · ${res.latency_ms || 0}ms · max overlap ${overlapTelemetry.maxOverlap}%${formatRouteDiagnostics(res)}</div>
             `;
             detailDiv.querySelector('#cb-track-back').addEventListener('click', () => {
               detailDiv.style.display = 'none';
@@ -16433,7 +17511,7 @@ One incredibly specific, actionable recommendation for what the user should do n
               StorageManager.getTrackedTopics().then(t => renderTopicsList(t));
             });
             detailDiv.querySelector('#cb-track-copy').addEventListener('click', async () => {
-              try { await navigator.clipboard.writeText(res.result); toast('Report copied!'); } catch (_) { toast('Copy failed'); }
+              try { await navigator.clipboard.writeText(normalizedResult); toast('Report copied!'); } catch (_) { toast('Copy failed'); }
             });
           } else {
             detailDiv.innerHTML = `<div class="cb-agent-error">Failed: ${res && res.error ? escapeHtml(res.error) : 'Unknown error'}</div>
@@ -16457,6 +17535,11 @@ One incredibly specific, actionable recommendation for what the user should do n
         if (!label) { toast('Enter a topic to track'); return; }
         if (topics.length >= 10) { toast('Max 10 tracked topics. Remove one first.'); return; }
 
+        if (topics.some(t => (t.label || '').toLowerCase() === label.toLowerCase())) {
+          toast('This topic is already tracked');
+          return;
+        }
+
         addBtn.disabled = true;
         addBtn.textContent = 'Adding...';
 
@@ -16476,6 +17559,15 @@ One incredibly specific, actionable recommendation for what the user should do n
             }
           }
 
+          // Phase 3: synonym-aware expansion for stronger longitudinal tracking
+          const expanded = [];
+          keywords.forEach((kw) => {
+            expanded.push(kw);
+            const root = kw.trim().toLowerCase();
+            if (synonymMap[root]) expanded.push(...synonymMap[root]);
+          });
+          keywords = [...new Set(expanded)].slice(0, 12);
+
           const newTopic = {
             id: 'track_' + Date.now(),
             label,
@@ -16484,7 +17576,8 @@ One incredibly specific, actionable recommendation for what the user should do n
             lastActivity: 0,
             lastViewedAt: Date.now(),
             platforms: [],
-            hitCount: 0
+            hitCount: 0,
+            trendHistory: []
           };
 
           topics.push(newTopic);
@@ -16517,7 +17610,7 @@ One incredibly specific, actionable recommendation for what the user should do n
 
       outputArea.style.setProperty('--_agent-clr', '#F59E0B');
       outputArea.innerHTML = `
-        <div class="cb-agent-sub">
+        <div class="cb-agent-sub cb-agent-sub-agent-secondopinion">
           <div class="cb-agent-header">
             <button class="cb-agent-back" aria-label="Go back to agent list" tabindex="0" id="cb-so-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>Back</button>
             <div class="cb-agent-header-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg></div>
@@ -16566,10 +17659,7 @@ One incredibly specific, actionable recommendation for what the user should do n
 
       // Back button
       outputArea.querySelector('#cb-so-back').addEventListener('click', () => {
-        const grid = shadow.getElementById('cb-agents-grid');
-        if (grid) grid.style.display = '';
-        outputArea.style.display = 'none';
-        outputArea.innerHTML = '';
+        goBackToAgentTabs('secondopinion');
       });
 
       let mode = 'auto';
@@ -16670,11 +17760,15 @@ One incredibly specific, actionable recommendation for what the user should do n
           </div>`;
 
         try {
+          const sharedCtx = await buildAgentSharedContext();
           const verifyModel = modelSelect.value === 'auto' ? 'auto' : modelSelect.value;
           const critiqueMode = outputArea.querySelector('input[name="cb-so-mode"]:checked').value === 'critique';
           const honestyMode = !!(honestyToggle && honestyToggle.checked);
 
           const verifyPrompt = `You are Second Opinion, a verification agent inside ChatBridge.
+
+${sharedCtx.promptContext}
+${buildAgentPromptContract('secondopinion', ['Cite concrete claims from the answer under review.', 'Avoid repeating the same criticism in multiple sections.'])}
 
 ${question ? `Original question: "${question}"` : 'Original question: [not available]'}
 
@@ -16701,6 +17795,9 @@ A brief, improved version that fixes the issues found. Only include this if sign
 Be rigorous but fair. Cite specific parts of the original answer when critiquing.`;
 
           const critiquePrompt = `You are a critical "Red Team" AI serving inside ChatBridge.
+
+${sharedCtx.promptContext}
+${buildAgentPromptContract('secondopinion', ['Critique must be adversarial but evidence-based.', 'Do not repeat risk statements verbatim across sections.'])}
 
 ${question ? `Original question: "${question}"` : 'Original question: [not available]'}
 
@@ -16745,27 +17842,34 @@ Be highly critical, direct, and unforgiving in your analysis.`;
               `;
             }
 
-            const formatted = formatAgentMarkdown(resObj.result || 'No result returned.');
-            resultDiv.innerHTML = `
-              ${trafficHtml}
-              <div class="cb-agent-result-section"><div class="cb-agent-result-body">${formatted}</div></div>
-              <div class="cb-agent-action-row">
-                <button id="cb-so-copy" class="cb-agent-btn-secondary">Copy Analysis</button>
-                <button id="cb-so-insert" class="cb-agent-btn-primary">Insert Improved</button>
-              </div>
-              <div class="cb-agent-meta">Verified by ${resObj.model_used || 'AI'} · ${resObj.latency_ms || 0}ms</div>
-            `;
+            const normalized = enforceAgentNonRepetition('secondopinion', resObj.result || 'No result returned.');
+            const formatted = formatAgentMarkdown(normalized);
+            const renderAnalysisResult = (overlapTelemetry) => {
+              resultDiv.innerHTML = `
+                ${trafficHtml}
+                <div class="cb-agent-result-section"><div class="cb-agent-result-body">${formatted}</div></div>
+                <div class="cb-agent-action-row">
+                  <button id="cb-so-copy" class="cb-agent-btn-secondary">Copy Analysis</button>
+                  <button id="cb-so-insert" class="cb-agent-btn-primary">Insert Improved</button>
+                </div>
+                <div class="cb-agent-meta">Verified by ${resObj.model_used || 'AI'} · ${resObj.latency_ms || 0}ms${overlapTelemetry ? ` · max overlap ${overlapTelemetry.maxOverlap}%` : ''}${formatRouteDiagnostics(resObj)}</div>
+              `;
 
-            resultDiv.querySelector('#cb-so-copy').addEventListener('click', async () => {
-              try { await navigator.clipboard.writeText(resObj.result || ''); toast('Analysis copied!'); } catch (_) { toast('Copy failed'); }
-            });
-            resultDiv.querySelector('#cb-so-insert').addEventListener('click', () => {
-              try { insertTextToChat(resObj.result || ''); toast('Inserted!'); } catch (_) { toast('Insert failed'); }
-            });
+              resultDiv.querySelector('#cb-so-copy').addEventListener('click', async () => {
+                try { await navigator.clipboard.writeText(normalized || ''); toast('Analysis copied!'); } catch (_) { toast('Copy failed'); }
+              });
+              resultDiv.querySelector('#cb-so-insert').addEventListener('click', () => {
+                try { insertTextToChat(normalized || ''); toast('Inserted!'); } catch (_) { toast('Insert failed'); }
+              });
+            };
+
+            recordAgentArtifactTelemetry('secondopinion', normalized)
+              .then((overlapTelemetry) => renderAnalysisResult(overlapTelemetry))
+              .catch(() => renderAnalysisResult(null));
           };
 
           if (critiqueMode) {
-            const critiqueRes = await callAgentRouteWithRetry(critiquePrompt, { model: verifyModel, complexity: 'deep', maxTokens: 1200 });
+            const critiqueRes = await callAgentRouteWithRetry(critiquePrompt, withAgentRouteStrategy({ model: verifyModel, maxTokens: 1200 }));
             if (critiqueRes && critiqueRes.ok && critiqueRes.result) {
               renderSingleAnalysis(critiqueRes);
               toast('Critique complete!');
@@ -16774,11 +17878,11 @@ Be highly critical, direct, and unforgiving in your analysis.`;
             }
           } else {
             // Explicit cross-check: Gemini + Llama
-            const geminiRes = await callAgentRouteWithRetry(verifyPrompt, { model: 'gemini', complexity: 'deep', maxTokens: 900 });
-            const llamaRes = await callAgentRouteWithRetry(verifyPrompt, { model: 'llama', complexity: 'deep', maxTokens: 900 });
+            const geminiRes = await callAgentRouteWithRetry(verifyPrompt, withAgentRouteStrategy({ model: 'gemini', maxTokens: 900 }));
+            const llamaRes = await callAgentRouteWithRetry(verifyPrompt, withAgentRouteStrategy({ model: 'llama', maxTokens: 900 }));
 
             if ((!geminiRes || !geminiRes.ok) && (!llamaRes || !llamaRes.ok)) {
-              const fallback = await callAgentRouteWithRetry(verifyPrompt, { model: verifyModel, complexity: 'deep', maxTokens: 1200 });
+              const fallback = await callAgentRouteWithRetry(verifyPrompt, withAgentRouteStrategy({ model: verifyModel, maxTokens: 1200 }));
               if (fallback && fallback.ok && fallback.result) {
                 renderSingleAnalysis(fallback);
                 toast('Verification complete!');
@@ -16790,6 +17894,8 @@ Be highly critical, direct, and unforgiving in your analysis.`;
               const llamaText = llamaRes && llamaRes.ok ? llamaRes.result : 'Llama unavailable.';
 
               const comparePrompt = `You are a strict comparison judge.
+
+${buildAgentPromptContract('secondopinion', ['Return a structured compare artifact only.', 'Never duplicate points from Why in Key Differences.', 'Each contradiction must cite the model and the supporting evidence marker.'])}
 
 Original answer to verify:
 ${answer.slice(0, 3000)}
@@ -16804,8 +17910,21 @@ Return exactly these sections:
 VERDICT: AGREE | CONTRADICT | PARTIAL
 CONFIDENCE: <0-100>
 
+## Core Claims
+- CLAIM: <short claim from original answer>
+- CLAIM: <short claim from original answer>
+
+## Contradiction Buckets
+- BUCKET: Direct conflict | Model: Gemini|Llama|Both | Why: <what conflicts>
+- BUCKET: Missing evidence | Model: Gemini|Llama|Both | Why: <what is unsupported>
+- BUCKET: Scope gap | Model: Gemini|Llama|Both | Why: <what was omitted>
+
+## Evidence Markers
+- EVIDENCE: Gemini | Supports: <claim or concern> | Basis: <quote or summarized reason>
+- EVIDENCE: Llama | Supports: <claim or concern> | Basis: <quote or summarized reason>
+
 ## Why
-Short reason for verdict.
+Short reason for verdict grounded in the buckets above.
 
 ## Key Differences
 What one model flagged that the other didn't.
@@ -16815,7 +17934,7 @@ What the user should do now.
 
 Keep it concise and concrete.`;
 
-              const compareRes = await callAgentRouteWithRetry(comparePrompt, { model: 'auto', complexity: 'deep', maxTokens: 700 });
+              const compareRes = await callAgentRouteWithRetry(comparePrompt, withAgentRouteStrategy({ model: 'auto', maxTokens: 700 }));
               const compareText = compareRes && compareRes.ok ? compareRes.result : 'VERDICT: PARTIAL\nCONFIDENCE: 50\n\nCould not complete structured comparison.';
 
               const verdictMatch = compareText.match(/VERDICT:\s*(AGREE|CONTRADICT|PARTIAL)/i);
@@ -16829,7 +17948,7 @@ Keep it concise and concrete.`;
               let honestyBlock = '';
               if (honestyMode) {
                 const honestyPrompt = `${critiquePrompt}\n\nKeep this response under 8 bullet points and prioritize hidden risks.`;
-                const honestyRes = await callAgentRouteWithRetry(honestyPrompt, { model: 'auto', complexity: 'deep', maxTokens: 700 });
+                const honestyRes = await callAgentRouteWithRetry(honestyPrompt, withAgentRouteStrategy({ model: 'auto', maxTokens: 700 }));
                 if (honestyRes && honestyRes.ok && honestyRes.result) {
                   honestyBlock = `<div class="cb-agent-result-section"><div class="cb-agent-result-header">🧪 Honesty Mode Addendum</div><div class="cb-agent-result-body">${formatAgentMarkdown(honestyRes.result)}</div></div>`;
                 }
@@ -16839,7 +17958,11 @@ Keep it concise and concrete.`;
                 .replace(/VERDICT:\s*(AGREE|CONTRADICT|PARTIAL)/i, '')
                 .replace(/CONFIDENCE:\s*\d{1,3}/i, '')
                 .trim();
+              const normalizedCompare = enforceAgentNonRepetition('secondopinion', sanitizedCompare);
+              const summaryForClipboard = `VERDICT: ${verdict}\nCONFIDENCE: ${confidence}%\n\n${normalizedCompare}\n\n--- GEMINI ---\n${geminiText}\n\n--- LLAMA ---\n${llamaText}`;
 
+              const markerCounts = extractSecondOpinionMarkers(normalizedCompare);
+              const overlapTelemetry = await recordAgentArtifactTelemetry('secondopinion', summaryForClipboard);
               resultDiv.innerHTML = `
                 <div class="cb-agent-result-section" style="border-color:${verdictColor};background:color-mix(in srgb, ${verdictColor} 10%, transparent);">
                   <div class="cb-traffic-light">
@@ -16849,7 +17972,13 @@ Keep it concise and concrete.`;
                   <div class="cb-confidence-meter">
                     <div class="cb-confidence-fill" style="width:${confidence}%;background:${verdictColor};"></div>
                   </div>
-                  <div class="cb-agent-result-body">${formatAgentMarkdown(sanitizedCompare)}</div>
+                  <div class="cb-agent-result-body">${formatAgentMarkdown(normalizedCompare)}</div>
+                </div>
+
+                <div class="cb-agent-stats">
+                  <div class="cb-agent-stat"><div class="cb-agent-stat-val">${markerCounts.claims}</div><div class="cb-agent-stat-label">Claims</div></div>
+                  <div class="cb-agent-stat"><div class="cb-agent-stat-val">${markerCounts.conflicts}</div><div class="cb-agent-stat-label">Conflicts</div></div>
+                  <div class="cb-agent-stat"><div class="cb-agent-stat-val">${markerCounts.evidence}</div><div class="cb-agent-stat-label">Evidence</div></div>
                 </div>
 
                 <div class="cb-agent-result-section"><div class="cb-agent-result-header">Gemini Analysis</div><div class="cb-agent-result-body">${formatAgentMarkdown(geminiText)}</div></div>
@@ -16860,10 +17989,9 @@ Keep it concise and concrete.`;
                   <button id="cb-so-copy" class="cb-agent-btn-secondary">Copy Cross-Check</button>
                   <button id="cb-so-insert" class="cb-agent-btn-primary">Insert Summary</button>
                 </div>
-                <div class="cb-agent-meta">Cross-check completed${honestyMode ? ' · Honesty Mode ON' : ''}</div>
+                <div class="cb-agent-meta">Cross-check completed${honestyMode ? ' · Honesty Mode ON' : ''} · max overlap ${overlapTelemetry.maxOverlap}%</div>
               `;
 
-              const summaryForClipboard = `VERDICT: ${verdict}\nCONFIDENCE: ${confidence}%\n\n${sanitizedCompare}\n\n--- GEMINI ---\n${geminiText}\n\n--- LLAMA ---\n${llamaText}`;
               resultDiv.querySelector('#cb-so-copy').addEventListener('click', async () => {
                 try { await navigator.clipboard.writeText(summaryForClipboard); toast('Cross-check copied!'); } catch (_) { toast('Copy failed'); }
               });
@@ -16893,7 +18021,7 @@ Keep it concise and concrete.`;
 
       outputArea.style.setProperty('--_agent-clr', '#EC4899');
       outputArea.innerHTML = `
-        <div class="cb-agent-sub">
+        <div class="cb-agent-sub cb-agent-sub-agent-handoff">
           <div class="cb-agent-header">
             <button class="cb-agent-back" aria-label="Go back to agent list" tabindex="0" id="cb-handoff-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>Back</button>
             <div class="cb-agent-header-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg></div>
@@ -16930,10 +18058,7 @@ Keep it concise and concrete.`;
 
       // Back button
       outputArea.querySelector('#cb-handoff-back').addEventListener('click', () => {
-        const grid = shadow.getElementById('cb-agents-grid');
-        if (grid) grid.style.display = '';
-        outputArea.style.display = 'none';
-        outputArea.innerHTML = '';
+        goBackToAgentTabs('handoff');
       });
 
       let detailLevel = 'brief';
@@ -16977,6 +18102,7 @@ Keep it concise and concrete.`;
           </div>`;
 
         try {
+          const sharedCtx = await buildAgentSharedContext();
           let contextText = '';
           const source = sourceSelect.value;
           const recipient = recipientSelect.value;
@@ -17028,6 +18154,9 @@ Keep it concise and concrete.`;
 
           const prompt = `You are Handoff, a context packaging agent inside ChatBridge.
 
+${sharedCtx.promptContext}
+${buildAgentPromptContract('handoff', ['Make it recipient-ready in one pass.', 'Do not repeat the same decision in both summary and status.'])}
+
 Generate a professional handoff document for: ${recipient}
 Detail level: ${detailLevel}
 ${lengthGuide}
@@ -17058,20 +18187,35 @@ Important names, dates, numbers, links, or technical details for quick lookup.
 
 Make this ready to send as-is. No meta-commentary. Clean markdown formatting.`;
 
-          const res = await callAgentRouteWithRetry(prompt, { complexity: 'deep', maxTokens: detailLevel === 'brief' ? 800 : 1400 });
+          const res = await callAgentRouteWithRetry(prompt, withAgentRouteStrategy({ maxTokens: detailLevel === 'brief' ? 800 : 1400 }));
 
           if (res && res.ok && res.result) {
-            const formatted = formatAgentMarkdown(res.result);
+            const normalizedResult = enforceAgentNonRepetition('handoff', res.result);
+            const overlapTelemetry = await recordAgentArtifactTelemetry('handoff', normalizedResult);
+            const phaseFlags = await getAgentPhaseFlags();
+            const showScorecards = !!phaseFlags.agentPhaseScorecardsBeta;
+            const scorecard = showScorecards ? computeHandoffQualityScorecard(normalizedResult, { recipient, detailLevel, overlapTelemetry }) : null;
+            const formatted = formatAgentMarkdown(normalizedResult);
 
             // Word/section count stats
-            const wordCount = res.result.split(/\s+/).length;
-            const sectionCount = (res.result.match(/^## /gm) || []).length;
+            const wordCount = normalizedResult.split(/\s+/).length;
+            const sectionCount = (normalizedResult.match(/^## /gm) || []).length;
 
             resultDiv.innerHTML = `
               <div class="cb-agent-stats">
+                ${showScorecards ? `<div class="cb-agent-stat"><div class="cb-agent-stat-val">${scorecard.score}</div><div class="cb-agent-stat-label">Transfer Score</div></div>
+                <div class="cb-agent-stat"><div class="cb-agent-stat-val">${scorecard.uniquenessScore}%</div><div class="cb-agent-stat-label">Uniqueness</div></div>` : ''}
                 <div class="cb-agent-stat"><div class="cb-agent-stat-val">${wordCount}</div><div class="cb-agent-stat-label">Words</div></div>
                 <div class="cb-agent-stat"><div class="cb-agent-stat-val">${sectionCount}</div><div class="cb-agent-stat-label">Sections</div></div>
               </div>
+              ${showScorecards ? `<div class="cb-agent-result-section">
+                <div class="cb-agent-result-header">Quality Scorecard</div>
+                <div class="cb-agent-result-body">
+                  <div>Audience fit: <strong>${scorecard.audienceFit}</strong></div>
+                  <div style="margin-top:6px;">Section coverage: <strong>${scorecard.sectionCoverage.matched}/${scorecard.sectionCoverage.total}</strong> required blocks</div>
+                  <div style="margin-top:6px;">Action density: <strong>${scorecard.actionCount}</strong> actionable bullets · Open-question signals: <strong>${scorecard.openQuestionSignals}</strong></div>
+                </div>
+              </div>` : ''}
               <div class="cb-agent-result-section"><div class="cb-agent-result-body">${formatted}</div></div>
               <div class="cb-agent-action-row" style="flex-wrap: wrap;">
                 <button id="cb-handoff-copy" class="cb-agent-btn-secondary">Copy</button>
@@ -17080,15 +18224,15 @@ Make this ready to send as-is. No meta-commentary. Clean markdown formatting.`;
                 <button id="cb-handoff-share" class="cb-agent-btn-secondary">Share Link</button>
                 <button id="cb-handoff-insert" class="cb-agent-btn-primary" style="flex: 1 1 100%;">Insert</button>
               </div>
-              <div class="cb-agent-meta">For ${recipient} · ${detailLevel} · ${res.model_used || 'AI'} · ${res.latency_ms || 0}ms</div>
+              <div class="cb-agent-meta">For ${recipient} · ${detailLevel} · ${res.model_used || 'AI'} · ${res.latency_ms || 0}ms · max overlap ${overlapTelemetry.maxOverlap}%${formatRouteDiagnostics(res)}</div>
             `;
 
             resultDiv.querySelector('#cb-handoff-copy').addEventListener('click', async () => {
-              try { await navigator.clipboard.writeText(res.result); toast('Document copied!'); } catch (_) { toast('Copy failed'); }
+              try { await navigator.clipboard.writeText(normalizedResult); toast('Document copied!'); } catch (_) { toast('Copy failed'); }
             });
             resultDiv.querySelector('#cb-handoff-download').addEventListener('click', () => {
               try {
-                const blob = new Blob([res.result], { type: 'text/markdown' });
+                const blob = new Blob([normalizedResult], { type: 'text/markdown' });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
@@ -17103,7 +18247,7 @@ Make this ready to send as-is. No meta-commentary. Clean markdown formatting.`;
                 await StorageManager.saveHandoffDraft({
                   id: 'handoff_' + Date.now(),
                   title: `Handoff for ${recipient} - ${new Date().toLocaleDateString()}`,
-                  content: res.result,
+                  content: normalizedResult,
                   createdAt: Date.now()
                 });
                 toast('Draft saved!');
@@ -17112,7 +18256,7 @@ Make this ready to send as-is. No meta-commentary. Clean markdown formatting.`;
             resultDiv.querySelector('#cb-handoff-share').addEventListener('click', () => {
               try {
                 const title = `Handoff: ${recipient}`;
-                const rawMarkdownHtml = formatAgentMarkdown(res.result);
+                const rawMarkdownHtml = formatAgentMarkdown(normalizedResult);
                 const htmlContent = `<!DOCTYPE html>
                 <html lang="en" data-theme="dark">
                 <head>
@@ -17165,7 +18309,7 @@ Make this ready to send as-is. No meta-commentary. Clean markdown formatting.`;
               }
             });
             resultDiv.querySelector('#cb-handoff-insert').addEventListener('click', () => {
-              try { insertTextToChat(res.result); toast('Inserted!'); } catch (_) { toast('Insert failed'); }
+              try { insertTextToChat(normalizedResult); toast('Inserted!'); } catch (_) { toast('Insert failed'); }
             });
             toast('Handoff document ready!');
           } else {
@@ -17191,7 +18335,7 @@ Make this ready to send as-is. No meta-commentary. Clean markdown formatting.`;
 
       outputArea.style.setProperty('--_agent-clr', '#6366F1');
       outputArea.innerHTML = `
-        <div class="cb-agent-sub">
+        <div class="cb-agent-sub cb-agent-sub-agent-mypulse">
           <div class="cb-agent-header">
             <button class="cb-agent-back" aria-label="Go back to agent list" tabindex="0" id="cb-pulse-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>Back</button>
             <div class="cb-agent-header-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
@@ -17205,10 +18349,7 @@ Make this ready to send as-is. No meta-commentary. Clean markdown formatting.`;
 
       // Back button
       outputArea.querySelector('#cb-pulse-back').addEventListener('click', () => {
-        const grid = shadow.getElementById('cb-agents-grid');
-        if (grid) grid.style.display = '';
-        outputArea.style.display = 'none';
-        outputArea.innerHTML = '';
+        goBackToAgentTabs('mypulse');
       });
 
       const runBtn = outputArea.querySelector('#cb-pulse-run');
@@ -17237,6 +18378,7 @@ Make this ready to send as-is. No meta-commentary. Clean markdown formatting.`;
         try {
           const convos = await loadConversationsAsync();
           const pulseSessions = await StorageManager.getPulseSessions();
+          const sharedCtx = await buildAgentSharedContext();
 
           if ((!convos || convos.length === 0) && (!pulseSessions || pulseSessions.length === 0)) {
             if (typeof pulseTimer !== 'undefined') clearInterval(pulseTimer);
@@ -17287,6 +18429,9 @@ AI replied: ${aiMsgs.join('\n---\n').slice(0, 600)}`;
 
           const prompt = `You are "My Pulse" — an elite AI productivity and usage analyst inside ChatBridge.
 
+${sharedCtx.promptContext}
+${buildAgentPromptContract('mypulse', ['Generate optimization insights only; avoid task execution planning language.', 'Do not repeat the same behavior signal across multiple sections.'])}
+
 USER'S OVERALL STATS:
 ${analyticsContext}
 
@@ -17320,20 +18465,44 @@ Rate their AI productivity out of 10. Explain exactly why you gave them this sco
 ## 3 Radical Suggestions
 Three incredibly specific, actionable, and non-obvious ways they can get more out of their AI workflow starting today.`;
 
-          const res = await callAgentRouteWithRetry(prompt, { complexity: 'deep', maxTokens: 1500 });
+          const res = await callAgentRouteWithRetry(prompt, withAgentRouteStrategy({ maxTokens: 1500 }));
 
           if (res && res.ok && res.result) {
-            const formatted = formatAgentMarkdown(res.result);
+            const normalizedResult = enforceAgentNonRepetition('mypulse', res.result);
+            const overlapTelemetry = await recordAgentArtifactTelemetry('mypulse', normalizedResult);
+            const phaseFlags = await getAgentPhaseFlags();
+            const showScorecards = !!phaseFlags.agentPhaseScorecardsBeta;
+            const pulseScorecard = showScorecards ? computePulseQualityScorecard(normalizedResult, {
+              overlapTelemetry,
+              recentConvoCount: recentConvos.length,
+              pulseSessionCount: pulseSessions.length,
+              platformCount: Object.keys(platformCounts).length
+            }) : null;
+            const formatted = formatAgentMarkdown(normalizedResult);
             resultDiv.innerHTML = `
+              ${showScorecards ? `<div class="cb-agent-stats">
+                <div class="cb-agent-stat"><div class="cb-agent-stat-val">${pulseScorecard.score}</div><div class="cb-agent-stat-label">Optimization Score</div></div>
+                <div class="cb-agent-stat"><div class="cb-agent-stat-val">${pulseScorecard.uniquenessScore}%</div><div class="cb-agent-stat-label">Uniqueness</div></div>
+                <div class="cb-agent-stat"><div class="cb-agent-stat-val">${pulseScorecard.platformCount}</div><div class="cb-agent-stat-label">Platforms</div></div>
+                <div class="cb-agent-stat"><div class="cb-agent-stat-val">${pulseScorecard.sourceCoverage}</div><div class="cb-agent-stat-label">Coverage</div></div>
+              </div>
+              <div class="cb-agent-result-section">
+                <div class="cb-agent-result-header">Quality Scorecard</div>
+                <div class="cb-agent-result-body">
+                  <div>Section coverage: <strong>${pulseScorecard.sectionCoverage.matched}/${pulseScorecard.sectionCoverage.total}</strong> required blocks</div>
+                  <div style="margin-top:6px;">Suggestion density: <strong>${pulseScorecard.suggestionCount}</strong> recommendation markers</div>
+                  <div style="margin-top:6px;">Data inputs: <strong>${recentConvos.length}</strong> recent chats · <strong>${pulseSessions.length}</strong> pulse sessions</div>
+                </div>
+              </div>` : ''}
               <div class="cb-agent-result-header" style="margin-bottom:12px;">🧠 AI Insights</div>
               <div class="cb-agent-result-body">${formatted}</div>
               <div class="cb-agent-action-row" style="margin-top:14px;">
                 <button id="cb-pulse-copy" class="cb-agent-btn-secondary">Copy Insights</button>
               </div>
-              <div class="cb-agent-meta" style="margin-top:8px;">Analyzed ${recentConvos.length} chats · ${res.model_used || 'AI'} · ${res.latency_ms || 0}ms</div>
+              <div class="cb-agent-meta" style="margin-top:8px;">Analyzed ${recentConvos.length} chats · ${res.model_used || 'AI'} · ${res.latency_ms || 0}ms · max overlap ${overlapTelemetry.maxOverlap}%${formatRouteDiagnostics(res)}</div>
             `;
             resultDiv.querySelector('#cb-pulse-copy').addEventListener('click', async () => {
-              try { await navigator.clipboard.writeText(res.result); toast('Insights copied!'); } catch (_) { toast('Copy failed'); }
+              try { await navigator.clipboard.writeText(normalizedResult); toast('Insights copied!'); } catch (_) { toast('Copy failed'); }
             });
             toast('Pulse report ready!');
           } else {
@@ -18878,432 +20047,316 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
     shadow.getElementById('qa-sidebar-export')?.addEventListener('click', async () => {
       CBAnalytics.track('quick_action', 'export_click');
       try {
-        const convs = await loadConversationsAsync();
-        if (!convs || convs.length === 0) {
-          CBAnalytics.track('quick_action', 'export_empty');
-          toast('No conversations to export');
-          return;
-        }
-
-        // Check if export panel already exists
         let exportPanel = shadow.getElementById('cb-export-panel');
         if (exportPanel) {
           exportPanel.remove();
-          return; // Toggle off
+          return;
         }
 
-        // Create inline export panel - STEP 1: Choose what to export
+        const platform = (window.ChatBridge?.selectedPlatform || window.location.hostname || 'Unknown').replace(/^www\./, '');
+        const exportedAt = new Date();
+
+        const normalizeRole = (role) => {
+          const value = String(role || '').toLowerCase();
+          if (value === 'assistant' || value === 'ai' || value === 'bot' || value === 'model') return 'assistant';
+          return 'user';
+        };
+
+        const normalizeMessages = (input) => {
+          if (!Array.isArray(input)) return [];
+          return input
+            .map((msg) => ({
+              role: normalizeRole(msg?.role || msg?.type || msg?.sender || 'user'),
+              text: String(msg?.text || msg?.content || msg?.message || '').trim()
+            }))
+            .filter((msg) => msg.text.length > 0);
+        };
+
+        const getBestSourceMessages = async () => {
+          try {
+            const scan = window.ChatBridge?._lastScanData;
+            if (Array.isArray(scan?.messages)) {
+              const fromScanData = normalizeMessages(scan.messages);
+              if (fromScanData.length) return fromScanData;
+            }
+            if (Array.isArray(scan)) {
+              const fromScanArray = normalizeMessages(scan);
+              if (fromScanArray.length) return fromScanArray;
+            }
+          } catch (_) { }
+
+          try {
+            const selected = window.ChatBridge?.selectedConversation;
+            if (Array.isArray(selected?.conversation)) {
+              const fromSelected = normalizeMessages(selected.conversation);
+              if (fromSelected.length) return fromSelected;
+            }
+            if (Array.isArray(selected?.messages)) {
+              const fromSelectedMessages = normalizeMessages(selected.messages);
+              if (fromSelectedMessages.length) return fromSelectedMessages;
+            }
+          } catch (_) { }
+
+          try {
+            const convs = await loadConversationsAsync();
+            if (Array.isArray(convs) && convs.length) {
+              const first = convs[0] || {};
+              const fromStore = normalizeMessages(first.conversation || first.messages || []);
+              if (fromStore.length) return fromStore;
+            }
+          } catch (_) { }
+
+          try {
+            const scannedNow = await scanChat();
+            const fromLive = normalizeMessages(scannedNow);
+            if (fromLive.length) return fromLive;
+          } catch (_) { }
+
+          return [];
+        };
+
+        const allMessages = await getBestSourceMessages();
+
         exportPanel = document.createElement('div');
         exportPanel.id = 'cb-export-panel';
         exportPanel.className = 'cb-inline-panel';
-
         exportPanel.innerHTML = `
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-            <h4 style="margin:0;font-size:14px;font-weight:600;color:var(--cb-white);">📦 Export Conversations</h4>
+            <h4 style="margin:0;font-size:14px;font-weight:600;color:var(--cb-white);">Export Chat</h4>
             <button id="close-export-panel" style="background:none;border:none;color:var(--cb-subtext);cursor:pointer;font-size:16px;padding:4px;">✕</button>
           </div>
-          <div style="font-size:11px;color:var(--cb-subtext);margin-bottom:12px;">Choose what to export:</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
-            <button id="export-all" class="cb-export-btn" style="padding:10px;cursor:pointer;font-size:11px;font-weight:500;transition:all 0.2s;">
-              📚 All (${convs.length})
-            </button>
-            <button id="export-last" class="cb-export-btn" style="padding:10px;cursor:pointer;font-size:11px;font-weight:500;transition:all 0.2s;">
-              💬 Last Chat
-            </button>
-            <button id="export-ai-only" class="cb-export-btn" style="padding:10px;cursor:pointer;font-size:11px;font-weight:500;transition:all 0.2s;">
-              🤖 AI Only
-            </button>
-            <button id="export-user-only" class="cb-export-btn" style="padding:10px;cursor:pointer;font-size:11px;font-weight:500;transition:all 0.2s;">
-              👤 User Only
-            </button>
+
+          <div style="font-size:11px;color:var(--cb-subtext);margin-bottom:6px;">Format</div>
+          <div id="cb-export-format-chips" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:10px;">
+            <button class="cb-export-btn cb-export-chip" data-format="markdown">Markdown</button>
+            <button class="cb-export-btn cb-export-chip" data-format="text">Plain Text</button>
+            <button class="cb-export-btn cb-export-chip" data-format="html">HTML</button>
+            <button class="cb-export-btn cb-export-chip" data-format="json">JSON</button>
           </div>
+
+          <div style="font-size:11px;color:var(--cb-subtext);margin-bottom:6px;">Scope</div>
+          <div id="cb-export-scope-chips" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:10px;">
+            <button class="cb-export-btn cb-export-chip" data-scope="full">Full</button>
+            <button class="cb-export-btn cb-export-chip" data-scope="qa">Q&A pairs</button>
+            <button class="cb-export-btn cb-export-chip" data-scope="ai">AI only</button>
+            <button class="cb-export-btn cb-export-chip" data-scope="user">User only</button>
+          </div>
+
+          <label style="display:flex;align-items:center;gap:8px;font-size:11px;color:var(--cb-subtext);margin-bottom:10px;cursor:pointer;">
+            <input id="cb-export-meta" type="checkbox" checked style="accent-color:var(--cb-accent-primary);" />
+            Include metadata (platform, date, message count)
+          </label>
+
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+            <div id="cb-export-preview-meta" style="font-size:11px;color:var(--cb-subtext);"></div>
+            <div style="display:flex;gap:8px;">
+              <button id="cb-export-copy" class="cb-export-btn" style="padding:8px 10px;font-size:11px;">Copy</button>
+              <button id="cb-export-download" class="cb-btn cb-btn-primary" style="padding:8px 10px;font-size:11px;">Download</button>
+            </div>
+          </div>
+
+          <pre id="cb-export-preview" style="max-height:220px;overflow:auto;white-space:pre-wrap;word-break:break-word;padding:10px;border-radius:8px;background:var(--cb-bg3);border:1px solid var(--cb-border);font-size:11px;line-height:1.45;color:var(--cb-white);margin:0;"></pre>
+          <div style="font-size:10px;color:var(--cb-subtext);opacity:0.85;margin-top:8px;">Preview is generated client-side only (no AI call).</div>
         `;
 
-        // Insert after quick actions row
         const quickActionsRow = shadow.querySelector('.cb-quick-actions-row');
         if (quickActionsRow && quickActionsRow.parentNode) {
           quickActionsRow.parentNode.insertBefore(exportPanel, quickActionsRow.nextSibling);
         }
 
-        // Close button
-        shadow.getElementById('close-export-panel')?.addEventListener('click', () => {
-          exportPanel.remove();
-        });
+        shadow.getElementById('close-export-panel')?.addEventListener('click', () => exportPanel.remove());
 
-        // ========== Rich Content Helpers for Export ==========
-        // Parses a message text into structured segments: text, code blocks, math, tables, thinking
-        const parseMessageSegments = (text) => {
-          if (!text) return [{ type: 'text', content: '' }];
-          const segments = [];
-          // Regex to match code blocks, math blocks, thinking blocks, and markdown tables
-          // Order matters: longest/most specific first
-          const blockPattern = /(<thinking>[\s\S]*?<\/thinking>|```(\w*)\n?([\s\S]*?)```|\$\$[\s\S]*?\$\$|\\\[[\s\S]*?\\\]|((?:^\|.+\|$\n?){2,}))/gm;
-          let lastIndex = 0;
-          let match;
-          while ((match = blockPattern.exec(text)) !== null) {
-            // Add preceding plain text
-            if (match.index > lastIndex) {
-              segments.push({ type: 'text', content: text.slice(lastIndex, match.index) });
-            }
-            const raw = match[0];
-            if (raw.startsWith('<thinking>')) {
-              segments.push({ type: 'thinking', content: raw.replace(/<\/?thinking>/g, '').trim() });
-            } else if (raw.startsWith('```')) {
-              segments.push({ type: 'code', language: match[2] || '', content: (match[3] || '').trim() });
-            } else if (raw.startsWith('$$') || raw.startsWith('\\[')) {
-              const inner = raw.startsWith('$$') ? raw.slice(2, -2).trim() : raw.slice(2, -2).trim();
-              segments.push({ type: 'math', content: inner });
-            } else if (match[4]) {
-              segments.push({ type: 'table', content: raw.trim() });
-            }
-            lastIndex = match.index + raw.length;
-          }
-          if (lastIndex < text.length) {
-            segments.push({ type: 'text', content: text.slice(lastIndex) });
-          }
-          return segments.length ? segments : [{ type: 'text', content: text }];
+        const state = {
+          format: 'markdown',
+          scope: 'full',
+          includeMeta: true
         };
 
-        // ========== Download helper ==========
-        const downloadFile = (content, filename, mimeType) => {
-          const blob = new Blob([content], { type: mimeType });
+        const getScopedMessages = () => {
+          if (state.scope === 'ai') {
+            return allMessages.filter((msg) => msg.role === 'assistant');
+          }
+          if (state.scope === 'user') {
+            return allMessages.filter((msg) => msg.role === 'user');
+          }
+          if (state.scope === 'qa') {
+            const scoped = [];
+            let pendingUser = null;
+            allMessages.forEach((msg) => {
+              if (msg.role === 'user') {
+                pendingUser = msg;
+                return;
+              }
+              if (msg.role === 'assistant' && pendingUser) {
+                scoped.push(pendingUser, msg);
+                pendingUser = null;
+              }
+            });
+            return scoped;
+          }
+          return allMessages.slice();
+        };
+
+        const escapeForHtml = (value) => String(value || '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+
+        const buildMetaHeader = (count) => {
+          if (!state.includeMeta) return '';
+          return {
+            platform,
+            date: exportedAt.toLocaleString(),
+            messageCount: count
+          };
+        };
+
+        const buildOutput = () => {
+          const scopedMessages = getScopedMessages();
+          const meta = buildMetaHeader(scopedMessages.length);
+          const title = 'ChatBridge Export';
+
+          if (state.format === 'json') {
+            return {
+              text: JSON.stringify(scopedMessages.map((msg) => ({ role: msg.role, text: msg.text })), null, 2),
+              ext: 'json',
+              mime: 'application/json'
+            };
+          }
+
+          if (state.format === 'html') {
+            const metaBlock = meta
+              ? `<div><strong>Platform:</strong> ${escapeForHtml(meta.platform)}<br><strong>Date:</strong> ${escapeForHtml(meta.date)}<br><strong>Message Count:</strong> ${meta.messageCount}</div><hr>`
+              : '';
+            const rows = scopedMessages
+              .map((msg) => `<p><strong>${msg.role === 'assistant' ? 'AI' : 'User'}:</strong> ${escapeForHtml(msg.text).replace(/\n/g, '<br>')}</p>`)
+              .join('\n');
+            return {
+              text: `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title></head><body><h1>${title}</h1>${metaBlock}${rows}</body></html>`,
+              ext: 'html',
+              mime: 'text/html'
+            };
+          }
+
+          if (state.format === 'text') {
+            const header = meta
+              ? [
+                `${title}`,
+                `Platform: ${meta.platform}`,
+                `Date: ${meta.date}`,
+                `Message Count: ${meta.messageCount}`,
+                ''.padEnd(56, '=')
+              ].join('\n') + '\n\n'
+              : '';
+            const body = scopedMessages
+              .map((msg) => `${msg.role === 'assistant' ? 'AI' : 'User'}: ${msg.text}`)
+              .join('\n\n');
+            return {
+              text: `${header}${body}`.trim(),
+              ext: 'txt',
+              mime: 'text/plain'
+            };
+          }
+
+          const mdHeader = meta
+            ? [
+              `# ${title}`,
+              '',
+              `- Platform: ${meta.platform}`,
+              `- Date: ${meta.date}`,
+              `- Message Count: ${meta.messageCount}`,
+              '',
+              '---',
+              ''
+            ].join('\n')
+            : '';
+          const mdBody = scopedMessages
+            .map((msg) => `**${msg.role === 'assistant' ? 'AI' : 'User'}:**\n${msg.text}`)
+            .join('\n\n');
+
+          return {
+            text: `${mdHeader}${mdBody}`.trim(),
+            ext: 'md',
+            mime: 'text/markdown'
+          };
+        };
+
+        const renderActiveChipState = () => {
+          exportPanel.querySelectorAll('[data-format]').forEach((btn) => {
+            const active = btn.getAttribute('data-format') === state.format;
+            btn.style.background = active ? 'color-mix(in srgb, var(--cb-accent-primary) 18%, var(--cb-bg3))' : '';
+            btn.style.borderColor = active ? 'color-mix(in srgb, var(--cb-accent-primary) 40%, var(--cb-border))' : '';
+            btn.style.color = active ? 'var(--cb-accent-primary)' : '';
+          });
+          exportPanel.querySelectorAll('[data-scope]').forEach((btn) => {
+            const active = btn.getAttribute('data-scope') === state.scope;
+            btn.style.background = active ? 'color-mix(in srgb, var(--cb-accent2) 16%, var(--cb-bg3))' : '';
+            btn.style.borderColor = active ? 'color-mix(in srgb, var(--cb-accent2) 38%, var(--cb-border))' : '';
+            btn.style.color = active ? 'var(--cb-accent2)' : '';
+          });
+        };
+
+        const refreshPreview = () => {
+          const previewEl = shadow.getElementById('cb-export-preview');
+          const metaEl = shadow.getElementById('cb-export-preview-meta');
+          if (!previewEl || !metaEl) return;
+
+          const output = buildOutput();
+          previewEl.textContent = output.text || 'No content available. Run Scan first.';
+          const count = getScopedMessages().length;
+          metaEl.textContent = `${count} message${count === 1 ? '' : 's'} • ${state.format.toUpperCase()} • ${state.scope.toUpperCase()}`;
+          renderActiveChipState();
+        };
+
+        exportPanel.querySelectorAll('[data-format]').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            state.format = btn.getAttribute('data-format') || 'markdown';
+            CBAnalytics.track('quick_action', 'export_format_select', { format: state.format });
+            refreshPreview();
+          });
+        });
+
+        exportPanel.querySelectorAll('[data-scope]').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            state.scope = btn.getAttribute('data-scope') || 'full';
+            CBAnalytics.track('quick_action', 'export_scope_select', { scope: state.scope });
+            refreshPreview();
+          });
+        });
+
+        shadow.getElementById('cb-export-meta')?.addEventListener('change', (event) => {
+          state.includeMeta = !!event.target?.checked;
+          CBAnalytics.track('quick_action', 'export_meta_toggle', { enabled: state.includeMeta });
+          refreshPreview();
+        });
+
+        shadow.getElementById('cb-export-copy')?.addEventListener('click', async () => {
+          const output = buildOutput();
+          await navigator.clipboard.writeText(output.text || '');
+          toast('Copied export content');
+          CBAnalytics.track('quick_action', 'export_copy', { format: state.format, scope: state.scope });
+        });
+
+        shadow.getElementById('cb-export-download')?.addEventListener('click', () => {
+          const output = buildOutput();
+          const blob = new Blob([output.text || ''], { type: output.mime });
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
+          const stamp = new Date().toISOString().slice(0, 10);
           a.href = url;
-          a.download = filename;
+          a.download = `chatbridge-export-${stamp}.${output.ext}`;
           a.click();
           URL.revokeObjectURL(url);
-        };
-
-        const fileSlug = (lbl) => lbl.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-        const dateStamp = () => new Date().toISOString().split('T')[0];
-
-        // Helper to show format selection
-        const showFormatSelection = (dataToExport, label) => {
-          exportPanel.innerHTML = `
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-              <h4 style="margin:0;font-size:14px;font-weight:600;color:var(--cb-white);">📦 Export ${label}</h4>
-              <button id="export-back" style="background:none;border:none;color:var(--cb-subtext);cursor:pointer;font-size:12px;padding:4px;">← Back</button>
-            </div>
-            <div style="font-size:11px;color:var(--cb-subtext);margin-bottom:8px;">Choose format:</div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
-              <button id="format-pdf" class="cb-btn cb-btn-primary" style="padding:10px;font-size:12px;font-weight:600;">📄 PDF</button>
-              <button id="format-md" class="cb-export-btn" style="padding:10px;font-size:12px;font-weight:600;">📝 Markdown</button>
-              <button id="format-txt" class="cb-export-btn" style="padding:10px;font-size:12px;font-weight:600;">📋 Text</button>
-              <button id="format-csv" class="cb-export-btn" style="padding:10px;font-size:12px;font-weight:600;">📊 CSV</button>
-            </div>
-            <button id="format-json" class="cb-export-btn" style="width:100%;padding:10px;font-size:12px;font-weight:600;">{ } JSON</button>
-            <div style="font-size:10px;color:var(--cb-subtext);margin-top:8px;opacity:0.7;">Code blocks, math, tables & thinking preserved</div>
-          `;
-
-          // Back button
-          shadow.getElementById('export-back')?.addEventListener('click', () => {
-            shadow.getElementById('qa-sidebar-export')?.click(); // Re-open
-          });
-
-          // ===== JSON Export =====
-          shadow.getElementById('format-json')?.addEventListener('click', () => {
-            CBAnalytics.track('quick_action', 'export_json', { label, conversations: dataToExport.length });
-            downloadFile(
-              JSON.stringify(dataToExport, null, 2),
-              `chatbridge-${fileSlug(label)}-${dateStamp()}.json`,
-              'application/json'
-            );
-            toast('📦 Exported as JSON');
-            exportPanel.remove();
-          });
-
-          // ===== Markdown Export (rich) =====
-          shadow.getElementById('format-md')?.addEventListener('click', () => {
-            CBAnalytics.track('quick_action', 'export_markdown', { label, conversations: dataToExport.length });
-            let md = `# ChatBridge Export \u2014 ${label}\n\n`;
-            md += `> Exported on ${new Date().toLocaleString()}\n\n---\n\n`;
-
-            dataToExport.forEach((conv, i) => {
-              md += `## Conversation ${i + 1}\n\n`;
-              md += `| Property | Value |\n|----------|-------|\n`;
-              md += `| Platform | ${conv.platform || 'Unknown'} |\n`;
-              md += `| Date | ${conv.ts ? new Date(conv.ts).toLocaleString() : 'N/A'} |\n\n`;
-
-              (conv.conversation || conv.messages || []).forEach(msg => {
-                const role = msg.role || msg.type || 'user';
-                const text = msg.text || msg.content || '';
-                const segments = parseMessageSegments(text);
-
-                md += `### ${role === 'user' ? '\uD83D\uDC64 User' : '\uD83E\uDD16 Assistant'}\n\n`;
-
-                segments.forEach(seg => {
-                  switch (seg.type) {
-                    case 'code':
-                      md += `\`\`\`${seg.language}\n${seg.content}\n\`\`\`\n\n`;
-                      break;
-                    case 'math':
-                      md += `$$\n${seg.content}\n$$\n\n`;
-                      break;
-                    case 'table':
-                      md += `${seg.content}\n\n`;
-                      break;
-                    case 'thinking':
-                      md += `<details>\n<summary>\uD83E\uDDE0 Thinking Process</summary>\n\n${seg.content}\n\n</details>\n\n`;
-                      break;
-                    default:
-                      if (seg.content.trim()) md += `${seg.content.trim()}\n\n`;
-                  }
-                });
-              });
-              md += `---\n\n`;
-            });
-
-            downloadFile(md, `chatbridge-${fileSlug(label)}-${dateStamp()}.md`, 'text/markdown');
-            toast('\uD83D\uDCDD Exported as Markdown');
-            exportPanel.remove();
-          });
-
-          // ===== Plain Text Export =====
-          shadow.getElementById('format-txt')?.addEventListener('click', () => {
-            CBAnalytics.track('quick_action', 'export_text', { label, conversations: dataToExport.length });
-            const divider = '='.repeat(60);
-            let txt = `CHATBRIDGE EXPORT \u2014 ${label}\n`;
-            txt += `Exported: ${new Date().toLocaleString()}\n${divider}\n\n`;
-
-            dataToExport.forEach((conv, i) => {
-              txt += `${divider}\n`;
-              txt += `CONVERSATION ${i + 1}  |  Platform: ${conv.platform || 'Unknown'}  |  ${conv.ts ? new Date(conv.ts).toLocaleString() : ''}\n`;
-              txt += `${divider}\n\n`;
-
-              (conv.conversation || conv.messages || []).forEach(msg => {
-                const role = msg.role || msg.type || 'user';
-                const text = msg.text || msg.content || '';
-                const segments = parseMessageSegments(text);
-                const tag = role === 'user' ? '[USER]' : '[ASSISTANT]';
-
-                txt += `${tag}\n`;
-                segments.forEach(seg => {
-                  switch (seg.type) {
-                    case 'code':
-                      txt += `--- CODE${seg.language ? ' (' + seg.language + ')' : ''} ---\n${seg.content}\n--- END CODE ---\n\n`;
-                      break;
-                    case 'math':
-                      txt += `--- MATH ---\n${seg.content}\n--- END MATH ---\n\n`;
-                      break;
-                    case 'table':
-                      txt += `--- TABLE ---\n${seg.content}\n--- END TABLE ---\n\n`;
-                      break;
-                    case 'thinking':
-                      txt += `--- THINKING PROCESS ---\n${seg.content}\n--- END THINKING ---\n\n`;
-                      break;
-                    default:
-                      if (seg.content.trim()) txt += `${seg.content.trim()}\n`;
-                  }
-                });
-                txt += '\n';
-              });
-              txt += '\n';
-            });
-
-            downloadFile(txt, `chatbridge-${fileSlug(label)}-${dateStamp()}.txt`, 'text/plain');
-            toast('\uD83D\uDCCB Exported as Text');
-            exportPanel.remove();
-          });
-
-          // ===== CSV Export =====
-          shadow.getElementById('format-csv')?.addEventListener('click', () => {
-            CBAnalytics.track('quick_action', 'export_csv', { label, conversations: dataToExport.length });
-            const escCsv = (val) => {
-              if (val == null) return '';
-              const s = String(val).replace(/"/g, '""');
-              return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s}"` : s;
-            };
-
-            let csv = 'Conversation,Platform,Timestamp,Role,Content Type,Content\n';
-
-            dataToExport.forEach((conv, i) => {
-              const platform = conv.platform || 'Unknown';
-              const ts = conv.ts ? new Date(conv.ts).toISOString() : '';
-
-              (conv.conversation || conv.messages || []).forEach(msg => {
-                const role = msg.role || msg.type || 'user';
-                const text = msg.text || msg.content || '';
-                const segments = parseMessageSegments(text);
-
-                segments.forEach(seg => {
-                  if (!seg.content.trim()) return;
-                  csv += `${escCsv(i + 1)},${escCsv(platform)},${escCsv(ts)},${escCsv(role)},${escCsv(seg.type)},${escCsv(seg.content.trim())}\n`;
-                });
-              });
-            });
-
-            downloadFile(csv, `chatbridge-${fileSlug(label)}-${dateStamp()}.csv`, 'text/csv');
-            toast('\uD83D\uDCCA Exported as CSV');
-            exportPanel.remove();
-          });
-
-          // ===== PDF Export =====
-          shadow.getElementById('format-pdf')?.addEventListener('click', () => {
-            CBAnalytics.track('quick_action', 'export_pdf', { label, conversations: dataToExport.length });
-            // Build a styled HTML document and open print dialog (Save as PDF)
-            let totalMessages = 0;
-            let totalCodeBlocks = 0;
-            let totalTables = 0;
-            let totalMath = 0;
-            let totalThinking = 0;
-
-            let bodyHtml = '';
-            dataToExport.forEach((conv, i) => {
-              bodyHtml += `<div class="conversation"><h2>Conversation ${i + 1}</h2>`;
-              bodyHtml += `<div class="meta"><span><strong>Platform:</strong> ${conv.platform || 'Unknown'}</span>`;
-              bodyHtml += `<span><strong>Date:</strong> ${conv.ts ? new Date(conv.ts).toLocaleString() : 'N/A'}</span></div>`;
-
-              (conv.conversation || conv.messages || []).forEach(msg => {
-                totalMessages++;
-                const role = msg.role || msg.type || 'user';
-                const text = msg.text || msg.content || '';
-                const segments = parseMessageSegments(text);
-                const isUser = role === 'user' || role === 'human';
-
-                bodyHtml += `<div class="message ${isUser ? 'user' : 'assistant'}">`;
-                bodyHtml += `<div class="role-badge ${isUser ? 'user-badge' : 'ai-badge'}">${isUser ? '\uD83D\uDC64 User' : '\uD83E\uDD16 Assistant'}</div>`;
-
-                segments.forEach(seg => {
-                  switch (seg.type) {
-                    case 'code':
-                      totalCodeBlocks++;
-                      const escaped = seg.content.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-                      bodyHtml += `<div class="code-label">${seg.language || 'code'}</div><pre><code>${escaped}</code></pre>`;
-                      break;
-                    case 'math':
-                      totalMath++;
-                      bodyHtml += `<div class="math-block">${seg.content.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>`;
-                      break;
-                    case 'table': {
-                      totalTables++;
-                      const rows = seg.content.split('\n').filter(r => r.trim() && !/^[\s|:-]+$/.test(r));
-                      bodyHtml += '<table>';
-                      rows.forEach((row, ri) => {
-                        const cells = row.split('|').map(c => c.trim()).filter(Boolean);
-                        const tag = ri === 0 ? 'th' : 'td';
-                        bodyHtml += '<tr>' + cells.map(c => `<${tag}>${c}</${tag}>`).join('') + '</tr>';
-                      });
-                      bodyHtml += '</table>';
-                      break;
-                    }
-                    case 'thinking':
-                      totalThinking++;
-                      bodyHtml += `<details class="thinking"><summary>\uD83E\uDDE0 Thinking Process</summary><p>${seg.content.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>')}</p></details>`;
-                      break;
-                    default:
-                      if (seg.content.trim()) {
-                        const htmlText = seg.content.trim()
-                          .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-                          .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-                          .replace(/`([^`]+)`/g, '<code>$1</code>')
-                          .replace(/\n/g, '<br>');
-                        bodyHtml += `<p>${htmlText}</p>`;
-                      }
-                  }
-                });
-                bodyHtml += '</div>';
-              });
-              bodyHtml += '</div>';
-            });
-
-            const statsLine = [
-              `${totalMessages} messages`,
-              totalCodeBlocks ? `${totalCodeBlocks} code blocks` : '',
-              totalTables ? `${totalTables} tables` : '',
-              totalMath ? `${totalMath} math formulas` : '',
-              totalThinking ? `${totalThinking} thinking blocks` : ''
-            ].filter(Boolean).join(' \u2022 ');
-
-            const fullHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>ChatBridge Export - ${escapeHtml(label)}</title>
-<style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:800px;margin:0 auto;padding:40px 24px;color:#1a1a2e;line-height:1.6;background:#fff}
-h1{font-size:22px;margin-bottom:4px;color:#111}
-.subtitle{font-size:12px;color:#666;margin-bottom:4px}
-.stats-bar{font-size:11px;color:#888;margin-bottom:20px;padding:8px 12px;background:#f5f5f5;border-radius:6px}
-.conversation{margin-bottom:32px;page-break-inside:avoid}
-.conversation h2{font-size:16px;border-bottom:2px solid #e5e7eb;padding-bottom:6px;margin-bottom:12px;color:#1e293b}
-.meta{font-size:12px;color:#64748b;margin-bottom:16px;display:flex;gap:20px}
-.message{margin-bottom:16px;padding:12px 16px;border-radius:10px;border:1px solid #e5e7eb}
-.message.user{background:#f0f4ff;border-left:3px solid #3b82f6}
-.message.assistant{background:#f0fdf4;border-left:3px solid #22c55e}
-.role-badge{font-size:11px;font-weight:700;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px}
-.user-badge{color:#3b82f6}
-.ai-badge{color:#22c55e}
-pre{background:#1e1e2e;color:#cdd6f4;padding:14px;border-radius:8px;overflow-x:auto;font-size:12px;line-height:1.5;margin:8px 0;white-space:pre-wrap;word-wrap:break-word}
-code{font-family:'Fira Code',Consolas,monospace;font-size:12px}
-p code{background:#e8e8e8;padding:1px 5px;border-radius:3px;font-size:12px}
-.code-label{font-size:10px;color:#888;text-transform:uppercase;margin-top:4px;letter-spacing:0.5px}
-.math-block{background:#fffbeb;border:1px solid #fde68a;padding:12px;border-radius:8px;font-family:'Cambria Math','Times New Roman',serif;font-size:14px;text-align:center;margin:8px 0;white-space:pre-wrap}
-table{width:100%;border-collapse:collapse;margin:8px 0;font-size:12px}
-th,td{border:1px solid #d1d5db;padding:8px 10px;text-align:left}
-th{background:#f1f5f9;font-weight:600;color:#334155}
-tr:nth-child(even){background:#f8fafc}
-.thinking{margin:8px 0;border:1px dashed #c084fc;border-radius:8px;padding:0}
-.thinking summary{padding:10px 14px;cursor:pointer;font-size:12px;font-weight:600;color:#7c3aed;background:#faf5ff;border-radius:8px}
-.thinking p{padding:10px 14px;font-size:12px;color:#6b7280;line-height:1.6;white-space:pre-wrap}
-p{margin:4px 0;font-size:13px}
-@media print{body{padding:20px 16px}pre{white-space:pre-wrap!important}details{open}details>summary{display:none}details>p{display:block!important}}
-</style></head><body>
-<h1>\uD83D\uDCE6 ChatBridge Export \u2014 ${escapeHtml(label)}</h1>
-<div class="subtitle">${new Date().toLocaleString()}</div>
-<div class="stats-bar">${statsLine}</div>
-${bodyHtml}
-</body></html>`;
-
-            const pdfWin = window.open('', '_blank');
-            if (pdfWin) {
-              pdfWin.document.write(fullHtml);
-              pdfWin.document.close();
-              // Give rendering a moment, then trigger print dialog
-              setTimeout(() => {
-                try { pdfWin.print(); } catch (e) { console.error('[ChatBridge] PDF print error:', e); }
-              }, 600);
-              toast('\uD83D\uDCE4 PDF ready \u2014 use Print \u2192 Save as PDF');
-            } else {
-              // Popup blocked — fallback to HTML download
-              downloadFile(fullHtml, `chatbridge-${fileSlug(label)}-${dateStamp()}.html`, 'text/html');
-              toast('\uD83D\uDCE4 Exported as HTML (open & print to PDF)');
-            }
-            exportPanel.remove();
-          });
-        };
-
-        // Export All button
-        shadow.getElementById('export-all')?.addEventListener('click', () => {
-          showFormatSelection(convs, 'All Conversations');
+          toast(`Downloaded .${output.ext} export`);
+          CBAnalytics.track('quick_action', 'export_download', { format: state.format, scope: state.scope });
         });
 
-        // Export Last Chat button
-        shadow.getElementById('export-last')?.addEventListener('click', () => {
-          const lastConv = convs.length > 0 ? [convs[0]] : [];
-          showFormatSelection(lastConv, 'Last Chat');
-        });
-
-        // Export AI Only button
-        shadow.getElementById('export-ai-only')?.addEventListener('click', () => {
-          const aiOnly = convs.map(conv => ({
-            ...conv,
-            conversation: (conv.conversation || conv.messages || []).filter(msg => {
-              const role = (msg.role || msg.type || '').toLowerCase();
-              return role === 'assistant' || role === 'ai' || role === 'bot';
-            })
-          })).filter(conv => (conv.conversation || []).length > 0);
-          showFormatSelection(aiOnly, 'AI Messages Only');
-        });
-
-        // Export User Only button
-        shadow.getElementById('export-user-only')?.addEventListener('click', () => {
-          const userOnly = convs.map(conv => ({
-            ...conv,
-            conversation: (conv.conversation || conv.messages || []).filter(msg => {
-              const role = (msg.role || msg.type || '').toLowerCase();
-              return role === 'user' || role === 'human';
-            })
-          })).filter(conv => (conv.conversation || []).length > 0);
-          showFormatSelection(userOnly, 'User Messages Only');
-        });
+        refreshPreview();
+        if (!allMessages.length) {
+          toast('No active messages found yet. Run Scan to populate export.');
+        }
       } catch (e) {
         toast('Export failed');
         console.error('[ChatBridge] Export error:', e);
@@ -24766,6 +25819,22 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
     } catch (e) {
       debugLog('getImageVault public accessor error:', e);
       return [];
+    }
+  };
+  window.ChatBridge.getPhaseFlags = async function () {
+    try { return await getAgentPhaseFlags(true); } catch (_) { return Object.assign({}, AGENT_PHASE_FLAGS_DEFAULTS); }
+  };
+  window.ChatBridge.setPhaseFlags = async function (partial) {
+    try {
+      const allowed = ['agentPhaseRoutingBeta', 'agentPhaseRagBeta', 'agentPhaseScorecardsBeta'];
+      const safe = {};
+      Object.keys(partial || {}).forEach((key) => {
+        if (allowed.includes(key)) safe[key] = !!partial[key];
+      });
+      await CBConfig.set(safe);
+      return await getAgentPhaseFlags(true);
+    } catch (e) {
+      return { ok: false, error: e && e.message ? e.message : String(e) };
     }
   };
 
