@@ -805,7 +805,9 @@ const Config = (function () {
     debug: false,
     agentPhaseRoutingBeta: true,
     agentPhaseRagBeta: true,
-    agentPhaseScorecardsBeta: true
+    agentPhaseScorecardsBeta: true,
+    agenticToolExecutionBeta: false,
+    agenticRequireApproval: true
   };
   let cache = { value: DEFAULTS, ts: 0 };
   async function _load() {
@@ -848,6 +850,179 @@ const Logger = (function () {
     error: (...a) => log('error', a)
   };
 })();
+
+const AGENTIC_STORAGE_KEYS = {
+  TASKS: 'chatbridge_agentic_tasks',
+  NOTES: 'chatbridge_agentic_notes'
+};
+
+const AGENT_TOOL_REGISTRY = Object.freeze({
+  list_tasks: { requiresApproval: false, description: 'List saved tasks' },
+  create_task: { requiresApproval: true, description: 'Create a task in ChatBridge local storage' },
+  complete_task: { requiresApproval: true, description: 'Mark an existing task as completed' },
+  save_note: { requiresApproval: true, description: 'Save a local note from agent workflow' }
+});
+
+async function getAgenticTasks() {
+  try {
+    const raw = await new Promise((resolve) => chrome.storage.local.get([AGENTIC_STORAGE_KEYS.TASKS], (data) => resolve(data && data[AGENTIC_STORAGE_KEYS.TASKS])));
+    return Array.isArray(raw) ? raw : [];
+  } catch (_) {
+    return [];
+  }
+}
+
+async function setAgenticTasks(tasks) {
+  try {
+    await new Promise((resolve) => chrome.storage.local.set({ [AGENTIC_STORAGE_KEYS.TASKS]: Array.isArray(tasks) ? tasks : [] }, resolve));
+  } catch (_) { }
+}
+
+async function getAgenticNotes() {
+  try {
+    const raw = await new Promise((resolve) => chrome.storage.local.get([AGENTIC_STORAGE_KEYS.NOTES], (data) => resolve(data && data[AGENTIC_STORAGE_KEYS.NOTES])));
+    return Array.isArray(raw) ? raw : [];
+  } catch (_) {
+    return [];
+  }
+}
+
+async function setAgenticNotes(notes) {
+  try {
+    await new Promise((resolve) => chrome.storage.local.set({ [AGENTIC_STORAGE_KEYS.NOTES]: Array.isArray(notes) ? notes : [] }, resolve));
+  } catch (_) { }
+}
+
+function parseAgentToolPlanFromResult(resultText) {
+  const text = String(resultText || '');
+  if (!text) return null;
+
+  const fences = [
+    /```chatbridge-tools\s*([\s\S]*?)```/i,
+    /```json\s*([\s\S]*?)```/i
+  ];
+
+  for (const fence of fences) {
+    const match = text.match(fence);
+    if (!match || !match[1]) continue;
+    try {
+      const parsed = JSON.parse(match[1].trim());
+      if (parsed && Array.isArray(parsed.actions)) {
+        return {
+          actions: parsed.actions,
+          max_iterations: Number(parsed.max_iterations) || 1,
+          auto_execute: parsed.auto_execute !== false
+        };
+      }
+    } catch (_) { }
+  }
+
+  return null;
+}
+
+async function executeAgentToolAction(action) {
+  const toolName = String(action && action.tool || '').trim();
+  const args = action && typeof action.args === 'object' && action.args ? action.args : {};
+
+  if (!toolName || !AGENT_TOOL_REGISTRY[toolName]) {
+    return { ok: false, tool: toolName || 'unknown', error: 'unsupported_tool' };
+  }
+
+  if (toolName === 'list_tasks') {
+    const tasks = await getAgenticTasks();
+    return { ok: true, tool: toolName, result: { tasks } };
+  }
+
+  if (toolName === 'create_task') {
+    const title = String(args.title || '').trim();
+    if (!title) return { ok: false, tool: toolName, error: 'missing_title' };
+    const dueAt = args.dueAt ? Number(args.dueAt) || null : null;
+    const priority = ['low', 'medium', 'high'].includes(String(args.priority || '').toLowerCase())
+      ? String(args.priority || '').toLowerCase()
+      : 'medium';
+    const tasks = await getAgenticTasks();
+    const task = {
+      id: `task_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      title,
+      dueAt,
+      priority,
+      completed: false,
+      createdAt: Date.now(),
+      source: 'agent'
+    };
+    tasks.unshift(task);
+    if (tasks.length > 500) tasks.length = 500;
+    await setAgenticTasks(tasks);
+    return { ok: true, tool: toolName, result: task };
+  }
+
+  if (toolName === 'complete_task') {
+    const id = String(args.id || '').trim();
+    if (!id) return { ok: false, tool: toolName, error: 'missing_id' };
+    const tasks = await getAgenticTasks();
+    const idx = tasks.findIndex((task) => task && task.id === id);
+    if (idx < 0) return { ok: false, tool: toolName, error: 'task_not_found' };
+    tasks[idx] = Object.assign({}, tasks[idx], { completed: true, completedAt: Date.now() });
+    await setAgenticTasks(tasks);
+    return { ok: true, tool: toolName, result: tasks[idx] };
+  }
+
+  if (toolName === 'save_note') {
+    const text = String(args.text || '').trim();
+    if (!text) return { ok: false, tool: toolName, error: 'missing_text' };
+    const notes = await getAgenticNotes();
+    const note = {
+      id: `note_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      text,
+      createdAt: Date.now(),
+      source: 'agent'
+    };
+    notes.unshift(note);
+    if (notes.length > 500) notes.length = 500;
+    await setAgenticNotes(notes);
+    return { ok: true, tool: toolName, result: note };
+  }
+
+  return { ok: false, tool: toolName, error: 'unhandled_tool' };
+}
+
+async function executeAgentToolPlan(toolPlan, opts = {}) {
+  const maxIterations = Math.max(1, Math.min(Number(toolPlan && toolPlan.max_iterations) || 1, 5));
+  const actions = Array.isArray(toolPlan && toolPlan.actions) ? toolPlan.actions.slice(0, 20) : [];
+  const approvalRequired = !!opts.approvalRequired;
+  const approved = !!opts.approved;
+  const results = [];
+
+  for (let i = 0; i < actions.length && i < maxIterations; i++) {
+    const action = actions[i] || {};
+    const toolName = String(action.tool || '').trim();
+    const toolMeta = AGENT_TOOL_REGISTRY[toolName];
+    if (!toolMeta) {
+      results.push({ ok: false, tool: toolName || 'unknown', error: 'unsupported_tool' });
+      continue;
+    }
+
+    if (approvalRequired && toolMeta.requiresApproval && !approved) {
+      results.push({
+        ok: false,
+        tool: toolName,
+        error: 'approval_required',
+        pending_action: action
+      });
+      continue;
+    }
+
+    const out = await executeAgentToolAction(action);
+    results.push(out);
+  }
+
+  return {
+    ok: true,
+    attempted: Math.min(actions.length, maxIterations),
+    total_actions: actions.length,
+    results
+  };
+}
 
 function makeError(code, message, extra) { return Object.assign({ ok: false, error: String(code || 'error'), message: String(message || '') }, extra || {}); }
 
@@ -3094,6 +3269,13 @@ Rewritten conversation (optimized for ${tgt}):`;
           agentPhaseScorecardsBeta: payload.stagedFlags && Object.prototype.hasOwnProperty.call(payload.stagedFlags, 'agentPhaseScorecardsBeta')
             ? !!payload.stagedFlags.agentPhaseScorecardsBeta
             : config.agentPhaseScorecardsBeta !== false
+          ,
+          agenticToolExecutionBeta: payload.stagedFlags && Object.prototype.hasOwnProperty.call(payload.stagedFlags, 'agenticToolExecutionBeta')
+            ? !!payload.stagedFlags.agenticToolExecutionBeta
+            : config.agenticToolExecutionBeta === true,
+          agenticRequireApproval: payload.stagedFlags && Object.prototype.hasOwnProperty.call(payload.stagedFlags, 'agenticRequireApproval')
+            ? !!payload.stagedFlags.agenticRequireApproval
+            : config.agenticRequireApproval !== false
         };
 
         if (!prompt) {
@@ -3349,6 +3531,17 @@ Rewritten conversation (optimized for ${tgt}):`;
           return sendResponse({ ok: false, error: 'all_models_failed', message: 'All AI models failed. Check your API keys in ChatBridge Options.', latency_ms: Date.now() - startMs });
         }
 
+        let toolExecution = null;
+        if (featureFlags.agenticToolExecutionBeta && result && typeof result.result === 'string') {
+          const toolPlan = parseAgentToolPlanFromResult(result.result);
+          if (toolPlan && Array.isArray(toolPlan.actions) && toolPlan.actions.length > 0) {
+            toolExecution = await executeAgentToolPlan(toolPlan, {
+              approvalRequired: featureFlags.agenticRequireApproval,
+              approved: payload.approveToolExecution === true
+            });
+          }
+        }
+
         return sendResponse(Object.assign({}, result, {
           ok: true,
           route_mode: selectedModel,
@@ -3361,7 +3554,9 @@ Rewritten conversation (optimized for ${tgt}):`;
           phase_flags: featureFlags,
           route_profile: routeHints.routeProfile || agentTab,
           route_strategy: routeHints.modelStrategy || complexity,
-          route_preferred: routeHints.preferredRoute || ''
+          route_preferred: routeHints.preferredRoute || '',
+          tool_registry: Object.keys(AGENT_TOOL_REGISTRY),
+          tool_execution: toolExecution
         }));
       } catch (e) {
         return sendResponse({ ok: false, error: 'agent_route_error', message: (e && e.message) || String(e), latency_ms: Date.now() - startMs });
