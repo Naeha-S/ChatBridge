@@ -1152,7 +1152,7 @@ const SiteAdapters = [
       citationHeavy: false,
       segParams: { maxTurnsPerSegment: 10, roleClusterThreshold: 5, topicShiftSensitivity: 0.45 }
     },
-    detect: () => location.hostname.includes("x.ai") || location.hostname.includes("grok.ai"),
+    detect: () => location.hostname.includes("x.ai") || location.hostname.includes("grok.ai") || location.hostname.includes("grok.com"),
     scrollContainer: () => document.scrollingElement,
     getMessages: () => {
       const nodes = Array.from(document.querySelectorAll(".reply, .message, .assistant")).filter(n => n && n.innerText && n.innerText.trim().length > 1);

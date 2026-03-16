@@ -11,6 +11,7 @@ const ChatBridgePlatformRegistry = (() => {
     'www.perplexity.ai': 'Perplexity',
     'poe.com': 'Poe',
     'x.ai': 'Grok',
+    'grok.com': 'Grok',
     'copilot.microsoft.com': 'Copilot',
     'www.bing.com': 'Bing AI',
     'meta.ai': 'Meta AI',
@@ -47,6 +48,7 @@ const ChatBridgePlatformRegistry = (() => {
     'chat.deepseek.com',
     'open-assistant.io',
     'x.ai',
+    'grok.com',
     'meta.ai',
     'character.ai',
     'beta.character.ai',
@@ -66,7 +68,7 @@ const ChatBridgePlatformRegistry = (() => {
     mistral: ['chat.mistral.ai'],
     poe: ['poe.com'],
     deepseek: ['chat.deepseek.com', 'deepseek.ai'],
-    grok: ['x.ai'],
+    grok: ['x.ai', 'grok.com'],
     meta: ['meta.ai']
   };
 

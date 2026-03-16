@@ -12,6 +12,7 @@ const ChatBridgeConstants = {
       'perplexity.ai',
       'poe.com',
       'x.ai',
+      'grok.com',
       'copilot.microsoft.com',
       'www.bing.com',
       'meta.ai'

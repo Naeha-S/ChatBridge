@@ -742,10 +742,10 @@
     if (host.includes('perplexity.ai')) return 'perplexity';
     if (host.includes('copilot.microsoft.com') || host.includes('bing.com')) return 'copilot';
     if (host.includes('poe.com')) return 'poe';
-    if (host.includes('x.ai')) return 'grok';
+    if (host.includes('x.ai') || host.includes('grok.com')) return 'grok';
     if (host.includes('meta.ai')) return 'meta';
     if (host.includes('mistral.ai')) return 'mistral';
-    if (host.includes('deepseek.ai')) return 'deepseek';
+    if (host.includes('deepseek.ai') || host.includes('deepseek.com')) return 'deepseek';
     return 'unknown';
   }
 
@@ -13298,9 +13298,9 @@ Output ONLY the 5 numbered questions, no other text.`;
             { id: 'copilot', name: 'Copilot', url: 'https://copilot.microsoft.com/', color: '#0078d4', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0078d4" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>' },
             { id: 'perplexity', name: 'Perplexity', url: 'https://www.perplexity.ai/', color: '#1fb8cd', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1fb8cd" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>' },
             { id: 'mistral', name: 'Mistral', url: 'https://chat.mistral.ai/', color: '#ff6b35', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ff6b35" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>' },
-            { id: 'deepseek', name: 'DeepSeek', url: 'https://deepseek.ai/', color: '#0066cc', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0066cc" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>' },
+            { id: 'deepseek', name: 'DeepSeek', url: 'https://chat.deepseek.com/', color: '#0066cc', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0066cc" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>' },
             { id: 'poe', name: 'Poe', url: 'https://poe.com/', color: '#5a4fcf', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5a4fcf" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>' },
-            { id: 'grok', name: 'Grok', url: 'https://x.ai/', color: '#1da1f2', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1da1f2" stroke-width="2"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>' },
+            { id: 'grok', name: 'Grok', url: 'https://grok.com/', color: '#1da1f2', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1da1f2" stroke-width="2"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>' },
             { id: 'meta', name: 'Meta AI', url: 'https://meta.ai/', color: '#0668e1', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0668e1" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><line x1="21.17" y1="8" x2="12" y2="8"/><line x1="3.95" y1="6.06" x2="8.54" y2="14"/><line x1="10.88" y1="21.94" x2="15.46" y2="14"/></svg>' }
           ];
 
