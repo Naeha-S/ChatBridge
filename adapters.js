@@ -931,6 +931,23 @@ const SiteAdapters = [
     getMessages: () => {
       const messages = [];
 
+      // Poe often renders quick-suggestion chips like:
+      // "Assistant: Compare @GPT-5.2 Compare @Kimi..." as UI affordances.
+      // These are not real conversation turns and should not be scanned.
+      const isPoeModelCompareSuggestion = (text) => {
+        try {
+          const t = String(text || '').replace(/\s+/g, ' ').trim();
+          if (!t) return false;
+          const hasCompareLead = /^assistant:\s*compare\s+@/i.test(t) || /^compare\s+@/i.test(t);
+          const compareMentions = (t.match(/\bcompare\s+@/gi) || []).length;
+          const modelMentions = (t.match(/@[\w.-]+/g) || []).length;
+          const isShortSuggestionLine = t.length <= 220;
+          return hasCompareLead && isShortSuggestionLine && compareMentions >= 1 && modelMentions >= 2;
+        } catch (_) {
+          return false;
+        }
+      };
+
       // Poe uses specific message wrapper classes - target the actual message bubbles
       // Look for message containers with specific Poe class patterns
       const messageContainers = document.querySelectorAll('[class*="Message_row"], [class*="ChatMessage"], [class*="message_row"]');
@@ -945,6 +962,7 @@ const SiteAdapters = [
         if (text.startsWith('{') || text.startsWith('[') || text.startsWith('function') || text.startsWith('var ') || text.startsWith('window.')) return;
         if (/^!function|^<img|^<script|fbq\(|gtm\.start|OptanonWrapper/i.test(text)) return;
         if (/View all Bots|Get more points|Creators API|Download.*app|Follow us|Privacy policy|Terms of service/i.test(text)) return;
+        if (isPoeModelCompareSuggestion(text)) return;
 
         // Determine role - look for specific class patterns
         const containerClass = (container.className || '').toLowerCase();
@@ -1037,13 +1055,188 @@ const SiteAdapters = [
   {
     id: "metaai",
     label: "Meta AI",
-    detect: () => location.hostname.includes("meta.ai") || location.hostname.includes("facebook.com"),
-    scrollContainer: () => document.scrollingElement,
+    detect: () => location.hostname.includes("meta.ai"),
+    scrollContainer: () => document.querySelector('[role="main"], main, [class*="chat"]') || document.scrollingElement,
     getMessages: () => {
-      const nodes = Array.from(document.querySelectorAll(".message, .ai-response, .chat-bubble")).filter(n => n && n.innerText && n.innerText.trim().length > 1);
-      return nodes.map(n => ({ role: (n.className || "").toLowerCase().includes("user") ? "user" : "assistant", text: n.innerText.trim() }));
+      const normalize = (v) => String(v || '').replace(/\s+/g, ' ').trim();
+      const isMetaUiChromeText = (text) => {
+        const t = normalize(text).toLowerCase();
+        if (!t) return true;
+        if (t.length <= 160 && /(new chat|log in|sign up)/.test(t) && /(vibes|create|ctrl\+shift|shortcut|menu)/.test(t)) return true;
+        if (/^new chat(\s+ctrl\+shift\+[a-z0-9]+)?(\s+vibes)?(\s+create)?(\s+log in)?(\s+sign up)?$/i.test(t)) return true;
+        // Home-screen recommendation cards like:
+        // "Book recommendations for you Help me discover..."
+        if (t.length <= 320 && /\bfor you\b/.test(t) && /\bhelp me\b/.test(t) && /(recommendations?|discover|plan|ideas)/.test(t)) return true;
+        return false;
+      };
+
+      const isMetaSuggestedPromptCard = (text) => {
+        const t = normalize(text).toLowerCase();
+        if (!t) return false;
+        if (t.length <= 320 && /\bfor you\b/.test(t) && /\bhelp me\b/.test(t)) return true;
+        if (t.length <= 260 && /\bhelp me\b/.test(t) && /(book|weekend|getaway|plan|recommendations?|ideas)/.test(t)) return true;
+        return false;
+      };
+
+      const isLikelyMetaUiContainer = (el) => {
+        try {
+          if (!el || !el.closest) return false;
+          return !!el.closest(
+            'header, nav, aside, [role="navigation"], [class*="sidebar"], [class*="menu"], [class*="nav"], [class*="prompt-card"], [class*="suggestion"], [class*="quick-prompt"], [data-testid*="sidebar"], [data-testid*="nav"], [data-testid*="suggestion"]'
+          );
+        } catch (_) {
+          return false;
+        }
+      };
+
+      let messages = [];
+      // Primary: explicit Meta wrappers observed on meta.ai
+      try {
+        const userRows = Array.from(document.querySelectorAll('.group\\/user-message'));
+        const assistantRows = Array.from(document.querySelectorAll('.group\\/assistant-message, [data-testid="assistant-message"]'));
+
+        userRows.forEach((row) => {
+          const body = row.querySelector('[class*="text-response"], .whitespace-pre-wrap, span, div') || row;
+          const text = normalize(body && body.innerText);
+          if (!text) return;
+          if (isMetaUiChromeText(text)) return;
+          if (isMetaSuggestedPromptCard(text)) return;
+          messages.push({ role: 'user', text, el: row });
+        });
+
+        assistantRows.forEach((row) => {
+          const body = row.querySelector('[class*="text-response"], .whitespace-pre-wrap, span, div') || row;
+          const text = normalize(body && body.innerText);
+          if (!text) return;
+          if (isMetaUiChromeText(text)) return;
+          messages.push({ role: 'assistant', text, el: row });
+        });
+
+        if (messages.length > 0) {
+          messages.sort((a, b) => {
+            try { return a.el.getBoundingClientRect().top - b.el.getBoundingClientRect().top; } catch (_) { return 0; }
+          });
+        }
+      } catch (_) { }
+
+      if (messages.length > 0) {
+        const seen = new Set();
+        return messages.filter((m) => {
+          const key = `${m.role}|${m.text}`;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+      }
+
+      // Fallback: broader extraction (kept for layout variants)
+      try {
+        const main = document.querySelector('[role="main"], main, article') || document.body;
+        messages = extractMessagesFromContainer(main, [
+          '[data-testid*="message"]',
+          '[data-testid*="conversation"] [role="article"]',
+          '[role="article"]',
+          '[class*="conversation"] [class*="message"]',
+          '[class*="thread"] [class*="message"]',
+          '[class*="chat"] [class*="message"]',
+          '[class*="bubble"]',
+          '[class*="response"]'
+        ]) || [];
+      } catch (_) {
+        messages = [];
+      }
+
+      // If generic extraction collapsed the thread into a single mega-block,
+      // try a more targeted pass over main/article message-like rows.
+      if (messages.length <= 1) {
+        const main = document.querySelector('[role="main"], main, article') || document.body;
+        try {
+          const fallback = extractMessagesFromContainer(main, [
+            '[data-testid*="message"]',
+            '[role="article"]',
+            'article',
+            '[class*="message"]',
+            '[class*="bubble"]',
+            '[class*="response"]'
+          ]);
+          if (Array.isArray(fallback) && fallback.length > messages.length) {
+            messages = fallback;
+          }
+        } catch (_) { }
+      }
+
+      messages = (messages || []).filter((m) => {
+        const text = String(m && m.text || '').trim();
+        if (!text || text.length < 2) return false;
+        if (m && m.el && isLikelyMetaUiContainer(m.el)) return false;
+        if (isMetaUiChromeText(text)) return false;
+        return true;
+      });
+
+      return messages;
     },
-    getInput: () => document.querySelector("textarea, [contenteditable='true']")
+    getInput: () => {
+      const active = document.activeElement;
+      if (active && (active.isContentEditable || /^(TEXTAREA|INPUT)$/i.test(active.tagName || ''))) {
+        try {
+          const hint = `${active.getAttribute('aria-label') || ''} ${active.getAttribute('placeholder') || ''}`.toLowerCase();
+          if (!/search|find|filter|nav|menu/.test(hint) && (active.isContentEditable || /message|ask|prompt|chat/.test(hint))) {
+            const cs = window.getComputedStyle(active);
+            if (cs.display !== 'none' && cs.visibility !== 'hidden' && cs.opacity !== '0' && active.offsetWidth > 0 && active.offsetHeight > 0) {
+              return active;
+            }
+          }
+        } catch (_) { }
+      }
+
+      const selectors = [
+        'div[role="textbox"][contenteditable="true"][data-lexical-editor="true"]',
+        'div[role="textbox"][contenteditable="true"]',
+        'div[role="textbox"]',
+        'div[contenteditable="true"][data-lexical-editor="true"]',
+        'div[contenteditable="plaintext-only"]',
+        'div[contenteditable="true"][aria-label*="Message" i]',
+        'div[contenteditable="true"][aria-label*="Ask" i]',
+        'textarea[placeholder*="Message" i]',
+        'textarea[placeholder*="Ask" i]',
+        'input[placeholder*="Message" i]',
+        'input[placeholder*="Ask" i]',
+        'textarea',
+        '[contenteditable="true"]'
+      ];
+      const candidates = Array.from(document.querySelectorAll(selectors.join(',')));
+      for (const el of candidates) {
+        try {
+          if (!el) continue;
+          const cs = window.getComputedStyle(el);
+          if (cs.display === 'none' || cs.visibility === 'hidden' || cs.opacity === '0') continue;
+          if (el.offsetWidth <= 0 || el.offsetHeight <= 0) continue;
+          if (el.closest('header, nav, [role="navigation"], [class*="sidebar"], [class*="menu"]')) continue;
+          const hint = `${el.getAttribute('aria-label') || ''} ${el.getAttribute('placeholder') || ''}`.toLowerCase();
+          if (/search|find|filter/.test(hint)) continue;
+          if (el.tagName === 'INPUT' && !/message|ask|prompt|chat/.test(hint)) continue;
+          // Prefer elements inside main chat surface, not shell UI.
+          if (!el.closest('[role="main"], main, [class*="chat"], [class*="thread"], [class*="composer"]') && !/message|ask|prompt|chat/.test(hint)) continue;
+          return el;
+        } catch (_) { }
+      }
+
+      try {
+        const hosts = Array.from(document.querySelectorAll('*')).slice(0, 500);
+        for (const host of hosts) {
+          const root = host && host.shadowRoot;
+          if (!root) continue;
+          const el = root.querySelector('div[role="textbox"], [contenteditable="true"], textarea, input[placeholder*="Message" i], input[placeholder*="Ask" i]');
+          if (!el) continue;
+          const cs = window.getComputedStyle(el);
+          if (cs.display === 'none' || cs.visibility === 'hidden' || cs.opacity === '0') continue;
+          if (el.offsetWidth <= 0 || el.offsetHeight <= 0) continue;
+          return el;
+        }
+      } catch (_) { }
+
+      return null;
+    }
   },
   // === NEW ADAPTERS ===
   {

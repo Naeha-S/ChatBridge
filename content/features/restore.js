@@ -12,8 +12,15 @@
       setRestoreToChatFunction
     } = deps;
 
-    async function restoreToChat(text, attachments) {
+    async function restoreToChat(text, attachments, options) {
       try {
+        const opts = Object.assign({
+          fallbackToClipboard: true,
+          fallbackToast: 'Copied to clipboard',
+          successToast: 'Restored to chat',
+          waitTimeoutMs: 10000
+        }, options || {});
+
         restoreLog('Starting restoreToChat with text length:', text ? text.length : 0);
         if (!text || !text.trim()) {
           restoreLog('No text provided');
@@ -38,14 +45,50 @@
         }
 
         if (!input) input = findVisibleInputCandidate();
+        if (input && /(^|\.)meta\.ai$/i.test(location.hostname || '') && input.tagName === 'INPUT') {
+          restoreLog('Ignoring adapter INPUT on meta.ai (likely non-composer)');
+          input = null;
+        }
+
         if (!input) {
           restoreLog('Waiting for composer...');
-          input = await waitForComposer(10000, 300);
+          input = await waitForComposer(opts.waitTimeoutMs, 250);
+        }
+
+        // Meta AI safeguard: avoid writing into shell/search inputs.
+        if (input && /(^|\.)meta\.ai$/i.test(location.hostname || '') && input.tagName === 'INPUT') {
+          restoreLog('Ignoring INPUT candidate on meta.ai (likely non-composer)');
+          input = await waitForComposer(4000, 250);
+        }
+
+        if (!input && /(^|\.)meta\.ai$/i.test(location.hostname || '')) {
+          restoreLog('Meta fallback: nudging composer mount and retrying');
+          try {
+            const nudges = Array.from(document.querySelectorAll(
+              'main, [role="main"], button[aria-label*="Message" i], button[aria-label*="Ask" i], [class*="composer" i], [data-testid*="composer" i]'
+            )).slice(0, 8);
+            for (const node of nudges) {
+              try { node.click(); } catch (_) { }
+            }
+            const ae = document.activeElement;
+            if (ae && (ae.isContentEditable || /^(TEXTAREA|INPUT)$/i.test(ae.tagName || ''))) {
+              input = ae;
+            }
+          } catch (_) { }
+          if (!input) {
+            await new Promise((resolve) => setTimeout(resolve, 350));
+            input = await waitForComposer(5000, 200);
+          }
         }
 
         if (!input) {
           restoreLog('ERROR: No input found');
-          try { await navigator.clipboard.writeText(cleanText); toast('Copied to clipboard'); } catch (_) { }
+          if (opts.fallbackToClipboard) {
+            try {
+              await navigator.clipboard.writeText(cleanText);
+              if (opts.fallbackToast) toast(opts.fallbackToast);
+            } catch (_) { }
+          }
           return false;
         }
 
@@ -66,7 +109,7 @@
           restoreLog('Inserted to textarea/input');
         }
 
-        toast('Restored to chat');
+        if (opts.successToast) toast(opts.successToast);
 
         if (Array.isArray(attachments) && attachments.length > 0) {
           attachFilesToChat(attachments).catch((e) => restoreLog('Attachment error:', e));
@@ -75,7 +118,13 @@
         return true;
       } catch (e) {
         restoreLog('ERROR in restoreToChat:', e);
-        try { await navigator.clipboard.writeText(text); toast('Copied to clipboard'); } catch (_) { }
+        try {
+          const opts = Object.assign({ fallbackToClipboard: true, fallbackToast: 'Copied to clipboard' }, options || {});
+          if (opts.fallbackToClipboard) {
+            await navigator.clipboard.writeText(text);
+            if (opts.fallbackToast) toast(opts.fallbackToast);
+          }
+        } catch (_) { }
         return false;
       }
     }

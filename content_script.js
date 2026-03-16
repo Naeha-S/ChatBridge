@@ -1001,9 +1001,14 @@
         try {
           const src = img.getAttribute('src') || '';
           if (!src) continue;
+          if (/^chrome-extension:\/\//i.test(src)) continue;
+          if (img.closest && img.closest('#cb-host, #cb-avatar, [data-cb-ignore="true"]')) continue;
           // skip tiny UI icons
           const r = img.getBoundingClientRect();
-          if (r && (r.width < 24 || r.height < 24)) continue;
+          if (r && (r.width < 40 || r.height < 40)) continue;
+          const alt = (img.getAttribute('alt') || '').toLowerCase();
+          if (r && r.width <= 96 && r.height <= 96 && /avatar|profile|icon|logo/.test(alt)) continue;
+          if (/\/logo\.(png|svg|jpg|jpeg|webp)(\?|$)/i.test(src) || /\/icon\d+\.(png|svg|jpg|jpeg|webp)(\?|$)/i.test(src)) continue;
           atts.push({ type: 'image', url: src, alt: img.getAttribute('alt') || '', name: (src.split('?')[0].split('#')[0].split('/').pop() || 'image') });
         } catch (e) { }
       }
@@ -15363,6 +15368,32 @@ Respond with JSON only:
       };
     }
 
+    function computeHandoffOutputScorecard(text, options = {}) {
+      const source = String(text || '');
+      const headingCount = (source.match(/^##\s+/gm) || []).length;
+      const bulletCount = (source.match(/^[-*•]\s+/gm) || []).length;
+      const lineCount = source.split('\n').filter((line) => line.trim().length > 0).length;
+      const uniquenessScore = computeUniquenessScore(options.overlapTelemetry);
+      const audienceFit = options.recipient === 'Client' ? 'Client-ready'
+        : options.recipient === 'Manager' ? 'Exec-ready'
+          : options.recipient === 'My Future Self' ? 'Reference-ready'
+            : 'Team-ready';
+      const detailBonus = options.detailLevel === 'comprehensive' ? 10 : 6;
+      const completeness = Math.min(100, (headingCount * 22) + (bulletCount * 7) + Math.min(20, lineCount));
+      const score = Math.max(0, Math.min(100,
+        Math.round((completeness * 0.6) + (uniquenessScore * 0.25) + detailBonus)
+      ));
+
+      return {
+        score,
+        audienceFit,
+        uniquenessScore,
+        headingCount,
+        bulletCount,
+        lineCount
+      };
+    }
+
     function computePulseQualityScorecard(text, options = {}) {
       const source = String(text || '');
       const sectionCoverage = countRequiredSectionCoverage('mypulse', source);
@@ -15766,7 +15797,7 @@ Respond with JSON only:
               width:100%;padding:10px 14px;border-radius:10px;
               background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);
               color:var(--cb-white);font-size:12px;font-family:inherit;
-              transition:all 0.25s;box-sizing:border-box;
+              transition:all 0.25s;box-sizing:border-box;min-width:0;
             }
             .cb-agent-input:focus {
               border-color:color-mix(in srgb, var(--_agent-clr, var(--cb-accent-primary)) 50%, transparent);
@@ -16517,13 +16548,11 @@ The singular most important action the user should focus on next based on the re
             <div class="cb-agent-header-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 15l2 2 4-4"/></svg></div>
             <div class="cb-agent-header-title">Prepare Me</div>
           </div>
-          <div class="cb-agent-desc">Define your objective and constraints, and I’ll generate a focused execution plan with next actions, risk checks, and follow-up prompts.</div>
+          <div class="cb-agent-desc">Tell me what you need to get done and any limits. I’ll return a clear next-step plan.</div>
 
-          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;" id="cb-exec-chips"></div>
-
-          <input type="text" id="cb-exec-objective" class="cb-agent-input" placeholder="Objective (e.g., Ship onboarding flow this week)" style="margin-bottom:8px;" />
-          <input type="text" id="cb-exec-constraints" class="cb-agent-input" placeholder="Constraints (time, scope, dependencies)" style="margin-bottom:8px;" />
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px;">
+          <input type="text" id="cb-exec-objective" class="cb-agent-input" placeholder="What are you trying to accomplish?" style="margin-bottom:8px;" />
+          <input type="text" id="cb-exec-constraints" class="cb-agent-input" placeholder="Any constraints? (optional: deadline, dependencies, scope)" style="margin-bottom:8px;" />
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
             <select id="cb-exec-urgency" class="cb-agent-select" aria-label="Urgency">
               <option value="today">Urgency: Today</option>
               <option value="this-week" selected>Urgency: This Week</option>
@@ -16533,13 +16562,9 @@ The singular most important action the user should focus on next based on the re
               <option value="relevant" selected>Use Relevant History</option>
               <option value="current">Use Current Chat Only</option>
             </select>
-            <select id="cb-exec-contract" class="cb-agent-select" aria-label="Action contract mode">
-              <option value="deterministic" selected>Contract: Deterministic</option>
-              <option value="balanced">Contract: Balanced</option>
-              <option value="strict">Contract: Strict</option>
-            </select>
           </div>
-          <button id="cb-exec-run" class="cb-agent-btn-primary">Generate Execution Plan</button>
+          <div style="font-size:10.5px;color:var(--cb-subtext);margin-bottom:10px;">Tip: keep objective short and specific for better results.</div>
+          <button id="cb-exec-run" class="cb-agent-btn-primary">Create Plan</button>
           <div id="cb-exec-result" style="display:none;margin-top:14px;"></div>
         </div>
       `;
@@ -16549,27 +16574,11 @@ The singular most important action the user should focus on next based on the re
         goBackToAgentTabs('executioncoach');
       });
 
-      // Suggestion chips
-      const chipsContainer = outputArea.querySelector('#cb-exec-chips');
       const objectiveInput = outputArea.querySelector('#cb-exec-objective');
-      const chips = ['Ship Feature', 'Debug Issue', 'Client Update', 'Design Plan', 'Roadmap', 'Launch Prep'];
-      chips.forEach(label => {
-        const chip = document.createElement('span');
-        chip.className = 'cb-agent-chip';
-        chip.textContent = label;
-        chip.addEventListener('click', () => {
-          chipsContainer.querySelectorAll('.cb-agent-chip').forEach(c => c.classList.remove('cb-agent-chip-active'));
-          chip.classList.add('cb-agent-chip-active');
-          objectiveInput.value = label;
-        });
-        chipsContainer.appendChild(chip);
-      });
-
       const runBtn = outputArea.querySelector('#cb-exec-run');
       const constraintsInput = outputArea.querySelector('#cb-exec-constraints');
       const urgencySelect = outputArea.querySelector('#cb-exec-urgency');
       const sourceSelect = outputArea.querySelector('#cb-exec-source');
-      const contractSelect = outputArea.querySelector('#cb-exec-contract');
       const resultDiv = outputArea.querySelector('#cb-exec-result');
 
       runBtn.addEventListener('click', async () => {
@@ -16577,7 +16586,7 @@ The singular most important action the user should focus on next based on the re
         if (!objective) { toast('Please enter an objective first'); return; }
 
         runBtn.disabled = true;
-        runBtn.textContent = 'Generating execution plan...';
+        runBtn.textContent = 'Creating plan...';
         resultDiv.style.display = 'block';
         let execTimer;
         resultDiv.innerHTML = `
@@ -16599,7 +16608,7 @@ The singular most important action the user should focus on next based on the re
           const constraints = constraintsInput.value.trim();
           const urgency = urgencySelect.value;
           const sourceMode = sourceSelect.value;
-          const contractMode = contractSelect ? contractSelect.value : 'deterministic';
+          const contractMode = 'deterministic';
           const sharedCtx = await buildAgentSharedContext();
           let scored = [];
           let contextBlock = '';
@@ -16711,7 +16720,7 @@ Rules:
               </div>
               <div class="cb-agent-meter">
                 <div class="cb-agent-meter-top">
-                  <span class="cb-agent-meter-label">Action contract quality</span>
+                  <span class="cb-agent-meter-label">Plan quality</span>
                   <span class="cb-agent-meter-value" style="color:#10B981;">${contractScore.score}%</span>
                 </div>
                 <div class="cb-agent-meter-bar"><div class="cb-agent-meter-fill" style="width:${contractScore.score}%;background:#10B981;"></div></div>
@@ -16765,7 +16774,7 @@ Rules:
         } finally {
           if (typeof execTimer !== 'undefined') clearInterval(execTimer);
           runBtn.disabled = false;
-          runBtn.textContent = 'Generate Execution Plan';
+          runBtn.textContent = 'Create Plan';
         }
       });
     }
@@ -16790,9 +16799,9 @@ Rules:
           </div>
           <div class="cb-agent-desc">Pin any topic and ChatBridge will track it across all your AI conversations. Get notified when it comes up again.</div>
 
-          <div style="display:flex;gap:6px;margin-bottom:12px;">
-            <input type="text" id="cb-track-input" class="cb-agent-input" placeholder="Topic to track (e.g., budget review, React hooks)" style="flex:1;margin-bottom:0;" />
-            <button id="cb-track-add" class="cb-agent-btn-primary" style="white-space:nowrap;padding:0 14px;">+ Track</button>
+          <div style="display:flex;gap:8px;align-items:stretch;margin-bottom:12px;width:100%;">
+            <input type="text" id="cb-track-input" class="cb-agent-input" placeholder="Topic to track (e.g., budget review, React hooks)" style="flex:1 1 240px;min-width:0;width:auto;margin-bottom:0;" />
+            <button id="cb-track-add" class="cb-agent-btn-primary" style="flex:0 0 auto;white-space:nowrap;padding:0 14px;">+ Track</button>
           </div>
 
           <div style="display:flex;gap:6px;margin-bottom:12px;">
@@ -17186,23 +17195,24 @@ One incredibly specific, actionable recommendation for what the user should do n
           <div class="cb-agent-desc">Cross-check any AI answer with a different model. Get a confidence score and see what might be wrong or missing.</div>
 
           <div style="display:flex;gap:6px;margin-bottom:10px;">
-            <button id="cb-so-auto" class="cb-agent-btn-primary" style="flex:1;font-size:10px;">Auto-detect last answer</button>
-            <button id="cb-so-paste" class="cb-agent-btn-secondary" style="flex:1;font-size:10px;">Paste an answer</button>
+            <button id="cb-so-auto" class="cb-agent-btn-primary" style="flex:1;font-size:11px;">Auto-detect last answer</button>
+            <button id="cb-so-paste" class="cb-agent-btn-secondary" style="flex:1;font-size:11px;">Paste an answer</button>
           </div>
+          <div style="font-size:10.5px;color:var(--cb-subtext);margin-bottom:10px;">Pick a source, then run a fast verification check.</div>
 
           <div id="cb-so-paste-area" style="display:none;margin-bottom:10px;">
-            <textarea id="cb-so-question" class="cb-agent-textarea" aria-label="Input text" placeholder="Original question..." style="min-height:40px;margin-bottom:6px;"></textarea>
-            <textarea id="cb-so-answer" class="cb-agent-textarea" aria-label="Input text" placeholder="AI answer to verify..." style="min-height:80px;"></textarea>
+            <textarea id="cb-so-question" class="cb-agent-textarea" aria-label="Input text" placeholder="Original question (optional)" style="min-height:52px;margin-bottom:6px;"></textarea>
+            <textarea id="cb-so-answer" class="cb-agent-textarea" aria-label="Input text" placeholder="Paste the AI answer you want to verify" style="min-height:96px;"></textarea>
           </div>
 
           <div id="cb-so-auto-preview" style="display:none;margin-bottom:10px;" class="cb-agent-result-section">
-            <div class="cb-agent-result-header">Detected answer:</div>
-            <div id="cb-so-auto-text" style="font-size:11px;color:var(--cb-white);max-height:80px;overflow:hidden;"></div>
+            <div class="cb-agent-result-header">Detected answer preview</div>
+            <div id="cb-so-auto-text" style="font-size:11px;line-height:1.5;color:var(--cb-white);max-height:96px;overflow:hidden;"></div>
           </div>
           
           <div style="margin-bottom:10px;">
             <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--cb-white);cursor:pointer;margin-bottom:4px;">
-              <input type="radio" name="cb-so-mode" value="verify" checked> Verify Accuracy (Default)
+              <input type="radio" name="cb-so-mode" value="verify" checked> Verify Accuracy (recommended)
             </label>
             <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--cb-white);cursor:pointer;">
               <input type="radio" name="cb-so-mode" value="critique"> Critique & Challenge
@@ -17210,7 +17220,7 @@ One incredibly specific, actionable recommendation for what the user should do n
           </div>
 
           <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--cb-white);cursor:pointer;margin-bottom:10px;">
-            <input type="checkbox" id="cb-so-honesty"> Honesty Mode (Devil's Advocate)
+            <input type="checkbox" id="cb-so-honesty"> Honesty Mode (stress test)
           </label>
 
           <select id="cb-so-model" class="cb-agent-select" aria-label="Select option" style="margin-bottom:10px;">
@@ -17219,7 +17229,7 @@ One incredibly specific, actionable recommendation for what the user should do n
             <option value="llama">Verify with Llama</option>
           </select>
 
-          <button id="cb-so-run" class="cb-agent-btn-primary" disabled>Get Second Opinion</button>
+          <button id="cb-so-run" class="cb-agent-btn-primary" disabled>Run Second Opinion</button>
           <div id="cb-so-result" style="display:none;margin-top:14px;"></div>
         </div>
       `;
@@ -17248,9 +17258,9 @@ One incredibly specific, actionable recommendation for what the user should do n
       autoBtn.addEventListener('click', async () => {
         mode = 'auto';
         autoBtn.className = 'cb-agent-btn-primary';
-        autoBtn.style.cssText = 'flex:1;font-size:10px;';
+        autoBtn.style.cssText = 'flex:1;font-size:11px;';
         pasteBtn.className = 'cb-agent-btn-secondary';
-        pasteBtn.style.cssText = 'flex:1;font-size:10px;';
+        pasteBtn.style.cssText = 'flex:1;font-size:11px;';
         pasteArea.style.display = 'none';
         autoPreview.style.display = 'block';
 
@@ -17290,9 +17300,9 @@ One incredibly specific, actionable recommendation for what the user should do n
       pasteBtn.addEventListener('click', () => {
         mode = 'paste';
         pasteBtn.className = 'cb-agent-btn-primary';
-        pasteBtn.style.cssText = 'flex:1;font-size:10px;';
+        pasteBtn.style.cssText = 'flex:1;font-size:11px;';
         autoBtn.className = 'cb-agent-btn-secondary';
-        autoBtn.style.cssText = 'flex:1;font-size:10px;';
+        autoBtn.style.cssText = 'flex:1;font-size:11px;';
         pasteArea.style.display = 'block';
         autoPreview.style.display = 'none';
         runBtn.disabled = false;
@@ -17573,7 +17583,7 @@ Keep it concise and concrete.`;
           debugLog('Second Opinion error', e);
         } finally {
           runBtn.disabled = false;
-          runBtn.textContent = 'Get Second Opinion';
+          runBtn.textContent = 'Run Second Opinion';
         }
       });
     }
@@ -17585,6 +17595,87 @@ Keep it concise and concrete.`;
     async function showHandoff() {
       const outputArea = (agentContent && agentContent.querySelector('#cb-agent-output')) || (shadow && shadow.getElementById && shadow.getElementById('cb-agent-output'));
       if (!outputArea) return;
+
+      const OUTPUT_FORMATS = {
+        briefing: {
+          label: 'Briefing Document',
+          runLabel: 'Generate Handoff Document',
+          loadingText: 'Compiling briefing document...',
+          copyLabel: 'Document',
+          insertLabel: 'Document',
+          txtFilePrefix: 'briefing',
+          includeShare: true
+        },
+        email: {
+          label: 'Email',
+          runLabel: 'Generate Email',
+          loadingText: 'Drafting email...',
+          copyLabel: 'Email',
+          insertLabel: 'Email',
+          txtFilePrefix: 'email',
+          includeShare: false
+        },
+        mom: {
+          label: 'MOM (Minutes of Meeting)',
+          runLabel: 'Generate MOM',
+          loadingText: 'Preparing meeting minutes...',
+          copyLabel: 'MOM',
+          insertLabel: 'MOM',
+          txtFilePrefix: 'mom',
+          includeShare: false
+        },
+        letter: {
+          label: 'Formal Letter',
+          runLabel: 'Generate Letter',
+          loadingText: 'Drafting formal letter...',
+          copyLabel: 'Letter',
+          insertLabel: 'Letter',
+          txtFilePrefix: 'letter',
+          includeShare: false
+        },
+        status_update: {
+          label: 'Status Update',
+          runLabel: 'Generate Status Update',
+          loadingText: 'Creating status update...',
+          copyLabel: 'Update',
+          insertLabel: 'Update',
+          txtFilePrefix: 'status-update',
+          includeShare: false
+        }
+      };
+
+      const getFormatConfig = (formatKey) => OUTPUT_FORMATS[formatKey] || OUTPUT_FORMATS.briefing;
+      const normalizeOutputText = (formatKey, sourceText) => {
+        const raw = String(sourceText || '');
+        if (!raw) return '';
+        if (formatKey === 'briefing') return enforceAgentNonRepetition('handoff', raw);
+        return raw
+          .replace(/\n{3,}/g, '\n\n')
+          .replace(/\s+$/gm, '')
+          .trim();
+      };
+
+      const buildHandoffPromptByFormat = ({ formatKey, recipient, detailLevel, lengthGuide, toneGuide, sharedPromptContext, contextText }) => {
+        const commonIntro = `You are Handoff, a context packaging agent inside ChatBridge.\n\n${sharedPromptContext}\n\nGenerate content for: ${recipient}\nOutput format: ${getFormatConfig(formatKey).label}\nDetail level: ${detailLevel}\n${lengthGuide}\nTone: ${toneGuide}\n\nSource conversations:\n${contextText}\n\nRules:\n- Do not hallucinate facts, names, dates, or commitments.\n- If details are missing, use clear placeholders like [Owner TBD] or [Date TBD].\n- Keep writing clear, actionable, and ready to send.`;
+
+        if (formatKey === 'email') {
+          return `${commonIntro}\n\nReturn markdown with exactly these sections:\n\n## Subject\nOne concise subject line.\n\n## Email Body\nA ready-to-send email body addressed to the recipient.\n\n## Next Steps\nBulleted next actions.`;
+        }
+
+        if (formatKey === 'mom') {
+          return `${commonIntro}\n\nReturn markdown with exactly these sections:\n\n## Meeting Context\nMeeting purpose and scope.\n\n## Key Decisions\nDecisions made, with rationale.\n\n## Action Items\nBulleted list with owner and ETA placeholders when unknown.\n\n## Open Issues\nOutstanding blockers or unresolved points.\n\n## Follow-up\nWhat should happen next and by when.`;
+        }
+
+        if (formatKey === 'letter') {
+          return `${commonIntro}\n\nReturn markdown with exactly these sections:\n\n## Subject\nShort subject line (optional if not needed).\n\n## Letter\nFormal greeting, purpose, supporting points, request, and professional close.\n\n## Attachments or References\nAny referenced items from source context.`;
+        }
+
+        if (formatKey === 'status_update') {
+          return `${commonIntro}\n\nReturn markdown with exactly these sections:\n\n## Current Status\nWhere things stand now.\n\n## Progress Since Last Update\nWhat changed recently.\n\n## Blockers & Risks\nCurrent risks and blockers.\n\n## Next Actions\nBulleted actions with priorities.\n\n## Help Needed\nExplicit asks from stakeholders or teammates.`;
+        }
+
+        return `You are Handoff, a context packaging agent inside ChatBridge.\n\n${sharedPromptContext}\n${buildAgentPromptContract('handoff', ['Make it recipient-ready in one pass.', 'Do not repeat the same decision in both summary and status.'])}\n\nGenerate a professional handoff document for: ${recipient}\nDetail level: ${detailLevel}\n${lengthGuide}\nTone: ${toneGuide}\n\nSource conversations:\n${contextText}\n\nCreate a polished, shareable document:\n\n## Executive Summary\n2-3 sentences: what this is about, why it matters, current state.\n\n## Background & Decisions\nKey choices made, with reasoning. What was discussed and concluded.\n\n## Current Status\nWhere things stand right now. What's done, what's in progress.\n\n## Open Questions\nUnresolved items that need attention or decisions.\n\n## Action Items\nPrioritized next steps with clear ownership suggestions.\n\n## Key Reference\nImportant names, dates, numbers, links, or technical details for quick lookup.\n\nMake this ready to send as-is. No meta-commentary. Clean markdown formatting.`;
+      };
 
       outputArea.style.setProperty('--_agent-clr', '#EC4899');
       outputArea.innerHTML = `
@@ -17613,6 +17704,14 @@ Keep it concise and concrete.`;
             <option value="My Future Self">My Future Self</option>
           </select>
 
+          <select id="cb-handoff-format" class="cb-agent-select" aria-label="Output format" style="margin-bottom:8px;">
+            <option value="briefing" selected>Briefing Document</option>
+            <option value="email">Email</option>
+            <option value="mom">MOM (Minutes of Meeting)</option>
+            <option value="letter">Formal Letter</option>
+            <option value="status_update">Status Update</option>
+          </select>
+
           <div style="display:flex;gap:6px;margin-bottom:10px;">
             <button id="cb-handoff-brief" class="cb-agent-btn-primary" style="flex:1;font-size:10px;">Brief</button>
             <button id="cb-handoff-detailed" class="cb-agent-btn-secondary" style="flex:1;font-size:10px;">Comprehensive</button>
@@ -17629,17 +17728,29 @@ Keep it concise and concrete.`;
       });
 
       let detailLevel = 'brief';
+      let outputFormat = 'briefing';
       const sourceSelect = outputArea.querySelector('#cb-handoff-source');
       const topicSearch = outputArea.querySelector('#cb-handoff-topic-search');
       const topicInput = outputArea.querySelector('#cb-handoff-topic');
       const recipientSelect = outputArea.querySelector('#cb-handoff-recipient');
+      const formatSelect = outputArea.querySelector('#cb-handoff-format');
       const briefBtn = outputArea.querySelector('#cb-handoff-brief');
       const detailedBtn = outputArea.querySelector('#cb-handoff-detailed');
       const runBtn = outputArea.querySelector('#cb-handoff-run');
       const resultDiv = outputArea.querySelector('#cb-handoff-result');
 
+      const updateRunLabel = () => {
+        const cfg = getFormatConfig(outputFormat);
+        runBtn.textContent = cfg.runLabel;
+      };
+
       sourceSelect.addEventListener('change', () => {
         topicSearch.style.display = sourceSelect.value === 'topic' ? 'block' : 'none';
+      });
+
+      formatSelect.addEventListener('change', () => {
+        outputFormat = formatSelect.value || 'briefing';
+        updateRunLabel();
       });
 
       briefBtn.addEventListener('click', () => {
@@ -17657,15 +17768,18 @@ Keep it concise and concrete.`;
         briefBtn.style.cssText = 'flex:1;font-size:10px;';
       });
 
+      updateRunLabel();
+
       runBtn.addEventListener('click', async () => {
+        const formatCfg = getFormatConfig(outputFormat);
         runBtn.disabled = true;
-        runBtn.textContent = 'Generating document...';
+        runBtn.textContent = 'Generating...';
         resultDiv.style.display = 'block';
         resultDiv.innerHTML = `
           <div class="cb-agent-loading">
             <div class="cb-agent-skeleton cb-agent-skeleton-lg"></div>
             <div class="cb-agent-skeleton cb-agent-skeleton-md"></div>
-            <div class="cb-agent-loading-text">Compiling briefing document...</div>
+            <div class="cb-agent-loading-text">${formatCfg.loadingText}</div>
           </div>`;
 
         try {
@@ -17679,7 +17793,7 @@ Keep it concise and concrete.`;
             if (!contextText || contextText.length < 10) {
               resultDiv.innerHTML = '<div class="cb-agent-empty">No current conversation. Scan a chat first!</div>';
               runBtn.disabled = false;
-              runBtn.textContent = 'Generate Handoff Document';
+              updateRunLabel();
               return;
             }
             contextText = contextText.slice(0, 6000);
@@ -17691,7 +17805,7 @@ Keep it concise and concrete.`;
             }).join('\n\n');
           } else if (source === 'topic') {
             const topicQuery = topicInput.value.trim();
-            if (!topicQuery) { toast('Enter a topic to search'); runBtn.disabled = false; runBtn.textContent = 'Generate Handoff Document'; return; }
+            if (!topicQuery) { toast('Enter a topic to search'); runBtn.disabled = false; updateRunLabel(); return; }
             const convos = await loadConversationsAsync();
             const relevant = convos.filter(c => {
               const text = (c.conversation || []).map(m => m.text || '').join(' ').toLowerCase();
@@ -17706,7 +17820,7 @@ Keep it concise and concrete.`;
           if (!contextText || contextText.length < 20) {
             resultDiv.innerHTML = '<div class="cb-agent-empty">Not enough content found. Try a different source.</div>';
             runBtn.disabled = false;
-            runBtn.textContent = 'Generate Handoff Document';
+            updateRunLabel();
             return;
           }
 
@@ -17719,83 +17833,73 @@ Keep it concise and concrete.`;
               : recipient === 'My Future Self' ? 'informal and reference-oriented'
                 : 'clear and collegial';
 
-          const prompt = `You are Handoff, a context packaging agent inside ChatBridge.
-
-${sharedCtx.promptContext}
-${buildAgentPromptContract('handoff', ['Make it recipient-ready in one pass.', 'Do not repeat the same decision in both summary and status.'])}
-
-Generate a professional handoff document for: ${recipient}
-Detail level: ${detailLevel}
-${lengthGuide}
-Tone: ${toneGuide}
-
-Source conversations:
-${contextText}
-
-Create a polished, shareable document:
-
-## Executive Summary
-2-3 sentences: what this is about, why it matters, current state.
-
-## Background & Decisions
-Key choices made, with reasoning. What was discussed and concluded.
-
-## Current Status
-Where things stand right now. What's done, what's in progress.
-
-## Open Questions
-Unresolved items that need attention or decisions.
-
-## Action Items
-Prioritized next steps with clear ownership suggestions.
-
-## Key Reference
-Important names, dates, numbers, links, or technical details for quick lookup.
-
-Make this ready to send as-is. No meta-commentary. Clean markdown formatting.`;
+          const prompt = buildHandoffPromptByFormat({
+            formatKey: outputFormat,
+            recipient,
+            detailLevel,
+            lengthGuide,
+            toneGuide,
+            sharedPromptContext: sharedCtx.promptContext,
+            contextText
+          });
 
           const res = await callAgentRouteWithRetry(prompt, withAgentRouteStrategy({ maxTokens: detailLevel === 'brief' ? 800 : 1400 }));
 
           if (res && res.ok && res.result) {
-            const normalizedResult = enforceAgentNonRepetition('handoff', res.result);
+            const normalizedResult = normalizeOutputText(outputFormat, res.result);
             const overlapTelemetry = await recordAgentArtifactTelemetry('handoff', normalizedResult);
             const phaseFlags = await getAgentPhaseFlags();
             const showScorecards = !!phaseFlags.agentPhaseScorecardsBeta;
-            const scorecard = showScorecards ? computeHandoffQualityScorecard(normalizedResult, { recipient, detailLevel, overlapTelemetry }) : null;
+            const scorecard = showScorecards
+              ? (outputFormat === 'briefing'
+                ? computeHandoffQualityScorecard(normalizedResult, { recipient, detailLevel, overlapTelemetry })
+                : computeHandoffOutputScorecard(normalizedResult, { recipient, detailLevel, overlapTelemetry }))
+              : null;
             const formatted = formatAgentMarkdown(normalizedResult);
 
             // Word/section count stats
             const wordCount = normalizedResult.split(/\s+/).length;
             const sectionCount = (normalizedResult.match(/^## /gm) || []).length;
+            const actionLabel = outputFormat === 'briefing' ? 'Sections' : 'Blocks';
+            const extraDownloadBtn = outputFormat !== 'briefing'
+              ? `<button id="cb-handoff-download-txt" class="cb-agent-btn-secondary">Download .txt</button>`
+              : '';
+            const shareBtn = formatCfg.includeShare
+              ? `<button id="cb-handoff-share" class="cb-agent-btn-secondary">Share Link</button>`
+              : '';
 
             resultDiv.innerHTML = `
               <div class="cb-agent-stats">
                 ${showScorecards ? `<div class="cb-agent-stat"><div class="cb-agent-stat-val">${scorecard.score}</div><div class="cb-agent-stat-label">Transfer Score</div></div>
                 <div class="cb-agent-stat"><div class="cb-agent-stat-val">${scorecard.uniquenessScore}%</div><div class="cb-agent-stat-label">Uniqueness</div></div>` : ''}
                 <div class="cb-agent-stat"><div class="cb-agent-stat-val">${wordCount}</div><div class="cb-agent-stat-label">Words</div></div>
-                <div class="cb-agent-stat"><div class="cb-agent-stat-val">${sectionCount}</div><div class="cb-agent-stat-label">Sections</div></div>
+                <div class="cb-agent-stat"><div class="cb-agent-stat-val">${sectionCount}</div><div class="cb-agent-stat-label">${actionLabel}</div></div>
               </div>
               ${showScorecards ? `<div class="cb-agent-result-section">
                 <div class="cb-agent-result-header">Quality Scorecard</div>
                 <div class="cb-agent-result-body">
                   <div>Audience fit: <strong>${scorecard.audienceFit}</strong></div>
-                  <div style="margin-top:6px;">Section coverage: <strong>${scorecard.sectionCoverage.matched}/${scorecard.sectionCoverage.total}</strong> required blocks</div>
-                  <div style="margin-top:6px;">Action density: <strong>${scorecard.actionCount}</strong> actionable bullets · Open-question signals: <strong>${scorecard.openQuestionSignals}</strong></div>
+                  ${outputFormat === 'briefing'
+                    ? `<div style="margin-top:6px;">Section coverage: <strong>${scorecard.sectionCoverage.matched}/${scorecard.sectionCoverage.total}</strong> required blocks</div>
+                  <div style="margin-top:6px;">Action density: <strong>${scorecard.actionCount}</strong> actionable bullets · Open-question signals: <strong>${scorecard.openQuestionSignals}</strong></div>`
+                    : `<div style="margin-top:6px;">Structure depth: <strong>${scorecard.headingCount}</strong> headings · <strong>${scorecard.bulletCount}</strong> bullets</div>
+                  <div style="margin-top:6px;">Readable lines: <strong>${scorecard.lineCount}</strong> · Format: <strong>${formatCfg.label}</strong></div>`}
                 </div>
               </div>` : ''}
               <div class="cb-agent-result-section"><div class="cb-agent-result-body">${formatted}</div></div>
               <div class="cb-agent-action-row" style="flex-wrap: wrap;">
-                <button id="cb-handoff-copy" class="cb-agent-btn-secondary">Copy</button>
+                <button id="cb-handoff-copy" class="cb-agent-btn-secondary">Copy ${formatCfg.copyLabel}</button>
                 <button id="cb-handoff-download" class="cb-agent-btn-secondary">Download .md</button>
+                ${extraDownloadBtn}
                 <button id="cb-handoff-save" class="cb-agent-btn-secondary">Save Draft</button>
-                <button id="cb-handoff-share" class="cb-agent-btn-secondary">Share Link</button>
-                <button id="cb-handoff-insert" class="cb-agent-btn-primary" style="flex: 1 1 100%;">Insert</button>
+                ${shareBtn}
+                <button id="cb-handoff-insert" class="cb-agent-btn-primary" style="flex: 1 1 100%;">Insert ${formatCfg.insertLabel}</button>
               </div>
-              <div class="cb-agent-meta">For ${recipient} · ${detailLevel} · ${res.model_used || 'AI'} · ${res.latency_ms || 0}ms · max overlap ${overlapTelemetry.maxOverlap}%${formatRouteDiagnostics(res)}</div>
+              <div class="cb-agent-meta">For ${recipient} · ${formatCfg.label} · ${detailLevel} · ${res.model_used || 'AI'} · ${res.latency_ms || 0}ms · max overlap ${overlapTelemetry.maxOverlap}%${formatRouteDiagnostics(res)}</div>
             `;
 
             resultDiv.querySelector('#cb-handoff-copy').addEventListener('click', async () => {
-              try { await navigator.clipboard.writeText(normalizedResult); toast('Document copied!'); } catch (_) { toast('Copy failed'); }
+              try { await navigator.clipboard.writeText(normalizedResult); toast(`${formatCfg.copyLabel} copied!`); } catch (_) { toast('Copy failed'); }
             });
             resultDiv.querySelector('#cb-handoff-download').addEventListener('click', () => {
               try {
@@ -17803,28 +17907,49 @@ Make this ready to send as-is. No meta-commentary. Clean markdown formatting.`;
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = `handoff-${recipient.toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().slice(0, 10)}.md`;
+                a.download = `${formatCfg.txtFilePrefix}-${recipient.toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().slice(0, 10)}.md`;
                 a.click();
                 URL.revokeObjectURL(url);
                 toast('Downloaded!');
               } catch (_) { toast('Download failed'); }
             });
+            const txtDownloadBtn = resultDiv.querySelector('#cb-handoff-download-txt');
+            if (txtDownloadBtn) {
+              txtDownloadBtn.addEventListener('click', () => {
+                try {
+                  const blob = new Blob([normalizedResult], { type: 'text/plain' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `${formatCfg.txtFilePrefix}-${recipient.toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().slice(0, 10)}.txt`;
+                  a.click();
+                  URL.revokeObjectURL(url);
+                  toast('TXT downloaded!');
+                } catch (_) { toast('Download failed'); }
+              });
+            }
             resultDiv.querySelector('#cb-handoff-save').addEventListener('click', async () => {
               try {
                 await StorageManager.saveHandoffDraft({
                   id: 'handoff_' + Date.now(),
-                  title: `Handoff for ${recipient} - ${new Date().toLocaleDateString()}`,
+                  title: `${formatCfg.label} for ${recipient} - ${new Date().toLocaleDateString()}`,
                   content: normalizedResult,
+                  format: outputFormat,
+                  recipient,
+                  detailLevel,
+                  sourceMode: source,
                   createdAt: Date.now()
                 });
                 toast('Draft saved!');
               } catch (_) { toast('Save failed'); }
             });
-            resultDiv.querySelector('#cb-handoff-share').addEventListener('click', () => {
-              try {
-                const title = `Handoff: ${recipient}`;
-                const rawMarkdownHtml = formatAgentMarkdown(normalizedResult);
-                const htmlContent = `<!DOCTYPE html>
+            const shareBtnEl = resultDiv.querySelector('#cb-handoff-share');
+            if (shareBtnEl) {
+              shareBtnEl.addEventListener('click', () => {
+                try {
+                  const title = `Handoff: ${recipient}`;
+                  const rawMarkdownHtml = formatAgentMarkdown(normalizedResult);
+                  const htmlContent = `<!DOCTYPE html>
                 <html lang="en" data-theme="dark">
                 <head>
                   <meta charset="UTF-8">
@@ -17860,25 +17985,26 @@ Make this ready to send as-is. No meta-commentary. Clean markdown formatting.`;
                     <div class="content">${rawMarkdownHtml}</div>
                   </div>
                 </body>
-                </html>`.replace(/\s+/g, ' ').replace(/> </g, '><'); // Minify somewhat
+                </html>`.replace(/\s+/g, ' ').replace(/> </g, '><');
 
-                const blob = new Blob([htmlContent], { type: 'text/html' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `share-handoff-${recipient.toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().slice(0, 10)}.html`;
-                a.click();
-                URL.revokeObjectURL(url);
-                toast('Shareable link (HTML) downloaded!');
-              } catch (err) {
-                console.error(err);
-                toast('Failed to create share link.');
-              }
-            });
+                  const blob = new Blob([htmlContent], { type: 'text/html' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `share-handoff-${recipient.toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().slice(0, 10)}.html`;
+                  a.click();
+                  URL.revokeObjectURL(url);
+                  toast('Shareable link (HTML) downloaded!');
+                } catch (err) {
+                  console.error(err);
+                  toast('Failed to create share link.');
+                }
+              });
+            }
             resultDiv.querySelector('#cb-handoff-insert').addEventListener('click', () => {
-              try { insertTextToChat(normalizedResult); toast('Inserted!'); } catch (_) { toast('Insert failed'); }
+              try { insertTextToChat(normalizedResult); toast(`${formatCfg.insertLabel} inserted!`); } catch (_) { toast('Insert failed'); }
             });
-            toast('Handoff document ready!');
+            toast(`${formatCfg.label} ready!`);
           } else {
             resultDiv.innerHTML = `<div class="cb-agent-error">Failed: ${res && res.error ? escapeHtml(res.error) : 'Unknown error'}</div>`;
           }
@@ -17887,7 +18013,7 @@ Make this ready to send as-is. No meta-commentary. Clean markdown formatting.`;
           debugLog('Handoff error', e);
         } finally {
           runBtn.disabled = false;
-          runBtn.textContent = 'Generate Handoff Document';
+          updateRunLabel();
         }
       });
     }
@@ -20814,16 +20940,87 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
     // Helper: find a visible chat input candidate
     function findVisibleInputCandidate() {
       try {
+        const isMetaHost = /(^|\.)meta\.ai$/i.test(location.hostname || '');
+        const isVisibleEditable = (el) => {
+          try {
+            if (!el) return false;
+            if (el.closest && el.closest('#cb-host')) return false;
+            const cs = window.getComputedStyle(el);
+            if (cs.display === 'none' || cs.visibility === 'hidden' || cs.opacity === '0') return false;
+            if (el.offsetWidth <= 0 || el.offsetHeight <= 0) return false;
+            const hint = `${el.getAttribute('aria-label') || ''} ${el.getAttribute('placeholder') || ''}`.toLowerCase();
+            if (/search|find|filter|nav|menu/.test(hint)) return false;
+            return true;
+          } catch (_) { return false; }
+        };
+
+        const isLikelyComposer = (el) => {
+          try {
+            if (!el) return false;
+            const hint = `${el.getAttribute('aria-label') || ''} ${el.getAttribute('placeholder') || ''}`.toLowerCase();
+            if (isMetaHost) {
+              if (/search|find|filter|nav|menu/.test(hint)) return false;
+              if (el.tagName === 'INPUT' && !/message|ask|prompt|chat/.test(hint)) return false;
+              const inChatSurface = !!el.closest('[role="main"], main, [class*="chat" i], [class*="thread" i], [class*="composer" i]');
+              return inChatSurface || /message|ask|prompt|chat/.test(hint);
+            }
+            return true;
+          } catch (_) { return false; }
+        };
+
+        try {
+          const ae = document.activeElement;
+          if (ae && (ae.isContentEditable || /^(TEXTAREA|INPUT)$/i.test(ae.tagName || '')) && isVisibleEditable(ae) && isLikelyComposer(ae)) {
+            return ae;
+          }
+        } catch (_) { }
+
+        if (isMetaHost) {
+          // Meta AI often lazy-mounts composer after focus/click.
+          const activateSelectors = [
+            'button[aria-label*="Message" i]',
+            'button[aria-label*="Ask" i]',
+            '[data-testid*="composer"] button',
+            '[class*="composer"] button',
+            '[role="button"][aria-label*="Message" i]',
+            'main',
+            '[role="main"]'
+          ];
+          for (const sel of activateSelectors) {
+            const btn = document.querySelector(sel);
+            if (btn) {
+              try { btn.click(); } catch (_) { }
+            }
+          }
+
+          const metaCandidates = Array.from(document.querySelectorAll(
+            'div[role="textbox"][contenteditable="true"], div[role="textbox"], [contenteditable="true"][data-lexical-editor="true"], [contenteditable="plaintext-only"], [contenteditable="true"], textarea[placeholder*="Message" i], textarea[placeholder*="Ask" i], textarea, input[placeholder*="Message" i], input[placeholder*="Ask" i]'
+          ));
+          for (const el of metaCandidates) {
+            try {
+              if (!isVisibleEditable(el)) continue;
+              if (!isLikelyComposer(el)) continue;
+              return el;
+            } catch (_) { }
+          }
+
+          // Open shadow roots fallback
+          try {
+            const hosts = Array.from(document.querySelectorAll('*')).slice(0, 500);
+            for (const host of hosts) {
+              const root = host && host.shadowRoot;
+              if (!root) continue;
+              const shadowHit = root.querySelector('div[role="textbox"], [contenteditable="true"], textarea, input[placeholder*="Message" i], input[placeholder*="Ask" i]');
+              if (shadowHit && isVisibleEditable(shadowHit) && isLikelyComposer(shadowHit)) return shadowHit;
+            }
+          } catch (_) { }
+        }
+
         const candidates = Array.from(document.querySelectorAll('textarea, [contenteditable="true"], input[type="text"], div[role="textbox"]'));
         for (const el of candidates) {
           try {
-            if (el.closest && el.closest('#cb-host')) continue; // skip extension UI
-            const cs = window.getComputedStyle(el);
-            const visible = cs.display !== 'none' && cs.visibility !== 'hidden' && cs.opacity !== '0' && el.offsetWidth > 0 && el.offsetHeight > 0;
-            if (!visible) continue;
-            // Skip obvious search bars/nav inputs by heuristics
-            const attrs = ((el.getAttribute('aria-label') || '') + ' ' + (el.getAttribute('placeholder') || '')).toLowerCase();
-            if (/search|find|filter|nav|menu/.test(attrs)) continue;
+            if (!isVisibleEditable(el)) continue;
+            if (!isLikelyComposer(el)) continue;
             return el;
           } catch (_) { }
         }
@@ -21020,7 +21217,10 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
 
         // Use the restoreToChat function which has all the proper logic
         updateRestoreStatus('Restoring into the chat composer...');
-        const success = await restoreToChat(formatted, allAtts);
+        const success = await restoreToChat(formatted, allAtts, {
+          fallbackToClipboard: false,
+          fallbackToast: null
+        });
         if (success) hideRestoreStatus(true); else hideRestoreStatus(false);
         if (!success) {
           // If restore failed, copy to clipboard as fallback
