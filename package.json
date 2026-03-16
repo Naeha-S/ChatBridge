@@ -1,2 +1,13 @@
 {
+	"name": "chatbridge",
+	"version": "1.0.0",
+	"private": true,
+	"description": "ChatBridge Chrome extension (Manifest V3) for cross-platform AI conversation workflows.",
+	"scripts": {
+		"check:syntax": "node --check content_script.js && node --check background.js",
+		"check:all": "npm run check:syntax"
+	},
+	"engines": {
+		"node": ">=18"
+	}
 }

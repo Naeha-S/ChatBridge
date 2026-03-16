@@ -188,6 +188,13 @@
   const CBErrorBoundary = (function () {
     const MAX_ERRORS = 50;
     let lastSentAt = 0;
+    const extensionOrigin = (() => {
+      try {
+        return String(chrome?.runtime?.getURL('') || '');
+      } catch (_) {
+        return '';
+      }
+    })();
 
     function normalizeError(err) {
       if (!err) return { message: 'Unknown error', stack: '' };
@@ -235,6 +242,19 @@
         window.__CHATBRIDGE = window.__CHATBRIDGE || {};
         window.__CHATBRIDGE.recentErrors = current;
       } catch (_) { }
+    }
+
+    function isLikelyExtensionError(err, filename = '') {
+      try {
+        if (location.protocol === 'chrome-extension:') return true;
+        const normalized = normalizeError(err);
+        const haystack = `${String(filename || '')}\n${normalized.stack}\n${normalized.message}`;
+        if (!haystack.trim()) return false;
+        if (extensionOrigin && haystack.includes(extensionOrigin)) return true;
+        return /chrome-extension:\/\/|content_script\.js|background\.js/i.test(haystack);
+      } catch (_) {
+        return false;
+      }
     }
 
     function showGlobalErrorBanner(message) {
@@ -289,6 +309,7 @@
         window.__CHATBRIDGE_ERROR_BOUNDARY_INSTALLED = true;
 
         window.addEventListener('error', (event) => {
+          if (!isLikelyExtensionError(event && (event.error || event.message), event && event.filename)) return;
           capture(event && (event.error || event.message), {
             severity: 'high',
             event: 'window.error',
@@ -301,6 +322,7 @@
         }, true);
 
         window.addEventListener('unhandledrejection', (event) => {
+          if (!isLikelyExtensionError(event && event.reason)) return;
           capture(event && event.reason, {
             severity: 'high',
             event: 'window.unhandledrejection'
@@ -411,223 +433,240 @@
   /** Safe querySelectorAll -> array */
   function cbQSA(root, sel) { try { return Array.from((root || document).querySelectorAll(sel)); } catch (_) { return []; } }
 
+  function getRuntimeMessageApi() {
+    try {
+      if (typeof chrome === 'undefined' || !chrome.runtime) return null;
+      const runtimeId = chrome.runtime.id;
+      const onMessage = chrome.runtime.onMessage;
+      if (!runtimeId || !onMessage || typeof onMessage.addListener !== 'function') return null;
+      return onMessage;
+    } catch (_) {
+      return null;
+    }
+  }
+
   // Register restore message listener EARLY, before injectUI, so it's ready when the tab opens
   // Store restoreToChat reference - will be defined later but we can queue messages
   let pendingRestoreMessages = [];
   let restoreToChatFunction = null;
+  let restoreListenerRegistered = false;
+  let keyboardCommandListenerRegistered = false;
 
-  console.log('[ChatBridge] Registering restore_to_chat listener early');
-  if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage && typeof chrome.runtime.onMessage.addListener === 'function') {
-    chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-    try {
-      if (msg && msg.type === 'restore_to_chat') {
-        console.log('[ChatBridge] Received restore_to_chat message, text length:', msg.payload ? msg.payload.text ? msg.payload.text.length : 0 : 0);
-        restoreLog('Restore message received early, queueing if needed');
+  function registerRestoreListenerEarly(attempt = 0) {
+    if (restoreListenerRegistered) return;
+    const onMessage = getRuntimeMessageApi();
+    if (!onMessage) {
+      if (attempt < 12) {
+        setTimeout(() => registerRestoreListenerEarly(attempt + 1), 250);
+        return;
+      }
+      debugLog('[ChatBridge] runtime messaging unavailable after retries; restore listener disabled for this page');
+      return;
+    }
 
-        const payload = msg.payload || {};
-        const text = payload.text || '';
-        const attachments = payload.attachments || [];
+    restoreListenerRegistered = true;
+    console.log('[ChatBridge] Registering restore_to_chat listener early');
+    onMessage.addListener((msg, sender, sendResponse) => {
+      try {
+        if (msg && msg.type === 'restore_to_chat') {
+          console.log('[ChatBridge] Received restore_to_chat message, text length:', msg.payload ? msg.payload.text ? msg.payload.text.length : 0 : 0);
+          restoreLog('Restore message received early, queueing if needed');
 
-        // If restoreToChat is not ready yet, queue the message
-        if (!restoreToChatFunction) {
-          restoreLog('restoreToChat function not ready yet, queueing message');
-          pendingRestoreMessages.push({ text, attachments, sendResponse });
-          return true; // Keep channel open
+          const payload = msg.payload || {};
+          const text = payload.text || '';
+          const attachments = payload.attachments || [];
+
+          // If restoreToChat is not ready yet, queue the message.
+          if (!restoreToChatFunction) {
+            restoreLog('restoreToChat function not ready yet, queueing message');
+            pendingRestoreMessages.push({ text, attachments, sendResponse });
+            return true;
+          }
+
+          (async () => {
+            try {
+              const result = await restoreToChatFunction(text, attachments);
+              if (sendResponse) sendResponse({ ok: result });
+            } catch (e) {
+              console.error('[ChatBridge] Restore error:', e);
+              if (sendResponse) sendResponse({ ok: false, error: e && e.message });
+            }
+          })();
+          return true;
+        }
+        // Handle conversation load from sidebar history viewer
+        if (msg && msg.type === 'chatbridge_load_conversation') {
+          try {
+            const conv = msg.conversation;
+            if (conv) {
+              const msgs = conv.conversation || conv.messages || [];
+              const fullText = msgs.map(m => `${m.role === 'user' ? 'User' : 'AI'}: ${m.text || m.content || ''}`).join('\n\n');
+
+              // Set as active conversation so downstream tools read the same source of truth.
+              if (typeof window.ChatBridge !== 'undefined') {
+                if (typeof window.ChatBridge.setLastScan === 'function') {
+                  window.ChatBridge.setLastScan({
+                    ts: conv.ts,
+                    platform: conv.platform || 'unknown',
+                    model: conv.model || 'unknown',
+                    messages: msgs,
+                    conversation: conv,
+                    text: fullText,
+                    timestamp: Date.now()
+                  });
+                }
+                window.ChatBridge.selectedConversation = conv;
+                try { window.ChatBridge._lastScanResult = msgs; } catch (_) { }
+
+                if (typeof window.ChatBridge.refreshHistory === 'function') {
+                  window.ChatBridge.refreshHistory();
+                }
+              }
+
+              if (typeof window.__CB_UPDATE_STATUS === 'function') {
+                window.__CB_UPDATE_STATUS('Session Active', 'active');
+              }
+
+              console.log('[ChatBridge] Loaded conversation from sidebar:', msgs.length, 'messages');
+              sendResponse({ ok: true });
+            }
+          } catch (e) {
+            console.error('[ChatBridge] Load conversation error:', e);
+            sendResponse({ ok: false, error: e && e.message });
+          }
+          return true;
+        }
+        if (msg && msg.type === 'local_get_embedding') {
+          (async () => {
+            try {
+              const text = (msg.payload && msg.payload.text) ? String(msg.payload.text) : '';
+              if (!text) return sendResponse({ ok: false, error: 'no_text' });
+              if (window.ChatBridgeEmbeddings && typeof window.ChatBridgeEmbeddings.getEmbedding === 'function') {
+                const emb = await window.ChatBridgeEmbeddings.getEmbedding(text);
+                const arr = Array.from(emb || []);
+                return sendResponse({ ok: true, vector: arr });
+              }
+              return sendResponse({ ok: false, error: 'embeddings_unavailable' });
+            } catch (e) {
+              return sendResponse({ ok: false, error: e && e.message });
+            }
+          })();
+          return true;
+        }
+        if (msg && msg.type === 'local_get_embeddings_batch') {
+          (async () => {
+            try {
+              const texts = (msg.payload && Array.isArray(msg.payload.texts)) ? msg.payload.texts : [];
+              if (!texts.length) return sendResponse({ ok: false, error: 'no_texts' });
+              if (window.ChatBridgeEmbeddings && typeof window.ChatBridgeEmbeddings.getEmbedding === 'function') {
+                const vectors = [];
+                for (const t of texts) {
+                  const emb = await window.ChatBridgeEmbeddings.getEmbedding(String(t || ''));
+                  vectors.push(Array.from(emb || []));
+                }
+                return sendResponse({ ok: true, vectors });
+              }
+              return sendResponse({ ok: false, error: 'embeddings_unavailable' });
+            } catch (e) {
+              return sendResponse({ ok: false, error: e && e.message });
+            }
+          })();
+          return true;
         }
 
-        // Use async function to properly handle response
-        (async () => {
-          try {
-            const result = await restoreToChatFunction(text, attachments);
-            if (sendResponse) sendResponse({ ok: result });
-          } catch (e) {
-            console.error('[ChatBridge] Restore error:', e);
-            if (sendResponse) sendResponse({ ok: false, error: e && e.message });
-          }
-        })();
-        return true; // Keep channel open for async response
-      }
-      // Handle conversation load from sidebar history viewer
-      if (msg && msg.type === 'chatbridge_load_conversation') {
-        try {
-          const conv = msg.conversation;
-          if (conv) {
-            const msgs = conv.conversation || conv.messages || [];
-            const fullText = msgs.map(m => `${m.role === 'user' ? 'User' : 'AI'}: ${m.text || m.content || ''}`).join('\n\n');
+        if (msg && msg.type === 'mcp_request') {
+          console.log('[ChatBridge] Received MCP request:', msg.resource, msg.method);
 
-            // Set as active conversation — all features check these
-            if (typeof window.ChatBridge !== 'undefined') {
-              if (typeof window.ChatBridge.setLastScan === 'function') {
-                window.ChatBridge.setLastScan({
-                  ts: conv.ts,
-                  platform: conv.platform || 'unknown',
-                  model: conv.model || 'unknown',
-                  messages: msgs,
-                  conversation: conv,
-                  text: fullText,
-                  timestamp: Date.now()
-                });
+          (async () => {
+            try {
+              if (typeof window.MCPBridge !== 'undefined') {
+                const response = await window.MCPBridge.sendRequest(
+                  msg.resource,
+                  msg.method,
+                  msg.params || {},
+                  msg.source || 'unknown'
+                );
+                if (sendResponse) sendResponse(response);
+              } else {
+                if (sendResponse) sendResponse({ ok: false, error: 'MCP Bridge not available' });
               }
-              window.ChatBridge.selectedConversation = conv;
-              try { window.ChatBridge._lastScanResult = msgs; } catch (_) { }
-
-              // Refresh the in-panel history list if available
-              if (typeof window.ChatBridge.refreshHistory === 'function') {
-                window.ChatBridge.refreshHistory();
-              }
+            } catch (e) {
+              console.error('[ChatBridge] MCP request error:', e);
+              if (sendResponse) sendResponse({ ok: false, error: e.message });
             }
-
-            // Update status
-            if (typeof window.__CB_UPDATE_STATUS === 'function') {
-              window.__CB_UPDATE_STATUS('Session Active', 'active');
-            }
-
-            console.log('[ChatBridge] Loaded conversation from sidebar:', msgs.length, 'messages');
-            sendResponse({ ok: true });
-          }
-        } catch (e) {
-          console.error('[ChatBridge] Load conversation error:', e);
-          sendResponse({ ok: false, error: e && e.message });
+          })();
+          return true;
         }
-        return true;
-      }
-      if (msg && msg.type === 'local_get_embedding') {
-        (async () => {
-          try {
-            const text = (msg.payload && msg.payload.text) ? String(msg.payload.text) : '';
-            if (!text) return sendResponse({ ok: false, error: 'no_text' });
-            if (window.ChatBridgeEmbeddings && typeof window.ChatBridgeEmbeddings.getEmbedding === 'function') {
-              const emb = await window.ChatBridgeEmbeddings.getEmbedding(text);
-              const arr = Array.from(emb || []);
-              return sendResponse({ ok: true, vector: arr });
-            }
-            return sendResponse({ ok: false, error: 'embeddings_unavailable' });
-          } catch (e) {
-            return sendResponse({ ok: false, error: e && e.message });
-          }
-        })();
-        return true;
-      }
-      if (msg && msg.type === 'local_get_embeddings_batch') {
-        (async () => {
-          try {
-            const texts = (msg.payload && Array.isArray(msg.payload.texts)) ? msg.payload.texts : [];
-            if (!texts.length) return sendResponse({ ok: false, error: 'no_texts' });
-            if (window.ChatBridgeEmbeddings && typeof window.ChatBridgeEmbeddings.getEmbedding === 'function') {
-              const vectors = [];
-              for (const t of texts) {
-                const emb = await window.ChatBridgeEmbeddings.getEmbedding(String(t || ''));
-                vectors.push(Array.from(emb || []));
+
+        if (msg && msg.type === 'clear_rag_cache') {
+          (async () => {
+            try {
+              if (typeof window.RAGEngine !== 'undefined') {
+                await window.RAGEngine.clearAllEmbeddings();
+                if (sendResponse) sendResponse({ ok: true });
+              } else {
+                if (sendResponse) sendResponse({ ok: false, error: 'RAG Engine not available' });
               }
-              return sendResponse({ ok: true, vectors });
+            } catch (e) {
+              console.error('[ChatBridge] Clear RAG cache error:', e);
+              if (sendResponse) sendResponse({ ok: false, error: e.message });
             }
-            return sendResponse({ ok: false, error: 'embeddings_unavailable' });
-          } catch (e) {
-            return sendResponse({ ok: false, error: e && e.message });
-          }
-        })();
-        return true;
-      }
+          })();
+          return true;
+        }
 
-      // Handle MCP requests from popup or other sources
-      if (msg && msg.type === 'mcp_request') {
-        console.log('[ChatBridge] Received MCP request:', msg.resource, msg.method);
-
-        (async () => {
-          try {
-            // Forward to MCP bridge for handling
-            if (typeof window.MCPBridge !== 'undefined') {
-              const response = await window.MCPBridge.sendRequest(
-                msg.resource,
-                msg.method,
-                msg.params || {},
-                msg.source || 'unknown'
-              );
-              if (sendResponse) sendResponse(response);
-            } else {
-              if (sendResponse) sendResponse({ ok: false, error: 'MCP Bridge not available' });
-            }
-          } catch (e) {
-            console.error('[ChatBridge] MCP request error:', e);
-            if (sendResponse) sendResponse({ ok: false, error: e.message });
-          }
-        })();
-        return true; // Keep channel open for async response
-      }
-
-      // Handle clear RAG cache request from popup
-      if (msg && msg.type === 'clear_rag_cache') {
-        (async () => {
-          try {
-            if (typeof window.RAGEngine !== 'undefined') {
-              await window.RAGEngine.clearAllEmbeddings();
+        if (msg && msg.type === 'open_memory_architect') {
+          (async () => {
+            try {
+              try { const h = document.getElementById('cb-host'); if (h) h.style.display = 'block'; } catch (e) { }
+              if (typeof queueAgentHubRender === 'function') {
+                queueAgentHubRender().catch(() => { });
+              } else if (typeof renderAgentHub === 'function') {
+                await renderAgentHub();
+              }
               if (sendResponse) sendResponse({ ok: true });
-            } else {
-              if (sendResponse) sendResponse({ ok: false, error: 'RAG Engine not available' });
+            } catch (e) {
+              if (sendResponse) sendResponse({ ok: false, error: e.message });
             }
-          } catch (e) {
-            console.error('[ChatBridge] Clear RAG cache error:', e);
-            if (sendResponse) sendResponse({ ok: false, error: e.message });
-          }
-        })();
-        return true;
-      }
+          })();
+          return true;
+        }
 
-      // Open Memory Architect focused on a specific theme (from popup Timeline)
-      if (msg && msg.type === 'open_memory_architect') {
-        (async () => {
+        if (msg && msg.type === 'theme_changed') {
           try {
-            // Legacy: Memory Architect removed — open Agent Hub instead
-            try { const h = document.getElementById('cb-host'); if (h) h.style.display = 'block'; } catch (e) { }
-            if (typeof queueAgentHubRender === 'function') {
-              queueAgentHubRender().catch(() => { });
-            } else if (typeof renderAgentHub === 'function') {
-              await renderAgentHub();
+            const theme = msg.theme || 'dark';
+            const host = document.getElementById('cb-host');
+            if (host) {
+              host.classList.remove('cb-theme-light', 'cb-theme-synthwave', 'cb-theme-skeuomorphic', 'cb-theme-brutalism', 'cb-theme-glass');
+              if (theme !== 'dark') {
+                host.classList.add(`cb-theme-${theme}`);
+              }
             }
             if (sendResponse) sendResponse({ ok: true });
           } catch (e) {
             if (sendResponse) sendResponse({ ok: false, error: e.message });
           }
-        })();
-        return true;
-      }
+          return true;
+        }
 
-      if (msg && msg.type === 'theme_changed') {
-        try {
-          const theme = msg.theme || 'dark';
-          const host = document.getElementById('cb-host');
-          if (host) {
-            host.classList.remove('cb-theme-light', 'cb-theme-synthwave', 'cb-theme-skeuomorphic', 'cb-theme-brutalism', 'cb-theme-glass');
-            if (theme !== 'dark') {
-              host.classList.add(`cb-theme-${theme}`);
-            }
+        if (msg && msg.type === 'cs_self_test') {
+          try {
+            const siteOk = isApprovedSite();
+            CBLogger.debug('cs_self_test approved?', siteOk);
+            sendResponse({ ok: true, approved: siteOk });
+          } catch (e) {
+            sendResponse({ ok: false, error: e && e.message });
           }
-          if (sendResponse) sendResponse({ ok: true });
-        } catch (e) {
-          if (sendResponse) sendResponse({ ok: false, error: e.message });
+          return true;
         }
-        return true;
+      } catch (e) {
+        console.error('[ChatBridge] Message listener error:', e);
+        if (sendResponse) sendResponse({ ok: false, error: e && e.message });
       }
-
-      if (msg && msg.type === 'cs_self_test') {
-        try {
-          // Minimal sanity checks only; no DOM mutations
-          const siteOk = isApprovedSite();
-          CBLogger.debug('cs_self_test approved?', siteOk);
-          sendResponse({ ok: true, approved: siteOk });
-        } catch (e) {
-          sendResponse({ ok: false, error: e && e.message });
-        }
-        return true;
-      }
-    } catch (e) {
-      console.error('[ChatBridge] Message listener error:', e);
-      if (sendResponse) sendResponse({ ok: false, error: e && e.message });
-    }
-  });
-  } else {
-    console.warn('[ChatBridge] runtime messaging unavailable; restore listener not registered');
+    });
   }
+
+  registerRestoreListenerEarly();
 
   // Ensure the floating avatar exists on the page. This is useful when the host
   // element is present (from a prior injection) but the avatar was removed by
@@ -11375,292 +11414,19 @@ ${chatText.substring(0, 10000)}`
       }
     }
 
-    async function renderImageVaultWidget(container) {
-      try {
-        const vaultSection = document.createElement('div');
-        vaultSection.style.cssText = 'margin:16px 12px;';
-
-        // Header with toggle
-        const header = document.createElement('div');
-        header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:12px;background:rgba(16,24,43,0.4);border:1px solid color-mix(in srgb, var(--cb-accent-primary) 25%, transparent);border-radius:8px 8px 0 0;cursor:pointer;';
-        header.innerHTML = `
-          <div style="display:flex;align-items:center;gap:8px;">
-            <span style="font-size:16px;">🖼️</span>
-            <span style="font-weight:600;font-size:13px;color:#fff;">Image Vault</span>
-            <span id="cb-image-count" style="font-size:11px;color:rgba(255,255,255,0.5);background:color-mix(in srgb, var(--cb-accent-primary) 20%, transparent);padding:2px 6px;border-radius:10px;">0</span>
-          </div>
-          <span id="cb-vault-toggle" style="font-size:18px;transition:transform 0.2s;">▼</span>
-        `;
-
-        // Content area (collapsible)
-        const content = document.createElement('div');
-        content.id = 'cb-vault-content';
-        content.style.cssText = 'display:none;padding:12px;background:rgba(16,24,43,0.4);border:1px solid color-mix(in srgb, var(--cb-accent-primary) 25%, transparent);border-top:none;border-radius:0 0 8px 8px;';
-
-        // Thumbnail grid
-        const thumbGrid = document.createElement('div');
-        thumbGrid.id = 'cb-vault-grid';
-        thumbGrid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:8px;margin-bottom:12px;';
-
-        // Controls
-        const controls = document.createElement('div');
-        controls.style.cssText = 'display:flex;gap:8px;';
-        controls.innerHTML = `
-          <button id="cb-vault-scan" class="cb-btn cb-btn-primary" style="flex:1;font-size:11px;padding:8px;">🔍 Scan Media</button>
-          <button id="cb-vault-clear" class="cb-btn" style="font-size:11px;padding:8px;">🗑️ Clear</button>
-        `;
-
-        content.appendChild(thumbGrid);
-        content.appendChild(controls);
-        vaultSection.appendChild(header);
-        vaultSection.appendChild(content);
-        container.appendChild(vaultSection);
-
-        // Toggle handler
-        let isExpanded = false;
-        header.addEventListener('click', () => {
-          isExpanded = !isExpanded;
-          content.style.display = isExpanded ? 'block' : 'none';
-          document.getElementById('cb-vault-toggle').style.transform = isExpanded ? 'rotate(180deg)' : 'rotate(0deg)';
-        });
-
-        // Scan images handler
-        document.getElementById('cb-vault-scan').addEventListener('click', async () => {
-          const btn = document.getElementById('cb-vault-scan');
-          addLoadingToButton(btn, 'Scanning...');
-          try {
-            console.log('[ChatBridge] Image Vault: Starting scan...');
-            const msgs = await scanChat();
-
-            // Count user and agent messages
-            const userMsgs = msgs ? msgs.filter(m => m.role === 'user').length : 0;
-            const agentMsgs = msgs ? msgs.filter(m => m.role === 'assistant').length : 0;
-            console.log('[ChatBridge] Image Vault: Found', userMsgs, 'user messages,', agentMsgs, 'agent replies');
-
-            // Try message-based extraction first
-            let images = [];
-            if (msgs && msgs.length > 0) {
-              images = await extractImagesFromMessages(msgs);
-              console.log('[ChatBridge] Image Vault: Message extraction found', images.length, 'images');
-            }
-
-            // If no images found, use platform-specific page-wide extraction
-            let files = [];
-            let artifacts = [];
-            if (images.length === 0) {
-              console.log('[ChatBridge] Trying platform-specific extraction...');
-              const media = await extractAllMediaFromPage();
-              images = media.images || [];
-              files = media.files || [];
-              artifacts = media.artifacts || [];
-              console.log('[ChatBridge] Platform extraction found:', images.length, 'images,', files.length, 'files,', artifacts.length, 'artifacts');
-            }
-
-            // Save images to vault
-            if (images.length > 0) {
-              await saveImagesToVault(images);
-              await refreshImageVault();
-            }
-
-            // Update count display
-            document.getElementById('cb-image-count').textContent = String(images.length);
-
-            // Build result message
-            let resultMsg = `${userMsgs} user, ${agentMsgs} agent`;
-            if (images.length > 0 || files.length > 0 || artifacts.length > 0) {
-              resultMsg += `: ${images.length} images`;
-              if (files.length > 0) resultMsg += `, ${files.length} files`;
-              if (artifacts.length > 0) resultMsg += `, ${artifacts.length} artifacts`;
-              resultMsg = 'Saved ' + resultMsg;
-            } else {
-              resultMsg = 'Scanned ' + resultMsg + '. No media found.';
-            }
-
-            toast(resultMsg);
-            console.log('[ChatBridge] Image Vault scan complete');
-          } catch (e) {
-            console.error('[ChatBridge] Image Vault scan error:', e);
-            toast('Image scan failed - check console for details');
-          } finally {
-            removeLoadingFromButton(btn, '🔍 Scan Media');
-          }
-        });
-
-        // Clear vault handler
-        document.getElementById('cb-vault-clear').addEventListener('click', async () => {
-          if (confirm('Clear all stored images?')) {
-            await clearImageVault();
-            await refreshImageVault();
-            toast('Image vault cleared');
-          }
-        });
-
-        // Initial load
-        await refreshImageVault();
-
-      } catch (e) {
-        debugLog('renderImageVaultWidget error:', e);
-      }
-    }
-
-    // Refresh image vault display
-    async function refreshImageVault() {
-      try {
-        const images = await getImageVault();
-        const grid = document.getElementById('cb-vault-grid');
-        const countEl = document.getElementById('cb-image-count');
-
-        if (!grid) return;
-
-        countEl.textContent = images.length.toString();
-        grid.innerHTML = '';
-
-        if (images.length === 0) {
-          grid.innerHTML = `
-            <div class="cb-empty-state" style="grid-column:1/-1;">
-              <div class="cb-empty-state-icon">🖼️</div>
-              <div class="cb-empty-state-title">No Images Yet</div>
-              <div class="cb-empty-state-text">Images from your conversations will appear here. Click "Scan Images" to extract images from the current chat.</div>
-            </div>
-          `;
-          return;
-        }
-
-        // Group by role
-        const userImages = images.filter(img => img.role === 'user');
-        const assistantImages = images.filter(img => img.role === 'assistant');
-
-        const renderGroup = (imgs, label, icon) => {
-          if (imgs.length === 0) return;
-
-          const groupLabel = document.createElement('div');
-          groupLabel.style.cssText = 'grid-column:1/-1;font-size:11px;font-weight:600;color:rgba(255,255,255,0.6);margin-top:8px;display:flex;align-items:center;gap:6px;';
-          groupLabel.innerHTML = `<span>${icon}</span><span>${label} (${imgs.length})</span>`;
-          grid.appendChild(groupLabel);
-
-          imgs.slice(0, 6).forEach((img, idx) => {
-            const thumb = document.createElement('div');
-            thumb.style.cssText = 'position:relative;aspect-ratio:1;border-radius:6px;overflow:hidden;border:1px solid color-mix(in srgb, var(--cb-accent-primary) 20%, transparent);cursor:pointer;background:rgba(0,0,0,0.3);';
-
-            const imgEl = document.createElement('img');
-            imgEl.src = img.src;
-            imgEl.style.cssText = 'width:100%;height:100%;object-fit:cover;';
-            imgEl.loading = 'lazy';
-            imgEl.onerror = () => {
-              thumb.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:24px;">🖼️</div>';
-            };
-
-            // Hover overlay
-            const overlay = document.createElement('div');
-            overlay.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);display:none;align-items:center;justify-content:center;gap:8px;';
-            overlay.innerHTML = `
-              <button class="cb-img-copy" title="Copy" style="background:rgba(255,255,255,0.2);border:none;border-radius:4px;padding:4px 6px;cursor:pointer;font-size:14px;">📋</button>
-              <button class="cb-img-expand" title="Expand" style="background:rgba(255,255,255,0.2);border:none;border-radius:4px;padding:4px 6px;cursor:pointer;font-size:14px;">🔍</button>
-            `;
-
-            thumb.appendChild(imgEl);
-            thumb.appendChild(overlay);
-
-            thumb.addEventListener('mouseenter', () => overlay.style.display = 'flex');
-            thumb.addEventListener('mouseleave', () => overlay.style.display = 'none');
-
-            // Copy handler
-            overlay.querySelector('.cb-img-copy').addEventListener('click', async (e) => {
-              e.stopPropagation();
-              try {
-                await navigator.clipboard.writeText(img.src);
-                toast('Image URL copied');
-              } catch (err) {
-                toast('Copy failed');
-              }
-            });
-
-            // Expand handler
-            overlay.querySelector('.cb-img-expand').addEventListener('click', (e) => {
-              e.stopPropagation();
-              showImageModal(img);
-            });
-
-            grid.appendChild(thumb);
-          });
-
-          // Show "View All" if more than 6 images
-          if (imgs.length > 6) {
-            const viewAll = document.createElement('button');
-            viewAll.className = 'cb-btn';
-            viewAll.style.cssText = 'grid-column:1/-1;margin-top:8px;font-size:11px;';
-            viewAll.textContent = `View all ${imgs.length} images`;
-            viewAll.addEventListener('click', () => showAllImagesModal(imgs, label));
-            grid.appendChild(viewAll);
-          }
-        };
-
-        renderGroup(userImages, 'User Uploads', '👤');
-        renderGroup(assistantImages, 'AI Generated', '🤖');
-
-      } catch (e) {
-        debugLog('refreshImageVault error:', e);
-      }
-    }
-
-    // Show image in modal
-    function showImageModal(imgData) {
-      const modal = document.createElement('div');
-      modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);display:flex;align-items:center;justify-content:center;z-index:999999;';
-
-      const img = document.createElement('img');
-      img.src = imgData.src;
-      img.style.cssText = 'max-width:90%;max-height:90%;border-radius:8px;box-shadow:0 20px 60px rgba(0,0,0,0.5);';
-
-      const closeBtn = document.createElement('button');
-      closeBtn.textContent = '×';
-      closeBtn.style.cssText = 'position:absolute;top:20px;right:20px;background:rgba(255,255,255,0.2);border:none;color:#fff;font-size:32px;width:50px;height:50px;border-radius:25px;cursor:pointer;';
-      closeBtn.addEventListener('click', () => modal.remove());
-
-      modal.appendChild(img);
-      modal.appendChild(closeBtn);
-      modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
-
-      document.body.appendChild(modal);
-    }
-
-    // Show all images modal
-    function showAllImagesModal(images, title) {
-      const modal = document.createElement('div');
-      modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999999;padding:40px;';
-
-      const header = document.createElement('div');
-      header.style.cssText = 'color:#fff;font-size:24px;font-weight:700;margin-bottom:20px;';
-      header.textContent = title;
-
-      const grid = document.createElement('div');
-      grid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:16px;max-width:1200px;max-height:70%;overflow-y:auto;padding:20px;background:rgba(16,24,43,0.8);border-radius:12px;';
-
-      images.forEach(imgData => {
-        const thumb = document.createElement('img');
-        thumb.src = imgData.src;
-        thumb.style.cssText = 'width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;cursor:pointer;border:2px solid color-mix(in srgb, var(--cb-accent-primary) 30%, transparent);';
-        thumb.loading = 'lazy';
-        thumb.addEventListener('click', () => {
-          modal.remove();
-          showImageModal(imgData);
-        });
-        grid.appendChild(thumb);
-      });
-
-      const closeBtn = document.createElement('button');
-      closeBtn.textContent = 'Close';
-      closeBtn.className = 'cb-btn cb-btn-primary';
-      closeBtn.style.cssText = 'margin-top:20px;padding:12px 24px;';
-      closeBtn.addEventListener('click', () => modal.remove());
-
-      modal.appendChild(header);
-      modal.appendChild(grid);
-      modal.appendChild(closeBtn);
-      modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
-
-      document.body.appendChild(modal);
-    }
+    const vaultFeature = window.ChatBridgeContentVault.createFeature({
+      debugLog,
+      toast,
+      scanChat: (...args) => scanChat(...args),
+      extractImagesFromMessages,
+      extractAllMediaFromPage,
+      saveImagesToVault,
+      clearImageVault,
+      getImageVault,
+      addLoadingToButton,
+      removeLoadingFromButton
+    });
+    const { renderImageVaultWidget, refreshImageVault } = vaultFeature;
 
     // ============================================
     // TRENDING THEMES WIDGET - Shows theme evolution over time using RAG
@@ -21079,417 +20845,17 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       return null;
     }
 
-    // Helper: restore arbitrary text into the visible chat input on the page, and attach optional files
-    async function restoreToChat(text, attachments) {
-      try {
-        restoreLog('Starting restoreToChat with text length:', text ? text.length : 0);
-        if (!text || !text.trim()) {
-          restoreLog('No text provided');
-          toast('No text to insert');
-          return false;
-        }
-
-        // Clean text - remove role prefixes that might have leaked from scan
-        let cleanText = text.trim();
-        // Remove "Assistant:", "User:", etc. from beginning of text
-        cleanText = cleanText.replace(/^(Assistant|User|System|AI):\s*/i, '');
-        restoreLog('Cleaned text (first 100 chars):', cleanText.slice(0, 100));
-
-        // Try to use adapter's getInput() method first (more reliable for site-specific inputs)
-        let input = null;
-        try {
-          const pick = (typeof window.pickAdapter === 'function') ? window.pickAdapter : null;
-          const adapter = pick ? pick() : null;
-          if (adapter && typeof adapter.getInput === 'function') {
-            input = adapter.getInput();
-            if (input) {
-              restoreLog('Found input via adapter:', input.tagName);
-            }
-          }
-        } catch (e) {
-          restoreLog('Adapter.getInput() error:', e);
-        }
-
-        // Fallback to generic input finder or wait
-        if (!input) {
-          input = findVisibleInputCandidate();
-        }
-
-        if (!input) {
-          restoreLog('Waiting for composer...');
-          input = await waitForComposer(10000, 300); // Reduced timeout to 10s
-        }
-
-        if (!input) {
-          restoreLog('ERROR: No input found');
-          try { await navigator.clipboard.writeText(cleanText); toast('Copied to clipboard'); } catch (e) { }
-          return false;
-        }
-
-        restoreLog('Found input:', input.tagName, input.isContentEditable ? 'contenteditable' : 'textarea');
-
-        // Fast insert based on input type
-        if (input.isContentEditable) {
-          // For contenteditable (ChatGPT, Claude, etc.)
-          input.focus();
-
-          // Clear existing content quickly
-          input.textContent = '';
-
-          // Insert text node
-          const textNode = document.createTextNode(cleanText);
-          input.appendChild(textNode);
-
-          // Trigger essential events only (reduced from multiple)
-          input.dispatchEvent(new Event('input', { bubbles: true }));
-          input.dispatchEvent(new Event('change', { bubbles: true }));
-
-          restoreLog('Inserted to contenteditable');
-        } else {
-          // For textarea/input
-          input.focus();
-          input.value = cleanText;
-
-          // Trigger essential events
-          input.dispatchEvent(new Event('input', { bubbles: true }));
-          input.dispatchEvent(new Event('change', { bubbles: true }));
-
-          restoreLog('Inserted to textarea/input');
-        }
-
-        toast('Restored to chat');
-
-        // Attach files if provided (async, don't block)
-        if (Array.isArray(attachments) && attachments.length > 0) {
-          attachFilesToChat(attachments).catch(e => {
-            restoreLog('Attachment error:', e);
-          });
-        }
-
-        return true;
-      } catch (e) {
-        restoreLog('ERROR in restoreToChat:', e);
-        try { await navigator.clipboard.writeText(text); toast('Copied to clipboard'); } catch (_) { }
-        return false;
-      }
-    }
-
-    // Store reference to restoreToChat function so early listener can use it
-    restoreToChatFunction = restoreToChat;
-    restoreLog('restoreToChat function is now ready, processing queued messages:', pendingRestoreMessages.length);
-
-    // Process any queued messages asynchronously
-    if (pendingRestoreMessages.length > 0) {
-      setTimeout(async () => {
-        restoreLog('Processing', pendingRestoreMessages.length, 'queued restore messages');
-        while (pendingRestoreMessages.length > 0) {
-          const queued = pendingRestoreMessages.shift();
-          try {
-            restoreLog('Processing queued restore message, text length:', queued.text ? queued.text.length : 0);
-            const result = await restoreToChat(queued.text, queued.attachments);
-            if (queued.sendResponse) queued.sendResponse({ ok: result });
-
-            // ─── Drift Detection: start monitoring after successful restore ───
-            if (result && queued.text && queued.text.length > 50) {
-              try {
-                startDriftMonitoring(queued.text);
-              } catch (driftErr) {
-                console.warn('[ChatBridge] Drift monitoring init error:', driftErr);
-              }
-            }
-          } catch (e) {
-            console.error('[ChatBridge] Error processing queued restore message:', e);
-            if (queued.sendResponse) queued.sendResponse({ ok: false, error: e && e.message });
-          }
-        }
-      }, 100); // Small delay to ensure DOM is ready
-    }
-
-    // ─── Conversation Drift Detection & Cross-Platform Context Repair ─────────
-    // After a "Continue With" restore, monitors for the first assistant response,
-    // computes drift score, and if drift exceeds threshold, injects a repair prompt.
-
-    /**
-     * Start drift monitoring after a successful restoreToChat.
-     * Polls for the first new assistant response, then runs the drift detection loop.
-     * @param {string} sourceText - The original conversation text that was restored
-     */
-    function startDriftMonitoring(sourceText) {
-      // Check if drift detection infrastructure is available
-      const drift = window.ChatBridgeDrift;
-      if (!drift || !drift.detector || !drift.profileManager) {
-        console.log('[ChatBridge] Drift detection not available (drift_profiles.js not loaded)');
-        return;
-      }
-
-      // Detect current platform via adapter
-      let targetPlatform = 'unknown';
-      try {
-        const pick = (typeof window.pickAdapter === 'function') ? window.pickAdapter : null;
-        const adapter = pick ? pick() : null;
-        if (adapter && adapter.id) targetPlatform = adapter.id;
-        else if (adapter && adapter.label) targetPlatform = adapter.label;
-      } catch (_) { }
-
-      console.log('[ChatBridge] Drift monitoring started for platform:', targetPlatform);
-
-      // Snapshot current messages so we can detect new ones
-      let baselineMessageCount = 0;
-      try {
-        const pick = (typeof window.pickAdapter === 'function') ? window.pickAdapter : null;
-        const adapter = pick ? pick() : null;
-        if (adapter && typeof adapter.getMessages === 'function') {
-          const msgs = adapter.getMessages();
-          baselineMessageCount = Array.isArray(msgs) ? msgs.length : 0;
-        }
-      } catch (_) { }
-
-      // Poll for first assistant response (max 60s, check every 2s)
-      let pollCount = 0;
-      const maxPolls = 30;
-      const pollInterval = 2000;
-
-      const pollTimer = setInterval(async () => {
-        pollCount++;
-        if (pollCount > maxPolls) {
-          clearInterval(pollTimer);
-          console.log('[ChatBridge] Drift monitoring: timeout waiting for response');
-          return;
-        }
-
-        try {
-          const pick = (typeof window.pickAdapter === 'function') ? window.pickAdapter : null;
-          const adapter = pick ? pick() : null;
-          if (!adapter || typeof adapter.getMessages !== 'function') return;
-
-          const currentMsgs = adapter.getMessages();
-          if (!Array.isArray(currentMsgs)) return;
-
-          // Look for a new assistant message beyond our baseline
-          const newMsgs = currentMsgs.slice(baselineMessageCount);
-          const firstAssistantResponse = newMsgs.find(m => m.role === 'assistant' && m.text && m.text.length > 30);
-
-          if (!firstAssistantResponse) return; // Keep polling
-
-          // Found the first assistant response — stop polling
-          clearInterval(pollTimer);
-          console.log('[ChatBridge] Drift monitoring: first response detected, length:', firstAssistantResponse.text.length);
-
-          // Run drift detection
-          await runDriftDetectionLoop(sourceText, firstAssistantResponse.text, targetPlatform, adapter);
-        } catch (e) {
-          console.warn('[ChatBridge] Drift poll error:', e);
-        }
-      }, pollInterval);
-    }
-
-    /**
-     * Run the full drift detection → assessment → repair → re-score loop.
-     * @param {string} sourceText - Source conversation context
-     * @param {string} targetResponse - First assistant response on target platform
-     * @param {string} targetPlatform - Target platform identifier
-     * @param {Object} adapter - The site adapter for the target platform
-     */
-    async function runDriftDetectionLoop(sourceText, targetResponse, targetPlatform, adapter) {
-      const drift = window.ChatBridgeDrift;
-      if (!drift) return;
-
-      const { detector, profileManager, ui, DRIFT_THRESHOLD: threshold, MAX_REPAIR_ATTEMPTS: maxRepairs, REPAIR_IMPROVEMENT_THRESHOLD: repairThreshold } = drift;
-
-      try {
-        // Step 1: Compute initial drift score via background.js
-        console.log('[ChatBridge] Computing drift score...');
-        const driftResult = await new Promise((resolve) => {
-          chrome.runtime.sendMessage({
-            type: 'measure_drift',
-            payload: {
-              sourceContext: sourceText.slice(-3000),
-              targetResponse: targetResponse.slice(0, 1500)
-            }
-          }, (res) => {
-            if (chrome.runtime.lastError) resolve({ ok: false });
-            else resolve(res || { ok: false });
-          });
-        });
-
-        if (!driftResult.ok) {
-          console.warn('[ChatBridge] Drift measurement failed:', driftResult.error);
-          return;
-        }
-
-        const initialScore = driftResult.driftScore;
-        console.log('[ChatBridge] Initial drift score:', initialScore.toFixed(4));
-
-        // Step 2: Assess drift severity
-        const assessment = detector.assessDrift(initialScore, targetPlatform);
-        console.log('[ChatBridge] Drift assessment:', assessment);
-
-        // Step 3: Record in profile
-        profileManager.recordDriftScore(targetPlatform, initialScore, assessment.driftDetected);
-
-        if (!assessment.driftDetected) {
-          // No drift — log and done
-          console.log('[ChatBridge] No significant drift detected (score:', initialScore.toFixed(4), ')');
-          profileManager.logDriftEvent({
-            sourcePlatform: 'transfer_source', // We don't always know the source
-            targetPlatform,
-            driftScore: initialScore,
-            driftDetected: false,
-            repairAttempted: false,
-            sourceContextLength: sourceText.length,
-            targetResponseLength: targetResponse.length
-          });
-          await profileManager.save();
-          return;
-        }
-
-        // Step 4: Drift detected — notify user and generate repair
-        console.log('[ChatBridge] Drift detected! Severity:', assessment.severity, 'Score:', initialScore.toFixed(4));
-        ui.showDriftNotification(initialScore, assessment.severity, true);
-
-        // Step 5: Generate repair prompt
-        const repairPrompt = await new Promise((resolve) => {
-          chrome.runtime.sendMessage({
-            type: 'generate_repair_prompt',
-            payload: {
-              sourceContext: sourceText.slice(-3000),
-              targetResponse: targetResponse.slice(0, 800),
-              driftScore: initialScore,
-              severity: assessment.severity
-            }
-          }, (res) => {
-            if (chrome.runtime.lastError) resolve(null);
-            else resolve(res && res.ok ? res.repairPrompt : null);
-          });
-        });
-
-        if (!repairPrompt) {
-          console.warn('[ChatBridge] Could not generate repair prompt');
-          profileManager.logDriftEvent({
-            sourcePlatform: 'transfer_source',
-            targetPlatform,
-            driftScore: initialScore,
-            driftDetected: true,
-            repairAttempted: false,
-            sourceContextLength: sourceText.length,
-            targetResponseLength: targetResponse.length
-          });
-          await profileManager.save();
-          return;
-        }
-
-        // Step 6: Inject repair prompt via restoreToChat
-        console.log('[ChatBridge] Injecting repair prompt (', repairPrompt.length, 'chars)');
-        const repairInjected = await restoreToChat(repairPrompt);
-
-        if (!repairInjected) {
-          console.warn('[ChatBridge] Failed to inject repair prompt');
-          profileManager.logDriftEvent({
-            sourcePlatform: 'transfer_source',
-            targetPlatform,
-            driftScore: initialScore,
-            driftDetected: true,
-            repairAttempted: true,
-            sourceContextLength: sourceText.length,
-            targetResponseLength: targetResponse.length
-          });
-          await profileManager.save();
-          return;
-        }
-
-        // Step 7: Wait for post-repair response and re-score
-        console.log('[ChatBridge] Waiting for post-repair response...');
-        const postRepairResponse = await waitForNextAssistantResponse(adapter, 45000);
-
-        if (postRepairResponse) {
-          // Re-measure drift
-          const postResult = await new Promise((resolve) => {
-            chrome.runtime.sendMessage({
-              type: 'measure_drift',
-              payload: {
-                sourceContext: sourceText.slice(-3000),
-                targetResponse: postRepairResponse.slice(0, 1500)
-              }
-            }, (res) => {
-              if (chrome.runtime.lastError) resolve({ ok: false });
-              else resolve(res || { ok: false });
-            });
-          });
-
-          const postScore = postResult.ok ? postResult.driftScore : initialScore;
-          const repairSuccess = (postScore - initialScore) >= repairThreshold;
-
-          console.log('[ChatBridge] Post-repair drift score:', postScore.toFixed(4),
-            'Improvement:', (postScore - initialScore).toFixed(4),
-            'Success:', repairSuccess);
-
-          // Record repair result
-          profileManager.recordRepairResult(targetPlatform, initialScore, postScore);
-          ui.showRepairResult(initialScore, postScore, repairSuccess);
-
-          // Log complete event
-          profileManager.logDriftEvent({
-            sourcePlatform: 'transfer_source',
-            targetPlatform,
-            driftScore: initialScore,
-            driftDetected: true,
-            repairAttempted: true,
-            postRepairScore: postScore,
-            repairSuccess,
-            sourceContextLength: sourceText.length,
-            targetResponseLength: targetResponse.length
-          });
-        } else {
-          // Couldn't get post-repair response; log what we have
-          profileManager.logDriftEvent({
-            sourcePlatform: 'transfer_source',
-            targetPlatform,
-            driftScore: initialScore,
-            driftDetected: true,
-            repairAttempted: true,
-            sourceContextLength: sourceText.length,
-            targetResponseLength: targetResponse.length
-          });
-        }
-
-        await profileManager.save();
-      } catch (e) {
-        console.error('[ChatBridge] Drift detection loop error:', e);
-      }
-    }
-
-    /**
-     * Wait for the next assistant response by polling the adapter.
-     * @param {Object} adapter - Site adapter
-     * @param {number} timeoutMs - Max wait time
-     * @returns {Promise<string|null>} The assistant response text, or null
-     */
-    async function waitForNextAssistantResponse(adapter, timeoutMs = 45000) {
-      if (!adapter || typeof adapter.getMessages !== 'function') return null;
-
-      // Snapshot current count
-      let currentMsgs;
-      try {
-        currentMsgs = adapter.getMessages();
-      } catch (_) { return null; }
-      const baseCount = Array.isArray(currentMsgs) ? currentMsgs.length : 0;
-
-      const pollMs = 2000;
-      const startTime = Date.now();
-
-      while (Date.now() - startTime < timeoutMs) {
-        await new Promise(r => setTimeout(r, pollMs));
-        try {
-          const msgs = adapter.getMessages();
-          if (!Array.isArray(msgs)) continue;
-
-          const newMsgs = msgs.slice(baseCount);
-          const assistantMsg = newMsgs.find(m => m.role === 'assistant' && m.text && m.text.length > 30);
-          if (assistantMsg) return assistantMsg.text;
-        } catch (_) { }
-      }
-      return null;
-    }
+    const restoreFeature = window.ChatBridgeContentRestore.createFeature({
+      restoreLog,
+      toast,
+      findVisibleInputCandidate,
+      waitForComposer,
+      attachFilesToChat,
+      pendingRestoreMessages,
+      setRestoreToChatFunction: (fn) => { restoreToChatFunction = fn; }
+    });
+    const { restoreToChat } = restoreFeature;
+    restoreFeature.initialize();
 
     // Persistent Restore Status helpers (visible until restore completes)
     function getOrCreateRestoreStatus() {
@@ -24948,465 +24314,39 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
     // Ensure avatar is visible initially
     avatar.style.display = 'flex';
 
-    // Toggle logic for sidebar
-    const toggleSidebar = () => {
-      const isHidden = host.style.display === 'none';
-      if (isHidden) {
-        try { closeAllViews(); } catch (_) { }
-        try { refreshHistory(); } catch (_) { }
-        host.style.display = 'block';
-        // Reset panel for entry animation
-        panel.style.opacity = '0';
-        panel.style.transform = 'translateY(10px)';
-        try { panel.scrollTop = 0; } catch (_) { }
-        try { updatePanelDynamicLayout(); } catch (_) { }
-
-        requestAnimationFrame(() => {
-          panel.style.transition = 'opacity 0.3s ease, transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)';
-          panel.style.opacity = '1';
-          panel.style.transform = 'translateY(0)';
-        });
-
-        avatar.style.display = 'none';
-      } else {
-        // Exit animation
-        panel.style.opacity = '0';
-        panel.style.transform = 'translateY(10px) scale(0.98)';
-        setTimeout(() => {
-          host.style.display = 'none';
-          avatar.style.display = 'flex';
-        }, 200);
-      }
-    };
-
-    // Attach functionality
-    const handleAvatarToggleClick = (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      // Don't toggle if we just finished dragging
-      if (avatar._wasDragged) {
-        return;
-      }
-      toggleSidebar();
-    };
-    avatar.onclick = null;
-    avatar.addEventListener('click', handleAvatarToggleClick);
-
-    // Ensure Clean Closure
-    if (typeof btnClose !== 'undefined') {
-      btnClose.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        toggleSidebar();
-      });
-    }
-
-    // Expose toggle for keyboard shortcuts
-    avatar.toggle = toggleSidebar;
-
-    // Keyboard shortcuts (when sidebar is open)
-    document.addEventListener('keydown', (e) => {
-      // Only active if sidebar is OPEN
-      if (!host || host.style.display === 'none') return;
-
-      // Ignore if user is typing in an input field
-      const target = e.target;
-      const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
-      if (isInput && target !== host) return;
-
-      // Ignore modifiers
-      if (e.ctrlKey || e.altKey || e.metaKey) return;
-
-      const key = e.key.toLowerCase();
-
-      // S - Scan
-      if (key === 's') {
-        const btnScan = shadow.querySelector('#btnScan');
-        if (btnScan) {
-          e.preventDefault();
-          btnScan.click();
-          // Visual feedback
-          btnScan.style.transform = 'scale(0.95)';
-          setTimeout(() => btnScan.style.transform = '', 150);
-        }
-      }
-      // R - Restore (Insert to chat)
-      else if (key === 'r') {
-        const btnInsert = shadow.querySelector('#btnInsert') || shadow.querySelector('[id^="btnInsert"]');
-        if (btnInsert) { e.preventDefault(); btnInsert.click(); }
-      }
-      // C - Copy
-      else if (key === 'c') {
-        const btnCopy = shadow.querySelector('#btnCopy');
-        if (btnCopy) {
-          e.preventDefault();
-          btnCopy.click();
-        }
-      }
-      // Esc - Close
-      else if (e.key === 'Escape') {
-        e.preventDefault();
-        toggleSidebar();
-      }
+    const sidebarFeature = window.ChatBridgeContentSidebar.createFeature({
+      host,
+      panel,
+      avatar,
+      btnClose,
+      shadow,
+      closeAllViews,
+      refreshHistory,
+      updatePanelDynamicLayout
     });
+    const { toggleSidebar } = sidebarFeature;
 
     return { host, avatar, panel };
   }
 
   // Debounce mechanism for scan operations
-  let scanDebounceTimer = null;
-  let lastScanTimestamp = 0;
   const SCAN_DEBOUNCE_MS = 300; // Quick debounce - prevents accidental double-clicks only
-
-  async function scanChat() {
-    // Debounce rapid scan calls
-    const now = Date.now();
-    if (now - lastScanTimestamp < SCAN_DEBOUNCE_MS) {
-      debugLog('[Scan] Debounced - too soon after last scan');
-      return window.ChatBridge?._lastScanResult || [];
-    }
-    lastScanTimestamp = now;
-
-    debugLog('[Scan] Starting scan...');
-    try {
-      debugLog('=== SCAN START ===');
-      const pick = (typeof window.pickAdapter === 'function') ? window.pickAdapter : null;
-      const adapter = pick ? pick() : null;
-      debugLog('adapter detected:', adapter ? adapter.id : 'none');
-
-      // prefer container near the input/composer when available to avoid picking sidebars
-      let container = null;
-      try {
-        const inputEl = (adapter && typeof adapter.getInput === 'function') ? adapter.getInput() : (document.querySelector('textarea, [contenteditable="true"], input[type=text]'));
-        debugLog('input element found:', !!inputEl, inputEl ? inputEl.tagName : 'none');
-
-        if (inputEl) {
-          try {
-            if (typeof window.findChatContainerNearby === 'function') {
-              container = window.findChatContainerNearby(inputEl) || null;
-              debugLog('container from findChatContainerNearby:', !!container);
-            } else {
-              // fallback: climb parents searching for an element with multiple message-like children
-              let p = inputEl.parentElement; let found = null; let depth = 0;
-              while (p && depth < 10 && !found) {
-                try {
-                  const cnt = (p.querySelectorAll && p.querySelectorAll('p, .message, .chat-line, .message-text, .markdown, .prose, .result, .chat-bubble').length) || 0;
-                  // Require container to be reasonably wide (not a narrow sidebar)
-                  const rect = p.getBoundingClientRect();
-                  if (cnt >= 2 && rect.width > 400) found = p;
-                } catch (e) { debugLog('container climb error at depth', depth, e); }
-                p = p.parentElement; depth++;
-              }
-              container = found || null;
-              debugLog('container from parent climb:', !!container, 'depth:', depth);
-            }
-          } catch (e) {
-            debugLog('container detection error:', e);
-            container = null;
-          }
-        }
-      } catch (e) {
-        debugLog('input/container detection error:', e);
-        container = null;
-      }
-
-      // Fallback chain with error handling
-      if (!container) {
-        try {
-          container = (adapter && adapter.scrollContainer && adapter.scrollContainer()) || null;
-          debugLog('container from adapter.scrollContainer:', !!container);
-        } catch (e) {
-          debugLog('adapter.scrollContainer error:', e);
-        }
-      }
-
-      if (!container) {
-        container = document.querySelector('main') || document.body;
-        debugLog('container fallback to main/body:', container.tagName);
-      }
-
-      // Final validation - if chosen container is too narrow, try main or body
-      try {
-        const rect = container.getBoundingClientRect();
-        debugLog('container width:', rect.width + 'px');
-        if (rect.width < 400) {
-          debugLog('chosen container too narrow (' + rect.width + 'px), falling back to main/body');
-          container = document.querySelector('main') || document.body;
-        }
-      } catch (e) {
-        debugLog('container width check error:', e);
-      }
-
-      debugLog('chosen container', {
-        adapter: adapter && adapter.id,
-        container: container && (container.tagName + (container.id ? '#' + container.id : '') + ' ' + (container.className || '').toString().split(' ').slice(0, 2).join(' ')),
-        width: container && Math.round(container.getBoundingClientRect().width) + 'px'
-      });
-
-      try {
-        window.ChatBridge = window.ChatBridge || {};
-        window.ChatBridge._lastScan = {
-          chosenContainer: container && (container.tagName + (container.id ? '#' + container.id : '') + (container.className ? '.' + (container.className || '').toString().split(' ').filter(c => c).slice(0, 2).join('.') : '')),
-          adapterId: (adapter && adapter.id) || null,
-          timestamp: Date.now(),
-          nodesConsidered: 0,
-          containerEl: container,
-          containerWidth: container && Math.round(container.getBoundingClientRect().width),
-          errors: []
-        };
-      } catch (e) {
-        debugLog('_lastScan init error:', e);
-      }
-
-      // Scroll only if needed (skip for speed on modern AI chats)
-      if (!SKIP_SCROLL_ON_SCAN) {
-        try {
-          await scrollContainerToTop(container);
-          debugLog('scroll complete');
-        } catch (e) {
-          debugLog('scroll error:', e);
-          try {
-            if (window.ChatBridge && window.ChatBridge._lastScan) {
-              window.ChatBridge._lastScan.errors.push('scroll_failed: ' + (e.message || String(e)));
-            }
-          } catch (_) { }
-        }
-      } else {
-        debugLog('scroll skipped for speed');
-      }
-
-      // Quick stability check (very brief)
-      try {
-        await waitForDomStability(container);
-        debugLog('DOM stable');
-      } catch (e) {
-        debugLog('DOM stability wait error:', e);
-        try {
-          if (window.ChatBridge && window.ChatBridge._lastScan) {
-            window.ChatBridge._lastScan.errors.push('stability_timeout: ' + (e.message || String(e)));
-          }
-        } catch (_) { }
-      }
-
-      let raw = [];
-
-      // Try adapter.getMessages with error handling
-      try {
-        if (adapter && typeof adapter.getMessages === 'function') {
-          raw = adapter.getMessages() || [];
-          debugLog('adapter.getMessages returned:', raw.length, 'messages');
-          // enrich with attachments when source element present
-          try {
-            if (Array.isArray(raw)) {
-              for (const m of raw) {
-                try {
-                  if (m && m.el && !m.attachments) {
-                    const atts = extractAttachmentsFromElement(m.el);
-                    if (atts && atts.length) m.attachments = atts;
-                  }
-                } catch (e) { }
-              }
-            }
-          } catch (e) { debugLog('attachment enrichment error (adapter):', e); }
-        }
-      } catch (e) {
-        debugLog('adapter.getMessages error:', e);
-        try {
-          if (window.ChatBridge && window.ChatBridge._lastScan) {
-            window.ChatBridge._lastScan.errors.push('adapter_failed: ' + (e.message || String(e)));
-          }
-        } catch (_) { }
-      }
-
-      // Try AdapterGeneric fallback
-      if ((!raw || !raw.length) && typeof window.AdapterGeneric !== 'undefined' && typeof window.AdapterGeneric.getMessages === 'function') {
-        try {
-          raw = window.AdapterGeneric.getMessages() || [];
-          debugLog('AdapterGeneric.getMessages returned:', raw.length, 'messages');
-        } catch (e) {
-          debugLog('AdapterGeneric failed:', e);
-          try {
-            if (window.ChatBridge && window.ChatBridge._lastScan) {
-              window.ChatBridge._lastScan.errors.push('generic_adapter_failed: ' + (e.message || String(e)));
-            }
-          } catch (_) { }
-        }
-      }
-
-      // Last resort: manual node extraction
-      if (!raw || !raw.length) {
-        debugLog('falling back to manual node extraction');
-        const sel = '.message, .chat-line, .message-text, .markdown, .prose, p, li, div';
-        let nodes = [];
-        try {
-          nodes = Array.from((container || document).querySelectorAll(sel));
-          debugLog('querySelectorAll found:', nodes.length, 'nodes');
-        } catch (e) {
-          debugLog('querySelectorAll error, trying fallback selectors:', e);
-          try {
-            nodes = Array.from(document.querySelectorAll('p,div,li'));
-            debugLog('fallback querySelectorAll found:', nodes.length, 'nodes');
-          } catch (e2) {
-            debugLog('fallback querySelectorAll error:', e2);
-            nodes = [];
-          }
-        }
-
-        try {
-          nodes = nodes.filter(n => n && n.innerText && n.closest && !n.closest('[data-cb-ignore], #cb-host'));
-          debugLog('after filtering ignored:', nodes.length, 'nodes');
-          nodes = filterCandidateNodes(nodes);
-          debugLog('after filterCandidateNodes:', nodes.length, 'nodes');
-        } catch (e) {
-          debugLog('node filtering error:', e);
-          // Keep unfiltered nodes if filtering fails
-        }
-        try { if (window.ChatBridge && window.ChatBridge._lastScan) window.ChatBridge._lastScan.nodesConsidered = nodes.length; } catch (e) { }
-        // optionally highlight nodes for debug
-        try { if (CB_HIGHLIGHT_ENABLED || DEBUG) highlightNodesByElements(nodes); } catch (e) { debugLog('highlight error:', e); }
-
-        try {
-          raw = nodes.map(n => ({
-            text: extractTextWithFormatting(n),
-            role: inferRoleFromNode(n),
-            el: n,
-            attachments: extractAttachmentsFromElement(n)
-          }));
-          debugLog('mapped to', raw.length, 'raw messages');
-        } catch (e) {
-          debugLog('node mapping error:', e);
-          raw = [];
-        }
-      }
-
-      debugLog('raw messages before normalization:', raw.length);
-      try { if (window.ChatBridge && window.ChatBridge._lastScan) { window.ChatBridge._lastScan.messageCount = (raw && raw.length) || 0; } } catch (e) { }
-      try { if (window.ChatBridge && typeof window.ChatBridge._renderLastScan === 'function') window.ChatBridge._renderLastScan(); } catch (e) { }
-
-      const normalized = normalizeMessages(raw || []);
-      debugLog('=== SCAN COMPLETE ===', normalized.length, 'messages');
-
-      // Cache the result for debouncing
-      try {
-        window.ChatBridge = window.ChatBridge || {};
-        window.ChatBridge._lastScanResult = normalized;
-      } catch (e) { }
-
-      // CRITICAL: Also update the central _lastScanData store for all sections
-      try {
-        if (normalized.length > 0) {
-          const textContent = normalized.map(m => `${m.role}: ${m.text}`).join('\n\n');
-          window.ChatBridge._lastScanData = window.ChatBridge._lastScanData || {};
-          window.ChatBridge._lastScanData.messages = normalized;
-          window.ChatBridge._lastScanData.text = textContent;
-          window.ChatBridge._lastScanData.timestamp = Date.now();
-          window.ChatBridge._lastScanData.platform = location.hostname;
-          debugLog('[Scan] Updated _lastScanData with', normalized.length, 'messages');
-        }
-      } catch (e) { debugLog('[Scan] Failed to update _lastScanData:', e); }
-
-      // Persist last scanned messages and attachments into debug object for downstream tools (e.g., media extract)
-      try {
-        if (window.ChatBridge && window.ChatBridge._lastScan) {
-          window.ChatBridge._lastScan.messages = normalized;
-          const atts = [];
-          try { normalized.forEach(m => { if (Array.isArray(m.attachments)) atts.push(...m.attachments); }); } catch (_) { }
-          window.ChatBridge._lastScan.attachments = atts;
-        }
-      } catch (_) { }
-
-      // AUTOMATIC CONTENT EXTRACTION - Extract URLs, numbers, lists, code during scan
-      try {
-        if (typeof window.ChatBridge !== 'undefined' && typeof window.ChatBridge.extractContentFromMessages === 'function') {
-          const extracted = window.ChatBridge.extractContentFromMessages(normalized);
-          window.ChatBridge._lastScanData = window.ChatBridge._lastScanData || {};
-          window.ChatBridge._lastScanData.extracted = extracted;
-        }
-      } catch (_) { }
-
-      // AUTOMATIC IMAGE EXTRACTION AND SAVING - Run asynchronously in background for speed
-      // This is non-blocking so scanChat returns immediately
-      (async () => {
-        try {
-          debugLog('[ChatBridge] Background: Extracting images from scan results...');
-          if (typeof window.ChatBridge !== 'undefined' && typeof window.ChatBridge.extractImagesFromMessages === 'function') {
-            // Use the exposed functions for full image extraction
-            const images = await window.ChatBridge.extractImagesFromMessages(normalized);
-            if (images && images.length > 0) {
-              debugLog('[ChatBridge] Background: Saving', images.length, 'images to vault...');
-              await window.ChatBridge.saveImagesToVault(images);
-              // Update image count in _lastScanData
-              window.ChatBridge._lastScanData = window.ChatBridge._lastScanData || {};
-              window.ChatBridge._lastScanData.imageCount = images.length;
-              // Update the image count element if it exists
-              try {
-                const countEl = document.getElementById('cb-image-count');
-                if (countEl) {
-                  countEl.textContent = String(images.length);
-                }
-              } catch (_) { }
-              // Trigger refresh of Image Vault display if function exists
-              if (typeof window.ChatBridge.refreshImageVault === 'function') {
-                try { await window.ChatBridge.refreshImageVault(); } catch (_) { }
-              }
-              debugLog('[ChatBridge] Background: Image extraction complete:', images.length, 'images saved');
-            } else {
-              window.ChatBridge._lastScanData = window.ChatBridge._lastScanData || {};
-              window.ChatBridge._lastScanData.imageCount = 0;
-            }
-          } else {
-            // Fallback: count images from attachments only
-            const imageCount = normalized.reduce((acc, m) => {
-              if (Array.isArray(m.attachments)) {
-                acc += m.attachments.filter(a => a.type === 'image').length;
-              }
-              return acc;
-            }, 0);
-            window.ChatBridge._lastScanData = window.ChatBridge._lastScanData || {};
-            window.ChatBridge._lastScanData.imageCount = imageCount;
-          }
-        } catch (e) {
-          debugLog('[ChatBridge] Background image extraction failed:', e);
-        }
-      })();
-
-      // Log any errors that occurred during scan
-      debugLog('[Scan] Returning', normalized.length, 'messages');
-
-      // Log any errors that occurred
-      try {
-        if (window.ChatBridge && window.ChatBridge._lastScan && window.ChatBridge._lastScan.errors && window.ChatBridge._lastScan.errors.length) {
-          debugLog('Scan completed with errors:', window.ChatBridge._lastScan.errors);
-        }
-      } catch (e) { }
-
-      // Return array with metadata props for full backward compatibility
-      const resultObj = Object.assign([...normalized], {
-        conversation: normalized,
-        messages: normalized,
-        platform: (adapter && adapter.name) || (document.title || 'Chat'),
-        ts: Date.now(),
-        url: window.location.href
-      });
-
-      if (window.ChatBridge) window.ChatBridge._lastScanResult = resultObj;
-      return resultObj;
-    } catch (e) {
-      debugLog('=== SCAN FAILED ===', e);
-      console.error('[ChatBridge] Fatal scan error:', e);
-
-      // Store error for debugging
-      try {
-        if (window.ChatBridge && window.ChatBridge._lastScan) {
-          window.ChatBridge._lastScan.fatalError = e.message || String(e);
-          window.ChatBridge._lastScan.errors = window.ChatBridge._lastScan.errors || [];
-          window.ChatBridge._lastScan.errors.push('fatal: ' + (e.message || String(e)));
-        }
-      } catch (_) { }
-
-      return [];
-    }
-  }
+  const scanFeature = window.ChatBridgeContentScan.createFeature({
+    debugLog,
+    scanState: { lastScanTimestamp: 0 },
+    SCAN_DEBOUNCE_MS,
+    SKIP_SCROLL_ON_SCAN,
+    scrollContainerToTop,
+    waitForDomStability,
+    normalizeMessages,
+    extractAttachmentsFromElement,
+    filterCandidateNodes,
+    highlightNodesByElements,
+    extractTextWithFormatting,
+    inferRoleFromNode,
+    getDebugFlags: () => ({ CB_HIGHLIGHT_ENABLED, DEBUG })
+  });
+  const { scanChat } = scanFeature;
 
   async function saveConversation(conv) {
     try {
@@ -25863,104 +24803,110 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
 
       // Keyboard command handlers
       if (ui && ui.avatar && ui.panel) {
-        if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage && typeof chrome.runtime.onMessage.addListener === 'function') {
-          chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+        const registerKeyboardCommandListener = (attempt = 0) => {
+          if (keyboardCommandListenerRegistered) return;
+          const onMessage = getRuntimeMessageApi();
+          if (!onMessage) {
+            if (attempt < 12) {
+              setTimeout(() => registerKeyboardCommandListener(attempt + 1), 250);
+              return;
+            }
+            debugLog('[ChatBridge] runtime messaging unavailable after retries; keyboard command listener disabled for this page');
+            return;
+          }
+
+          keyboardCommandListenerRegistered = true;
+          onMessage.addListener((msg, sender, sendResponse) => {
             if (!msg || !msg.type) return;
 
             try {
-            if (msg.type === 'keyboard_command') {
-              const command = msg.command;
+              if (msg.type === 'keyboard_command') {
+                const command = msg.command;
 
-              if (command === 'quick-scan') {
-                // Ctrl+Shift+S: Open sidebar and trigger scan
-                if (ui.panel.style.display === 'none') {
-                  ui.avatar.click(); // Open sidebar
-                }
-                setTimeout(() => {
-                  const shadow = ui.panel.getRootNode();
-                  const btnScan = shadow.querySelector('#btnScan');
-                  if (btnScan) btnScan.click();
-                }, 100);
-                sendResponse({ ok: true });
-              }
-              else if (command === 'toggle-sidebar') {
-                // Ctrl+Shift+H: Toggle sidebar visibility
-                ui.avatar.click();
-                sendResponse({ ok: true });
-              }
-              else if (command === 'insight-finder') {
-                // Ctrl+Shift+F: Open Insight Finder modal
-                (async () => {
-                  try {
-                    const msgs = await scanChat();
-                    if (!msgs || msgs.length === 0) {
-                      toast('No messages found in current chat');
-                      sendResponse({ ok: false });
-                      return;
-                    }
-                    const insights = extractInsights(msgs);
-                    const total = Object.values(insights).reduce((sum, arr) => sum + arr.length, 0);
-                    if (total === 0) {
-                      toast('No insights found in this conversation');
-                      sendResponse({ ok: false });
-                      return;
-                    }
-                    showInsightFinderModal(insights, msgs);
-                    toast(`Found ${total} insights`);
-                    sendResponse({ ok: true });
-                  } catch (e) {
-                    debugLog('Insight Finder keyboard error', e);
-                    sendResponse({ ok: false });
+                if (command === 'quick-scan') {
+                  if (ui.panel.style.display === 'none') {
+                    ui.avatar.click();
                   }
-                })();
-                return true; // Will respond asynchronously
-              }
-              else if (command === 'close-view') {
-                // Escape: Close internal views or sidebar
-                const shadow = ui.panel.getRootNode();
-                const openView = shadow.querySelector('.cb-internal-view.cb-view-active');
-                if (openView) {
-                  // Close internal view
-                  const closeBtn = openView.querySelector('.cb-view-close');
-                  if (closeBtn) closeBtn.click();
-                } else if (ui.panel.style.display !== 'none') {
-                  // Close sidebar
-                  ui.avatar.click();
-                }
-                sendResponse({ ok: true });
-              }
-              else if (command === 'insert-to-chat') {
-                // Ctrl+Enter: Insert conversation to chat input
-                const shadow = ui.panel.getRootNode();
-                const insertBtns = Array.from(shadow.querySelectorAll('[id^="btnInsert"]'));
-                const visibleBtn = insertBtns.find(btn => {
-                  const view = btn.closest('.cb-internal-view');
-                  return view && view.classList.contains('cb-view-active');
-                });
-
-                if (visibleBtn) {
-                  visibleBtn.click();
+                  setTimeout(() => {
+                    const shadow = ui.panel.getRootNode();
+                    const btnScan = shadow.querySelector('#btnScan');
+                    if (btnScan) btnScan.click();
+                  }, 100);
                   sendResponse({ ok: true });
-                } else {
-                  // No insert button visible - show toast
-                  try {
-                    const t = document.createElement('div');
-                    t.setAttribute('data-cb-ignore', 'true');
-                    t.textContent = 'No insert action available';
-                    t.style.cssText = 'position:fixed;bottom:18px;left:18px;background:rgba(6,20,32,0.9);color:#dff1ff;padding:8px 10px;border-radius:8px;z-index:2147483647;';
-                    document.body.appendChild(t);
-                    setTimeout(() => t.remove(), 2400);
-                  } catch (e) { }
-                  sendResponse({ ok: false, error: 'no_insert_button' });
+                }
+                else if (command === 'toggle-sidebar') {
+                  ui.avatar.click();
+                  sendResponse({ ok: true });
+                }
+                else if (command === 'insight-finder') {
+                  (async () => {
+                    try {
+                      const msgs = await scanChat();
+                      if (!msgs || msgs.length === 0) {
+                        toast('No messages found in current chat');
+                        sendResponse({ ok: false });
+                        return;
+                      }
+                      const insights = extractInsights(msgs);
+                      const total = Object.values(insights).reduce((sum, arr) => sum + arr.length, 0);
+                      if (total === 0) {
+                        toast('No insights found in this conversation');
+                        sendResponse({ ok: false });
+                        return;
+                      }
+                      showInsightFinderModal(insights, msgs);
+                      toast(`Found ${total} insights`);
+                      sendResponse({ ok: true });
+                    } catch (e) {
+                      debugLog('Insight Finder keyboard error', e);
+                      sendResponse({ ok: false });
+                    }
+                  })();
+                  return true;
+                }
+                else if (command === 'close-view') {
+                  const shadow = ui.panel.getRootNode();
+                  const openView = shadow.querySelector('.cb-internal-view.cb-view-active');
+                  if (openView) {
+                    const closeBtn = openView.querySelector('.cb-view-close');
+                    if (closeBtn) closeBtn.click();
+                  } else if (ui.panel.style.display !== 'none') {
+                    ui.avatar.click();
+                  }
+                  sendResponse({ ok: true });
+                }
+                else if (command === 'insert-to-chat') {
+                  const shadow = ui.panel.getRootNode();
+                  const insertBtns = Array.from(shadow.querySelectorAll('[id^="btnInsert"]'));
+                  const visibleBtn = insertBtns.find(btn => {
+                    const view = btn.closest('.cb-internal-view');
+                    return view && view.classList.contains('cb-view-active');
+                  });
+
+                  if (visibleBtn) {
+                    visibleBtn.click();
+                    sendResponse({ ok: true });
+                  } else {
+                    try {
+                      const t = document.createElement('div');
+                      t.setAttribute('data-cb-ignore', 'true');
+                      t.textContent = 'No insert action available';
+                      t.style.cssText = 'position:fixed;bottom:18px;left:18px;background:rgba(6,20,32,0.9);color:#dff1ff;padding:8px 10px;border-radius:8px;z-index:2147483647;';
+                      document.body.appendChild(t);
+                      setTimeout(() => t.remove(), 2400);
+                    } catch (e) { }
+                    sendResponse({ ok: false, error: 'no_insert_button' });
+                  }
                 }
               }
+            } catch (e) {
+              debugLog('keyboard command error', e);
+              sendResponse({ ok: false, error: String(e) });
             }
-          } catch (e) {
-            debugLog('keyboard command error', e);
-            sendResponse({ ok: false, error: String(e) });
-          }
           });
-        }
+        };
+
+        registerKeyboardCommandListener();
         // Note: restore_to_chat listener is registered earlier at the top level
         // to ensure it's ready when the tab opens
 

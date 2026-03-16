@@ -18,6 +18,7 @@
     return typeof chrome !== 'undefined'
       && !!chrome.storage
       && !!chrome.storage.local
+      && !!(chrome.runtime && chrome.runtime.id)
       && typeof chrome.storage.local.get === 'function'
       && typeof chrome.storage.local.set === 'function';
   }
@@ -25,7 +26,18 @@
   function hasChromeRuntimeMessaging() {
     return typeof chrome !== 'undefined'
       && !!chrome.runtime
+      && !!chrome.runtime.id
       && typeof chrome.runtime.sendMessage === 'function';
+  }
+
+  async function waitForExtensionApi(checkFn, retries = 8, delayMs = 150) {
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      if (checkFn()) return true;
+      if (attempt < retries) {
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+      }
+    }
+    return false;
   }
 
   // ─── DriftProfile: Per-platform statistics ──────────────────────────────────
@@ -56,11 +68,12 @@
     /** Load profiles from chrome.storage */
     async load() {
       try {
-        if (!hasChromeStorage()) {
+        const storageReady = await waitForExtensionApi(hasChromeStorage, 10, 200);
+        if (!storageReady) {
           this.profiles = {};
           this.driftLog = [];
           this._loaded = true;
-          console.warn('[ChatBridge] DriftProfileManager: chrome.storage unavailable; using in-memory defaults');
+          console.debug('[ChatBridge] DriftProfileManager: extension storage unavailable; using in-memory defaults');
           return;
         }
         const data = await new Promise((resolve) => {

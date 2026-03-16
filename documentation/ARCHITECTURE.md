@@ -64,6 +64,10 @@ ChatBridge follows a Chrome Extension Manifest V3 architecture with clear separa
 **Supporting Modules:**
 - `content/bootstrap.js`: Early injection guard, site approval, continue-with auto-insert bootstrap
 - `utils/platformRegistry.js`: Shared platform metadata used by popup and content script
+- `content/features/scan.js`: Scan orchestration and extraction pipeline
+- `content/features/restore.js`: Restore flow, queued restores, drift repair loop
+- `content/features/sidebar.js`: Sidebar open/close interactions and keyboard bindings
+- `content/features/vault.js`: Image Vault UI rendering and interactions
 
 ### 2. Background Script (`background.js`)
 

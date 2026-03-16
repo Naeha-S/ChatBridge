@@ -23,6 +23,20 @@ const StorageManager = (() => {
   let storageAPI = null;
   let initPromise = null;
 
+  function hasExtensionStorageLocal() {
+    try {
+      return typeof chrome !== 'undefined'
+        && !!chrome.runtime
+        && !!chrome.runtime.id
+        && !!chrome.storage
+        && !!chrome.storage.local
+        && typeof chrome.storage.local.get === 'function'
+        && typeof chrome.storage.local.set === 'function';
+    } catch (_) {
+      return false;
+    }
+  }
+
   function initStorage() {
     if (initPromise) return initPromise;
 
@@ -30,14 +44,8 @@ const StorageManager = (() => {
       let retries = LIMITS.MAX_RETRIES;
       
       function check() {
-        if (typeof chrome !== 'undefined' && chrome?.storage?.local) {
+        if (hasExtensionStorageLocal()) {
           storageAPI = chrome.storage.local;
-          resolve(storageAPI);
-          return;
-        }
-
-        if (window.chrome?.storage?.local) {
-          storageAPI = window.chrome.storage.local;
           resolve(storageAPI);
           return;
         }

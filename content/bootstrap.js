@@ -24,6 +24,26 @@
     return registry ? registry.isApprovedHost(hostname) : hostname === 'localhost';
   }
 
+  function hasExtensionRuntime() {
+    try {
+      return typeof chrome !== 'undefined' && !!chrome.runtime && !!chrome.runtime.id;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function hasExtensionStorageLocal() {
+    try {
+      return hasExtensionRuntime()
+        && !!chrome.storage
+        && !!chrome.storage.local
+        && typeof chrome.storage.local.get === 'function'
+        && typeof chrome.storage.local.remove === 'function';
+    } catch (_) {
+      return false;
+    }
+  }
+
   function escapeHtml(str) {
     if (str == null) return '';
     return String(str)
@@ -48,7 +68,7 @@
     let continueData = null;
 
     try {
-      if (chrome.storage && chrome.storage.local) {
+      if (hasExtensionStorageLocal()) {
         continueData = await new Promise((resolve) => {
           chrome.storage.local.get(['chatbridge:continue_context'], (data) => {
             resolve(data['chatbridge:continue_context'] || null);
@@ -69,7 +89,11 @@
 
   function clearContinueContext() {
     try { localStorage.removeItem('chatbridge:continue_context'); } catch (_) { }
-    try { chrome.storage.local.remove(['chatbridge:continue_context']); } catch (_) { }
+    try {
+      if (hasExtensionStorageLocal()) {
+        chrome.storage.local.remove(['chatbridge:continue_context']);
+      }
+    } catch (_) { }
   }
 
   function findContinueInsertInput() {
@@ -144,6 +168,8 @@
     ensureSingleInjection,
     initGlobalState,
     shouldInjectOnCurrentSite,
+    hasExtensionRuntime,
+    hasExtensionStorageLocal,
     escapeHtml,
     isSafeUrl,
     checkContinueWithAutoInsert
