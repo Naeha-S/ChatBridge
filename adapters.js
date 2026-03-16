@@ -996,8 +996,150 @@ const SiteAdapters = [
     detect: () => location.hostname.includes("mistral.ai"),
     scrollContainer: () => document.querySelector("main") || document.scrollingElement,
     getMessages: () => {
-      const nodes = Array.from(document.querySelectorAll(".chat-message, .assistant, .user, .message")).filter(n => n && n.innerText && n.innerText.trim().length > 1);
-      return nodes.map(n => ({ role: n.className.toLowerCase().includes("user") ? "user" : "assistant", text: n.innerText.trim() }));
+      const normalize = (value) => String(value || '').replace(/\u00A0/g, ' ').replace(/\s+/g, ' ').trim();
+      const getText = (el) => {
+        try {
+          if (typeof window !== 'undefined' && typeof window.extractTextWithFormatting === 'function') {
+            return normalize(window.extractTextWithFormatting(el));
+          }
+        } catch (_) { }
+        return normalize(el && el.innerText);
+      };
+      const isVisible = (el) => {
+        try {
+          if (!el || !el.getBoundingClientRect) return false;
+          if (el.closest && el.closest('#cb-host, [data-cb-ignore="true"], nav, header, aside, [role="navigation"]')) return false;
+          const style = window.getComputedStyle(el);
+          if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') return false;
+          const rect = el.getBoundingClientRect();
+          return rect.width > 0 && rect.height > 0;
+        } catch (_) { return false; }
+      };
+      const isMistralUiText = (text) => {
+        const t = normalize(text).toLowerCase();
+        if (!t) return true;
+        if (/^sign in sign up$/i.test(t)) return true;
+        if (/^think tools le chat can make mistakes\. check answers\. learn more$/i.test(t)) return true;
+        if (/^le chat can make mistakes\. check answers\. learn more$/i.test(t)) return true;
+        if (/^think tools$/i.test(t)) return true;
+        if (/^learn more$/i.test(t)) return true;
+        return false;
+      };
+      const cleanMistralText = (text) => {
+        let out = String(text || '');
+        out = out.replace(/^sign in\s+sign up\s*/i, '');
+        out = out.replace(/\s*think tools\s+le chat can make mistakes\. check answers\. learn more\s*$/i, '');
+        out = out.replace(/\s*le chat can make mistakes\. check answers\. learn more\s*$/i, '');
+        return normalize(out);
+      };
+      const inferRole = (el, text) => {
+        const cls = ((el && el.className) || '').toString().toLowerCase();
+        const attrs = `${(el && el.getAttribute && (el.getAttribute('aria-label') || '')) || ''} ${(el && el.getAttribute && (el.getAttribute('data-testid') || '')) || ''}`.toLowerCase();
+        const preview = normalize(text).toLowerCase();
+        if (/\buser\b|\byou\b|\bprompt\b|\brequest\b/.test(cls) || /\buser\b|\byou\b|\bprompt\b|\brequest\b/.test(attrs)) return 'user';
+        if (/assistant|answer|response|bot|model/.test(cls) || /assistant|answer|response|bot|model/.test(attrs)) return 'assistant';
+        if (preview.length <= 240 && !/[.!?]\s/.test(preview)) return 'user';
+        return 'assistant';
+      };
+      const splitCollapsedTranscript = (text) => {
+        const raw = cleanMistralText(text);
+        if (!raw) return [];
+        const timeRegex = /\b\d{1,2}:\d{2}\s?(?:am|pm)\b/ig;
+        const matches = Array.from(raw.matchAll(timeRegex));
+        if (!matches.length) return [];
+        const parts = [];
+        const firstIndex = matches[0].index;
+        const lead = normalize(raw.slice(0, firstIndex));
+        if (lead && !isMistralUiText(lead)) {
+          parts.push({ role: 'user', text: lead });
+        }
+        for (let i = 0; i < matches.length; i++) {
+          const start = matches[i].index + matches[i][0].length;
+          const end = i + 1 < matches.length ? matches[i + 1].index : raw.length;
+          let chunk = normalize(raw.slice(start, end));
+          chunk = cleanMistralText(chunk);
+          if (!chunk || isMistralUiText(chunk)) continue;
+          parts.push({ role: i === 0 ? 'assistant' : 'assistant', text: chunk });
+        }
+        return parts.filter((part) => part.text && !isMistralUiText(part.text));
+      };
+
+      const container = findChatContainerNearby(document.querySelector('textarea, [contenteditable="true"], [role="textbox"]')) || document.querySelector('main') || document.body;
+      const selectors = [
+        '[data-testid*="message"]',
+        '[data-testid*="turn"]',
+        '[role="article"]',
+        'article',
+        '[class*="message"]',
+        '[class*="turn"]',
+        '[class*="answer"]',
+        '[class*="response"]',
+        '[class*="assistant"]',
+        '[class*="user"]',
+        '[class*="prompt"]'
+      ];
+      let nodes = [];
+      try {
+        nodes = Array.from(container.querySelectorAll(selectors.join(','))).filter(isVisible);
+      } catch (_) {
+        nodes = [];
+      }
+
+      nodes = nodes.filter((node, index, arr) => {
+        if (!node) return false;
+        const ownText = getText(node);
+        return !arr.some((other, otherIndex) => {
+          if (!other || other === node || otherIndex === index) return false;
+          try {
+            if (!node.contains(other)) return false;
+            const otherText = getText(other);
+            return otherText.length > 10 && otherText.length < ownText.length;
+          } catch (_) { return false; }
+        });
+      });
+
+      let messages = [];
+      for (const node of nodes) {
+        const rawText = getText(node);
+        const cleanedText = cleanMistralText(rawText);
+        if (!cleanedText || isMistralUiText(cleanedText)) continue;
+
+        const transcriptParts = splitCollapsedTranscript(cleanedText);
+        if (transcriptParts.length > 1) {
+          messages.push(...transcriptParts.map((part) => ({ role: part.role, text: part.text, el: node })));
+          continue;
+        }
+
+        const role = inferRole(node, cleanedText);
+        messages.push({ role, text: cleanedText, el: node });
+      }
+
+      if (!messages.length || messages.length === 1) {
+        const transcriptFallback = splitCollapsedTranscript(getText(container));
+        if (transcriptFallback.length > messages.length) {
+          messages = transcriptFallback.map((part) => ({ role: part.role, text: part.text, el: container }));
+        }
+      }
+
+      const seen = new Set();
+      const filtered = messages.filter((msg) => {
+        const text = cleanMistralText(msg && msg.text);
+        if (!text || text.length < 2) return false;
+        if (isMistralUiText(text)) return false;
+        const key = `${msg.role}|${text}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        msg.text = text;
+        return true;
+      });
+
+      adapterDebug('adapter:mistral', {
+        nodes: nodes.length,
+        filtered: filtered.length,
+        sample: filtered.slice(0, 6).map((m) => `${m.role}: ${m.text.slice(0, 80)}`)
+      });
+
+      return filtered;
     },
     getInput: () => document.querySelector("textarea, [contenteditable='true']")
   },
