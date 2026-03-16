@@ -1155,10 +1155,48 @@ const SiteAdapters = [
     detect: () => location.hostname.includes("x.ai") || location.hostname.includes("grok.ai") || location.hostname.includes("grok.com"),
     scrollContainer: () => document.scrollingElement,
     getMessages: () => {
-      const nodes = Array.from(document.querySelectorAll(".reply, .message, .assistant")).filter(n => n && n.innerText && n.innerText.trim().length > 1);
-      return nodes.map(n => ({ role: (n.className || "").toLowerCase().includes("user") ? "user" : "assistant", text: n.innerText.trim() }));
+      const normalize = (v) => String(v || '').replace(/\s+/g, ' ').trim();
+      const isGrokUiText = (text) => {
+        const t = normalize(text).toLowerCase();
+        if (!t || t.length > 500) return false;
+        if (/(sign in|sign up|new chat|import|settings|appearance)/.test(t)) return true;
+        return false;
+      };
+      const nodes = Array.from(document.querySelectorAll("[role='main'] [class*='message'], [role='main'] [class*='turn'], [role='main'] article")).filter(n => {
+        if (!n || !n.innerText) return false;
+        const text = n.innerText.trim();
+        if (text.length < 2) return false;
+        if (isGrokUiText(text)) return false;
+        return true;
+      });
+      return nodes.map(n => ({
+        role: (n.className || "").toLowerCase().includes("user") ? "user" : "assistant",
+        text: normalize(n.innerText),
+        el: n
+      })).filter((m, i, arr) => {
+        if (i > 0 && arr[i - 1].text === m.text) return false;
+        return true;
+      });
     },
-    getInput: () => document.querySelector("textarea, input[type='text']")
+    getInput: () => {
+      if (document.activeElement && (document.activeElement.tagName === 'TEXTAREA' || document.activeElement.getAttribute('contenteditable') === 'true')) {
+        return document.activeElement;
+      }
+      const main = document.querySelector("[role='main']");
+      if (main) {
+        const ta = main.querySelector("textarea[placeholder*='mess' i], textarea[placeholder*='ask' i], textarea[placeholder*='prompt' i]");
+        if (ta) return ta;
+      }
+      const candidates = Array.from(document.querySelectorAll("textarea, [contenteditable='true']")).filter(el => {
+        try {
+          const rect = el.getBoundingClientRect();
+          if (rect.height < 20 || rect.width < 100) return false;
+          if (!el.closest("[role='navigation'], nav, aside, [class*='sidebar']")) return true;
+        } catch (_) { }
+        return false;
+      });
+      return candidates[0] || document.querySelector("textarea, [contenteditable='true']");
+    }
   },
   {
     id: "copilot",
@@ -1331,10 +1369,84 @@ const SiteAdapters = [
     detect: () => location.hostname.includes("deepseek") || location.hostname.includes("deepseek.ai"),
     scrollContainer: () => document.scrollingElement,
     getMessages: () => {
-      const nodes = Array.from(document.querySelectorAll(".message-text, .response")).filter(n => n && n.innerText && n.innerText.trim().length);
-      return nodes.map(n => ({ role: (n.className || "").toLowerCase().includes("user") ? "user" : "assistant", text: n.innerText.trim() }));
+      const normalize = (v) => String(v || '').replace(/\s+/g, ' ').trim();
+      const isDeepSeekUiText = (text) => {
+        const t = normalize(text).toLowerCase();
+        if (!t || t.length > 300) return false;
+        if (/(^new chat$|^today$|^yesterday$|^[a-z]+ \d+|patent research|sign in|sign up|settings)/.test(t)) return true;
+        if (t.length <= 50 && /(read \d+ web|web pages|auto|for reference)/.test(t)) return true;
+        return false;
+      };
+      const isLikelySidebarContainer = (el) => {
+        try {
+          if (!el || !el.closest) return false;
+          return !!el.closest('aside, nav, [class*="sidebar"], [class*="nav"], [role="navigation"], header, [class*="item-wrapper"]');
+        } catch (_) { return false; }
+      };
+      let messages = [];
+      try {
+        const userMsgs = Array.from(document.querySelectorAll('[data-testid*="user"], [class*="user-message"], .message[data-role="user"]'));
+        const assistantMsgs = Array.from(document.querySelectorAll('[data-testid*="assistant"], [class*="assistant-message"], .message[data-role="assistant"]'));
+        userMsgs.forEach(el => {
+          if (isLikelySidebarContainer(el)) return;
+          const text = normalize(el.innerText);
+          if (text && !isDeepSeekUiText(text)) {
+            messages.push({ role: 'user', text, el });
+          }
+        });
+        assistantMsgs.forEach(el => {
+          if (isLikelySidebarContainer(el)) return;
+          const text = normalize(el.innerText);
+          if (text && !isDeepSeekUiText(text)) {
+            messages.push({ role: 'assistant', text, el });
+          }
+        });
+      } catch (_) { }
+      if (messages.length === 0) {
+        try {
+          const allMsgs = Array.from(document.querySelectorAll('.message, [class*="message-item"], [class*="chat-item"]'));
+          allMsgs.forEach(el => {
+            if (isLikelySidebarContainer(el)) return;
+            const text = normalize(el.innerText);
+            if (text && text.length > 10 && !isDeepSeekUiText(text)) {
+              const role = (el.className || "").toLowerCase().includes("user") ? "user" : "assistant";
+              messages.push({ role, text, el });
+            }
+          });
+        } catch (_) { }
+      }
+      if (messages.length > 0) {
+        messages.sort((a, b) => {
+          try { return a.el.getBoundingClientRect().top - b.el.getBoundingClientRect().top; } catch (_) { return 0; }
+        });
+      }
+      const seen = new Set();
+      return messages.filter(m => {
+        const key = `${m.role}|${m.text.substring(0, 100)}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
     },
-    getInput: () => document.querySelector("textarea, input[type='text']")
+    getInput: () => {
+      if (document.activeElement && (document.activeElement.tagName === 'TEXTAREA' || (document.activeElement.getAttribute && document.activeElement.getAttribute('contenteditable') === 'true'))) {
+        return document.activeElement;
+      }
+      const main = document.querySelector('[role="main"], main, .chat');
+      if (main) {
+        const ta = main.querySelector("textarea[placeholder*='mess' i], textarea[placeholder*='ask' i], input[placeholder*='mess' i]");
+        if (ta) return ta;
+      }
+      const candidates = Array.from(document.querySelectorAll('textarea, input[type="text"]')).filter(el => {
+        try {
+          const rect = el.getBoundingClientRect();
+          if (rect.height < 20 || rect.width < 100) return false;
+          if (!el.closest('[role="navigation"], nav, aside, [class*="sidebar"]')) return true;
+        } catch (_) { }
+        return false;
+      });
+      return candidates[0] || document.querySelector('textarea, input[type="text"]');
+    }
   },
   {
     id: "metaai",
