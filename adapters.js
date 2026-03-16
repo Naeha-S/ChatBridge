@@ -1030,8 +1030,150 @@ const SiteAdapters = [
     detect: () => location.hostname.includes("bing.com") || location.hostname.includes("copilot.microsoft.com"),
     scrollContainer: () => document.querySelector("main") || document.scrollingElement,
     getMessages: () => {
-      const nodes = Array.from(document.querySelectorAll(".conversation, .answer, .bot-message, .user-message")).filter(n => n && n.innerText && n.innerText.trim().length > 1);
-      return nodes.map(n => ({ role: (n.className || "").toLowerCase().includes("user") ? "user" : "assistant", text: n.innerText.trim() }));
+      const normalize = (value) => String(value || '').replace(/\u00A0/g, ' ').replace(/\s+/g, ' ').trim();
+      const getText = (el) => {
+        try {
+          if (typeof window !== 'undefined' && typeof window.extractTextWithFormatting === 'function') {
+            return normalize(window.extractTextWithFormatting(el));
+          }
+        } catch (_) { }
+        return normalize(el && el.innerText);
+      };
+      const isVisible = (el) => {
+        try {
+          if (!el || !el.getBoundingClientRect) return false;
+          if (el.closest && el.closest('#cb-host, [data-cb-ignore="true"], nav, header, aside, [role="navigation"]')) return false;
+          const style = window.getComputedStyle(el);
+          if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') return false;
+          const rect = el.getBoundingClientRect();
+          return rect.width > 0 && rect.height > 0;
+        } catch (_) { return false; }
+      };
+      const isCopilotUiText = (text) => {
+        const t = normalize(text).toLowerCase();
+        if (!t) return true;
+        if (t.length <= 220 && /^(open sidebar|go to copilot home page|new chat|discover|imagine|labs|library|dismiss|message copilot)$/i.test(t)) return true;
+        if (t.length <= 600 && /(quick response|real talk|think deeper|study and learn|actions|search)/.test(t) && /(message copilot|attach files|connect apps|copilot)/.test(t)) return true;
+        if (/^show all smart$/i.test(t)) return true;
+        if (t.startsWith('{"lng":"en-us","resources":')) return true;
+        if (t.includes('server.html.title":"microsoft copilot: your ai companion')) return true;
+        if (t.includes('sidebar.actions.newchatv2') || t.includes('composer.chatmodes.reasoning.title')) return true;
+        if (/^sources?$/i.test(t)) return true;
+        return false;
+      };
+      const stripRoleLabel = (text, role) => {
+        let out = String(text || '').trim();
+        out = out.replace(/^(today|yesterday|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\s+/i, '');
+        if (role === 'user') out = out.replace(/^you said\s*/i, '');
+        if (role === 'assistant') out = out.replace(/^copilot said\s*/i, '');
+        return out.trim();
+      };
+      const splitTranscript = (text) => {
+        const raw = String(text || '').trim();
+        const labelRegex = /(?:^|\s)(today|yesterday|monday|tuesday|wednesday|thursday|friday|saturday|sunday)?\s*(you said|copilot said)\s/gi;
+        const matches = [];
+        let match;
+        while ((match = labelRegex.exec(raw)) !== null) {
+          matches.push({ index: match.index + (match[0].startsWith(' ') ? 1 : 0), role: /you said/i.test(match[2]) ? 'user' : 'assistant' });
+        }
+        if (!matches.length) return [];
+        const parts = [];
+        for (let i = 0; i < matches.length; i++) {
+          const start = matches[i].index;
+          const end = i + 1 < matches.length ? matches[i + 1].index : raw.length;
+          const chunk = raw.slice(start, end).trim();
+          const role = matches[i].role;
+          const cleaned = stripRoleLabel(chunk, role);
+          if (!cleaned || isCopilotUiText(cleaned)) continue;
+          parts.push({ role, text: cleaned });
+        }
+        return parts;
+      };
+      const inferRole = (el, text) => {
+        const cls = ((el && el.className) || '').toString().toLowerCase();
+        const attrs = `${(el && el.getAttribute && (el.getAttribute('aria-label') || '')) || ''} ${(el && el.getAttribute && (el.getAttribute('data-testid') || '')) || ''}`.toLowerCase();
+        const preview = normalize(text).toLowerCase();
+        if (/\byou said\b/.test(preview)) return 'user';
+        if (/\bcopilot said\b/.test(preview)) return 'assistant';
+        if (/user|request|prompt|human|you/.test(cls) || /user|request|prompt|human|you/.test(attrs)) return 'user';
+        if (/assistant|copilot|bot|response|answer|agent/.test(cls) || /assistant|copilot|bot|response|answer|agent/.test(attrs)) return 'assistant';
+        return 'assistant';
+      };
+
+      const container = findChatContainerNearby(document.querySelector('textarea, [contenteditable="true"], [role="textbox"]')) || document.querySelector('main') || document.body;
+      const selectors = [
+        '[data-testid*="message"]',
+        '[data-testid*="turn"]',
+        '[data-content*="message"]',
+        '[data-content*="turn"]',
+        '[role="article"]',
+        'article',
+        '[class*="message"]',
+        '[class*="turn"]',
+        '[class*="response"]',
+        '[class*="answer"]',
+        '[class*="request"]'
+      ];
+      let nodes = [];
+      try {
+        nodes = Array.from(container.querySelectorAll(selectors.join(','))).filter(isVisible);
+      } catch (_) {
+        nodes = [];
+      }
+
+      nodes = nodes.filter((node, index, arr) => {
+        if (!node) return false;
+        return !arr.some((other, otherIndex) => {
+          if (!other || other === node || otherIndex === index) return false;
+          try {
+            if (!node.contains(other)) return false;
+            return getText(other).length > 24 && getText(other).length < getText(node).length;
+          } catch (_) { return false; }
+        });
+      });
+
+      let messages = [];
+      for (const node of nodes) {
+        const rawText = getText(node);
+        if (!rawText || isCopilotUiText(rawText)) continue;
+
+        const transcriptParts = splitTranscript(rawText);
+        if (transcriptParts.length > 1) {
+          messages.push(...transcriptParts.map((part) => ({ role: part.role, text: part.text, el: node })));
+          continue;
+        }
+
+        const role = inferRole(node, rawText);
+        const cleaned = stripRoleLabel(rawText, role);
+        if (!cleaned || isCopilotUiText(cleaned)) continue;
+        messages.push({ role, text: cleaned, el: node });
+      }
+
+      if (!messages.length) {
+        const transcriptFallback = splitTranscript(getText(container));
+        if (transcriptFallback.length) {
+          messages = transcriptFallback.map((part) => ({ role: part.role, text: part.text, el: container }));
+        }
+      }
+
+      const seen = new Set();
+      const filtered = messages.filter((msg) => {
+        const text = normalize(msg && msg.text);
+        if (!text || text.length < 3) return false;
+        if (isCopilotUiText(text)) return false;
+        const key = `${msg.role}|${text}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+
+      adapterDebug('adapter:copilot', {
+        nodes: nodes.length,
+        filtered: filtered.length,
+        sample: filtered.slice(0, 6).map((m) => `${m.role}: ${m.text.slice(0, 80)}`)
+      });
+
+      return filtered;
     },
     getInput: () => document.querySelector("textarea, [contenteditable='true']")
   },
