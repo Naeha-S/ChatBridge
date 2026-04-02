@@ -1,5 +1,9 @@
 ﻿// background.js
 
+if (typeof globalThis.browser === 'undefined' && typeof globalThis.chrome !== 'undefined') {
+  try { globalThis.browser = globalThis.chrome; } catch (e) { }
+}
+
 // Note: Service worker modules don't support importScripts.
 // Security, RAG, and MCP features are available in content scripts instead.
 

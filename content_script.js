@@ -1,5 +1,8 @@
 ﻿// wrap everything in an IIFE and exit early if already injected to avoid redeclaration
 (function () {
+  if (typeof globalThis.browser === 'undefined' && typeof globalThis.chrome !== 'undefined') {
+    try { globalThis.browser = globalThis.chrome; } catch (e) { }
+  }
   'use strict';
   const bootstrap = window.ChatBridgeContentBootstrap;
   if (!bootstrap || !bootstrap.ensureSingleInjection()) return;
@@ -14296,7 +14299,9 @@ Respond with JSON only:
         } catch (e) { }
 
         const chatName = preview || conv.name || 'Untitled Chat';
-        const site = conv.platform || conv.host || (conv.url ? new URL(conv.url).hostname : 'Unknown');
+        const site = conv.platform || conv.host || (() => {
+          try { return conv.url ? new URL(conv.url).hostname : 'Unknown'; } catch (_) { return 'Unknown'; }
+        })();
         const count = conv.conversation?.length || 0;
 
         checkbox.innerHTML = `<div style="flex:1;"><div style="font-weight:600;font-size:12px;margin-bottom:4px;">${chatName}</div><div style="font-size:11px;opacity:0.7;">📍 ${site} • 💬 ${count} messages</div></div>`;
@@ -14308,17 +14313,40 @@ Respond with JSON only:
       const mergeBtn = document.createElement('button');
       mergeBtn.className = 'cb-btn cb-btn-primary';
       mergeBtn.textContent = 'Merge Selected';
-      mergeBtn.style.cssText = 'margin:12px;';
+      mergeBtn.style.cssText = 'flex:1;padding:12px;margin:0;';
+
+      const mergeAiBtn = document.createElement('button');
+      mergeAiBtn.className = 'cb-btn';
+      mergeAiBtn.textContent = 'Merge with AI';
+      mergeAiBtn.style.cssText = 'flex:1;padding:12px;margin:0;';
+
+      const buttonRow = document.createElement('div');
+      buttonRow.style.cssText = 'display:flex;gap:12px;margin:12px;';
+      buttonRow.appendChild(mergeBtn);
+      buttonRow.appendChild(mergeAiBtn);
+      insightsContent.appendChild(buttonRow);
+
+      async function getSelectedConversations() {
+        const selectedConvs = convs.filter(c => selected.has(c.ts));
+        if (selectedConvs.length < 2) {
+          toast('Select at least 2 conversations');
+          return null;
+        }
+        return selectedConvs.sort((a, b) => {
+          const aTs = typeof a.ts === 'number' ? a.ts : parseInt(a.ts, 10) || 0;
+          const bTs = typeof b.ts === 'number' ? b.ts : parseInt(b.ts, 10) || 0;
+          return aTs - bTs;
+        });
+      }
+
       mergeBtn.addEventListener('click', async () => {
-        if (selected.size < 2) { toast('Select at least 2 conversations'); return; }
+        const selectedConvs = await getSelectedConversations();
+        if (!selectedConvs) return;
 
         addLoadingToButton(mergeBtn, 'Merging...');
         try {
-          const toMerge = convs.filter(c => selected.has(c.ts));
-          const combined = toMerge.flatMap(c => c.conversation);
+          const combined = selectedConvs.flatMap(c => c.conversation || []);
           const output = combined.map(m => `${m.role}: ${m.text}`).join('\n\n');
-
-          // Show output with Send to Chat button
           showOutputWithSendButton(output, 'Merged Conversation');
           toast('Merged conversations ready!');
         } catch (e) {
@@ -14329,7 +14357,38 @@ Respond with JSON only:
         }
       });
 
-      insightsContent.appendChild(mergeBtn);
+      mergeAiBtn.addEventListener('click', async () => {
+        const selectedConvs = await getSelectedConversations();
+        if (!selectedConvs) return;
+
+        addLoadingToButton(mergeAiBtn, 'Generating...');
+        try {
+          const mergedText = selectedConvs.map(conv => {
+            const source = conv.platform || conv.host || (conv.url ? new URL(conv.url).hostname : 'Unknown Source');
+            const title = conv.name || conv.topic || `Conversation from ${source}`;
+            const body = (conv.conversation || []).map(m => `${m.role}: ${m.text}`).join('\n\n');
+            return `=== ${title} (${source}) ===\n${body}`;
+          }).join('\n\n---\n\n');
+
+          const prompt = 'You are a conversation stitcher. Combine the following chat transcripts into one unified project document. Arrange content chronologically, deduplicate overlapping information, merge related technical discussions, and preserve decisions, architecture details, implementation steps, and next actions. Output a polished project summary document with headings and a clear narrative. Do not include raw transcript labels or repeated text.';
+          const result = await hierarchicalProcess(`${prompt}\n\n${mergedText}`, 'prompt', {
+            mergePrompt: prompt,
+            length: 'medium'
+          });
+
+          if (result && typeof result === 'string') {
+            showOutputWithSendButton(result.trim(), 'AI Merged Project Document');
+            toast('AI merge complete');
+          } else {
+            toast('AI merge returned no result');
+          }
+        } catch (e) {
+          toast('AI merge failed');
+          debugLog('AI merge error', e);
+        } finally {
+          removeLoadingFromButton(mergeAiBtn, 'Merge with AI');
+        }
+      });
     }
 
     // Helper: Show extract view

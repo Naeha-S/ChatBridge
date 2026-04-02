@@ -1,6 +1,9 @@
 // popup.js - ChatBridge Premium Popup
 
 (function () {
+  if (typeof globalThis.browser === 'undefined' && typeof globalThis.chrome !== 'undefined') {
+    try { globalThis.browser = globalThis.chrome; } catch (e) { }
+  }
   'use strict';
 
   const platformRegistry = window.ChatBridgePlatformRegistry || null;

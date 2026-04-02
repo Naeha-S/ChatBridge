@@ -1,6 +1,9 @@
 // options.js - ChatBridge Premium Settings Page
 
 (function () {
+  if (typeof globalThis.browser === 'undefined' && typeof globalThis.chrome !== 'undefined') {
+    try { globalThis.browser = globalThis.chrome; } catch (e) { }
+  }
   'use strict';
 
   // Current language

@@ -4,418 +4,677 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ChatBridge</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="welcome.css">
 </head>
 <body>
+  <div class="page-shell" aria-hidden="true">
+    <div class="ambient ambient-a"></div>
+    <div class="ambient ambient-b"></div>
+    <div class="grid-noise"></div>
+  </div>
 
-  <!-- ── Floating nav ── -->
   <nav class="nav">
     <div class="nav-inner">
-      <div class="nav-brand">
-        <img src="icons/icon128.png" alt="" width="28" height="28" class="nav-icon">
-        <span class="nav-name">ChatBridge</span>
-      </div>
+      <a class="nav-brand" href="#top" aria-label="ChatBridge home">
+        <img src="icons/icon128.png" alt="" width="32" height="32" class="nav-icon">
+        <div class="nav-brand-copy">
+          <span class="nav-name">ChatBridge</span>
+          <span class="nav-meta">Cross-platform AI workspace</span>
+        </div>
+      </a>
       <div class="nav-links">
-        <a href="#tools">Tools</a>
+        <a href="#tools">Features</a>
+        <a href="#workspace">Workspace</a>
         <a href="#agents">Agents</a>
         <a href="#setup">Setup</a>
-        <button class="nav-cta" id="btn-options-nav">Settings</button>
+        <button class="nav-cta" id="btn-options-nav">Open Settings</button>
       </div>
     </div>
   </nav>
 
-  <!-- ── Hero ── -->
-  <header class="hero">
-    <div class="hero-glow"></div>
-    <div class="hero-inner rv">
-      <p class="hero-tag">Installed &amp; ready</p>
-      <h1 class="hero-h">
-        <span class="line">One extension.</span>
-        <span class="line grad">Every AI chat.</span>
-      </h1>
-      <p class="hero-sub">
-        Scan, summarize, rewrite, translate, and move conversations
-        between 25+ AI platforms. No servers. No accounts. Everything local.
-      </p>
-      <div class="hero-actions">
-        <button class="btn-primary" id="btn-go-chat">
-          <span>Try it on ChatGPT</span>
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </button>
-        <a href="#tools" class="btn-outline">Explore features</a>
+  <main id="top">
+    <section class="landing-experience" id="landing">
+      <header class="hero">
+        <div class="hero-shader" id="hero-shader" aria-hidden="true"></div>
+        <div class="hero-shell rv">
+          <div class="hero-copy">
+            <p class="hero-kicker">Installed and ready for every AI tab you use</p>
+            <h1 class="hero-title">
+              Bring every
+              <span>AI conversation</span>
+              into one visual layer.
+            </h1>
+            <p class="hero-sub">
+              Scan, reshape, compare, save, and reroute conversations across 25+ AI platforms without
+              sending your data through a middleman.
+            </p>
+            <div class="hero-actions">
+              <button class="btn-primary" id="btn-go-chat">Try it on ChatGPT</button>
+              <a class="btn-secondary" href="#hero-details">See how it works</a>
+            </div>
+          </div>
+
+          <div class="hero-overlay-card hero-overlay-card-a">
+            <span class="overlay-label">Signal</span>
+            <strong>From raw thread to usable output</strong>
+            <p>Shader-led landing, then workflow detail below.</p>
+          </div>
+
+          <div class="hero-overlay-card hero-overlay-card-b">
+            <span class="overlay-label">Coverage</span>
+            <div class="overlay-stat">
+              <span class="stat-num" data-count="25">0</span>
+              <span class="stat-suffix">+</span>
+            </div>
+            <p>AI platforms connected through current adapters.</p>
+          </div>
+
+          <div class="hero-bottom-bar">
+            <div class="hero-mini-proof">
+              <span class="proof-label">Runs locally</span>
+              <span class="proof-value">No ChatBridge servers</span>
+            </div>
+            <div class="hero-mini-proof">
+              <span class="proof-label">Built for</span>
+              <span class="proof-value">Scanning, memory, transfer, orchestration</span>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <section class="platform-strip rv" aria-label="Supported platforms">
+        <div class="platform-marquee">
+          <span>ChatGPT</span>
+          <span>Claude</span>
+          <span>Gemini</span>
+          <span>Copilot</span>
+          <span>Perplexity</span>
+          <span>DeepSeek</span>
+          <span>Mistral</span>
+          <span>Grok</span>
+          <span>Poe</span>
+          <span>HuggingChat</span>
+          <span>Meta AI</span>
+          <span>Phind</span>
+          <span>Character AI</span>
+          <span>You.com</span>
+          <span>Jasper</span>
+          <span>WriteSonic</span>
+          <span>ChatGPT</span>
+          <span>Claude</span>
+          <span>Gemini</span>
+          <span>Copilot</span>
+          <span>Perplexity</span>
+          <span>DeepSeek</span>
+          <span>Mistral</span>
+          <span>Grok</span>
+          <span>Poe</span>
+          <span>HuggingChat</span>
+          <span>Meta AI</span>
+          <span>Phind</span>
+          <span>Character AI</span>
+          <span>You.com</span>
+          <span>Jasper</span>
+          <span>WriteSonic</span>
+        </div>
+      </section>
+
+      <section class="hero-details" id="hero-details">
+        <div class="hero-details-inner rv">
+          <div class="hero-proof">
+            <div class="proof-item">
+              <span class="proof-label">Runs locally</span>
+              <span class="proof-value">No ChatBridge servers</span>
+            </div>
+            <div class="proof-item">
+              <span class="proof-label">Works across</span>
+              <span class="proof-value">ChatGPT, Claude, Gemini, Grok, Poe, and more</span>
+            </div>
+            <div class="proof-item">
+              <span class="proof-label">Built for</span>
+              <span class="proof-value">Scanning, memory, transfer, and orchestration</span>
+            </div>
+          </div>
+
+          <div class="hero-stage">
+            <section class="stage-panel stage-panel-main" aria-label="Feature preview">
+              <div class="stage-head">
+                <div>
+                  <p class="stage-label">System view</p>
+                  <h2 class="stage-title">From raw chat to usable output</h2>
+                </div>
+                <span class="stage-status">Live extension workflow</span>
+              </div>
+
+              <div class="stage-switcher" role="tablist" aria-label="Feature modes">
+                <button class="stage-switch is-active" data-preview="scan" role="tab" aria-selected="true">Scan</button>
+                <button class="stage-switch" data-preview="transform" role="tab" aria-selected="false">Transform</button>
+                <button class="stage-switch" data-preview="route" role="tab" aria-selected="false">Route</button>
+                <button class="stage-switch" data-preview="memory" role="tab" aria-selected="false">Memory</button>
+              </div>
+
+              <div class="stage-meta-bar" aria-label="Workflow markers">
+                <div class="stage-meta-item">
+                  <span class="stage-meta-label">Mode</span>
+                  <strong>Manual scan</strong>
+                </div>
+                <div class="stage-meta-item">
+                  <span class="stage-meta-label">Output</span>
+                  <strong>Structured session</strong>
+                </div>
+                <div class="stage-meta-item">
+                  <span class="stage-meta-label">Use case</span>
+                  <strong>Cross-model continuation</strong>
+                </div>
+              </div>
+
+              <div class="preview-window">
+                <div class="preview-pane is-active" data-pane="scan">
+                  <div class="preview-chat">
+                    <div class="preview-line w-72"></div>
+                    <div class="preview-line w-94"></div>
+                    <div class="preview-line w-66"></div>
+                    <div class="preview-code">
+                      <span></span>
+                      <span></span>
+                      <span></span>
+                    </div>
+                  </div>
+                  <div class="preview-card">
+                    <p class="preview-eyebrow">Scan layer</p>
+                    <h3>Read the whole thread, not just the visible chunk</h3>
+                    <p>Messages, attachments, links, code blocks, and metadata get normalized into a single session record.</p>
+                  </div>
+                </div>
+
+                <div class="preview-pane" data-pane="transform">
+                  <div class="preview-columns">
+                    <div class="preview-card dense">
+                      <p class="preview-eyebrow">Input</p>
+                      <h3>Raw prompt</h3>
+                      <p>Scattered notes, pasted logs, and half-formed instructions.</p>
+                    </div>
+                    <div class="preview-arrow" aria-hidden="true"></div>
+                    <div class="preview-card dense accent">
+                      <p class="preview-eyebrow">Output</p>
+                      <h3>Structured result</h3>
+                      <p>Summaries, rewrites, translations, prompt optimization, and follow-up actions.</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="preview-pane" data-pane="route">
+                  <div class="preview-route">
+                    <div class="route-node">ChatGPT</div>
+                    <div class="route-link"></div>
+                    <div class="route-node active">ChatBridge</div>
+                    <div class="route-link"></div>
+                    <div class="route-node">Claude</div>
+                  </div>
+                  <div class="preview-card">
+                    <p class="preview-eyebrow">Continue With</p>
+                    <h3>Move work between models without copy-paste friction</h3>
+                    <p>Open the target AI and auto-insert the selected content directly into the composer.</p>
+                  </div>
+                </div>
+
+                <div class="preview-pane" data-pane="memory">
+                  <div class="preview-memory">
+                    <div class="memory-cluster cluster-a"></div>
+                    <div class="memory-cluster cluster-b"></div>
+                    <div class="memory-cluster cluster-c"></div>
+                    <div class="memory-cluster cluster-d"></div>
+                  </div>
+                  <div class="preview-card">
+                    <p class="preview-eyebrow">Memory layer</p>
+                    <h3>Turn fragmented sessions into searchable context</h3>
+                    <p>Hybrid retrieval surfaces patterns, decisions, contradictions, and reusable knowledge across chats.</p>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <div class="stage-rail">
+              <article class="rail-card">
+                <p class="rail-kicker">Coverage</p>
+                <div class="rail-stat">
+                  <span class="stat-num" data-count="25">0</span>
+                  <span class="stat-suffix">+</span>
+                </div>
+                <p class="rail-copy">AI platforms supported across current adapters.</p>
+              </article>
+              <article class="rail-card">
+                <p class="rail-kicker">Feature depth</p>
+                <div class="rail-stat">
+                  <span class="stat-num" data-count="50">0</span>
+                  <span class="stat-suffix">+</span>
+                </div>
+                <p class="rail-copy">Tools covering scanning, rewriting, agents, memory, and routing.</p>
+              </article>
+              <article class="rail-card rail-card-list">
+                <p class="rail-kicker">Most used starts</p>
+                <div class="mini-list">
+                  <span>ChatGPT to Claude</span>
+                  <span>Gemini to Copilot</span>
+                  <span>DeepSeek to ChatGPT</span>
+                  <span>Poe to Perplexity</span>
+                </div>
+              </article>
+            </div>
+          </div>
+        </div>
+      </section>
+    </section>
+
+    <section class="section section-alt" id="motion">
+      <div class="wrap">
+        <div class="section-head rv" data-section="00">
+          <p class="eyebrow">Motion Layer</p>
+          <h2 class="section-title">A dynamic stack instead of another static grid</h2>
+          <p class="section-sub">This section ports the animated card-stack idea into the current extension stack so the page gets interaction and rhythm without depending on React.</p>
+        </div>
+
+        <div class="card-stack-showcase rv">
+          <div class="card-stack-shell">
+            <div class="card-stack-glow"></div>
+            <div class="card-stack-stage" id="card-stack-stage" aria-live="polite"></div>
+          </div>
+          <div class="card-stack-panel">
+            <p class="eyebrow">Featured Surface</p>
+            <h3 class="card-stack-title">Product surfaces that move when people look closer</h3>
+            <p class="card-stack-copy">A rotating stack highlights different parts of the ecosystem instead of leaving the middle of the page as repeating content blocks.</p>
+            <div class="card-stack-meta">
+              <span>Auto-rotates in view</span>
+              <span>Manual trigger included</span>
+              <span>Extension-safe HTML, CSS, JS</span>
+            </div>
+            <button class="btn-secondary btn-small" id="btn-stack-animate">Animate stack</button>
+          </div>
+        </div>
       </div>
-    </div>
+    </section>
 
-    <!-- Platform ticker -->
-    <div class="ticker-wrap">
-      <div class="ticker">
-        <span>ChatGPT</span><span>Claude</span><span>Gemini</span><span>Copilot</span><span>Perplexity</span><span>DeepSeek</span><span>Mistral</span><span>Grok</span><span>Poe</span><span>HuggingChat</span><span>Meta AI</span><span>Character AI</span><span>Phind</span><span>You.com</span><span>Jasper</span><span>WriteSonic</span>
-        <span>ChatGPT</span><span>Claude</span><span>Gemini</span><span>Copilot</span><span>Perplexity</span><span>DeepSeek</span><span>Mistral</span><span>Grok</span><span>Poe</span><span>HuggingChat</span><span>Meta AI</span><span>Character AI</span><span>Phind</span><span>You.com</span><span>Jasper</span><span>WriteSonic</span>
-      </div>
-    </div>
-  </header>
+    <section class="ops-strip rv">
+      <article class="ops-card">
+        <span class="ops-label">Why it matters</span>
+        <p>You stop losing context every time you switch tabs or models.</p>
+      </article>
+      <article class="ops-card">
+        <span class="ops-label">What changes</span>
+        <p>Your AI sessions become editable, searchable, and portable working material.</p>
+      </article>
+      <article class="ops-card">
+        <span class="ops-label">What stays intact</span>
+        <p>Everything still runs as a lightweight Chrome extension page with no framework dependency.</p>
+      </article>
+    </section>
 
-  <!-- ── Stats ribbon ── -->
-  <section class="ribbon rv">
-    <div class="stat">
-      <span class="stat-num" data-count="50">0</span><span class="stat-plus">+</span>
-      <span class="stat-label">Features</span>
-    </div>
-    <div class="stat">
-      <span class="stat-num" data-count="25">0</span><span class="stat-plus">+</span>
-      <span class="stat-label">AI Platforms</span>
-    </div>
-    <div class="stat">
-      <span class="stat-num" data-count="20">0</span><span class="stat-plus">+</span>
-      <span class="stat-label">Languages</span>
-    </div>
-    <div class="stat">
-      <span class="stat-num" data-count="11">0</span>
-      <span class="stat-label">AI Agents</span>
-    </div>
-    <div class="stat">
-      <span class="stat-num" data-count="6">0</span>
-      <span class="stat-label">Themes</span>
-    </div>
-  </section>
-
-  <!-- ── How it works — horizontal 3-step ── -->
-  <section class="section" id="how">
-    <div class="wrap rv">
-      <h2 class="sec-h">Three steps. That's it.</h2>
-      <div class="steps-row">
-        <div class="step">
-          <div class="step-ring">1</div>
-          <h3>Scan</h3>
-          <p>Click ⚡ on any AI chat. ChatBridge reads every message, attachment, and code block on the page.</p>
+    <section class="section" id="how">
+      <div class="wrap">
+        <div class="section-head rv" data-section="01">
+          <p class="eyebrow">Workflow</p>
+          <h2 class="section-title">A clean operating loop instead of tab chaos</h2>
+          <p class="section-sub">The extension stays close to the browser and does three jobs well: capture context, transform it, and send it where it needs to go.</p>
         </div>
-        <div class="step-line"></div>
-        <div class="step">
-          <div class="step-ring">2</div>
-          <h3>Transform</h3>
-          <p>Summarize, rewrite, translate, optimize — pick a tool from the panel and get results in seconds.</p>
-        </div>
-        <div class="step-line"></div>
-        <div class="step">
-          <div class="step-ring">3</div>
-          <h3>Move</h3>
-          <p>Hit Continue With, pick a target AI, and your content auto-types into the new chat. No clipboard.</p>
+
+        <div class="workflow-grid rv-children">
+          <article class="workflow-card">
+            <span class="workflow-index">01</span>
+            <h3>Capture the thread</h3>
+            <p>The floating action button scans the current conversation and preserves content, structure, and useful metadata.</p>
+          </article>
+          <article class="workflow-card">
+            <span class="workflow-index">02</span>
+            <h3>Run the right tool</h3>
+            <p>Summarize, rewrite, translate, clean, compare, or pass the session to one of the built-in agents.</p>
+          </article>
+          <article class="workflow-card">
+            <span class="workflow-index">03</span>
+            <h3>Store or reroute</h3>
+            <p>Keep it in memory for later retrieval, export it, or continue the exact work in another AI environment.</p>
+          </article>
         </div>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <!-- ────────────────────────────────────────────────── -->
-  <!-- ── BENTO: Core Tools ──                          -->
-  <!-- ────────────────────────────────────────────────── -->
-  <section class="section section-alt" id="tools">
-    <div class="wrap">
-      <p class="eyebrow rv">Core tools</p>
-      <h2 class="sec-h rv">Everything starts with a scan</h2>
-
-      <div class="bento rv-children">
-        <!-- row 1: hero card + 2 small -->
-        <div class="b-card b-wide">
-          <div class="b-icon">📝</div>
-          <h3>Summarize</h3>
-          <p>Short, detailed, executive, or technical — four densities. Insert back into chat or copy. Powered by a 5-model Gemini cascade.</p>
-        </div>
-        <div class="b-card">
-          <div class="b-icon">✏️</div>
-          <h3>Rewrite</h3>
-          <p>10+ tones: concise, academic, creative, professional. Multi-select which messages to transform.</p>
-        </div>
-        <div class="b-card">
-          <div class="b-icon">🌍</div>
-          <h3>Translate</h3>
-          <p>20+ languages via EuroLLM &amp; Gemini. Full conversation or individual messages.</p>
+    <section class="section section-alt" id="tools">
+      <div class="wrap">
+        <div class="section-head rv" data-section="02">
+          <p class="eyebrow">Feature System</p>
+          <h2 class="section-title">The page now presents the product like software, not a checklist</h2>
+          <p class="section-sub">Core actions are grouped by how people actually use them: transform content, inspect it, preserve it, and route it forward.</p>
         </div>
 
-        <!-- row 2: 2 small + 1 hero -->
-        <div class="b-card">
-          <div class="b-icon">🔄</div>
-          <h3>Sync Tone</h3>
-          <p>Reformats prompts for a target model. What works on ChatGPT → optimized for Claude.</p>
-        </div>
-        <div class="b-card">
-          <div class="b-icon">🎯</div>
-          <h3>Prompt Optimizer</h3>
-          <p>Transform rough prompts into high-performance ones. AI restructures for better results.</p>
-        </div>
-        <div class="b-card b-wide">
-          <div class="b-icon">🔍</div>
-          <h3>Smart Query</h3>
-          <p>Natural-language search across your entire chat history. Filter by platform, date, topic. AI synthesizes answers from everything you've saved.</p>
-        </div>
-
-        <!-- row 3: full-width accent -->
-        <div class="b-card b-full b-accent">
-          <div class="b-accent-inner">
+        <div class="feature-grid rv-children">
+          <article class="feature-card feature-card-wide">
+            <div class="feature-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M5 6.5h14M5 12h14M5 17.5h9"/></svg>
+            </div>
             <div>
-              <div class="b-icon">➡️</div>
-              <h3>Continue With</h3>
-              <p>One click opens the target AI and auto-types content into the chat box. Works across any pair of platforms.</p>
+              <p class="feature-tag">Transform</p>
+              <h3>Summaries, rewrites, translations, and prompt upgrades</h3>
+              <p>The main production tools handle density control, tone changes, multilingual output, and cleaner prompting without leaving the tab.</p>
             </div>
-            <div class="b-accent-pills">
-              <span>ChatGPT → Claude</span>
-              <span>Gemini → Copilot</span>
-              <span>DeepSeek → ChatGPT</span>
-              <span>Any → Any</span>
+          </article>
+
+          <article class="feature-card">
+            <div class="feature-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M4 12h16M12 4v16"/></svg>
             </div>
-          </div>
-        </div>
-      </div>
+            <p class="feature-tag">Search</p>
+            <h3>Smart Query</h3>
+            <p>Search across saved conversations with platform, date, and topic filtering.</p>
+          </article>
 
-      <!-- quick actions -->
-      <div class="quick rv">
-        <span>💡 Follow-Up Prompts</span>
-        <span>📊 Stats</span>
-        <span>🧹 Clean</span>
-        <span>📋 Copy</span>
-        <span>📥 Export</span>
-      </div>
-    </div>
-  </section>
-
-  <!-- ────────────────────────────────────────────────── -->
-  <!-- ── Smart Workspace — masonry / mosaic ──         -->
-  <!-- ────────────────────────────────────────────────── -->
-  <section class="section" id="workspace">
-    <div class="wrap">
-      <p class="eyebrow rv">Smart Workspace</p>
-      <h2 class="sec-h rv">Your chats become a knowledge base</h2>
-      <div class="mosaic rv-children">
-        <div class="m-card"><h3>⚖️ Compare Models</h3><p>See where different AIs agree, disagree, or hallucinate on the same question.</p></div>
-        <div class="m-card m-tall"><h3>📦 Extract</h3><p>Pull out code blocks, URLs, emails, phone numbers, prices, dates, commands, tables — from any conversation, any platform.</p></div>
-        <div class="m-card"><h3>🔗 Merge Threads</h3><p>Combine related fragments from ChatGPT + Claude + Gemini into one unified thread.</p></div>
-        <div class="m-card m-tall"><h3>🔬 Insight Finder</h3><p>Semantic spotlight — auto-extracts comparisons, contradictions, requirements, TODOs, and decision points.</p></div>
-        <div class="m-card"><h3>✅ Fact-Check</h3><p>Analyzes claims and flags potential hallucinations or unsupported statements.</p></div>
-        <div class="m-card"><h3>🏗️ Continue On…</h3><p>Move any conversation to a different AI with auto-insert. One click.</p></div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ────────────────────────────────────────────────── -->
-  <!-- ── Agent Hub ──                                  -->
-  <!-- ────────────────────────────────────────────────── -->
-  <section class="section section-alt" id="agents">
-    <div class="wrap">
-      <p class="eyebrow rv">Agent Hub</p>
-      <h2 class="sec-h rv">11 AI agents. One panel.</h2>
-      <p class="sec-sub rv">Four primary instruments and seven specialized agents — working on your conversation data.</p>
-
-      <div class="agent-bento rv-children">
-        <div class="ab-card">
-          <span class="ab-tag">Instrument</span>
-          <h3>Extractor</h3>
-          <p>Surface tasks, deadlines, and assignments as structured action items.</p>
-        </div>
-        <div class="ab-card">
-          <span class="ab-tag">Instrument</span>
-          <h3>Reduce</h3>
-          <p>Cognitive Simplifier — numbered sections with TL;DR and reduction %.</p>
-        </div>
-        <div class="ab-card">
-          <span class="ab-tag">Instrument</span>
-          <h3>Compose</h3>
-          <p>Draft emails, meeting notes, status updates from your conversation.</p>
-        </div>
-        <div class="ab-card">
-          <span class="ab-tag">Instrument</span>
-          <h3>Synthesizer</h3>
-          <p>EchoSynth — multi-model query → referee analysis → unified answer.</p>
-        </div>
-      </div>
-
-      <h3 class="agent-sub rv">+ 7 specialized agents</h3>
-      <div class="agent-scroll rv-children">
-        <div class="as-chip"><strong>Continuum</strong> Cross-platform context reconstruction via RAG</div>
-        <div class="as-chip"><strong>Memory Architect</strong> Knowledge map with topic clustering</div>
-        <div class="as-chip"><strong>Session Closer</strong> What changed, what's unresolved, next move</div>
-        <div class="as-chip"><strong>Auto Continue</strong> Detects truncated responses, auto-continues</div>
-        <div class="as-chip"><strong>Quick Agent</strong> One-tap analysis: tasks / debug / summary</div>
-        <div class="as-chip"><strong>Threadkeeper</strong> Auto-injects relevant history into conversations</div>
-        <div class="as-chip"><strong>Multi-AI Planner</strong> Breaks goals into steps, assigns optimal AIs</div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ────────────────────────────────────────────────── -->
-  <!-- ── RAG Pipeline — animated pipeline ──           -->
-  <!-- ────────────────────────────────────────────────── -->
-  <section class="section" id="engine">
-    <div class="wrap rv">
-      <p class="eyebrow">Under the hood</p>
-      <h2 class="sec-h">Built-in RAG pipeline</h2>
-      <div class="pipeline">
-        <div class="pipe-node">
-          <div class="pipe-dot"></div>
-          <h3>Segment Engine</h3>
-          <p>Semantic chunking — questions, answers, code, context — precise retrieval.</p>
-        </div>
-        <div class="pipe-line"></div>
-        <div class="pipe-node">
-          <div class="pipe-dot"></div>
-          <h3>Intent Analyzer</h3>
-          <p>Classifies search intent: decisions, contradictions, patterns, breakthroughs.</p>
-        </div>
-        <div class="pipe-line"></div>
-        <div class="pipe-node">
-          <div class="pipe-dot"></div>
-          <h3>Memory Retrieval</h3>
-          <p>Three-layer hybrid: semantic → intent-scoring → reasoning filter.</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ────────────────────────────────────────────────── -->
-  <!-- ── Privacy — bold statement ──                   -->
-  <!-- ────────────────────────────────────────────────── -->
-  <section class="section section-alt" id="privacy">
-    <div class="wrap rv">
-      <div class="privacy-block">
-        <div class="privacy-main">
-          <h2 class="privacy-h">Your data never<br>leaves your browser.</h2>
-          <p>No servers. No telemetry. API calls go directly from your browser to the AI provider. No ChatBridge middleman.</p>
-        </div>
-        <div class="privacy-chips">
-          <div class="p-chip">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-            <span>Local storage only</span>
-          </div>
-          <div class="p-chip">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-            <span>AI sites only</span>
-          </div>
-          <div class="p-chip">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-            <span>Zero telemetry</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ────────────────────────────────────────────────── -->
-  <!-- ── Customize + History ──                        -->
-  <!-- ────────────────────────────────────────────────── -->
-  <section class="section" id="customize">
-    <div class="wrap">
-      <p class="eyebrow rv">Personalize</p>
-      <h2 class="sec-h rv">Make it yours</h2>
-      <div class="dual-bento rv-children">
-        <div class="db-card db-themes">
-          <h3>6 Themes</h3>
-          <div class="theme-row">
-            <span class="tdot" style="--c:#1e1e23"></span>
-            <span class="tdot" style="--c:#f0f0f0"></span>
-            <span class="tdot" style="--c:#2b1055"></span>
-            <span class="tdot" style="--c:#c9b99a"></span>
-            <span class="tdot" style="--c:#ff6b6b"></span>
-            <span class="tdot tdot-gradient"></span>
-          </div>
-          <p>Dark · Light · Synthwave · Skeuomorphic · Brutalism · Glass</p>
-        </div>
-        <div class="db-card">
-          <h3>9 UI Languages</h3>
-          <p>English · Español · Français · Deutsch · 日本語 · 中文 · 한국어 · Português · हिन्दी</p>
-        </div>
-        <div class="db-card">
-          <h3>3 Detail Levels</h3>
-          <p>Concise · Detailed · Expert — controls output depth across all AI features.</p>
-        </div>
-        <div class="db-card">
-          <h3>History &amp; Export</h3>
-          <p>Full-text search, platform filters, date groups. Export as JSON or Markdown anytime.</p>
-        </div>
-        <div class="db-card">
-          <h3>Media Vault</h3>
-          <p>Browse all images from scanned conversations in a single gallery.</p>
-        </div>
-        <div class="db-card">
-          <h3>Draggable ⚡</h3>
-          <p>Drag the floating button anywhere. It remembers your position.</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ────────────────────────────────────────────────── -->
-  <!-- ── Setup ──                                      -->
-  <!-- ────────────────────────────────────────────────── -->
-  <section class="section section-alt" id="setup">
-    <div class="wrap rv">
-      <h2 class="sec-h">Get started in two minutes</h2>
-      <div class="setup-cards">
-        <div class="su-card">
-          <div class="su-num">1</div>
-          <h3>Add API keys</h3>
-          <p>Both are free-tier eligible. Add one or both.</p>
-          <div class="su-keys">
-            <div class="su-key">
-              <h4>Gemini <span class="su-rec">recommended</span></h4>
-              <span class="su-powers">Summarize · Rewrite · Translate · Agents · Fact-Check</span>
-              <a href="https://makersuite.google.com/app/apikey" target="_blank" rel="noopener">Get free key →</a>
+          <article class="feature-card">
+            <div class="feature-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M5 19l14-14M9 5h10v10"/></svg>
             </div>
-            <div class="su-key">
-              <h4>HuggingFace</h4>
-              <span class="su-powers">EuroLLM · Llama · Gemma models</span>
-              <a href="https://huggingface.co/settings/tokens" target="_blank" rel="noopener">Get token →</a>
+            <p class="feature-tag">Transfer</p>
+            <h3>Continue With</h3>
+            <p>Open another AI site and insert content into the new composer automatically.</p>
+          </article>
+
+          <article class="feature-card">
+            <div class="feature-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M7 7h10v10H7z"/><path d="M4 4h10v10"/></svg>
+            </div>
+            <p class="feature-tag">Extraction</p>
+            <h3>Pull out structured signals</h3>
+            <p>Extract code blocks, links, dates, tasks, commands, tables, and high-signal fragments from noisy threads.</p>
+          </article>
+
+          <article class="feature-card feature-card-tall">
+            <div class="feature-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M12 4l7 4v8l-7 4-7-4V8l7-4z"/><path d="M12 12l7-4"/></svg>
+            </div>
+            <p class="feature-tag">Analysis</p>
+            <h3>Compare models and detect contradictions</h3>
+            <p>Use the workspace to spot agreement, disagreement, hallucination risk, and requirements across multiple AI outputs.</p>
+          </article>
+
+          <article class="feature-card feature-card-tall">
+            <div class="feature-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M4 8h16M8 4v16M16 4v16"/></svg>
+            </div>
+            <p class="feature-tag">Operations</p>
+            <h3>Small actions that remove friction</h3>
+            <p>Follow-up prompts, copy modes, cleanup tools, stats, export, and keyboard shortcuts are treated as first-class workflow utilities.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="workspace">
+      <div class="wrap">
+        <div class="section-head rv" data-section="03">
+          <p class="eyebrow">Workspace</p>
+          <h2 class="section-title">A memory surface for cross-model work</h2>
+          <p class="section-sub">This is where the extension stops behaving like a simple utility and starts acting like infrastructure for long-running AI work.</p>
+        </div>
+
+        <div class="workspace-grid rv-children">
+          <article class="workspace-card workspace-card-accent">
+            <p class="workspace-tag">Knowledge base</p>
+            <h3>Saved chats become reusable context, not dead transcript archives</h3>
+            <p>Merge related threads, resurface decision points, and keep a clean line from conversation to outcome.</p>
+          </article>
+          <article class="workspace-card">
+            <h3>Insight Finder</h3>
+            <p>Semantic spotlighting for contradictions, requirements, TODOs, and breakthroughs.</p>
+          </article>
+          <article class="workspace-card">
+            <h3>Fact-check layer</h3>
+            <p>Flag unsupported claims and questionable statements before they become downstream decisions.</p>
+          </article>
+          <article class="workspace-card">
+            <h3>Thread merge</h3>
+            <p>Combine ChatGPT, Claude, and Gemini fragments into one coherent working view.</p>
+          </article>
+          <article class="workspace-card">
+            <h3>History and export</h3>
+            <p>Search everything, filter by platform and date, then export to JSON or Markdown.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-alt" id="agents">
+      <div class="wrap">
+        <div class="section-head rv" data-section="04">
+          <p class="eyebrow">Agent Hub</p>
+          <h2 class="section-title">Eleven agents, presented as a system with roles</h2>
+          <p class="section-sub">The page now separates primary instruments from specialist agents so the lineup reads with purpose instead of as a flat list.</p>
+        </div>
+
+        <div class="agent-layout rv-children">
+          <div class="agent-core">
+            <article class="agent-card">
+              <span class="agent-label">Instrument</span>
+              <h3>Extractor</h3>
+              <p>Turn messages into structured tasks, deadlines, and assignments.</p>
+            </article>
+            <article class="agent-card">
+              <span class="agent-label">Instrument</span>
+              <h3>Reduce</h3>
+              <p>Simplify dense conversations into ordered sections with a clear reduction pass.</p>
+            </article>
+            <article class="agent-card">
+              <span class="agent-label">Instrument</span>
+              <h3>Compose</h3>
+              <p>Generate emails, notes, updates, and follow-on writing from chat context.</p>
+            </article>
+            <article class="agent-card">
+              <span class="agent-label">Instrument</span>
+              <h3>Synthesizer</h3>
+              <p>Run a multi-model query flow and return a unified referee answer.</p>
+            </article>
+          </div>
+
+          <aside class="agent-side">
+            <p class="agent-side-title">Specialist agents</p>
+            <div class="agent-chip-list">
+              <span class="agent-chip">Continuum</span>
+              <span class="agent-chip">Memory Architect</span>
+              <span class="agent-chip">Session Closer</span>
+              <span class="agent-chip">Auto Continue</span>
+              <span class="agent-chip">Quick Agent</span>
+              <span class="agent-chip">Threadkeeper</span>
+              <span class="agent-chip">Multi-AI Planner</span>
+            </div>
+            <p class="agent-side-copy">Use the specialist set when the work is less about one transformation and more about orchestration, recall, and continuity.</p>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="engine">
+      <div class="wrap">
+        <div class="section-head rv" data-section="05">
+          <p class="eyebrow">Under the Hood</p>
+          <h2 class="section-title">The retrieval stack is visible and credible</h2>
+          <p class="section-sub">The engine section now reads like architecture: segmented memory, intent scoring, then retrieval and reasoning filters.</p>
+        </div>
+
+        <div class="engine-grid rv-children">
+          <article class="engine-card">
+            <span class="engine-step">01</span>
+            <h3>Segment Engine</h3>
+            <p>Chunk messages into meaningful units so retrieval is based on semantic structure rather than crude transcript slicing.</p>
+          </article>
+          <article class="engine-card">
+            <span class="engine-step">02</span>
+            <h3>Intent Analyzer</h3>
+            <p>Classify what the user is actually looking for: decisions, contradictions, patterns, actions, or breakthroughs.</p>
+          </article>
+          <article class="engine-card">
+            <span class="engine-step">03</span>
+            <h3>Memory Retrieval</h3>
+            <p>Hybrid ranking surfaces the most relevant fragments, then reasoning filters refine what gets returned.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-alt" id="privacy">
+      <div class="wrap">
+        <div class="privacy-panel rv">
+          <div class="privacy-copy">
+            <span class="section-mini-number">06</span>
+            <p class="eyebrow">Privacy</p>
+            <h2 class="section-title">Your data stays inside the browser path you control</h2>
+            <p class="section-sub">No telemetry pipeline, no hosted sync layer, no ChatBridge relay. Calls go from the extension straight to the providers you configure.</p>
+          </div>
+          <div class="privacy-grid">
+            <div class="privacy-item">
+              <span class="privacy-item-title">Local storage only</span>
+              <p>Conversation state stays in extension storage unless you export it.</p>
+            </div>
+            <div class="privacy-item">
+              <span class="privacy-item-title">Direct provider calls</span>
+              <p>API requests go from the browser to Gemini, Hugging Face, or the provider in use.</p>
+            </div>
+            <div class="privacy-item">
+              <span class="privacy-item-title">No telemetry</span>
+              <p>The product does not depend on analytics collection to function.</p>
             </div>
           </div>
-          <button class="btn-outline btn-sm" id="btn-options">Open settings to paste keys</button>
-        </div>
-        <div class="su-card">
-          <div class="su-num">2</div>
-          <h3>Visit any AI chat</h3>
-          <p>Navigate to ChatGPT, Claude, Gemini… The ⚡ button appears. Click it, scan, done.</p>
-        </div>
-        <div class="su-card">
-          <div class="su-num">3</div>
-          <h3>Open your dashboard</h3>
-          <p>Stats, history, themes, API config — all in one place.</p>
-          <button class="btn-outline btn-sm" id="btn-dashboard">Open Dashboard</button>
         </div>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <!-- ── Shortcuts + FAQ — split ── -->
-  <section class="section">
-    <div class="wrap rv">
-      <div class="bottom-split">
-        <div class="bs-left">
-          <h2 class="sec-h sec-h-sm">Keyboard shortcuts</h2>
-          <div class="kb-grid">
-            <div class="kb"><kbd>Ctrl+Shift+S</kbd><span>Scan</span></div>
-            <div class="kb"><kbd>Ctrl+Shift+H</kbd><span>Sidebar</span></div>
-            <div class="kb"><kbd>Ctrl+Shift+I</kbd><span>Insert</span></div>
-            <div class="kb"><kbd>Ctrl+Shift+F</kbd><span>Insight Finder</span></div>
-          </div>
-          <p class="kb-note">In-panel: <kbd>S</kbd> Scan · <kbd>R</kbd> Restore · <kbd>C</kbd> Copy · <kbd>Esc</kbd> Close</p>
-          <p class="kb-note">Remap at <code>chrome://extensions/shortcuts</code></p>
+    <section class="section" id="customize">
+      <div class="wrap">
+        <div class="section-head rv" data-section="07">
+          <p class="eyebrow">Personalization</p>
+          <h2 class="section-title">Customization is framed as configuration, not decoration</h2>
         </div>
-        <div class="bs-right">
-          <h2 class="sec-h sec-h-sm">FAQ</h2>
-          <details class="faq"><summary>Do I need API keys?</summary><p>Yes — your own keys for Gemini and/or HuggingFace. Both have free tiers.</p></details>
-          <details class="faq"><summary>Is my data sent anywhere?</summary><p>No ChatBridge servers exist. Data stays in Chrome. API calls go directly to providers.</p></details>
-          <details class="faq"><summary>Can I export my chats?</summary><p>Yes — JSON or Markdown, anytime. Your data is always portable.</p></details>
-          <details class="faq"><summary>Which platform first?</summary><p>Any of them. ChatGPT and Claude are popular starting points.</p></details>
-          <details class="faq"><summary>Mobile?</summary><p>Desktop Chrome only — mobile browsers don't support extensions.</p></details>
+
+        <div class="config-grid rv-children">
+          <article class="config-card config-card-wide">
+            <h3>Theme stack</h3>
+            <div class="theme-swatches" aria-label="Available themes">
+              <span class="theme-dot theme-graphite"></span>
+              <span class="theme-dot theme-porcelain"></span>
+              <span class="theme-dot theme-synth"></span>
+              <span class="theme-dot theme-tan"></span>
+              <span class="theme-dot theme-signal"></span>
+              <span class="theme-dot theme-glass"></span>
+            </div>
+            <p>Dark, light, synthwave, skeuomorphic, brutalism, and glass presets are available without breaking the workflow layout.</p>
+          </article>
+          <article class="config-card">
+            <h3>UI languages</h3>
+            <p>English, Spanish, French, German, Japanese, Chinese, Korean, Portuguese, and Hindi.</p>
+          </article>
+          <article class="config-card">
+            <h3>Detail levels</h3>
+            <p>Concise, detailed, and expert output controls across AI features.</p>
+          </article>
+          <article class="config-card">
+            <h3>Media vault</h3>
+            <p>Browse saved conversation images in a single gallery view.</p>
+          </article>
+          <article class="config-card">
+            <h3>Persistent placement</h3>
+            <p>The floating trigger is draggable and remembers where you put it.</p>
+          </article>
         </div>
       </div>
-    </div>
-  </section>
+    </section>
+
+    <section class="section section-alt" id="setup">
+      <div class="wrap">
+        <div class="section-head rv" data-section="08">
+          <p class="eyebrow">Setup</p>
+          <h2 class="section-title">Get productive in two minutes</h2>
+          <p class="section-sub">The onboarding flow stays simple, but the cards now read like clear actions rather than placeholders.</p>
+        </div>
+
+        <div class="setup-grid rv-children">
+          <article class="setup-card setup-card-primary">
+            <span class="setup-index">01</span>
+            <h3>Add your API keys</h3>
+            <p>Bring your own Gemini key, Hugging Face token, or both. Free-tier use is enough for many workflows.</p>
+            <div class="setup-keys">
+              <div class="setup-key">
+                <span class="setup-key-name">Gemini</span>
+                <span class="setup-key-copy">Summaries, rewrites, translations, agents, and fact-checking</span>
+                <a href="https://makersuite.google.com/app/apikey" target="_blank" rel="noopener">Get key</a>
+              </div>
+              <div class="setup-key">
+                <span class="setup-key-name">Hugging Face</span>
+                <span class="setup-key-copy">EuroLLM, Gemma, Llama, and supporting models</span>
+                <a href="https://huggingface.co/settings/tokens" target="_blank" rel="noopener">Get token</a>
+              </div>
+            </div>
+            <button class="btn-secondary btn-small" id="btn-options">Open settings</button>
+          </article>
+
+          <article class="setup-card">
+            <span class="setup-index">02</span>
+            <h3>Visit an AI chat</h3>
+            <p>Open ChatGPT, Claude, Gemini, or another supported platform and use the floating trigger.</p>
+          </article>
+
+          <article class="setup-card">
+            <span class="setup-index">03</span>
+            <h3>Open the dashboard</h3>
+            <p>Manage history, themes, settings, exports, and provider configuration from one place.</p>
+            <button class="btn-secondary btn-small" id="btn-dashboard">Open dashboard</button>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="wrap">
+        <div class="utility-grid rv-children">
+          <article class="utility-card">
+            <span class="section-mini-number">09</span>
+            <p class="eyebrow">Shortcuts</p>
+            <h2 class="section-title section-title-small">Fast controls</h2>
+            <div class="shortcut-list">
+              <div class="shortcut-row"><kbd>Ctrl+Shift+S</kbd><span>Scan current conversation</span></div>
+              <div class="shortcut-row"><kbd>Ctrl+Shift+H</kbd><span>Toggle sidebar</span></div>
+              <div class="shortcut-row"><kbd>Ctrl+Shift+I</kbd><span>Insert processed text</span></div>
+              <div class="shortcut-row"><kbd>Ctrl+Shift+F</kbd><span>Open Insight Finder</span></div>
+            </div>
+            <p class="utility-note">In-panel controls: <kbd>S</kbd> scan, <kbd>R</kbd> restore, <kbd>C</kbd> copy, <kbd>Esc</kbd> close.</p>
+            <p class="utility-note">Remap commands at <code>chrome://extensions/shortcuts</code>.</p>
+          </article>
+
+          <article class="utility-card">
+            <span class="section-mini-number">10</span>
+            <p class="eyebrow">FAQ</p>
+            <h2 class="section-title section-title-small">What people ask first</h2>
+            <details class="faq">
+              <summary>Do I need API keys?</summary>
+              <p>Yes. ChatBridge uses your own Gemini and or Hugging Face credentials instead of routing through a hosted backend.</p>
+            </details>
+            <details class="faq">
+              <summary>Is my data sent anywhere else?</summary>
+              <p>No ChatBridge server sits in the path. Calls go directly from the extension to configured AI providers.</p>
+            </details>
+            <details class="faq">
+              <summary>Can I export my chats?</summary>
+              <p>Yes. Sessions can be exported whenever you want as JSON or Markdown.</p>
+            </details>
+            <details class="faq">
+              <summary>Does it work on mobile?</summary>
+              <p>No. The extension is built for desktop Chrome environments.</p>
+            </details>
+          </article>
+        </div>
+      </div>
+    </section>
+  </main>
 
   <footer class="footer">
-    <span>ChatBridge v1.0.0</span>
+    <span>ChatBridge v1.4.2</span>
     <div class="footer-links">
       <a href="https://github.com/Naeha-S/ChatBridge" target="_blank" rel="noopener">GitHub</a>
-      <a href="#tools">Tools</a>
+      <a href="#tools">Features</a>
       <a href="#agents">Agents</a>
       <a href="#setup">Setup</a>
     </div>
