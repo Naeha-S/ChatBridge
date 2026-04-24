@@ -2897,8 +2897,14 @@ Return ONLY the rewritten text. No preamble. No explanation.`;
         let systemInstruction = ''; // Add system instruction for better outputs
 
         if (payload.action === 'prompt') {
-          systemInstruction = 'You are an expert conversation analyst. Provide insightful, actionable analysis focusing on key patterns, decisions, and next steps.';
-          promptText = `Analyze this conversation and provide helpful insights or suggestions:\n\n${payload.text}`;
+          if (payload.systemPrompt) {
+            // Allow callers (like Prompt Optimizer) to supply their own system prompt.
+            systemInstruction = String(payload.systemPrompt || '');
+            promptText = String(payload.prompt || payload.text || '');
+          } else {
+            systemInstruction = 'You are an expert conversation analyst. Provide insightful, actionable analysis focusing on key patterns, decisions, and next steps.';
+            promptText = `Analyze this conversation and provide helpful insights or suggestions:\n\n${payload.text}`;
+          }
         } else if (payload.action === 'summarize') {
           systemInstruction = 'You are an elite summarization specialist trained to distill complex information into clear, actionable summaries. You adapt your output style precisely to the requested format while preserving all critical information. Never add meta-commentary like "Here is a summary" - output ONLY the summary itself.';
           // Use summary length/type if provided

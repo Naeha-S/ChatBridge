@@ -4699,6 +4699,121 @@
       }
     };
 
+    // Resolve the active composer across supported chat sites.
+    const findChatInput = () => {
+      const isEditable = (el) => {
+        if (!el) return false;
+        if (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT') return true;
+        return !!(el.isContentEditable || el.contentEditable === 'true');
+      };
+
+      const isVisible = (el) => {
+        try {
+          if (!el) return false;
+          if (!el.isConnected) return false;
+          if (el.closest('[data-cb-ignore="true"]')) return false;
+          const style = window.getComputedStyle(el);
+          if (!style || style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity) === 0) return false;
+          const rect = el.getBoundingClientRect();
+          return rect.width > 0 && rect.height > 0;
+        } catch (_) {
+          return false;
+        }
+      };
+
+      // Prefer currently focused editable element if it's valid.
+      try {
+        const active = document.activeElement;
+        if (isEditable(active) && isVisible(active)) return active;
+      } catch (_) { }
+
+      try {
+        const pick = (typeof window.pickAdapter === 'function') ? window.pickAdapter : null;
+        const adapter = pick ? pick() : null;
+        if (adapter && typeof adapter.getInput === 'function') {
+          const fromAdapter = adapter.getInput();
+          if (isEditable(fromAdapter) && isVisible(fromAdapter)) return fromAdapter;
+        }
+      } catch (_) { }
+
+      const selectors = [
+        'textarea[data-id="root"]',
+        '#prompt-textarea',
+        'textarea.prompt-textarea',
+        'textarea[placeholder*="message" i]',
+        'textarea[placeholder*="chat" i]',
+        'div[contenteditable="true"][data-placeholder]',
+        'div[contenteditable="true"]',
+        'textarea',
+        'input[type="text"]'
+      ];
+
+      for (const sel of selectors) {
+        const nodes = Array.from(document.querySelectorAll(sel));
+        for (const node of nodes) {
+          if (!node) continue;
+          if (!isEditable(node) || !isVisible(node)) continue;
+          return node;
+        }
+      }
+      return null;
+    };
+    const withTimeout = (promise, ms, timeoutMsg) => Promise.race([
+      promise,
+      new Promise((_, reject) => setTimeout(() => reject(new Error(timeoutMsg || 'Request timed out')), ms))
+    ]);
+
+    const optimizePromptText = async (originalText, systemPrompt) => {
+      const startedAt = Date.now();
+      try {
+        const geminiResult = await withTimeout(callGeminiAsync({
+          action: 'prompt',
+          text: originalText,
+          systemPrompt,
+          length: 'medium'
+        }), 45000, 'Optimization timed out');
+
+        if (geminiResult && geminiResult.ok && geminiResult.result) {
+          return { ok: true, text: String(geminiResult.result).trim(), model: geminiResult.model || 'gemini' };
+        }
+      } catch (_) { }
+
+      // Fallback: use Llama so the action still completes if Gemini is slow/unavailable.
+      try {
+        const elapsed = Date.now() - startedAt;
+        const remainingBudget = Math.max(3000, 59000 - elapsed);
+        const llamaTimeoutMs = Math.min(12000, remainingBudget);
+
+        const fallbackPrompt = `Rewrite the prompt below to be clearer, more specific, and more actionable. Preserve intent. Output ONLY the improved prompt.\n\n${originalText}`;
+        const llamaResult = await withTimeout(callLlamaAsync({ action: 'prompt', text: fallbackPrompt }), llamaTimeoutMs, 'Fallback optimization timed out');
+        if (llamaResult && llamaResult.ok && llamaResult.result) {
+          return { ok: true, text: String(llamaResult.result).trim(), model: 'llama' };
+        }
+      } catch (e) {
+        // Continue to deterministic local fallback.
+      }
+
+      // Final fallback: local optimizer guarantees completion and reinsertion.
+      try {
+        const local = optimizePrompt(String(originalText || ''));
+        const finalText = String(local || originalText || '').trim();
+        if (finalText) {
+          return { ok: true, text: finalText, model: 'local' };
+        }
+      } catch (_) { }
+
+      return { ok: false, error: 'Optimization failed' };
+    };
+
+
+    const getInputText = (input) => {
+      if (!input) return '';
+      if (input.tagName === 'TEXTAREA' || input.tagName === 'INPUT') {
+        return String(input.value || '').trim();
+      }
+      return String(input.innerText || input.textContent || '').trim();
+    };
+
     // Helper to insert text into chat input (handles textarea, input, contenteditable)
     const insertTextToChat = (text) => {
       try {
@@ -4926,7 +5041,7 @@
       try {
         const input = findChatInput();
         if (!input) { toast('No chat input field found'); return; }
-        const userText = input.value || input.innerText || input.textContent || '';
+        const userText = getInputText(input);
         if (!userText.trim()) { toast('Type a prompt first, then optimize'); return; }
 
         setMiniState(miniOptimize, 'loading');
@@ -21771,9 +21886,24 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
     // Gemini Cloud API handlers with governor
     function callGeminiAsync(originalPayload) {
       return new Promise(async (resolve) => {
+        let settled = false;
+        let timeoutId = null;
+        const finish = (result) => {
+          if (settled) return;
+          settled = true;
+          try { if (timeoutId) clearTimeout(timeoutId); } catch (_) { }
+          resolve(result);
+        };
+
         try {
           const gov = await tokenGovernor(Object.assign({}, originalPayload), 'gemini');
-          if (gov.intercepted) return resolve(gov.res);
+          if (gov.intercepted) return finish(gov.res);
+
+          // Hard stop for UI responsiveness: never let optimize-style actions hang forever.
+          timeoutId = setTimeout(() => {
+            finish({ ok: false, error: 'timeout', message: 'Gemini request timed out after 60 seconds.' });
+          }, 60000);
+
           chrome.runtime.sendMessage({ type: 'call_gemini', payload: gov.payload }, res => {
             const out = res || { ok: false, error: 'no-response' };
             // Apply ramble filter to successful responses
@@ -21781,9 +21911,9 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
               out.result = rambleFilter(out.result);
             }
             if (gov.cacheKey && out && out.ok) _cachePut(gov.cacheKey, out);
-            resolve(out);
+            finish(out);
           });
-        } catch (e) { resolve({ ok: false, error: e && e.message }); }
+        } catch (e) { finish({ ok: false, error: e && e.message }); }
       });
     }
 
@@ -22597,23 +22727,15 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       if (qaOptimize) {
         qaOptimize.addEventListener('click', async () => {
           CBAnalytics.track('quick_action', 'optimize_click');
+          if (qaOptimize.classList.contains('cb-loading')) return;
+
+          const originalHtml = qaOptimize.innerHTML;
+          qaOptimize.classList.add('cb-loading', 'cb-active');
+          qaOptimize.innerHTML = '<span class="cb-spinner" style="display:inline-block;width:12px;height:12px;margin:0 0 2px 0;"></span><span>Optimizing</span>';
+
           try {
-            // Find the chat input (textarea or contenteditable)
-            let input = null;
+            let input = findChatInput();
             let originalText = '';
-
-            try {
-              const pick = (typeof window.pickAdapter === 'function') ? window.pickAdapter : null;
-              const adapter = pick ? pick() : null;
-              if (adapter && typeof adapter.getInput === 'function') {
-                input = adapter.getInput();
-              }
-            } catch (e) { }
-
-            // Fallback to generic finder
-            if (!input) {
-              input = document.querySelector('textarea[data-id="root"], div[contenteditable="true"], textarea.prompt-textarea, #prompt-textarea, textarea[placeholder*="Message"], div[data-placeholder*="Message"]');
-            }
 
             if (!input) {
               CBAnalytics.track('quick_action', 'optimize_no_input');
@@ -22621,14 +22743,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
               return;
             }
 
-            // Get text from input
-            if (input.isContentEditable) {
-              originalText = input.textContent || input.innerText || '';
-            } else {
-              originalText = input.value || '';
-            }
-
-            originalText = originalText.trim();
+            originalText = getInputText(input);
 
             if (!originalText || originalText.length < 3) {
               CBAnalytics.track('quick_action', 'optimize_empty_input');
@@ -22666,32 +22781,35 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
 
             debugLog('[Prompt Optimizer] Optimizing inline:', originalText.slice(0, 50) + '...');
 
-            // Call Gemini with the system prompt
-            const result = await callGeminiAsync({
-              action: 'prompt',
-              text: originalText,
-              systemPrompt: systemPrompt,
-              length: 'medium'
-            });
+            const result = await optimizePromptText(originalText, systemPrompt);
 
-            if (result && result.ok && result.result) {
-              const optimizedText = result.result.trim();
+            if (result && result.ok && result.text) {
+              const optimizedText = result.text;
 
-              // Reinsert into the input
-              if (input.isContentEditable) {
-                input.focus();
-                input.textContent = '';
-                const textNode = document.createTextNode(optimizedText);
-                input.appendChild(textNode);
-                input.dispatchEvent(new Event('input', { bubbles: true }));
-              } else {
-                input.focus();
-                input.value = optimizedText;
-                input.dispatchEvent(new Event('input', { bubbles: true }));
+              // Reinsert using the shared helper so React/Vue/ProseMirror composers update properly.
+              let inserted = insertTextToChat(optimizedText);
+              if (!inserted) {
+                input = findChatInput();
+                inserted = !!input;
+                if (input && (input.tagName === 'TEXTAREA' || input.tagName === 'INPUT')) {
+                  input.focus();
+                  input.value = optimizedText;
+                  input.dispatchEvent(new Event('input', { bubbles: true }));
+                } else if (input) {
+                  input.focus();
+                  input.textContent = optimizedText;
+                  input.dispatchEvent(new Event('input', { bubbles: true }));
+                }
               }
 
-              CBAnalytics.track('quick_action', 'optimize_success', { inputChars: originalText.length, outputChars: optimizedText.length });
-              toast('✓ Prompt optimized!');
+              if (!inserted) {
+                CBAnalytics.track('quick_action', 'optimize_failed', { message: 'Unable to write optimized text back into chat input' });
+                toast('Optimized text generated, but could not reinsert into chat');
+                return;
+              }
+
+              CBAnalytics.track('quick_action', 'optimize_success', { inputChars: originalText.length, outputChars: optimizedText.length, model: result.model || 'unknown' });
+              toast(result.model === 'llama' ? '✓ Prompt optimized (fallback)' : '✓ Prompt optimized!');
             } else {
               CBAnalytics.track('quick_action', 'optimize_failed', { message: String(result?.error || 'Unknown error') });
               toast('Optimization failed: ' + (result?.error || 'Unknown error'));
@@ -22700,6 +22818,9 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
             CBAnalytics.track('quick_action', 'optimize_error', { message: String(err && (err.message || err)) });
             toast('Optimization error: ' + (err?.message || err));
             debugLog('[Prompt Optimizer] Error:', err);
+          } finally {
+            qaOptimize.classList.remove('cb-loading', 'cb-active');
+            qaOptimize.innerHTML = originalHtml;
           }
         });
       }
@@ -22753,20 +22874,14 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
 
         debugLog('[Prompt Optimizer] Optimizing prompt...');
 
-        // Call Gemini with the system prompt
-        const result = await callGeminiAsync({
-          action: 'prompt',
-          text: rawPrompt,
-          systemPrompt: systemPrompt,
-          length: 'medium'
-        });
+        const result = await optimizePromptText(rawPrompt, systemPrompt);
 
-        if (result && result.ok && result.result) {
-          optOutput.textContent = result.result.trim();
+        if (result && result.ok && result.text) {
+          optOutput.textContent = result.text;
           optOutput.style.display = 'block';
           btnOptCopy.style.display = 'inline-flex';
           btnOptInsert.style.display = 'inline-flex';
-          toast('✓ Prompt optimized');
+          toast(result.model === 'llama' ? '✓ Prompt optimized (fallback)' : '✓ Prompt optimized');
         } else {
           toast('Optimization failed: ' + (result?.error || 'Unknown error'));
           optOutput.textContent = '(Optimization failed - please try again)';
