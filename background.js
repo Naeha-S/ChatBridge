@@ -1156,16 +1156,71 @@ async function fetchEmbeddingNvidia(text) {
   return { vector, provider: 'nvidia', model: 'llama-nemotron-embed-1b-v2' };
 }
 
+async function fetchEmbeddingViaGemini(text) {
+  try {
+    const geminiKey = await getGeminiApiKey();
+    console.log('[ChatBridge] fetchEmbeddingViaGemini - key check:', { present: !!geminiKey, length: geminiKey ? geminiKey.length : 0 });
+    if (!geminiKey) throw new Error('no_gemini_key');
+
+    const keyMasked = geminiKey ? (geminiKey.slice(0, 4) + '...' + geminiKey.slice(-4)) : '(empty)';
+    console.log('[ChatBridge] fetchEmbeddingViaGemini - calling Gemini with key:', keyMasked);
+    
+    const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/embedding-001:embedContent?key=' + encodeURIComponent(geminiKey), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'models/embedding-001',
+        content: { parts: [{ text: text.slice(0, 100) }] }
+      })
+    });
+
+    console.log('[ChatBridge] fetchEmbeddingViaGemini - response:', { status: response.status, ok: response.ok });
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[ChatBridge] fetchEmbeddingViaGemini - error:', errorText.slice(0, 300));
+      if (response.status === 401 || response.status === 403) throw new Error('invalid_api_key');
+      if (response.status === 429) throw new Error('rate_limited');
+      throw new Error(`http_${response.status}`);
+    }
+
+    const json = await response.json();
+    console.log('[ChatBridge] fetchEmbeddingViaGemini - response keys:', Object.keys(json), 'has embedding:', !!(json && json.embedding));
+    const embValues = json && json.embedding && json.embedding.values;
+    if (!Array.isArray(embValues) || !embValues.length) throw new Error('empty_embedding');
+    const vector = normalizeEmbeddingVector(embValues);
+    return { vector, provider: 'gemini', model: 'embedding-001' };
+  } catch (e) {
+    if (e.message.includes('no_gemini_key')) throw e;
+    throw new Error('gemini_embedding_failed: ' + (e.message || 'unknown'));
+  }
+}
+
 async function fetchEmbeddingPreferred(text) {
+  // Priority 1: Try Gemini (user has saved it for Ask AI)
+  try {
+    const gemini = await fetchEmbeddingViaGemini(text);
+    if (gemini && Array.isArray(gemini.vector)) return gemini;
+  } catch (e) {
+    console.debug('[ChatBridge] Gemini embedding failed:', e.message);
+  }
+
+  // Priority 2: Try NVIDIA
   try {
     const nvidia = await fetchEmbeddingNvidia(text);
     if (nvidia && Array.isArray(nvidia.vector)) return nvidia;
-  } catch (_) {
-    // NVIDIA is optional; local embedding remains a no-key fallback.
+  } catch (e) {
+    console.debug('[ChatBridge] NVIDIA embedding failed:', e.message);
   }
-  const local = await getLocalEmbeddingViaContent(text);
-  if (!local) return null;
-  return { vector: local, provider: 'local', model: 'content-script-transformer' };
+
+  // Priority 3: Fall back to local embedding via content script
+  try {
+    const local = await getLocalEmbeddingViaContent(text);
+    if (local && Array.isArray(local)) return { vector: local, provider: 'local', model: 'content-script-transformer' };
+  } catch (e) {
+    console.debug('[ChatBridge] Local embedding failed:', e.message);
+  }
+
+  return null;
 }
 
 // Fetch embedding compatibility wrappers
@@ -1184,25 +1239,36 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     if (!msg || !msg.type) return;
     if (msg.type === 'vector_index') {
       (async () => {
-        const payload = msg.payload || {};
-        const id = String(payload.id || payload.ts || Date.now());
-        const text = payload.text || '';
-        const metadata = payload.metadata || {};
-        if (!text) return sendResponse({ ok: false, error: 'no_text' });
-        // Try to get embedding from payload first
-        let embedding = payload.embedding || null;
-        let embeddingProvider = payload.embeddingProvider || null;
-        let embeddingModel = payload.embeddingModel || null;
-        if (!embedding) {
-          const embOut = await fetchEmbeddingPreferred(text);
-          embedding = embOut && embOut.vector;
-          embeddingProvider = embOut && embOut.provider;
-          embeddingModel = embOut && embOut.model;
-        }
-        if (!embedding) return sendResponse({ ok: false, error: 'no_embedding' });
-        const obj = {
-          id,
-          vector: embedding,
+        try {
+          const payload = msg.payload || {};
+          const id = String(payload.id || payload.ts || Date.now());
+          const text = payload.text || '';
+          const metadata = payload.metadata || {};
+          if (!text) return sendResponse({ ok: false, error: 'no_text' });
+          
+          console.log('[ChatBridge] vector_index - indexing:', { id: id.slice(0, 10), textLen: text.length });
+          
+          // Try to get embedding from payload first
+          let embedding = payload.embedding || null;
+          let embeddingProvider = payload.embeddingProvider || null;
+          let embeddingModel = payload.embeddingModel || null;
+          if (!embedding) {
+            try {
+              const embOut = await fetchEmbeddingPreferred(text);
+              embedding = embOut && embOut.vector;
+              embeddingProvider = embOut && embOut.provider;
+              embeddingModel = embOut && embOut.model;
+              console.log('[ChatBridge] vector_index - embedding obtained:', { provider: embeddingProvider, model: embeddingModel, length: embedding ? embedding.length : 0 });
+            } catch (embErr) {
+              console.error('[ChatBridge] vector_index - embedding failed:', embErr.message);
+              throw embErr;
+            }
+          }
+          if (!embedding) return sendResponse({ ok: false, error: 'no_embedding' });
+          
+          const obj = {
+            id,
+            vector: embedding,
           metadata: Object.assign({}, metadata, {
             embeddingProvider: embeddingProvider || metadata.embeddingProvider || 'unknown',
             embeddingModel: embeddingModel || metadata.embeddingModel || 'unknown'
@@ -1217,17 +1283,31 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
     if (msg.type === 'vector_query') {
       (async () => {
-        const q = (msg.payload && msg.payload.query) ? msg.payload.query : '';
-        const topK = (msg.payload && msg.payload.topK) ? Math.max(1, msg.payload.topK) : 6;
-        if (!q) return sendResponse({ ok: false, error: 'no_query' });
-        // get embedding for query
-        const qemb = await fetchEmbeddingOpenAI(q);
-        if (!qemb) return sendResponse({ ok: false, error: 'no_embedding' });
-        const all = await idbAll();
-        const scored = all.map(it => ({ id: it.id, score: cosine(qemb, it.vector || []), metadata: it.metadata || {} }));
-        scored.sort((a, b) => b.score - a.score);
-        const top = scored.slice(0, topK);
-        return sendResponse({ ok: true, results: top });
+        try {
+          const q = (msg.payload && msg.payload.query) ? msg.payload.query : '';
+          const topK = (msg.payload && msg.payload.topK) ? Math.max(1, msg.payload.topK) : 6;
+          if (!q) return sendResponse({ ok: false, error: 'no_query' });
+          
+          console.log('[ChatBridge] vector_query - starting for query:', q.slice(0, 50));
+          // get embedding for query
+          const qemb = await fetchEmbeddingOpenAI(q);
+          console.log('[ChatBridge] vector_query - embedding result:', { hasEmbedding: !!qemb, length: qemb ? qemb.length : 0 });
+          
+          if (!qemb) return sendResponse({ ok: false, error: 'no_embedding' });
+          
+          const all = await idbAll();
+          console.log('[ChatBridge] vector_query - indexed items in DB:', all.length);
+          
+          const scored = all.map(it => ({ id: it.id, score: cosine(qemb, it.vector || []), metadata: it.metadata || {} }));
+          scored.sort((a, b) => b.score - a.score);
+          const top = scored.slice(0, topK);
+          
+          console.log('[ChatBridge] vector_query - returning', top.length, 'results');
+          return sendResponse({ ok: true, results: top });
+        } catch (e) {
+          console.error('[ChatBridge] vector_query - exception:', e.message || e);
+          return sendResponse({ ok: false, error: e.message || 'unknown_error' });
+        }
       })();
       return true;
     }
@@ -2624,6 +2704,26 @@ Return ONLY the rewritten text. No preamble. No explanation.`;
         return sendResponse({ ok: false, error: 'embed_suggest_error', message: (e && e.message) || String(e) });
       }
     })();
+    return true;
+  }
+
+  if (msg && msg.type === 'open_tab') {
+    const url = msg.url;
+    if (!url) {
+      sendResponse && sendResponse({ ok: false, error: 'missing_url' });
+      return true;
+    }
+    try {
+      chrome.tabs.create({ url }, (tab) => {
+        if (chrome.runtime.lastError || !tab || !tab.id) {
+          sendResponse && sendResponse({ ok: false, error: 'tab_create_failed' });
+          return;
+        }
+        sendResponse && sendResponse({ ok: true, tabId: tab.id });
+      });
+    } catch (e) {
+      sendResponse && sendResponse({ ok: false, error: e && e.message });
+    }
     return true;
   }
 

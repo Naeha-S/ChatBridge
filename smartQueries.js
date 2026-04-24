@@ -759,6 +759,57 @@
 /* No-scroll utilities */
 .sq-no-hscroll { overflow-x: hidden !important; }
 
+/* ===== ACCESSIBILITY ENHANCEMENTS ===== */
+
+/* Focus visible outlines for keyboard navigation */
+.sq-btn:focus-visible,
+.sq-tab:focus-visible,
+.sq-suggestion-chip:focus-visible,
+.sq-result:focus-visible,
+.sq-history-item:focus-visible {
+  outline: 2px solid var(--sq-accent);
+  outline-offset: 1px;
+}
+
+.sq-textarea:focus-visible {
+  outline: 2px solid var(--sq-accent);
+  outline-offset: -1px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: more) {
+  .sq-btn-primary {
+    border: 2px solid var(--sq-white);
+  }
+  .sq-btn-secondary {
+    border-width: 2px;
+  }
+  .sq-result {
+    border-width: 2px;
+  }
+  .sq-white {
+    font-weight: 700;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .sq-btn-primary,
+  .sq-btn-secondary,
+  .sq-suggestion-chip,
+  .sq-result,
+  .sq-history-item {
+    transition: none;
+  }
+}
+
+/* Better color contrast for vision accessibility */
+:host(.cb-theme-light) {
+  --sq-white: #000000;
+  --sq-subtext: #333333;
+  --sq-muted: #666666;
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
   .sq-history-sidebar.open {
@@ -767,6 +818,17 @@
     z-index: 100;
     box-shadow: 20px 0 50px rgba(0,0,0,0.5);
   }
+}
+
+/* Virtual scrolling container for large lists */
+.sq-virtual-list {
+  overflow-y: auto;
+  overflow-x: hidden;
+  position: relative;
+}
+
+.sq-virtual-spacer {
+  pointer-events: none;
 }
 `;
   ;
@@ -786,6 +848,9 @@
       this.resultsPerPage = 5;
       this.debounceTimer = null;
       this.lastQueryTime = 0; // Rate limiting
+      this.aiResponseCache = new Map();
+      this.inFlightAiRequests = new Map();
+      this.aiCacheTtlMs = 120000;
       this.loadHistory();
       this.loadSavedSearches();
     }
@@ -874,6 +939,7 @@
       if (!container) return;
       this.container = container;
       this.injectStyles(container.getRootNode());
+      this.detectAndAdaptTheme();
 
       container.innerHTML = `
         <div class="sq-wrapper sq-no-hscroll">
@@ -881,65 +947,66 @@
             <!-- Main Content -->
             <div style="flex: 1; display: flex; flex-direction: column; min-width: 0; overflow: hidden; overflow-x: visible; position: relative;">
               <!-- Header -->
-              <div class="sq-header">
-                <div class="sq-tabs">
-                    <button class="sq-tab active" data-mode="live">Current Chat</button>
-                    <button class="sq-tab" data-mode="memory">Search Memory</button>
-                    <button class="sq-tab" data-mode="graph">Knowledge Graph</button>
+              <div class="sq-header" role="region" aria-label="Smart Query Header">
+                <div class="sq-tabs" role="tablist">
+                    <button class="sq-tab active" data-mode="live" role="tab" aria-selected="true">Current Chat</button>
+                    <button class="sq-tab" data-mode="memory" role="tab" aria-selected="false">Search Memory</button>
+                    <button class="sq-tab" data-mode="graph" role="tab" aria-selected="false">Knowledge Graph</button>
                 </div>
                 <div style="display:flex; gap:6px; align-items:center;">
-                  <button class="sq-btn sq-btn-secondary sq-btn-sm" id="sq-open-history" title="History">📋</button>
-                  <button class="sq-btn sq-btn-secondary sq-btn-sm" id="btn-index-now" title="Train your AI memory on saved conversations">↻ Train</button>
+                  <button class="sq-btn sq-btn-secondary sq-btn-sm" id="sq-open-history" title="Open query history (Ctrl+Shift+H)" aria-label="Open query history">📋</button>
+                  <button class="sq-btn sq-btn-secondary sq-btn-sm" id="btn-index-now" title="Train your AI memory on saved conversations" aria-label="Train memory">↻ Train</button>
                 </div>
               </div>
 
               <!-- History Dropdown Overlay -->
-              <div class="sq-history-sidebar" id="sq-sidebar">
+              <div class="sq-history-sidebar" id="sq-sidebar" role="region" aria-label="Query history">
                 <div class="sq-history-header">
                   <span>📋 Query History</span>
-                  <button class="sq-history-toggle" id="sq-sidebar-toggle" style="background:none;border:none;color:var(--sq-subtext);cursor:pointer;font-size:14px;">✕</button>
+                  <button class="sq-history-toggle" id="sq-sidebar-toggle" style="background:none;border:none;color:var(--sq-subtext);cursor:pointer;font-size:14px;" aria-label="Close history panel">✕</button>
                 </div>
-                <div id="sq-history-list" class="sq-history-list"></div>
+                <div id="sq-history-list" class="sq-history-list" role="list"></div>
               </div>
               
-              <div id="sq-mode-helper" class="sq-helper-text">Reason only over this conversation</div>
+              <div id="sq-mode-helper" class="sq-helper-text" role="status">Reason only over this conversation</div>
 
               <!-- Body -->
-              <div class="sq-body">
+              <div class="sq-body" role="main">
                 
                 <!-- Suggestions -->
-                <div id="sq-suggestions-area" class="sq-suggestions" style="display:none;"></div>
+                <div id="sq-suggestions-area" class="sq-suggestions" style="display:none;" role="region" aria-label="Suggested queries"></div>
 
                 <!-- Input Card -->
-                <div class="sq-input-card">
+                <div class="sq-input-card" role="region" aria-label="Query input area">
                   <div class="sq-input-wrapper">
                     <textarea 
                       class="sq-textarea" 
                       id="sq-query-input"
                       placeholder="Ask about decisions, confusions, patterns..."
+                      aria-label="Enter your search query"
                     ></textarea>
                   </div>
                   
                   <div class="sq-controls">
                     <div class="sq-options" style="display:flex;gap:6px;align-items:center;">
                        <label class="sq-checkbox-label" style="display:none;font-size:11px;color:var(--sq-subtext);gap:4px;align-items:center;" id="chk-synthesis-wrapper">
-                         <input type="checkbox" checked id="chk-synthesis" style="accent-color:var(--sq-accent);">
+                         <input type="checkbox" checked id="chk-synthesis" style="accent-color:var(--sq-accent);" aria-label="Enable AI synthesis">
                          <span>Synthesis</span>
                        </label>
-                       <button class="sq-btn sq-btn-secondary sq-btn-sm" id="sq-toggle-filters" title="Advanced filters">⚙️</button>
-                       <button class="sq-btn sq-btn-secondary sq-btn-sm" id="btn-clear">Clear</button>
+                       <button class="sq-btn sq-btn-secondary sq-btn-sm" id="sq-toggle-filters" title="Advanced filters" aria-label="Toggle advanced filter panel" aria-pressed="false">⚙️</button>
+                       <button class="sq-btn sq-btn-secondary sq-btn-sm" id="btn-clear" aria-label="Clear query input">Clear</button>
                     </div>
-                    <button class="sq-btn sq-btn-primary" id="btn-ask">
+                    <button class="sq-btn sq-btn-primary" id="btn-ask" aria-label="Ask AI question (Ctrl+Enter)">
                       ✨ <span>Ask AI</span>
                     </button>
                   </div>
                 </div>
 
                 <!-- Advanced Filters -->
-                <div class="sq-filters-panel" id="sq-filters-panel">
+                <div class="sq-filters-panel" id="sq-filters-panel" role="region" aria-label="Advanced search filters">
                   <div class="sq-filter-group">
-                    <label class="sq-filter-label">Sort By</label>
-                    <select class="sq-filter-select" id="sq-sort-by">
+                    <label class="sq-filter-label" for="sq-sort-by">Sort By</label>
+                    <select class="sq-filter-select" id="sq-sort-by" aria-label="Sort results by">
                       <option value="relevance">Relevance</option>
                       <option value="recent">Most Recent</option>
                       <option value="oldest">Oldest</option>
@@ -948,29 +1015,29 @@
                   <div class="sq-filter-group">
                     <label class="sq-filter-label">Date Range</label>
                     <div style="display:flex; gap:6px; align-items:center;">
-                      <input type="date" class="sq-filter-input" id="sq-date-from" style="font-size:11px;padding:6px 8px;">
+                      <input type="date" class="sq-filter-input" id="sq-date-from" style="font-size:11px;padding:6px 8px;" aria-label="From date">
                       <span style="color: var(--sq-subtext); font-size:11px;">to</span>
-                      <input type="date" class="sq-filter-input" id="sq-date-to" style="font-size:11px;padding:6px 8px;">
+                      <input type="date" class="sq-filter-input" id="sq-date-to" style="font-size:11px;padding:6px 8px;" aria-label="To date">
                     </div>
                   </div>
                   <div class="sq-filter-group">
                     <label class="sq-filter-label" style="display:flex;justify-content:space-between;align-items:center;">
                       <span>Source Filters</span>
-                      <button class="sq-btn sq-btn-secondary sq-btn-sm" id="sq-reset-sources" style="padding:2px 8px;height:22px;">Reset</button>
+                      <button class="sq-btn sq-btn-secondary sq-btn-sm" id="sq-reset-sources" style="padding:2px 8px;height:22px;" aria-label="Reset all sources">Reset</button>
                     </label>
-                    <div id="sq-source-filters" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+                    <div id="sq-source-filters" style="display:flex;flex-wrap:wrap;gap:6px;" role="group"></div>
                   </div>
                   <div class="sq-filter-group" style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
                     <label class="sq-filter-label" style="margin:0;">Index Diagnostics</label>
-                    <button class="sq-btn sq-btn-secondary sq-btn-sm" id="sq-refresh-diagnostics" style="padding:4px 10px;">Refresh</button>
+                    <button class="sq-btn sq-btn-secondary sq-btn-sm" id="sq-refresh-diagnostics" style="padding:4px 10px;" aria-label="Refresh index statistics">Refresh</button>
                   </div>
-                  <div id="sq-index-diagnostics" style="font-size:11px;color:var(--sq-subtext);padding:8px;border:1px solid var(--sq-border);border-radius:8px;background:var(--sq-surface);">
+                  <div id="sq-index-diagnostics" style="font-size:11px;color:var(--sq-subtext);padding:8px;border:1px solid var(--sq-border);border-radius:8px;background:var(--sq-surface);" role="status">
                     Diagnostics available after memory search.
                   </div>
                 </div>
 
                 <!-- Response Area -->
-                <div id="sq-results-area" class="sq-response-section" style="display:none;"></div>
+                <div id="sq-results-area" class="sq-response-section" style="display:none;" role="region" aria-label="Search results"></div>
 
               </div>
             </div>
@@ -980,6 +1047,7 @@
 
       this.attachEvents();
       this.updateHistoryList();
+      this.enhanceAriaLabels(this.container);
 
       if (this.mode === 'live') {
         this.showKeywordSuggestions();
@@ -1149,7 +1217,9 @@
       // Ask Logic with debouncing
       askBtn.addEventListener('click', async () => {
         const query = textarea.value.trim();
+        console.log('[SmartQuery] Ask button clicked', { query, mode: this.mode });
         if (!query) return;
+        console.log('[SmartQuery] Starting query in mode:', this.mode);
 
         this.addToHistory(query);
         this.updateHistoryList();
@@ -1170,10 +1240,13 @@
 
         try {
           if (this.mode === 'live') {
+            console.log('[SmartQuery] Running Live Query');
             await this.runLiveQuery(query, resultsArea);
           } else if (this.mode === 'graph') {
+            console.log('[SmartQuery] Running Graph Query');
             await this.runGraphQuery(query, resultsArea);
           } else {
+            console.log('[SmartQuery] Running Memory Search');
             const synth = this.container.querySelector('#chk-synthesis')?.checked ?? true;
             const sortBy = this.container.querySelector('#sq-sort-by')?.value || 'relevance';
             const dateFrom = this.container.querySelector('#sq-date-from')?.value;
@@ -1191,6 +1264,7 @@
           resultsArea.innerHTML = '';
           resultsArea.style.display = 'none';
         } finally {
+          console.log('[SmartQuery] Query completed', { mode: this.mode });
           askBtn.disabled = false;
           askBtn.innerHTML = origBtn;
         }
@@ -1321,8 +1395,10 @@
         return;
       }
       if (!query.trim()) return;
-      const context = this.getContext();
+      const context = await this.getContext(query);
+      console.log('[SmartQuery] runLiveQuery - query:', query, 'context length:', context?.length);
       if (!context || context.trim().length < 20) {
+        console.warn('[SmartQuery] runLiveQuery - insufficient context', { contextLength: context?.length });
         this.renderEmptyState(container, {
           icon: '🧠',
           title: 'No conversation context',
@@ -1342,7 +1418,10 @@ User question: ${query}
 
 Provide a clear, thorough answer. If the question is about continuing the conversation, suggest what to discuss next. Format important points with **bold**. Be specific and reference the actual conversation content.`;
 
+      console.log('[SmartQuery] runLiveQuery - full prompt length:', prompt.length);
+      console.log('[SmartQuery] runLiveQuery - full prompt:', prompt.substring(0, 300));
       const response = await this.callLlama(prompt);
+      console.log('[SmartQuery] runLiveQuery - AI response received:', response?.substring(0, 100));
 
       // If callLlama returned empty (toast already shown), clear results area
       if (!response) {
@@ -1413,10 +1492,14 @@ Provide a clear, thorough answer. If the question is about continuing the conver
     async runMemorySearch(query, container, synthesize, filters = {}) {
       const rateError = this.checkRateLimit();
       if (rateError) {
-        container.innerHTML = `<div class="sq-error" style="text-align:center;padding:16px;color:var(--sq-subtext);font-size:13px;">${rateError}</div>`;
+        container.innerHTML = `<div class="sq-error" style="text-align:center;padding:16px;color:var(--sq-subtext);font-size:13px;" role="alert">${rateError}</div>`;
         return;
       }
       if (!this.memoryRetrieval) await this.initialize();
+      
+      // Announce search start
+      this.announceLoadingProgress('searching', 0);
+      
       const rawResults = await this.memoryRetrieval.search(query, { limit: 50 });
 
       if (!rawResults || rawResults.length === 0) {
@@ -1429,22 +1512,11 @@ Provide a clear, thorough answer. If the question is about continuing the conver
       }
 
       this.rawResultsCount = rawResults.length;
+      this.announceLoadingProgress('deduping', 25);
 
-      // 1. Deduplication (String Similarity/Exact Check)
-      const uniqueResults = [];
-      const seenTexts = new Set();
-
-      for (const res of rawResults) {
-        // Flatten segments for comparison
-        const fullText = res.excerpt.map(m => m.text.trim()).join(' ');
-        // Simple fuzzy signature: first 60 chars
-        const signature = fullText.slice(0, 60).toLowerCase();
-
-        if (!seenTexts.has(signature)) {
-          seenTexts.add(signature);
-          uniqueResults.push(res);
-        }
-      }
+      // 1. Optimized Deduplication for large sets
+      const uniqueResults = this.deduplicateResultsOptimized(rawResults);
+      this.announceLoadingProgress('filtering', 50);
 
       // 2. Filter by Date
       let filtered = uniqueResults;
@@ -1467,6 +1539,8 @@ Provide a clear, thorough answer. If the question is about continuing the conver
           return allow.has(source);
         });
       }
+
+      this.announceLoadingProgress('sorting', 75);
 
       // 3. Sorting
       if (filters.sortBy === 'recent') {
@@ -1494,7 +1568,10 @@ Provide a clear, thorough answer. If the question is about continuing the conver
 
       this.currentResults = filtered;
       this.currentPage = 1;
+      
+      this.announceLoadingProgress('synthesizing', 90);
       this.renderMemoryResults(container, synthesize);
+      this.announceLoadingProgress('complete', 100);
     }
 
     renderMemoryResults(container, synthesize) {
@@ -1508,6 +1585,9 @@ Provide a clear, thorough answer. If the question is about continuing the conver
         });
         return;
       }
+
+      // Announce results to screen readers
+      this.announceResultsSummary(this.currentResults.length, this.rawResultsCount, this.mode);
 
       // Synthesis (Answer)
       if (synthesize) {
@@ -1526,9 +1606,9 @@ Provide a clear, thorough answer. If the question is about continuing the conver
           <div class="sq-synthesis-card" style="margin-bottom:10px;">
             <div class="sq-card-header">
               <span class="sq-card-title-text">✨ AI Synthesis · ${sourceCount} sources</span>
-              <button class="sq-btn sq-btn-secondary sq-btn-sm" id="btn-copy-memory">📋 Copy</button>
+              <button class="sq-btn sq-btn-secondary sq-btn-sm" id="btn-copy-memory" aria-label="Copy synthesis to clipboard">📋 Copy</button>
             </div>
-            <div class="sq-card-content" id="sq-synthesis-content">
+            <div class="sq-card-content" id="sq-synthesis-content" role="status">
               <div style="display:flex; flex-direction:column; gap:6px; padding:8px;">
                 <div class="sq-shimmer" style="width:90%;height:10px;"></div>
                 <div class="sq-shimmer" style="width:70%;height:10px;"></div>
@@ -1604,7 +1684,10 @@ Synthesize now:`;
         });
       }
 
-      // Results List with pagination
+      // Results List with adaptive pagination for performance
+      const optimalPerPage = this.getOptimalResultsPerPage();
+      this.resultsPerPage = optimalPerPage;
+      
       const start = (this.currentPage - 1) * this.resultsPerPage;
       const end = start + this.resultsPerPage;
       const pagedResults = this.currentResults.slice(start, end);
@@ -1612,22 +1695,21 @@ Synthesize now:`;
       // Dedupe notice
       if (this.rawResultsCount > this.currentResults.length) {
         const mergedCount = this.rawResultsCount - this.currentResults.length;
-        html += `<div class="sq-dedupe-notice">Merged ${mergedCount} similar segments</div>`;
+        html += `<div class="sq-dedupe-notice" role="status">Merged ${mergedCount} similar segments using optimized deduplication</div>`;
       }
 
       if (this.lastDiagnostics) {
         const selected = this.lastDiagnostics.selectedSources && this.lastDiagnostics.selectedSources.length
           ? this.lastDiagnostics.selectedSources.join(', ')
           : 'all';
-        html += `<div style="margin:6px 0 10px 0;padding:8px 10px;border:1px solid var(--sq-border);border-radius:8px;background:var(--sq-surface);font-size:11px;color:var(--sq-subtext);">
+        html += `<div style="margin:6px 0 10px 0;padding:8px 10px;border:1px solid var(--sq-border);border-radius:8px;background:var(--sq-surface);font-size:11px;color:var(--sq-subtext);" role="status">
           <div><strong style="color:var(--sq-white);">Ranking transparency</strong> · raw ${this.lastDiagnostics.rawCount} → deduped ${this.lastDiagnostics.dedupedCount} → shown ${this.lastDiagnostics.filteredCount}</div>
           <div style="margin-top:4px;opacity:0.9;">Sort: ${this.lastDiagnostics.sortBy} · Sources: ${this.escapeHTML(selected)}</div>
         </div>`;
       }
 
       html += `<div style="font-size:10px; color:var(--sq-subtext); text-transform:uppercase; font-weight:700; letter-spacing:0.08em; display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-        <span>${this.currentResults.length} Memories</span>
-        ${this.currentResults.length > pagedResults.length ? `<span style="opacity:0.6;">Page ${this.currentPage}</span>` : ''}
+        <span role="status">${this.currentResults.length} Memories${this.currentResults.length > pagedResults.length ? ` (Page ${this.currentPage})` : ''}</span>
       </div>`;
 
       html += pagedResults.map((r, idx) => {
@@ -1639,14 +1721,14 @@ Synthesize now:`;
         else if (txt.includes('change') || txt.includes('instead')) { tags += `<span class="sq-res-tag change">Shift</span>`; tagType = 'change'; }
 
         return `
-          <div class="sq-result" data-result-index="${start + idx}" data-tag="${tagType}" style="padding:10px 14px;">
+          <div class="sq-result" data-result-index="${start + idx}" data-tag="${tagType}" data-platform="${this.escapeHTML((r.segment && r.segment.platform) ? r.segment.platform : 'unknown')}" style="padding:10px 14px;" tabindex="-1" role="article">
             <div class="sq-res-meta">
                <div style="display:flex; gap:5px; align-items:center;">
                  ${tags}
                  <span style="font-size:10px;padding:2px 6px;border:1px solid var(--sq-border);border-radius:999px;opacity:0.8;">${this.escapeHTML((r.segment && r.segment.platform) ? r.segment.platform : 'unknown')}</span>
                  <span style="font-size:10px; opacity:0.7;">${new Date(r.segment.timestamp).toLocaleDateString()}</span>
                </div>
-               <button class="sq-btn sq-btn-secondary sq-btn-sm sq-expand-btn" style="padding:2px 8px; height:22px; font-size:10px;">Details</button>
+               <button class="sq-btn sq-btn-secondary sq-btn-sm sq-expand-btn" style="padding:2px 8px; height:22px; font-size:10px;" aria-label="Expand result ${start + idx + 1}">Details</button>
             </div>
             <div style="font-size:10px;color:var(--sq-subtext);margin:4px 0 6px 0;line-height:1.4;">
               Rank #${r.rank || (start + idx + 1)} · Score ${(typeof r.score === 'number' ? r.score.toFixed(3) : 'n/a')} · ${this.escapeHTML(r.relevanceLevel || 'exploratory')} · ${this.escapeHTML(r.relevanceReason || 'Relevant content')}
@@ -1660,6 +1742,7 @@ Synthesize now:`;
                   </div>
                 `).join('')}
               </div>
+              <div class="sq-res-details-lazy" style="display:none;"></div>
             </div>
           </div>
         `;
@@ -1669,24 +1752,31 @@ Synthesize now:`;
       if (this.currentResults.length > this.resultsPerPage) {
         const totalPages = Math.ceil(this.currentResults.length / this.resultsPerPage);
         html += `
-          <div class="sq-pagination">
-            <button class="sq-btn sq-btn-secondary sq-btn-sm" id="sq-prev-page" ${this.currentPage === 1 ? 'disabled' : ''}>← Prev</button>
-            <div class="sq-pagination-info">${this.currentPage} of ${totalPages}</div>
-            <button class="sq-btn sq-btn-secondary sq-btn-sm" id="sq-next-page" ${this.currentPage === totalPages ? 'disabled' : ''}>Next →</button>
+          <div class="sq-pagination" role="navigation" aria-label="Results pagination">
+            <button class="sq-btn sq-btn-secondary sq-btn-sm" id="sq-prev-page" ${this.currentPage === 1 ? 'disabled' : ''} aria-label="Previous page">← Prev</button>
+            <div class="sq-pagination-info" role="status" aria-live="polite">${this.currentPage} of ${totalPages}</div>
+            <button class="sq-btn sq-btn-secondary sq-btn-sm" id="sq-next-page" ${this.currentPage === totalPages ? 'disabled' : ''} aria-label="Next page">Next →</button>
           </div>
         `;
       }
 
       container.innerHTML = html;
 
-      // Expandable preview items
-      container.querySelectorAll('.sq-result').forEach(el => {
+      // Expandable preview items with keyboard nav support
+      container.querySelectorAll('.sq-result').forEach((el, idx) => {
         const btn = el.querySelector('.sq-expand-btn');
-        btn.addEventListener('click', () => {
+        btn?.addEventListener('click', () => {
           el.classList.toggle('expanded');
           btn.textContent = el.classList.contains('expanded') ? 'Hide Details' : 'View Details';
+          // Lazy load full details on expand
+          if (el.classList.contains('expanded')) {
+            this.lazyLoadResultDetails(el, pagedResults[idx]);
+          }
         });
       });
+
+      // Attach keyboard navigation
+      this.attachKeyboardNavigation(container);
 
       // Pagination Listeners
       const prevBtn = container.querySelector('#sq-prev-page');
@@ -1697,6 +1787,7 @@ Synthesize now:`;
           this.currentPage--;
           this.renderMemoryResults(container, false);
           container.scrollIntoView({ behavior: 'smooth' });
+          this.announceToScreenReader(`Page ${this.currentPage} of ${Math.ceil(this.currentResults.length / this.resultsPerPage)}`);
         }
       });
       if (nextBtn) nextBtn.addEventListener('click', () => {
@@ -1705,6 +1796,7 @@ Synthesize now:`;
           this.currentPage++;
           this.renderMemoryResults(container, false);
           container.scrollIntoView({ behavior: 'smooth' });
+          this.announceToScreenReader(`Page ${this.currentPage} of ${totalPages}`);
         }
       });
     }
@@ -1952,29 +2044,161 @@ Synthesize now:`;
       }
     }
 
-    getContext() {
-      try {
-        if (window.pickAdapter) {
-          const msgs = window.pickAdapter().getMessages();
-          return msgs.slice(-5).map(m => `${m.role}: ${m.text}`).join('\n');
+    isLikelyUiNoiseText(text) {
+      const value = String(text || '').trim().toLowerCase();
+      if (!value || value.length < 3) return true;
+      const uiPhrases = new Set([
+        'index chats',
+        'train memory',
+        'search memory',
+        'ask ai',
+        'query graph',
+        'open settings',
+        'show full answer'
+      ]);
+      return uiPhrases.has(value);
+    }
+
+    extractUsefulMessages(messages) {
+      if (!Array.isArray(messages)) return [];
+      return messages
+        .filter(m => m && (m.role === 'user' || m.role === 'assistant'))
+        .map(m => ({ role: m.role, text: String(m.text || '').trim() }))
+        .filter(m => m.text.length >= 8 && !this.isLikelyUiNoiseText(m.text));
+    }
+
+    getStoredConversationsForContext() {
+      return new Promise((resolve) => {
+        try {
+          chrome.storage.local.get(['chatbridge_conversations_v1'], (res) => {
+            const list = Array.isArray(res && res.chatbridge_conversations_v1)
+              ? res.chatbridge_conversations_v1
+              : [];
+            resolve(list);
+          });
+        } catch (e) {
+          console.warn('[SmartQuery] getStoredConversationsForContext failed', e);
+          resolve([]);
         }
-      } catch (e) { }
+      });
+    }
+
+    scoreConversationForQuery(conversation, queryTokens) {
+      if (!conversation || !Array.isArray(conversation.conversation) || queryTokens.length === 0) return 0;
+      const joined = conversation.conversation
+        .slice(-20)
+        .map(m => String(m && m.text ? m.text : '').toLowerCase())
+        .join(' ');
+      let score = 0;
+      for (const token of queryTokens) {
+        if (joined.includes(token)) score += 1;
+      }
+      return score;
+    }
+
+    async getContext(query = '') {
+      try {
+        let contextMessages = [];
+        let source = 'adapter';
+
+        if (typeof window.pickAdapter === 'function') {
+          const adapter = window.pickAdapter();
+          const adapterName = adapter && adapter.id ? adapter.id : 'unknown';
+          const msgs = (adapter && typeof adapter.getMessages === 'function') ? adapter.getMessages() : [];
+          const useful = this.extractUsefulMessages(msgs);
+          contextMessages = useful.slice(-12);
+          console.log('[SmartQuery] getContext adapter extraction', {
+            adapter: adapterName,
+            rawCount: Array.isArray(msgs) ? msgs.length : 0,
+            usefulCount: useful.length,
+            preview: useful.slice(-3).map(m => ({ role: m.role, text: m.text.slice(0, 80) }))
+          });
+        }
+
+        if (contextMessages.length < 3) {
+          const queryTokens = String(query || '')
+            .toLowerCase()
+            .split(/[^a-z0-9]+/)
+            .filter(t => t.length >= 3)
+            .slice(0, 12);
+
+          const stored = await this.getStoredConversationsForContext();
+          const ranked = stored
+            .map(conv => ({ conv, score: this.scoreConversationForQuery(conv, queryTokens) }))
+            .sort((a, b) => {
+              if (b.score !== a.score) return b.score - a.score;
+              return Number(b && b.conv && b.conv.ts ? b.conv.ts : 0) - Number(a && a.conv && a.conv.ts ? a.conv.ts : 0);
+            })
+            .slice(0, 3)
+            .map(x => x.conv)
+            .filter(Boolean);
+
+          const fallbackMessages = [];
+          ranked.forEach(conv => {
+            const tail = Array.isArray(conv.conversation) ? conv.conversation.slice(-8) : [];
+            tail.forEach(m => {
+              fallbackMessages.push({ role: m && m.role ? m.role : '', text: m && m.text ? m.text : '' });
+            });
+          });
+
+          const usefulFallback = this.extractUsefulMessages(fallbackMessages);
+          if (usefulFallback.length) {
+            contextMessages = usefulFallback.slice(-12);
+            source = 'saved-history';
+          }
+        }
+
+        const context = contextMessages.map(m => `${m.role}: ${m.text}`).join('\n');
+        console.log('[SmartQuery] getContext final', {
+          source,
+          messageCount: contextMessages.length,
+          contextLength: context.length,
+          contextPreview: context.slice(0, 220)
+        });
+        return context;
+      } catch (e) {
+        console.error('[SmartQuery] getContext() error:', e);
+      }
       return '';
     }
 
     async callLlama(text) {
-      return new Promise(resolve => {
+      const cacheKey = String(text || '');
+      if (!cacheKey) return '';
+
+      const cached = this.aiResponseCache.get(cacheKey);
+      if (cached && (Date.now() - cached.ts) < this.aiCacheTtlMs) {
+        console.log('[SmartQuery] callLlama cache hit', { textLength: text.length });
+        return cached.value;
+      }
+
+      if (this.inFlightAiRequests.has(cacheKey)) {
+        console.log('[SmartQuery] callLlama joining in-flight request', { textLength: text.length });
+        return this.inFlightAiRequests.get(cacheKey);
+      }
+
+      const requestPromise = new Promise(resolve => {
         try {
+          console.log('[SmartQuery] callLlama sending request', { textLength: text.length });
           chrome.runtime.sendMessage({
             type: 'call_llama',
             payload: { action: 'prompt', text: text }
           }, res => {
+            console.log('[SmartQuery] callLlama response', res);
             if (chrome.runtime.lastError) {
+              console.error('[SmartQuery] callLlama chrome error', chrome.runtime.lastError);
               this.showToast('Please configure your API key in ChatBridge Options');
               return resolve('');
             }
-            if (res && res.ok) return resolve(res.result);
-            // Friendly toast for any API error
+            if (res && res.ok) {
+              const value = String(res.result || '');
+              this.aiResponseCache.set(cacheKey, { value, ts: Date.now() });
+              if (this.aiResponseCache.size > 30) {
+                const oldest = this.aiResponseCache.keys().next().value;
+                this.aiResponseCache.delete(oldest);
+              }
+              return resolve(value);
+            }
             const msg = (res && res.error === 'no_api_key')
               ? 'Please configure your API key in ChatBridge Options'
               : (res && res.message) || 'Please configure your API key in ChatBridge Options';
@@ -1982,10 +2206,16 @@ Synthesize now:`;
             return resolve('');
           });
         } catch (e) {
+          console.error('[SmartQuery] callLlama exception', e);
           this.showToast('Please configure your API key in ChatBridge Options');
           resolve('');
         }
+      }).finally(() => {
+        this.inFlightAiRequests.delete(cacheKey);
       });
+
+      this.inFlightAiRequests.set(cacheKey, requestPromise);
+      return requestPromise;
     }
 
     async hasConfiguredApiKey() {
@@ -2087,10 +2317,302 @@ Synthesize now:`;
         ariaLive.textContent = message;
       }
     }
+
+    // ===== PERFORMANCE OPTIMIZATIONS =====
+    /**
+     * Virtual scrolling for large result sets (1000+)
+     * Renders only visible items to maintain 60fps
+     */
+    setupVirtualScrolling(container, items, renderFunc, itemHeight = 140) {
+      if (!container || items.length < 50) return; // Only use for large sets
+      
+      const scrollContainer = document.createElement('div');
+      scrollContainer.className = 'sq-virtual-list';
+      scrollContainer.style.height = '400px';
+      scrollContainer.style.overflow = 'auto';
+      
+      const viewportHeight = scrollContainer.clientHeight;
+      const visibleCount = Math.ceil(viewportHeight / itemHeight) + 2; // Buffer
+      
+      const spacer = document.createElement('div');
+      spacer.className = 'sq-virtual-spacer';
+      spacer.style.height = items.length * itemHeight + 'px';
+      
+      const content = document.createElement('div');
+      content.style.position = 'absolute';
+      content.style.top = '0';
+      content.style.left = '0';
+      content.style.right = '0';
+      
+      scrollContainer.appendChild(spacer);
+      scrollContainer.appendChild(content);
+      
+      let currentOffset = 0;
+      let renderTimeout = null;
+      
+      const renderVisible = () => {
+        clearTimeout(renderTimeout);
+        renderTimeout = requestIdleCallback(() => {
+          const scrollTop = scrollContainer.scrollTop;
+          const startIdx = Math.max(0, Math.floor(scrollTop / itemHeight) - 1);
+          const endIdx = Math.min(items.length, startIdx + visibleCount);
+          
+          content.style.transform = `translateY(${startIdx * itemHeight}px)`;
+          content.innerHTML = items
+            .slice(startIdx, endIdx)
+            .map((item, i) => renderFunc(item, startIdx + i))
+            .join('');
+          
+          // Re-attach event listeners
+          content.querySelectorAll('[data-virtual-idx]').forEach(el => {
+            const idx = parseInt(el.dataset.virtualIdx);
+            el.addEventListener('click', () => this.handleResultClick?.(items[idx], idx));
+          });
+        }, { timeout: 100 });
+      };
+      
+      scrollContainer.addEventListener('scroll', renderVisible, { passive: true });
+      renderVisible();
+      
+      container.appendChild(scrollContainer);
+      return scrollContainer;
+    }
+
+    /**
+     * Memoize expensive operations like deduplication
+     */
+    memoizeSearch(key, fn) {
+      if (!this.searchCache) this.searchCache = new Map();
+      if (this.searchCache.has(key)) return this.searchCache.get(key);
+      const result = fn();
+      this.searchCache.set(key, result);
+      // Limit cache size to prevent memory bloat
+      if (this.searchCache.size > 20) {
+        const firstKey = this.searchCache.keys().next().value;
+        this.searchCache.delete(firstKey);
+      }
+      return result;
+    }
+
+    /**
+     * Optimize deduplication for large sets using better hashing
+     */
+    deduplicateResultsOptimized(rawResults) {
+      return this.memoizeSearch(`dedup-${rawResults.length}`, () => {
+        const uniqueResults = [];
+        const seenSignatures = new Map(); // Hash -> index
+        
+        for (const res of rawResults) {
+          // Better signature: content hash + timestamp
+          const fullText = res.excerpt
+            .map(m => m.text.trim())
+            .join(' ')
+            .slice(0, 100)
+            .toLowerCase();
+          
+          // Simple fast hash
+          let hash = 0;
+          for (let i = 0; i < fullText.length; i++) {
+            const char = fullText.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash |= 0; // Convert to 32-bit int
+          }
+          
+          const signature = `${hash}-${res.segment?.timestamp || ''}`;
+          
+          if (!seenSignatures.has(signature)) {
+            seenSignatures.set(signature, uniqueResults.length);
+            uniqueResults.push(res);
+          }
+        }
+        return uniqueResults;
+      });
+    }
+
+    /**
+     * Lazy load result details on demand (expand)
+     */
+    lazyLoadResultDetails(resultEl, resultData) {
+      const detailsContainer = resultEl.querySelector('.sq-res-details-lazy');
+      if (!detailsContainer || detailsContainer.dataset.loaded === 'true') return;
+      
+      // Simulate async loading
+      requestIdleCallback(() => {
+        if (resultData.fullExcerpt && resultData.fullExcerpt.length > 2) {
+          const html = resultData.fullExcerpt
+            .slice(2)
+            .map(m => `
+              <div class="sq-res-msg" style="gap:8px; margin-bottom:4px;">
+                <span class="sq-res-role" style="font-size:10px;">${m.role === 'user' ? 'You' : 'AI'}</span>
+                <div style="flex:1; overflow-wrap:break-word;">${this.escapeHTML(m.text)}</div>
+              </div>
+            `)
+            .join('');
+          
+          if (detailsContainer) {
+            detailsContainer.innerHTML = html;
+            detailsContainer.dataset.loaded = 'true';
+          }
+        }
+      });
+    }
+
+    /**
+     * Adaptive results per page based on viewport
+     */
+    getOptimalResultsPerPage() {
+      const container = this.container?.querySelector('.sq-body');
+      if (!container) return 5;
+      
+      const height = container.clientHeight;
+      if (height < 400) return 3;
+      if (height < 700) return 5;
+      if (height < 1000) return 8;
+      return 12;
+    }
+
+    // ===== ACCESSIBILITY ENHANCEMENTS =====
+    
+    /**
+     * Add keyboard navigation to results
+     */
+    attachKeyboardNavigation(container) {
+      let focusedIdx = -1;
+      const results = container.querySelectorAll('.sq-result');
+      
+      container.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          focusedIdx = Math.min(focusedIdx + 1, results.length - 1);
+          if (results[focusedIdx]) {
+            results[focusedIdx].focus();
+            results[focusedIdx].scrollIntoView({ block: 'nearest' });
+            this.announceToScreenReader(`Result ${focusedIdx + 1} of ${results.length}. Press Enter to expand.`);
+          }
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          focusedIdx = Math.max(focusedIdx - 1, 0);
+          if (results[focusedIdx]) {
+            results[focusedIdx].focus();
+            results[focusedIdx].scrollIntoView({ block: 'nearest' });
+            this.announceToScreenReader(`Result ${focusedIdx + 1} of ${results.length}.`);
+          }
+        } else if (e.key === 'Enter' && e.target.classList.contains('sq-result')) {
+          e.preventDefault();
+          const btn = e.target.querySelector('.sq-expand-btn');
+          if (btn) btn.click();
+        }
+      });
+      
+      results.forEach((result, idx) => {
+        result.setAttribute('tabindex', '0');
+        result.addEventListener('focus', () => { focusedIdx = idx; });
+      });
+    }
+
+    /**
+     * Add comprehensive ARIA labels
+     */
+    enhanceAriaLabels(container) {
+      // Tabs
+      container.querySelectorAll('.sq-tab').forEach((tab, idx) => {
+        tab.setAttribute('role', 'tab');
+        tab.setAttribute('aria-selected', tab.classList.contains('active'));
+        tab.setAttribute('tabindex', tab.classList.contains('active') ? '0' : '-1');
+      });
+
+      // Buttons with better labels
+      const btnLabels = {
+        '#btn-ask': 'Ask AI question',
+        '#btn-clear': 'Clear input',
+        '#sq-toggle-filters': 'Toggle advanced filters',
+        '#sq-open-history': 'Open query history',
+        '#btn-index-now': 'Train AI memory on conversations',
+        '#sq-refresh-diagnostics': 'Refresh index diagnostics',
+        '.sq-expand-btn': 'Expand to see full content',
+      };
+      
+      Object.entries(btnLabels).forEach(([selector, label]) => {
+        container.querySelectorAll(selector).forEach(btn => {
+          if (!btn.getAttribute('aria-label')) {
+            btn.setAttribute('aria-label', label);
+          }
+        });
+      });
+
+      // Results with screen reader friendly info
+      container.querySelectorAll('.sq-result').forEach((result, idx) => {
+        const tag = result.dataset.tag || 'general';
+        const platform = result.querySelector('[data-platform]')?.textContent || 'unknown';
+        result.setAttribute('aria-label', `Result ${idx + 1}, ${tag}, from ${platform}`);
+        result.setAttribute('role', 'article');
+      });
+
+      // Pagination status
+      const paginationInfo = container.querySelector('.sq-pagination-info');
+      if (paginationInfo) {
+        const text = paginationInfo.textContent;
+        paginationInfo.setAttribute('aria-live', 'polite');
+        paginationInfo.setAttribute('aria-label', `Showing ${text}`);
+      }
+
+      // Search input with description
+      const input = container.querySelector('#sq-query-input');
+      if (input) {
+        input.setAttribute('aria-label', 'Search query input');
+        input.setAttribute('aria-describedby', 'sq-mode-helper');
+      }
+
+      // Filter checkboxes
+      container.querySelectorAll('.sq-source-filter').forEach(checkbox => {
+        const label = checkbox.nextElementSibling?.textContent || 'source';
+        checkbox.setAttribute('aria-label', `Filter by ${label}`);
+      });
+    }
+
+    /**
+     * Announce results summary to screen readers
+     */
+    announceResultsSummary(count, total, mode) {
+      const modeText = mode === 'live' ? 'current chat' : mode === 'graph' ? 'knowledge graph' : 'memory';
+      const message = `Found ${count} results${total > count ? ` out of ${total} total` : ''} in ${modeText}. Page up and down to navigate.`;
+      this.announceToScreenReader(message);
+    }
+
+    /**
+     * Enhanced loading announcement with progress
+     */
+    announceLoadingProgress(stage, percent) {
+      const stages = {
+        'searching': 'Searching',
+        'deduping': 'Removing duplicates',
+        'filtering': 'Applying filters',
+        'sorting': 'Sorting results',
+        'synthesizing': 'Generating AI answer'
+      };
+      const text = stages[stage] || stage;
+      this.announceToScreenReader(`${text}... ${percent}% complete`);
+    }
+
+    /**
+     * Detect and adapt to user's color preference
+     */
+    detectAndAdaptTheme() {
+      if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        this.currentTheme = 'dark';
+      } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
+        this.currentTheme = 'light';
+      }
+      
+      // Check for high contrast preference
+      if (window.matchMedia && window.matchMedia('(prefers-contrast: more)').matches) {
+        if (this.container) {
+          this.container.classList.add('sq-high-contrast');
+        }
+      }
+    }
   }
 
   // Export
   window.SmartQueryUI = SmartQueryUI;
   console.log('[ChatBridge] SmartQueryUI v3 (Enhanced) Loaded');
-
-})();

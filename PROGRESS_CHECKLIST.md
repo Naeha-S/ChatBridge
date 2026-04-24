@@ -6,15 +6,6 @@ product. Last updated: 2026-02-18
 **Legend:** `[x]` Done — `[-]` In progress — `[ ]` Not started
 
 ---
-
-## Phase 1 — Finish Core Features
-
-### 🔍 Smart Query Tab
-
-- [ ] Performance audit — large index sets
-- [ ] Edge cases: no results, partial index, stale index
-- [ ] Accessibility pass (keyboard nav, ARIA labels)
-
 ## Phase 2 — Core AI Infrastructure
 
 ### ☁️ Cloud & Hosting

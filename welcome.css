@@ -1339,6 +1339,7 @@ button {
 .workflow-grid,
 .feature-grid,
 .workspace-grid,
+.pricing-grid,
 .engine-grid,
 .config-grid,
 .setup-grid,
@@ -1354,6 +1355,7 @@ button {
 .workflow-card,
 .feature-card,
 .workspace-card,
+.pricing-card,
 .agent-card,
 .agent-side,
 .engine-card,
@@ -1367,6 +1369,7 @@ button {
 .workflow-card h3,
 .feature-card h3,
 .workspace-card h3,
+.pricing-card h3,
 .agent-card h3,
 .engine-card h3,
 .config-card h3,
@@ -1379,6 +1382,7 @@ button {
 .workflow-card p,
 .feature-card p,
 .workspace-card p,
+.pricing-card p,
 .agent-card p,
 .engine-card p,
 .config-card p,
@@ -1680,6 +1684,233 @@ button {
   min-height: 146px;
 }
 
+.pricing-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.pricing-card {
+  min-height: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 28px;
+  border-radius: calc(var(--radius) + 2px);
+  box-shadow:
+    var(--shadow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.025);
+}
+
+.pricing-card-free {
+  background:
+    radial-gradient(circle at 0% 0%, rgba(143, 181, 255, 0.1), transparent 32%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.005)),
+    linear-gradient(180deg, rgba(22, 26, 32, 0.96), rgba(14, 17, 22, 0.94));
+}
+
+.pricing-card-pro {
+  background:
+    radial-gradient(circle at 100% 0%, rgba(231, 193, 143, 0.14), transparent 32%),
+    linear-gradient(160deg, rgba(143, 181, 255, 0.08), rgba(19, 23, 29, 0.96) 54%),
+    linear-gradient(180deg, rgba(25, 29, 35, 0.94), rgba(14, 17, 22, 0.94));
+  transform: translateY(-10px);
+}
+
+.pricing-card-max {
+  background:
+    radial-gradient(circle at 100% 0%, rgba(182, 155, 255, 0.14), transparent 32%),
+    radial-gradient(circle at 0% 100%, rgba(143, 181, 255, 0.08), transparent 30%),
+    linear-gradient(180deg, rgba(25, 29, 35, 0.94), rgba(14, 17, 22, 0.94));
+}
+
+.pricing-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: start;
+}
+
+.pricing-tier,
+.plan-modal-kicker,
+.plan-modal-label {
+  margin: 0 0 8px;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.pricing-price {
+  flex-shrink: 0;
+  font-size: 2.2rem;
+  line-height: 1;
+  letter-spacing: -0.05em;
+  font-weight: 700;
+}
+
+.pricing-price span {
+  font-size: 0.9rem;
+  color: var(--muted);
+  letter-spacing: 0;
+}
+
+.pricing-copy {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.pricing-feature-list {
+  display: grid;
+  gap: 10px;
+  flex: 1;
+}
+
+.pricing-feature-list span {
+  padding: 12px 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(209, 218, 229, 0.08);
+  background: rgba(255, 255, 255, 0.035);
+  color: var(--muted-strong);
+  line-height: 1.5;
+}
+
+.pricing-action {
+  width: 100%;
+}
+
+.pricing-matrix {
+  border-radius: calc(var(--radius) + 2px);
+  border: 1px solid rgba(209, 218, 229, 0.08);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.018), rgba(255, 255, 255, 0.005)),
+    linear-gradient(180deg, rgba(22, 26, 32, 0.96), rgba(14, 17, 22, 0.94));
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+
+.pricing-matrix-row {
+  display: grid;
+  grid-template-columns: 1.8fr repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  padding: 16px 22px;
+  border-top: 1px solid rgba(209, 218, 229, 0.07);
+}
+
+.pricing-matrix-row:first-child {
+  border-top: 0;
+}
+
+.pricing-matrix-row span {
+  color: var(--muted);
+}
+
+.pricing-matrix-head span {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.plan-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+}
+
+.plan-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(4, 6, 10, 0.72);
+  backdrop-filter: blur(14px);
+}
+
+.plan-modal-card {
+  position: relative;
+  width: min(560px, calc(100% - 32px));
+  margin: min(10vh, 84px) auto 0;
+  padding: 28px;
+  border-radius: 30px;
+  border: 1px solid rgba(209, 218, 229, 0.12);
+  background:
+    radial-gradient(circle at 100% 0%, rgba(143, 181, 255, 0.11), transparent 32%),
+    linear-gradient(180deg, rgba(20, 24, 30, 0.97), rgba(12, 15, 20, 0.97));
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.45);
+}
+
+.plan-modal-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  border: 1px solid rgba(209, 218, 229, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.plan-modal-card h2 {
+  margin: 0 0 8px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(2rem, 4vw, 2.6rem);
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+
+.plan-modal-copy,
+.plan-modal-note {
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.plan-modal-summary {
+  margin: 22px 0 18px;
+  padding: 18px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  border-radius: 22px;
+  border: 1px solid rgba(209, 218, 229, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.plan-modal-summary strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 1rem;
+}
+
+.plan-modal-gateways {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.plan-gateway-chip {
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(209, 218, 229, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--muted-strong);
+  cursor: pointer;
+}
+
+.plan-gateway-chip.is-active {
+  border-color: rgba(143, 181, 255, 0.28);
+  background: rgba(143, 181, 255, 0.11);
+  color: var(--text);
+}
+
+.plan-modal-actions {
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
 .config-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 18px;
@@ -1927,6 +2158,7 @@ code {
   }
 
   .feature-grid,
+  .pricing-grid,
   .config-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -1955,6 +2187,10 @@ code {
 
   .engine-grid::before {
     display: none;
+  }
+
+  .pricing-card-pro {
+    transform: none;
   }
 }
 
@@ -1997,6 +2233,7 @@ code {
   .ops-strip,
   .feature-grid,
   .workspace-grid,
+  .pricing-grid,
   .config-grid,
   .agent-core,
   .setup-keys,
@@ -2051,6 +2288,19 @@ code {
   .config-card-wide,
   .workspace-card-accent {
     grid-column: span 1;
+  }
+
+  .pricing-matrix-row,
+  .plan-modal-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .plan-modal-card {
+    padding: 22px;
+  }
+
+  .plan-modal-actions {
+    flex-direction: column-reverse;
   }
 
   .stage-head {

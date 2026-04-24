@@ -22,8 +22,27 @@
   bind("btn-options-nav", openOptions);
   bind("btn-dashboard", openOptions);
 
+  const planStorageKey = "chatbridge_subscription_tier";
+  const planModal = document.getElementById("plan-modal");
+  const planModalKicker = document.getElementById("plan-modal-kicker");
+  const planModalTitle = document.getElementById("plan-modal-title");
+  const planModalCopy = document.getElementById("plan-modal-copy");
+  const planModalPlan = document.getElementById("plan-modal-plan");
+  const planModalGateway = document.getElementById("plan-modal-gateway");
+  const planModalNote = document.getElementById("plan-modal-note");
+  const planGatewayChoices = Array.from(document.querySelectorAll("[data-gateway-choice]"));
+  const pricingButtons = Array.from(document.querySelectorAll(".pricing-action"));
+  const planMeta = {
+    free: { label: "Free", cta: "Free plan activated", title: "Stay on Free" },
+    pro: { label: "Pro", cta: "Pro demo activated", title: "Upgrade to Pro" },
+    max: { label: "Max", cta: "Max demo activated", title: "Go Max" },
+  };
+  let selectedPlan = "pro";
+  let selectedGateway = "sandbox";
+
   initHeroShader();
   initCardStack();
+  initPricing();
 
   const nav = document.querySelector(".nav");
   const navSectionLinks = document.querySelectorAll('.nav-links a[href^="#"]');
@@ -53,6 +72,7 @@
       tools: "#tools",
       workspace: "#workspace",
       agents: "#agents",
+      pricing: "#pricing",
       setup: "#setup",
     };
 
@@ -156,26 +176,7 @@
 
   initBorderGlow(spotlightCards);
 
-  document.addEventListener(
-    "mousemove",
-    (event) => {
-      spotlightCards.forEach((card) => {
-        const rect = card.getBoundingClientRect();
-        const x = event.clientX - rect.left;
-        const y = event.clientY - rect.top;
-        const minEdgeDistance = Math.min(x, y, rect.width - x, rect.height - y);
-        const edgeRange = Math.min(90, Math.max(rect.width, rect.height) * 0.24);
-        const edgeProximity = Math.max(0, Math.min(100, (1 - minEdgeDistance / edgeRange) * 100));
-        const angle =
-          (Math.atan2(y - rect.height / 2, x - rect.width / 2) * 180) / Math.PI + 90;
-        card.style.setProperty("--mx", `${x}px`);
-        card.style.setProperty("--my", `${y}px`);
-        card.style.setProperty("--edge-proximity", edgeProximity.toFixed(2));
-        card.style.setProperty("--cursor-angle", `${angle.toFixed(2)}deg`);
-      });
-    },
-    { passive: true }
-  );
+  initSpotlightTracking(spotlightCards);
 
   const switches = document.querySelectorAll(".stage-switch");
   const panes = document.querySelectorAll(".preview-pane");
@@ -352,6 +353,162 @@
       },
       { once: true }
     );
+  }
+
+  function initPricing() {
+    if (!planModal) {
+      return;
+    }
+
+    const updateGatewayChoice = (gateway) => {
+      selectedGateway = gateway;
+      planGatewayChoices.forEach((button) => {
+        button.classList.toggle("is-active", button.dataset.gatewayChoice === gateway);
+      });
+      planModalGateway.textContent =
+        gateway === "sandbox" ? "Sandbox checkout" : gateway.charAt(0).toUpperCase() + gateway.slice(1);
+      if (planModalNote) {
+        planModalNote.textContent =
+          gateway === "sandbox"
+            ? "This is a placeholder payment flow. When you move to production, wire this state into Razorpay or your chosen gateway."
+            : `Selected gateway: ${gateway}. This remains a dummy flow until you connect a live processor.`;
+      }
+    };
+
+    const openPlanModal = ({ plan = "pro", gateway = "sandbox", feature = "" } = {}) => {
+      selectedPlan = planMeta[plan] ? plan : "pro";
+      updateGatewayChoice(gateway);
+      planModal.hidden = false;
+      document.body.style.overflow = "hidden";
+      planModalKicker.textContent = feature ? "Upgrade required" : "Dummy checkout";
+      planModalTitle.textContent = planMeta[selectedPlan].title;
+      planModalPlan.textContent = planMeta[selectedPlan].label;
+      planModalCopy.textContent = feature
+        ? `${feature} is outside your current plan. Upgrade here and use the dummy payment flow for now.`
+        : "Select a plan and test the upgrade flow.";
+    };
+
+    const closePlanModal = () => {
+      planModal.hidden = true;
+      document.body.style.overflow = "";
+    };
+
+    const persistPlan = (plan) =>
+      new Promise((resolve) => {
+        try {
+          chrome.storage.local.set({ [planStorageKey]: plan }, resolve);
+        } catch (_) {
+          resolve();
+        }
+      });
+
+    pricingButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        openPlanModal({
+          plan: button.dataset.plan || "pro",
+          gateway: button.dataset.gateway || "sandbox",
+        });
+      });
+    });
+
+    planGatewayChoices.forEach((button) => {
+      button.addEventListener("click", () => updateGatewayChoice(button.dataset.gatewayChoice || "sandbox"));
+    });
+
+    document.querySelectorAll("[data-close-plan-modal='true']").forEach((node) => {
+      node.addEventListener("click", closePlanModal);
+    });
+    bind("plan-modal-close", closePlanModal);
+    bind("plan-modal-cancel", closePlanModal);
+    bind("plan-modal-confirm", async () => {
+      await persistPlan(selectedPlan);
+      closePlanModal();
+      window.alert(`${planMeta[selectedPlan].cta}. Gateway: ${selectedGateway}.`);
+    });
+
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const shouldUpgrade = params.get("upgrade") === "1";
+      const feature = params.get("feature") || "";
+      const plan = params.get("plan") || "pro";
+      const gateway = params.get("gateway") || "sandbox";
+
+      if (shouldUpgrade) {
+        const pricingSection = document.getElementById("pricing");
+        if (pricingSection) {
+          pricingSection.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+        window.setTimeout(() => openPlanModal({ plan, gateway, feature }), 220);
+      }
+    } catch (_) {
+      // Ignore malformed query params.
+    }
+  }
+
+  function initSpotlightTracking(cards) {
+    if (!cards.length) {
+      return;
+    }
+
+    let activeCard = null;
+    let pointer = null;
+    let frameId = 0;
+
+    const resetCard = (card) => {
+      card.style.setProperty("--edge-proximity", "0");
+      card.style.setProperty("--mx", "50%");
+      card.style.setProperty("--my", "50%");
+    };
+
+    const flush = () => {
+      frameId = 0;
+      if (!activeCard || !pointer) {
+        return;
+      }
+
+      const rect = activeCard.getBoundingClientRect();
+      const x = pointer.x - rect.left;
+      const y = pointer.y - rect.top;
+      const minEdgeDistance = Math.min(x, y, rect.width - x, rect.height - y);
+      const edgeRange = Math.min(90, Math.max(rect.width, rect.height) * 0.24);
+      const edgeProximity = Math.max(0, Math.min(100, (1 - minEdgeDistance / edgeRange) * 100));
+      const angle = (Math.atan2(y - rect.height / 2, x - rect.width / 2) * 180) / Math.PI + 90;
+
+      activeCard.style.setProperty("--mx", `${x}px`);
+      activeCard.style.setProperty("--my", `${y}px`);
+      activeCard.style.setProperty("--edge-proximity", edgeProximity.toFixed(2));
+      activeCard.style.setProperty("--cursor-angle", `${angle.toFixed(2)}deg`);
+    };
+
+    const queueFlush = () => {
+      if (!frameId) {
+        frameId = requestAnimationFrame(flush);
+      }
+    };
+
+    cards.forEach((card) => {
+      card.addEventListener("pointerenter", (event) => {
+        activeCard = card;
+        pointer = { x: event.clientX, y: event.clientY };
+        queueFlush();
+      });
+
+      card.addEventListener("pointermove", (event) => {
+        if (activeCard !== card) {
+          activeCard = card;
+        }
+        pointer = { x: event.clientX, y: event.clientY };
+        queueFlush();
+      });
+
+      card.addEventListener("pointerleave", () => {
+        if (activeCard === card) {
+          activeCard = null;
+          pointer = null;
+        }
+        resetCard(card);
+      });
+    });
   }
 
   function initBorderGlow(cards) {

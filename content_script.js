@@ -13811,7 +13811,7 @@ Output ONLY the 5 numbered questions, no other text.`;
             toast('Compare failed');
             debugLog('Compare error', e);
           }
-        });
+        }, { featureKey: 'compare_models', requiredPlan: 'pro' });
 
         // 2. Smart Merge (merge related conversations)
         const mergeIcon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3v12"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>';
@@ -13826,7 +13826,7 @@ Output ONLY the 5 numbered questions, no other text.`;
             toast('Merge failed');
             debugLog('Merge error', e);
           }
-        });
+        }, { featureKey: 'merge_threads', requiredPlan: 'pro' });
 
         // 3. Quick Extract (extract code, lists, or key info)
         const extractIcon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>';
@@ -13837,7 +13837,7 @@ Output ONLY the 5 numbered questions, no other text.`;
             toast('Extract failed');
             debugLog('Extract error', e);
           }
-        });
+        }, { featureKey: 'extract_content', requiredPlan: 'free' });
 
         // 4. Insight Finder (semantic spotlight - CTRL+SHIFT+F)
         const insightIcon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>';
@@ -13865,7 +13865,7 @@ Output ONLY the 5 numbered questions, no other text.`;
           } finally {
             removeLoadingFromButton(insightBtn, 'Insight Finder');
           }
-        });
+        }, { featureKey: 'insight_finder', requiredPlan: 'pro' });
 
         // 5. Continue Conversation (cross-model handoff)
         const continueIcon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 14 20 9 15 4"/><path d="M4 20v-7a4 4 0 0 1 4-4h12"/></svg>';
@@ -13952,7 +13952,7 @@ Output ONLY the 5 numbered questions, no other text.`;
           } finally {
             removeLoadingFromButton(continueBtn, 'Continue on...');
           }
-        });
+        }, { featureKey: 'continue_with', requiredPlan: 'pro' });
 
         actionsGrid.appendChild(compareBtn);
         actionsGrid.appendChild(mergeBtn);
@@ -14014,7 +14014,7 @@ Respond with JSON only:
           } finally {
             removeLoadingFromButton(factCheckBtn, 'Fact-Check');
           }
-        });
+        }, { featureKey: 'fact_check', requiredPlan: 'max' });
 
         actionsGrid.appendChild(factCheckBtn);
         insightsContent.appendChild(actionsGrid);
@@ -14160,14 +14160,83 @@ Respond with JSON only:
       }
     }
 
+    const CHATBRIDGE_PLAN_ORDER = { free: 0, pro: 1, max: 2 };
+    const CHATBRIDGE_PLAN_STORAGE_KEY = 'chatbridge_subscription_tier';
+    const CHATBRIDGE_PLAN_GATEWAY = 'sandbox';
+
+    function normalizeSubscriptionPlan(plan) {
+      const normalized = String(plan || 'free').toLowerCase();
+      return Object.prototype.hasOwnProperty.call(CHATBRIDGE_PLAN_ORDER, normalized) ? normalized : 'free';
+    }
+
+    function getPlanBadgeLabel(requiredPlan) {
+      const plan = normalizeSubscriptionPlan(requiredPlan);
+      return plan === 'max' ? 'Max' : (plan === 'pro' ? 'Pro' : 'Free');
+    }
+
+    async function getCurrentSubscriptionPlan() {
+      return await new Promise((resolve) => {
+        try {
+          chrome.storage.local.get([CHATBRIDGE_PLAN_STORAGE_KEY], (result) => {
+            resolve(normalizeSubscriptionPlan(result && result[CHATBRIDGE_PLAN_STORAGE_KEY]));
+          });
+        } catch (_) {
+          resolve(normalizeSubscriptionPlan(localStorage.getItem(CHATBRIDGE_PLAN_STORAGE_KEY)));
+        }
+      });
+    }
+
+    function hasSubscriptionAccess(currentPlan, requiredPlan) {
+      return CHATBRIDGE_PLAN_ORDER[normalizeSubscriptionPlan(currentPlan)] >= CHATBRIDGE_PLAN_ORDER[normalizeSubscriptionPlan(requiredPlan)];
+    }
+
+    function openUpgradePage(featureTitle, requiredPlan) {
+      const params = new URLSearchParams({
+        upgrade: '1',
+        feature: featureTitle,
+        plan: normalizeSubscriptionPlan(requiredPlan),
+        gateway: CHATBRIDGE_PLAN_GATEWAY
+      });
+      const targetUrl = `${chrome.runtime.getURL('welcome.html')}?${params.toString()}`;
+      try {
+        chrome.runtime.sendMessage({ type: 'open_tab', url: targetUrl }, () => {
+          if (chrome.runtime.lastError) {
+            try { window.open(targetUrl, '_blank', 'noopener'); } catch (_) { }
+          }
+        });
+      } catch (_) {
+        try { window.open(targetUrl, '_blank', 'noopener'); } catch (_) { }
+      }
+    }
+
+    async function ensureFeaturePlanAccess(featureTitle, requiredPlan) {
+      const neededPlan = normalizeSubscriptionPlan(requiredPlan);
+      if (neededPlan === 'free') {
+        return true;
+      }
+
+      const currentPlan = await getCurrentSubscriptionPlan();
+      if (hasSubscriptionAccess(currentPlan, neededPlan)) {
+        return true;
+      }
+
+      toast(`${featureTitle} is on the ${getPlanBadgeLabel(neededPlan)} plan`);
+      openUpgradePage(featureTitle, neededPlan);
+      return false;
+    }
+
     // Helper: Create feature card with luxury minimal styling (NO ICONS - text only)
-    function createFeatureCard(title, description, icon, onClick) {
+    function createFeatureCard(title, description, icon, onClick, options = {}) {
+      const requiredPlan = normalizeSubscriptionPlan(options.requiredPlan || 'free');
       const card = document.createElement('button');
       card.className = 'cb-btn cb-feature-card';
       card.style.cssText = 'padding:14px 16px;text-align:left;height:auto;display:flex;flex-direction:column;gap:6px;background:var(--cb-bg3);border:1px solid var(--cb-border);border-left:3px solid color-mix(in srgb, var(--cb-accent-primary) 50%, transparent);border-radius:10px;transition:all 0.25s ease;position:relative;overflow:hidden;';
       // Minimal text-only design - no icons
       card.innerHTML = `
-        <div style="font-weight:600;font-size:12px;color:var(--cb-white);line-height:1.3;">${title}</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+          <div style="font-weight:600;font-size:12px;color:var(--cb-white);line-height:1.3;">${title}</div>
+          <span style="flex-shrink:0;padding:3px 8px;border-radius:999px;border:1px solid color-mix(in srgb, var(--cb-accent-primary) 30%, transparent);background:color-mix(in srgb, var(--cb-accent-primary) 10%, transparent);font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--cb-subtext);">${getPlanBadgeLabel(requiredPlan)}</span>
+        </div>
         <div style="font-size:10px;opacity:0.6;line-height:1.4;color:var(--cb-subtext);">${description}</div>
       `;
       card.addEventListener('mouseenter', () => {
@@ -14184,7 +14253,15 @@ Respond with JSON only:
         card.style.transform = 'translateY(0)';
         card.style.boxShadow = 'none';
       });
-      card.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); try { onClick && onClick(e); } catch (_) { } });
+      card.addEventListener('click', async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        try {
+          const hasAccess = await ensureFeaturePlanAccess(title, requiredPlan);
+          if (!hasAccess) return;
+          onClick && onClick(e);
+        } catch (_) { }
+      });
       return card;
     }
 
@@ -23761,9 +23838,11 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
 
         // Fallback to local substring search
         if (vectorFailed && vectorError === 'no_embedding') {
-          toast('⚠️ AI search unavailable. Add Gemini API key in Options for semantic search. Using basic search...');
+          toast('⚠️ Semantic search unavailable. Add Gemini API key in Options or check configuration. Using keyword search...');
+        } else if (vectorFailed && vectorError.includes('invalid_api_key')) {
+          toast('⚠️ Invalid Gemini API key. Check your Settings. Using keyword search...');
         } else if (vectorFailed) {
-          toast('⚠️ AI search failed. Using basic keyword search...');
+          toast('⚠️ AI search failed (' + vectorError + '). Using keyword search...');
         }
 
         const convs = await loadConversationsAsync();
@@ -23879,12 +23958,20 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
 
         // First, search saved chats for relevant context
         let searchResults = [];
+        let vectorSearchError = null;
         try {
+          console.log('[ChatBridge] Ask AI - calling runVectorQuery with query:', q.slice(0, 50));
           const vres = await runVectorQuery(q, 8);
+          console.log('[ChatBridge] Ask AI - vector search response:', { ok: vres && vres.ok, error: vres && vres.error, resultCount: vres && vres.results ? vres.results.length : 0 });
           if (vres && vres.ok && Array.isArray(vres.results)) {
             searchResults = vres.results;
+          } else if (vres && !vres.ok) {
+            vectorSearchError = vres.error;
+            console.warn('[ChatBridge] Ask AI - vector search returned error:', vectorSearchError);
           }
         } catch (searchErr) {
+          vectorSearchError = searchErr.message || 'exception';
+          console.error('[ChatBridge] Ask AI - vector search exception:', vectorSearchError, searchErr);
           debugLog('Vector search failed', searchErr);
         }
 
@@ -23893,6 +23980,7 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
         // Build context from search results
         let ctx = '';
         if (searchResults.length > 0) {
+          console.log('[ChatBridge] Ask AI - found', searchResults.length, 'search results, building context');
           const convs = await loadConversationsAsync();
           for (let i = 0; i < Math.min(6, searchResults.length); i++) {
             try {
@@ -23903,6 +23991,17 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
                 const snippet = conv.conversation.map(m => `${m.role}: ${m.text}`).join('\n').slice(0, 2000);
                 if ((ctx + '\n\n' + snippet).length > 13000) break;
                 ctx += '\n\n--- Conversation excerpt ' + (i + 1) + ' ---\n\n' + snippet;
+              } else {
+                // Fallback to vector metadata text when conversation ID lookup misses.
+                const meta = r && r.metadata ? r.metadata : {};
+                const metaText = String(
+                  meta.snippet || meta.text || meta.preview || meta.content || meta.message || ''
+                ).trim();
+                if (metaText) {
+                  const snippet = metaText.slice(0, 1800);
+                  if ((ctx + '\n\n' + snippet).length > 13000) break;
+                  ctx += '\n\n--- Memory hit ' + (i + 1) + ' ---\n\n' + snippet;
+                }
               }
             } catch (e) { }
           }
@@ -23910,11 +24009,14 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
 
         // If context found, use it; otherwise answer directly with AI
         let prompt = '';
-        if (ctx.trim().length > 100) {
+        console.log('[ChatBridge] Ask AI - context assembly:', { ctxLength: ctx.length, searchResults: searchResults.length, vectorSearchError });
+        if (ctx.trim().length > 40) {
+          console.log('[ChatBridge] Ask AI - using grounded context, length:', ctx.length);
           prompt = `You are an assistant that answers questions about a user's past chat logs. Use the provided conversation excerpts as context to answer the question. If the answer isn't fully contained in the excerpts, you can supplement with your knowledge but clearly indicate what comes from the excerpts vs. your general knowledge.\n\nQuestion: ${q}\n\nContext from saved chats: ${ctx}`;
         } else {
+          console.log('[ChatBridge] Ask AI - insufficient context, falling back to direct answer', { ctxLength: ctx.length, vectorError: vectorSearchError });
           prompt = `Answer this question clearly and concisely: ${q}`;
-          smartAnswer.textContent = '(No relevant saved chats found. Using AI knowledge directly.)\n\n';
+          smartAnswer.textContent = '(Could not map strong saved-chat context for this query. Answering directly.)\n\n';
         }
 
         const res = await callGeminiAsync({ action: 'prompt', text: prompt, length: 'short' });

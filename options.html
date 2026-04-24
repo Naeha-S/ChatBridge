@@ -942,14 +942,42 @@
     }
 
     .theme-preview {
+      position: relative;
       width: 32px;
       height: 32px;
       border-radius: 8px;
       border: 1px solid rgba(255, 255, 255, 0.1);
+      overflow: hidden;
+      isolation: isolate;
+    }
+
+    .theme-preview::before,
+    .theme-preview::after {
+      content: "";
+      position: absolute;
+      inset: 5px;
+      border-radius: inherit;
+      pointer-events: none;
+    }
+
+    .theme-preview::before {
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      opacity: 0.8;
+    }
+
+    .theme-preview::after {
+      inset: 8px;
+      background:
+        radial-gradient(circle at center, rgba(255, 255, 255, 0.18) 0, transparent 32%),
+        conic-gradient(from 0deg, rgba(255, 255, 255, 0.16), transparent 35%, rgba(255, 255, 255, 0.14), transparent 72%, rgba(255, 255, 255, 0.12));
+      mix-blend-mode: screen;
+      opacity: 0.75;
     }
 
     .theme-preview.dark {
-      background: linear-gradient(135deg, #0d1117, #1a2332);
+      background:
+        radial-gradient(circle at 30% 30%, rgba(0, 212, 255, 0.18), transparent 42%),
+        linear-gradient(135deg, #0d1117, #1a2332);
     }
 
     .theme-preview.light {
@@ -958,7 +986,9 @@
     }
 
     .theme-preview.synthwave {
-      background: linear-gradient(135deg, #1a0a2e, #FF2D95);
+      background:
+        radial-gradient(circle at 70% 28%, rgba(255, 45, 149, 0.22), transparent 38%),
+        linear-gradient(135deg, #1a0a2e, #FF2D95);
     }
 
     .theme-preview.skeuomorphic {
@@ -974,7 +1004,9 @@
     }
 
     .theme-preview.glass {
-      background: linear-gradient(145deg, #2d2748, #1e1a2e);
+      background:
+        radial-gradient(circle at 30% 30%, rgba(180, 142, 255, 0.16), transparent 40%),
+        linear-gradient(145deg, #2d2748, #1e1a2e);
       box-shadow: 3px 3px 8px rgba(0,0,0,0.4), -2px -2px 6px rgba(60,50,90,0.2);
       border-color: rgba(180, 142, 255, 0.15);
     }
