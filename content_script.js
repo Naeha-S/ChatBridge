@@ -6995,9 +6995,125 @@
       if (!chatText) { toast('Scan a conversation first'); return; }
 
       tkShowSub('Podcast & Narrate', '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>', `
-        <div style="display:flex;gap:8px;margin-bottom:10px;">
-          <button id="tk-pn-tab-narrate" class="cb-btn" style="flex:1;padding:8px;font-size:12px;">🔊 Narrate</button>
-          <button id="tk-pn-tab-podcast" class="cb-btn" style="flex:1;padding:8px;font-size:12px;opacity:0.75;">🎙 Podcast</button>
+        <style>
+          .pn-tab-bar {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+            background: rgba(0,0,0,0.15);
+            padding: 4px;
+            border-radius: 8px;
+            border: 1px solid var(--cb-border);
+          }
+          .pn-tab-bar button {
+            flex: 1;
+            padding: 6px 12px !important;
+            font-size: 11px !important;
+            border-radius: 6px !important;
+            border: none !important;
+            background: transparent !important;
+            color: var(--cb-subtext) !important;
+            cursor: pointer;
+            transition: all 0.25s ease !important;
+            box-shadow: none !important;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+          }
+          .pn-tab-bar button:hover {
+            color: var(--cb-white) !important;
+          }
+          .pn-tab-bar button.active-tab {
+            background: var(--cb-bg2) !important;
+            color: var(--cb-white) !important;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2) !important;
+            border: 1px solid rgba(255,255,255,0.04) !important;
+          }
+          .pn-setting-row {
+            margin-bottom: 12px;
+            background: rgba(255, 255, 255, 0.01);
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.03);
+          }
+          .pn-label {
+            font-size: 10px;
+            color: var(--cb-subtext);
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+          }
+          .pn-select, .pn-input {
+            width: 100%;
+            padding: 8px 10px !important;
+            border-radius: 6px !important;
+            background: var(--cb-bg2) !important;
+            border: 1px solid var(--cb-border) !important;
+            color: var(--cb-text) !important;
+            font-size: 11.5px !important;
+            outline: none;
+            box-sizing: border-box;
+            transition: border-color 0.2s ease;
+          }
+          .pn-select:hover, .pn-input:hover, .pn-select:focus, .pn-input:focus {
+            border-color: var(--cb-accent-primary) !important;
+          }
+          .pn-btn-group {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+          }
+          .pn-btn-group button {
+            flex: 1;
+            padding: 8px 12px !important;
+            font-size: 11.5px !important;
+            border-radius: 8px !important;
+          }
+          .pn-status {
+            font-size: 10px;
+            color: var(--cb-subtext);
+            text-align: center;
+            padding: 7px;
+            background: rgba(0,0,0,0.12);
+            border-radius: 6px;
+            border: 1px solid rgba(255,255,255,0.01);
+          }
+          .pn-script-line {
+            padding: 10px 12px;
+            border-radius: 8px;
+            border: 1px solid var(--cb-border) !important;
+            margin-bottom: 8px;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+          }
+          .pn-script-line-host {
+            background: color-mix(in srgb, var(--cb-accent-primary) 6%, var(--cb-bg2)) !important;
+            border-left: 3px solid var(--cb-accent-primary) !important;
+          }
+          .pn-script-line-expert {
+            background: color-mix(in srgb, var(--cb-accent-secondary) 6%, var(--cb-bg2)) !important;
+            border-left: 3px solid var(--cb-accent-secondary) !important;
+          }
+          .pn-speaker-name {
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            margin-bottom: 4px;
+          }
+        </style>
+        <div class="pn-tab-bar">
+          <button id="tk-pn-tab-narrate" class="cb-btn active-tab">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+            Narrate
+          </button>
+          <button id="tk-pn-tab-podcast" class="cb-btn">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
+            Podcast
+          </button>
         </div>
         <div id="tk-pn-body"></div>
       `);
@@ -7015,8 +7131,13 @@
       }
 
       function updateTabState(active) {
-        tabNarrate.style.opacity = active === 'narrate' ? '1' : '0.75';
-        tabPodcast.style.opacity = active === 'podcast' ? '1' : '0.75';
+        if (active === 'narrate') {
+          tabNarrate.classList.add('active-tab');
+          tabPodcast.classList.remove('active-tab');
+        } else {
+          tabNarrate.classList.remove('active-tab');
+          tabPodcast.classList.add('active-tab');
+        }
       }
 
       function populateVoiceSelect(selectId, preferredRegex) {
@@ -7043,20 +7164,20 @@
         narratePaused = false;
         const words = chatText.split(/\s+/).filter(Boolean).length;
         bodyEl.innerHTML = `
-          <div style="margin-bottom:12px;">
-            <label style="font-size:11px;color:var(--cb-subtext);display:block;margin-bottom:6px;">Voice</label>
-            <select id="tk-pn-narrate-voice" style="width:100%;padding:8px;border-radius:6px;background:var(--cb-bg2);border:1px solid var(--cb-border);color:var(--cb-text);font-size:12px;"></select>
+          <div class="pn-setting-row">
+            <label class="pn-label">Voice Accent</label>
+            <select id="tk-pn-narrate-voice" class="pn-select"></select>
           </div>
-          <div style="margin-bottom:12px;">
-            <label style="font-size:11px;color:var(--cb-subtext);display:block;margin-bottom:6px;">Speed: <span id="tk-pn-narrate-speed-val">1.0</span>x</label>
-            <input type="range" id="tk-pn-narrate-speed" min="0.5" max="2" step="0.1" value="1" style="width:100%;accent-color:var(--cb-accent-primary);">
+          <div class="pn-setting-row">
+            <label class="pn-label">Pacing: <span id="tk-pn-narrate-speed-val">1.0</span>x</label>
+            <input type="range" id="tk-pn-narrate-speed" min="0.5" max="2" step="0.1" value="1" style="width:100%;accent-color:var(--cb-accent-primary);cursor:pointer;margin:4px 0;">
           </div>
-          <div style="display:flex;gap:8px;margin-bottom:12px;">
-            <button id="tk-pn-narrate-play" class="cb-btn" style="flex:1;padding:8px;font-size:12px;">▶ Play</button>
-            <button id="tk-pn-narrate-pause" class="cb-btn" style="flex:1;padding:8px;font-size:12px;" disabled>⏸ Pause</button>
-            <button id="tk-pn-narrate-stop" class="cb-btn" style="flex:1;padding:8px;font-size:12px;" disabled>⏹ Stop</button>
+          <div class="pn-btn-group">
+            <button id="tk-pn-narrate-play" class="cb-btn">▶ Play</button>
+            <button id="tk-pn-narrate-pause" class="cb-btn" disabled>⏸ Pause</button>
+            <button id="tk-pn-narrate-stop" class="cb-btn" disabled>⏹ Stop</button>
           </div>
-          <div id="tk-pn-narrate-status" style="font-size:11px;color:var(--cb-subtext);text-align:center;">Ready to read ${words} words</div>
+          <div id="tk-pn-narrate-status" class="pn-status">Ready to read ${words} words</div>
         `;
 
         populateVoiceSelect('tk-pn-narrate-voice', /female|zira|samantha|aria|jenny/i);
@@ -7133,12 +7254,13 @@
           const displaySpeaker = isHost ? hostName : (speaker.toLowerCase() === 'expert' ? expertName : speaker);
           const row = document.createElement('div');
           row.id = `tk-pn-line-${idx}`;
-          row.style.cssText = `padding:10px;border-radius:8px;background:${isHost ? 'color-mix(in srgb, var(--cb-accent-primary) 8%, var(--cb-bg2))' : 'color-mix(in srgb, var(--cb-accent-secondary) 8%, var(--cb-bg2))'};border:1px solid var(--cb-border);`;
+          row.className = `pn-script-line ${isHost ? 'pn-script-line-host' : 'pn-script-line-expert'}`;
           const speakerEl = document.createElement('div');
-          speakerEl.style.cssText = `font-size:10px;font-weight:600;color:${isHost ? 'var(--cb-accent-primary)' : 'var(--cb-accent-secondary)'};margin-bottom:4px;`;
+          speakerEl.className = 'pn-speaker-name';
+          speakerEl.style.color = isHost ? 'var(--cb-accent-primary)' : 'var(--cb-accent-secondary)';
           speakerEl.textContent = displaySpeaker;
           const textEl = document.createElement('div');
-          textEl.style.cssText = 'font-size:12px;color:var(--cb-text);line-height:1.4;';
+          textEl.style.cssText = 'font-size:11.5px;color:var(--cb-text);line-height:1.45;';
           textEl.textContent = line.text || '';
           row.appendChild(speakerEl);
           row.appendChild(textEl);
@@ -7157,36 +7279,36 @@
         bodyEl.innerHTML = `
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
             <div>
-              <label style="font-size:11px;color:var(--cb-subtext);display:block;margin-bottom:5px;">Speaker 1 Name</label>
-              <input id="tk-pn-host-name" value="Host" style="width:100%;padding:7px;border-radius:6px;background:var(--cb-bg2);border:1px solid var(--cb-border);color:var(--cb-text);font-size:12px;">
+              <label class="pn-label">Speaker 1 Name</label>
+              <input id="tk-pn-host-name" value="Host" class="pn-input">
             </div>
             <div>
-              <label style="font-size:11px;color:var(--cb-subtext);display:block;margin-bottom:5px;">Speaker 2 Name</label>
-              <input id="tk-pn-expert-name" value="Expert" style="width:100%;padding:7px;border-radius:6px;background:var(--cb-bg2);border:1px solid var(--cb-border);color:var(--cb-text);font-size:12px;">
+              <label class="pn-label">Speaker 2 Name</label>
+              <input id="tk-pn-expert-name" value="Expert" class="pn-input">
             </div>
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
             <div>
-              <label style="font-size:11px;color:var(--cb-subtext);display:block;margin-bottom:5px;">Speaker 1 Voice</label>
-              <select id="tk-pn-host-voice" style="width:100%;padding:7px;border-radius:6px;background:var(--cb-bg2);border:1px solid var(--cb-border);color:var(--cb-text);font-size:12px;"></select>
+              <label class="pn-label">Speaker 1 Voice</label>
+              <select id="tk-pn-host-voice" class="pn-select"></select>
             </div>
             <div>
-              <label style="font-size:11px;color:var(--cb-subtext);display:block;margin-bottom:5px;">Speaker 2 Voice</label>
-              <select id="tk-pn-expert-voice" style="width:100%;padding:7px;border-radius:6px;background:var(--cb-bg2);border:1px solid var(--cb-border);color:var(--cb-text);font-size:12px;"></select>
+              <label class="pn-label">Speaker 2 Voice</label>
+              <select id="tk-pn-expert-voice" class="pn-select"></select>
             </div>
           </div>
-          <button id="tk-pn-generate" class="cb-btn" style="width:100%;padding:8px;font-size:12px;margin-bottom:10px;">✨ Generate Podcast Script</button>
-          <div style="display:flex;gap:8px;margin-bottom:8px;">
-            <button id="tk-pn-play" class="cb-btn" style="flex:1;padding:8px;font-size:12px;" disabled>▶ Play</button>
-            <button id="tk-pn-stop" class="cb-btn" style="flex:1;padding:8px;font-size:12px;" disabled>⏹ Stop</button>
+          <button id="tk-pn-generate" class="cb-btn" style="width:100%;padding:10px;font-size:12px;margin-bottom:10px;font-weight:700;background:linear-gradient(135deg, var(--cb-accent-primary) 0%, var(--cb-accent-secondary) 100%) !important;border:none;box-shadow:0 4px 12px rgba(99,102,241,0.2);">✨ Generate Podcast Script</button>
+          <div class="pn-btn-group">
+            <button id="tk-pn-play" class="cb-btn" disabled>▶ Play</button>
+            <button id="tk-pn-stop" class="cb-btn" disabled>⏹ Stop</button>
           </div>
-          <div style="display:flex;gap:8px;margin-bottom:8px;">
-            <button id="tk-pn-copy" class="cb-btn" style="flex:1;padding:8px;font-size:11px;" disabled>📋 Copy Script</button>
-            <button id="tk-pn-download" class="cb-btn" style="flex:1;padding:8px;font-size:11px;" disabled>💾 Download Script</button>
+          <div class="pn-btn-group">
+            <button id="tk-pn-copy" class="cb-btn" disabled>📋 Copy Script</button>
+            <button id="tk-pn-download" class="cb-btn" disabled>💾 Download Script</button>
           </div>
-          <div id="tk-pn-podcast-meta" style="font-size:11px;color:var(--cb-subtext);text-align:center;margin-bottom:8px;">No script generated yet</div>
+          <div id="tk-pn-podcast-meta" class="pn-status" style="margin-bottom:8px;">No script generated yet</div>
           <div id="tk-pn-podcast-status" style="font-size:11px;color:var(--cb-subtext);text-align:center;margin-bottom:8px;">Ready</div>
-          <div id="tk-pn-podcast-script" style="display:flex;flex-direction:column;gap:8px;max-height:280px;overflow-y:auto;"></div>
+          <div id="tk-pn-podcast-script" style="display:flex;flex-direction:column;gap:8px;max-height:280px;overflow-y:auto;padding-right:4px;"></div>
         `;
 
         populateVoiceSelect('tk-pn-host-voice', /female|zira|samantha|aria|jenny/i);
@@ -7344,9 +7466,68 @@
       if (!chatText) { toast('Scan a conversation first'); return; }
 
       tkShowSub('Contradiction Finder', '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3H5a2 2 0 0 0-2 2v5"/><path d="M14 21h5a2 2 0 0 0 2-2v-5"/><path d="M21 10V5a2 2 0 0 0-2-2h-5"/><path d="M3 14v5a2 2 0 0 0 2 2h5"/><line x1="8" y1="8" x2="16" y2="16"/><line x1="16" y1="8" x2="8" y2="16"/></svg>', `
-        <div style="font-size:11px;color:var(--cb-subtext);margin-bottom:10px;">Scan this thread for conflicting claims or changed positions in AI answers.</div>
-        <button id="tk-cf-scan" class="cb-btn" style="width:100%;padding:8px;font-size:12px;margin-bottom:10px;">🔍 Scan Contradictions</button>
-        <div id="tk-cf-status" style="font-size:11px;color:var(--cb-subtext);text-align:center;margin-bottom:8px;">Ready</div>
+        <style>
+          .cf-desc {
+            font-size: 11px;
+            color: var(--cb-subtext);
+            margin-bottom: 12px;
+            line-height: 1.4;
+            background: rgba(255, 255, 255, 0.02);
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.04);
+          }
+          #tk-cf-scan {
+            width: 100%;
+            padding: 10px;
+            font-size: 12px;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--cb-accent-primary) 0%, var(--cb-accent-secondary) 100%) !important;
+            border: none;
+            box-shadow: 0 4px 12px rgba(99,102,241,0.2);
+            margin-bottom: 12px;
+          }
+          .cf-card {
+            padding: 12px;
+            border-radius: 10px;
+            background: var(--cb-bg2) !important;
+            border: 1px solid var(--cb-border) !important;
+            margin-bottom: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+            transition: all 0.25s ease;
+          }
+          .cf-card:hover {
+            border-color: rgba(255, 255, 255, 0.08) !important;
+            transform: translateY(-1px);
+          }
+          .cf-claim-box {
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 11px;
+            color: var(--cb-text);
+            line-height: 1.45;
+            border: 1px solid var(--cb-border) !important;
+          }
+          .cf-claim-a {
+            background: color-mix(in srgb, #22c55e 5%, var(--cb-bg3)) !important;
+            border-left: 3px solid #22c55e !important;
+          }
+          .cf-claim-b {
+            background: color-mix(in srgb, #ef4444 5%, var(--cb-bg3)) !important;
+            border-left: 3px solid #ef4444 !important;
+          }
+          .cf-badge {
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            padding: 2px 8px;
+            border-radius: 12px;
+            letter-spacing: 0.05em;
+          }
+        </style>
+        <div class="cf-desc">Scan this conversation transcript to spot conflicting statements, logic gaps, or shifts in the AI's position.</div>
+        <button id="tk-cf-scan" class="cb-btn">🔍 Scan Contradictions</button>
+        <div id="tk-cf-status" style="font-size:11px;color:var(--cb-subtext);text-align:center;margin-bottom:10px;font-weight:600;">Ready</div>
         <div id="tk-cf-results" style="display:flex;flex-direction:column;gap:10px;"></div>
       `);
 
@@ -7411,29 +7592,30 @@ ${chatText.substring(0, 10000)}`
             const sev = String(entry?.severity || 'medium').toLowerCase();
             const sevColor = severityColor[sev] || severityColor.medium;
             const card = document.createElement('div');
-            card.style.cssText = 'padding:10px;border-radius:10px;background:var(--cb-bg2);border:1px solid var(--cb-border);';
+            card.className = 'cf-card';
             card.innerHTML = `
               <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:8px;">
-                <div style="font-size:12px;font-weight:600;color:var(--cb-text);">Conflict ${idx + 1}</div>
-                <span style="font-size:10px;padding:2px 8px;border-radius:999px;background:${sevColor}22;color:${sevColor};border:1px solid ${sevColor}55;">${escapeHtml(sev)}</span>
+                <div style="font-size:11.5px;font-weight:700;color:var(--cb-text);">Conflict #${idx + 1}</div>
+                <span class="cf-badge" style="background:${sevColor}22;color:${sevColor};border:1px solid ${sevColor}55;">${escapeHtml(sev)} severity</span>
               </div>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
-                <div style="padding:8px;border-radius:8px;background:color-mix(in srgb, #22c55e 6%, var(--cb-bg3));border:1px solid var(--cb-border);font-size:11px;color:var(--cb-text);line-height:1.4;"><strong style="display:block;font-size:10px;color:#22c55e;margin-bottom:4px;">Claim A</strong>${escapeHtml(entry?.claimA || '—')}</div>
-                <div style="padding:8px;border-radius:8px;background:color-mix(in srgb, #ef4444 6%, var(--cb-bg3));border:1px solid var(--cb-border);font-size:11px;color:var(--cb-text);line-height:1.4;"><strong style="display:block;font-size:10px;color:#ef4444;margin-bottom:4px;">Claim B</strong>${escapeHtml(entry?.claimB || '—')}</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+                <div class="cf-claim-box cf-claim-a"><strong style="display:block;font-size:9.5px;color:#22c55e;font-weight:700;margin-bottom:4px;text-transform:uppercase;">Statement A</strong>${escapeHtml(entry?.claimA || '—')}</div>
+                <div class="cf-claim-box cf-claim-b"><strong style="display:block;font-size:9.5px;color:#ef4444;font-weight:700;margin-bottom:4px;text-transform:uppercase;">Statement B</strong>${escapeHtml(entry?.claimB || '—')}</div>
               </div>
-              <div style="font-size:11px;color:var(--cb-subtext);line-height:1.4;margin-bottom:8px;"><strong style="color:var(--cb-text);">Why this conflicts:</strong> ${escapeHtml(entry?.why_conflict || 'Not specified')}</div>
-              <button class="cb-btn tk-cf-insert" data-q="${escapeHtml(String(entry?.suggestion || '').replace(/"/g, '&quot;'))}" style="width:100%;padding:7px;font-size:11px;">💬 Ask suggested follow-up</button>
+              <div style="font-size:11px;color:var(--cb-subtext);line-height:1.45;margin-bottom:10px;background:rgba(0,0,0,0.1);padding:8px;border-radius:6px;border:1px solid rgba(255,255,255,0.02);"><strong style="color:var(--cb-text);font-weight:600;">Analysis:</strong> ${escapeHtml(entry?.why_conflict || 'Not specified')}</div>
+              <button class="cb-btn tk-cf-insert" data-q="${escapeHtml(String(entry?.suggestion || '').replace(/"/g, '&quot;'))}" style="width:100%;padding:8px;font-size:11px;font-weight:700;">💬 Ask suggested follow-up</button>
             `;
             wrap.appendChild(card);
           });
 
           if (assumptions.length) {
             const assump = document.createElement('div');
-            assump.style.cssText = 'padding:10px;border-radius:10px;background:var(--cb-bg2);border:1px solid var(--cb-border);';
+            assump.className = 'cf-card';
+            assump.style.borderLeft = '3px solid var(--cb-accent-secondary)';
             assump.innerHTML = `
-              <div style="font-size:12px;font-weight:600;color:var(--cb-text);margin-bottom:6px;">Unresolved Assumptions</div>
-              <div style="display:flex;flex-direction:column;gap:5px;">
-                ${assumptions.map(a => `<div style="font-size:11px;color:var(--cb-subtext);line-height:1.4;">• ${escapeHtml(String(a || ''))}</div>`).join('')}
+              <div style="font-size:12px;font-weight:700;color:var(--cb-text);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.02em;">Unresolved Assumptions</div>
+              <div style="display:flex;flex-direction:column;gap:6px;">
+                ${assumptions.map(a => `<div style="font-size:11px;color:var(--cb-subtext);line-height:1.45;padding:6px 8px;background:var(--cb-bg3);border-radius:6px;border:1px solid var(--cb-border);">💡 ${escapeHtml(String(a || ''))}</div>`).join('')}
               </div>
             `;
             wrap.appendChild(assump);
@@ -8059,9 +8241,65 @@ ${chatText.substring(0, 10000)}`
       if (!chatText) { toast('Scan a conversation first'); return; }
 
       tkShowSub('Fact Checker', '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4v5c0 5-3.4 9.7-8 11-4.6-1.3-8-6-8-11V7l8-4z"/><path d="M9 12l2 2 4-4"/></svg>', `
-        <div style="font-size:11px;color:var(--cb-subtext);margin-bottom:10px;">Scan AI responses for factual claims and reliability risk.</div>
-        <button id="tk-fact-scan" class="cb-btn" style="width:100%;padding:8px;font-size:12px;margin-bottom:10px;">🛡 Scan for Claims</button>
-        <div id="tk-fact-status" style="font-size:11px;color:var(--cb-subtext);text-align:center;margin-bottom:10px;">Ready</div>
+        <style>
+          .fc-desc {
+            font-size: 11px;
+            color: var(--cb-subtext);
+            margin-bottom: 12px;
+            line-height: 1.4;
+            background: rgba(255, 255, 255, 0.02);
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.04);
+          }
+          #tk-fact-scan {
+            width: 100%;
+            padding: 10px;
+            font-size: 12px;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--cb-accent-primary) 0%, var(--cb-accent-secondary) 100%) !important;
+            border: none;
+            box-shadow: 0 4px 12px rgba(99,102,241,0.2);
+            margin-bottom: 12px;
+          }
+          .fc-score-panel {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            padding: 12px;
+            border-radius: 10px;
+            background: var(--cb-bg2) !important;
+            border: 1px solid var(--cb-border) !important;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+          }
+          .fc-claim-card {
+            padding: 10px 12px;
+            border-radius: 8px;
+            background: var(--cb-bg2) !important;
+            border: 1px solid var(--cb-border) !important;
+            margin-bottom: 8px;
+            transition: all 0.2s ease;
+          }
+          .fc-claim-card:hover {
+            border-color: rgba(255, 255, 255, 0.06) !important;
+          }
+          .fc-card-established {
+            border-left: 3px solid #22c55e !important;
+          }
+          .fc-card-verify {
+            border-left: 3px solid #f59e0b !important;
+          }
+          .fc-card-questionable {
+            border-left: 3px solid #ef4444 !important;
+          }
+          .fc-card-opinion {
+            border-left: 3px solid #94a3b8 !important;
+          }
+        </style>
+        <div class="fc-desc">Scan AI answers in the conversation to rate the overall factual reliability of claims.</div>
+        <button id="tk-fact-scan" class="cb-btn">🛡 Scan for Claims</button>
+        <div id="tk-fact-status" style="font-size:11px;color:var(--cb-subtext);text-align:center;margin-bottom:10px;font-weight:600;">Ready</div>
         <div id="tk-fact-results" style="display:flex;flex-direction:column;gap:10px;"></div>
       `);
 
@@ -8119,20 +8357,20 @@ ${chatText.substring(0, 10000)}`
 
           statusEl.textContent = `${claims.length} claim${claims.length === 1 ? '' : 's'} analyzed`;
           resultsEl.innerHTML = `
-            <div style="display:flex;align-items:center;justify-content:center;gap:14px;padding:10px;border-radius:10px;background:var(--cb-bg2);border:1px solid var(--cb-border);">
-              <div style="width:74px;height:74px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:conic-gradient(${ringColor} ${score * 3.6}deg, color-mix(in srgb, var(--cb-border) 80%, transparent) 0deg);position:relative;">
-                <div style="position:absolute;width:56px;height:56px;border-radius:50%;background:var(--cb-bg);display:flex;align-items:center;justify-content:center;font-weight:700;color:${ringColor};font-size:14px;">${score}</div>
+            <div class="fc-score-panel">
+              <div style="width:68px;height:68px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:conic-gradient(${ringColor} ${score * 3.6}deg, color-mix(in srgb, var(--cb-border) 80%, transparent) 0deg);position:relative;box-shadow:0 2px 10px rgba(0,0,0,0.15);">
+                <div style="position:absolute;width:52px;height:52px;border-radius:50%;background:var(--cb-bg);display:flex;align-items:center;justify-content:center;font-weight:800;color:${ringColor};font-size:14px;">${score}</div>
               </div>
-              <div>
-                <div style="font-size:12px;font-weight:600;color:var(--cb-text);">Reliability Score</div>
-                <div style="font-size:11px;color:var(--cb-subtext);">Higher means lower contradiction/risk signals</div>
+              <div style="flex:1;">
+                <div style="font-size:12px;font-weight:700;color:var(--cb-text);letter-spacing:-0.01em;">Reliability Index</div>
+                <div style="font-size:10.5px;color:var(--cb-subtext);line-height:1.3;margin-top:2px;">AI-assessed confidence & factual consistency signal</div>
               </div>
             </div>
-            <div style="padding:8px 10px;border-radius:8px;background:color-mix(in srgb, #f59e0b 12%, var(--cb-bg2));border:1px solid #f59e0b55;font-size:11px;color:var(--cb-subtext);line-height:1.4;">
-              ChatBridge doesn't browse the web — these categories are AI self-assessment signals for your review.
+            <div style="padding:8px 12px;border-radius:8px;background:color-mix(in srgb, #f59e0b 8%, var(--cb-bg2));border:1px solid rgba(245, 158, 11, 0.2);font-size:10.5px;color:var(--cb-subtext);line-height:1.45;">
+              ⚠️ ChatBridge is self-checking — verify high-impact details independently.
             </div>
             <div id="tk-fact-claims" style="display:flex;flex-direction:column;gap:8px;"></div>
-            <button id="tk-fact-copy" class="cb-btn" style="width:100%;padding:8px;font-size:11px;">📋 Copy Report</button>
+            <button id="tk-fact-copy" class="cb-btn" style="width:100%;padding:10px;font-size:11px;font-weight:700;">📋 Copy Report</button>
           `;
 
           const claimsEl = shadow.getElementById('tk-fact-claims');
@@ -8143,13 +8381,13 @@ ${chatText.substring(0, 10000)}`
               const category = String(claim?.category || 'verify').toLowerCase();
               const meta = categoryMeta[category] || categoryMeta.verify;
               const row = document.createElement('div');
-              row.style.cssText = 'padding:10px;border-radius:8px;background:var(--cb-bg2);border:1px solid var(--cb-border);';
+              row.className = `fc-claim-card fc-card-${category}`;
               row.innerHTML = `
-                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;">
-                  <div style="font-size:11px;font-weight:600;color:${meta.color};">${meta.icon} ${escapeHtml(category)}</div>
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px;">
+                  <div style="font-size:9px;font-weight:700;color:${meta.color};text-transform:uppercase;letter-spacing:0.04em;">${meta.icon} ${escapeHtml(category)}</div>
                 </div>
-                <div style="font-size:12px;color:var(--cb-text);line-height:1.4;margin-bottom:6px;">${escapeHtml(String(claim?.text || ''))}</div>
-                <div style="font-size:10px;color:var(--cb-subtext);line-height:1.35;">${escapeHtml(String(claim?.note || 'No note provided'))}</div>
+                <div style="font-size:11.5px;color:var(--cb-text);line-height:1.45;margin-bottom:4px;font-weight:600;">${escapeHtml(String(claim?.text || ''))}</div>
+                <div style="font-size:10px;color:var(--cb-subtext);line-height:1.4;">${escapeHtml(String(claim?.note || 'No note provided'))}</div>
               `;
               claimsEl.appendChild(row);
             });
@@ -8188,7 +8426,7 @@ ${chatText.substring(0, 10000)}`
       if (!chatText) { toast('Scan a conversation first'); return; }
 
       tkShowSub('Flashcard Maker', '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M12 8v8"/><path d="M8 12h8"/></svg>', `
-        <div style="text-align:center;padding:20px;"><div class="cb-spinner"></div><div style="margin-top:8px;font-size:11px;color:var(--cb-subtext);">Generating flashcards...</div></div>
+        <div style="text-align:center;padding:24px 10px;"><div class="cb-spinner"></div><div style="margin-top:10px;font-size:11px;color:var(--cb-subtext);font-weight:600;">Extracting key concepts...</div></div>
       `);
 
       try {
@@ -8208,31 +8446,74 @@ ${chatText.substring(0, 10000)}`
         if (!Array.isArray(cards) || !cards.length) throw new Error('No flashcards generated');
 
         let currentCard = 0;
-        let flipped = false;
 
         const subContent = shadow.getElementById('tk-sub-content');
         function renderCard() {
           const c = cards[currentCard];
-          flipped = false;
           subContent.innerHTML = `
-            <div style="text-align:center;margin-bottom:10px;font-size:11px;color:var(--cb-subtext);">Card ${currentCard + 1} of ${cards.length}</div>
-            <div id="tk-fc-card" style="min-height:120px;padding:20px;border-radius:10px;background:var(--cb-bg2);border:1px solid var(--cb-border);cursor:pointer;display:flex;align-items:center;justify-content:center;text-align:center;transition:all 0.3s;font-size:13px;color:var(--cb-text);line-height:1.5;">
-              ${escapeHtml(c.front)}
+            <style>
+              .fc-perspective {
+                perspective: 800px;
+                margin: 12px 0;
+              }
+              .fc-card-inner {
+                position: relative;
+                width: 100%;
+                min-height: 140px;
+                text-align: center;
+                transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+                transform-style: preserve-3d;
+                cursor: pointer;
+              }
+              .fc-card-inner.flipped {
+                transform: rotateY(180deg);
+              }
+              .fc-card-face {
+                position: absolute;
+                width: 100%;
+                height: 100%;
+                backface-visibility: hidden;
+                border-radius: 12px;
+                border: 1px solid var(--cb-border);
+                box-shadow: 0 4px 14px rgba(0,0,0,0.2);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 16px 20px;
+                box-sizing: border-box;
+                font-size: 12.5px;
+                line-height: 1.5;
+                font-weight: 500;
+              }
+              .fc-card-front {
+                background: var(--cb-bg2);
+                color: var(--cb-text);
+              }
+              .fc-card-back {
+                background: color-mix(in srgb, var(--cb-accent-primary) 8%, var(--cb-bg2));
+                color: var(--cb-text);
+                transform: rotateY(180deg);
+                border-color: var(--cb-accent-primary);
+              }
+            </style>
+            <div style="text-align:center;margin-bottom:10px;font-size:11px;color:var(--cb-subtext);font-weight:600;">Card ${currentCard + 1} of ${cards.length}</div>
+            <div class="fc-perspective">
+              <div id="tk-fc-card-inner" class="fc-card-inner">
+                <div class="fc-card-face fc-card-front">${escapeHtml(c.front)}</div>
+                <div class="fc-card-face fc-card-back">${escapeHtml(c.back)}</div>
+              </div>
             </div>
-            <div style="font-size:10px;color:var(--cb-subtext);text-align:center;margin:8px 0;">Click card to flip</div>
+            <div style="font-size:10px;color:var(--cb-subtext);text-align:center;margin:8px 0;font-weight:600;letter-spacing:0.02em;">Click card to flip</div>
             <div style="display:flex;gap:8px;">
               <button id="tk-fc-prev" class="cb-btn" style="flex:1;padding:8px;font-size:12px;" ${currentCard === 0 ? 'disabled' : ''}>← Prev</button>
               <button id="tk-fc-next" class="cb-btn" style="flex:1;padding:8px;font-size:12px;" ${currentCard === cards.length - 1 ? 'disabled' : ''}>Next →</button>
             </div>
-            <button id="tk-fc-copy" class="cb-btn" style="width:100%;margin-top:8px;padding:8px;font-size:11px;">📋 Copy All Flashcards</button>
+            <button id="tk-fc-copy" class="cb-btn" style="width:100%;margin-top:10px;padding:9px;font-size:11px;font-weight:700;">📋 Copy All Flashcards</button>
           `;
 
-          shadow.getElementById('tk-fc-card')?.addEventListener('click', () => {
-            const cardEl = shadow.getElementById('tk-fc-card');
-            flipped = !flipped;
-            cardEl.textContent = flipped ? c.back : c.front;
-            cardEl.style.background = flipped ? 'color-mix(in srgb, var(--cb-accent-primary) 10%, var(--cb-bg2))' : 'var(--cb-bg2)';
-            cardEl.style.borderColor = flipped ? 'var(--cb-accent-primary)' : 'var(--cb-border)';
+          shadow.getElementById('tk-fc-card-inner')?.addEventListener('click', () => {
+            const innerEl = shadow.getElementById('tk-fc-card-inner');
+            innerEl.classList.toggle('flipped');
           });
 
           shadow.getElementById('tk-fc-prev')?.addEventListener('click', () => { if (currentCard > 0) { currentCard--; renderCard(); } });
@@ -8257,7 +8538,7 @@ ${chatText.substring(0, 10000)}`
       if (!chatText) { toast('Scan a conversation first'); return; }
 
       tkShowSub('Action Items', '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>', `
-        <div style="text-align:center;padding:20px;"><div class="cb-spinner"></div><div style="margin-top:8px;font-size:11px;color:var(--cb-subtext);">Extracting action items...</div></div>
+        <div style="text-align:center;padding:24px 10px;"><div class="cb-spinner"></div><div style="margin-top:10px;font-size:11px;color:var(--cb-subtext);font-weight:600;">Extracting checklist...</div></div>
       `);
 
       try {
@@ -8281,22 +8562,79 @@ ${chatText.substring(0, 10000)}`
 
         const subContent = shadow.getElementById('tk-sub-content');
         subContent.innerHTML = `
-          <div style="margin-bottom:10px;font-size:11px;color:var(--cb-subtext);">${items.length} item${items.length > 1 ? 's' : ''} extracted</div>
+          <style>
+            .act-desc {
+              font-size: 11px;
+              color: var(--cb-subtext);
+              margin-bottom: 12px;
+              line-height: 1.4;
+              background: rgba(255, 255, 255, 0.02);
+              padding: 8px 12px;
+              border-radius: 8px;
+              border: 1px solid rgba(255, 255, 255, 0.04);
+            }
+            .act-card {
+              display: flex;
+              align-items: flex-start;
+              gap: 12px;
+              padding: 12px;
+              border-radius: 10px;
+              background: var(--cb-bg2) !important;
+              border: 1px solid var(--cb-border) !important;
+              margin-bottom: 8px;
+              box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+              transition: all 0.2s ease;
+            }
+            .act-card:hover {
+              border-color: rgba(255, 255, 255, 0.06) !important;
+            }
+            .act-checkbox {
+              margin-top: 3px;
+              width: 14px;
+              height: 14px;
+              accent-color: var(--cb-accent-primary);
+              cursor: pointer;
+            }
+            .act-task-text {
+              font-size: 12px;
+              color: var(--cb-text);
+              line-height: 1.45;
+            }
+            .act-badge-pri {
+              font-size: 8.5px;
+              padding: 2px 6px;
+              border-radius: 4px;
+              font-weight: 700;
+              text-transform: uppercase;
+              letter-spacing: 0.03em;
+            }
+            .act-badge-cat {
+              font-size: 8.5px;
+              padding: 2px 6px;
+              border-radius: 4px;
+              font-weight: 600;
+              color: var(--cb-subtext);
+              background: var(--cb-bg3) !important;
+              border: 1px solid var(--cb-border) !important;
+            }
+          </style>
+          <div class="act-desc">Check off action items, follow-ups, and decisions extracted directly from the conversation.</div>
+          <div style="margin-bottom:10px;font-size:11px;color:var(--cb-subtext);font-weight:600;">${items.length} item${items.length > 1 ? 's' : ''} extracted</div>
           <div id="tk-action-list" style="display:flex;flex-direction:column;gap:8px;"></div>
-          <button id="tk-actions-copy" class="cb-btn" style="width:100%;margin-top:12px;padding:8px;font-size:11px;">📋 Copy Checklist</button>
+          <button id="tk-actions-copy" class="cb-btn" style="width:100%;margin-top:14px;padding:10px;font-size:11px;font-weight:700;">📋 Copy Checklist</button>
         `;
 
         const listEl = shadow.getElementById('tk-action-list');
         items.forEach((item, i) => {
           const row = document.createElement('div');
-          row.style.cssText = 'display:flex;align-items:flex-start;gap:8px;padding:10px;border-radius:8px;background:var(--cb-bg2);border:1px solid var(--cb-border);';
+          row.className = 'act-card';
           row.innerHTML = `
-            <input type="checkbox" id="tk-ac-${i}" style="margin-top:2px;accent-color:var(--cb-accent-primary);flex-shrink:0;">
+            <input type="checkbox" id="tk-ac-${i}" class="act-checkbox" style="flex-shrink:0;">
             <div style="flex:1;">
-              <div style="font-size:12px;color:var(--cb-text);line-height:1.4;">${categoryIcons[item.category] || '📌'} ${escapeHtml(item.task)}</div>
-              <div style="display:flex;gap:6px;margin-top:4px;">
-                <span style="font-size:9px;padding:2px 6px;border-radius:4px;background:${priorityColors[item.priority] || '#6b7280'}22;color:${priorityColors[item.priority] || '#6b7280'};border:1px solid ${priorityColors[item.priority] || '#6b7280'}44;">${escapeHtml(item.priority)}</span>
-                <span style="font-size:9px;padding:2px 6px;border-radius:4px;background:var(--cb-bg3);color:var(--cb-subtext);">${escapeHtml(item.category)}</span>
+              <div class="act-task-text">${categoryIcons[item.category] || '📌'} ${escapeHtml(item.task)}</div>
+              <div style="display:flex;gap:6px;margin-top:6px;">
+                <span class="act-badge-pri" style="background:${priorityColors[item.priority] || '#6b7280'}22;color:${priorityColors[item.priority] || '#6b7280'};border:1px solid ${priorityColors[item.priority] || '#6b7280'}44;">${escapeHtml(item.priority)}</span>
+                <span class="act-badge-cat">${escapeHtml(item.category)}</span>
               </div>
             </div>
           `;
@@ -8320,21 +8658,123 @@ ${chatText.substring(0, 10000)}`
       const chatText = await getConversationText();
 
       tkShowSub('Code Sandbox', '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/><line x1="14" y1="4" x2="10" y2="20"/></svg>', `
-        <div style="margin-bottom:8px;">
-          <label style="font-size:11px;color:var(--cb-subtext);display:block;margin-bottom:6px;">Language</label>
-          <select id="tk-code-lang" style="width:100%;padding:6px;border-radius:6px;background:var(--cb-bg2);border:1px solid var(--cb-border);color:var(--cb-text);font-size:12px;">
+        <style>
+          .cs-label {
+            font-size: 10px;
+            color: var(--cb-subtext);
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+          }
+          .cs-select {
+            width: 100%;
+            padding: 8px 10px !important;
+            border-radius: 6px !important;
+            background: var(--cb-bg2) !important;
+            border: 1px solid var(--cb-border) !important;
+            color: var(--cb-text) !important;
+            font-size: 11px !important;
+            outline: none;
+            cursor: pointer;
+            transition: border-color 0.2s ease;
+          }
+          .cs-select:hover {
+            border-color: var(--cb-accent-primary) !important;
+          }
+          .cs-terminal-header {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 12px;
+            background: rgba(255, 255, 255, 0.03);
+            border-top-left-radius: 8px;
+            border-top-right-radius: 8px;
+            border: 1px solid var(--cb-border);
+            border-bottom: none !important;
+          }
+          .cs-terminal-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+          }
+          .cs-terminal-dot-red { background: #ef4444; }
+          .cs-terminal-dot-yellow { background: #f59e0b; }
+          .cs-terminal-dot-green { background: #10b981; }
+          .cs-terminal-title {
+            font-size: 9px;
+            font-weight: 700;
+            color: var(--cb-subtext);
+            text-transform: uppercase;
+            margin-left: auto;
+            letter-spacing: 0.05em;
+          }
+          .cs-textarea {
+            width: 100%;
+            min-height: 130px;
+            padding: 10px;
+            border-bottom-left-radius: 8px;
+            border-bottom-right-radius: 8px;
+            border-top-left-radius: 0;
+            border-top-right-radius: 0;
+            background: var(--cb-bg3) !important;
+            border: 1px solid var(--cb-border) !important;
+            color: var(--cb-white) !important;
+            font-size: 11px !important;
+            font-family: monospace;
+            resize: vertical;
+            outline: none;
+            box-sizing: border-box;
+            line-height: 1.45;
+          }
+          .cs-textarea:focus {
+            border-color: var(--cb-accent-primary) !important;
+          }
+          .cs-btn-primary {
+            width: 100%;
+            padding: 10px !important;
+            font-size: 12px !important;
+            font-weight: 700 !important;
+            background: linear-gradient(135deg, var(--cb-accent-primary) 0%, var(--cb-accent-secondary) 100%) !important;
+            border: none !important;
+            box-shadow: 0 4px 12px rgba(99,102,241,0.2) !important;
+          }
+          .cs-out-box {
+            padding: 12px;
+            border-radius: 8px;
+            background: #0d0e12 !important;
+            border: 1px solid var(--cb-border) !important;
+            color: #f1f5f9 !important;
+            font-size: 11px;
+            font-family: monospace;
+            max-height: 200px;
+            overflow: auto;
+            white-space: pre-wrap;
+            box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.5);
+            line-height: 1.5;
+          }
+        </style>
+        <div style="margin-bottom:12px;">
+          <label class="cs-label">Language</label>
+          <select id="tk-code-lang" class="cs-select">
             <option value="javascript">JavaScript</option>
             <option value="html">HTML (runs in iframe)</option>
             <option value="python">Python (copy + open editor)</option>
           </select>
         </div>
-        ${chatText ? '<button id="tk-code-extract" class="cb-btn" style="width:100%;padding:6px;font-size:11px;margin-bottom:8px;">✨ Extract code from conversation</button>' : ''}
-        <div style="margin-bottom:8px;">
-          <label style="font-size:11px;color:var(--cb-subtext);display:block;margin-bottom:6px;">Code</label>
-          <textarea id="tk-code-editor" style="width:100%;min-height:120px;padding:8px;border-radius:6px;background:var(--cb-bg3);border:1px solid var(--cb-border);color:var(--cb-text);font-size:11px;font-family:monospace;resize:vertical;tab-size:2;white-space:pre;" placeholder="Paste or write code here..."></textarea>
+        ${chatText ? '<button id="tk-code-extract" class="cb-btn" style="width:100%;padding:9px;font-size:11px;margin-bottom:12px;font-weight:600;">✨ Extract code from conversation</button>' : ''}
+        <div style="margin-bottom:12px;">
+          <div class="cs-terminal-header">
+            <div class="cs-terminal-dot cs-terminal-dot-red"></div>
+            <div class="cs-terminal-dot cs-terminal-dot-yellow"></div>
+            <div class="cs-terminal-dot cs-terminal-dot-green"></div>
+            <div class="cs-terminal-title">source.code</div>
+          </div>
+          <textarea id="tk-code-editor" class="cs-textarea" placeholder="Paste or write code here..."></textarea>
         </div>
-        <button id="tk-code-run" class="cb-btn" style="width:100%;padding:8px;font-size:12px;">▶ Run Code</button>
-        <div id="tk-code-output" style="margin-top:10px;"></div>
+        <button id="tk-code-run" class="cb-btn cs-btn-primary">▶ Run Code</button>
+        <div id="tk-code-output" style="margin-top:12px;"></div>
       `);
 
       // Extract code from conversation
@@ -8362,7 +8802,7 @@ ${chatText.substring(0, 10000)}`
         if (lang === 'javascript') {
           outputEl.innerHTML = '<div style="font-size:11px;color:var(--cb-subtext);margin-bottom:4px;">Output:</div>';
           const outBox = document.createElement('pre');
-          outBox.style.cssText = 'padding:10px;border-radius:6px;background:var(--cb-bg3);border:1px solid var(--cb-border);color:var(--cb-text);font-size:11px;font-family:monospace;max-height:200px;overflow:auto;white-space:pre-wrap;';
+          outBox.className = 'cs-out-box';
           outputEl.appendChild(outBox);
 
           // Run JS in a sandboxed iframe to prevent access to extension context
@@ -8408,7 +8848,7 @@ try {
           iframe.srcdoc = code;
         } else {
           const preEl = document.createElement('pre');
-          preEl.style.cssText = 'padding:10px;border-radius:6px;background:var(--cb-bg3);border:1px solid var(--cb-border);color:var(--cb-text);font-size:11px;font-family:monospace;max-height:200px;overflow:auto;white-space:pre-wrap;';
+          preEl.className = 'cs-out-box';
           preEl.textContent = code;
           outputEl.innerHTML = '';
           outputEl.appendChild(preEl);
@@ -8457,9 +8897,85 @@ try {
       if (!chatText) { toast('Scan a conversation first'); return; }
 
       tkShowSub('Quiz Me', '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 1 1 5.82 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>', `
-        <div style="font-size:11px;color:var(--cb-subtext);margin-bottom:10px;">Test your understanding with AI-generated multiple-choice questions.</div>
-        <button id="tk-quiz-generate" class="cb-btn" style="width:100%;padding:8px;font-size:12px;margin-bottom:10px;">🧠 Generate Quiz</button>
-        <div id="tk-quiz-status" style="font-size:11px;color:var(--cb-subtext);text-align:center;margin-bottom:8px;">Ready</div>
+        <style>
+          .qz-desc {
+            font-size: 11px;
+            color: var(--cb-subtext);
+            margin-bottom: 12px;
+            line-height: 1.4;
+            background: rgba(255, 255, 255, 0.02);
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.04);
+          }
+          #tk-quiz-generate {
+            width: 100%;
+            padding: 10px;
+            font-size: 12px;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--cb-accent-primary) 0%, var(--cb-accent-secondary) 100%) !important;
+            border: none;
+            box-shadow: 0 4px 12px rgba(99,102,241,0.2);
+            margin-bottom: 12px;
+          }
+          .qz-progress-container {
+            height: 6px;
+            border-radius: 10px;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--cb-border) !important;
+            overflow: hidden;
+            margin: 8px 0 12px 0;
+          }
+          .qz-progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--cb-accent-primary), var(--cb-accent-secondary));
+            transition: width 0.4s ease;
+            box-shadow: 0 0 8px var(--cb-accent-primary);
+          }
+          .qz-question-card {
+            padding: 12px;
+            border-radius: 10px;
+            background: var(--cb-bg2) !important;
+            border: 1px solid var(--cb-border) !important;
+            font-size: 12px;
+            color: var(--cb-text);
+            line-height: 1.45;
+            margin-bottom: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+          }
+          .qz-opt-btn {
+            text-align: left;
+            padding: 10px 14px !important;
+            font-size: 11.5px !important;
+            font-weight: 600 !important;
+            border-radius: 8px !important;
+            background: var(--cb-bg2) !important;
+            border: 1px solid var(--cb-border) !important;
+            transition: all 0.2s ease !important;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1) !important;
+          }
+          .qz-opt-btn:hover:not(:disabled) {
+            background: var(--cb-bg3) !important;
+            border-color: var(--cb-accent-primary) !important;
+            transform: translateX(2px);
+          }
+          .qz-feedback {
+            padding: 10px 12px;
+            border-radius: 8px;
+            font-size: 11px;
+            line-height: 1.45;
+            margin-bottom: 12px;
+            animation: qz-fade-in 0.3s ease-out;
+          }
+          @keyframes qz-fade-in {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+        </style>
+        <div class="qz-desc">Test your understanding with active comprehension questions generated directly from your conversation.</div>
+        <button id="tk-quiz-generate" class="cb-btn">🧠 Generate Quiz</button>
+        <div id="tk-quiz-status" style="font-size:11px;color:var(--cb-subtext);text-align:center;margin-bottom:8px;font-weight:600;">Ready</div>
         <div id="tk-quiz-body" style="display:flex;flex-direction:column;gap:10px;"></div>
       `);
 
@@ -8534,19 +9050,19 @@ try {
         const q = questions[currentIndex];
         const progressPct = Math.round((currentIndex / total) * 100);
         bodyEl.innerHTML = `
-          <div style="font-size:11px;color:var(--cb-subtext);display:flex;justify-content:space-between;">
+          <div style="font-size:11px;color:var(--cb-subtext);display:flex;justify-content:space-between;font-weight:600;">
             <span>Question ${currentIndex + 1} of ${total}</span>
             <span>Score: ${score}/${total}</span>
           </div>
-          <div style="height:6px;border-radius:999px;background:var(--cb-bg2);border:1px solid var(--cb-border);overflow:hidden;">
-            <div style="height:100%;width:${progressPct}%;background:var(--cb-accent-primary);"></div>
+          <div class="qz-progress-container">
+            <div class="qz-progress-bar" style="width:${progressPct}%;"></div>
           </div>
-          <div style="padding:10px;border-radius:8px;background:var(--cb-bg2);border:1px solid var(--cb-border);font-size:12px;color:var(--cb-text);line-height:1.45;">${escapeHtml(q.question)}</div>
-          <div id="tk-quiz-options" style="display:flex;flex-direction:column;gap:7px;">
-            ${q.options.map((opt, idx) => `<button class="cb-btn tk-quiz-opt" data-idx="${idx}" style="text-align:left;padding:8px;font-size:11px;">${String.fromCharCode(65 + idx)}. ${escapeHtml(opt)}</button>`).join('')}
+          <div class="qz-question-card">${escapeHtml(q.question)}</div>
+          <div id="tk-quiz-options" style="display:flex;flex-direction:column;gap:8px;">
+            ${q.options.map((opt, idx) => `<button class="cb-btn tk-quiz-opt qz-opt-btn" data-idx="${idx}">${String.fromCharCode(65 + idx)}. ${escapeHtml(opt)}</button>`).join('')}
           </div>
-          <div id="tk-quiz-feedback" style="display:none;padding:8px;border-radius:8px;font-size:11px;line-height:1.4;"></div>
-          <button id="tk-quiz-next" class="cb-btn" style="width:100%;padding:8px;font-size:11px;" disabled>${currentIndex === total - 1 ? 'Finish' : 'Next Question'}</button>
+          <div id="tk-quiz-feedback" class="qz-feedback" style="display:none;"></div>
+          <button id="tk-quiz-next" class="cb-btn" style="width:100%;padding:10px;font-size:11.5px;font-weight:700;margin-top:4px;" disabled>${currentIndex === total - 1 ? 'Finish' : 'Next Question'}</button>
         `;
 
         shadow.querySelectorAll('.tk-quiz-opt').forEach((btn) => {
