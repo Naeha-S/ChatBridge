@@ -1048,7 +1048,12 @@
     const out = [];
     for (const m of raw) {
       if (!m || !m.text) continue;
-      let text = (m.text || '').replace(/\s+/g, ' ').trim();
+      let rawText = m.text || '';
+      // Clean ChatBridge-injected system instructions
+      rawText = rawText.replace(/\n\s*---\s*\n\s*\[SYSTEM:[\s\S]*?\]/gi, '');
+      rawText = rawText.replace(/---\s*\[SYSTEM:[\s\S]*?\]/gi, '');
+      rawText = rawText.replace(/\[SYSTEM:[\s\S]*?\]/gi, '');
+      let text = rawText.replace(/\s+/g, ' ').trim();
       // Strip role prefixes that might have been captured during scan (e.g., "Assistant:", "User:")
       text = text.replace(/^(Assistant|User|System|AI|Human|Claude|ChatGPT|Gemini|Copilot|Me):\s*/i, '');
       if (!text) continue;
@@ -21956,36 +21961,6 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       });
     }
 
-    // EuroLLM API wrapper (for high-quality multilingual translation)
-    function callEuroLLMAsync(originalPayload) {
-      return new Promise(async (resolve) => {
-        try {
-          chrome.runtime.sendMessage({ type: 'call_eurollm', payload: originalPayload }, res => {
-            const out = res || { ok: false, error: 'no-response' };
-            // Apply ramble filter to successful responses
-            if (out && out.ok && out.result && typeof out.result === 'string') {
-              out.result = rambleFilter(out.result);
-            }
-            resolve(out);
-          });
-        } catch (e) { resolve({ ok: false, error: e && e.message }); }
-      });
-    }
-
-    // EuroLLM FAST API wrapper (1.7B model for instant translations)
-    function callEuroLLMFastAsync(originalPayload) {
-      return new Promise(async (resolve) => {
-        try {
-          chrome.runtime.sendMessage({ type: 'call_eurollm_fast', payload: originalPayload }, res => {
-            const out = res || { ok: false, error: 'no-response' };
-            if (out && out.ok && out.result && typeof out.result === 'string') {
-              out.result = rambleFilter(out.result);
-            }
-            resolve(out);
-          });
-        } catch (e) { resolve({ ok: false, error: e && e.message }); }
-      });
-    }
 
     // Gemma 2 Rewrite API wrapper (google/gemma-2-2b-it for style-conditioned rewrites)
     function callGemmaRewriteAsync(text, style) {
@@ -22141,24 +22116,60 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       }
 
       // Choose the translation function based on deepThinking mode
-      const translateFn = deepThinking ? callEuroLLMAsync : callEuroLLMFastAsync;
-      const modelName = deepThinking ? 'EuroLLM-22B' : 'EuroLLM-1.7B';
-      debugLog(`[Translation] Using ${modelName} model`);
+      let hasGemini = false;
+      let hasLlama = false;
+      try {
+        const keys = await new Promise(r => {
+          chrome.storage.local.get(['chatbridge_gemini_key', 'chatbridge_hf_key'], d => r(d || {}));
+        });
+        if (keys.chatbridge_gemini_key) hasGemini = true;
+        if (keys.chatbridge_hf_key) hasLlama = true;
+      } catch (e) {}
+
+      if (!hasGemini && typeof window !== 'undefined' && window.CHATBRIDGE_CONFIG && window.CHATBRIDGE_CONFIG.GEMINI_API_KEY) {
+        hasGemini = true;
+      }
+      if (!hasLlama && typeof window !== 'undefined' && window.CHATBRIDGE_CONFIG && window.CHATBRIDGE_CONFIG.HUGGINGFACE_API_KEY) {
+        hasLlama = true;
+      }
+
+      if (!hasGemini && !hasLlama) {
+        throw new Error('No API keys configured. Please configure Gemini or HuggingFace API keys in ChatBridge Options.');
+      }
+
+      async function tryGemini(chunkText) {
+        debugLog('[Translation] Trying Gemini...');
+        const preferredModel = deepThinking ? 'gemini-2.5-pro' : 'gemini-2.0-flash';
+        const r = await callGeminiAsync({ action: 'translate', text: chunkText, targetLang, model: preferredModel });
+        return r && r.ok ? r.result : null;
+      }
+
+      async function tryLlama(chunkText) {
+        debugLog('[Translation] Trying Llama...');
+        const r = await callLlamaAsync({ action: 'translate', text: chunkText, targetLang });
+        return r && r.ok ? r.result : null;
+      }
+
+      const order = [];
+      if (hasGemini) order.push(tryGemini);
+      if (hasLlama) order.push(tryLlama);
+
+      async function translateChunk(chunkText) {
+        for (const attemptFn of order) {
+          try {
+            const res = await attemptFn(chunkText);
+            if (res && !res.includes('[translation-failed]') && !res.includes('[translation-error]')) {
+              return res;
+            }
+          } catch (e) {
+            debugLog('[Translation] Attempt failed', e);
+          }
+        }
+        throw new Error('All translation models failed');
+      }
 
       if (workText.length <= chunkSize) {
-        // Single call for small/medium text - fastest path
-        const euroRes = await translateFn({ action: 'translate', text: workText, targetLang });
-        if (euroRes && euroRes.ok) return euroResultPreFilter(euroRes.result);
-
-        // Fallback chain (only if primary fails)
-        debugLog('[Translation] Primary model failed, trying Llama fallback...');
-        const llamaRes = await callLlamaAsync({ action: 'translate', text: workText, targetLang });
-        if (llamaRes && llamaRes.ok) return llamaRes.result;
-
-        const geminiRes = await callGeminiAsync({ action: 'translate', text: workText, targetLang });
-        if (geminiRes && geminiRes.ok) return geminiRes.result;
-
-        throw new Error(euroRes?.error || llamaRes?.error || geminiRes?.error || 'Translation failed');
+        return await translateChunk(workText);
       }
 
       // Split on double newlines if possible
@@ -22183,15 +22194,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         const batchPromises = batch.map(async (chunkText, idx) => {
           const globalIdx = i + idx;
           try {
-            // Use the selected model (fast or deep) with primary + fallbacks
-            const res = await (async () => {
-              const e = await translateFn({ action: 'translate', text: chunkText, targetLang });
-              if (e && e.ok) return euroResultPreFilter(e.result);
-              // Fast fallback - only try Llama, skip Gemini for speed
-              const l = await callLlamaAsync({ action: 'translate', text: chunkText, targetLang });
-              if (l && l.ok) return l.result;
-              return '[chunk-failed]';
-            })();
+            const res = await translateChunk(chunkText);
             translatedChunks[globalIdx] = res;
           } catch (e) {
             translatedChunks[globalIdx] = '[chunk-error]';
@@ -22203,14 +22206,6 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       return translatedChunks.join('\n\n');
     }
 
-    // Pre-filtering for EuroLLM to remove common hallucinations/fillers
-    function euroResultPreFilter(text) {
-      if (!text) return '';
-      return text
-        .replace(/^(Here is the translation:|Translation:)\s*/i, '')
-        .replace(/^(Translation into [^:]+:)\s*/i, '')
-        .trim();
-    }
 
     // Generic hierarchical processor for other actions (prompt/rewrite/translate)
     async function hierarchicalProcess(text, action, options) {
@@ -22988,6 +22983,50 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
             return;
           }
           content = lastScan.messages;
+        }
+
+        // Strip system/status messages that platforms inject (not real conversation content)
+        const SYSTEM_MSG_PATTERNS = [
+          /^context restored/i,
+          /^ready for your next prompt/i,
+          /context restored\.? ready for your next prompt/i,
+          /^thinking\.\.\./i,
+          /^generating/i,
+          /^loading/i,
+          /^\s*\.\.\.\s*$/,
+          /^stop generating/i,
+          /^response cancelled/i,
+          /^message copied/i,
+          /^network error/i,
+          /^something went wrong/i,
+          /^an error occurred/i,
+          /^sorry, i can't/i,
+          /^i'm unable to/i,
+        ];
+        const isSystemMsg = (text) => {
+          if (!text) return true;
+          const t = text.trim().replace(/[*_`#\-]/g, '').trim();
+          if (t.length < 3) return true;
+          return SYSTEM_MSG_PATTERNS.some(p => p.test(t)) || t.length < 5;
+        };
+        const cleanSystemInjections = (text) => {
+          if (!text) return '';
+          return text
+            .replace(/\n\s*---\s*\n\s*\[SYSTEM:[\s\S]*?\]/gi, '')
+            .replace(/---\s*\[SYSTEM:[\s\S]*?\]/gi, '')
+            .replace(/\[SYSTEM:[\s\S]*?\]/gi, '')
+            .trim();
+        };
+        if (Array.isArray(content)) {
+          content = content.map(m => m ? { ...m, text: cleanSystemInjections(m.text) } : m);
+          content = content.filter(m => m && m.text && !isSystemMsg(m.text));
+        }
+
+        if (!content || content.length === 0) {
+          toast('No real conversation content found. Try scanning the page again.');
+          btnGoTrans.disabled = false;
+          transProg.style.display = 'none';
+          return;
         }
 
         // Filter content based on mode
@@ -25067,7 +25106,7 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
   };
   window.ChatBridge.getLastScan = function () {
     try {
-      return window.ChatBridge._lastScan || null;
+      return window.ChatBridge._lastScanData || window.ChatBridge._lastScan || null;
     } catch (e) { return null; }
   };
   window.ChatBridge.getImageVault = async function () {

@@ -221,7 +221,7 @@ cd ChatBridge
 **Backend / Processing:**
 
 * Google Gemini API (summarize, rewrite, translate)
-* HuggingFace Inference API (EuroLLM, Gemma, Llama)
+* HuggingFace Inference API (Gemma, Llama)
 * OpenAI API (optional fallback)
 * Hierarchical chunking & parallel processing
 * Retry, caching & fallback logic

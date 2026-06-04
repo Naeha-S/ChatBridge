@@ -132,9 +132,15 @@ const REWRITE_TEMPLATES = {
   ${text}`
 };
 
-// Get next available model, skipping those with too many failures
-async function getNextAvailableModel() {
+// Get next available model, skipping those with too many failures. Optionally accepts a preferredModel.
+async function getNextAvailableModel(preferredModel) {
   const state = await _loadModelState();
+  // If a preferred model is requested and it has not failed, try it first.
+  if (preferredModel && GEMINI_MODEL_PRIORITY.includes(preferredModel)) {
+    if ((state.modelFailureCount[preferredModel] || 0) < MAX_MODEL_FAILURES) {
+      return preferredModel;
+    }
+  }
   for (let i = 0; i < GEMINI_MODEL_PRIORITY.length; i++) {
     const idx = (state.currentModelIndex + i) % GEMINI_MODEL_PRIORITY.length;
     const model = GEMINI_MODEL_PRIORITY[idx];
@@ -148,6 +154,9 @@ async function getNextAvailableModel() {
   state.modelFailureCount = {};
   state.currentModelIndex = 0;
   await _saveModelState();
+  if (preferredModel && GEMINI_MODEL_PRIORITY.includes(preferredModel)) {
+    return preferredModel;
+  }
   return GEMINI_MODEL_PRIORITY[0];
 }
 
@@ -1940,161 +1949,6 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return true;
   }
 
-  // EuroLLM Translation Handler (Hugging Face OpenAI-compatible API)
-  // Uses utter-project/EuroLLM-22B-Instruct for high-quality multilingual translation
-  if (msg && msg.type === 'call_eurollm') {
-    (async () => {
-      try {
-        const hfKey = await getHuggingFaceApiKey();
-        if (!hfKey) {
-          return sendResponse({ ok: false, error: 'no_api_key', message: 'HuggingFace API key not configured. Open ChatBridge Options to set it.' });
-        }
-
-        const payload = msg.payload || {};
-        const targetLang = payload.targetLang || 'English';
-        const text = payload.text || '';
-
-        if (!text || text.length < 2) {
-          return sendResponse({ ok: false, error: 'no_text', message: 'No text provided for translation' });
-        }
-
-        // Professional translator system prompt - clean, accurate translations only
-        const systemPrompt = `You are a highly accurate, concise translation engine. Translate the user's input to ${targetLang}. Provide ONLY the translation. Do not include 'Here is the translation' or any conversational filler. Maintain the original tone (formal/informal).`;
-
-        console.log(`[EuroLLM] Translating ${text.length} chars to ${targetLang}`);
-
-        // Before making network call, check cache for this exact translation
-        try {
-          const cacheKey = hashString(stableStringify({ type: 'call_eurollm', targetLang, text }));
-          const rec = await cacheGet(cacheKey);
-          if (rec && rec.ts && rec.ttl && (Date.now() - rec.ts) < rec.ttl && rec.response) {
-            console.log('[EuroLLM] Cache hit');
-            return sendResponse(rec.response);
-          }
-        } catch (e) { /* ignore */ }
-
-        const response = await fetch('https://router.huggingface.co/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${hfKey}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            model: 'utter-project/EuroLLM-22B-Instruct-2512:publicai',
-            messages: [
-              { role: 'system', content: systemPrompt },
-              { role: 'user', content: text }
-            ],
-            max_tokens: 4096,
-            temperature: 0.3  // Lower temperature for more accurate, consistent translations
-          })
-        });
-
-        if (!response.ok) {
-          const errorText = await response.text().catch(() => '');
-          console.error('[EuroLLM] API error:', response.status, errorText);
-          return sendResponse({ ok: false, error: 'api_error', status: response.status, message: errorText });
-        }
-
-        const json = await response.json();
-        const result = json.choices?.[0]?.message?.content || '';
-
-        if (!result) {
-          return sendResponse({ ok: false, error: 'empty_response', message: 'Model returned empty response' });
-        }
-
-        // Cache successful result (1 hour TTL for translations)
-        try {
-          const cacheKey = hashString(stableStringify({ type: 'call_eurollm', targetLang, text }));
-          await cachePut({ id: cacheKey, ts: Date.now(), ttl: 1000 * 60 * 60, response: { ok: true, result: result.trim() } });
-        } catch (e) { /* ignore */ }
-
-        console.log(`[EuroLLM-22B] Translation complete: ${result.length} chars`);
-        return sendResponse({ ok: true, result: result.trim() });
-      } catch (e) {
-        console.error('[EuroLLM-22B] Fetch error:', e);
-        return sendResponse({ ok: false, error: 'fetch_error', message: e.message || String(e) });
-      }
-    })();
-    return true; // Keep channel open for async response
-  }
-
-  // EuroLLM FAST Translation Handler (1.7B model - instant translations)
-  if (msg && msg.type === 'call_eurollm_fast') {
-    (async () => {
-      try {
-        const hfKey = await getHuggingFaceApiKey();
-        if (!hfKey) {
-          return sendResponse({ ok: false, error: 'no_api_key', message: 'HuggingFace API key not configured.' });
-        }
-
-        const payload = msg.payload || {};
-        const targetLang = payload.targetLang || 'English';
-        const text = payload.text || '';
-
-        if (!text || text.length < 2) {
-          return sendResponse({ ok: false, error: 'no_text', message: 'No text provided' });
-        }
-
-        const systemPrompt = `You are a translation engine. Translate to ${targetLang}. Output ONLY the translation.`;
-
-        console.log(`[EuroLLM-1.7B] Fast translating ${text.length} chars to ${targetLang}`);
-
-        // Check cache first
-        try {
-          const cacheKey = hashString(stableStringify({ type: 'call_eurollm_fast', targetLang, text }));
-          const rec = await cacheGet(cacheKey);
-          if (rec && rec.ts && rec.ttl && (Date.now() - rec.ts) < rec.ttl && rec.response) {
-            console.log('[EuroLLM-1.7B] Cache hit');
-            return sendResponse(rec.response);
-          }
-        } catch (e) { /* ignore */ }
-
-        const response = await fetch('https://router.huggingface.co/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${hfKey}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            model: 'utter-project/EuroLLM-1.7B-Instruct:publicai',
-            messages: [
-              { role: 'system', content: systemPrompt },
-              { role: 'user', content: text }
-            ],
-            max_tokens: 2048,
-            temperature: 0.2
-          })
-        });
-
-        if (!response.ok) {
-          const errorText = await response.text().catch(() => '');
-          console.error('[EuroLLM-1.7B] API error:', response.status, errorText);
-          return sendResponse({ ok: false, error: 'api_error', status: response.status, message: errorText });
-        }
-
-        const json = await response.json();
-        const result = json.choices?.[0]?.message?.content || '';
-
-        if (!result) {
-          return sendResponse({ ok: false, error: 'empty_response', message: 'Model returned empty response' });
-        }
-
-        // Cache result (30 min TTL for fast translations)
-        try {
-          const cacheKey = hashString(stableStringify({ type: 'call_eurollm_fast', targetLang, text }));
-          await cachePut({ id: cacheKey, ts: Date.now(), ttl: 1000 * 60 * 30, response: { ok: true, result: result.trim() } });
-        } catch (e) { /* ignore */ }
-
-        console.log(`[EuroLLM-1.7B] Fast translation complete: ${result.length} chars`);
-        return sendResponse({ ok: true, result: result.trim() });
-      } catch (e) {
-        console.error('[EuroLLM-1.7B] Fetch error:', e);
-        return sendResponse({ ok: false, error: 'fetch_error', message: e.message || String(e) });
-      }
-    })();
-    return true;
-  }
 
   // Gemma 2 Rewrite Handler (google/gemma-2-2b-it via HuggingFace router)
   // Uses comprehensive style-conditioning system prompt for optimal rewrites
@@ -3183,7 +3037,7 @@ ${payload.text}`;
           const builder = REWRITE_TEMPLATES[styleKey] || REWRITE_TEMPLATES.normal;
           promptText = builder({ text: payload.text || '', styleHint });
         } else if (payload.action === 'translate') {
-          systemInstruction = 'You are a professional translator. Provide accurate, natural translations that preserve meaning, tone, and nuance. Output ONLY the translation.';
+          systemInstruction = 'You are a professional, native-fluent translator. Provide accurate, natural, and idiomatic translations that preserve meaning, tone, and nuance. Translate thoughts naturally rather than literally (e.g. in Spanish, translate "where does the bus pick up" to "de dónde sale el autobús", and "van" to "van" or "minibús"). Use modern, natural, international phrasing. Preserve all Markdown, links, URLs, and citations exactly. Do NOT translate or corrupt URL paths (e.g. keep "reddit.com/r/..." exactly as is). Translate source list headers like "Sources:" correctly (e.g. "Fuentes:" or "Referencias:" in Spanish). Output ONLY the translation.';
           promptText = `Translate the following text to ${payload.targetLang || 'English'}. Output ONLY the translated text with no explanations, notes, or additional commentary:\n\n${payload.text}`;
         } else if (payload.action === 'syncTone') {
           systemInstruction = 'You are an elite prompt engineer specialized in optimizing conversations for different AI models. Transform inputs to maximize output quality for the target model.';
@@ -3227,9 +3081,10 @@ Rewritten conversation (optimized for ${tgt}):`;
         // Try models with fallback
         let lastError = null;
         const maxRetries = GEMINI_MODEL_PRIORITY.length;
+        const preferredModel = payload.model;
 
         for (let attempt = 0; attempt < maxRetries; attempt++) {
-          const currentModel = await getNextAvailableModel();
+          const currentModel = await getNextAvailableModel(preferredModel);
           const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${currentModel}:generateContent?key=${geminiApiKey}`;
           const body = {
             systemInstruction: systemInstruction ? { parts: [{ text: systemInstruction }] } : undefined,
@@ -3831,7 +3686,16 @@ Output ONLY the friendly revision.`
           promptText = `${instruction}${styleHint ? `\n\nAdditional style guidance: ${styleHint}` : ''}\n\nText to transform:\n${payload.text}`;
         } else if (action === 'translate') {
           const targetLang = payload.targetLang || 'English';
-          promptText = `Translate the following text to ${targetLang}. Output ONLY the translated text with no explanations.\n\n${payload.text}`;
+          promptText = `You are a professional, native-fluent translator. Translate the following text to ${targetLang}.
+Rules:
+- Translate thoughts and idioms naturally rather than literally (e.g. in Spanish, translate "where does the bus pick up" to "de dónde sale el autobús" or equivalent natural phrasing, and "van" to "van" or "minibús").
+- Use modern, natural, international phrasing. Avoid rigid/literal dictionary translations.
+- Preserve all Markdown formatting, links, URLs, and citations exactly. Do NOT translate or modify URL paths (e.g. keep "reddit.com/r/..." exactly as is).
+- Translate source list headers like "Sources:" correctly (e.g. "Fuentes:" or "Referencias:" in Spanish, NOT "Preguntas:").
+- Output ONLY the translated text with no explanations or commentary.
+
+Text to translate:
+${payload.text}`;
         } else if (action === 'generate' || action === 'prompt') {
           // Smart prompts / general generation - use text as-is
           promptText = payload.text || '';
