@@ -1059,7 +1059,7 @@ const SiteAdapters = [
           let chunk = normalize(raw.slice(start, end));
           chunk = cleanMistralText(chunk);
           if (!chunk || isMistralUiText(chunk)) continue;
-          parts.push({ role: i === 0 ? 'assistant' : 'assistant', text: chunk });
+          parts.push({ role: i === 0 ? 'user' : 'assistant', text: chunk });
         }
         return parts.filter((part) => part.text && !isMistralUiText(part.text));
       };

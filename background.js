@@ -1,4 +1,4 @@
-﻿// background.js
+// background.js
 
 if (typeof globalThis.browser === 'undefined' && typeof globalThis.chrome !== 'undefined') {
   try { globalThis.browser = globalThis.chrome; } catch (e) { }
@@ -1269,14 +1269,18 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           const obj = {
             id,
             vector: embedding,
-          metadata: Object.assign({}, metadata, {
-            embeddingProvider: embeddingProvider || metadata.embeddingProvider || 'unknown',
-            embeddingModel: embeddingModel || metadata.embeddingModel || 'unknown'
-          }),
-          ts: Date.now()
-        };
-        const ok = await idbPut(obj);
-        return sendResponse({ ok: !!ok });
+            metadata: Object.assign({}, metadata, {
+              embeddingProvider: embeddingProvider || metadata.embeddingProvider || 'unknown',
+              embeddingModel: embeddingModel || metadata.embeddingModel || 'unknown'
+            }),
+            ts: Date.now()
+          };
+          const ok = await idbPut(obj);
+          return sendResponse({ ok: !!ok });
+        } catch (e) {
+          console.error('[ChatBridge] vector_index - exception:', e.message || e);
+          return sendResponse({ ok: false, error: e.message || 'unknown_error' });
+        }
       })();
       return true;
     }
@@ -2844,7 +2848,11 @@ Return ONLY the rewritten text. No preamble. No explanation.`;
               return sendResponse({ ok: false, error: 'openai_http_error', status: res.status, body: json });
             }
             
-            const assistant = (json && json.choices && json.choices[0] && json.choices[0].message && json.choices[0].message.content) || '';
+            const msg = json && json.choices && json.choices[0] && json.choices[0].message;
+            if (msg && msg.refusal) {
+              return sendResponse({ ok: false, error: 'openai_refusal', detail: msg.refusal });
+            }
+            const assistant = (msg && msg.content) || '';
             const result = assistant; // alias for compatibility
             
             // cache successful response (5min TTL)
@@ -2959,7 +2967,7 @@ ${payload.text}`;
                 comprehensive: '12-15 detailed bullets',
                 detailed: '15-20 in-depth bullets covering all aspects'
               };
-              const lenInstr = lengthGuide[payload.length] || '8-12 bullets';
+              const lenInstr = (Object.hasOwn(lengthGuide, payload.length) ? lengthGuide[payload.length] : null) || '8-12 bullets';
 
               promptText = `Transform this text into a ${lenInstr} bullet-point summary.
 
@@ -2995,7 +3003,7 @@ ${payload.text}`;
                 comprehensive: '3-4 paragraphs with strategic depth',
                 detailed: '4-5 paragraphs with comprehensive coverage'
               };
-              const lenInstr = lengthGuide[payload.length] || '2-3 paragraphs';
+              const lenInstr = (Object.hasOwn(lengthGuide, payload.length) ? lengthGuide[payload.length] : null) || '2-3 paragraphs';
 
               promptText = `Create an executive summary (${lenInstr}) for senior leadership.
 
@@ -3033,7 +3041,7 @@ ${payload.text}`;
                 comprehensive: 'Deep technical analysis with context',
                 detailed: 'Exhaustive technical documentation'
               };
-              const lenInstr = lengthGuide[payload.length] || 'comprehensive technical coverage';
+              const lenInstr = (Object.hasOwn(lengthGuide, payload.length) ? lengthGuide[payload.length] : null) || 'comprehensive technical coverage';
 
               promptText = `Create a technical summary (${lenInstr}) for engineers and technical stakeholders.
 
@@ -3076,7 +3084,7 @@ ${payload.text}`;
                 comprehensive: '6-8 paragraphs with full context',
                 detailed: '8-12 paragraphs with exhaustive analysis'
               };
-              const lenInstr = lengthGuide[payload.length] || '4-6 well-developed paragraphs';
+              const lenInstr = (Object.hasOwn(lengthGuide, payload.length) ? lengthGuide[payload.length] : null) || '4-6 well-developed paragraphs';
 
               promptText = `Create a detailed summary (${lenInstr}) that comprehensively covers the content.
 
@@ -3123,7 +3131,7 @@ ${payload.text}`;
                 comprehensive: '3-4 comprehensive paragraphs',
                 detailed: '4-5 thorough paragraphs'
               };
-              const lenInstr = lengthGuide[payload.length] || '2-3 paragraphs';
+              const lenInstr = (Object.hasOwn(lengthGuide, payload.length) ? lengthGuide[payload.length] : null) || '2-3 paragraphs';
 
               promptText = `Summarize this text as ${lenInstr} with clear, coherent narrative flow.
 
@@ -3260,13 +3268,14 @@ Rewritten conversation (optimized for ${tgt}):`;
 
           // Check if HTTP request was successful
           if (!res.ok) {
-            const errorInfo = {
+            const httpErrorMap = {
               400: 'Invalid request - check API key or model name',
               403: 'API key invalid or lacks permissions',
               429: 'Rate limit exceeded - switching to next model',
               500: 'Gemini API server error',
               503: 'Gemini API unavailable'
-            }[res.status] || 'Unknown error';
+            };
+            const errorInfo = (Object.hasOwn(httpErrorMap, res.status) ? httpErrorMap[res.status] : null) || 'Unknown error';
 
             console.error(`[Gemini API Error] HTTP ${res.status} for ${currentModel}:`, json);
             console.error(`[Gemini API Error] ${errorInfo}`);

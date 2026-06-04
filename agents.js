@@ -437,6 +437,16 @@
   // 3. THE AGENT HUB UI SYSTEM
   // ==========================================
 
+  // HTML sanitizer - prevents XSS in innerHTML template literals
+  function escHtml(str) {
+    return String(str || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
   class AgentHub {
     constructor() {
       this.ragEngine = new AgentRAGEngine();
@@ -485,10 +495,10 @@
       
       this.agents.forEach(a => {
         gridHtml += `
-          <div class="ah-agent-card" data-agent="${a.id}">
-            <div class="ah-agent-icon">${a.icon}</div>
-            <div class="ah-agent-name">${a.name}</div>
-            <div class="ah-agent-desc">${a.desc}</div>
+          <div class="ah-agent-card" data-agent="${escHtml(a.id)}">
+            <div class="ah-agent-icon">${escHtml(a.icon)}</div>
+            <div class="ah-agent-name">${escHtml(a.name)}</div>
+            <div class="ah-agent-desc">${escHtml(a.desc)}</div>
           </div>
         `;
       });
@@ -538,13 +548,13 @@
       activeView.innerHTML = `
         <div class="ah-active-header">
           <button class="ah-back-btn" id="ah-back">←</button>
-          <div class="ah-active-title">${this.activeAgent.icon} ${this.activeAgent.name}</div>
+          <div class="ah-active-title">${escHtml(this.activeAgent.icon)} ${escHtml(this.activeAgent.name)}</div>
         </div>
         <div class="ah-content">
           <div class="ah-section">
             <div class="ah-section-title">Agent Readiness</div>
             <div style="font-size: 13px; color: var(--ah-subtext); margin-bottom: 12px;">
-              ${this.activeAgent.desc}
+              ${escHtml(this.activeAgent.desc)}
             </div>
             <button class="ah-btn-primary" id="ah-run-agent">Run Agent</button>
           </div>
@@ -571,7 +581,7 @@
         <div class="ah-section">
           <div class="ah-loading">
             <div class="ah-spinner"></div>
-            <div>Retrieving context & running ${this.activeAgent.name}...</div>
+            <div>Retrieving context &amp; running ${escHtml(this.activeAgent.name)}...</div>
           </div>
         </div>
       `;
@@ -641,7 +651,7 @@
       } catch (err) {
         resultsContainer.innerHTML = `
           <div class="ah-section" style="border-color: var(--ah-danger);">
-            <div style="color: var(--ah-danger); font-size: 13px;">Error: ${err.message}</div>
+            <div style="color: var(--ah-danger); font-size: 13px;">Error: ${escHtml(err.message)}</div>
           </div>
         `;
         btn.disabled = false;

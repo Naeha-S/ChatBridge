@@ -1,4 +1,4 @@
-﻿// wrap everything in an IIFE and exit early if already injected to avoid redeclaration
+// wrap everything in an IIFE and exit early if already injected to avoid redeclaration
 (function () {
   if (typeof globalThis.browser === 'undefined' && typeof globalThis.chrome !== 'undefined') {
     try { globalThis.browser = globalThis.chrome; } catch (e) { }
@@ -21325,8 +21325,12 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
               }
             };
             const summary = await hierarchicalSummarize(fullText, opts);
+            // Only accept a non-trivially-short summary; fall back to full text otherwise
+            if (!summary || summary.trim().length < 100) {
+              throw new Error('hierarchicalSummarize returned an empty or too-short summary');
+            }
             formatted = summary + '\n\n---\n[SYSTEM: The user just restored this past conversation summary. Analyze the context above, but DO NOT summarize it or answer it yet. Acknowledge by simply saying "Context restored. Ready for your next prompt." and await instructions.]';
-            // Save summary for future use
+            // Only save summary after confirming it is non-empty
             sel.summary = summary;
             await saveConversation(sel);
           } catch (sumErr) {
@@ -21334,13 +21338,13 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
             updateRestoreStatus('Autosummary failed. Falling back to full text...');
             formatted = sel.conversation.map(m => (m.role === 'user' ? 'User: ' : 'Assistant: ') + m.text).join('\n\n') + '\n\n---\n[SYSTEM: The user just restored this past conversation. Analyze the context above, but DO NOT summarize it or answer it yet. Acknowledge by simply saying "Context restored. Ready for your next prompt." and await instructions.]';
           }
-        } else if (sel.summary && typeof sel.summary === 'string' && sel.summary.trim().length > 0) {
-          // Use existing summary
+        } else if (sel.summary && typeof sel.summary === 'string' && sel.summary.trim().length > 100) {
+          // Use existing summary (only if it's a real, non-trivial summary)
           updateRestoreStatus('Using existing saved summary. Restoring to chat...');
           formatted = sel.summary.trim() + '\n\n---\n[SYSTEM: The user just restored this past conversation summary. Analyze the context above, but DO NOT summarize it or answer it yet. Acknowledge by simply saying "Context restored. Ready for your next prompt." and await instructions.]';
         } else {
-          // Use full conversation for small chats
-          updateRestoreStatus('Small chat detected. Restoring full conversation...');
+          // Use full conversation for small chats (or if summary is missing/invalid)
+          updateRestoreStatus('Restoring full conversation...');
           formatted = sel.conversation.map(m => (m.role === 'user' ? 'User: ' : 'Assistant: ') + m.text).join('\n\n') + '\n\n---\n[SYSTEM: The user just restored this past conversation. Analyze the context above, but DO NOT summarize it or answer it yet. Acknowledge by simply saying "Context restored. Ready for your next prompt." and await instructions.]';
         }
         // Collect attachments from conversation
@@ -23977,7 +23981,7 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
 
         addLoadingToButton(btnSmartAsk, 'Asking AI…');
 
-        // Build context from search results
+        // TIER 1: Build context from vector search results
         let ctx = '';
         if (searchResults.length > 0) {
           console.log('[ChatBridge] Ask AI - found', searchResults.length, 'search results, building context');
@@ -24007,22 +24011,58 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
           }
         }
 
-        // If context found, use it; otherwise answer directly with AI
+        // TIER 2: If vector search gave no usable context, try keyword search on saved chats
+        let usedKeywordFallback = false;
+        if (ctx.trim().length <= 40) {
+          try {
+            const allConvs = await loadConversationsAsync();
+            if (allConvs && allConvs.length > 0) {
+              const ql = q.toLowerCase();
+              const words = ql.split(/\s+/).filter(w => w.length >= 3);
+              const kwMatches = (Array.isArray(allConvs) ? allConvs : [])
+                .map(s => {
+                  const full = (s.conversation || []).map(m => `${m.role}: ${m.text}`).join('\n');
+                  const score = words.reduce((acc, w) => acc + (full.toLowerCase().split(w).length - 1), 0);
+                  return { s, score, full };
+                })
+                .filter(x => x.score > 0 && (x.s.conversation || []).length > 0)
+                .sort((a, b) => b.score - a.score)
+                .slice(0, 3);
+
+              for (let i = 0; i < kwMatches.length; i++) {
+                const snippet = kwMatches[i].full.slice(0, 2000);
+                if ((ctx + '\n\n' + snippet).length > 10000) break;
+                ctx += '\n\n--- Saved chat ' + (i + 1) + ' ---\n\n' + snippet;
+              }
+              if (ctx.trim().length > 40) {
+                usedKeywordFallback = true;
+                console.log('[ChatBridge] Ask AI - keyword fallback found context, length:', ctx.length);
+              }
+            }
+          } catch (kwErr) {
+            console.warn('[ChatBridge] Ask AI - keyword fallback failed:', kwErr);
+          }
+        }
+
+        // Build prompt based on what context we have
         let prompt = '';
-        console.log('[ChatBridge] Ask AI - context assembly:', { ctxLength: ctx.length, searchResults: searchResults.length, vectorSearchError });
+        console.log('[ChatBridge] Ask AI - context assembly:', { ctxLength: ctx.length, searchResults: searchResults.length, vectorSearchError, usedKeywordFallback });
+
         if (ctx.trim().length > 40) {
+          // TIER 1 or 2: Grounded answer using saved chat context
           console.log('[ChatBridge] Ask AI - using grounded context, length:', ctx.length);
-          prompt = `You are an assistant that answers questions about a user's past chat logs. Use the provided conversation excerpts as context to answer the question. If the answer isn't fully contained in the excerpts, you can supplement with your knowledge but clearly indicate what comes from the excerpts vs. your general knowledge.\n\nQuestion: ${q}\n\nContext from saved chats: ${ctx}`;
+          contextSource = usedKeywordFallback ? 'keyword' : 'vector';
+          prompt = `You are a helpful assistant. The user has saved some of their AI conversations and is asking a question about them. Use the conversation excerpts below to give a direct, helpful answer. If the exact answer isn't in the excerpts, use what's closest and supplement with your general knowledge.\n\nUser question: ${q}\n\nSaved conversation excerpts:${ctx}`;
         } else {
-          console.log('[ChatBridge] Ask AI - insufficient context, falling back to direct answer', { ctxLength: ctx.length, vectorError: vectorSearchError });
-          prompt = `Answer this question clearly and concisely: ${q}`;
-          smartAnswer.textContent = '(Could not map strong saved-chat context for this query. Answering directly.)\n\n';
+          contextSource = 'general';
+          prompt = `User: ${q}\nAssistant:`;
         }
 
         const res = await callGeminiAsync({ action: 'prompt', text: prompt, length: 'short' });
         if (res && res.ok) {
           const answerText = res.result || '(no answer)';
-          smartAnswer.textContent = answerText;
+          const notice = contextSource === 'general' ? '💬 Answering from general knowledge (no matching saved chats found).\n\n' : contextSource === 'keyword' ? '📎 Found a related saved chat.\n\n' : '';
+          smartAnswer.textContent = notice + answerText;
           announce('Answer ready');
           // provenance: find which saved conversations / models contributed similar content to this answer
           try {

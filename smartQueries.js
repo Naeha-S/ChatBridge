@@ -1,4 +1,4 @@
-﻿// smartQueries.js - Advanced Smart Queries with Query History, Advanced Filters, & Improved UX
+// smartQueries.js - Advanced Smart Queries with Query History, Advanced Filters, & Improved UX
 // Self-contained styling and logic to ensure perfect rendering
 
 (function () {
@@ -1496,10 +1496,10 @@ Provide a clear, thorough answer. If the question is about continuing the conver
         return;
       }
       if (!this.memoryRetrieval) await this.initialize();
-      
+
       // Announce search start
       this.announceLoadingProgress('searching', 0);
-      
+
       const rawResults = await this.memoryRetrieval.search(query, { limit: 50 });
 
       if (!rawResults || rawResults.length === 0) {
@@ -1568,13 +1568,13 @@ Provide a clear, thorough answer. If the question is about continuing the conver
 
       this.currentResults = filtered;
       this.currentPage = 1;
-      
+
       this.announceLoadingProgress('synthesizing', 90);
-      this.renderMemoryResults(container, synthesize);
+      this.renderMemoryResults(container, synthesize, query);
       this.announceLoadingProgress('complete', 100);
     }
 
-    renderMemoryResults(container, synthesize) {
+    renderMemoryResults(container, synthesize, query) {
       let html = '';
 
       if (this.currentResults.length === 0) {
@@ -1620,7 +1620,7 @@ Provide a clear, thorough answer. If the question is about continuing the conver
           </div>
         `;
 
-        const userQuery = this.currentResults[0].fullQuery || '';
+        const userQuery = query || this.currentResults[0]?.fullQuery || '';
         const calibratorStateStr = window.ChatBridgeCalibratorState ? window.ChatBridgeCalibratorState() : '';
         const calibratorInstruction = calibratorStateStr ? `\n\nCALIBRATOR SETTINGS (apply these to your writing persona level):\n${calibratorStateStr}` : '';
 
@@ -1687,7 +1687,7 @@ Synthesize now:`;
       // Results List with adaptive pagination for performance
       const optimalPerPage = this.getOptimalResultsPerPage();
       this.resultsPerPage = optimalPerPage;
-      
+
       const start = (this.currentPage - 1) * this.resultsPerPage;
       const end = start + this.resultsPerPage;
       const pagedResults = this.currentResults.slice(start, end);
@@ -2282,7 +2282,7 @@ Synthesize now:`;
         animation:cb-toast-slide-in 0.25s ease-out;
       `;
       container.appendChild(t);
-      setTimeout(() => { try { t.remove(); } catch(e){} }, 3000);
+      setTimeout(() => { try { t.remove(); } catch (e) { } }, 3000);
     }
 
     formatText(text) {
@@ -2325,44 +2325,44 @@ Synthesize now:`;
      */
     setupVirtualScrolling(container, items, renderFunc, itemHeight = 140) {
       if (!container || items.length < 50) return; // Only use for large sets
-      
+
       const scrollContainer = document.createElement('div');
       scrollContainer.className = 'sq-virtual-list';
       scrollContainer.style.height = '400px';
       scrollContainer.style.overflow = 'auto';
-      
+
       const viewportHeight = scrollContainer.clientHeight;
       const visibleCount = Math.ceil(viewportHeight / itemHeight) + 2; // Buffer
-      
+
       const spacer = document.createElement('div');
       spacer.className = 'sq-virtual-spacer';
       spacer.style.height = items.length * itemHeight + 'px';
-      
+
       const content = document.createElement('div');
       content.style.position = 'absolute';
       content.style.top = '0';
       content.style.left = '0';
       content.style.right = '0';
-      
+
       scrollContainer.appendChild(spacer);
       scrollContainer.appendChild(content);
-      
+
       let currentOffset = 0;
       let renderTimeout = null;
-      
+
       const renderVisible = () => {
         clearTimeout(renderTimeout);
         renderTimeout = requestIdleCallback(() => {
           const scrollTop = scrollContainer.scrollTop;
           const startIdx = Math.max(0, Math.floor(scrollTop / itemHeight) - 1);
           const endIdx = Math.min(items.length, startIdx + visibleCount);
-          
+
           content.style.transform = `translateY(${startIdx * itemHeight}px)`;
           content.innerHTML = items
             .slice(startIdx, endIdx)
             .map((item, i) => renderFunc(item, startIdx + i))
             .join('');
-          
+
           // Re-attach event listeners
           content.querySelectorAll('[data-virtual-idx]').forEach(el => {
             const idx = parseInt(el.dataset.virtualIdx);
@@ -2370,10 +2370,10 @@ Synthesize now:`;
           });
         }, { timeout: 100 });
       };
-      
+
       scrollContainer.addEventListener('scroll', renderVisible, { passive: true });
       renderVisible();
-      
+
       container.appendChild(scrollContainer);
       return scrollContainer;
     }
@@ -2401,7 +2401,7 @@ Synthesize now:`;
       return this.memoizeSearch(`dedup-${rawResults.length}`, () => {
         const uniqueResults = [];
         const seenSignatures = new Map(); // Hash -> index
-        
+
         for (const res of rawResults) {
           // Better signature: content hash + timestamp
           const fullText = res.excerpt
@@ -2409,7 +2409,7 @@ Synthesize now:`;
             .join(' ')
             .slice(0, 100)
             .toLowerCase();
-          
+
           // Simple fast hash
           let hash = 0;
           for (let i = 0; i < fullText.length; i++) {
@@ -2417,9 +2417,9 @@ Synthesize now:`;
             hash = ((hash << 5) - hash) + char;
             hash |= 0; // Convert to 32-bit int
           }
-          
+
           const signature = `${hash}-${res.segment?.timestamp || ''}`;
-          
+
           if (!seenSignatures.has(signature)) {
             seenSignatures.set(signature, uniqueResults.length);
             uniqueResults.push(res);
@@ -2435,7 +2435,7 @@ Synthesize now:`;
     lazyLoadResultDetails(resultEl, resultData) {
       const detailsContainer = resultEl.querySelector('.sq-res-details-lazy');
       if (!detailsContainer || detailsContainer.dataset.loaded === 'true') return;
-      
+
       // Simulate async loading
       requestIdleCallback(() => {
         if (resultData.fullExcerpt && resultData.fullExcerpt.length > 2) {
@@ -2448,7 +2448,7 @@ Synthesize now:`;
               </div>
             `)
             .join('');
-          
+
           if (detailsContainer) {
             detailsContainer.innerHTML = html;
             detailsContainer.dataset.loaded = 'true';
@@ -2463,7 +2463,7 @@ Synthesize now:`;
     getOptimalResultsPerPage() {
       const container = this.container?.querySelector('.sq-body');
       if (!container) return 5;
-      
+
       const height = container.clientHeight;
       if (height < 400) return 3;
       if (height < 700) return 5;
@@ -2472,14 +2472,14 @@ Synthesize now:`;
     }
 
     // ===== ACCESSIBILITY ENHANCEMENTS =====
-    
+
     /**
      * Add keyboard navigation to results
      */
     attachKeyboardNavigation(container) {
       let focusedIdx = -1;
       const results = container.querySelectorAll('.sq-result');
-      
+
       container.addEventListener('keydown', (e) => {
         if (e.key === 'ArrowDown') {
           e.preventDefault();
@@ -2503,7 +2503,7 @@ Synthesize now:`;
           if (btn) btn.click();
         }
       });
-      
+
       results.forEach((result, idx) => {
         result.setAttribute('tabindex', '0');
         result.addEventListener('focus', () => { focusedIdx = idx; });
@@ -2531,7 +2531,7 @@ Synthesize now:`;
         '#sq-refresh-diagnostics': 'Refresh index diagnostics',
         '.sq-expand-btn': 'Expand to see full content',
       };
-      
+
       Object.entries(btnLabels).forEach(([selector, label]) => {
         container.querySelectorAll(selector).forEach(btn => {
           if (!btn.getAttribute('aria-label')) {
@@ -2603,7 +2603,7 @@ Synthesize now:`;
       } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
         this.currentTheme = 'light';
       }
-      
+
       // Check for high contrast preference
       if (window.matchMedia && window.matchMedia('(prefers-contrast: more)').matches) {
         if (this.container) {
@@ -2616,3 +2616,4 @@ Synthesize now:`;
   // Export
   window.SmartQueryUI = SmartQueryUI;
   console.log('[ChatBridge] SmartQueryUI v3 (Enhanced) Loaded');
+});

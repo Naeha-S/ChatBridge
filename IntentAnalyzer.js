@@ -224,7 +224,8 @@
                 for (const pattern of intentDef.patterns) {
                     if (pattern.test(query)) {
                         matchScore += 0.4;
-                        matchedPatterns.push(pattern.toString());
+                        // Store the compiled RegExp itself (not a string) so we can reuse it safely
+                        matchedPatterns.push(pattern);
                     }
                 }
 
@@ -271,12 +272,13 @@
         extractSearchKeywords(query, matchedPatterns) {
             let cleanedQuery = query;
 
-            // Remove matched intent patterns
-            for (const patternStr of matchedPatterns) {
+            // Remove matched intent patterns by reusing the stored compiled RegExp objects
+            for (const pattern of matchedPatterns) {
                 try {
-                    const pattern = new RegExp(patternStr.slice(1, -1), 'gi');
-                    cleanedQuery = cleanedQuery.replace(pattern, '');
-                } catch (e) { /* ignore invalid regex */ }
+                    // pattern is a RegExp; create a global/case-insensitive version for replace
+                    const globalPat = new RegExp(pattern.source, 'gi');
+                    cleanedQuery = cleanedQuery.replace(globalPat, '');
+                } catch (e) { /* ignore */ }
             }
 
             // Remove common question words
@@ -327,7 +329,7 @@
                 [INTENT_TYPES.FIND_PATTERN]: segment.type === 'repeated_pattern' ? 0.5 : 0
             };
 
-            score += intentScores[queryAnalysis.intent] || 0;
+            score += (Object.hasOwn(intentScores, queryAnalysis.intent) ? intentScores[queryAnalysis.intent] : 0) || 0;
 
             // Keyword matching
             const segmentText = segment.messages.map(m => m.text).join(' ').toLowerCase();
@@ -373,7 +375,7 @@
                 [INTENT_TYPES.MIDDLE_ONLY]: 'Looking at the middle of discussions',
                 [INTENT_TYPES.IGNORE_CONCLUSIONS]: 'Excluding final conclusions'
             };
-            return labels[intent] || 'Searching for meaning';
+            return (Object.hasOwn(labels, intent) ? labels[intent] : null) || 'Searching for meaning';
         }
     }
 
