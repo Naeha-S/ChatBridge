@@ -7206,7 +7206,8 @@
 
           try {
             const res = await callGeminiAsync({
-              action: 'prompt',
+              action: 'custom',
+              systemInstruction: 'You are an expert podcast scriptwriter. Return ONLY a JSON array of script lines.',
               text: `Convert this conversation into an engaging 2-person podcast script between "${hostName}" and "${expertName}". Make it natural and conversational, with clear transitions and emphasis on key insights. Return ONLY a JSON array where each item has "speaker" ("${hostName}" or "${expertName}") and "text" (dialogue). Keep it 8-15 exchanges.\n\nConversation:\n${chatText.substring(0, 8000)}`
             });
 
@@ -7363,7 +7364,8 @@
 
         try {
           const res = await callGeminiAsync({
-            action: 'prompt',
+            action: 'custom',
+            systemInstruction: 'You are a logical consistency analyzer. Scan the conversation for conflicting claims or changed positions. Return ONLY a valid JSON object.',
             text: `Analyze this conversation and find internal contradictions or changed positions in AI answers. Return ONLY valid JSON in this exact shape:
 {
   "contradictions": [
@@ -7490,31 +7492,281 @@ ${chatText.substring(0, 10000)}`
       let savedPacks = [];
 
       tkShowSub('Snippet Board', '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6"/><path d="M10 8h4"/><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M12 12v6"/><path d="M9 15h6"/></svg>', `
-        <div style="font-size:11px;color:var(--cb-subtext);margin-bottom:8px;">Capture only the best snippets, organize them, then reuse as a compact prompt pack.</div>
-        <button id="tk-sb-capture" class="cb-btn" style="width:100%;padding:8px;font-size:12px;margin-bottom:10px;">📥 Capture from conversation</button>
+        <style>
+          .sb-desc {
+            font-size: 11px;
+            color: var(--cb-subtext);
+            margin-bottom: 12px;
+            line-height: 1.4;
+            background: rgba(255, 255, 255, 0.02);
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.04);
+          }
+          .sb-capture-btn-wrapper {
+            margin-bottom: 14px;
+          }
+          #tk-sb-capture {
+            width: 100%;
+            padding: 10px 14px;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+            background: linear-gradient(135deg, var(--cb-accent-primary, #6366f1) 0%, var(--cb-accent-secondary, #a855f7) 100%) !important;
+            border: none !important;
+            color: var(--cb-white) !important;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.25);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          }
+          #tk-sb-capture:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4), 0 0 12px rgba(168, 85, 247, 0.2);
+          }
+          #tk-sb-capture:active {
+            transform: translateY(-1px);
+            box-shadow: 0 3px 8px rgba(99, 102, 241, 0.3);
+          }
+          .sb-column-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+          }
+          .sb-column-title {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--cb-text);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+          }
+          .sb-scroll-container {
+            background: rgba(0, 0, 0, 0.18) !important;
+            border: 1px solid var(--cb-border) !important;
+            border-radius: 10px;
+            padding: 8px;
+            max-height: 250px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            transition: border-color 0.25s ease;
+          }
+          .sb-scroll-container:hover {
+            border-color: rgba(255, 255, 255, 0.08) !important;
+          }
+          .sb-scroll-container::-webkit-scrollbar {
+            width: 4px;
+          }
+          .sb-scroll-container::-webkit-scrollbar-track {
+            background: transparent;
+          }
+          .sb-scroll-container::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.12);
+            border-radius: 4px;
+          }
+          .sb-scroll-container::-webkit-scrollbar-thumb:hover {
+            background: var(--cb-accent-primary, #6366f1);
+          }
+          .sb-card {
+            padding: 10px;
+            margin-bottom: 8px;
+            border-radius: 8px;
+            background: var(--cb-bg2) !important;
+            border: 1px solid var(--cb-border) !important;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+          }
+          .sb-card:hover {
+            transform: translateY(-1px);
+            border-color: color-mix(in srgb, var(--cb-accent-primary, #6366f1) 40%, var(--cb-border)) !important;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.18);
+          }
+          .sb-tag {
+            font-size: 8px;
+            font-weight: 700;
+            text-transform: uppercase;
+            padding: 2px 6px;
+            border-radius: 4px;
+            letter-spacing: 0.05em;
+          }
+          .sb-tag-user {
+            background: rgba(59, 130, 246, 0.15);
+            color: #60a5fa;
+            border: 1px solid rgba(59, 130, 246, 0.25);
+          }
+          .sb-tag-assistant {
+            background: rgba(168, 85, 247, 0.15);
+            color: #c084fc;
+            border: 1px solid rgba(168, 85, 247, 0.25);
+          }
+          .sb-tag-saved {
+            background: rgba(16, 185, 129, 0.15);
+            color: #34d399;
+            border: 1px solid rgba(16, 185, 129, 0.25);
+          }
+          .sb-select {
+            flex: 1;
+            background: var(--cb-bg3) !important;
+            color: var(--cb-text) !important;
+            border: 1px solid var(--cb-border) !important;
+            border-radius: 5px;
+            padding: 3px 6px;
+            font-size: 10px;
+            font-weight: 600;
+            outline: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+          }
+          .sb-select:hover {
+            border-color: var(--cb-accent-primary, #6366f1) !important;
+            box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);
+          }
+          .sb-ctrl-btn {
+            padding: 4px 6px;
+            font-size: 10px;
+            background: var(--cb-bg3) !important;
+            border: 1px solid var(--cb-border) !important;
+            border-radius: 5px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            color: var(--cb-subtext);
+          }
+          .sb-ctrl-btn:hover:not(:disabled) {
+            background: var(--cb-bg) !important;
+            color: var(--cb-white) !important;
+            border-color: var(--cb-accent-primary) !important;
+          }
+          .sb-ctrl-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+          }
+          .sb-ctrl-btn-danger:hover {
+            background: rgba(239, 68, 68, 0.15) !important;
+            color: #f87171 !important;
+            border-color: #ef4444 !important;
+          }
+          .sb-card-text {
+            font-size: 11px;
+            color: var(--cb-text);
+            line-height: 1.45;
+            margin-top: 6px;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            text-overflow: ellipsis;
+          }
+          .sb-action-bar {
+            display: flex;
+            gap: 8px;
+            margin-top: 14px;
+          }
+          .sb-action-bar .cb-btn {
+            flex: 1;
+            padding: 10px;
+            font-size: 11px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            border-radius: 8px;
+          }
+          .sb-action-bar .cb-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            transform: none !important;
+            box-shadow: none !important;
+          }
+          .sb-action-bar .cb-btn:not(:disabled):hover {
+            border-color: var(--cb-accent-primary) !important;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+          }
+          .sb-saved-section {
+            margin-top: 16px;
+            border-top: 1px solid var(--cb-border);
+            padding-top: 14px;
+          }
+          .sb-pack-card {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.02) !important;
+            border: 1px solid var(--cb-border) !important;
+            margin-bottom: 6px;
+            transition: all 0.25s ease;
+          }
+          .sb-pack-card:hover {
+            background: rgba(255, 255, 255, 0.04) !important;
+            border-color: rgba(255, 255, 255, 0.08) !important;
+          }
+        </style>
+        <div class="sb-desc">
+          Capture conversation snippets, assign labels, and compile a compact custom prompt pack.
+        </div>
+        <div class="sb-capture-btn-wrapper">
+          <button id="tk-sb-capture" class="cb-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Capture from conversation
+          </button>
+        </div>
 
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:start;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start;">
           <div>
-            <div style="font-size:11px;font-weight:600;color:var(--cb-text);margin-bottom:6px;">Available snippets (last 20)</div>
-            <div id="tk-sb-source" style="display:flex;flex-direction:column;gap:6px;max-height:220px;overflow-y:auto;padding:2px;"></div>
-          </div>
-          <div>
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-              <div style="font-size:11px;font-weight:600;color:var(--cb-text);">Snippet board</div>
-              <span id="tk-sb-count" style="font-size:10px;color:var(--cb-subtext);">0 selected</span>
+            <div class="sb-column-header">
+              <div class="sb-column-title">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="11" y2="17"/></svg>
+                Available (last 20)
+              </div>
             </div>
-            <div id="tk-sb-board" style="display:flex;flex-direction:column;gap:6px;max-height:220px;overflow-y:auto;padding:2px;"></div>
+            <div id="tk-sb-source" class="sb-scroll-container"></div>
+          </div>
+          <div>
+            <div class="sb-column-header">
+              <div class="sb-column-title">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                Active board
+              </div>
+              <span id="tk-sb-count" style="font-size:10px;font-weight:600;color:var(--cb-subtext);">0 selected</span>
+            </div>
+            <div id="tk-sb-board" class="sb-scroll-container"></div>
           </div>
         </div>
 
-        <div style="display:flex;gap:8px;margin-top:10px;">
-          <button id="tk-sb-copy" class="cb-btn" style="flex:1;padding:8px;font-size:11px;" disabled>📋 Copy Snippet Pack</button>
-          <button id="tk-sb-insert" class="cb-btn" style="flex:1;padding:8px;font-size:11px;" disabled>💬 Insert Snippet Pack</button>
-          <button id="tk-sb-save" class="cb-btn" style="flex:1;padding:8px;font-size:11px;" disabled>💾 Save Pack</button>
+        <div class="sb-action-bar">
+          <button id="tk-sb-copy" class="cb-btn" disabled>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            Copy Pack
+          </button>
+          <button id="tk-sb-insert" class="cb-btn" disabled>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            Insert Pack
+          </button>
+          <button id="tk-sb-save" class="cb-btn" disabled>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            Save Pack
+          </button>
         </div>
 
-        <div style="margin-top:10px;">
-          <div style="font-size:11px;font-weight:600;color:var(--cb-text);margin-bottom:6px;">Saved packs (latest 10)</div>
+        <div class="sb-saved-section">
+          <div class="sb-column-title" style="margin-bottom:8px;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+            Saved prompt packs (latest 10)
+          </div>
           <div id="tk-sb-saved" style="display:flex;flex-direction:column;gap:6px;"></div>
         </div>
       `);
@@ -7570,20 +7822,26 @@ ${chatText.substring(0, 10000)}`
 
       function renderSaved() {
         if (!savedPacks.length) {
-          savedEl.innerHTML = '<div style="font-size:11px;color:var(--cb-subtext);padding:8px;border:1px dashed var(--cb-border);border-radius:8px;">No saved packs yet.</div>';
+          savedEl.innerHTML = '<div style="font-size:11px;color:var(--cb-subtext);padding:12px;border:1px dashed var(--cb-border);border-radius:8px;text-align:center;background:rgba(255,255,255,0.01);">No saved packs yet. Create and save one above!</div>';
           return;
         }
         savedEl.innerHTML = '';
         savedPacks.forEach((pack) => {
           const row = document.createElement('div');
-          row.style.cssText = 'display:flex;align-items:center;gap:6px;padding:8px;border-radius:8px;background:var(--cb-bg2);border:1px solid var(--cb-border);';
+          row.className = 'sb-pack-card';
           row.innerHTML = `
+            <div style="color:var(--cb-accent-primary);display:flex;align-items:center;justify-content:center;background:rgba(99, 102, 241, 0.1);padding:6px;border-radius:6px;border:1px solid rgba(99, 102, 241, 0.2);">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+            </div>
             <div style="flex:1;min-width:0;">
               <div style="font-size:11px;color:var(--cb-text);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(pack.title || 'Snippet Pack')}</div>
-              <div style="font-size:10px;color:var(--cb-subtext);">${pack.items?.length || 0} snippets</div>
+              <div style="font-size:9.5px;color:var(--cb-subtext);display:flex;align-items:center;gap:6px;margin-top:2px;">
+                <span class="sb-tag sb-tag-saved">${pack.items?.length || 0} snippets</span>
+                <span>${new Date(pack.createdAt || pack.id).toLocaleDateString()}</span>
+              </div>
             </div>
-            <button class="cb-btn tk-sb-load" data-id="${escapeHtml(String(pack.id))}" style="padding:6px 8px;font-size:10px;">Load</button>
-            <button class="cb-btn tk-sb-delete" data-id="${escapeHtml(String(pack.id))}" style="padding:6px 8px;font-size:10px;">Delete</button>
+            <button class="cb-btn tk-sb-load sb-ctrl-btn" data-id="${escapeHtml(String(pack.id))}" style="padding:5px 8px;font-size:10px;">Load</button>
+            <button class="cb-btn tk-sb-delete sb-ctrl-btn sb-ctrl-btn-danger" data-id="${escapeHtml(String(pack.id))}" style="padding:5px 8px;font-size:10px;">Delete</button>
           `;
           savedEl.appendChild(row);
         });
@@ -7618,7 +7876,7 @@ ${chatText.substring(0, 10000)}`
 
       function renderSource() {
         if (!sourceMessages.length) {
-          sourceEl.innerHTML = '<div style="font-size:11px;color:var(--cb-subtext);padding:8px;border:1px dashed var(--cb-border);border-radius:8px;">Capture conversation to load snippets.</div>';
+          sourceEl.innerHTML = '<div style="font-size:10px;color:var(--cb-subtext);padding:24px 10px;text-align:center;border:1px dashed rgba(255,255,255,0.06);border-radius:8px;background:rgba(255,255,255,0.005);">No captured snippets. Click the button above to import recent messages!</div>';
           return;
         }
 
@@ -7626,13 +7884,21 @@ ${chatText.substring(0, 10000)}`
         sourceMessages.forEach((msg, idx) => {
           const already = selectedSnippets.some(s => s.id === msg.id);
           const row = document.createElement('div');
-          row.style.cssText = 'padding:8px;border-radius:8px;background:var(--cb-bg2);border:1px solid var(--cb-border);';
+          row.className = 'sb-card';
+          if (already) {
+            row.style.borderColor = 'color-mix(in srgb, var(--cb-accent-primary, #6366f1) 40%, var(--cb-border))';
+          }
+          
+          const roleClass = (msg.role || 'assistant').toLowerCase() === 'user' ? 'sb-tag-user' : 'sb-tag-assistant';
+          const toggleText = already ? 'Remove' : 'Add';
+          const toggleStyle = already ? 'background:rgba(239,68,68,0.1) !important;color:#f87171 !important;border-color:rgba(239,68,68,0.2) !important;' : '';
+
           row.innerHTML = `
-            <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:4px;">
-              <span style="font-size:10px;color:var(--cb-subtext);text-transform:uppercase;">${escapeHtml(msg.role)}</span>
-              <button class="cb-btn tk-sb-toggle" data-id="${escapeHtml(msg.id)}" style="padding:4px 8px;font-size:10px;">${already ? 'Remove' : 'Add'}</button>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:6px;">
+              <span class="sb-tag ${roleClass}">${escapeHtml(msg.role)}</span>
+              <button class="cb-btn tk-sb-toggle sb-ctrl-btn" data-id="${escapeHtml(msg.id)}" style="padding:4px 8px;font-size:10px;font-weight:700;${toggleStyle}">${toggleText}</button>
             </div>
-            <div style="font-size:11px;color:var(--cb-text);line-height:1.35;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;">${escapeHtml(msg.text)}</div>
+            <div class="sb-card-text" title="${escapeHtml(msg.text)}">${escapeHtml(msg.text)}</div>
           `;
           sourceEl.appendChild(row);
         });
@@ -7657,25 +7923,32 @@ ${chatText.substring(0, 10000)}`
 
       function renderBoard() {
         if (!selectedSnippets.length) {
-          boardEl.innerHTML = '<div style="font-size:11px;color:var(--cb-subtext);padding:8px;border:1px dashed var(--cb-border);border-radius:8px;">No snippets selected yet.</div>';
+          boardEl.innerHTML = '<div style="font-size:10px;color:var(--cb-subtext);padding:24px 10px;text-align:center;border:1px dashed rgba(255,255,255,0.06);border-radius:8px;background:rgba(255,255,255,0.005);">No snippets added. Add snippets from the left column to compile your pack.</div>';
           return;
         }
 
         boardEl.innerHTML = '';
         selectedSnippets.forEach((snip, idx) => {
           const row = document.createElement('div');
-          row.style.cssText = 'padding:8px;border-radius:8px;background:var(--cb-bg2);border:1px solid var(--cb-border);';
+          row.className = 'sb-card';
+          row.style.borderLeft = '3px solid var(--cb-accent-primary)';
           row.innerHTML = `
             <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">
-              <span style="font-size:10px;color:var(--cb-subtext);">${idx + 1}.</span>
-              <select class="tk-sb-label" data-id="${escapeHtml(snip.id)}" style="flex:1;padding:4px 6px;border-radius:6px;background:var(--cb-bg3);border:1px solid var(--cb-border);color:var(--cb-text);font-size:10px;">
+              <span style="font-size:9.5px;color:var(--cb-accent-primary);font-weight:700;margin-right:2px;">#${idx + 1}</span>
+              <select class="tk-sb-label sb-select" data-id="${escapeHtml(snip.id)}">
                 ${LABELS.map(l => `<option value="${l}" ${snip.label === l ? 'selected' : ''}>${l}</option>`).join('')}
               </select>
-              <button class="cb-btn tk-sb-up" data-id="${escapeHtml(snip.id)}" style="padding:4px 6px;font-size:10px;" ${idx === 0 ? 'disabled' : ''}>↑</button>
-              <button class="cb-btn tk-sb-down" data-id="${escapeHtml(snip.id)}" style="padding:4px 6px;font-size:10px;" ${idx === selectedSnippets.length - 1 ? 'disabled' : ''}>↓</button>
-              <button class="cb-btn tk-sb-remove" data-id="${escapeHtml(snip.id)}" style="padding:4px 6px;font-size:10px;">✕</button>
+              <button class="cb-btn tk-sb-up sb-ctrl-btn" data-id="${escapeHtml(snip.id)}" title="Move Up" ${idx === 0 ? 'disabled' : ''}>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+              </button>
+              <button class="cb-btn tk-sb-down sb-ctrl-btn" data-id="${escapeHtml(snip.id)}" title="Move Down" ${idx === selectedSnippets.length - 1 ? 'disabled' : ''}>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              <button class="cb-btn tk-sb-remove sb-ctrl-btn sb-ctrl-btn-danger" data-id="${escapeHtml(snip.id)}" title="Remove Snippet">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
             </div>
-            <div style="font-size:11px;color:var(--cb-text);line-height:1.35;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;">${escapeHtml(snip.text)}</div>
+            <div class="sb-card-text" title="${escapeHtml(snip.text)}">${escapeHtml(snip.text)}</div>
           `;
           boardEl.appendChild(row);
         });
@@ -7813,7 +8086,8 @@ ${chatText.substring(0, 10000)}`
 
         try {
           const res = await callGeminiAsync({
-            action: 'prompt',
+            action: 'custom',
+            systemInstruction: 'You are an AI fact checker. Analyze claims in the conversation and output ONLY a JSON object.',
             text: `Scan this AI conversation and extract factual claims made by the AI. For each claim categorize as one of: "established", "verify", "questionable", or "opinion". Also return an overall reliability score from 0 to 100.
 
 Return ONLY valid JSON in this exact shape:
@@ -7919,7 +8193,8 @@ ${chatText.substring(0, 10000)}`
 
       try {
         const res = await callGeminiAsync({
-          action: 'prompt',
+          action: 'custom',
+          systemInstruction: 'You are a study guide generator. Extract key concepts and return ONLY a JSON array of flashcards.',
           text: `From the following conversation, extract 5-10 key concept flashcards. Return ONLY a JSON array where each item has "front" (question/term) and "back" (answer/definition). Keep answers concise (1-3 sentences). No markdown wrapping.\n\nConversation:\n${chatText.substring(0, 8000)}`
         });
 
@@ -7987,7 +8262,8 @@ ${chatText.substring(0, 10000)}`
 
       try {
         const res = await callGeminiAsync({
-          action: 'prompt',
+          action: 'custom',
+          systemInstruction: 'You are a project manager. Extract action items and return ONLY a JSON array of tasks.',
           text: `From the following conversation, extract all action items, TODOs, next steps, decisions, and follow-ups. Return ONLY a JSON array where each item has "task" (the action), "priority" ("high"/"medium"/"low"), and "category" ("todo"/"decision"/"followup"/"idea"). Be thorough.\n\nConversation:\n${chatText.substring(0, 8000)}`
         });
 
@@ -8067,7 +8343,8 @@ ${chatText.substring(0, 10000)}`
         editor.value = '// Extracting code blocks...';
         try {
           const res = await callGeminiAsync({
-            action: 'prompt',
+            action: 'custom',
+            systemInstruction: 'You are a code extractor. Return ONLY the raw code from the conversation, with no markdown code blocks/fences or text explanations.',
             text: `Extract the most important/complete code block from this conversation. Return ONLY the raw code, no markdown fences, no explanation. If multiple blocks, combine them logically.\n\n${chatText.substring(0, 6000)}`
           });
           editor.value = (res && res.ok && res.result) ? res.result.replace(/```[\w]*\s*/g, '').replace(/```/g, '').trim() : '// No code found';
@@ -8316,7 +8593,8 @@ try {
         bodyEl.innerHTML = '<div style="text-align:center;padding:16px;"><div class="cb-spinner"></div></div>';
         try {
           const res = await callGeminiAsync({
-            action: 'prompt',
+            action: 'custom',
+            systemInstruction: 'You are an educational quiz writer. Generate quiz questions based on the conversation and return ONLY a JSON array.',
             text: `Based on the AI explanations in this conversation, create 5 multiple-choice comprehension questions.
 
 Return ONLY valid JSON array with this exact schema:
@@ -18624,7 +18902,12 @@ Three incredibly specific, actionable, and non-obvious ways they can get more ou
 
 Respond ONLY with a JSON object with keys: "strengths" (array of short strings) and "optimized_prompt" (string). Do NOT include extra commentary. Here are the inputs:\n\nOriginal conversation excerpt:\n${originalConversation}\n\nAssistant response example:\n${assistantExample}\n`;
 
-        const res = await callGeminiAsync({ action: 'prompt', text: instruct, length: 'short' });
+        const res = await callGeminiAsync({
+          action: 'custom',
+          systemInstruction: 'You are an expert prompt engineer and logical consistency analyzer. Return ONLY a JSON object.',
+          text: instruct,
+          length: 'short'
+        });
         if (res && res.ok && res.result) {
           const txt = String(res.result || '').trim();
           // try to extract JSON blob from the result
@@ -18690,7 +18973,12 @@ Extract and return ONLY a JSON object (no commentary) with:
 
 Be concise. Focus on proper nouns, technical concepts, and actionable insights.`;
 
-        const res = await callGeminiAsync({ action: 'prompt', text: prompt, length: 'short' });
+        const res = await callGeminiAsync({
+          action: 'custom',
+          systemInstruction: 'You are an expert knowledge analyst. Return ONLY a JSON object containing structured insights.',
+          text: prompt,
+          length: 'short'
+        });
 
         if (res && res.ok && res.result) {
           try {
@@ -19707,7 +19995,12 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
                   debugLog('[Background] Starting auto-summarize...');
                   const summaryPrompt = `Summarize this chat concisely:\n\n${final.slice(0, 30).map(m => `${m.role}: ${m.text.slice(0, 200)}`).join('\n')}`;
                   try {
-                    const res = await callGeminiAsync({ action: 'prompt', text: summaryPrompt, length: 'short' });
+                    const res = await callGeminiAsync({
+                      action: 'custom',
+                      systemInstruction: 'You are a concise conversation summarizer. Provide a brief 1-2 sentence summary of the chat.',
+                      text: summaryPrompt,
+                      length: 'short'
+                    });
                     if (res && res.ok && res.result) {
                       conv.summary = res.result.trim();
                       await saveConversation(conv);
@@ -21860,7 +22153,10 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
 
         // Apply prompt optimization FIRST (before any other processing)
         const originalText = text;
-        text = optimizePrompt(text);
+        const isToolPrompt = (action !== 'prompt') || (payload && (payload.systemPrompt || payload.skipOptimize));
+        if (!isToolPrompt) {
+          text = optimizePrompt(text);
+        }
 
         // Update payload with optimized text
         if (text !== originalText && payload) {
@@ -22153,7 +22449,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
 
       async function tryGemini(chunkText) {
         debugLog('[Translation] Trying Gemini...');
-        const preferredModel = deepThinking ? 'gemini-2.5-pro' : 'gemini-2.0-flash';
+        const preferredModel = deepThinking ? 'gemini-3.1-pro' : 'gemini-3.5-flash';
         const r = await callGeminiAsync({ action: 'translate', text: chunkText, targetLang, model: preferredModel });
         return r && r.ok ? r.result : null;
       }
@@ -24238,7 +24534,12 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
           prompt = `User: ${q}\nAssistant:`;
         }
 
-        const res = await callGeminiAsync({ action: 'prompt', text: prompt, length: 'short' });
+        const res = await callGeminiAsync({
+          action: 'custom',
+          systemInstruction: 'You are a helpful assistant answering questions about the user\'s saved conversations. Use the conversation excerpts provided to give direct, helpful answers.',
+          text: prompt,
+          length: 'short'
+        });
         if (res && res.ok) {
           const answerText = res.result || '(no answer)';
           const notice = contextSource === 'general' ? '💬 Answering from general knowledge (no matching saved chats found).\n\n' : contextSource === 'keyword' ? '📎 Found a related saved chat.\n\n' : '';
@@ -25042,8 +25343,12 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
           const full = (conv && conv.conversation) ? conv.conversation.map(m => `${m.role}: ${m.text}`).join('\n\n') : '';
           // Topic extraction: combine Gemini output with local keyword heuristics
           try {
-            const prompt = `Extract up to 6 short topic tags (comma separated) that summarize the main topics in the following conversation. Output ONLY a comma-separated list of short tags (no extra text):\n\n${full}`;
-            const res = await callGeminiAsync({ action: 'prompt', text: prompt, length: 'short' });
+            const res = await callGeminiAsync({
+              action: 'custom',
+              systemInstruction: 'You are a topic tag extractor. Given a conversation, return ONLY a comma-separated list of short topic tags (max 6) summarizing it. No explanation, no intro.',
+              text: full,
+              length: 'short'
+            });
             let geminiTopics = [];
             if (res && res.ok && res.result) {
               geminiTopics = (res.result || '').split(/[,\n]+/).map(t => t.trim()).filter(Boolean).slice(0, 6);

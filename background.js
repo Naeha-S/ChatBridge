@@ -77,11 +77,12 @@ async function recordRequest(limiterName) {
 
 // --- Model Failover State (persisted to chrome.storage.session) ---
 const GEMINI_MODEL_PRIORITY = [
-  'gemini-2.0-flash',         // FASTEST: 15 RPM, 1M TPM - try first for speed
-  'gemini-2.5-flash',         // Fast: 10 RPM, 250K TPM  
-  'gemini-2.5-flash-lite',    // Fast: 15 RPM, 250K TPM
-  'gemini-2.5-pro',           // Best quality fallback, 2 RPM (slower but higher quality)
-  'gemini-2.0-flash-exp'      // Experimental, 50 RPD
+  'gemini-3.5-flash',         // Fastest & newest stable
+  'gemini-2.5-flash',         // Stable mid-generation
+  'gemini-1.5-flash',         // Extremely reliable legacy fallback
+  'gemini-3.1-pro',           // High quality newer stable
+  'gemini-2.5-pro',           // High quality mid-generation
+  'gemini-1.5-pro'            // High quality legacy fallback
 ];
 
 const MAX_MODEL_FAILURES = 1;
@@ -1567,7 +1568,7 @@ OUTPUT ONLY THE REPAIR PROMPT:`;
           // Use existing Gemini API infrastructure
           const model = typeof getNextAvailableModel === 'function'
             ? await getNextAvailableModel()
-            : 'gemini-2.0-flash';
+            : 'gemini-3.5-flash';
 
           const apiUrl = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${geminiApiKey}`;
 
@@ -3141,20 +3142,23 @@ Rewritten conversation (optimized for ${tgt}):`;
             console.error(`[Gemini API Error] HTTP ${res.status} for ${currentModel}:`, json);
             console.error(`[Gemini API Error] ${errorInfo}`);
 
-            // Rate limit (429) or server errors - try next model
-            if (res.status === 429 || res.status >= 500) {
+            // Rate limit (429), server errors (>= 500), model not found (404), or request/model errors (400) that aren't API key errors - try next model
+            const isApiKeyError = res.status === 403 || 
+              (res.status === 400 && json?.error?.message && /key|permission/i.test(json.error.message));
+
+            if (!isApiKeyError && (res.status === 400 || res.status === 404 || res.status === 429 || res.status >= 500)) {
               markModelFailed(currentModel, res.status);
               lastError = { model: currentModel, status: res.status, body: json };
               continue; // Try next model
             }
 
-            // Auth errors (400, 403) - don't retry, return immediately
+            // Auth errors (403, or 400 with key error) - don't retry, return immediately
             return sendResponse({
               ok: false,
               error: 'gemini_http_error',
               status: res.status,
               body: json,
-              message: json.error?.message || errorInfo,
+              message: json?.error?.message || errorInfo,
               model: currentModel
             });
           }
@@ -3278,7 +3282,7 @@ Rewritten conversation (optimized for ${tgt}):`;
           if (!geminiApiKey) return null;
 
           await recordRequest('gemini');
-          const models = ['gemini-2.0-flash', 'gemini-2.5-flash', 'gemini-2.0-flash-lite', 'gemini-2.5-pro'];
+          const models = ['gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-3.1-pro', 'gemini-2.5-pro'];
           for (const model of models) {
             try {
               const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`;

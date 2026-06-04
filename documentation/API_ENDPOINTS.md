@@ -6,7 +6,7 @@ This document lists all external API endpoints utilized by the ChatBridge extens
 
 ### 1. Google Gemini API
 *   **Purpose**: Primary API for summarization, rewriting, translation, sync tone, and general analysis.
-*   **Models**: `gemini-2.0-flash`, `gemini-1.5-flash`.
+*   **Models**: `gemini-3.5-flash`, `gemini-2.5-flash`, `gemini-1.5-flash`, `gemini-3.1-pro`, `gemini-2.5-pro`.
 *   **Endpoint**: `https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent`
 *   **Auth**: API Key via query parameter (`?key=...`).
 *   **Used in**: `background.js` — `call_gemini` handler.
