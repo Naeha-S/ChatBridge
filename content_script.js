@@ -832,13 +832,21 @@
   // Enhance debug logging in filterCandidateNodes to log reasons for skipping nodes
   function filterCandidateNodes(nodes) {
     return nodes.filter(node => {
-      if (!node || !node.textContent || node.textContent.trim() === '') {
+      if (!node) return false;
+      if (node.nodeType !== Node.ELEMENT_NODE && node.nodeType !== Node.TEXT_NODE) {
+        return false;
+      }
+      const el = node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement;
+      if (el) {
+        const tag = el.tagName?.toUpperCase();
+        if (['SCRIPT', 'STYLE', 'TEMPLATE', 'NOSCRIPT', 'LINK', 'META', 'HEAD', 'IFRAME', 'SVG', 'PATH'].includes(tag)) {
+          return false;
+        }
+      }
+      if (!node.textContent || node.textContent.trim() === '') {
         return false;
       }
       if (node.textContent.length < 5) { // Example threshold for minimum length
-        return false;
-      }
-      if (node.nodeType !== Node.ELEMENT_NODE && node.nodeType !== Node.TEXT_NODE) {
         return false;
       }
       if (node.hasAttribute && node.hasAttribute('aria-hidden') && node.getAttribute('aria-hidden') === 'true') {
@@ -903,6 +911,11 @@
         // Element nodes - handle special formatting
         if (node.nodeType === Node.ELEMENT_NODE) {
           const tag = node.tagName?.toLowerCase();
+
+          // Exclude script, style, noscript, template, link, meta, iframe
+          if (['script', 'style', 'noscript', 'template', 'link', 'meta', 'iframe'].includes(tag)) {
+            return;
+          }
 
           // Code blocks - preserve with markdown formatting
           if (tag === 'pre' || tag === 'code') {
@@ -4150,9 +4163,10 @@
   .cb-style-hint-wrap { margin-top: 10px; }
   .cb-input { width: 100%; background: var(--cb-bg); color: var(--cb-white); border: 1px solid var(--cb-border); padding: 8px 10px; border-radius: 8px; font-size: 13px; font-family: inherit; transition: all 0.2s ease; }
   .cb-input:focus { border-color: var(--cb-accent-primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--cb-accent-primary) 12%, transparent); outline: none; }
-  /* small inline shimmer bar used with loading states */
   .cb-spinner { display:inline-block; width:20px; height:3px; border-radius:3px; vertical-align:middle; margin-right:8px; background: linear-gradient(90deg, rgba(255,255,255,0.08) 25%, var(--cb-accent-primary) 50%, rgba(255,255,255,0.08) 75%); background-size: 200% 100%; animation: cb-shimmer-bar 1.4s ease-in-out infinite; }
+  .cb-spin { animation: cb-spin 1s linear infinite; display: inline-block; }
   @keyframes cb-shimmer-bar { 0% { background-position: 200% center; } 100% { background-position: -200% center; } }
+  @keyframes cb-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
   @keyframes cb-ellipsis { 0% { opacity:0.25; transform: translateY(0); } 30% { opacity:1; transform: translateY(-2px); } 60% { opacity:0.25; transform: translateY(0); } 100% { opacity:0.25; transform: translateY(0); } }
   @keyframes cb-pulse { 0% { opacity: 1; transform: scale(1); } 50% { opacity: 0.8; transform: scale(0.98); } 100% { opacity: 1; transform: scale(1); } }
   @keyframes cb-success { 0% { transform: scale(0.8); opacity: 0; } 50% { transform: scale(1.1); } 100% { transform: scale(1); opacity: 1; } }
@@ -22839,7 +22853,9 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
           return;
         }
 
+        const originalHtml = btnOptimize.innerHTML;
         btnOptimize.disabled = true;
+        btnOptimize.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="cb-spin" style="margin-right:8px;"><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/></svg><span>Optimizing...</span>';
         optProg.style.display = 'inline-flex';
         optOutput.style.display = 'none';
         btnOptCopy.style.display = 'none';
@@ -22876,11 +22892,20 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
         const result = await optimizePromptText(rawPrompt, systemPrompt);
 
         if (result && result.ok && result.text) {
-          optOutput.textContent = result.text;
+          const optimizedText = result.text;
+          optInput.value = optimizedText;
+          optOutput.textContent = optimizedText;
           optOutput.style.display = 'block';
           btnOptCopy.style.display = 'inline-flex';
           btnOptInsert.style.display = 'inline-flex';
-          toast(result.model === 'llama' ? '✓ Prompt optimized (fallback)' : '✓ Prompt optimized');
+
+          // Automatically insert it into the active chat composer
+          const success = await restoreToChat(optimizedText);
+          if (success) {
+            toast(result.model === 'llama' ? '✓ Prompt optimized and inserted (fallback)' : '✓ Prompt optimized and inserted!');
+          } else {
+            toast(result.model === 'llama' ? '✓ Prompt optimized (fallback)' : '✓ Prompt optimized');
+          }
         } else {
           toast('Optimization failed: ' + (result?.error || 'Unknown error'));
           optOutput.textContent = '(Optimization failed - please try again)';
@@ -22891,6 +22916,7 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
         debugLog('[Prompt Optimizer] Error:', err);
       } finally {
         btnOptimize.disabled = false;
+        btnOptimize.innerHTML = originalHtml;
         optProg.style.display = 'none';
       }
     });

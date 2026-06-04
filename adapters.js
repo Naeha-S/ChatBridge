@@ -122,7 +122,18 @@ const AdapterGeneric = {
       // Limit depth to avoid infinite loops
       for (let i = 0; i < 5; i++) {
         if (!wrapper) break;
-        const children = Array.from(wrapper.children).filter(n => n.tagName !== 'SCRIPT' && n.tagName !== 'STYLE' && n.tagName !== 'NOSCRIPT');
+        const children = Array.from(wrapper.children).filter(n => {
+          if (!n) return false;
+          const tag = (n.tagName || '').toUpperCase();
+          if (['SCRIPT', 'STYLE', 'TEMPLATE', 'NOSCRIPT', 'LINK', 'META', 'HEAD', 'IFRAME', 'SVG', 'PATH'].includes(tag)) {
+            return false;
+          }
+          const cls = (n.className || '').toString().toLowerCase();
+          if (/sidebar|drawer|nav|list|history|recent|menu|toolbar|secondary|aside/.test(cls) || ['NAV', 'ASIDE', 'HEADER', 'FOOTER'].includes(tag)) {
+            return false;
+          }
+          return true;
+        });
         const validChildren = children.filter(n => n.innerText && normalizeText(n.innerText).length > 3);
 
         // If we have a good number of children, check if a single child contains even more

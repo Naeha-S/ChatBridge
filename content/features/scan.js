@@ -188,7 +188,7 @@
 
         if (!raw || !raw.length) {
           debugLog('falling back to manual node extraction');
-          const selector = '.message, .chat-line, .message-text, .markdown, .prose, p, li, div';
+          const selector = '.message, .chat-line, .message-text, .markdown, .prose, p, li, [class*="message"], [class*="bubble"], [class*="chat"]';
           let nodes = [];
           try {
             nodes = Array.from((container || document).querySelectorAll(selector));
@@ -196,7 +196,7 @@
           } catch (e) {
             debugLog('querySelectorAll error, trying fallback selectors:', e);
             try {
-              nodes = Array.from(document.querySelectorAll('p,div,li'));
+              nodes = Array.from(document.querySelectorAll('p,li,[class*="message"],[class*="bubble"]'));
               debugLog('fallback querySelectorAll found:', nodes.length, 'nodes');
             } catch (fallbackError) {
               debugLog('fallback querySelectorAll error:', fallbackError);
@@ -205,7 +205,13 @@
           }
 
           try {
-            nodes = nodes.filter((node) => node && node.innerText && node.closest && !node.closest('[data-cb-ignore], #cb-host'));
+            nodes = nodes.filter((node) => {
+              if (!node || !node.innerText || !node.closest) return false;
+              if (node.closest('[data-cb-ignore], #cb-host, #cb-avatar')) return false;
+              const badAncestor = node.closest('nav, aside, header, footer, [role="navigation"], [class*="sidebar"], [class*="drawer"], [class*="nav"], [class*="menu"], [class*="history"], [class*="recent"]');
+              if (badAncestor) return false;
+              return true;
+            });
             debugLog('after filtering ignored:', nodes.length, 'nodes');
             nodes = filterCandidateNodes(nodes);
             debugLog('after filterCandidateNodes:', nodes.length, 'nodes');
