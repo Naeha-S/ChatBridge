@@ -1620,6 +1620,10 @@
     --cb-shadow-md: 0 4px 6px rgba(0,0,0,0.1);
     --cb-shadow-lg: 0 10px 20px rgba(0,0,0,0.15);
     --cb-shadow-xl: 0 20px 60px rgba(0,0,0,0.4);
+    --cb-scrollbar-thumb: color-mix(in srgb, var(--cb-accent-primary) 30%, transparent);
+    --cb-scrollbar-thumb-hover: color-mix(in srgb, var(--cb-accent-primary) 50%, transparent);
+    --cb-scrollbar-track: transparent;
+    --cb-scrollbar-radius: 10px;
   }
   :host(.cb-theme-light) {
     --cb-bg: #f8f9fa;
@@ -1642,6 +1646,10 @@
     --cb-shadow-md: 0 2px 8px rgba(0,0,0,0.08);
     --cb-shadow-lg: 0 8px 16px rgba(0,0,0,0.1);
     --cb-shadow-xl: 0 20px 40px rgba(0,0,0,0.15);
+    --cb-scrollbar-thumb: color-mix(in srgb, var(--cb-accent-primary) 25%, transparent);
+    --cb-scrollbar-thumb-hover: color-mix(in srgb, var(--cb-accent-primary) 45%, transparent);
+    --cb-scrollbar-track: transparent;
+    --cb-scrollbar-radius: 10px;
   }
 
   /* ===== Light Theme Structural Overrides ===== */
@@ -1863,6 +1871,10 @@
     --cb-shadow-md: inset 1px 1px 0 rgba(255,255,255,0.5), inset -1px -1px 0 rgba(0,0,0,0.2), 0 2px 6px rgba(0,0,0,0.15);
     --cb-shadow-lg: inset 1px 1px 0 rgba(255,255,255,0.4), 0 4px 12px rgba(0,0,0,0.2);
     --cb-shadow-xl: 0 8px 24px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.5);
+    --cb-scrollbar-thumb: color-mix(in srgb, var(--cb-accent-primary) 30%, transparent);
+    --cb-scrollbar-thumb-hover: color-mix(in srgb, var(--cb-accent-primary) 50%, transparent);
+    --cb-scrollbar-track: rgba(0, 0, 0, 0.05);
+    --cb-scrollbar-radius: 6px;
   }
   :host(.cb-theme-brutalism) {
     --cb-bg: #FFFBEB;
@@ -1888,6 +1900,10 @@
     --cb-shadow-md: 3px 3px 0 #000;
     --cb-shadow-lg: 5px 5px 0 #000;
     --cb-shadow-xl: 8px 8px 0 #000;
+    --cb-scrollbar-thumb: #000;
+    --cb-scrollbar-thumb-hover: #000;
+    --cb-scrollbar-track: #FFFBEB;
+    --cb-scrollbar-radius: 0px;
   }
   :host(.cb-theme-synthwave) {
     --cb-bg: #1a0a2e;
@@ -1908,6 +1924,10 @@
     --cb-shadow-md: 0 0 15px rgba(255, 45, 149, 0.35), 0 0 8px rgba(0, 240, 255, 0.25);
     --cb-shadow-lg: 0 0 25px rgba(255, 45, 149, 0.3), 0 0 15px rgba(0, 240, 255, 0.2);
     --cb-shadow-xl: 0 0 40px rgba(255, 45, 149, 0.35), 0 0 25px rgba(0, 240, 255, 0.25), 0 8px 32px rgba(0,0,0,0.5);
+    --cb-scrollbar-thumb: linear-gradient(180deg, #FF2D95, #00F0FF);
+    --cb-scrollbar-thumb-hover: linear-gradient(180deg, #FF2D95, #00F0FF);
+    --cb-scrollbar-track: #130a2a;
+    --cb-scrollbar-radius: 4px;
   }
   :host(.cb-theme-glass) {
     --cb-bg: #1e1a2e;
@@ -1932,6 +1952,10 @@
     --cb-shadow-md: 6px 6px 14px rgba(0,0,0,0.4), -3px -3px 10px rgba(60,50,90,0.2), inset 0 1px 0 rgba(255,255,255,0.05);
     --cb-shadow-lg: 8px 8px 20px rgba(0,0,0,0.45), -4px -4px 14px rgba(60,50,90,0.18);
     --cb-shadow-xl: 12px 12px 30px rgba(0,0,0,0.5), -6px -6px 18px rgba(60,50,90,0.15);
+    --cb-scrollbar-thumb: linear-gradient(180deg, #b48eff, #ff8fa3);
+    --cb-scrollbar-thumb-hover: linear-gradient(180deg, #b48eff, #ff8fa3);
+    --cb-scrollbar-track: rgba(30, 26, 46, 0.5);
+    --cb-scrollbar-radius: 12px;
   }
 
   /* ===== Skeuomorphic Theme Structural Overrides ===== */
@@ -2919,16 +2943,16 @@
     background: #f8f9fa;
 }
 
-:host(.cb-theme-light) .cb-ah-card-icon {
+:host(.cb-theme-light) .cb-ah-icon {
     background: rgba(37, 99, 235, 0.06);
     border-color: rgba(37, 99, 235, 0.12);
 }
 
-:host(.cb-theme-light) .cb-ah-card-name {
+:host(.cb-theme-light) .cb-ah-name {
     color: #1a1a1a;
 }
 
-:host(.cb-theme-light) .cb-ah-card-desc {
+:host(.cb-theme-light) .cb-ah-desc {
     color: #6b7280;
 }
 
@@ -3129,6 +3153,44 @@
     color: #2563eb;
 }
 
+:host(.cb-theme-light) .cb-agent-input {
+    background: #ffffff;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    color: #1a1a1a;
+}
+:host(.cb-theme-light) .cb-agent-input:focus {
+    border-color: var(--cb-accent-primary);
+}
+:host(.cb-theme-light) .cb-agent-toggle-group {
+    border: 1px solid rgba(0,0,0,0.1);
+    background: #f1f3f5;
+}
+:host(.cb-theme-light) .cb-agent-toggle {
+    color: #4b5563;
+    background: transparent;
+}
+:host(.cb-theme-light) .cb-agent-toggle:hover {
+    background: rgba(0,0,0,0.03);
+    color: #1a1a1a;
+}
+:host(.cb-theme-light) .cb-agent-toggle-active {
+    background: #ffffff !important;
+    color: #2563eb !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+:host(.cb-theme-light) .cb-agent-bar-track {
+    background: #e5e7eb;
+}
+:host(.cb-theme-light) .cb-agent-bar-fill {
+    background: var(--cb-accent-primary);
+}
+:host(.cb-theme-light) .cb-agent-bar-value {
+    color: #1a1a1a;
+}
+:host(.cb-theme-light) .cb-agent-bar-label {
+    color: #374151;
+}
+
 /* ===== AGENT TAB — Skeuomorphic Theme ===== */
 :host(.cb-theme-skeuomorphic) .cb-ah-card {
     background: linear-gradient(180deg, #e8e8e8 0%, #d4d4d4 100%);
@@ -3144,16 +3206,16 @@
     transform: translateY(-1px);
 }
 
-:host(.cb-theme-skeuomorphic) .cb-ah-card-icon {
+:host(.cb-theme-skeuomorphic) .cb-ah-icon {
     background: linear-gradient(180deg, #ddd, #ccc);
     border: 1px solid #bbb;
 }
 
-:host(.cb-theme-skeuomorphic) .cb-ah-card-name {
+:host(.cb-theme-skeuomorphic) .cb-ah-name {
     color: #333;
 }
 
-:host(.cb-theme-skeuomorphic) .cb-ah-card-desc {
+:host(.cb-theme-skeuomorphic) .cb-ah-desc {
     color: #666;
 }
 
@@ -3336,6 +3398,44 @@
     color: #4a90d9;
 }
 
+:host(.cb-theme-skeuomorphic) .cb-agent-input {
+    background: #e5e5e5;
+    border: 1px solid #c8c8c8;
+    box-shadow: inset 1px 1px 3px rgba(0,0,0,0.1), 1px 1px 0 #fff;
+    color: #333;
+}
+:host(.cb-theme-skeuomorphic) .cb-agent-input:focus {
+    border-color: #777;
+}
+:host(.cb-theme-skeuomorphic) .cb-agent-toggle-group {
+    border: 1px solid #b0b0b0;
+    background: #e0e0e0;
+    box-shadow: inset 1px 1px 3px rgba(0,0,0,0.15);
+}
+:host(.cb-theme-skeuomorphic) .cb-agent-toggle {
+    color: #555;
+    background: transparent;
+    text-shadow: 0 1px 0 #fff;
+}
+:host(.cb-theme-skeuomorphic) .cb-agent-toggle-active {
+    background: linear-gradient(180deg, #fff, #eaeaea) !important;
+    color: #111 !important;
+    box-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+}
+:host(.cb-theme-skeuomorphic) .cb-agent-bar-track {
+    background: #ccc;
+    box-shadow: inset 1px 1px 2px rgba(0,0,0,0.2);
+}
+:host(.cb-theme-skeuomorphic) .cb-agent-bar-fill {
+    background: linear-gradient(90deg, #555, #888);
+}
+:host(.cb-theme-skeuomorphic) .cb-agent-bar-value {
+    color: #333;
+}
+:host(.cb-theme-skeuomorphic) .cb-agent-bar-label {
+    color: #444;
+}
+
 /* ===== AGENT TAB — Neo Brutalism Theme ===== */
 :host(.cb-theme-brutalism) .cb-ah-card {
     background: #fff;
@@ -3350,18 +3450,18 @@
     box-shadow: 5px 5px 0 #000;
 }
 
-:host(.cb-theme-brutalism) .cb-ah-card-icon {
+:host(.cb-theme-brutalism) .cb-ah-icon {
     background: #FEF3C7;
     border: 2px solid #000;
     border-radius: 0;
 }
 
-:host(.cb-theme-brutalism) .cb-ah-card-name {
+:host(.cb-theme-brutalism) .cb-ah-name {
     color: #000;
     font-weight: 800;
 }
 
-:host(.cb-theme-brutalism) .cb-ah-card-desc {
+:host(.cb-theme-brutalism) .cb-ah-desc {
     color: #333;
 }
 
@@ -3607,6 +3707,50 @@
     border-radius: 0;
 }
 
+:host(.cb-theme-brutalism) .cb-agent-input {
+    background: #fff;
+    border: 2px solid #000;
+    box-shadow: 2px 2px 0 #000;
+    color: #000;
+    border-radius: 0;
+}
+:host(.cb-theme-brutalism) .cb-agent-input:focus {
+    background: #FEF3C7;
+}
+:host(.cb-theme-brutalism) .cb-agent-toggle-group {
+    border: 2px solid #000;
+    background: #fff;
+    box-shadow: 2px 2px 0 #000;
+    border-radius: 0;
+}
+:host(.cb-theme-brutalism) .cb-agent-toggle {
+    color: #000;
+    background: transparent;
+    font-weight: 800;
+    border-radius: 0 !important;
+}
+:host(.cb-theme-brutalism) .cb-agent-toggle-active {
+    background: #FFE156 !important;
+    color: #000 !important;
+}
+:host(.cb-theme-brutalism) .cb-agent-bar-track {
+    background: #fff;
+    border: 2px solid #000;
+    border-radius: 0;
+}
+:host(.cb-theme-brutalism) .cb-agent-bar-fill {
+    background: #000;
+    border-radius: 0;
+}
+:host(.cb-theme-brutalism) .cb-agent-bar-value {
+    color: #000;
+    font-weight: 800;
+}
+:host(.cb-theme-brutalism) .cb-agent-bar-label {
+    color: #000;
+    font-weight: 700;
+}
+
 /* ===== AGENT TAB — Synthwave Theme ===== */
 :host(.cb-theme-synthwave) .cb-ah-card {
     background: rgba(45, 27, 105, 0.5);
@@ -3620,16 +3764,16 @@
     box-shadow: 0 0 20px rgba(255, 45, 149, 0.25), 0 0 10px rgba(0, 240, 255, 0.15);
 }
 
-:host(.cb-theme-synthwave) .cb-ah-card-icon {
+:host(.cb-theme-synthwave) .cb-ah-icon {
     background: rgba(255, 45, 149, 0.1);
     border-color: rgba(255, 45, 149, 0.25);
 }
 
-:host(.cb-theme-synthwave) .cb-ah-card-name {
+:host(.cb-theme-synthwave) .cb-ah-name {
     color: #f0e6ff;
 }
 
-:host(.cb-theme-synthwave) .cb-ah-card-desc {
+:host(.cb-theme-synthwave) .cb-ah-desc {
     color: #b794f6;
 }
 
@@ -3853,6 +3997,44 @@
     text-shadow: 0 0 4px rgba(0, 240, 255, 0.3);
 }
 
+:host(.cb-theme-synthwave) .cb-agent-input {
+    background: rgba(36,23,54,0.7);
+    border: 1px solid #ff79c6;
+    color: #00ffc8;
+    box-shadow: 0 0 8px rgba(255,121,198,0.2);
+}
+:host(.cb-theme-synthwave) .cb-agent-input:focus {
+    border-color: #00ffc8;
+    box-shadow: 0 0 12px rgba(0,255,200,0.4);
+}
+:host(.cb-theme-synthwave) .cb-agent-toggle-group {
+    border: 1px solid #ff79c6;
+    background: rgba(36,23,54,0.5);
+}
+:host(.cb-theme-synthwave) .cb-agent-toggle {
+    color: #ff79c6;
+    background: transparent;
+}
+:host(.cb-theme-synthwave) .cb-agent-toggle-active {
+    background: #ff79c6 !important;
+    color: #2b1055 !important;
+    box-shadow: 0 0 10px #ff79c6;
+}
+:host(.cb-theme-synthwave) .cb-agent-bar-track {
+    background: #2b1055;
+}
+:host(.cb-theme-synthwave) .cb-agent-bar-fill {
+    background: linear-gradient(90deg, #ff79c6, #00ffc8);
+    box-shadow: 0 0 8px #ff79c6;
+}
+:host(.cb-theme-synthwave) .cb-agent-bar-value {
+    color: #00ffc8;
+    text-shadow: 0 0 4px #00ffc8;
+}
+:host(.cb-theme-synthwave) .cb-agent-bar-label {
+    color: #ff79c6;
+}
+
 /* ===== AGENT TAB — Glass / Claymorphism Theme ===== */
 :host(.cb-theme-glass) .cb-ah-card {
     background: linear-gradient(145deg, #2d2748, #23203a);
@@ -3867,18 +4049,18 @@
     border-color: rgba(180, 142, 255, 0.15);
 }
 
-:host(.cb-theme-glass) .cb-ah-card-icon {
+:host(.cb-theme-glass) .cb-ah-icon {
     background: linear-gradient(145deg, #332d52, #282340);
     border-color: rgba(180, 142, 255, 0.1);
     border-radius: 14px;
     box-shadow: inset 2px 2px 4px rgba(0, 0, 0, 0.2), inset -1px -1px 3px rgba(60, 50, 90, 0.1);
 }
 
-:host(.cb-theme-glass) .cb-ah-card-name {
+:host(.cb-theme-glass) .cb-ah-name {
     color: #e8e4f0;
 }
 
-:host(.cb-theme-glass) .cb-ah-card-desc {
+:host(.cb-theme-glass) .cb-ah-desc {
     color: #a89ec0;
 }
 
@@ -4102,13 +4284,73 @@
     color: #b48eff;
 }
 
+:host(.cb-theme-glass) .cb-agent-input {
+    background: rgba(45, 39, 72, 0.6);
+    border: 1px solid rgba(180, 142, 255, 0.15);
+    color: #e8e4f0;
+    border-radius: 8px;
+    box-shadow: inset 1px 1px 3px rgba(0,0,0,0.2);
+}
+:host(.cb-theme-glass) .cb-agent-input:focus {
+    border-color: #b48eff;
+    box-shadow: 0 0 8px rgba(180, 142, 255, 0.3), inset 1px 1px 3px rgba(0,0,0,0.2);
+}
+:host(.cb-theme-glass) .cb-agent-toggle-group {
+    border: 1px solid rgba(180, 142, 255, 0.12);
+    background: rgba(45, 39, 72, 0.4);
+    border-radius: 8px;
+}
+:host(.cb-theme-glass) .cb-agent-toggle {
+    color: #a89ec0;
+    background: transparent;
+}
+:host(.cb-theme-glass) .cb-agent-toggle-active {
+    background: rgba(180, 142, 255, 0.2) !important;
+    color: #ffffff !important;
+    box-shadow: inset 1px 1px 2px rgba(255,255,255,0.1), 0 2px 4px rgba(0,0,0,0.2);
+}
+:host(.cb-theme-glass) .cb-agent-bar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+}
+:host(.cb-theme-glass) .cb-agent-bar-fill {
+    background: linear-gradient(90deg, #b48eff, #d0c8e8);
+    border-radius: 6px;
+    box-shadow: 0 0 6px rgba(180, 142, 255, 0.3);
+}
+:host(.cb-theme-glass) .cb-agent-bar-value {
+    color: #e8e4f0;
+}
+:host(.cb-theme-glass) .cb-agent-bar-label {
+    color: #a89ec0;
+}
+
   :host * { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important; letter-spacing: -0.01em; }
+  :host * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--cb-scrollbar-thumb) var(--cb-scrollbar-track);
+  }
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: var(--cb-scrollbar-track);
+    border-radius: var(--cb-scrollbar-radius);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--cb-scrollbar-thumb);
+    border-radius: var(--cb-scrollbar-radius);
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--cb-scrollbar-thumb-hover);
+  }
   .cb-panel { box-sizing: border-box; position:fixed; top:var(--cb-space-md); right:var(--cb-space-md); width:400px; max-width:calc(100vw - 24px); max-height:calc(100vh - 120px); overflow-y:auto; overflow-x:hidden; border-radius:var(--cb-radius-xl); background: var(--cb-bg2); color:var(--cb-white) !important; z-index:2147483647; box-shadow: var(--cb-shadow-xl), 0 0 40px color-mix(in srgb, var(--cb-accent-primary) 10%, transparent); border: 1px solid var(--cb-border); backdrop-filter: blur(12px); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); word-wrap: break-word; pointer-events:auto; --cb-dynamic-content-max-height: calc(100vh - 250px); }
   .cb-panel * { max-width: 100%; word-wrap: break-word; overflow-wrap: break-word; }
-  .cb-panel::-webkit-scrollbar { width: 10px; }
-  .cb-panel::-webkit-scrollbar-track { background: var(--cb-bg); border-radius: 10px; }
-  .cb-panel::-webkit-scrollbar-thumb { background: linear-gradient(180deg, var(--cb-accent-primary), var(--cb-accent-secondary)); border-radius: 10px; border: 2px solid var(--cb-bg); }
-  .cb-panel::-webkit-scrollbar-thumb:hover { opacity: 0.8; }
+  .cb-panel::-webkit-scrollbar { width: 8px; }
+  .cb-panel::-webkit-scrollbar-track { background: var(--cb-bg); border-radius: var(--cb-scrollbar-radius); }
+  .cb-panel::-webkit-scrollbar-thumb { background: var(--cb-scrollbar-thumb); border-radius: var(--cb-scrollbar-radius); }
+  .cb-panel::-webkit-scrollbar-thumb:hover { background: var(--cb-scrollbar-thumb-hover); }
   .cb-header { display:flex; flex-direction:row; align-items:flex-start; justify-content:space-between; padding:var(--cb-space-xl) var(--cb-space-xl) var(--cb-space-sm) var(--cb-space-xl); gap:var(--cb-space-md); position: relative; }
   .cb-title { font-weight:700; font-size:21px; letter-spacing:-0.02em; color: var(--cb-white); background: linear-gradient(135deg, var(--cb-accent-primary), var(--cb-accent-secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
   .cb-subtitle { font-size:12px; color: var(--cb-subtext); font-weight:500; margin-top:4px; margin-bottom:2px; letter-spacing:-0.01em; opacity:0.8; }
@@ -4192,10 +4434,7 @@
       .cb-history-header { display:flex; align-items:center; justify-content:space-between; padding:0 0 10px 0; }
       .cb-history-title { font-size:12px; color:var(--cb-subtext) !important; font-weight:700; letter-spacing:-0.01em; text-transform: uppercase; }
       .cb-history { padding:4px 0; max-height:320px; overflow-x:hidden; overflow-y:auto; font-size:13px; background: var(--cb-bg); border-radius:10px; border:1px solid var(--cb-border); white-space:normal; color:var(--cb-white) !important; line-height: 1.5; }
-      .cb-history::-webkit-scrollbar { width: 6px; }
-      .cb-history::-webkit-scrollbar-track { background: transparent; border-radius: 10px; }
-  .cb-history::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--cb-accent-primary) 30%, transparent); border-radius: 10px; }
-  .cb-history::-webkit-scrollbar-thumb:hover { background: color-mix(in srgb, var(--cb-accent-primary) 50%, transparent); }
+
   .cb-history-date-group { padding: 8px 14px 4px; font-size: 11px; font-weight: 600; color: var(--cb-subtext); text-transform: uppercase; letter-spacing: 0.04em; user-select: none; }
   .cb-history-item { display: flex; align-items: center; padding: 8px 14px; cursor: pointer; transition: background 0.15s ease; border-radius: 8px; margin: 1px 6px; gap: 10px; position: relative; }
   .cb-history-item:hover { background: rgba(255,255,255,0.04); }
@@ -4210,18 +4449,12 @@
   .cb-hi-action-btn.cb-hi-del:hover { background: rgba(248,113,113,0.15); color: #f87171; }
   .cb-history-empty { padding: 24px 14px; text-align: center; font-size: 13px; color: var(--cb-subtext); opacity: 0.6; }
       .cb-preview { padding:14px 18px; font-size:13px; color:var(--cb-white) !important; border-top:1px solid var(--cb-border); max-height:200px; overflow-x:hidden; overflow-y:auto; line-height: 1.6; background: var(--cb-bg); }
-      .cb-preview::-webkit-scrollbar { width: 8px; }
-      .cb-preview::-webkit-scrollbar-track { background: var(--cb-bg3); border-radius: 10px; }
-      .cb-preview::-webkit-scrollbar-thumb { background: linear-gradient(180deg, var(--cb-accent-primary), var(--cb-accent-secondary)); border-radius: 10px; border: 2px solid var(--cb-bg3); }
-      .cb-preview::-webkit-scrollbar-thumb:hover { opacity: 0.8; }
+
       .cb-footer { display:flex; justify-content:flex-end; gap:12px; padding:14px 20px }
   .cb-close { display: none; /* Use cb-close-btn instead */ }
   .cb-header { padding-right: 100px; }
       textarea { background: var(--cb-bg); color: var(--cb-white) !important; border: 1px solid var(--cb-border); border-radius: 10px; font-size:14px; padding:12px; font-family:inherit; max-height:200px; overflow-x:hidden; overflow-y:auto; transition: all 0.2s ease; }
-      textarea::-webkit-scrollbar { width: 8px; }
-      textarea::-webkit-scrollbar-track { background: var(--cb-bg3); border-radius: 10px; }
-      textarea::-webkit-scrollbar-thumb { background: linear-gradient(180deg, var(--cb-accent-primary), var(--cb-accent-secondary)); border-radius: 10px; border: 2px solid var(--cb-bg3); }
-      textarea::-webkit-scrollbar-thumb:hover { opacity: 0.8; }
+
       textarea:focus { outline: none; border-color: var(--cb-accent-primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--cb-accent-primary) 15%, transparent); }
       select:focus { outline: none; border-color: var(--cb-accent-primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--cb-accent-primary) 15%, transparent); }
       /* Internal view sections - inline in the sidebar */
@@ -4237,10 +4470,7 @@
       .cb-view-select { margin:10px 0 14px 0; width:100%; }
   .cb-view-text { width:100%; min-height:60px; max-height:200px; resize:vertical; background:var(--cb-bg); color:var(--cb-white); border:1px solid var(--cb-border); padding:12px; border-radius:10px; font-family:inherit; white-space:pre-wrap; overflow-y:auto; overflow-x:hidden; font-size:13px; line-height:1.6; transition: all 0.2s ease; box-sizing: border-box; }
   .cb-view-text:focus { border-color: var(--cb-accent-primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--cb-accent-primary) 15%, transparent); outline: none; }
-  .cb-view-text::-webkit-scrollbar { width: 8px; }
-  .cb-view-text::-webkit-scrollbar-track { background: var(--cb-bg3); border-radius: 10px; }
-  .cb-view-text::-webkit-scrollbar-thumb { background: linear-gradient(180deg, var(--cb-accent-primary), var(--cb-accent-secondary)); border-radius: 10px; border: 2px solid var(--cb-bg3); }
-  .cb-view-text::-webkit-scrollbar-thumb:hover { opacity: 0.8; }
+
   /* Smart Query search result rows */
   .cb-row-result { margin-bottom: 12px; padding: 12px; background: var(--cb-bg2); border: 1px solid var(--cb-border); border-radius: 8px; transition: all 0.2s ease; }
   .cb-row-result:hover { border-color: var(--cb-accent-primary); transform: translateY(-1px); box-shadow: 0 4px 12px color-mix(in srgb, var(--cb-accent-primary) 15%, transparent); }
@@ -4263,14 +4493,9 @@
   .cb-insight-list li { margin-bottom: 6px; line-height: 1.5; }
   /* Insights View Scrollbar - Themed */
   #cb-insights-content { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--cb-accent-primary) 40%, transparent) var(--cb-bg3); overflow-x: hidden; max-height: var(--cb-dynamic-content-max-height); }
-  #cb-insights-content::-webkit-scrollbar { width: 6px; }
-  #cb-insights-content::-webkit-scrollbar-track { background: var(--cb-bg3); border-radius: 3px; }
-  #cb-insights-content::-webkit-scrollbar-thumb { background: linear-gradient(180deg, color-mix(in srgb, var(--cb-accent-primary) 50%, transparent), color-mix(in srgb, var(--cb-accent-secondary) 50%, transparent)); border-radius: 3px; }
-  #cb-insights-content::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, color-mix(in srgb, var(--cb-accent-primary) 70%, transparent), color-mix(in srgb, var(--cb-accent-secondary) 70%, transparent)); }
+
   .cb-code-snippet { background: var(--cb-bg); border: 1px solid var(--cb-border); border-radius: 6px; padding: 8px; font-size: 11px; font-family: 'Courier New', monospace; color: var(--cb-accent-tertiary); overflow-x: auto; margin: 6px 0; }
-  .cb-code-snippet::-webkit-scrollbar { height: 6px; }
-  .cb-code-snippet::-webkit-scrollbar-track { background: var(--cb-bg3); }
-  .cb-code-snippet::-webkit-scrollbar-thumb { background: var(--cb-accent-primary); border-radius: 3px; }
+
   /* Empty States */
   .cb-empty-state { text-align: center; padding: var(--cb-space-3xl) var(--cb-space-xl); color: var(--cb-subtext); animation: cb-fade-in 0.4s ease-out; }
   .cb-empty-state-icon { font-size: 56px; margin-bottom: var(--cb-space-lg); opacity: 0.4; filter: grayscale(0.3); }
@@ -4282,10 +4507,7 @@
   .cb-feedback-toast.success { border-color: var(--cb-success); background: rgba(var(--cb-success-rgb, 16, 185, 129), 0.1); }
   .cb-feedback-toast.error { border-color: var(--cb-error); background: rgba(var(--cb-error-rgb, 239, 68, 68), 0.1); }
   /* Context Panel Styling */
-  .cb-context-panel::-webkit-scrollbar { width: 8px; }
-  .cb-context-panel::-webkit-scrollbar-track { background: var(--cb-bg3); border-radius: 10px; }
-  .cb-context-panel::-webkit-scrollbar-thumb { background: linear-gradient(180deg, var(--cb-accent-primary), var(--cb-accent-secondary)); border-radius: 10px; border: 2px solid var(--cb-bg3); }
-  .cb-context-panel::-webkit-scrollbar-thumb:hover { opacity: 0.8; }
+
       .cb-view-controls { margin:var(--cb-space-lg) 0; display:flex; gap:var(--cb-space-md); align-items:stretch; flex-wrap:wrap; }
       .cb-view-controls > * { min-width:0; flex:1 1 auto; }
       .cb-view-controls .cb-select { min-width:120px; }
@@ -18456,29 +18678,92 @@ The singular most important action the user should focus on next based on the re
 
       outputArea.style.setProperty('--_agent-clr', '#10B981');
       outputArea.innerHTML = `
-        <div class="cb-agent-sub cb-agent-sub-agent-prepareme">
+        <div class="cb-agent-sub cb-agent-sub-agent-prepareme" style="display:flex; flex-direction:column; gap:12px;">
           <div class="cb-agent-header">
             <button class="cb-agent-back" aria-label="Go back to agent list" tabindex="0" id="cb-exec-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>Back</button>
             <div class="cb-agent-header-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 15l2 2 4-4"/></svg></div>
             <div class="cb-agent-header-title">Prepare Me</div>
           </div>
-          <div class="cb-agent-desc">Tell me what you need to get done and any limits. I’ll return a clear next-step plan.</div>
+          <div class="cb-agent-desc" style="margin-bottom:4px;">Tell me what you need to get done and any limits. I’ll return a clear next-step plan.</div>
 
-          <input type="text" id="cb-exec-objective" class="cb-agent-input" placeholder="What are you trying to accomplish?" style="margin-bottom:8px;" />
-          <input type="text" id="cb-exec-constraints" class="cb-agent-input" placeholder="Any constraints? (optional: deadline, dependencies, scope)" style="margin-bottom:8px;" />
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
-            <select id="cb-exec-urgency" class="cb-agent-select" aria-label="Urgency">
-              <option value="today">Urgency: Today</option>
-              <option value="this-week" selected>Urgency: This Week</option>
-              <option value="this-month">Urgency: This Month</option>
-            </select>
-            <select id="cb-exec-source" class="cb-agent-select" aria-label="Context source">
-              <option value="relevant" selected>Use Relevant History</option>
-              <option value="current">Use Current Chat Only</option>
-            </select>
+          <!-- Section 1: Objective & Scope -->
+          <div style="background:rgba(255,255,255,0.01); border:1px solid rgba(255,255,255,0.05); border-radius:12px; padding:12px; display:flex; flex-direction:column; gap:10px;">
+            <!-- Objective Input -->
+            <div>
+              <div style="display:flex; align-items:center; gap:5px; font-size:10.5px; font-weight:600; color:var(--cb-subtext); margin-bottom:4px; text-transform:uppercase; letter-spacing:0.5px;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+                Objective
+              </div>
+              <input type="text" id="cb-exec-objective" class="cb-agent-input" placeholder="What are you trying to accomplish?" style="width:100%; box-sizing:border-box; margin:0;" />
+            </div>
+
+            <!-- Constraints Input -->
+            <div>
+              <div style="display:flex; align-items:center; gap:5px; font-size:10.5px; font-weight:600; color:var(--cb-subtext); margin-bottom:4px; text-transform:uppercase; letter-spacing:0.5px;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                Constraints (optional)
+              </div>
+              <input type="text" id="cb-exec-constraints" class="cb-agent-input" placeholder="e.g. 24h deadline, no code libraries" style="width:100%; box-sizing:border-box; margin:0;" />
+            </div>
           </div>
-          <div style="font-size:10.5px;color:var(--cb-subtext);margin-bottom:10px;">Tip: keep objective short and specific for better results.</div>
-          <button id="cb-exec-run" class="cb-agent-btn-primary">Create Plan</button>
+
+          <!-- Section 2: Parameters -->
+          <div style="background:rgba(255,255,255,0.01); border:1px solid rgba(255,255,255,0.05); border-radius:12px; padding:12px; display:flex; flex-direction:column; gap:10px;">
+            <!-- Stakeholder Recipient Selector -->
+            <div>
+              <div style="display:flex; align-items:center; gap:5px; font-size:10.5px; font-weight:600; color:var(--cb-subtext); margin-bottom:4px; text-transform:uppercase; letter-spacing:0.5px;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                Stakeholder / Recipient
+              </div>
+              <select id="cb-exec-recipient" class="cb-agent-select" aria-label="Stakeholder / Recipient" style="width:100%;">
+                <option value="Colleague" selected>Colleague</option>
+                <option value="Client">Client</option>
+                <option value="Manager">Manager</option>
+                <option value="My Future Self">My Future Self</option>
+                <option value="Other">Other...</option>
+              </select>
+            </div>
+            <div id="cb-exec-recipient-custom-container" style="display:none;margin-top:2px;">
+              <input type="text" id="cb-exec-recipient-custom" class="cb-agent-input" placeholder="Specify role/recipient (e.g. CEO, Developer)..." style="width:100%; box-sizing:border-box; margin:0;" />
+            </div>
+
+            <!-- Urgency Segmented Control -->
+            <div>
+              <div style="display:flex; align-items:center; gap:5px; font-size:10.5px; font-weight:600; color:var(--cb-subtext); margin-bottom:4px; text-transform:uppercase; letter-spacing:0.5px;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                Urgency
+              </div>
+              <div class="cb-agent-toggle-group" id="cb-exec-urgency-group" role="group" aria-label="Urgency" style="width:100%;">
+                <button class="cb-agent-toggle" data-urgency="today" style="font-size:10px; padding:6px 8px;">Today</button>
+                <button class="cb-agent-toggle cb-agent-toggle-active" data-urgency="this-week" style="font-size:10px; padding:6px 8px;">This Week</button>
+                <button class="cb-agent-toggle" data-urgency="this-month" style="font-size:10px; padding:6px 8px;">This Month</button>
+              </div>
+            </div>
+
+            <!-- Context Source Segmented Control -->
+            <div>
+              <div style="display:flex; align-items:center; gap:5px; font-size:10.5px; font-weight:600; color:var(--cb-subtext); margin-bottom:4px; text-transform:uppercase; letter-spacing:0.5px;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5v-15z"/></svg>
+                Context Source
+              </div>
+              <div class="cb-agent-toggle-group" id="cb-exec-source-group" role="group" aria-label="Context Source" style="width:100%;">
+                <button class="cb-agent-toggle cb-agent-toggle-active" data-source="relevant" style="font-size:10px; padding:6px 8px;">Relevant History</button>
+                <button class="cb-agent-toggle" data-source="current" style="font-size:10px; padding:6px 8px;">Current Chat</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Dynamic Info Card Tip -->
+          <div style="display:flex; align-items:flex-start; gap:8px; background:rgba(16,185,129,0.06); border:1px solid rgba(16,185,129,0.15); border-radius:10px; padding:10px; font-size:11px; line-height:1.4; color:var(--cb-white); opacity:0.9;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:#10B981; flex-shrink:0; margin-top:1px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+            <span>Keep your objective short and specific for the sharpest execution plan.</span>
+          </div>
+
+          <!-- Action Button -->
+          <button id="cb-exec-run" class="cb-agent-btn-primary" style="background: linear-gradient(135deg, #10B981, #059669); border: none; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25); color: #ffffff; font-weight: 600; padding: 10px 16px; border-radius: 10px; cursor: pointer; transition: all 0.2s; width: 100%;">
+            Create Plan
+          </button>
+          
           <div id="cb-exec-result" style="display:none;margin-top:14px;"></div>
         </div>
       `;
@@ -18491,9 +18776,105 @@ The singular most important action the user should focus on next based on the re
       const objectiveInput = outputArea.querySelector('#cb-exec-objective');
       const runBtn = outputArea.querySelector('#cb-exec-run');
       const constraintsInput = outputArea.querySelector('#cb-exec-constraints');
-      const urgencySelect = outputArea.querySelector('#cb-exec-urgency');
-      const sourceSelect = outputArea.querySelector('#cb-exec-source');
+      const recipientSelect = outputArea.querySelector('#cb-exec-recipient');
+      const recipientCustomContainer = outputArea.querySelector('#cb-exec-recipient-custom-container');
+      const recipientCustomInput = outputArea.querySelector('#cb-exec-recipient-custom');
       const resultDiv = outputArea.querySelector('#cb-exec-result');
+
+      recipientSelect.addEventListener('change', () => {
+        recipientCustomContainer.style.display = recipientSelect.value === 'Other' ? 'block' : 'none';
+      });
+
+      // Urgency toggle listeners
+      const urgencyGroup = outputArea.querySelector('#cb-exec-urgency-group');
+      urgencyGroup.querySelectorAll('.cb-agent-toggle').forEach(btn => {
+        btn.addEventListener('click', () => {
+          urgencyGroup.querySelectorAll('.cb-agent-toggle').forEach(b => b.classList.remove('cb-agent-toggle-active'));
+          btn.classList.add('cb-agent-toggle-active');
+        });
+      });
+
+      // Source toggle listeners
+      const sourceGroup = outputArea.querySelector('#cb-exec-source-group');
+      sourceGroup.querySelectorAll('.cb-agent-toggle').forEach(btn => {
+        btn.addEventListener('click', () => {
+          sourceGroup.querySelectorAll('.cb-agent-toggle').forEach(b => b.classList.remove('cb-agent-toggle-active'));
+          btn.classList.add('cb-agent-toggle-active');
+        });
+      });
+
+      function renderInteractiveTaskList(text) {
+        if (!text) return '';
+        const lines = text.split('\n');
+        let currentSection = '';
+        const nextActions = [];
+        const dayPlan = [];
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (trimmed.startsWith('## ')) {
+            currentSection = trimmed.replace('## ', '').toLowerCase();
+            continue;
+          }
+          if (trimmed.startsWith('-') || trimmed.startsWith('*') || /^\d+\./.test(trimmed)) {
+            const taskText = trimmed.replace(/^[-*•\d\.]+\s+/, '');
+            if (currentSection.includes('next 3 actions') || currentSection.includes('next actions')) {
+              nextActions.push(taskText);
+            } else if (currentSection.includes('24h plan') || currentSection.includes('24 hour')) {
+              dayPlan.push(taskText);
+            }
+          }
+        }
+
+        if (nextActions.length === 0 && dayPlan.length === 0) return '';
+
+        let html = `
+          <div class="cb-agent-result-section" style="margin-top:14px;">
+            <div class="cb-agent-result-header" style="display:flex; justify-content:space-between; align-items:center;">
+              <span>📋 Interactive Task Board</span>
+              <span style="font-size:10px; font-weight:normal; color:var(--cb-subtext);" id="cb-task-progress">0% completed (0/${nextActions.length + dayPlan.length})</span>
+            </div>
+            <div class="cb-agent-result-body" style="padding:12px 14px; display:flex; flex-direction:column; gap:8px;">
+          `;
+
+        if (nextActions.length > 0) {
+          html += `<div style="font-weight:700; font-size:10.5px; color:var(--_agent-clr, #10B981); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:2px;">Immediate Actions</div>`;
+          nextActions.forEach((task) => {
+            let displayTask = task;
+            if (task.includes('|')) {
+              const parts = task.split('|').map(p => p.trim());
+              const actionPart = parts[0].replace(/^\[A\d\]\s*/i, '');
+              const owner = parts[1] || 'TBD';
+              const eta = parts[2] || 'TBD';
+              const dep = parts[3] || 'None';
+              displayTask = `<strong style="color:var(--cb-white);">${escapeHtml(actionPart)}</strong><br/><span style="font-size:10px; color:var(--cb-subtext);">Owner: ${escapeHtml(owner)} · ETA: ${escapeHtml(eta)} · Dep: ${escapeHtml(dep)}</span>`;
+            } else {
+              displayTask = `<span>${escapeHtml(task)}</span>`;
+            }
+            html += `
+              <label class="cb-task-item" style="display:flex; align-items:flex-start; gap:8px; cursor:pointer; font-size:12px; line-height:1.5; color:var(--cb-white); margin: 2px 0; user-select:none;">
+                <input type="checkbox" class="cb-task-checkbox" style="margin-top:3px; cursor:pointer; accent-color:var(--_agent-clr, #10B981);" />
+                <div style="flex:1;">${displayTask}</div>
+              </label>
+            `;
+          });
+        }
+
+        if (dayPlan.length > 0) {
+          html += `<div style="font-weight:700; font-size:10.5px; color:var(--_agent-clr, #10B981); text-transform:uppercase; letter-spacing:0.5px; margin-top:8px; margin-bottom:2px;">24-Hour Horizon</div>`;
+          dayPlan.forEach((task) => {
+            html += `
+              <label class="cb-task-item" style="display:flex; align-items:flex-start; gap:8px; cursor:pointer; font-size:12px; line-height:1.5; color:var(--cb-white); margin: 2px 0; user-select:none;">
+                <input type="checkbox" class="cb-task-checkbox" style="margin-top:3px; cursor:pointer; accent-color:var(--_agent-clr, #10B981);" />
+                <div style="flex:1;">${escapeHtml(task)}</div>
+              </label>
+            `;
+          });
+        }
+
+        html += `</div></div>`;
+        return html;
+      }
 
       runBtn.addEventListener('click', async () => {
         const objective = objectiveInput.value.trim();
@@ -18520,12 +18901,21 @@ The singular most important action the user should focus on next based on the re
 
         try {
           const constraints = constraintsInput.value.trim();
-          const urgency = urgencySelect.value;
-          const sourceMode = sourceSelect.value;
+
+          const activeUrgencyBtn = outputArea.querySelector('#cb-exec-urgency-group .cb-agent-toggle-active');
+          const urgency = activeUrgencyBtn ? activeUrgencyBtn.getAttribute('data-urgency') : 'this-week';
+
+          const activeSourceBtn = outputArea.querySelector('#cb-exec-source-group .cb-agent-toggle-active');
+          const sourceMode = activeSourceBtn ? activeSourceBtn.getAttribute('data-source') : 'relevant';
           const contractMode = 'deterministic';
           const sharedCtx = await buildAgentSharedContext();
           let scored = [];
           let contextBlock = '';
+
+          let recipient = recipientSelect.value;
+          if (recipient === 'Other') {
+            recipient = recipientCustomInput.value.trim() || 'Stakeholder';
+          }
 
           if (sourceMode === 'current') {
             const currentText = await getConversationText();
@@ -18572,6 +18962,9 @@ ${objective}
 
 CONSTRAINTS:
 ${constraints || 'None provided'}
+
+STAKEHOLDER / RECIPIENT FOCUS:
+${recipient} (tailor the action items, milestones, and tone specifically for this recipient/audience)
 
 URGENCY:
 ${urgency}
@@ -18626,6 +19019,7 @@ Rules:
               </div>`;
             }).join('') : `<div style="font-size:10px;color:var(--cb-subtext);">${sourceMode === 'current' ? 'Using current chat context only' : 'No matching conversations found'}</div>`;
 
+            const taskListHtml = renderInteractiveTaskList(normalizedResult);
             const formattedResult = formatAgentMarkdown(normalizedResult);
             resultDiv.innerHTML = `
               <div class="cb-agent-stats">
@@ -18650,25 +19044,49 @@ Rules:
                   <div style="margin-top:6px;">${escapeHtml(blockerProfile.summary)}</div>
                 </div>
               </div>
+              ${taskListHtml}
               <div class="cb-agent-result-section"><div class="cb-agent-result-body">${formattedResult}</div></div>
               <div class="cb-agent-result-section"><div class="cb-agent-result-header">📎 Sources</div>${sourcesHtml}</div>
-              <div class="cb-agent-action-row">
-                <button id="cb-exec-copy" class="cb-agent-btn-secondary">Copy Plan</button>
-                <button id="cb-exec-insert" class="cb-agent-btn-primary">Insert to Chat</button>
-                <button id="cb-exec-handoff" class="cb-agent-btn-secondary">Open Handoff</button>
+              <div class="cb-agent-action-row" style="flex-wrap: wrap; gap: 8px;">
+                <button id="cb-exec-copy" class="cb-agent-btn-secondary" style="flex: 1;">Copy Plan</button>
+                <button id="cb-exec-copy-checklist" class="cb-agent-btn-secondary" style="flex: 1.2; display: ${taskListHtml ? 'block' : 'none'};">Copy Checklist</button>
+                <button id="cb-exec-insert" class="cb-agent-btn-primary" style="flex: 1;">Insert to Chat</button>
+                <button id="cb-exec-handoff" class="cb-agent-btn-secondary" style="flex: 1.2;">Open Handoff</button>
               </div>
-              <div class="cb-agent-meta">Urgency: ${urgency} · ${res.model_used || 'AI'} · ${res.latency_ms || 0}ms · max overlap ${overlapTelemetry.maxOverlap}%${formatRouteDiagnostics(res)}</div>
+              <div class="cb-agent-meta">Urgency: ${urgency} · For: ${recipient} · ${res.model_used || 'AI'} · ${res.latency_ms || 0}ms · max overlap ${overlapTelemetry.maxOverlap}%${formatRouteDiagnostics(res)}</div>
             `;
 
             const copyBtn = resultDiv.querySelector('#cb-exec-copy');
+            const copyChecklistBtn = resultDiv.querySelector('#cb-exec-copy-checklist');
             const insertBtn = resultDiv.querySelector('#cb-exec-insert');
             const handoffBtn = resultDiv.querySelector('#cb-exec-handoff');
+            
             if (copyBtn) copyBtn.addEventListener('click', async () => {
               try { await navigator.clipboard.writeText(normalizedResult); toast('Execution plan copied!'); } catch (_) { toast('Copy failed'); }
             });
+            
+            if (copyChecklistBtn) {
+              copyChecklistBtn.addEventListener('click', async () => {
+                let checklistText = `📋 Plan Checklist for "${objective}":\n\n`;
+                resultDiv.querySelectorAll('.cb-task-item').forEach(label => {
+                  const cb = label.querySelector('.cb-task-checkbox');
+                  let taskText = label.textContent || label.innerText;
+                  taskText = taskText.replace(/\s+/g, ' ').trim();
+                  checklistText += `${cb.checked ? '[x]' : '[ ]'} ${taskText}\n`;
+                });
+                try {
+                  await navigator.clipboard.writeText(checklistText.trim());
+                  toast('Task checklist copied!');
+                } catch (_) {
+                  toast('Copy failed');
+                }
+              });
+            }
+
             if (insertBtn) insertBtn.addEventListener('click', () => {
               try { insertTextToChat(normalizedResult); toast('Inserted!'); } catch (_) { toast('Insert failed'); }
             });
+            
             if (handoffBtn) handoffBtn.addEventListener('click', async () => {
               try {
                 await navigator.clipboard.writeText(normalizedResult);
@@ -18678,6 +19096,31 @@ Rules:
                 toast('Could not open Handoff');
               }
             });
+
+            // Bind checklist change listeners
+            const checkboxes = resultDiv.querySelectorAll('.cb-task-checkbox');
+            checkboxes.forEach(c => {
+              c.addEventListener('change', () => {
+                const checked = Array.from(checkboxes).filter(cb => cb.checked).length;
+                const total = checkboxes.length;
+                const pct = total > 0 ? Math.round((checked / total) * 100) : 0;
+                const progressEl = resultDiv.querySelector('#cb-task-progress');
+                if (progressEl) progressEl.textContent = `${pct}% completed (${checked}/${total})`;
+                
+                // Toggle text strike-through
+                const labelSpan = c.nextElementSibling;
+                if (labelSpan) {
+                  if (c.checked) {
+                    labelSpan.style.textDecoration = 'line-through';
+                    labelSpan.style.opacity = '0.6';
+                  } else {
+                    labelSpan.style.textDecoration = 'none';
+                    labelSpan.style.opacity = '1';
+                  }
+                }
+              });
+            });
+
             toast('Execution plan ready!');
           } else {
             resultDiv.innerHTML = `<div class="cb-agent-error">Failed: ${res && res.error ? escapeHtml(res.error) : 'Unknown error'}</div>`;
@@ -20236,7 +20679,42 @@ Keep it concise and concrete.`;
             <div class="cb-agent-header-title">My Pulse</div>
           </div>
           <div class="cb-agent-desc">Discover patterns in how you use AI. Get personalized insights to boost your productivity.</div>
-          <button id="cb-pulse-run" class="cb-agent-btn-primary">Generate My Pulse</button>
+          
+          <div style="margin-top:14px; display:flex; flex-direction:column; gap:10px;">
+            <!-- Timeframe Selector -->
+            <div>
+              <div style="font-size:11px; font-weight:600; color:var(--cb-subtext); margin-bottom:4px; text-transform:uppercase; letter-spacing:0.5px;">Timeframe</div>
+              <div class="cb-agent-toggle-group" id="cb-pulse-timeframe-group" role="group" aria-label="Timeframe Selector">
+                <button class="cb-agent-toggle cb-agent-toggle-active" data-range="7">7 Days</button>
+                <button class="cb-agent-toggle" data-range="30">30 Days</button>
+                <button class="cb-agent-toggle" data-range="all">All Time</button>
+              </div>
+            </div>
+
+            <!-- Insight Focus Selector -->
+            <div>
+              <div style="font-size:11px; font-weight:600; color:var(--cb-subtext); margin-bottom:4px; text-transform:uppercase; letter-spacing:0.5px;">Insight Focus</div>
+              <select class="cb-select cb-agent-input" id="cb-pulse-focus-select" style="width:100%; box-sizing:border-box;">
+                <option value="productivity">Productivity & Habits</option>
+                <option value="topics">Topic Analysis</option>
+                <option value="multi-platform">Multi-platform Strategy</option>
+                <option value="optimize">Optimizing Workflows</option>
+              </select>
+            </div>
+
+            <!-- Focus Instructions Input -->
+            <div>
+              <div style="font-size:11px; font-weight:600; color:var(--cb-subtext); margin-bottom:4px; text-transform:uppercase; letter-spacing:0.5px;">Special Focus Instructions</div>
+              <input type="text" class="cb-agent-input" id="cb-pulse-instructions-input" placeholder="e.g. Focus on my coding habits or email tone..." style="width:100%; box-sizing:border-box; padding:8px 10px; border-radius:8px;" />
+            </div>
+          </div>
+
+          <!-- Immediate Visual Dashboard -->
+          <div id="cb-pulse-dashboard" style="margin-top:16px; border-top:1px solid var(--cb-border); padding-top:14px;">
+            <!-- Loaded dynamically -->
+          </div>
+
+          <button id="cb-pulse-run" class="cb-agent-btn-primary" style="margin-top:14px; width:100%;">Generate AI Deep Dive</button>
           <div id="cb-pulse-result" style="display:none;margin-top:14px;"></div>
         </div>
       `;
@@ -20248,6 +20726,207 @@ Keep it concise and concrete.`;
 
       const runBtn = outputArea.querySelector('#cb-pulse-run');
       const resultDiv = outputArea.querySelector('#cb-pulse-result');
+
+      // Setup Timeframe toggle event listeners
+      const tfGroup = outputArea.querySelector('#cb-pulse-timeframe-group');
+      tfGroup.querySelectorAll('.cb-agent-toggle').forEach(btn => {
+        btn.addEventListener('click', () => {
+          tfGroup.querySelectorAll('.cb-agent-toggle').forEach(b => b.classList.remove('cb-agent-toggle-active'));
+          btn.classList.add('cb-agent-toggle-active');
+          loadAndRenderDashboard();
+        });
+      });
+
+      // Render Dashboard immediately
+      await loadAndRenderDashboard();
+
+      async function loadAndRenderDashboard() {
+        const dashboardDiv = outputArea.querySelector('#cb-pulse-dashboard');
+        if (!dashboardDiv) return;
+
+        dashboardDiv.innerHTML = `
+          <div style="padding:20px; text-align:center; color:var(--cb-subtext);">
+            <div class="cb-agent-skeleton cb-agent-skeleton-md" style="margin: 0 auto 8px;"></div>
+            <div style="font-size:11px;">Loading local analytics dashboard...</div>
+          </div>
+        `;
+
+        try {
+          const convos = await loadConversationsAsync();
+          
+          // Get selected range
+          const activeRangeBtn = outputArea.querySelector('#cb-pulse-timeframe-group .cb-agent-toggle-active');
+          const range = activeRangeBtn ? activeRangeBtn.getAttribute('data-range') : '7';
+          
+          let filtered = convos;
+          if (range === '7') {
+            const limit = Date.now() - (7 * 24 * 60 * 60 * 1000);
+            filtered = convos.filter(c => c.ts >= limit);
+          } else if (range === '30') {
+            const limit = Date.now() - (30 * 24 * 60 * 60 * 1000);
+            filtered = convos.filter(c => c.ts >= limit);
+          }
+
+          if (!filtered || filtered.length === 0) {
+            dashboardDiv.innerHTML = `
+              <div style="padding:24px; text-align:center; color:var(--cb-subtext); font-size:12px; background:rgba(255,255,255,0.01); border:1px dashed var(--cb-border); border-radius:8px;">
+                No conversations found in the selected timeframe. Use ChatBridge to log some chats!
+              </div>
+            `;
+            return;
+          }
+
+          // 1. Heatmap Calculation (Last 7 Days)
+          const heatmapDays = [];
+          const now = Date.now();
+          for (let i = 6; i >= 0; i--) {
+            const d = new Date(now - i * 24 * 60 * 60 * 1000);
+            heatmapDays.push({
+              label: d.toLocaleDateString(undefined, { weekday: 'short' }),
+              dateString: d.toDateString(),
+              count: 0
+            });
+          }
+          convos.forEach(c => {
+            const cDateStr = new Date(c.ts).toDateString();
+            const match = heatmapDays.find(day => day.dateString === cDateStr);
+            if (match) match.count++;
+          });
+          const maxHeatmapCount = Math.max(...heatmapDays.map(d => d.count), 1);
+
+          // 2. Platform Distribution (Filtered)
+          const platformCounts = {};
+          filtered.forEach(c => {
+            const rawPlat = (c.platform || location.hostname || 'unknown').replace(/^www\./, '').split('.')[0];
+            let platform = 'Other';
+            if (rawPlat.includes('chatgpt') || rawPlat.includes('openai')) platform = 'ChatGPT';
+            else if (rawPlat.includes('claude') || rawPlat.includes('anthropic')) platform = 'Claude';
+            else if (rawPlat.includes('gemini') || rawPlat.includes('google')) platform = 'Gemini';
+            else if (rawPlat.includes('copilot') || rawPlat.includes('bing') || rawPlat.includes('microsoft')) platform = 'Copilot';
+            platformCounts[platform] = (platformCounts[platform] || 0) + 1;
+          });
+
+          const platformEntries = Object.entries(platformCounts).sort((a,b) => b[1] - a[1]);
+          const totalFiltered = platformEntries.reduce((sum, e) => sum + e[1], 0);
+
+          let conicSegments = [];
+          let accumPercent = 0;
+          const colors = {
+            'ChatGPT': '#10A37F',
+            'Claude': '#D97757',
+            'Gemini': '#4285F4',
+            'Copilot': '#00B0F0',
+            'Other': '#8B5CF6'
+          };
+          platformEntries.forEach(([plat, count]) => {
+            const pct = (count / totalFiltered) * 100;
+            const startDeg = (accumPercent / 100) * 360;
+            accumPercent += pct;
+            const endDeg = (accumPercent / 100) * 360;
+            const color = colors[plat] || '#8B5CF6';
+            conicSegments.push(`${color} ${startDeg}deg ${endDeg}deg`);
+          });
+          const conicGradient = conicSegments.length > 0 ? conicSegments.join(', ') : 'rgba(255,255,255,0.1) 0deg 360deg';
+
+          // 3. Keywords/Topics (Filtered)
+          const stopWords = ['that', 'this', 'with', 'from', 'they', 'have', 'been', 'will', 'would', 'could', 'should', 'about', 'their', 'which', 'there', 'your', 'more', 'also', 'some', 'when', 'what', 'here', 'just', 'like', 'than', 'them', 'then', 'into', 'over', 'such', 'only', 'very', 'each', 'much', 'make', 'know', 'well', 'back', 'even', 'most', 'made', 'after', 'does', 'need', 'help', 'please', 'sure', 'want', 'think', 'provide', 'following', 'using', 'based'];
+          const wordFreq = {};
+          filtered.forEach(c => {
+            const msgs = c.conversation || [];
+            const userMsgs = msgs.filter(m => m.role === 'user').map(m => m.text);
+            userMsgs.forEach(text => {
+              const words = (text || '').toLowerCase().match(/\b[a-z]{5,}\b/g) || [];
+              words.forEach(w => {
+                if (!stopWords.includes(w)) {
+                  wordFreq[w] = (wordFreq[w] || 0) + 1;
+                }
+              });
+            });
+          });
+          const topKeywords = Object.entries(wordFreq)
+            .sort((a,b) => b[1] - a[1])
+            .slice(0, 4);
+
+          const maxKeywordCount = topKeywords.length > 0 ? topKeywords[0][1] : 1;
+
+          // Render Dashboard
+          dashboardDiv.innerHTML = `
+            <div style="display:flex; flex-direction:column; gap:14px;">
+              <!-- Heatmap -->
+              <div>
+                <div style="font-size:11px; font-weight:600; color:var(--cb-subtext); margin-bottom:6px; text-transform:uppercase; letter-spacing:0.5px;">7-Day Activity</div>
+                <div class="cb-heatmap" id="cb-pulse-heatmap-container">
+                  ${heatmapDays.map(d => {
+                    const relativeOpacity = d.count > 0 ? 0.35 + (d.count / maxHeatmapCount) * 0.65 : 0.08;
+                    const fillStyle = d.count > 0 ? `background:color-mix(in srgb, var(--_agent-clr, #6366F1) ${relativeOpacity * 100}%, transparent); border-color:var(--_agent-clr, #6366F1);` : '';
+                    return `
+                      <div class="cb-heatmap-day" style="${fillStyle}" title="${d.count} chats on ${d.dateString}">
+                        <div class="cb-heatmap-val">${d.count}</div>
+                        <div class="cb-heatmap-label">${d.label}</div>
+                      </div>
+                    `;
+                  }).join('')}
+                </div>
+              </div>
+
+              <!-- Charts Row -->
+              <div style="display:flex; gap:16px; align-items:flex-start; margin-top:4px; flex-wrap:wrap;">
+                <!-- Donut Chart Left -->
+                <div style="flex:1; min-width:140px; display:flex; flex-direction:column; align-items:center;">
+                  <div style="font-size:11px; font-weight:600; color:var(--cb-subtext); margin-bottom:8px; text-transform:uppercase; letter-spacing:0.5px; align-self:flex-start;">Platform Share</div>
+                  <div style="display:flex; align-items:center; gap:10px; width:100%;">
+                    <div class="cb-donut" style="background: conic-gradient(${conicGradient});">
+                      <div class="cb-donut-hole">
+                        <div class="cb-donut-total">${totalFiltered}</div>
+                        <div class="cb-donut-label">Chats</div>
+                      </div>
+                    </div>
+                    <div id="cb-pulse-donut-legend" style="flex:1; display:flex; flex-direction:column; gap:4px; font-size:10px; color:var(--cb-subtext);">
+                      ${platformEntries.map(([plat, count]) => {
+                        const pct = Math.round((count / totalFiltered) * 100);
+                        const color = colors[plat] || '#8B5CF6';
+                        return `
+                          <div style="display:flex; align-items:center; gap:5px;">
+                            <span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:${color};"></span>
+                            <span style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--cb-white);">${plat}</span>
+                            <span>${pct}%</span>
+                          </div>
+                        `;
+                      }).join('')}
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Keyword Bars Right -->
+                <div style="flex:1.2; min-width:150px;">
+                  <div style="font-size:11px; font-weight:600; color:var(--cb-subtext); margin-bottom:8px; text-transform:uppercase; letter-spacing:0.5px;">Top Keywords</div>
+                  <div id="cb-pulse-keywords-container" style="display:flex; flex-direction:column; gap:6px;">
+                    ${topKeywords.length > 0 ? topKeywords.map(([word, freq]) => {
+                      const pct = Math.round((freq / maxKeywordCount) * 100);
+                      return `
+                        <div class="cb-agent-bar-row">
+                          <div class="cb-agent-bar-label" style="width:64px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:left;" title="${word}">${word}</div>
+                          <div class="cb-agent-bar-track">
+                            <div class="cb-agent-bar-fill" style="width:${pct}%; background:var(--_agent-clr, #6366F1);"></div>
+                          </div>
+                          <div class="cb-agent-bar-value" style="width:24px; text-align:right;">${freq}</div>
+                        </div>
+                      `;
+                    }).join('') : `<div style="font-size:11px; color:var(--cb-subtext); font-style:italic;">No user keyword metrics calculated.</div>`}
+                  </div>
+                </div>
+              </div>
+            </div>
+          `;
+        } catch (e) {
+          dashboardDiv.innerHTML = `
+            <div style="padding:14px; text-align:center; color:var(--cb-error); font-size:11px;">
+              Error rendering dashboard: ${escapeHtml(e.message || 'Unknown error')}
+            </div>
+          `;
+          debugLog('loadAndRenderDashboard error', e);
+        }
+      }
 
       runBtn.addEventListener('click', async () => {
         runBtn.disabled = true;
@@ -20274,11 +20953,32 @@ Keep it concise and concrete.`;
           const pulseSessions = await StorageManager.getPulseSessions();
           const sharedCtx = await buildAgentSharedContext();
 
-          if ((!convos || convos.length === 0) && (!pulseSessions || pulseSessions.length === 0)) {
+          // Get selected timeframe range
+          const activeRangeBtn = outputArea.querySelector('#cb-pulse-timeframe-group .cb-agent-toggle-active');
+          const range = activeRangeBtn ? activeRangeBtn.getAttribute('data-range') : '7';
+
+          // Get selected focus
+          const focusSelect = outputArea.querySelector('#cb-pulse-focus-select');
+          const selectedFocus = focusSelect ? focusSelect.value : 'productivity';
+
+          // Get custom instructions
+          const instructionsInput = outputArea.querySelector('#cb-pulse-instructions-input');
+          const customInstructions = instructionsInput ? instructionsInput.value.trim() : '';
+
+          let filtered = convos;
+          if (range === '7') {
+            const limit = Date.now() - (7 * 24 * 60 * 60 * 1000);
+            filtered = convos.filter(c => c.ts >= limit);
+          } else if (range === '30') {
+            const limit = Date.now() - (30 * 24 * 60 * 60 * 1000);
+            filtered = convos.filter(c => c.ts >= limit);
+          }
+
+          if ((!filtered || filtered.length === 0) && (!pulseSessions || pulseSessions.length === 0)) {
             if (typeof pulseTimer !== 'undefined') clearInterval(pulseTimer);
-            resultDiv.innerHTML = '<div class="cb-agent-empty">No usage data yet. Use ChatBridge for a while and come back!</div>';
+            resultDiv.innerHTML = '<div class="cb-agent-empty">No usage data in this timeframe. Use ChatBridge for a while and come back!</div>';
             runBtn.disabled = false;
-            runBtn.textContent = 'Generate My Pulse';
+            runBtn.textContent = 'Generate AI Deep Dive';
             return;
           }
 
@@ -20289,8 +20989,8 @@ Keep it concise and concrete.`;
           const topicFrequency = {};
           const stopWords = ['that', 'this', 'with', 'from', 'they', 'have', 'been', 'will', 'would', 'could', 'should', 'about', 'their', 'which', 'there', 'your', 'more', 'also', 'some', 'when', 'what', 'here', 'just', 'like', 'than', 'them', 'then', 'into', 'over', 'such', 'only', 'very', 'each', 'much', 'make', 'know', 'well', 'back', 'even', 'most', 'made', 'after', 'does', 'need', 'help', 'please', 'sure', 'want', 'think', 'provide', 'following', 'using', 'based'];
 
-          // Let's bring in full context text of the 15 most recent convos
-          const recentConvos = convos.slice(0, 15);
+          // Let's bring in full context text of the 15 most recent convos in the selected range
+          const recentConvos = filtered.slice(0, 15);
           const convoContextBlock = recentConvos.map((c, i) => {
             const platform = (c.platform || location.hostname || 'unknown').replace(/^www\./, '').split('.')[0];
             platformCounts[platform] = (platformCounts[platform] || 0) + 1;
@@ -20321,10 +21021,23 @@ AI replied: ${aiMsgs.join('\n---\n').slice(0, 600)}`;
 - Platform Distribution: ${topPlatforms}
 - Most Used Keywords: ${topTopics}`;
 
+          const focusLabelMap = {
+            'productivity': 'Productivity & Habits',
+            'topics': 'Topic Analysis',
+            'multi-platform': 'Multi-platform Strategy',
+            'optimize': 'Optimizing Workflows'
+          };
+          const focusLabel = focusLabelMap[selectedFocus] || 'Productivity & Habits';
+
           const prompt = `You are "My Pulse" — an elite AI productivity and usage analyst inside ChatBridge.
 
 ${sharedCtx.promptContext}
 ${buildAgentPromptContract('mypulse', ['Generate optimization insights only; avoid task execution planning language.', 'Do not repeat the same behavior signal across multiple sections.'])}
+
+ANALYSIS PARAMETERS:
+- Timeframe Analyzed: ${range === '7' ? 'Last 7 Days' : range === '30' ? 'Last 30 Days' : 'All Time'}
+- Insight Focus Area: ${focusLabel}
+${customInstructions ? `- Special Focus Instructions from User: ${customInstructions}` : ''}
 
 USER'S OVERALL STATS:
 ${analyticsContext}
@@ -20335,7 +21048,7 @@ ${convoContextBlock}
 ========================
 
 YOUR INSTRUCTIONS:
-Analyze the user's conversational behavior, focus areas, and AI tool usage.
+Analyze the user's conversational behavior, focus areas, and AI tool usage, paying special attention to the Focus Area (${focusLabel})${customInstructions ? ` and the User's Focus Instructions ("${customInstructions}")` : ''}.
 Provide deep, personalized productivity insights.
 CRITICAL RULES:
 - Start directly with the first markdown heading. No greetings.
@@ -20408,7 +21121,7 @@ Three incredibly specific, actionable, and non-obvious ways they can get more ou
         } finally {
           if (typeof pulseTimer !== 'undefined') clearInterval(pulseTimer);
           runBtn.disabled = false;
-          runBtn.textContent = 'Generate My Pulse';
+          runBtn.textContent = 'Generate AI Deep Dive';
         }
       });
     }
