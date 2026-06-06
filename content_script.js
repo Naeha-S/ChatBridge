@@ -507,19 +507,26 @@
 
               // Set as active conversation so downstream tools read the same source of truth.
               if (typeof window.ChatBridge !== 'undefined') {
+                const activeSessionData = {
+                  ts: conv.ts,
+                  platform: conv.platform || 'unknown',
+                  model: conv.model || 'unknown',
+                  messages: msgs,
+                  conversation: conv,
+                  text: fullText,
+                  timestamp: Date.now()
+                };
                 if (typeof window.ChatBridge.setLastScan === 'function') {
-                  window.ChatBridge.setLastScan({
-                    ts: conv.ts,
-                    platform: conv.platform || 'unknown',
-                    model: conv.model || 'unknown',
-                    messages: msgs,
-                    conversation: conv,
-                    text: fullText,
-                    timestamp: Date.now()
-                  });
+                  window.ChatBridge.setLastScan(activeSessionData);
                 }
                 window.ChatBridge.selectedConversation = conv;
                 try { window.ChatBridge._lastScanResult = msgs; } catch (_) { }
+
+                if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+                  chrome.storage.local.set({ 'chatbridge:active_session': activeSessionData }, () => {
+                    debugLog('[History BG] Active session persisted to storage');
+                  });
+                }
 
                 if (typeof window.ChatBridge.refreshHistory === 'function') {
                   window.ChatBridge.refreshHistory();
@@ -842,6 +849,10 @@
         if (['SCRIPT', 'STYLE', 'TEMPLATE', 'NOSCRIPT', 'LINK', 'META', 'HEAD', 'IFRAME', 'SVG', 'PATH'].includes(tag)) {
           return false;
         }
+        // Exclude hidden elements (display: none)
+        if (el.offsetWidth === 0 && el.offsetHeight === 0) {
+          return false;
+        }
       }
       if (!node.textContent || node.textContent.trim() === '') {
         return false;
@@ -1066,7 +1077,11 @@
       rawText = rawText.replace(/\n\s*---\s*\n\s*\[SYSTEM:[\s\S]*?\]/gi, '');
       rawText = rawText.replace(/---\s*\[SYSTEM:[\s\S]*?\]/gi, '');
       rawText = rawText.replace(/\[SYSTEM:[\s\S]*?\]/gi, '');
-      let text = rawText.replace(/\s+/g, ' ').trim();
+      let text = rawText
+        .replace(/[ \t]+/g, ' ')
+        .replace(/\r?\n/g, '\n')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
       // Strip role prefixes that might have been captured during scan (e.g., "Assistant:", "User:")
       text = text.replace(/^(Assistant|User|System|AI|Human|Claude|ChatGPT|Gemini|Copilot|Me):\s*/i, '');
       if (!text) continue;
@@ -1083,7 +1098,32 @@
         } catch (e) { }
       }
     }
-    const filtered = out.filter(x => x.text.length > 4 && !/^(new chat|regenerate|clear|copy|download|history)$/i.test(x.text));
+    const filtered = out.filter(x => {
+      if (!x || !x.text || x.text.length <= 4) return false;
+      const t = x.text.trim();
+      
+      // 1. Skip system buttons/actions
+      if (/^(new chat|regenerate|clear|copy|download|history|skip to content|search chats|explore gpts|rizz gpt)$/i.test(t)) return false;
+      
+      // 2. Filter out raw JSON strings
+      if ((t.startsWith('{') && t.endsWith('}')) || (t.startsWith('[') && t.endsWith(']'))) {
+        try {
+          JSON.parse(t);
+          return false; // Valid JSON payload, skip!
+        } catch (_) {}
+      }
+      
+      // 3. Filter out minified JS code/functions/environment dumps
+      if (/^(!function|function\b|const\b|var\b|let\b|import\b|try\s*\{)/.test(t)) return false;
+      if (t.includes('localStorage.getItem') || t.includes('document.documentElement') || t.includes('window.matchMedia')) return false;
+      if (t.includes('statsigPayload') || t.includes('authStatus') || t.includes('accessToken')) return false;
+
+      // 4. Filter out typical sidebar/recents navigation dump
+      if (t.includes('Chat history') && t.includes('Search chats')) return false;
+      if (t.includes('Explore GPTs') && t.includes('Rizz GPT')) return false;
+      
+      return true;
+    });
     return filtered.slice(0, maxMessages);
   }
 
@@ -1130,6 +1170,124 @@
         window.ChatBridge._lastScanData = data;
         if (data && data.text) lastScannedText = data.text;
       };
+
+      // Load active session or fallback to last saved chat at startup
+      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+        chrome.storage.local.get(['chatbridge:active_session', 'chatbridge:conversations'], (data) => {
+          try {
+            const active = data['chatbridge:active_session'];
+            if (active) {
+              window.ChatBridge.setLastScan(active);
+              window.ChatBridge.selectedConversation = active.conversation || active;
+            } else {
+              const key = 'chatbridge:conversations';
+              const convs = data[key] || [];
+              if (Array.isArray(convs) && convs.length > 0) {
+                const latest = convs[0];
+                const msgs = latest.messages || latest.conversation || [];
+                const fullText = msgs.map(m => `${m.role === 'user' ? 'User' : 'AI'}: ${m.text || m.content || ''}`).join('\n\n');
+                window.ChatBridge.setLastScan({
+                  ts: latest.ts,
+                  platform: latest.platform || 'unknown',
+                  model: latest.model || 'unknown',
+                  messages: msgs,
+                  conversation: latest,
+                  text: fullText,
+                  timestamp: latest.ts
+                });
+                window.ChatBridge.selectedConversation = latest;
+              }
+            }
+          } catch (err) {
+            console.error('[ChatBridge] Startup session load failed:', err);
+          }
+        });
+      }
+
+      // Listen for active session changes from other tabs/sidebar to keep in sync
+      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.onChanged) {
+        chrome.storage.onChanged.addListener((changes, area) => {
+          try {
+            if (area === 'local' && changes && changes['chatbridge:active_session']) {
+              const active = changes['chatbridge:active_session'].newValue;
+              const sRoot = (typeof shadow !== 'undefined') ? shadow : (document.getElementById('cb-host')?.shadowRoot || null);
+              if (active) {
+                window.ChatBridge.setLastScan(active);
+                window.ChatBridge.selectedConversation = active.conversation || active;
+                try { window.ChatBridge._lastScanResult = active.messages || active.conversation || []; } catch (_) { }
+
+                // Update premium preview card
+                try {
+                  const msgs = active.messages || active.conversation || [];
+                  const previewStatsEl = sRoot ? sRoot.querySelector('#cb-preview-stats') : null;
+                  const previewTextEl = sRoot ? sRoot.querySelector('#cb-preview-text') : null;
+                  const wordCount = msgs.reduce((acc, m) => acc + ((m.text || m.content || '').split(/\s+/).length), 0);
+                  if (previewStatsEl) previewStatsEl.innerHTML = `<span class="cb-preview-stat">${wordCount.toLocaleString()} words</span><span class="cb-preview-stat">${msgs.length} msgs</span>`;
+                  if (previewTextEl) { previewTextEl.textContent = active.text.slice(0, 150) + (active.text.length > 150 ? '...' : ''); previewTextEl.style.opacity = '1'; }
+                  if (typeof window.__CB_UPDATE_STATUS === 'function') window.__CB_UPDATE_STATUS('Session Active', 'active');
+                } catch (_) { }
+              } else {
+                // Active session cleared, fall back to last saved chat
+                chrome.storage.local.get(['chatbridge:conversations'], (data) => {
+                  try {
+                    const key = 'chatbridge:conversations';
+                    const convs = data[key] || [];
+                    if (Array.isArray(convs) && convs.length > 0) {
+                      const latest = convs[0];
+                      const msgs = latest.messages || latest.conversation || [];
+                      const fullText = msgs.map(m => `${m.role === 'user' ? 'User' : 'AI'}: ${m.text || m.content || ''}`).join('\n\n');
+                      window.ChatBridge.setLastScan({
+                        ts: latest.ts,
+                        platform: latest.platform || 'unknown',
+                        model: latest.model || 'unknown',
+                        messages: msgs,
+                        conversation: latest,
+                        text: fullText,
+                        timestamp: latest.ts
+                      });
+                      window.ChatBridge.selectedConversation = latest;
+                      try { window.ChatBridge._lastScanResult = msgs; } catch (_) { }
+
+                      // Update premium preview card
+                      try {
+                        const previewStatsEl = sRoot ? sRoot.querySelector('#cb-preview-stats') : null;
+                        const previewTextEl = sRoot ? sRoot.querySelector('#cb-preview-text') : null;
+                        const wordCount = msgs.reduce((acc, m) => acc + ((m.text || m.content || '').split(/\s+/).length), 0);
+                        if (previewStatsEl) previewStatsEl.innerHTML = `<span class="cb-preview-stat">${wordCount.toLocaleString()} words</span><span class="cb-preview-stat">${msgs.length} msgs</span>`;
+                        if (previewTextEl) { previewTextEl.textContent = fullText.slice(0, 150) + (fullText.length > 150 ? '...' : ''); previewTextEl.style.opacity = '1'; }
+                        if (typeof window.__CB_UPDATE_STATUS === 'function') window.__CB_UPDATE_STATUS('Session Active', 'active');
+                      } catch (_) { }
+                    } else {
+                      lastScannedText = '';
+                      window.ChatBridge._lastScanData = null;
+                      window.ChatBridge.selectedConversation = null;
+                      try { window.ChatBridge._lastScanResult = null; } catch (_) { }
+
+                      // Reset preview card
+                      try {
+                        const previewStatsEl = sRoot ? sRoot.querySelector('#cb-preview-stats') : null;
+                        const previewTextEl = sRoot ? sRoot.querySelector('#cb-preview-text') : null;
+                        if (previewStatsEl) previewStatsEl.innerHTML = '<span class="cb-preview-stat">0 words</span><span class="cb-preview-stat">0 msgs</span>';
+                        if (previewTextEl) { previewTextEl.textContent = 'Scan a conversation to see preview...'; previewTextEl.style.opacity = ''; }
+                        if (typeof window.__CB_UPDATE_STATUS === 'function') window.__CB_UPDATE_STATUS('Idle', 'idle');
+                      } catch (_) { }
+                    }
+                  } catch (err) { }
+                });
+              }
+
+              // Refresh history UI to update active item highlights
+              try {
+                if (typeof window.ChatBridge.refreshHistory === 'function') {
+                  window.ChatBridge.refreshHistory();
+                }
+              } catch (_) { }
+            }
+          } catch (err) {
+            console.error('[ChatBridge] Sync session load failed:', err);
+          }
+        });
+      }
     } catch (e) { }
 
     // Universal helper to get conversation text for any section
@@ -4884,28 +5042,42 @@
           return false;
         }
 
-        // Handle different input types
-        if (input.tagName === 'TEXTAREA' || input.tagName === 'INPUT') {
-          input.value = text;
-          input.dispatchEvent(new Event('input', { bubbles: true }));
-          input.dispatchEvent(new Event('change', { bubbles: true }));
-        } else if (input.isContentEditable || input.contentEditable === 'true') {
-          // For contenteditable divs (like ChatGPT, Claude)
-          input.focus();
-          input.innerHTML = '';
-          input.textContent = text;
-          // Trigger input event for React/Vue apps
-          input.dispatchEvent(new InputEvent('input', { bubbles: true, data: text }));
-          input.dispatchEvent(new Event('input', { bubbles: true }));
-        } else {
-          // Generic fallback
-          if (input.value !== undefined) {
+        // Handle different input types using robust insertion
+        input.focus();
+        let success = false;
+        try {
+          if (input.isContentEditable || input.contentEditable === 'true') {
+            const selection = window.getSelection();
+            selection.selectAllChildren(input);
+            document.execCommand('delete', false, null);
+            success = document.execCommand('insertText', false, text);
+          } else {
+            input.select();
+            success = document.execCommand('insertText', false, text);
+          }
+        } catch (execErr) {
+          debugLog('insertTextToChat: execCommand failed', execErr);
+        }
+
+        if (!success) {
+          if (input.isContentEditable || input.contentEditable === 'true') {
+            input.innerHTML = '';
+            input.textContent = text;
+          } else if (input.value !== undefined) {
             input.value = text;
           } else {
             input.textContent = text;
           }
-          input.dispatchEvent(new Event('input', { bubbles: true }));
         }
+
+        // Dispatch events to trigger framework/editor state updates
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.dispatchEvent(new InputEvent('input', { bubbles: true, data: text }));
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+        try {
+          const textEvent = new TextEvent('textInput', { bubbles: true, cancelable: true, data: text });
+          input.dispatchEvent(textEvent);
+        } catch (_) {}
 
         // Focus the input
         input.focus();
@@ -12138,7 +12310,7 @@ ${chatText.substring(0, 10000)}`
                   // Set as active conversation for all features (summarize, translate, rewrite, etc.)
                   lastScannedText = fullText;
                   window.ChatBridge.selectedConversation = conv;
-                  window.ChatBridge.setLastScan({
+                  const activeSessionData = {
                     ts: conv.ts,
                     platform: conv.platform || 'unknown',
                     model: conv.model || 'unknown',
@@ -12146,8 +12318,16 @@ ${chatText.substring(0, 10000)}`
                     conversation: conv,
                     text: fullText,
                     timestamp: Date.now()
-                  });
+                  };
+                  window.ChatBridge.setLastScan(activeSessionData);
                   try { window.ChatBridge._lastScanResult = msgs; } catch (_) { }
+
+                  // Persist as the active session
+                  if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+                    chrome.storage.local.set({ 'chatbridge:active_session': activeSessionData }, () => {
+                      debugLog('[Library] Active session persisted to storage');
+                    });
+                  }
 
                   // Update premium preview card
                   try {
@@ -12178,18 +12358,50 @@ ${chatText.substring(0, 10000)}`
                   try {
                     const selConv = window.ChatBridge.selectedConversation;
                     if (selConv && (selConv.id || selConv.ts) === convId) {
-                      lastScannedText = '';
-                      window.ChatBridge._lastScanData = null;
-                      window.ChatBridge.selectedConversation = null;
-                      try { window.ChatBridge._lastScanResult = null; } catch (_) { }
-                      // Reset preview card
-                      try {
-                        const pStats = shadow.querySelector('#cb-preview-stats');
-                        const pText = shadow.querySelector('#cb-preview-text');
-                        if (pStats) pStats.innerHTML = '<span class="cb-preview-stat">0 words</span><span class="cb-preview-stat">0 msgs</span>';
-                        if (pText) { pText.textContent = 'Scan a conversation to see preview...'; pText.style.opacity = ''; }
-                        if (typeof window.__CB_UPDATE_STATUS === 'function') window.__CB_UPDATE_STATUS('Idle', 'idle');
-                      } catch (_) { }
+                      // Clear active session from storage
+                      chrome.storage.local.remove(['chatbridge:active_session'], () => {
+                        debugLog('[Library Delete] Cleared active session from storage');
+                      });
+
+                      if (filtered.length > 0) {
+                        const latest = filtered[0];
+                        const msgs = latest.messages || latest.conversation || [];
+                        const fullText = msgs.map(m => `${m.role === 'user' ? 'User' : 'AI'}: ${m.text || m.content || ''}`).join('\n\n');
+                        window.ChatBridge.setLastScan({
+                          ts: latest.ts,
+                          platform: latest.platform || 'unknown',
+                          model: latest.model || 'unknown',
+                          messages: msgs,
+                          conversation: latest,
+                          text: fullText,
+                          timestamp: latest.ts
+                        });
+                        window.ChatBridge.selectedConversation = latest;
+                        try { window.ChatBridge._lastScanResult = msgs; } catch (_) { }
+
+                        // Update preview stats
+                        try {
+                          const previewStatsEl = shadow.querySelector('#cb-preview-stats');
+                          const previewTextEl = shadow.querySelector('#cb-preview-text');
+                          const wordCount = msgs.reduce((acc, m) => acc + ((m.text || m.content || '').split(/\s+/).length), 0);
+                          if (previewStatsEl) previewStatsEl.innerHTML = `<span class="cb-preview-stat">${wordCount.toLocaleString()} words</span><span class="cb-preview-stat">${msgs.length} msgs</span>`;
+                          if (previewTextEl) { previewTextEl.textContent = fullText.slice(0, 150) + (fullText.length > 150 ? '...' : ''); previewTextEl.style.opacity = '1'; }
+                          if (typeof window.__CB_UPDATE_STATUS === 'function') window.__CB_UPDATE_STATUS('Session Active', 'active');
+                        } catch (_) { }
+                      } else {
+                        lastScannedText = '';
+                        window.ChatBridge._lastScanData = null;
+                        window.ChatBridge.selectedConversation = null;
+                        try { window.ChatBridge._lastScanResult = null; } catch (_) { }
+                        // Reset preview card
+                        try {
+                          const pStats = shadow.querySelector('#cb-preview-stats');
+                          const pText = shadow.querySelector('#cb-preview-text');
+                          if (pStats) pStats.innerHTML = '<span class="cb-preview-stat">0 words</span><span class="cb-preview-stat">0 msgs</span>';
+                          if (pText) { pText.textContent = 'Scan a conversation to see preview...'; pText.style.opacity = ''; }
+                          if (typeof window.__CB_UPDATE_STATUS === 'function') window.__CB_UPDATE_STATUS('Idle', 'idle');
+                        } catch (_) { }
+                      }
                     }
                   } catch (_) { }
 
@@ -20312,6 +20524,13 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
               };
             }
             debugLog('[Scan] Stored in ChatBridge.getLastScan() - messages:', final.length);
+
+            // Clear loaded active session from storage so it defaults to this new scan
+            if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+              chrome.storage.local.remove(['chatbridge:active_session'], () => {
+                debugLog('[Scan] Cleared active session from storage');
+              });
+            }
           } catch (e) {
             debugLog('[Scan] Failed to store in ChatBridge:', e);
           }
@@ -25462,19 +25681,51 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
                         try {
                           const selConv = window.ChatBridge.selectedConversation;
                           if (selConv && selConv.ts === s.ts) {
-                            lastScannedText = '';
-                            window.ChatBridge._lastScanData = null;
-                            window.ChatBridge.selectedConversation = null;
-                            try { window.ChatBridge._lastScanResult = null; } catch (_) { }
-                            // Reset preview card
-                            try {
-                              const pStats = shadow.querySelector('#cb-preview-stats');
-                              const pText = shadow.querySelector('#cb-preview-text');
-                              if (pStats) pStats.innerHTML = '<span class="cb-preview-stat">0 words</span><span class="cb-preview-stat">0 msgs</span>';
-                              if (pText) { pText.textContent = 'Scan a conversation to see preview...'; pText.style.opacity = ''; }
-                              try { preview.textContent = 'Preview: (none)'; } catch (_) { }
-                              if (typeof window.__CB_UPDATE_STATUS === 'function') window.__CB_UPDATE_STATUS('Idle', 'idle');
-                            } catch (_) { }
+                            // Clear active session from storage
+                            chrome.storage.local.remove(['chatbridge:active_session'], () => {
+                              debugLog('[History Delete] Cleared active session from storage');
+                            });
+
+                            if (convs.length > 0) {
+                              const latest = convs[0];
+                              const msgs = latest.messages || latest.conversation || [];
+                              const fullText = msgs.map(m => `${m.role === 'user' ? 'User' : 'AI'}: ${m.text || m.content || ''}`).join('\n\n');
+                              window.ChatBridge.setLastScan({
+                                ts: latest.ts,
+                                platform: latest.platform || 'unknown',
+                                model: latest.model || 'unknown',
+                                messages: msgs,
+                                conversation: latest,
+                                text: fullText,
+                                timestamp: latest.ts
+                              });
+                              window.ChatBridge.selectedConversation = latest;
+                              try { window.ChatBridge._lastScanResult = msgs; } catch (_) { }
+
+                              // Update preview stats
+                              try {
+                                const previewStatsEl = shadow.querySelector('#cb-preview-stats');
+                                const previewTextEl = shadow.querySelector('#cb-preview-text');
+                                const wordCount = msgs.reduce((acc, m) => acc + ((m.text || m.content || '').split(/\s+/).length), 0);
+                                if (previewStatsEl) previewStatsEl.innerHTML = `<span class="cb-preview-stat">${wordCount.toLocaleString()} words</span><span class="cb-preview-stat">${msgs.length} msgs</span>`;
+                                if (previewTextEl) { previewTextEl.textContent = fullText.slice(0, 150) + (fullText.length > 150 ? '...' : ''); previewTextEl.style.opacity = '1'; }
+                                if (typeof window.__CB_UPDATE_STATUS === 'function') window.__CB_UPDATE_STATUS('Session Active', 'active');
+                              } catch (_) { }
+                            } else {
+                              lastScannedText = '';
+                              window.ChatBridge._lastScanData = null;
+                              window.ChatBridge.selectedConversation = null;
+                              try { window.ChatBridge._lastScanResult = null; } catch (_) { }
+                              // Reset preview card
+                              try {
+                                const pStats = shadow.querySelector('#cb-preview-stats');
+                                const pText = shadow.querySelector('#cb-preview-text');
+                                if (pStats) pStats.innerHTML = '<span class="cb-preview-stat">0 words</span><span class="cb-preview-stat">0 msgs</span>';
+                                if (pText) { pText.textContent = 'Scan a conversation to see preview...'; pText.style.opacity = ''; }
+                                try { preview.textContent = 'Preview: (none)'; } catch (_) { }
+                                if (typeof window.__CB_UPDATE_STATUS === 'function') window.__CB_UPDATE_STATUS('Idle', 'idle');
+                              } catch (_) { }
+                            }
                           }
                         } catch (_) { }
                         // Sync to background
@@ -25501,8 +25752,7 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
                   // Set as selected conversation
                   window.ChatBridge.selectedConversation = s;
 
-                  // Store as last scan data - this is the critical piece that makes all features work
-                  window.ChatBridge.setLastScan({
+                  const activeSessionData = {
                     ts: s.ts,
                     platform: s.platform || 'unknown',
                     model: s.model || 'unknown',
@@ -25510,10 +25760,20 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
                     conversation: s,
                     text: fullText,
                     timestamp: Date.now()
-                  });
+                  };
+
+                  // Store as last scan data - this is the critical piece that makes all features work
+                  window.ChatBridge.setLastScan(activeSessionData);
 
                   // Also store as _lastScanResult for features that check it directly
                   try { window.ChatBridge._lastScanResult = msgs; } catch (_) { }
+
+                  // Persist as active session
+                  if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+                    chrome.storage.local.set({ 'chatbridge:active_session': activeSessionData }, () => {
+                      debugLog('[History] Active session persisted to storage');
+                    });
+                  }
 
                   // Update status bar
                   const userMsgs = msgs.filter(m => m.role === 'user').length;

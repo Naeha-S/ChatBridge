@@ -99,7 +99,11 @@ const AdapterGeneric = {
     ];
 
     function normalizeText(s) {
-      return (s || '').replace(/\s+/g, ' ').trim();
+      return (s || '')
+        .replace(/[ \t]+/g, ' ')
+        .replace(/\r?\n/g, '\n')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
     }
 
     function guessRoleFromElement(el) {
@@ -266,12 +270,22 @@ function extractMessagesFromContainer(container, selectors) {
   } catch (e) {
     nodes = Array.from(container.querySelectorAll('p, div, span')).filter(n => n && n.innerText && n.innerText.trim().length > 1);
   }
-  // sort by vertical position
-  const mapped = nodes.map(n => ({ el: n, text: n.innerText.trim(), top: (() => { try { return n.getBoundingClientRect().top } catch (e) { return 0 } })() }));
-  mapped.sort((a, b) => a.top - b.top);
+  // sort by DOM position
+  const mapped = nodes.map(n => ({ el: n, text: n.innerText.trim() }));
+  mapped.sort((a, b) => {
+    try {
+      return (a.el.compareDocumentPosition(b.el) & Node.DOCUMENT_POSITION_FOLLOWING) ? -1 : 1;
+    } catch (_) {
+      return 0;
+    }
+  });
   const out = [];
   for (const m of mapped) {
-    const text = (m.text || '').replace(/\s+/g, ' ').trim();
+    const text = (m.text || '')
+      .replace(/[ \t]+/g, ' ')
+      .replace(/\r?\n/g, '\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
     if (!text) continue;
     // dedupe contiguous duplicates
     if (out.length && out[out.length - 1].text === text) continue;
@@ -312,14 +326,32 @@ const SiteAdapters = [
         console.log('[ChatGPT Debug] No container found');
         return [];
       }
-      const wrappers = Array.from(container.querySelectorAll('[data-message-author-role]'));
+      let wrappers = Array.from(container.querySelectorAll('[data-message-author-role]'));
+      if (!wrappers.length) {
+        // Fallback: ChatGPT turns are wrapped in article elements
+        wrappers = Array.from(container.querySelectorAll('article'));
+      }
       console.log('[ChatGPT Debug] Found wrappers:', wrappers.length);
 
       if (!wrappers.length) return [];
       const out = [];
       wrappers.forEach((w, i) => {
         const roleAttr = (w.getAttribute('data-message-author-role') || '').toLowerCase();
-        const role = roleAttr.includes('user') ? 'user' : 'assistant';
+        let role = 'assistant';
+        if (roleAttr) {
+          role = roleAttr.includes('user') ? 'user' : 'assistant';
+        } else {
+          // Fallback role detection for article elements
+          const hasUserAvatar = w.querySelector('[class*="avatar" i] [class*="user" i]') || w.querySelector('img[alt*="User" i]');
+          const hasMarkdown = w.querySelector('.markdown, .prose');
+          if (hasUserAvatar || w.querySelector('[data-testid*="user" i]')) {
+            role = 'user';
+          } else if (hasMarkdown || w.querySelector('[data-testid*="assistant" i]')) {
+            role = 'assistant';
+          } else {
+            role = (w.className || "").toLowerCase().includes("user") ? "user" : "assistant";
+          }
+        }
 
         const body = w.querySelector('.markdown, .prose, .text-base, [data-testid*="message"]') || w;
         if (!body) {
@@ -359,7 +391,11 @@ const SiteAdapters = [
       });
 
       out.sort((a, b) => {
-        try { return a.el.getBoundingClientRect().top - b.el.getBoundingClientRect().top; } catch (err) { return 0; }
+        try {
+          return (a.el.compareDocumentPosition(b.el) & Node.DOCUMENT_POSITION_FOLLOWING) ? -1 : 1;
+        } catch (_) {
+          return 0;
+        }
       });
 
       console.log('[ChatGPT Debug] FINAL:', out.length, 'messages');
@@ -919,9 +955,13 @@ const SiteAdapters = [
         });
       }
 
-      // Sort by vertical position
+      // Sort by DOM position
       messages.sort((a, b) => {
-        try { return a.el.getBoundingClientRect().top - b.el.getBoundingClientRect().top; } catch (e) { return 0; }
+        try {
+          return (a.el.compareDocumentPosition(b.el) & Node.DOCUMENT_POSITION_FOLLOWING) ? -1 : 1;
+        } catch (_) {
+          return 0;
+        }
       });
 
       return messages;
@@ -986,9 +1026,13 @@ const SiteAdapters = [
         }
       });
 
-      // Sort by vertical position
+      // Sort by DOM position
       messages.sort((a, b) => {
-        try { return a.el.getBoundingClientRect().top - b.el.getBoundingClientRect().top; } catch (e) { return 0; }
+        try {
+          return (a.el.compareDocumentPosition(b.el) & Node.DOCUMENT_POSITION_FOLLOWING) ? -1 : 1;
+        } catch (_) {
+          return 0;
+        }
       });
 
       return messages;
@@ -1007,7 +1051,12 @@ const SiteAdapters = [
     detect: () => location.hostname.includes("mistral.ai"),
     scrollContainer: () => document.querySelector("main") || document.scrollingElement,
     getMessages: () => {
-      const normalize = (value) => String(value || '').replace(/\u00A0/g, ' ').replace(/\s+/g, ' ').trim();
+      const normalize = (value) => String(value || '')
+        .replace(/\u00A0/g, ' ')
+        .replace(/[ \t]+/g, ' ')
+        .replace(/\r?\n/g, '\n')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
       const getText = (el) => {
         try {
           if (typeof window !== 'undefined' && typeof window.extractTextWithFormatting === 'function') {
@@ -1166,7 +1215,11 @@ const SiteAdapters = [
     detect: () => location.hostname.includes("x.ai") || location.hostname.includes("grok.ai") || location.hostname.includes("grok.com"),
     scrollContainer: () => document.scrollingElement,
     getMessages: () => {
-      const normalize = (v) => String(v || '').replace(/\s+/g, ' ').trim();
+      const normalize = (v) => String(v || '')
+        .replace(/[ \t]+/g, ' ')
+        .replace(/\r?\n/g, '\n')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
       const isGrokUiText = (text) => {
         const t = normalize(text).toLowerCase();
         if (!t || t.length > 500) return false;
@@ -1221,7 +1274,12 @@ const SiteAdapters = [
     detect: () => location.hostname.includes("bing.com") || location.hostname.includes("copilot.microsoft.com"),
     scrollContainer: () => document.querySelector("main") || document.scrollingElement,
     getMessages: () => {
-      const normalize = (value) => String(value || '').replace(/\u00A0/g, ' ').replace(/\s+/g, ' ').trim();
+      const normalize = (value) => String(value || '')
+        .replace(/\u00A0/g, ' ')
+        .replace(/[ \t]+/g, ' ')
+        .replace(/\r?\n/g, '\n')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
       const getText = (el) => {
         try {
           if (typeof window !== 'undefined' && typeof window.extractTextWithFormatting === 'function') {
@@ -1380,7 +1438,11 @@ const SiteAdapters = [
     detect: () => location.hostname.includes("deepseek") || location.hostname.includes("deepseek.ai"),
     scrollContainer: () => document.scrollingElement,
     getMessages: () => {
-      const normalize = (v) => String(v || '').replace(/\s+/g, ' ').trim();
+      const normalize = (v) => String(v || '')
+        .replace(/[ \t]+/g, ' ')
+        .replace(/\r?\n/g, '\n')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
       const isDeepSeekUiText = (text) => {
         const t = normalize(text).toLowerCase();
         if (!t || t.length > 300) return false;
@@ -1428,7 +1490,11 @@ const SiteAdapters = [
       }
       if (messages.length > 0) {
         messages.sort((a, b) => {
-          try { return a.el.getBoundingClientRect().top - b.el.getBoundingClientRect().top; } catch (_) { return 0; }
+          try {
+            return (a.el.compareDocumentPosition(b.el) & Node.DOCUMENT_POSITION_FOLLOWING) ? -1 : 1;
+          } catch (_) {
+            return 0;
+          }
         });
       }
       const seen = new Set();
@@ -1465,7 +1531,11 @@ const SiteAdapters = [
     detect: () => location.hostname.includes("meta.ai"),
     scrollContainer: () => document.querySelector('[role="main"], main, [class*="chat"]') || document.scrollingElement,
     getMessages: () => {
-      const normalize = (v) => String(v || '').replace(/\s+/g, ' ').trim();
+      const normalize = (v) => String(v || '')
+        .replace(/[ \t]+/g, ' ')
+        .replace(/\r?\n/g, '\n')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
       const isMetaUiChromeText = (text) => {
         const t = normalize(text).toLowerCase();
         if (!t) return true;
@@ -1521,7 +1591,11 @@ const SiteAdapters = [
 
         if (messages.length > 0) {
           messages.sort((a, b) => {
-            try { return a.el.getBoundingClientRect().top - b.el.getBoundingClientRect().top; } catch (_) { return 0; }
+            try {
+              return (a.el.compareDocumentPosition(b.el) & Node.DOCUMENT_POSITION_FOLLOWING) ? -1 : 1;
+            } catch (_) {
+              return 0;
+            }
           });
         }
       } catch (_) { }
@@ -1692,7 +1766,11 @@ const SiteAdapters = [
       });
 
       messages.sort((a, b) => {
-        try { return a.el.getBoundingClientRect().top - b.el.getBoundingClientRect().top; } catch (e) { return 0; }
+        try {
+          return (a.el.compareDocumentPosition(b.el) & Node.DOCUMENT_POSITION_FOLLOWING) ? -1 : 1;
+        } catch (_) {
+          return 0;
+        }
       });
       return messages;
     },
@@ -1740,6 +1818,13 @@ const SiteAdapters = [
         const text = (a.innerText || '').trim();
         if (text && text.length > 10 && !messages.some(m => m.text === text)) {
           messages.push({ role: 'assistant', text, el: a });
+        }
+      });
+      messages.sort((a, b) => {
+        try {
+          return (a.el.compareDocumentPosition(b.el) & Node.DOCUMENT_POSITION_FOLLOWING) ? -1 : 1;
+        } catch (_) {
+          return 0;
         }
       });
       return messages;

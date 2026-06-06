@@ -2,8 +2,20 @@ document.getElementById('summarize-btn').addEventListener('click', async () => {
   const length = document.getElementById('summary-length').value;
   const type = document.getElementById('summary-type').value;
   document.getElementById('summary-preview').textContent = 'Summarizing...';
-  chrome.storage.local.get(['cb_summarize_text'], data => {
-    const chatText = data.cb_summarize_text || '';
+  chrome.storage.local.get(['chatbridge:active_session', 'chatbridge:conversations'], data => {
+    let chatText = '';
+    const active = data['chatbridge:active_session'];
+    if (active && active.text) {
+      chatText = active.text;
+    } else {
+      const key = 'chatbridge:conversations';
+      const convs = data[key] || [];
+      if (convs.length > 0) {
+        const latest = convs[0];
+        const msgs = latest.messages || latest.conversation || [];
+        chatText = msgs.map(m => `${m.role === 'user' ? 'User' : 'AI'}: ${m.text || m.content || ''}`).join('\n\n');
+      }
+    }
     if (!chatText) {
       document.getElementById('summary-preview').textContent = 'No conversation found.';
       return;

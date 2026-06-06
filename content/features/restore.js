@@ -92,22 +92,41 @@
           return false;
         }
 
-        restoreLog('Found input:', input.tagName, input.isContentEditable ? 'contenteditable' : 'textarea');
-
-        if (input.isContentEditable) {
-          input.focus();
-          input.textContent = '';
-          input.appendChild(document.createTextNode(cleanText));
-          input.dispatchEvent(new Event('input', { bubbles: true }));
-          input.dispatchEvent(new Event('change', { bubbles: true }));
-          restoreLog('Inserted to contenteditable');
-        } else {
-          input.focus();
-          input.value = cleanText;
-          input.dispatchEvent(new Event('input', { bubbles: true }));
-          input.dispatchEvent(new Event('change', { bubbles: true }));
-          restoreLog('Inserted to textarea/input');
+        input.focus();
+        let success = false;
+        try {
+          if (input.isContentEditable || input.contentEditable === 'true') {
+            const selection = window.getSelection();
+            selection.selectAllChildren(input);
+            document.execCommand('delete', false, null);
+            success = document.execCommand('insertText', false, cleanText);
+          } else {
+            input.select();
+            success = document.execCommand('insertText', false, cleanText);
+          }
+        } catch (execErr) {
+          restoreLog('execCommand failed, using fallback', execErr);
         }
+
+        if (!success) {
+          if (input.isContentEditable || input.contentEditable === 'true') {
+            input.textContent = '';
+            input.appendChild(document.createTextNode(cleanText));
+          } else {
+            input.value = cleanText;
+          }
+        }
+
+        // Dispatch events to trigger editor listeners
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.dispatchEvent(new InputEvent('input', { bubbles: true, data: cleanText }));
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+        try {
+          const textEvent = new TextEvent('textInput', { bubbles: true, cancelable: true, data: cleanText });
+          input.dispatchEvent(textEvent);
+        } catch (_) {}
+
+        restoreLog('Inserted text successfully');
 
         if (opts.successToast) toast(opts.successToast);
 
