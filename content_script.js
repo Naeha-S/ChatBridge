@@ -2933,7 +2933,9 @@
 }
 
 :host(.cb-theme-light) .cb-ah-ambient {
-    opacity: 0.15;
+    background: color-mix(in srgb, var(--_agent-clr) 8%, transparent);
+    border-color: color-mix(in srgb, var(--_agent-clr) 15%, transparent);
+    color: var(--_agent-clr);
 }
 
 :host(.cb-theme-light) .cb-agent-sub {
@@ -3632,7 +3634,7 @@
 }
 
 :host(.cb-theme-synthwave) .cb-ah-ambient {
-    opacity: 0.4;
+    opacity: 1;
 }
 
 :host(.cb-theme-synthwave) .cb-agent-sub {
@@ -3881,7 +3883,7 @@
 }
 
 :host(.cb-theme-glass) .cb-ah-ambient {
-    opacity: 0.2;
+    opacity: 1;
 }
 
 :host(.cb-theme-glass) .cb-agent-sub {
@@ -17211,6 +17213,8 @@ Respond with JSON only:
         const lowerText = messagesText.toLowerCase();
         let changed = false;
         const currentPlatform = location.hostname;
+        const hitTopics = [];
+
         topics.forEach(t => {
           const matched = (t.keywords || []).some(kw => lowerText.includes(kw.toLowerCase()));
           if (matched) {
@@ -17220,14 +17224,80 @@ Respond with JSON only:
             if (!t.platforms.includes(currentPlatform)) t.platforms.push(currentPlatform);
             if (!t.hitCount) t.hitCount = 0;
             t.hitCount++;
+            hitTopics.push({ label: t.label, hitCount: t.hitCount });
             changed = true;
           }
         });
+
         if (changed) {
           await StorageManager.setTrackedTopics(topics);
           await checkAgentBadges();
+          // 🔔 Real-time notification: show a toast for each matched topic
+          hitTopics.forEach(({ label, hitCount }) => {
+            showTrackThisHitNotification(label, hitCount, currentPlatform);
+          });
         }
       } catch (e) { debugLog('checkTrackedTopicsAgainstScan error', e); }
+    }
+
+    // 🔔 Real-time notification toast for Track This hits
+    let __trackHitThrottleTs = {};
+    function showTrackThisHitNotification(topicLabel, hitCount, platform) {
+      try {
+        // Throttle: only show once per topic per 60 seconds to avoid spam
+        const now = Date.now();
+        const key = topicLabel.toLowerCase();
+        if (__trackHitThrottleTs[key] && (now - __trackHitThrottleTs[key]) < 60000) return;
+        __trackHitThrottleTs[key] = now;
+
+        const platformShort = (platform || '').replace(/^www\./, '').split('.')[0] || 'this chat';
+        const container = getToastContainer ? getToastContainer() : null;
+        if (!container) { toast(`🎯 "${topicLabel}" detected! (${hitCount} hits)`); return; }
+
+        const notif = document.createElement('div');
+        notif.setAttribute('data-cb-ignore', 'true');
+        notif.setAttribute('role', 'status');
+        notif.setAttribute('aria-live', 'polite');
+        notif.style.cssText = `
+          background: linear-gradient(135deg, rgba(139,92,246,0.15), rgba(10,15,28,0.96));
+          color: #E6E9F0;
+          padding: 12px 16px;
+          border-radius: 12px;
+          border: 1px solid rgba(139,92,246,0.4);
+          box-shadow: 0 4px 20px rgba(0,0,0,0.35), 0 0 16px rgba(139,92,246,0.2);
+          font-family: 'Inter', system-ui, sans-serif;
+          font-size: 13px;
+          font-weight: 500;
+          pointer-events: auto;
+          animation: cb-toast-slide-in 0.25s ease-out;
+          max-width: 320px;
+          word-wrap: break-word;
+          cursor: pointer;
+        `;
+        notif.innerHTML = `
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span style="font-size:18px;flex-shrink:0;">🎯</span>
+            <div>
+              <div style="font-weight:700;color:#c4b5fd;font-size:12px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px;">Track This • ${platformShort}</div>
+              <div style="font-size:13px;">"<strong style="color:#fff;">${escapeHtml(topicLabel)}</strong>" just appeared</div>
+              <div style="font-size:10px;color:#a78bfa;margin-top:3px;">${hitCount} total hit${hitCount === 1 ? '' : 's'} · Click to view</div>
+            </div>
+          </div>
+        `;
+        notif.addEventListener('click', () => {
+          try {
+            setActiveAgentTab('trackthis', { focus: true });
+            notif.remove();
+          } catch (_) {}
+        });
+        container.appendChild(notif);
+        setTimeout(() => {
+          try {
+            notif.style.animation = 'cb-toast-slide-out 0.2s ease-in forwards';
+            setTimeout(() => { try { notif.remove(); } catch (_) {} }, 250);
+          } catch (_) {}
+        }, 7000);
+      } catch (e) { debugLog('showTrackThisHitNotification error', e); }
     }
 
     // Record pulse session (called after scan)
@@ -17372,6 +17442,7 @@ Respond with JSON only:
               border-radius:14px;cursor:pointer;overflow:hidden;
               transition:all 0.32s cubic-bezier(0.4,0,0.2,1);
               animation:cb-ah-stagger 0.4s cubic-bezier(0.2,0.8,0.2,1) both;
+              display:flex;flex-direction:column;align-items:center;text-align:center;
             }
             .cb-ah-card:nth-child(1) { animation-delay:0ms; }
             .cb-ah-card:nth-child(2) { animation-delay:50ms; }
@@ -17435,6 +17506,14 @@ Respond with JSON only:
               position:absolute;top:12px;right:12px;width:7px;height:7px;
               border-radius:50%;background:var(--_agent-clr);
               animation:cb-pulse-ring 2s ease-out infinite;
+            }
+            .cb-ah-ambient {
+              display:inline-flex;align-items:center;gap:4px;
+              margin-top:10px;padding:3px 8px;border-radius:6px;
+              background:color-mix(in srgb, var(--_agent-clr) 8%, transparent);
+              border:1px solid color-mix(in srgb, var(--_agent-clr) 15%, transparent);
+              color:var(--_agent-clr);font-size:9px;font-weight:650;
+              text-transform:uppercase;letter-spacing:0.5px;width:fit-content;
             }
 
             /* ── Agent Sub-view ── */
@@ -17519,22 +17598,23 @@ Respond with JSON only:
             }
             .cb-agent-back:hover { border-color:var(--_agent-clr, var(--cb-accent-primary));color:var(--cb-white);background:rgba(255,255,255,0.06); }
             .cb-agent-back svg { width:12px;height:12px; }
-            .cb-agent-desc { font-size:11.5px;color:var(--cb-subtext);line-height:1.6;margin-bottom:16px;opacity:0.9; }
+            .cb-agent-desc { font-size:12.5px;color:var(--cb-subtext);line-height:1.7;margin-bottom:20px;opacity:0.9; }
 
             /* ── Form elements ── */
             .cb-agent-input {
-              width:100%;padding:10px 14px;border-radius:10px;
-              background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);
-              color:var(--cb-white);font-size:12px;font-family:inherit;
+              width:100%;padding:13px 16px;border-radius:12px;
+              background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);
+              color:var(--cb-white);font-size:13px;font-family:inherit;
               transition:all 0.25s;box-sizing:border-box;min-width:0;
+              min-height:44px;
             }
             .cb-agent-input:focus {
-              border-color:color-mix(in srgb, var(--_agent-clr, var(--cb-accent-primary)) 50%, transparent);
+              border-color:color-mix(in srgb, var(--_agent-clr, var(--cb-accent-primary)) 60%, transparent);
               outline:none;
-              box-shadow:0 0 0 3px color-mix(in srgb, var(--_agent-clr, var(--cb-accent-primary)) 10%, transparent);
-              background:rgba(255,255,255,0.05);
+              box-shadow:0 0 0 3px color-mix(in srgb, var(--_agent-clr, var(--cb-accent-primary)) 12%, transparent);
+              background:rgba(255,255,255,0.06);
             }
-            .cb-agent-input::placeholder { color:var(--cb-subtext);opacity:0.6; }
+            .cb-agent-input::placeholder { color:var(--cb-subtext);opacity:0.5;font-size:12px; }
             .cb-agent-textarea { min-height:70px;resize:vertical; }
             .cb-agent-select {
               width:100%;padding:10px 14px;border-radius:10px;
@@ -17730,28 +17810,29 @@ Respond with JSON only:
 
             /* ── Track This topic cards ── */
             .cb-track-card {
-              padding:12px 14px;border-radius:12px;
-              background:linear-gradient(135deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
-              border:1px solid rgba(255,255,255,0.06);
-              display:flex;align-items:center;gap:10px;cursor:pointer;transition:all 0.22s;
+              padding:16px 18px;border-radius:14px;
+              background:linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01));
+              border:1px solid rgba(255,255,255,0.08);
+              display:flex;align-items:center;gap:14px;cursor:pointer;transition:all 0.22s;
             }
             .cb-track-card:hover {
-              border-color:color-mix(in srgb, var(--_agent-clr) 35%, transparent);
-              background:color-mix(in srgb, var(--_agent-clr) 4%, rgba(255,255,255,0.02));
+              border-color:color-mix(in srgb, var(--_agent-clr) 40%, transparent);
+              background:color-mix(in srgb, var(--_agent-clr) 5%, rgba(255,255,255,0.03));
               transform:translateX(2px);
+              box-shadow:0 2px 12px color-mix(in srgb, var(--_agent-clr) 8%, transparent);
             }
             .cb-track-card-new {
               border-color:color-mix(in srgb, var(--_agent-clr) 30%, transparent);
               background:color-mix(in srgb, var(--_agent-clr) 6%, rgba(255,255,255,0.02));
             }
-            .cb-track-indicator { width:7px;height:7px;border-radius:50%;flex-shrink:0; }
+            .cb-track-indicator { width:8px;height:8px;border-radius:50%;flex-shrink:0; }
             .cb-track-info { flex:1;min-width:0; }
-            .cb-track-label { font-weight:600;font-size:11.5px;color:var(--cb-white);overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
-            .cb-track-meta { font-size:9.5px;color:var(--cb-subtext);margin-top:3px;display:flex;gap:6px;flex-wrap:wrap;align-items:center; }
-            .cb-track-actions { display:flex;gap:4px;flex-shrink:0; }
+            .cb-track-label { font-weight:600;font-size:13px;color:var(--cb-white);overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+            .cb-track-meta { font-size:11px;color:var(--cb-subtext);margin-top:5px;display:flex;gap:7px;flex-wrap:wrap;align-items:center; }
+            .cb-track-actions { display:flex;flex-direction:column;gap:6px;flex-shrink:0; }
             .cb-track-btn {
               background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);
-              border-radius:6px;color:var(--cb-subtext);cursor:pointer;font-size:10px;padding:4px 8px;transition:all 0.2s;
+              border-radius:8px;color:var(--cb-subtext);cursor:pointer;font-size:11px;padding:6px 12px;transition:all 0.2s;white-space:nowrap;
             }
             .cb-track-btn:hover { border-color:var(--_agent-clr, var(--cb-accent-primary));color:var(--cb-white); }
             .cb-track-btn-remove:hover { border-color:var(--cb-error);color:var(--cb-error); }
@@ -17858,6 +17939,12 @@ Respond with JSON only:
             .cb-doc-stats { display:flex;gap:12px;justify-content:center;margin:8px 0;flex-wrap:wrap; }
             .cb-doc-stat { font-size:10px;color:var(--cb-subtext);display:flex;align-items:center;gap:3px; }
             .cb-doc-stat-val { font-weight:700;color:var(--cb-white); }
+
+            /* Form group helpers */
+            .cb-agent-field-group { display:flex;flex-direction:column;gap:5px;margin-bottom:12px; }
+            .cb-agent-field-label { font-size:9.5px;font-weight:700;color:var(--cb-subtext);text-transform:uppercase;letter-spacing:0.8px;opacity:0.8;margin-left:2px; }
+            .cb-agent-field-row { display:flex;gap:8px; }
+            .cb-agent-field-row > * { flex:1;min-width:0; }
           `;
           shadow.appendChild(agentStyles);
         }
@@ -17996,7 +18083,7 @@ Respond with JSON only:
             <div class="cb-ah-icon">${agent.icon}</div>
             <div class="cb-ah-name">${agent.name}</div>
             <div class="cb-ah-desc">${agent.desc}</div>
-            ${agent.ambient ? '<div class="cb-ah-ambient">Ambient</div>' : ''}
+            ${agent.ambient ? '<div class="cb-ah-ambient">Always-On</div>' : ''}
           `;
           card.addEventListener('click', () => setActiveAgentTab(agent.id, { focus: true }));
           agentsGrid.appendChild(card);
@@ -18050,7 +18137,33 @@ Respond with JSON only:
             <div class="cb-agent-header-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
             <div class="cb-agent-header-title">Catch Me Up</div>
           </div>
-          <div class="cb-agent-desc">Your personalized briefing of what happened across all platforms since you were last here.</div>
+          <div class="cb-agent-desc">Your personalized briefing of recent activity across all platforms.</div>
+
+          <div style="margin-bottom:10px;">
+            <div style="font-size:9.5px;font-weight:600;text-transform:uppercase;letter-spacing:0.6px;color:var(--cb-subtext);margin-bottom:6px;">📅 Time Range</div>
+            <div class="cb-agent-toggle-group" id="cb-catchmeup-range-group" role="group" aria-label="Time range selector" style="flex-wrap:wrap;">
+              <button class="cb-agent-toggle cb-agent-toggle-active" data-range="last" id="cb-range-last" title="Since your last briefing">Since Last Visit</button>
+              <button class="cb-agent-toggle" data-range="today" id="cb-range-today" title="Last 24 hours">Today</button>
+              <button class="cb-agent-toggle" data-range="week" id="cb-range-week" title="Last 7 days">7 Days</button>
+              <button class="cb-agent-toggle" data-range="month" id="cb-range-month" title="Last 30 days">1 Month</button>
+              <button class="cb-agent-toggle" data-range="alltime" id="cb-range-alltime" title="All stored conversations">All Time</button>
+            </div>
+          </div>
+
+          <div style="margin-bottom:10px;">
+            <div style="font-size:9.5px;font-weight:600;text-transform:uppercase;letter-spacing:0.6px;color:var(--cb-subtext);margin-bottom:6px;">🔍 Topic Focus <span style="font-weight:400;text-transform:none;letter-spacing:0;opacity:0.55;">(optional)</span></div>
+            <input type="text" id="cb-catchmeup-topic" class="cb-agent-input" placeholder="e.g. React project, interview prep, deployment…" style="margin-bottom:0;" />
+          </div>
+
+          <div style="margin-bottom:12px;">
+            <div style="font-size:9.5px;font-weight:600;text-transform:uppercase;letter-spacing:0.6px;color:var(--cb-subtext);margin-bottom:6px;">⚡ Briefing Depth</div>
+            <div class="cb-agent-toggle-group" id="cb-catchmeup-depth-group" role="group" aria-label="Briefing depth selector">
+              <button class="cb-agent-toggle" data-depth="quick" id="cb-depth-quick" title="Headlines only — fastest">⚡ Quick</button>
+              <button class="cb-agent-toggle cb-agent-toggle-active" data-depth="standard" id="cb-depth-standard" title="Balanced detail">✦ Standard</button>
+              <button class="cb-agent-toggle" data-depth="deep" id="cb-depth-deep" title="Full context and follow-ups">🔬 Deep Dive</button>
+            </div>
+          </div>
+
           <button id="cb-catchmeup-run" class="cb-agent-btn-primary">Generate Briefing</button>
           <div id="cb-catchmeup-result" style="display:none;margin-top:14px;"></div>
         </div>
@@ -18063,6 +18176,32 @@ Respond with JSON only:
 
       const runBtn = outputArea.querySelector('#cb-catchmeup-run');
       const resultDiv = outputArea.querySelector('#cb-catchmeup-result');
+
+      // ── Time range toggle ──
+      let selectedRange = 'last';
+      const rangeGroup = outputArea.querySelector('#cb-catchmeup-range-group');
+      if (rangeGroup) {
+        rangeGroup.addEventListener('click', (e) => {
+          const btn = e.target.closest('[data-range]');
+          if (!btn) return;
+          rangeGroup.querySelectorAll('.cb-agent-toggle').forEach(b => b.classList.remove('cb-agent-toggle-active'));
+          btn.classList.add('cb-agent-toggle-active');
+          selectedRange = btn.dataset.range;
+        });
+      }
+
+      // ── Depth toggle ──
+      let selectedDepth = 'standard';
+      const depthGroup = outputArea.querySelector('#cb-catchmeup-depth-group');
+      if (depthGroup) {
+        depthGroup.addEventListener('click', (e) => {
+          const btn = e.target.closest('[data-depth]');
+          if (!btn) return;
+          depthGroup.querySelectorAll('.cb-agent-toggle').forEach(b => b.classList.remove('cb-agent-toggle-active'));
+          btn.classList.add('cb-agent-toggle-active');
+          selectedDepth = btn.dataset.depth;
+        });
+      }
 
       runBtn.addEventListener('click', async () => {
         runBtn.disabled = true;
@@ -18097,7 +18236,44 @@ Respond with JSON only:
           }
 
           const lastBriefed = catchState.lastBriefedAt || 0;
-          const newConvos = lastBriefed > 0 ? convos.filter(c => c.ts > lastBriefed) : convos.slice(0, 10);
+          const topicFocus = ((outputArea && outputArea.querySelector('#cb-catchmeup-topic')) || {}).value?.trim() || '';
+          const depthVal = selectedDepth || 'standard';
+          const depthConfig = {
+            quick:    { maxTokens: 700,  label: 'Quick',     instruction: 'Ultra-concise — 1-2 bullets max per section, headlines only. No elaboration.' },
+            standard: { maxTokens: 1500, label: 'Standard',  instruction: 'Balanced — 3-5 bullets per section with a brief sentence of context on each item.' },
+            deep:     { maxTokens: 3000, label: 'Deep Dive', instruction: 'Detailed — include relevant excerpts or quotes, explain how conversations evolved, and append 2-3 follow-up questions per section.' }
+          };
+          const depth = depthConfig[depthVal] || depthConfig.standard;
+
+          // Compute cutoff timestamp from selected range
+          const nowMs = Date.now();
+          let cutoffTs;
+          if (selectedRange === 'today')        cutoffTs = nowMs - 86400000;
+          else if (selectedRange === 'week')    cutoffTs = nowMs - 7 * 86400000;
+          else if (selectedRange === 'month')   cutoffTs = nowMs - 30 * 86400000;
+          else if (selectedRange === 'alltime') cutoffTs = 0;
+          else                                  cutoffTs = lastBriefed; // 'last' (since last visit)
+
+          // Filter by time range
+          let newConvos;
+          if (selectedRange === 'alltime') {
+            newConvos = convos;
+          } else if (cutoffTs === 0) {
+            newConvos = convos.slice(0, 10);
+          } else {
+            newConvos = convos.filter(c => (c.ts || 0) > cutoffTs);
+          }
+
+          // Narrow by topic focus if provided (fall back to unfiltered if nothing matches)
+          if (topicFocus) {
+            const terms = topicFocus.toLowerCase().split(/\s+/).filter(w => w.length > 1);
+            const topicFiltered = newConvos.filter(c => {
+              const text = (c.conversation || []).map(m => String(m.text || '')).join(' ').toLowerCase();
+              return terms.some(t => text.includes(t));
+            });
+            if (topicFiltered.length > 0) newConvos = topicFiltered;
+          }
+
           const hasNew = newConvos.length > 0;
 
           const scoreConversationPriority = (conv, nowTs) => {
@@ -18134,9 +18310,16 @@ AI replied:
 ${aiMsgs}`;
           }).join('\n\n========================\n\n');
 
-          const timeContext = lastBriefed > 0 && hasNew
-            ? `Timeframe: Since user was last briefed (${getTimeAgo(lastBriefed)}). ${newConvos.length} new conversation(s) to analyze.`
-            : `Timeframe: This is the user's first briefing, analyzing their ${targetConvos.length} most recent conversations.`;
+          const rangeLabels = {
+            last:    lastBriefed > 0 ? `since last briefing (${getTimeAgo(lastBriefed)})` : 'all time (first briefing)',
+            today:   'last 24 hours',
+            week:    'last 7 days',
+            month:   'last 30 days',
+            alltime: 'all stored history'
+          };
+          const rangeLabel = rangeLabels[selectedRange] || 'recent';
+          const topicNote = topicFocus ? ` Topic filter: "${topicFocus}".` : '';
+          const timeContext = `Timeframe: ${rangeLabel}. ${newConvos.length} conversation(s) in scope for this briefing.${topicNote}`;
           const sharedCtx = await buildAgentSharedContext();
 
           const coveragePct = Math.max(10, Math.round((targetConvos.length / Math.max(1, analysisPool.length)) * 100));
@@ -18165,12 +18348,14 @@ ${convoSummaries}
 ========================
 
 YOUR INSTRUCTIONS:
-Create a scannable, actionable briefing based ONLY on the conversations above. 
-CRITICAL RULES: 
+Create a scannable, actionable briefing based ONLY on the conversations above.
+DEPTH MODE: ${depth.label.toUpperCase()} — ${depth.instruction}
+CRITICAL RULES:
 - Start directly with the first markdown heading. No greetings, no intro.
 - Use bullet points. Be specific about actual topics, concepts, code, or tasks discussed.
 - Mention the platform [Like This] at the beginning of bullet points when relevant.
 - Do NOT hallucinate. If a section has no data, write "No notable items identified."
+${topicFocus ? `- TOPIC FOCUS: only include content related to "${topicFocus}". Skip unrelated threads.` : ''}
 
 REQUIRED SECTIONS:
 ## Active Threads
@@ -18185,7 +18370,7 @@ Synthesize key decisions made, problems solved, or new information learned.
 ## Priority Action
 The singular most important action the user should focus on next based on the recent history, and in one sentence, why.`;
 
-          const briefingRoute = withAgentRouteStrategy({ maxTokens: 1500 });
+          const briefingRoute = withAgentRouteStrategy({ maxTokens: depth.maxTokens });
           if (confidenceScore < 60) briefingRoute.complexity = 'deep';
           const res = await callAgentRouteWithRetry(prompt, briefingRoute);
 
@@ -18528,22 +18713,28 @@ Rules:
           </div>
           <div class="cb-agent-desc">Pin any topic and ChatBridge will track it across all your AI conversations. Get notified when it comes up again.</div>
 
-          <div style="display:flex;gap:8px;align-items:stretch;margin-bottom:12px;width:100%;">
-            <input type="text" id="cb-track-input" class="cb-agent-input" placeholder="Topic to track (e.g., budget review, React hooks)" style="flex:1 1 240px;min-width:0;width:auto;margin-bottom:0;" />
-            <button id="cb-track-add" class="cb-agent-btn-primary" style="flex:0 0 auto;white-space:nowrap;padding:0 14px;">+ Track</button>
+          <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:18px;width:100%;">
+            <input type="text" id="cb-track-input" class="cb-agent-input" placeholder="e.g. budget review, React hooks, product launch…" style="width:100%;box-sizing:border-box;margin-bottom:0;" />
+            <button id="cb-track-add" class="cb-agent-btn-primary" style="width:100%;box-sizing:border-box;min-height:44px;font-size:13px;border-radius:12px;letter-spacing:0.3px;">+ Track Topic</button>
           </div>
 
-          <div style="display:flex;gap:6px;margin-bottom:12px;">
-            <select id="cb-track-window" class="cb-agent-select" style="flex:1;">
+          <div style="display:flex;gap:8px;margin-bottom:20px;align-items:center;">
+            <select id="cb-track-window" class="cb-agent-select" style="flex:1;min-height:40px;box-sizing:border-box;">
               <option value="7d">Window: 7 days</option>
               <option value="30d" selected>Window: 30 days</option>
               <option value="90d">Window: 90 days</option>
               <option value="all">Window: All time</option>
             </select>
-            <button id="cb-track-prune" class="cb-agent-btn-secondary" style="white-space:nowrap;padding:0 14px;">Prune Stale</button>
+            <button id="cb-track-prune" class="cb-agent-btn-secondary" style="flex:0 0 auto;white-space:nowrap;padding:0 16px;min-height:40px;font-size:12px;">Prune Stale</button>
           </div>
 
-          <div id="cb-track-list" style="display:flex;flex-direction:column;gap:8px;"></div>
+          <!-- 🔍 Search/Filter bar -->
+          <div style="position:relative;margin-bottom:12px;">
+            <svg style="position:absolute;left:11px;top:50%;transform:translateY(-50%);width:13px;height:13px;pointer-events:none;opacity:0.45;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+            <input type="text" id="cb-track-search" placeholder="Search topics…" style="width:100%;box-sizing:border-box;padding:9px 12px 9px 32px;border-radius:10px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);color:var(--cb-white);font-size:12px;font-family:inherit;outline:none;transition:border-color 0.2s;" />
+          </div>
+
+          <div id="cb-track-list" style="display:flex;flex-direction:column;gap:10px;"></div>
           <div id="cb-track-detail" style="display:none;"></div>
         </div>
       `;
@@ -18557,8 +18748,10 @@ Rules:
       const addBtn = outputArea.querySelector('#cb-track-add');
       const windowSelect = outputArea.querySelector('#cb-track-window');
       const pruneBtn = outputArea.querySelector('#cb-track-prune');
+      const searchInput = outputArea.querySelector('#cb-track-search');
       const listDiv = outputArea.querySelector('#cb-track-list');
       const detailDiv = outputArea.querySelector('#cb-track-detail');
+      let __allTopics = topics; // live reference for search filtering
 
       const synonymMap = {
         api: ['endpoint', 'integration', 'service'],
@@ -18588,9 +18781,33 @@ Rules:
         return { score, status };
       };
 
+      // 📊 Real SVG sparkline from trendHistory
+      function buildSvgSparkline(trendHistory) {
+        if (!Array.isArray(trendHistory) || trendHistory.length < 2) return '';
+        const recent = trendHistory.slice(-14); // last 14 days
+        const counts = recent.map(d => d.count || 0);
+        const max = Math.max(...counts, 1);
+        const W = 56, H = 18, pad = 1;
+        const step = (W - pad * 2) / Math.max(counts.length - 1, 1);
+        const points = counts.map((c, i) => {
+          const x = pad + i * step;
+          const y = H - pad - ((c / max) * (H - pad * 2));
+          return `${x.toFixed(1)},${y.toFixed(1)}`;
+        }).join(' ');
+        // Color: green if trending up, amber if flat, gray if declining
+        const last = counts[counts.length - 1] || 0;
+        const prev = counts[counts.length - 2] || 0;
+        const clr = last > prev ? '#10B981' : (last < prev ? '#9CA3AF' : '#F59E0B');
+        return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="flex-shrink:0;overflow:visible;">
+          <polyline points="${points}" fill="none" stroke="${clr}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.85"/>
+          <circle cx="${(pad + (counts.length-1)*step).toFixed(1)}" cy="${(H - pad - ((last/max)*(H-pad*2))).toFixed(1)}" r="2" fill="${clr}"/>
+        </svg>`;
+      }
+
       function renderTopicsList(topicsArr) {
         if (!topicsArr || topicsArr.length === 0) {
-          listDiv.innerHTML = '<div class="cb-agent-empty">No topics tracked yet. Add one above!</div>';
+          const query = searchInput ? searchInput.value.trim() : '';
+          listDiv.innerHTML = `<div class="cb-agent-empty">${query ? `No topics match "${escapeHtml(query)}"` : 'No topics tracked yet. Add one above!'}</div>`;
           return;
         }
         listDiv.innerHTML = '';
@@ -18600,49 +18817,73 @@ Rules:
           const hasActivity = topic.lastActivity > (topic.lastViewedAt || 0);
           if (hasActivity) card.classList.add('cb-track-card-active');
           const health = computeTopicHealth(topic);
+          const trend = computeTopicTrendFromHistory(topic);
           const platforms = (topic.platforms || []).map(p => p.replace(/^www\./, '').split('.')[0]).join(', ') || 'no hits yet';
           const lastSeen = topic.lastActivity ? getTimeAgo(topic.lastActivity) : 'never';
 
-          // Build simple sparkline from hit count
-          const hitCount = topic.hitCount || 0;
-          const sparkBars = Math.min(hitCount, 7);
+          // 📊 SVG sparkline from real trendHistory, fallback to hit-count bars
+          const sparklineEl = buildSvgSparkline(topic.trendHistory);
           let sparkHtml = '';
-          if (sparkBars > 0) {
+          if (sparklineEl) {
+            sparkHtml = `<div style="display:flex;align-items:center;gap:5px;margin-top:5px;">${sparklineEl}<span style="font-size:9px;color:var(--cb-subtext);opacity:0.6;">${trend.label} ·L7=${trend.last7}</span></div>`;
+          } else if ((topic.hitCount || 0) > 0) {
+            const bars = Math.min(topic.hitCount, 7);
             sparkHtml = '<div class="cb-sparkline" style="margin-top:4px;">';
             for (let i = 0; i < 7; i++) {
-              const h = i < sparkBars ? Math.max(30, Math.min(100, 30 + (hitCount / 7) * (i + 1) * 5)) : 10;
-              sparkHtml += `<div class="cb-sparkline-bar" style="height:${h}%;opacity:${i < sparkBars ? 0.9 : 0.2};"></div>`;
+              const h = i < bars ? Math.max(30, Math.min(100, 30 + (topic.hitCount / 7) * (i + 1) * 5)) : 10;
+              sparkHtml += `<div class="cb-sparkline-bar" style="height:${h}%;opacity:${i < bars ? 0.9 : 0.2};"></div>`;
             }
             sparkHtml += '</div>';
           }
 
+          // 🤖 Proactive alert state color
+          const alertClr = trend.alertState === 'High activity' ? '#10B981' : (trend.alertState === 'Dormant' ? '#6B7280' : '#F59E0B');
+          const alertDot = trend.alertState === 'High activity'
+            ? `<span style="width:7px;height:7px;border-radius:50%;background:${alertClr};box-shadow:0 0 6px ${alertClr};flex-shrink:0;animation:cb-pulse-glow 1.5s ease-in-out infinite;"></span>`
+            : '';
+
           card.innerHTML = `
-            <div style="display:flex;justify-content:space-between;align-items:center;width:100%;gap:12px;">
-              <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px;">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;width:100%;gap:14px;">
+              <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:7px;">
                 <div style="display:flex;align-items:center;gap:8px;">
-                  ${hasActivity ? '<div style="width:8px;height:8px;border-radius:50%;background:#8B5CF6;box-shadow:0 0 8px rgba(139,92,246,0.6);" aria-label="New activity"></div>' : ''}
-                  <span class="cb-track-card-name" style="font-size:14px;font-weight:600;color:var(--cb-text);">${escapeHtml(topic.label)}</span>
+                  ${hasActivity ? '<div style="width:9px;height:9px;border-radius:50%;background:#8B5CF6;box-shadow:0 0 10px rgba(139,92,246,0.7);flex-shrink:0;" aria-label="New activity"></div>' : ''}
+                  ${alertDot}
+                  <span class="cb-track-card-name" style="font-size:14px;font-weight:700;color:var(--cb-text);line-height:1.3;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(topic.label)}</span>
                 </div>
-                <div class="cb-track-card-meta" style="font-size:11px;color:var(--cb-subtext);display:flex;gap:5px;flex-wrap:wrap;align-items:center;">
-                  <span style="display:flex;align-items:center;gap:3px;"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>${topic.hitCount || 0} hits</span>
-                  <span style="opacity:0.5;">•</span>
-                  <span style="color:${health.status === 'Rising' ? '#10B981' : (health.status === 'Watching' ? '#F59E0B' : '#9CA3AF')};">${health.status} (${health.score})</span>
-                  <span style="opacity:0.5;">•</span>
-                  <span>${platforms}</span>
-                  <span style="opacity:0.5;">•</span>
-                  <span>${lastSeen}</span>
+                <div class="cb-track-card-meta" style="font-size:11.5px;color:var(--cb-subtext);display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+                  <span style="display:inline-flex;align-items:center;gap:4px;background:rgba(255,255,255,0.05);border-radius:6px;padding:2px 7px;">
+                    <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                    ${topic.hitCount || 0} hits
+                  </span>
+                  <span style="opacity:0.4;">|</span>
+                  <span style="font-weight:600;color:${health.status === 'Rising' ? '#10B981' : (health.status === 'Watching' ? '#F59E0B' : '#9CA3AF')};">${health.status}</span>
+                  <span style="opacity:0.3;">·</span>
+                  <span style="opacity:0.7;">${platforms}</span>
+                  <span style="opacity:0.3;">·</span>
+                  <span style="opacity:0.6;">${lastSeen}</span>
                 </div>
-                ${sparkHtml ? `<div style="margin-top:2px;">${sparkHtml}</div>` : ''}
+                ${sparkHtml ? `<div>${sparkHtml}</div>` : ''}
               </div>
-              <div style="display:flex;flex-direction:column;gap:6px;">
-                <button class="cb-track-view cb-agent-btn-primary" style="padding:6px 14px;font-size:11px;min-width:70px;justify-content:center;" data-id="${topic.id}">View</button>
-                <button class="cb-track-remove cb-agent-btn-secondary" style="padding:4px 14px;font-size:11px;min-width:70px;justify-content:center;color:var(--cb-error, #f87171);background:transparent;border-color:transparent;" data-id="${topic.id}">Remove</button>
+              <div style="display:flex;flex-direction:column;gap:7px;align-items:stretch;flex-shrink:0;">
+                <button class="cb-track-view cb-agent-btn-primary" style="padding:8px 16px;font-size:12px;min-width:76px;justify-content:center;border-radius:10px;" data-id="${topic.id}">View</button>
+                <button class="cb-track-edit-kw cb-agent-btn-secondary" style="padding:6px 16px;font-size:11px;min-width:76px;justify-content:center;border-radius:10px;" data-id="${topic.id}">Keywords</button>
+                <button class="cb-track-remove cb-agent-btn-secondary" style="padding:6px 16px;font-size:11px;min-width:76px;justify-content:center;border-radius:10px;color:var(--cb-error, #f87171);background:transparent;border-color:rgba(248,113,113,0.2);" data-id="${topic.id}">Remove</button>
+              </div>
+            </div>
+            <!-- ✏️ Keyword editor (hidden by default) -->
+            <div class="cb-track-kw-panel" data-id="${topic.id}" style="display:none;margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.07);width:100%;">
+              <div style="font-size:10.5px;color:var(--cb-subtext);margin-bottom:8px;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;">🏷️ Keywords</div>
+              <div class="cb-track-kw-chips" data-id="${topic.id}" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px;"></div>
+              <div style="display:flex;gap:6px;">
+                <input type="text" class="cb-track-kw-add-input" placeholder="+ add keyword" style="flex:1;padding:6px 10px;border-radius:8px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);color:var(--cb-white);font-size:11.5px;font-family:inherit;outline:none;box-sizing:border-box;" />
+                <button class="cb-track-kw-add-btn cb-agent-btn-primary" style="padding:6px 12px;font-size:11.5px;border-radius:8px;white-space:nowrap;">Add</button>
               </div>
             </div>
           `;
           listDiv.appendChild(card);
         });
 
+        // Wire View buttons
         listDiv.querySelectorAll('.cb-track-view').forEach(btn => {
           btn.addEventListener('click', async (e) => {
             e.stopPropagation();
@@ -18655,9 +18896,106 @@ Rules:
             const topicId = btn.getAttribute('data-id');
             const updated = (await StorageManager.getTrackedTopics()).filter(t => t.id !== topicId);
             await StorageManager.setTrackedTopics(updated);
-            renderTopicsList(updated);
+            __allTopics = updated;
+            renderTopicsList(getFilteredTopics());
             toast('Topic removed');
           });
+        });
+
+        // ✏️ Wire Keywords toggle buttons
+        listDiv.querySelectorAll('.cb-track-edit-kw').forEach(btn => {
+          btn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const topicId = btn.getAttribute('data-id');
+            const panel = listDiv.querySelector(`.cb-track-kw-panel[data-id="${topicId}"]`);
+            if (!panel) return;
+            const isOpen = panel.style.display !== 'none';
+            // Close all other panels first
+            listDiv.querySelectorAll('.cb-track-kw-panel').forEach(p => { p.style.display = 'none'; });
+            listDiv.querySelectorAll('.cb-track-edit-kw').forEach(b => { b.textContent = 'Keywords'; });
+            if (!isOpen) {
+              panel.style.display = 'block';
+              btn.textContent = 'Close';
+              const chipsDiv = panel.querySelector(`.cb-track-kw-chips[data-id="${topicId}"]`);
+              await renderKeywordChips(topicId, chipsDiv);
+              // Wire add button inside panel
+              const addInput = panel.querySelector('.cb-track-kw-add-input');
+              const addKwBtn = panel.querySelector('.cb-track-kw-add-btn');
+              const doAddKw = async () => {
+                const kw = addInput ? addInput.value.trim().toLowerCase() : '';
+                if (!kw) return;
+                const allT = await StorageManager.getTrackedTopics();
+                const t = allT.find(x => x.id === topicId);
+                if (t && !(t.keywords || []).includes(kw)) {
+                  t.keywords = [...(t.keywords || []), kw];
+                  await StorageManager.setTrackedTopics(allT);
+                  __allTopics = allT;
+                  if (addInput) addInput.value = '';
+                  await renderKeywordChips(topicId, chipsDiv);
+                  toast(`Added "${kw}"`);
+                } else {
+                  toast('Already tracked or empty');
+                }
+              };
+              if (addKwBtn) addKwBtn.onclick = doAddKw;
+              if (addInput) addInput.onkeydown = (ev) => { if (ev.key === 'Enter') doAddKw(); };
+            }
+          });
+        });
+      }
+
+      // Render keyword chips for a topic (inline pill editor)
+      async function renderKeywordChips(topicId, chipsDiv) {
+        if (!chipsDiv) return;
+        const allT = await StorageManager.getTrackedTopics();
+        const topic = allT.find(t => t.id === topicId);
+        const kws = topic ? (topic.keywords || []) : [];
+        chipsDiv.innerHTML = '';
+        if (!kws.length) {
+          chipsDiv.innerHTML = '<span style="font-size:10px;color:var(--cb-subtext);opacity:0.6;">No keywords yet.</span>';
+          return;
+        }
+        kws.forEach(kw => {
+          const chip = document.createElement('span');
+          chip.style.cssText = 'display:inline-flex;align-items:center;gap:4px;padding:3px 8px 3px 10px;background:rgba(139,92,246,0.1);border:1px solid rgba(139,92,246,0.25);border-radius:12px;font-size:10.5px;color:#c4b5fd;cursor:default;';
+          chip.innerHTML = `${escapeHtml(kw)}<button title="Remove" style="background:none;border:none;color:#a78bfa;cursor:pointer;font-size:12px;padding:0 0 0 3px;line-height:1;" data-kw="${escapeHtml(kw)}">×</button>`;
+          chip.querySelector('button').addEventListener('click', async () => {
+            const allT2 = await StorageManager.getTrackedTopics();
+            const t2 = allT2.find(x => x.id === topicId);
+            if (t2) {
+              t2.keywords = (t2.keywords || []).filter(k => k !== kw);
+              await StorageManager.setTrackedTopics(allT2);
+              __allTopics = allT2;
+              await renderKeywordChips(topicId, chipsDiv);
+              toast(`Removed "${kw}"`);
+            }
+          });
+          chipsDiv.appendChild(chip);
+        });
+      }
+
+      // 🔍 Live search filter helper
+      function getFilteredTopics() {
+        const q = (searchInput ? searchInput.value.trim() : '').toLowerCase();
+        if (!q) return __allTopics;
+        return __allTopics.filter(t =>
+          (t.label || '').toLowerCase().includes(q) ||
+          (t.keywords || []).some(kw => kw.toLowerCase().includes(q))
+        );
+      }
+
+      // 🔍 Wire search/filter
+      if (searchInput) {
+        searchInput.addEventListener('input', () => {
+          renderTopicsList(getFilteredTopics());
+        });
+        searchInput.addEventListener('focus', () => {
+          searchInput.style.borderColor = 'rgba(139,92,246,0.5)';
+          searchInput.style.boxShadow = '0 0 0 3px rgba(139,92,246,0.1)';
+        });
+        searchInput.addEventListener('blur', () => {
+          searchInput.style.borderColor = 'rgba(255,255,255,0.08)';
+          searchInput.style.boxShadow = 'none';
         });
       }
 
@@ -18669,7 +19007,8 @@ Rules:
             const kept = current.filter((topic) => (topic.lastActivity || topic.createdAt || 0) >= cutoff);
             const removed = Math.max(0, current.length - kept.length);
             await StorageManager.setTrackedTopics(kept);
-            renderTopicsList(kept);
+            __allTopics = kept;
+            renderTopicsList(getFilteredTopics());
             toast(removed > 0 ? `Pruned ${removed} stale topic${removed === 1 ? '' : 's'}` : 'No stale topics to prune');
           } catch (_) { toast('Prune failed'); }
         });
@@ -18807,16 +19146,24 @@ One incredibly specific, actionable recommendation for what the user should do n
               <div class="cb-agent-result-section"><div class="cb-agent-result-body">${formatted}</div></div>
               <div class="cb-agent-action-row">
                 <button id="cb-track-copy" class="cb-agent-btn-secondary">Copy Report</button>
+                <button id="cb-track-insert" class="cb-agent-btn-primary" style="background:linear-gradient(135deg,rgba(139,92,246,0.9),rgba(109,40,217,0.9));">Brief the AI</button>
               </div>
               <div class="cb-agent-meta">Tracked since ${getTimeAgo(topic.createdAt)} · ${res.model_used || 'AI'} · ${res.latency_ms || 0}ms · max overlap ${overlapTelemetry.maxOverlap}%${formatRouteDiagnostics(res)}</div>
             `;
             detailDiv.querySelector('#cb-track-back').addEventListener('click', () => {
               detailDiv.style.display = 'none';
               listDiv.style.display = 'flex';
-              StorageManager.getTrackedTopics().then(t => renderTopicsList(t));
+              StorageManager.getTrackedTopics().then(t => { __allTopics = t; renderTopicsList(getFilteredTopics()); });
             });
             detailDiv.querySelector('#cb-track-copy').addEventListener('click', async () => {
               try { await navigator.clipboard.writeText(normalizedResult); toast('Report copied!'); } catch (_) { toast('Copy failed'); }
+            });
+            detailDiv.querySelector('#cb-track-insert').addEventListener('click', () => {
+              try {
+                const briefText = `Here is my current tracking status on "${topic.label}":\n\n${normalizedResult}`;
+                insertTextToChat(briefText);
+                toast('📋 Topic brief inserted into chat!');
+              } catch (_) { toast('Insert failed'); }
             });
           } else {
             detailDiv.innerHTML = `<div class="cb-agent-error">Failed: ${res && res.error ? escapeHtml(res.error) : 'Unknown error'}</div>
@@ -18838,9 +19185,9 @@ One incredibly specific, actionable recommendation for what the user should do n
       addBtn.addEventListener('click', async () => {
         const label = trackInput.value.trim();
         if (!label) { toast('Enter a topic to track'); return; }
-        if (topics.length >= 10) { toast('Max 10 tracked topics. Remove one first.'); return; }
+        if (__allTopics.length >= 10) { toast('Max 10 tracked topics. Remove one first.'); return; }
 
-        if (topics.some(t => (t.label || '').toLowerCase() === label.toLowerCase())) {
+        if (__allTopics.some(t => (t.label || '').toLowerCase() === label.toLowerCase())) {
           toast('This topic is already tracked');
           return;
         }
@@ -18886,20 +19233,21 @@ One incredibly specific, actionable recommendation for what the user should do n
           };
 
           topics.push(newTopic);
+          __allTopics = topics;
           await StorageManager.setTrackedTopics(topics);
           trackInput.value = '';
-          renderTopicsList(topics);
+          renderTopicsList(__allTopics);
           toast(`Now tracking "${label}"`);
         } catch (e) {
           toast('Failed to add topic');
           debugLog('Track This add error', e);
         } finally {
           addBtn.disabled = false;
-          addBtn.textContent = '+ Track';
+          addBtn.textContent = '+ Track Topic';
         }
       });
 
-      renderTopicsList(topics);
+      renderTopicsList(__allTopics);
     }
 
 
@@ -18923,40 +19271,68 @@ One incredibly specific, actionable recommendation for what the user should do n
           </div>
           <div class="cb-agent-desc">Cross-check any AI answer with a different model. Get a confidence score and see what might be wrong or missing.</div>
 
-          <div style="display:flex;gap:6px;margin-bottom:10px;">
-            <button id="cb-so-auto" class="cb-agent-btn-primary" style="flex:1;font-size:11px;">Auto-detect last answer</button>
-            <button id="cb-so-paste" class="cb-agent-btn-secondary" style="flex:1;font-size:11px;">Paste an answer</button>
-          </div>
-          <div style="font-size:10.5px;color:var(--cb-subtext);margin-bottom:10px;">Pick a source, then run a fast verification check.</div>
-
-          <div id="cb-so-paste-area" style="display:none;margin-bottom:10px;">
-            <textarea id="cb-so-question" class="cb-agent-textarea" aria-label="Input text" placeholder="Original question (optional)" style="min-height:52px;margin-bottom:6px;"></textarea>
-            <textarea id="cb-so-answer" class="cb-agent-textarea" aria-label="Input text" placeholder="Paste the AI answer you want to verify" style="min-height:96px;"></textarea>
+          <div class="cb-agent-field-group">
+            <label class="cb-agent-field-label">Verification Source</label>
+            <div class="cb-agent-toggle-group" style="height:38px;box-sizing:border-box;">
+              <button id="cb-so-auto" type="button" class="cb-agent-toggle cb-agent-toggle-active" style="padding:0;outline:none;">Auto-detect last answer</button>
+              <button id="cb-so-paste" type="button" class="cb-agent-toggle" style="padding:0;outline:none;">Paste an answer</button>
+            </div>
           </div>
 
-          <div id="cb-so-auto-preview" style="display:none;margin-bottom:10px;" class="cb-agent-result-section">
+          <div id="cb-so-paste-area" style="display:none;margin-bottom:12px;">
+            <div class="cb-agent-field-group">
+              <label class="cb-agent-field-label">Original Question (Optional)</label>
+              <textarea id="cb-so-question" class="cb-agent-textarea" aria-label="Input text" placeholder="Original question..." style="min-height:52px;"></textarea>
+            </div>
+            <div class="cb-agent-field-group">
+              <label class="cb-agent-field-label">Answer to Verify</label>
+              <textarea id="cb-so-answer" class="cb-agent-textarea" aria-label="Input text" placeholder="Paste the AI answer you want to verify" style="min-height:96px;"></textarea>
+            </div>
+          </div>
+
+          <div id="cb-so-auto-preview" style="display:none;margin-bottom:12px;" class="cb-agent-result-section">
             <div class="cb-agent-result-header">Detected answer preview</div>
             <div id="cb-so-auto-text" style="font-size:11px;line-height:1.5;color:var(--cb-white);max-height:96px;overflow:hidden;"></div>
           </div>
-          
-          <div style="margin-bottom:10px;">
-            <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--cb-white);cursor:pointer;margin-bottom:4px;">
-              <input type="radio" name="cb-so-mode" value="verify" checked> Verify Accuracy (recommended)
-            </label>
-            <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--cb-white);cursor:pointer;">
-              <input type="radio" name="cb-so-mode" value="critique"> Critique & Challenge
-            </label>
+
+          <div class="cb-agent-field-row">
+            <div class="cb-agent-field-group">
+              <label class="cb-agent-field-label">Analysis Mode</label>
+              <select id="cb-so-mode-select" class="cb-agent-select" aria-label="Analysis Mode">
+                <option value="verify" selected>Verify Accuracy</option>
+                <option value="critique">Critique & Challenge</option>
+              </select>
+            </div>
+
+            <div class="cb-agent-field-group">
+              <label class="cb-agent-field-label">Verification Model</label>
+              <select id="cb-so-model" class="cb-agent-select" aria-label="Model">
+                <option value="auto" selected>Auto-select model</option>
+                <option value="gemini">Verify with Gemini</option>
+                <option value="llama">Verify with Llama</option>
+                <option value="Other">Other...</option>
+              </select>
+            </div>
           </div>
 
-          <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--cb-white);cursor:pointer;margin-bottom:10px;">
-            <input type="checkbox" id="cb-so-honesty"> Honesty Mode (stress test)
-          </label>
+          <div id="cb-so-model-custom-container" style="display:none;margin-bottom:12px;">
+            <div class="cb-agent-field-group">
+              <label class="cb-agent-field-label">Specify Model</label>
+              <input type="text" id="cb-so-model-custom" class="cb-agent-input" placeholder="Specify model (e.g. Claude 3.5, GPT-4)..." />
+            </div>
+          </div>
 
-          <select id="cb-so-model" class="cb-agent-select" aria-label="Select option" style="margin-bottom:10px;">
-            <option value="auto">Auto-select verification model</option>
-            <option value="gemini">Verify with Gemini</option>
-            <option value="llama">Verify with Llama</option>
-          </select>
+          <div class="cb-agent-field-group" style="margin-bottom:12px;">
+            <label class="cb-agent-field-label">Focus / Special Instructions (Optional)</label>
+            <input type="text" id="cb-so-focus" class="cb-agent-input" placeholder="e.g. check code efficiency, verify date accuracy" />
+          </div>
+
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;background:rgba(255,255,255,0.02);padding:10px 14px;border:1px solid rgba(255,255,255,0.06);border-radius:10px;">
+            <label style="display:flex;align-items:center;gap:8px;font-size:11px;color:var(--cb-white);cursor:pointer;margin:0;user-select:none;">
+              <input type="checkbox" id="cb-so-honesty" style="cursor:pointer;width:14px;height:14px;accent-color:var(--_agent-clr);">
+              Honesty Mode (stress test)
+            </label>
+          </div>
 
           <button id="cb-so-run" class="cb-agent-btn-primary" disabled>Run Second Opinion</button>
           <div id="cb-so-result" style="display:none;margin-top:14px;"></div>
@@ -18979,17 +19355,19 @@ One incredibly specific, actionable recommendation for what the user should do n
       const autoText = outputArea.querySelector('#cb-so-auto-text');
       const questionInput = outputArea.querySelector('#cb-so-question');
       const answerInput = outputArea.querySelector('#cb-so-answer');
-      const honestyToggle = outputArea.querySelector('#cb-so-honesty');
+      const modeSelect = outputArea.querySelector('#cb-so-mode-select');
       const modelSelect = outputArea.querySelector('#cb-so-model');
+      const modelCustomContainer = outputArea.querySelector('#cb-so-model-custom-container');
+      const modelCustomInput = outputArea.querySelector('#cb-so-model-custom');
+      const focusInput = outputArea.querySelector('#cb-so-focus');
+      const honestyToggle = outputArea.querySelector('#cb-so-honesty');
       const runBtn = outputArea.querySelector('#cb-so-run');
       const resultDiv = outputArea.querySelector('#cb-so-result');
 
       autoBtn.addEventListener('click', async () => {
         mode = 'auto';
-        autoBtn.className = 'cb-agent-btn-primary';
-        autoBtn.style.cssText = 'flex:1;font-size:11px;';
-        pasteBtn.className = 'cb-agent-btn-secondary';
-        pasteBtn.style.cssText = 'flex:1;font-size:11px;';
+        autoBtn.classList.add('cb-agent-toggle-active');
+        pasteBtn.classList.remove('cb-agent-toggle-active');
         pasteArea.style.display = 'none';
         autoPreview.style.display = 'block';
 
@@ -19028,13 +19406,15 @@ One incredibly specific, actionable recommendation for what the user should do n
 
       pasteBtn.addEventListener('click', () => {
         mode = 'paste';
-        pasteBtn.className = 'cb-agent-btn-primary';
-        pasteBtn.style.cssText = 'flex:1;font-size:11px;';
-        autoBtn.className = 'cb-agent-btn-secondary';
-        autoBtn.style.cssText = 'flex:1;font-size:11px;';
+        pasteBtn.classList.add('cb-agent-toggle-active');
+        autoBtn.classList.remove('cb-agent-toggle-active');
         pasteArea.style.display = 'block';
         autoPreview.style.display = 'none';
         runBtn.disabled = false;
+      });
+
+      modelSelect.addEventListener('change', () => {
+        modelCustomContainer.style.display = modelSelect.value === 'Other' ? 'block' : 'none';
       });
 
       // Auto-trigger detection
@@ -19067,11 +19447,15 @@ One incredibly specific, actionable recommendation for what the user should do n
 
         try {
           const sharedCtx = await buildAgentSharedContext();
-          const verifyModel = modelSelect.value === 'auto' ? 'auto' : modelSelect.value;
-          const critiqueMode = outputArea.querySelector('input[name="cb-so-mode"]:checked').value === 'critique';
+          let verifyModel = modelSelect.value;
+          if (verifyModel === 'Other') {
+            verifyModel = modelCustomInput.value.trim() || 'auto';
+          }
+          const critiqueMode = modeSelect.value === 'critique';
           const honestyMode = !!(honestyToggle && honestyToggle.checked);
+          const focusText = focusInput.value.trim();
 
-          const verifyPrompt = `You are Second Opinion, a verification agent inside ChatBridge.
+          let verifyPrompt = `You are Second Opinion, a verification agent inside ChatBridge.
 
 ${sharedCtx.promptContext}
 ${buildAgentPromptContract('secondopinion', ['Cite concrete claims from the answer under review.', 'Avoid repeating the same criticism in multiple sections.'])}
@@ -19100,7 +19484,7 @@ A brief, improved version that fixes the issues found. Only include this if sign
 
 Be rigorous but fair. Cite specific parts of the original answer when critiquing.`;
 
-          const critiquePrompt = `You are a critical "Red Team" AI serving inside ChatBridge.
+          let critiquePrompt = `You are a critical "Red Team" AI serving inside ChatBridge.
 
 ${sharedCtx.promptContext}
 ${buildAgentPromptContract('secondopinion', ['Critique must be adversarial but evidence-based.', 'Do not repeat risk statements verbatim across sections.'])}
@@ -19128,6 +19512,11 @@ Propose a counter-narrative or edge case that completely breaks the AI's logic.
 How should this actually be handled? Provide a deeply contrasting or vastly superior approach.
 
 Be highly critical, direct, and unforgiving in your analysis.`;
+
+          if (focusText) {
+            verifyPrompt += `\n\nAdditional instructions / Focus areas:\n- ${focusText}`;
+            critiquePrompt += `\n\nAdditional instructions / Focus areas:\n- ${focusText}`;
+          }
 
           const renderSingleAnalysis = (resObj) => {
             const scoreMatch = (resObj.result || '').match(/\*\*(\d+)%?\*\*/);
@@ -19416,34 +19805,85 @@ Keep it concise and concrete.`;
           </div>
           <div class="cb-agent-desc">Generate a professional briefing document from your AI conversations — ready to share with anyone.</div>
 
-          <select id="cb-handoff-source" class="cb-agent-select" aria-label="Select option" style="margin-bottom:8px;">
-            <option value="current">Current conversation</option>
-            <option value="recent">All recent activity (last 5 chats)</option>
-            <option value="topic">Search by topic...</option>
-          </select>
-
-          <div id="cb-handoff-topic-search" style="display:none;margin-bottom:8px;">
-            <input type="text" id="cb-handoff-topic" class="cb-agent-input" placeholder="Search topic..." />
+          <div class="cb-agent-field-group">
+            <label class="cb-agent-field-label">Source Context</label>
+            <select id="cb-handoff-source" class="cb-agent-select" aria-label="Source context">
+              <option value="current">Current conversation</option>
+              <option value="recent">All recent activity (last 5 chats)</option>
+              <option value="topic">Search by topic...</option>
+            </select>
           </div>
 
-          <select id="cb-handoff-recipient" class="cb-agent-select" aria-label="Select option" style="margin-bottom:8px;">
-            <option value="Colleague">Colleague</option>
-            <option value="Client">Client</option>
-            <option value="Manager">Manager</option>
-            <option value="My Future Self">My Future Self</option>
-          </select>
+          <div id="cb-handoff-topic-search" style="display:none;margin-bottom:12px;">
+            <div class="cb-agent-field-group">
+              <label class="cb-agent-field-label">Search Query</label>
+              <input type="text" id="cb-handoff-topic" class="cb-agent-input" placeholder="Search topic (e.g. design, api)..." />
+            </div>
+          </div>
 
-          <select id="cb-handoff-format" class="cb-agent-select" aria-label="Output format" style="margin-bottom:8px;">
-            <option value="briefing" selected>Briefing Document</option>
-            <option value="email">Email</option>
-            <option value="mom">MOM (Minutes of Meeting)</option>
-            <option value="letter">Formal Letter</option>
-            <option value="status_update">Status Update</option>
-          </select>
+          <div class="cb-agent-field-row">
+            <div class="cb-agent-field-group">
+              <label class="cb-agent-field-label">Recipient</label>
+              <select id="cb-handoff-recipient" class="cb-agent-select" aria-label="Recipient">
+                <option value="Colleague">Colleague</option>
+                <option value="Client">Client</option>
+                <option value="Manager">Manager</option>
+                <option value="My Future Self">My Future Self</option>
+                <option value="Other">Other...</option>
+              </select>
+            </div>
 
-          <div style="display:flex;gap:6px;margin-bottom:10px;">
-            <button id="cb-handoff-brief" class="cb-agent-btn-primary" style="flex:1;font-size:10px;">Brief</button>
-            <button id="cb-handoff-detailed" class="cb-agent-btn-secondary" style="flex:1;font-size:10px;">Comprehensive</button>
+            <div class="cb-agent-field-group">
+              <label class="cb-agent-field-label">Format</label>
+              <select id="cb-handoff-format" class="cb-agent-select" aria-label="Output format">
+                <option value="briefing" selected>Briefing Document</option>
+                <option value="email">Email</option>
+                <option value="mom">MOM (Minutes of Meeting)</option>
+                <option value="letter">Formal Letter</option>
+                <option value="status_update">Status Update</option>
+              </select>
+            </div>
+          </div>
+
+          <div id="cb-handoff-recipient-custom-container" style="display:none;margin-bottom:12px;">
+            <div class="cb-agent-field-group">
+              <label class="cb-agent-field-label">Specify Recipient</label>
+              <input type="text" id="cb-handoff-recipient-custom" class="cb-agent-input" placeholder="Specify role/recipient (e.g. CEO, Partner)..." />
+            </div>
+          </div>
+
+          <div class="cb-agent-field-row">
+            <div class="cb-agent-field-group">
+              <label class="cb-agent-field-label">Tone of Voice</label>
+              <select id="cb-handoff-tone" class="cb-agent-select" aria-label="Tone of voice">
+                <option value="Default">Auto (Based on recipient)</option>
+                <option value="Professional">Professional & Polished</option>
+                <option value="Executive">Executive & Summary</option>
+                <option value="Direct">Direct & Concise</option>
+                <option value="Technical">Technical & Detailed</option>
+                <option value="Custom">Custom...</option>
+              </select>
+            </div>
+
+            <div class="cb-agent-field-group">
+              <label class="cb-agent-field-label">Detail Level</label>
+              <div class="cb-agent-toggle-group" style="height:38px;box-sizing:border-box;">
+                <button id="cb-handoff-brief" type="button" class="cb-agent-toggle cb-agent-toggle-active" style="padding:0;outline:none;">Brief</button>
+                <button id="cb-handoff-detailed" type="button" class="cb-agent-toggle" style="padding:0;outline:none;">Detailed</button>
+              </div>
+            </div>
+          </div>
+
+          <div id="cb-handoff-tone-custom-container" style="display:none;margin-bottom:12px;">
+            <div class="cb-agent-field-group">
+              <label class="cb-agent-field-label">Specify Tone</label>
+              <input type="text" id="cb-handoff-tone-custom" class="cb-agent-input" placeholder="Specify tone (e.g. persuasive, friendly)..." />
+            </div>
+          </div>
+
+          <div class="cb-agent-field-group" style="margin-bottom:16px;">
+            <label class="cb-agent-field-label">Focus / Special Instructions (Optional)</label>
+            <input type="text" id="cb-handoff-focus" class="cb-agent-input" placeholder="e.g. highlight deadlines, emphasize design choices" />
           </div>
 
           <button id="cb-handoff-run" class="cb-agent-btn-primary">Generate Handoff Document</button>
@@ -19462,7 +19902,13 @@ Keep it concise and concrete.`;
       const topicSearch = outputArea.querySelector('#cb-handoff-topic-search');
       const topicInput = outputArea.querySelector('#cb-handoff-topic');
       const recipientSelect = outputArea.querySelector('#cb-handoff-recipient');
+      const recipientCustomContainer = outputArea.querySelector('#cb-handoff-recipient-custom-container');
+      const recipientCustomInput = outputArea.querySelector('#cb-handoff-recipient-custom');
       const formatSelect = outputArea.querySelector('#cb-handoff-format');
+      const toneSelect = outputArea.querySelector('#cb-handoff-tone');
+      const toneCustomContainer = outputArea.querySelector('#cb-handoff-tone-custom-container');
+      const toneCustomInput = outputArea.querySelector('#cb-handoff-tone-custom');
+      const focusInput = outputArea.querySelector('#cb-handoff-focus');
       const briefBtn = outputArea.querySelector('#cb-handoff-brief');
       const detailedBtn = outputArea.querySelector('#cb-handoff-detailed');
       const runBtn = outputArea.querySelector('#cb-handoff-run');
@@ -19477,6 +19923,14 @@ Keep it concise and concrete.`;
         topicSearch.style.display = sourceSelect.value === 'topic' ? 'block' : 'none';
       });
 
+      recipientSelect.addEventListener('change', () => {
+        recipientCustomContainer.style.display = recipientSelect.value === 'Other' ? 'block' : 'none';
+      });
+
+      toneSelect.addEventListener('change', () => {
+        toneCustomContainer.style.display = toneSelect.value === 'Custom' ? 'block' : 'none';
+      });
+
       formatSelect.addEventListener('change', () => {
         outputFormat = formatSelect.value || 'briefing';
         updateRunLabel();
@@ -19484,17 +19938,13 @@ Keep it concise and concrete.`;
 
       briefBtn.addEventListener('click', () => {
         detailLevel = 'brief';
-        briefBtn.className = 'cb-agent-btn-primary';
-        briefBtn.style.cssText = 'flex:1;font-size:10px;';
-        detailedBtn.className = 'cb-agent-btn-secondary';
-        detailedBtn.style.cssText = 'flex:1;font-size:10px;';
+        briefBtn.classList.add('cb-agent-toggle-active');
+        detailedBtn.classList.remove('cb-agent-toggle-active');
       });
       detailedBtn.addEventListener('click', () => {
         detailLevel = 'comprehensive';
-        detailedBtn.className = 'cb-agent-btn-primary';
-        detailedBtn.style.cssText = 'flex:1;font-size:10px;';
-        briefBtn.className = 'cb-agent-btn-secondary';
-        briefBtn.style.cssText = 'flex:1;font-size:10px;';
+        detailedBtn.classList.add('cb-agent-toggle-active');
+        briefBtn.classList.remove('cb-agent-toggle-active');
       });
 
       updateRunLabel();
@@ -19515,7 +19965,10 @@ Keep it concise and concrete.`;
           const sharedCtx = await buildAgentSharedContext();
           let contextText = '';
           const source = sourceSelect.value;
-          const recipient = recipientSelect.value;
+          let recipient = recipientSelect.value;
+          if (recipient === 'Other') {
+            recipient = recipientCustomInput.value.trim() || 'Recipient';
+          }
 
           if (source === 'current') {
             contextText = await getConversationText();
@@ -19557,12 +20010,27 @@ Keep it concise and concrete.`;
             ? 'Keep it concise — aim for 200-400 words. Only the essentials.'
             : 'Be comprehensive — aim for 500-800 words. Include all relevant details.';
 
-          const toneGuide = recipient === 'Client' ? 'professional and polished'
-            : recipient === 'Manager' ? 'executive and results-focused'
-              : recipient === 'My Future Self' ? 'informal and reference-oriented'
-                : 'clear and collegial';
+          let selectedTone = toneSelect.value;
+          let toneGuide = '';
+          if (selectedTone === 'Default') {
+            toneGuide = recipient === 'Client' ? 'professional and polished'
+              : recipient === 'Manager' ? 'executive and results-focused'
+                : recipient === 'My Future Self' ? 'informal and reference-oriented'
+                  : 'clear and collegial';
+          } else if (selectedTone === 'Custom') {
+            toneGuide = toneCustomInput.value.trim() || 'professional';
+          } else if (selectedTone === 'Professional') {
+            toneGuide = 'professional and polished';
+          } else if (selectedTone === 'Executive') {
+            toneGuide = 'executive and results-focused';
+          } else if (selectedTone === 'Direct') {
+            toneGuide = 'direct, concise, and to-the-point';
+          } else if (selectedTone === 'Technical') {
+            toneGuide = 'technical, detailed, and precise';
+          }
 
-          const prompt = buildHandoffPromptByFormat({
+          const focusText = focusInput.value.trim();
+          let prompt = buildHandoffPromptByFormat({
             formatKey: outputFormat,
             recipient,
             detailLevel,
@@ -19571,6 +20039,10 @@ Keep it concise and concrete.`;
             sharedPromptContext: sharedCtx.promptContext,
             contextText
           });
+
+          if (focusText) {
+            prompt += `\n\nAdditional instructions / Focus areas:\n- ${focusText}`;
+          }
 
           const res = await callAgentRouteWithRetry(prompt, withAgentRouteStrategy({ maxTokens: detailLevel === 'brief' ? 800 : 1400 }));
 
