@@ -14027,10 +14027,10 @@ Output ONLY the 5 numbered questions, no other text.`;
             extracted = cachedData.extracted;
           } else {
             // Get extracted content from last scan or extract now
-            extracted = window.ChatBridge?._extractedContent || window.ChatBridge?._lastScanData?.extracted;
+            extracted = window.ChatBridge?._lastScanData?.extracted || window.ChatBridge?._extractedContent;
           }
 
-          if (!extracted || Object.values(extracted).every(arr => !arr || arr.length === 0)) {
+          if (!extracted || Object.values(extracted).every(arr => !arr || arr.length === 0 || typeof arr === 'number')) {
             // Need to scan first
             showToolResult('<div style="text-align:center;padding:20px;"><div class="cb-spinner"></div><div style="margin-top:8px;color:var(--cb-subtext);">Scanning conversation...</div></div>', 'Extract Content');
             const msgs = await scanChat();
@@ -14039,7 +14039,7 @@ Output ONLY the 5 numbered questions, no other text.`;
               showToolResult('<div style="text-align:center;padding:30px;color:var(--cb-subtext);"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom:12px;opacity:0.5;"><rect x="3" y="5" width="18" height="14" rx="2"/><polyline points="7 15 7 10 12 10"/></svg><br>No conversation found.<br><br><span style="font-size:10px;">Open a chat and try again.</span></div>', 'Extract Content');
               return;
             }
-            extracted = window.ChatBridge?._extractedContent || {};
+            extracted = window.ChatBridge?._lastScanData?.extracted || window.ChatBridge?._extractedContent || {};
 
             // Cache the extraction for next time
             if (cacheKey && extracted) {
@@ -14435,16 +14435,16 @@ Output ONLY the 5 numbered questions, no other text.`;
 
           // All 10 supported platforms with URLs and SVG icons
           const platforms = [
-            { id: 'chatgpt', name: 'ChatGPT', url: 'https://chatgpt.com/', color: '#10a37f', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10a37f" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>' },
-            { id: 'claude', name: 'Claude', url: 'https://claude.ai/', color: '#cc785c', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#cc785c" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>' },
-            { id: 'gemini', name: 'Gemini', url: 'https://gemini.google.com/', color: '#4285f4', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4285f4" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>' },
-            { id: 'copilot', name: 'Copilot', url: 'https://copilot.microsoft.com/', color: '#0078d4', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0078d4" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>' },
-            { id: 'perplexity', name: 'Perplexity', url: 'https://www.perplexity.ai/', color: '#1fb8cd', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1fb8cd" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>' },
-            { id: 'mistral', name: 'Mistral', url: 'https://chat.mistral.ai/', color: '#ff6b35', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ff6b35" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>' },
-            { id: 'deepseek', name: 'DeepSeek', url: 'https://chat.deepseek.com/', color: '#0066cc', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0066cc" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>' },
-            { id: 'poe', name: 'Poe', url: 'https://poe.com/', color: '#5a4fcf', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5a4fcf" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>' },
-            { id: 'grok', name: 'Grok', url: 'https://grok.com/', color: '#1da1f2', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1da1f2" stroke-width="2"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>' },
-            { id: 'meta', name: 'Meta AI', url: 'https://meta.ai/', color: '#0668e1', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0668e1" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><line x1="21.17" y1="8" x2="12" y2="8"/><line x1="3.95" y1="6.06" x2="8.54" y2="14"/><line x1="10.88" y1="21.94" x2="15.46" y2="14"/></svg>' }
+            { id: 'chatgpt', name: 'ChatGPT', url: 'https://chatgpt.com/', color: '#10a37f', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M22.2819 9.8211a5.9847 5.9847 0 0 0-.5157-4.9108 6.0462 6.0462 0 0 0-6.5098-2.9A6.0651 6.0651 0 0 0 4.9807 4.1818a5.9847 5.9847 0 0 0-3.9977 2.9 6.0462 6.0462 0 0 0 .7427 7.0966 5.98 5.98 0 0 0 .511 4.9107 6.051 6.051 0 0 0 6.5146 2.9001A5.9847 5.9847 0 0 0 13.2599 24a6.0557 6.0557 0 0 0 5.7718-4.2058 5.9894 5.9894 0 0 0 3.9977-2.9001 6.0557 6.0557 0 0 0-.7475-7.0729zm-9.022 12.6081a4.4755 4.4755 0 0 1-2.8764-1.0408l.1419-.0804 4.7783-2.7582a.7948.7948 0 0 0 .3927-.6813v-6.7369l2.02 1.1686a.071.071 0 0 1 .038.052v5.5826a4.504 4.504 0 0 1-4.4945 4.4944zm-9.6607-4.1254a4.4708 4.4708 0 0 1-.5346-3.0137l.142.0852 4.783 2.7582a.7712.7712 0 0 0 .7806 0l5.8428-3.3685v2.3324a.0804.0804 0 0 1-.0332.0615L9.74 19.9502a4.4992 4.4992 0 0 1-6.1408-1.6464zM2.3408 7.8956a4.485 4.485 0 0 1 2.3655-1.9728V11.6a.7664.7664 0 0 0 .3879.6765l5.8144 3.3543-2.0201 1.1685a.0757.0757 0 0 1-.071 0l-4.8303-2.7865A4.504 4.504 0 0 1 2.3408 7.872zm16.5963 3.8558L13.1038 8.364 15.1192 7.2a.0757.0757 0 0 1 .071 0l4.8303 2.7913a4.4944 4.4944 0 0 1-.6765 8.1042v-5.6772a.79.79 0 0 0-.407-.667zm2.0107-3.0231l-.142-.0852-4.7735-2.7818a.7759.7759 0 0 0-.7854 0L9.409 9.2297V6.8974a.0662.0662 0 0 1 .0284-.0615l4.8303-2.7866a4.4992 4.4992 0 0 1 6.6802 4.66zM8.3065 12.863l-2.02-1.1638a.0804.0804 0 0 1-.038-.0567V6.0742a4.4992 4.4992 0 0 1 7.3757-3.4537l-.142.0805L8.704 5.459a.7948.7948 0 0 0-.3927.6813zm1.0976-2.3654l2.602-1.4998 2.6069 1.4998v2.9994l-2.5974 1.4997-2.6067-1.4997Z"/></svg>' },
+            { id: 'claude', name: 'Claude', url: 'https://claude.ai/', color: '#cc785c', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="m4.7144 15.9555 4.7174-2.6471.079-.2307-.079-.1275h-.2307l-.7893-.0486-2.6956-.0729-2.3375-.0971-2.2646-.1214-.5707-.1215-.5343-.7042.0546-.3522.4797-.3218.686.0608 1.5179.1032 2.2767.1578 1.6514.0972 2.4468.255h.3886l.0546-.1579-.1336-.0971-.1032-.0972L6.973 9.8356l-2.55-1.6879-1.3356-.9714-.7225-.4918-.3643-.4614-.1578-1.0078.6557-.7225.8803.0607.2246.0607.8925.686 1.9064 1.4754 2.4893 1.8336.3643.3035.1457-.1032.0182-.0728-.164-.2733-1.3539-2.4467-1.445-2.4893-.6435-1.032-.17-.6194c-.0607-.255-.1032-.4674-.1032-.7285L6.287.1335 6.6997 0l.9957.1336.419.3642.6192 1.4147 1.0018 2.2282 1.5543 3.0296.4553.8985.2429.8318.091.255h.1579v-.1457l.1275-1.706.2368-2.0947.2307-2.6957.0789-.7589.3764-.9107.7468-.4918.5828.2793.4797.686-.0668.4433-.2853 1.8517-.5586 2.9021-.3643 1.9429h.2125l.2429-.2429.9835-1.3053 1.6514-2.0643.7286-.8196.85-.9046.5464-.4311h1.0321l.759 1.1293-.34 1.1657-1.0625 1.3478-.8804 1.1414-1.2628 1.7-.7893 1.36.0729.1093.1882-.0183 2.8535-.607 1.5421-.2794 1.8396-.3157.8318.3886.091.3946-.3278.8075-1.967.4857-2.3072.4614-3.4364.8136-.0425.0304.0486.0607 1.5482.1457.6618.0364h1.621l3.0175.2247.7892.522.4736.6376-.079.4857-1.2142.6193-1.6393-.3886-3.825-.9107-1.3113-.3279h-.1822v.1093l1.0929 1.0686 2.0035 1.8092 2.5075 2.3314.1275.5768-.3218.4554-.34-.0486-2.2039-1.6575-.85-.7468-1.9246-1.621h-.1275v.17l.4432.6496 2.3436 3.5214.1214 1.0807-.17.3521-.6071.2125-.6679-.1214-1.3721-1.9246L14.38 17.959l-1.1414-1.9428-.1397.079-.674 7.2552-.3156.3703-.7286.2793-.6071-.4614-.3218-.7468.3218-1.4753.3886-1.9246.3157-1.53.2853-1.9004.17-.6314-.0121-.0425-.1397.0182-1.4328 1.9672-2.1796 2.9446-1.7243 1.8456-.4128.164-.7164-.3704.0667-.6618.4008-.5889 2.386-3.0357 1.4389-1.882.929-1.0868-.0062-.1579h-.0546l-6.3385 4.1164-1.1293.1457-.4857-.4554.0608-.7467.2307-.2429 1.9064-1.3114z"/></svg>' },
+            { id: 'gemini', name: 'Gemini', url: 'https://gemini.google.com/', color: '#4285f4', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M20.616 10.835a14.147 14.147 0 0 1-4.45-3.001 14.111 14.111 0 0 1-3.678-6.452.503.503 0 0 0-.975 0 14.134 14.134 0 0 1-3.679 6.452 14.155 14.155 0 0 1-4.45 3.001c-.65.28-1.318.505-2.002.678a.502.502 0 0 0 0 .975c.684.172 1.35.397 2.002.677a14.147 14.147 0 0 1 4.45 3.001 14.112 14.112 0 0 1 3.679 6.453.502.502 0 0 0 .975 0c.172-.685.397-1.351.677-2.003a14.145 14.145 0 0 1 3.001-4.45 14.113 14.113 0 0 1 6.453-3.678.503.503 0 0 0 0-.975 13.245 13.245 0 0 1-2.003-.678z"/></svg>' },
+            { id: 'copilot', name: 'Copilot', url: 'https://copilot.microsoft.com/', color: '#0078d4', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M9 23l.073-.001a2.53 2.53 0 01-2.347-1.838l-.697-2.433a2.529 2.529 0 00-2.426-1.839h-.497l-.104-.002c-4.485 0-2.935-5.278-1.75-9.225l.162-.525C2.412 3.99 3.883 1 6.25 1h8.86c1.12 0 2.106.745 2.422 1.829l.715 2.453a2.53 2.53 0 002.247 1.823l.147.005.534.001c3.557.115 3.088 3.745 2.156 7.206l-.113.413c-.154.548-.315 1.089-.47 1.607l-.163.525C21.588 20.01 20.116 23 17.75 23h-8.75zm8.22-15.89l-3.856.001a2.526 2.526 0 00-2.35 1.615L9.21 15.04a2.529 2.529 0 01-2.43 1.847l3.853.002c1.056 0 1.992-.661 2.361-1.644l1.796-6.287a2.529 2.529 0 012.43-1.848z"/></svg>' },
+            { id: 'perplexity', name: 'Perplexity', url: 'https://www.perplexity.ai/', color: '#1fb8cd', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M19.785 0v7.272H22.5V17.62h-2.935V24l-7.037-6.194v6.145h-1.091v-6.152L4.392 24v-6.465H1.5V7.188h2.884V0l7.053 6.494V.19h1.09v6.49L19.786 0zm-7.257 9.044v7.319l5.946 5.234V14.44l-5.946-5.397zm-1.099-.08l-5.946 5.398v7.235l5.946-5.234V8.965zm8.136 7.58h1.844V8.349H13.46l6.105 5.54v2.655zm-8.982-8.28H2.59v8.195h1.8v-2.576l6.192-5.62zM5.475 2.476v4.71h5.115l-5.115-4.71zm13.219 0l-5.115 4.71h5.115v-4.71z"/></svg>' },
+            { id: 'mistral', name: 'Mistral', url: 'https://chat.mistral.ai/', color: '#ff6b35', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M3.428 3.4h3.429v3.428h3.429v3.429h-.002 3.431V6.828h3.427V3.4h3.43v13.714H24v3.429H13.714v-3.428h-3.428v-3.429h-3.43v3.428h3.43v3.429H0v-3.429h3.428V3.4zm10.286 13.715h3.428v-3.429h-3.427v3.429z"/></svg>' },
+            { id: 'deepseek', name: 'DeepSeek', url: 'https://chat.deepseek.com/', color: '#0066cc', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M23.748 4.482c-.254-.124-.364.113-.512.234-.051.039-.094.09-.137.136-.372.397-.806.657-1.373.626-.829-.046-1.537.214-2.163.848-.133-.782-.575-1.248-1.247-1.548-.352-.156-.708-.311-.955-.65-.172-.241-.219-.51-.305-.774-.055-.16-.11-.323-.293-.35-.2-.031-.278.136-.356.276-.313.572-.434 1.202-.422 1.84.027 1.436.633 2.58 1.838 3.393.137.093.172.187.129.323-.082.28-.18.552-.266.833-.055.179-.137.217-.329.14a5.526 5.526 0 01-1.736-1.18c-.857-.828-1.631-1.742-2.597-2.458a11.365 11.365 0 00-.689-.471c-.985-.957.13-1.743.388-1.836.27-.098.093-.432-.779-.428-.872.004-1.67.295-2.687.684a3.055 3.055 0 01-.465.137 9.597 9.597 0 00-2.883-.102c-1.885.21-3.39 1.102-4.497 2.623C.082 8.606-.231 10.684.152 12.85c.403 2.284 1.569 4.175 3.36 5.653 1.858 1.533 3.997 2.284 6.438 2.14 1.482-.085 3.133-.284 4.994-1.86.47.234.962.327 1.78.397.63.059 1.236-.03 1.705-.128.735-.156.684-.837.419-.961-2.155-1.004-1.682-.595-2.113-.926 1.096-1.296 2.746-2.642 3.392-7.003.05-.347.007-.565 0-.845-.004-.17.035-.237.23-.256a4.173 4.173 0 001.545-.475c1.396-.763 1.96-2.015 2.093-3.517.02-.23-.004-.467-.247-.588zM11.581 18c-2.089-1.642-3.102-2.183-3.52-2.16-.392.024-.321.471-.235.763.09.288.207.486.371.739.114.167.192.416-.113.603-.673.416-1.842-.14-1.897-.167-1.361-.802-2.5-1.86-3.301-3.307-.774-1.393-1.224-2.887-1.298-4.482-.02-.386.093-.522.477-.592a4.696 4.696 0 011.529-.039c2.132.312 3.946 1.265 5.468 2.774.868.86 1.525 1.887 2.202 2.891.72 1.066 1.494 2.082 2.48 2.914.348.292.625.514.891.677-.802.09-2.14.11-3.054-.614zm1-6.44a.306.306 0 01.415-.287.302.302 0 01.2.288.306.306 0 01-.31.307.303.303 0 01-.304-.308zm3.11 1.596c-.2.081-.399.151-.59.16a1.245 1.245 0 01-.798-.254c-.274-.23-.47-.358-.552-.758a1.73 1.73 0 01.016-.588c.07-.327-.008-.537-.239-.727-.187-.156-.426-.199-.688-.199a.559.559 0 01-.254-.078c-.11-.054-.2-.19-.114-.358.028-.054.16-.186.192-.21.356-.202.767-.136 1.146.016.352.144.618.408 1.001.782.391.451.462.576.685.914.176.265.336.537.445.848.067.195-.019.354-.25.452z"/></svg>' },
+            { id: 'poe', name: 'Poe', url: 'https://poe.com/', color: '#5a4fcf', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.513V8.36c0-.888-.717-1.608-1.603-1.615h-.013c-.498-.009-1.194-.123-1.688-.619-.44-.439-.584-1.172-.622-1.783l-.001.003c-.002-.014-.002-.03-.003-.044l-.001-.03a1.616 1.616 0 0 0-1.607-1.45H5.54a1.59 1.59 0 0 0-.164.008l-.055.009c-.034.004-.068.008-.102.015l-.069.017c-.028.008-.056.013-.083.022-.024.007-.045.015-.07.024-.026.01-.053.018-.08.03-.021.008-.042.02-.063.029-.027.013-.054.024-.08.038l-.059.034c-.025.015-.052.03-.077.047a.967.967 0 0 0-.061.045c-.021.015-.044.03-.065.05a1.21 1.21 0 0 0-.099.09c-.006.005-.013.01-.018.016l-.014.016a1.59 1.59 0 0 0-.094.102c-.017.02-.03.042-.046.062-.016.021-.033.042-.047.063l-.045.074-.037.062-.036.076a.682.682 0 0 0-.058.143l-.027.075-.02.074a.773.773 0 0 0-.018.078c-.006.03-.009.058-.013.088-.003.022-.008.045-.01.069-.003.022-.003.045-.004.068l-.002-.002c-.036.61-.182 1.345-.62 1.784-.496.495-1.191.61-1.69.618h-.012c-.05 0-.1.003-.147.007a1.27 1.27 0 0 0-.072.012c-.029.004-.057.007-.084.012l-.082.02-.072.018c-.026.009-.052.019-.079.027-.024.009-.048.016-.07.026-.024.01-.048.022-.072.034a.767.767 0 0 0-.072.033l-.068.04-.068.041a1.228 1.228 0 0 0-.072.054c-.018.014-.037.026-.053.04a1.627 1.627 0 0 0-.226.227c-.015.016-.027.036-.041.053a1.398 1.398 0 0 0-.054.074c-.016.022-.028.045-.041.067L.19 7.6c-.012.023-.022.047-.033.07l-.034.073c-.01.024-.017.046-.026.07-.01.027-.02.053-.027.08-.007.023-.012.047-.018.071l-.02.082-.012.084c-.003.024-.009.048-.01.072-.007.052-.01.106-.01.16v4.152c0 .888.717 1.609 1.603 1.616h.01c.5.008 1.196.123 1.69.618.43.43.577 1.143.618 1.746v4.13c0 .524.66.754.986.346l2.333-2.92h11.22c.861 0 1.563-.675 1.611-1.524l.001.003c.037-.61.183-1.344.622-1.783.495-.496 1.19-.61 1.689-.619h.012c.044 0 .088-.003.132-.007l.022-.001A1.613 1.613 0 0 0 24 12.513zm-3.85 1.69c-.502.503-1.215.613-1.717.619H5.566c-.501-.006-1.215-.114-1.717-.618-.408-.409-.565-1.117-.618-1.744V8.415c.052-.627.209-1.337.618-1.745.503-.503 1.216-.613 1.717-.619h12.867c.502.006 1.216.115 1.718.619.409.41.564 1.117.618 1.744v4.041c-.052.63-.209 1.339-.618 1.749zM8.424 7.99c-.892 0-1.615.723-1.615 1.615v1.616a1.615 1.615 0 1 0 3.23 0V9.604c0-.892-.723-1.615-1.615-1.615Zm7.154 0c-.893 0-1.616.723-1.616 1.615v1.616a1.615 1.615 0 1 0 3.231 0V9.604c0-.892-.723-1.615-1.615-1.615z"/></svg>' },
+            { id: 'grok', name: 'Grok', url: 'https://grok.com/', color: '#1da1f2', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M9.27 15.29l7.978-5.897c.391-.29.95-.177 1.137.272.98 2.369.542 5.215-1.41 7.169-1.951 1.954-4.667 2.382-7.149 1.406l-2.711 1.257c3.889 2.661 8.611 2.003 11.562-.953 2.341-2.344 3.066-5.539 2.388-8.42l.006.007c-.983-4.232.242-5.924 2.75-9.383.06-.082.12-.164.179-.248l-3.301 3.305v-.01L9.267 15.292M7.623 16.723c-2.792-2.67-2.31-6.801.071-9.184 1.761-1.763 4.647-2.483 7.166-1.425l2.705-1.25a7.808 7.808 0 00-1.829-1A8.975 8.975 0 005.984 5.83c-2.533 2.536-3.33 6.436-1.962 9.764 1.022 2.487-.653 4.246-2.34 6.022-.599.63-1.199 1.259-1.682 1.925l7.62-6.815"/></svg>' },
+            { id: 'meta', name: 'Meta AI', url: 'https://meta.ai/', color: '#0668e1', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6.897 4c1.915 0 3.516.932 5.43 3.376l.282-.373c.19-.246.383-.484.58-.71 l.313-.35C14.588 4.788 15.792 4 17.225 4c1.273 0 2.469.557 3.491 1.516l.218.213c1.73 1.765 2.917 4.71 3.053 8.026l.011.392.002.25c0 1.501-.28 2.759-.818 3.7l-.14.23-.108.153c-.301.42-.664.758-1.086 1.009l-.265.142-.087.04a3.493 3.493 0 0 1-.302.118 4.117 4.117 0 0 1-1.33.208c-.524 0-.996-.067-1.438-.215-.614-.204-1.163-.56-1.726-1.116l-.227-.235c-.753-.812-1.534-1.976-2.493-3.586l-1.43-2.41-.544-.895-1.766 3.13-.343.592C7.597 19.156 6.227 20 4.356 20c-1.21 0-2.205-.42-2.936-1.182l-.168-.184c-.484-.573-.837-1.311-1.043-2.189l-.067-.32a8.69 8.69 0 0 1-.136-1.288L0 14.468c.002-.745.06-1.49.174-2.23l.1-.573c.298-1.53.828-2.958 1.536-4.157l.209-.34c1.177-1.83 2.789-3.053 4.615-3.16L6.897 4zm-.033 2.615l-.201.01c-.83.083-1.606.673-2.252 1.577l-.138.199-.01.018c-.67 1.017-1.185 2.378-1.456 3.845l-.004.022a12.591 12.591 0 00-.207 2.254l.002.188c.004.18.017.36.04.54l.043.291c.092.503.257.908.486 1.208l.117.137c.303.323.698.492 1.17.492 1.1 0 1.796-.676 3.696-3.641l2.175-3.4.454-.701-.139-.198C9.11 7.3 8.084 6.616 6.864 6.616zm10.196-.552l-.176.007c-.635.048-1.223.359-1.82.933l-.196.198c-.439.462-.887 1.064-1.367 1.807l.266.398c.18.274.362.56.55.858l.293.475 1.396 2.335.695 1.114c.583.926 1.03 1.6 1.408 2.082l.213.262c.282.326.529.54.777.673l.102.05c.227.1.457.138.718.138.176.002.35-.023.518-.073.338-.104.61-.32.813-.637l.095-.163.077-.162c.194-.459.29-1.06.29-1.785l-.006-.449c-.08-2.871-.938-5.372-2.2-6.798l-.176-.189c-.67-.683-1.444-1.074-2.27-1.074z"/></svg>' }
           ];
 
           // Build platform grid (using SVG icons)
@@ -14600,81 +14600,432 @@ Output ONLY the 5 numbered questions, no other text.`;
             });
 
             const vectorHealthy = !!(vectorRes && vectorRes.ok !== false);
-            const row = (label, count, controlsHtml, subtitle = '') => `
-              <div style="padding:10px;border:1px solid var(--cb-border);border-radius:8px;background:var(--cb-bg2);margin-bottom:8px;">
+            const row = (label, count, limit, controlsHtml, subtitle = '') => {
+              const pct = limit ? Math.min(100, Math.round((count / limit) * 100)) : 0;
+              return `
+              <div style="padding:12px;border:1px solid var(--cb-border);border-radius:10px;background:var(--cb-bg2);margin-bottom:10px;transition:all 0.2s ease;">
                 <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
                   <div>
-                    <div style="font-size:12px;color:var(--cb-white);font-weight:600;">${label}</div>
-                    <div style="font-size:10px;color:var(--cb-subtext);">${subtitle || `${count} item${count === 1 ? '' : 's'}`}</div>
+                    <div style="font-size:13px;color:var(--cb-white);font-weight:600;">${label}</div>
+                    <div style="font-size:10px;color:var(--cb-subtext);margin-top:2px;">${subtitle || `${count} item${count === 1 ? '' : 's'}`}</div>
                   </div>
-                  <div style="font-size:18px;font-weight:700;color:var(--cb-accent-primary);">${count}</div>
+                  <div style="text-align:right;">
+                    <span style="font-size:18px;font-weight:700;color:var(--cb-accent-primary);">${count}</span>
+                    ${limit ? `<span style="font-size:10px;color:var(--cb-subtext);">/${limit}</span>` : ''}
+                  </div>
                 </div>
+                ${limit ? `
+                  <div style="width:100%;height:5px;background:var(--cb-bg3);border-radius:3px;margin:8px 0;overflow:hidden;border:1px solid rgba(255,255,255,0.03);">
+                    <div style="width:${pct}%;height:100%;background:${pct > 85 ? 'var(--cb-accent-warning)' : 'var(--cb-accent-primary)'};border-radius:3px;transition:width 0.4s ease;"></div>
+                  </div>
+                ` : ''}
                 ${controlsHtml ? `<div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;">${controlsHtml}</div>` : ''}
               </div>
-            `;
+              `;
+            };
 
             const tinyBtn = (id, label, tone = 'normal') => {
               const danger = tone === 'danger';
               return `<button id="${id}" style="padding:6px 10px;border-radius:6px;font-size:10px;cursor:pointer;border:1px solid ${danger ? 'rgba(239,68,68,0.4)' : 'var(--cb-border)'};background:${danger ? 'rgba(239,68,68,0.12)' : 'var(--cb-bg3)'};color:${danger ? '#f87171' : 'var(--cb-white)'};">${label}</button>`;
             };
 
+            const inlineBtn = (cls, label, tone = 'normal') => {
+              const danger = tone === 'danger';
+              return `<button class="${cls}" style="padding:4px 8px;border-radius:5px;font-size:9px;cursor:pointer;border:1px solid ${danger ? 'rgba(239,68,68,0.3)' : 'var(--cb-border)'};background:${danger ? 'rgba(239,68,68,0.1)' : 'var(--cb-bg3)'};color:${danger ? '#f87171' : 'var(--cb-white)'};">${label}</button>`;
+            };
+
             showToolResult(`
-              <div style="padding:10px;color:var(--cb-text);">
-                <div style="margin-bottom:10px;font-size:12px;color:var(--cb-subtext);">Single place to inspect and control ChatBridge memory buckets.</div>
+              <div class="cb-memory-manager-content">
+                <div style="padding:10px;color:var(--cb-text);">
+                  <div style="margin-bottom:12px;font-size:12px;color:var(--cb-subtext);">Single place to inspect and control ChatBridge memory buckets.</div>
 
-                ${row('Conversation History', Array.isArray(convs) ? convs.length : 0, tinyBtn('cb-mem-clear-convs', 'Clear History', 'danger'), 'Saved chat threads')}
-                ${row('Saved Contexts', Array.isArray(contexts) ? contexts.length : 0, tinyBtn('cb-mem-clear-contexts', 'Clear Contexts', 'danger'), 'Context Injector memory')}
-                ${row('Tracked Topics', Array.isArray(trackedTopics) ? trackedTopics.length : 0, tinyBtn('cb-mem-clear-topics', 'Clear Topics', 'danger'), 'Track This memory')}
-                ${row('Handoff Drafts', Array.isArray(handoffDrafts) ? handoffDrafts.length : 0, tinyBtn('cb-mem-clear-handoff', 'Clear Drafts', 'danger'), 'Generated handoff docs')}
-                ${row('Pulse Sessions', Array.isArray(pulseSessions) ? pulseSessions.length : 0, tinyBtn('cb-mem-clear-pulse', 'Clear Pulse', 'danger'), 'Usage analytics sessions')}
-                ${row('Migration Exports', Array.isArray(migrationExports) ? migrationExports.length : 0, `${tinyBtn('cb-mem-export-snapshot', 'Export Snapshot')} ${tinyBtn('cb-mem-clear-exports', 'Clear Exports', 'danger')}`, 'Migration kit snapshots')}
-                ${row('Vector Memory', vectorHealthy ? 1 : 0, tinyBtn('cb-mem-clear-vector', 'Clear Vector Index', 'danger'), vectorHealthy ? 'Healthy index for semantic search' : 'Empty or unavailable')}
+                  ${row('Conversation History', Array.isArray(convs) ? convs.length : 0, 50, `${tinyBtn('cb-mem-inspect-convs', 'Inspect')} ${tinyBtn('cb-mem-clear-convs', 'Clear All', 'danger')}`, 'Saved chat threads')}
+                  ${row('Saved Contexts', Array.isArray(contexts) ? contexts.length : 0, 20, `${tinyBtn('cb-mem-inspect-contexts', 'Inspect')} ${tinyBtn('cb-mem-clear-contexts', 'Clear All', 'danger')}`, 'Context Injector memory')}
+                  ${row('Tracked Topics', Array.isArray(trackedTopics) ? trackedTopics.length : 0, 50, `${tinyBtn('cb-mem-inspect-topics', 'Inspect')} ${tinyBtn('cb-mem-clear-topics', 'Clear All', 'danger')}`, 'Track This memory')}
+                  ${row('Handoff Drafts', Array.isArray(handoffDrafts) ? handoffDrafts.length : 0, 20, `${tinyBtn('cb-mem-inspect-handoff', 'Inspect')} ${tinyBtn('cb-mem-clear-handoff', 'Clear All', 'danger')}`, 'Generated handoff docs')}
+                  ${row('Pulse Sessions', Array.isArray(pulseSessions) ? pulseSessions.length : 0, 500, `${tinyBtn('cb-mem-inspect-pulse', 'Inspect')} ${tinyBtn('cb-mem-clear-pulse', 'Clear All', 'danger')}`, 'Usage analytics sessions')}
+                  ${row('Migration Exports', Array.isArray(migrationExports) ? migrationExports.length : 0, 10, `${tinyBtn('cb-mem-inspect-exports', 'Inspect')} ${tinyBtn('cb-mem-export-snapshot', 'Export Snapshot')} ${tinyBtn('cb-mem-clear-exports', 'Clear All', 'danger')}`, 'Migration kit snapshots')}
+                  ${row('Vector Memory', vectorHealthy ? 1 : 0, 1, tinyBtn('cb-mem-clear-vector', 'Clear Index', 'danger'), vectorHealthy ? 'Healthy index for semantic search' : 'Empty or unavailable')}
 
-                <div style="display:flex;gap:8px;margin-top:10px;">
-                  <button id="cb-mem-refresh" class="cb-btn cb-btn-primary" style="flex:1;">Refresh</button>
+                  <div style="display:flex;gap:8px;margin-top:10px;">
+                    <button id="cb-mem-refresh" class="cb-btn cb-btn-primary" style="flex:1;">Refresh</button>
+                  </div>
                 </div>
               </div>
             `, 'Memory Manager');
 
             const q = (id) => toolResultArea.querySelector(`#${id}`);
 
+            // Inspect View Renderer
+            const showInspectView = (title, renderContentFn) => {
+              const container = toolResultArea.querySelector('.cb-memory-manager-content');
+              if (!container) return;
+              
+              container.innerHTML = `
+                <div style="padding:10px;color:var(--cb-text);">
+                  <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+                    <button id="cb-mem-inspect-back" class="cb-btn" style="padding:5px 8px;font-size:11px;background:var(--cb-bg3);border:1px solid var(--cb-border);display:flex;align-items:center;gap:4px;cursor:pointer;color:var(--cb-white);">
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg> Back
+                    </button>
+                    <div style="font-size:13px;font-weight:700;color:var(--cb-white);">${title}</div>
+                  </div>
+                  <div id="cb-mem-inspect-body"></div>
+                </div>
+              `;
+              
+              container.querySelector('#cb-mem-inspect-back').addEventListener('click', () => {
+                memoryCard.click();
+              });
+              
+              const body = container.querySelector('#cb-mem-inspect-body');
+              renderContentFn(body);
+            };
+
+            // 1. Conversations Inspect View
+            const renderConvsInspect = (body) => {
+              if (!Array.isArray(convs) || convs.length === 0) {
+                body.innerHTML = '<div style="color:var(--cb-subtext);font-size:12px;text-align:center;padding:20px 0;">No conversations saved yet.</div>';
+                return;
+              }
+              
+              body.innerHTML = `
+                <div style="max-height:350px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;">
+                  ${convs.map((c, idx) => {
+                    const dateStr = c.ts ? new Date(c.ts).toLocaleString() : 'Unknown date';
+                    const msgCount = Array.isArray(c.conversation) ? c.conversation.length : (Array.isArray(c.messages) ? c.messages.length : 0);
+                    const title = c.title || (c.conversation && c.conversation[0] && c.conversation[0].text ? c.conversation[0].text.slice(0, 40) + '...' : `Chat ${idx + 1}`);
+                    return `
+                      <div style="padding:10px;background:var(--cb-bg3);border:1px solid var(--cb-border);border-radius:8px;display:flex;justify-content:space-between;align-items:center;gap:10px;">
+                        <div style="flex:1;min-width:0;">
+                          <div style="font-size:12px;font-weight:600;color:var(--cb-white);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(title)}</div>
+                          <div style="font-size:10px;color:var(--cb-subtext);margin-top:2px;">${c.platform || 'Unknown platform'} • ${msgCount} msgs • ${dateStr}</div>
+                        </div>
+                        ${inlineBtn('cb-inspect-delete', 'Delete', 'danger')}
+                      </div>
+                    `;
+                  }).join('')}
+                </div>
+              `;
+              
+              body.querySelectorAll('.cb-inspect-delete').forEach((btn, idx) => {
+                btn.addEventListener('click', async () => {
+                  if (confirm('Delete this conversation?')) {
+                    const newConvs = [...convs];
+                    newConvs.splice(idx, 1);
+                    await saveConversationsAsync(newConvs);
+                    try { chrome.runtime.sendMessage({ type: 'replace_conversations', payload: { conversations: newConvs } }); } catch (_) { }
+                    toast('Conversation deleted');
+                    convs.splice(idx, 1);
+                    renderConvsInspect(body);
+                  }
+                });
+              });
+            };
+
+            // 2. Saved Contexts Inspect View
+            const renderContextsInspect = (body) => {
+              const listHtml = !Array.isArray(contexts) || contexts.length === 0 
+                ? '<div style="color:var(--cb-subtext);font-size:12px;text-align:center;padding:20px 0;">No saved contexts.</div>'
+                : `
+                  <div style="max-height:240px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;margin-top:10px;">
+                    ${contexts.map((c, idx) => {
+                      const text = typeof c === 'string' ? c : (c.text || c.content || '');
+                      const label = typeof c === 'object' && c.label ? c.label : `Context ${idx + 1}`;
+                      return `
+                        <div style="padding:10px;background:var(--cb-bg3);border:1px solid var(--cb-border);border-radius:8px;display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">
+                          <div style="flex:1;min-width:0;font-size:11px;">
+                            <div style="font-weight:600;color:var(--cb-white);margin-bottom:2px;">${escapeHtml(label)}</div>
+                            <div style="color:var(--cb-subtext);white-space:pre-wrap;word-break:break-all;">${escapeHtml(text.slice(0, 150))}${text.length > 150 ? '...' : ''}</div>
+                          </div>
+                          ${inlineBtn('cb-inspect-delete-context', 'Delete', 'danger')}
+                        </div>
+                      `;
+                    }).join('')}
+                  </div>
+                `;
+
+              body.innerHTML = `
+                <div style="padding:8px;background:var(--cb-bg2);border:1px solid var(--cb-border);border-radius:8px;margin-bottom:10px;">
+                  <div style="font-size:11px;font-weight:600;color:var(--cb-white);margin-bottom:6px;">Add Custom Context Block</div>
+                  <input id="cb-mem-ctx-label" type="text" placeholder="Title/Label" style="width:100%;padding:6px;font-size:11px;background:var(--cb-bg3);border:1px solid var(--cb-border);border-radius:4px;color:var(--cb-white);margin-bottom:6px;box-sizing:border-box;" />
+                  <textarea id="cb-mem-ctx-text" placeholder="Enter reusable context text here..." rows="3" style="width:100%;padding:6px;font-size:11px;background:var(--cb-bg3);border:1px solid var(--cb-border);border-radius:4px;color:var(--cb-white);resize:vertical;margin-bottom:6px;box-sizing:border-box;"></textarea>
+                  <button id="cb-mem-ctx-add" class="cb-btn cb-btn-primary" style="width:100%;padding:6px;font-size:11px;font-weight:600;">Add Context</button>
+                </div>
+                ${listHtml}
+              `;
+
+              body.querySelector('#cb-mem-ctx-add').addEventListener('click', async () => {
+                const labelInput = body.querySelector('#cb-mem-ctx-label');
+                const textInput = body.querySelector('#cb-mem-ctx-text');
+                const label = labelInput.value.trim();
+                const text = textInput.value.trim();
+                if (!text) { toast('Context text cannot be empty'); return; }
+                
+                const newContexts = [...contexts];
+                newContexts.unshift({ label: label || `Context ${newContexts.length + 1}`, text });
+                await StorageManager.setSavedContexts(newContexts);
+                toast('Context added successfully');
+                contexts.unshift({ label: label || `Context ${contexts.length + 1}`, text });
+                renderContextsInspect(body);
+              });
+
+              body.querySelectorAll('.cb-inspect-delete-context').forEach((btn, idx) => {
+                btn.addEventListener('click', async () => {
+                  if (confirm('Delete this context?')) {
+                    const newContexts = [...contexts];
+                    newContexts.splice(idx, 1);
+                    await StorageManager.setSavedContexts(newContexts);
+                    toast('Context deleted');
+                    contexts.splice(idx, 1);
+                    renderContextsInspect(body);
+                  }
+                });
+              });
+            };
+
+            // 3. Tracked Topics Inspect View
+            const renderTopicsInspect = (body) => {
+              const listHtml = !Array.isArray(trackedTopics) || trackedTopics.length === 0
+                ? '<div style="color:var(--cb-subtext);font-size:12px;text-align:center;padding:20px 0;">No tracked topics yet.</div>'
+                : `
+                  <div style="display:flex;flex-wrap:wrap;gap:6px;max-height:280px;overflow-y:auto;padding:8px 0;margin-top:10px;">
+                    ${trackedTopics.map((t, idx) => `
+                      <span style="display:inline-flex;align-items:center;gap:4px;padding:4px 8px;background:var(--cb-bg3);border:1px solid var(--cb-border);border-radius:12px;font-size:11px;color:var(--cb-white);">
+                        #${escapeHtml(t)}
+                        <span class="cb-inspect-delete-topic" data-idx="${idx}" style="cursor:pointer;color:#fb7175;font-weight:bold;font-size:12px;padding:0 2px;">×</span>
+                      </span>
+                    `).join('')}
+                  </div>
+                `;
+
+              body.innerHTML = `
+                <div style="padding:8px;background:var(--cb-bg2);border:1px solid var(--cb-border);border-radius:8px;display:flex;gap:6px;align-items:center;">
+                  <input id="cb-mem-topic-input" type="text" placeholder="Add new topic..." style="flex:1;padding:6px;font-size:11px;background:var(--cb-bg3);border:1px solid var(--cb-border);border-radius:4px;color:var(--cb-white);box-sizing:border-box;" />
+                  <button id="cb-mem-topic-add" class="cb-btn cb-btn-primary" style="padding:6px 12px;font-size:11px;font-weight:600;white-space:nowrap;">Add Tag</button>
+                </div>
+                ${listHtml}
+              `;
+
+              const addTopic = async () => {
+                const input = body.querySelector('#cb-mem-topic-input');
+                const val = input.value.trim().toLowerCase().replace(/#/g, '');
+                if (!val) return;
+                if (trackedTopics.includes(val)) { toast('Topic already exists'); return; }
+                const newTopics = [...trackedTopics, val];
+                await StorageManager.setTrackedTopics(newTopics);
+                toast('Topic added');
+                trackedTopics.push(val);
+                renderTopicsInspect(body);
+              };
+
+              body.querySelector('#cb-mem-topic-add').addEventListener('click', addTopic);
+              body.querySelector('#cb-mem-topic-input').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') addTopic();
+              });
+
+              body.querySelectorAll('.cb-inspect-delete-topic').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                  const idx = parseInt(e.target.dataset.idx);
+                  const newTopics = [...trackedTopics];
+                  newTopics.splice(idx, 1);
+                  await StorageManager.setTrackedTopics(newTopics);
+                  toast('Topic untracked');
+                  trackedTopics.splice(idx, 1);
+                  renderTopicsInspect(body);
+                });
+              });
+            };
+
+            // 4. Handoff Drafts Inspect View
+            const renderHandoffInspect = (body) => {
+              if (!Array.isArray(handoffDrafts) || handoffDrafts.length === 0) {
+                body.innerHTML = '<div style="color:var(--cb-subtext);font-size:12px;text-align:center;padding:20px 0;">No handoff drafts saved.</div>';
+                return;
+              }
+
+              body.innerHTML = `
+                <div style="max-height:350px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;">
+                  ${handoffDrafts.map((d, idx) => {
+                    const dateStr = d.ts || d.timestamp ? new Date(d.ts || d.timestamp).toLocaleString() : 'Unknown date';
+                    const title = d.title || `Draft ${idx + 1}`;
+                    const sourceText = d.summary || d.content || d.text || '';
+                    return `
+                      <div style="padding:10px;background:var(--cb-bg3);border:1px solid var(--cb-border);border-radius:8px;display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">
+                        <div style="flex:1;min-width:0;font-size:11px;">
+                          <div style="font-weight:600;color:var(--cb-white);margin-bottom:2px;">${escapeHtml(title)}</div>
+                          <div style="color:var(--cb-subtext);font-size:10px;margin-bottom:4px;">${dateStr}</div>
+                          <div style="color:var(--cb-subtext);white-space:pre-wrap;word-break:break-all;max-height:80px;overflow-y:auto;background:rgba(0,0,0,0.2);padding:6px;border-radius:4px;">${escapeHtml(sourceText.slice(0, 300))}${sourceText.length > 300 ? '...' : ''}</div>
+                        </div>
+                        ${inlineBtn('cb-inspect-delete-handoff', 'Delete', 'danger')}
+                      </div>
+                    `;
+                  }).join('')}
+                </div>
+              `;
+
+              body.querySelectorAll('.cb-inspect-delete-handoff').forEach((btn, idx) => {
+                btn.addEventListener('click', async () => {
+                  if (confirm('Delete this handoff draft?')) {
+                    const newDrafts = [...handoffDrafts];
+                    newDrafts.splice(idx, 1);
+                    await StorageManager.set(StorageManager.KEYS.AGENT_HANDOFF_DRAFTS, newDrafts);
+                    toast('Draft deleted');
+                    handoffDrafts.splice(idx, 1);
+                    renderHandoffInspect(body);
+                  }
+                });
+              });
+            };
+
+            // 5. Pulse Sessions Inspect View
+            const renderPulseInspect = (body) => {
+              if (!Array.isArray(pulseSessions) || pulseSessions.length === 0) {
+                body.innerHTML = '<div style="color:var(--cb-subtext);font-size:12px;text-align:center;padding:20px 0;">No usage sessions recorded yet.</div>';
+                return;
+              }
+
+              body.innerHTML = `
+                <div style="max-height:350px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;">
+                  ${pulseSessions.map((s, idx) => {
+                    const dateStr = s.date || s.timestamp ? new Date(s.date || s.timestamp).toLocaleString() : 'Unknown date';
+                    const title = s.action || s.event || 'Usage session';
+                    const details = s.meta ? JSON.stringify(s.meta) : (s.query || s.details || '');
+                    return `
+                      <div style="padding:8px;background:var(--cb-bg3);border:1px solid var(--cb-border);border-radius:8px;display:flex;justify-content:space-between;align-items:center;gap:10px;">
+                        <div style="flex:1;min-width:0;font-size:10px;">
+                          <div style="font-weight:600;color:var(--cb-white);">${escapeHtml(title)}</div>
+                          <div style="color:var(--cb-subtext);margin-top:2px;">${dateStr}</div>
+                          ${details ? `<div style="color:rgba(255,255,255,0.3);font-family:monospace;font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;max-width:200px;">${escapeHtml(details)}</div>` : ''}
+                        </div>
+                        ${inlineBtn('cb-inspect-delete-pulse', 'Delete', 'danger')}
+                      </div>
+                    `;
+                  }).join('')}
+                </div>
+              `;
+
+              body.querySelectorAll('.cb-inspect-delete-pulse').forEach((btn, idx) => {
+                btn.addEventListener('click', async () => {
+                  if (confirm('Delete this pulse session record?')) {
+                    const newSessions = [...pulseSessions];
+                    newSessions.splice(idx, 1);
+                    await StorageManager.set(StorageManager.KEYS.AGENT_PULSE_SESSIONS, newSessions);
+                    toast('Session record deleted');
+                    pulseSessions.splice(idx, 1);
+                    renderPulseInspect(body);
+                  }
+                });
+              });
+            };
+
+            // 6. Migration Logs Inspect View
+            const renderExportsInspect = (body) => {
+              if (!Array.isArray(migrationExports) || migrationExports.length === 0) {
+                body.innerHTML = '<div style="color:var(--cb-subtext);font-size:12px;text-align:center;padding:20px 0;">No migration history records found.</div>';
+                return;
+              }
+
+              body.innerHTML = `
+                <div style="max-height:350px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;">
+                  ${migrationExports.map((log, idx) => {
+                    const dateStr = log.ts || log.timestamp ? new Date(log.ts || log.timestamp).toLocaleString() : 'Unknown date';
+                    const typeLabel = log.type === 'export' ? '📤 Export' : (log.type === 'import' ? '📥 Import' : 'Snapshot');
+                    const details = Array.isArray(log.keys) ? log.keys.join(', ') : '';
+                    return `
+                      <div style="padding:8px;background:var(--cb-bg3);border:1px solid var(--cb-border);border-radius:8px;display:flex;justify-content:space-between;align-items:center;gap:10px;">
+                        <div style="flex:1;min-width:0;font-size:10px;">
+                          <div style="font-weight:600;color:${log.type === 'export' ? '#38bdf8' : '#34d399'};">${typeLabel}</div>
+                          <div style="color:var(--cb-white);margin-top:2px;">${log.recordsCount || 0} categories • ${dateStr}</div>
+                          ${details ? `<div style="color:var(--cb-subtext);font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;max-width:200px;">Keys: ${escapeHtml(details)}</div>` : ''}
+                        </div>
+                        ${inlineBtn('cb-inspect-delete-export', 'Delete', 'danger')}
+                      </div>
+                    `;
+                  }).join('')}
+                </div>
+              `;
+
+              body.querySelectorAll('.cb-inspect-delete-export').forEach((btn, idx) => {
+                btn.addEventListener('click', async () => {
+                  if (confirm('Delete this history record?')) {
+                    const newHistory = [...migrationExports];
+                    newHistory.splice(idx, 1);
+                    await StorageManager.setMigrationExports(newHistory);
+                    toast('History record deleted');
+                    migrationExports.splice(idx, 1);
+                    renderExportsInspect(body);
+                  }
+                });
+              });
+            };
+
+            // Bind Inspect listeners
+            q('cb-mem-inspect-convs')?.addEventListener('click', () => showInspectView('Conversation History', renderConvsInspect));
+            q('cb-mem-inspect-contexts')?.addEventListener('click', () => showInspectView('Saved Contexts', renderContextsInspect));
+            q('cb-mem-inspect-topics')?.addEventListener('click', () => showInspectView('Tracked Topics', renderTopicsInspect));
+            q('cb-mem-inspect-handoff')?.addEventListener('click', () => showInspectView('Handoff Drafts', renderHandoffInspect));
+            q('cb-mem-inspect-pulse')?.addEventListener('click', () => showInspectView('Pulse Sessions', renderPulseInspect));
+            q('cb-mem-inspect-exports')?.addEventListener('click', () => showInspectView('Migration History', renderExportsInspect));
+
             q('cb-mem-clear-convs')?.addEventListener('click', async () => {
               try {
-                await saveConversationsAsync([]);
-                try { chrome.runtime.sendMessage({ type: 'replace_conversations', payload: { conversations: [] } }); } catch (_) { }
-                toast('Conversation history cleared');
-                memoryCard.click();
+                if (confirm('Are you sure you want to clear all conversation history?')) {
+                  await saveConversationsAsync([]);
+                  try { chrome.runtime.sendMessage({ type: 'replace_conversations', payload: { conversations: [] } }); } catch (_) { }
+                  toast('Conversation history cleared');
+                  memoryCard.click();
+                }
               } catch (_) { toast('Failed to clear history'); }
             });
 
             q('cb-mem-clear-contexts')?.addEventListener('click', async () => {
-              try { await StorageManager.setSavedContexts([]); toast('Saved contexts cleared'); memoryCard.click(); } catch (_) { toast('Failed to clear contexts'); }
+              try {
+                if (confirm('Are you sure you want to clear all saved contexts?')) {
+                  await StorageManager.setSavedContexts([]);
+                  toast('Saved contexts cleared');
+                  memoryCard.click();
+                }
+              } catch (_) { toast('Failed to clear contexts'); }
             });
 
             q('cb-mem-clear-topics')?.addEventListener('click', async () => {
-              try { await StorageManager.setTrackedTopics([]); toast('Tracked topics cleared'); memoryCard.click(); } catch (_) { toast('Failed to clear topics'); }
+              try {
+                if (confirm('Are you sure you want to clear all tracked topics?')) {
+                  await StorageManager.setTrackedTopics([]);
+                  toast('Tracked topics cleared');
+                  memoryCard.click();
+                }
+              } catch (_) { toast('Failed to clear topics'); }
             });
 
             q('cb-mem-clear-handoff')?.addEventListener('click', async () => {
               try {
-                const drafts = await StorageManager.getHandoffDrafts().catch(() => []);
-                if (!Array.isArray(drafts) || drafts.length === 0) { toast('No drafts to clear'); return; }
-                await chrome.storage.local.set({ chatbridge_agent_handoff_drafts: [] });
-                toast('Handoff drafts cleared');
-                memoryCard.click();
+                if (confirm('Are you sure you want to clear all handoff drafts?')) {
+                  await StorageManager.set(StorageManager.KEYS.AGENT_HANDOFF_DRAFTS, []);
+                  toast('Handoff drafts cleared');
+                  memoryCard.click();
+                }
               } catch (_) { toast('Failed to clear drafts'); }
             });
 
             q('cb-mem-clear-pulse')?.addEventListener('click', async () => {
               try {
-                await chrome.storage.local.set({ chatbridge_agent_pulse_sessions: [] });
-                toast('Pulse sessions cleared');
-                memoryCard.click();
+                if (confirm('Are you sure you want to clear all usage statistics?')) {
+                  await StorageManager.set(StorageManager.KEYS.AGENT_PULSE_SESSIONS, []);
+                  toast('Pulse sessions cleared');
+                  memoryCard.click();
+                }
               } catch (_) { toast('Failed to clear pulse sessions'); }
             });
 
             q('cb-mem-clear-exports')?.addEventListener('click', async () => {
-              try { await StorageManager.setMigrationExports([]); toast('Migration exports cleared'); memoryCard.click(); } catch (_) { toast('Failed to clear exports'); }
+              try {
+                if (confirm('Are you sure you want to clear all migration history exports?')) {
+                  await StorageManager.setMigrationExports([]);
+                  toast('Migration exports cleared');
+                  memoryCard.click();
+                }
+              } catch (_) { toast('Failed to clear exports'); }
             });
 
             q('cb-mem-export-snapshot')?.addEventListener('click', async () => {
@@ -14702,9 +15053,11 @@ Output ONLY the 5 numbered questions, no other text.`;
 
             q('cb-mem-clear-vector')?.addEventListener('click', async () => {
               try {
-                await sendBg({ type: 'vector_clear_all' });
-                toast('Vector index cleared');
-                memoryCard.click();
+                if (confirm('Are you sure you want to clear the vector database semantic index?')) {
+                  await sendBg({ type: 'vector_clear_all' });
+                  toast('Vector index cleared');
+                  memoryCard.click();
+                }
               } catch (_) { toast('Failed to clear vector index'); }
             });
 
@@ -14723,7 +15076,7 @@ Output ONLY the 5 numbered questions, no other text.`;
           showToolResult(`
             <div style="padding:10px;">
               <div style="font-size:12px;color:var(--cb-subtext);margin-bottom:16px;">
-                Export your ChatBridge preferences, agents configuration, and saved contexts to a portable file. 
+                Export your ChatBridge preferences, agents configuration, saved contexts, and conversation history to a portable file. 
               </div>
               <div style="display:flex;gap:10px;margin-bottom:16px;">
                 <button id="cb-mig-export" class="cb-btn cb-btn-primary" style="flex:1;">Export to JSON</button>
@@ -14742,10 +15095,53 @@ Output ONLY the 5 numbered questions, no other text.`;
           btnExport.addEventListener('click', async () => {
             CBAnalytics.track('smart_workspace', 'migration_kit_export_click');
             try {
-              const data = await StorageManager.getMigrationExports();
+              const [
+                convs,
+                contexts,
+                trackedTopics,
+                handoffDrafts,
+                pulseSessions,
+                catchMeUp,
+                shadowMemory,
+                config,
+                theme,
+                geminiKey
+              ] = await Promise.all([
+                loadConversationsAsync().catch(() => []),
+                StorageManager.get('chatbridge_agent_context_injector').catch(() => []),
+                StorageManager.get('chatbridge_agent_tracked_topics').catch(() => []),
+                StorageManager.get('chatbridge_agent_handoff_drafts').catch(() => []),
+                StorageManager.get('chatbridge_agent_pulse_sessions').catch(() => []),
+                StorageManager.get('chatbridge_agent_catchmeup').catch(() => null),
+                StorageManager.get('chatbridge_agent_shadow_memory').catch(() => []),
+                StorageManager.get('chatbridge_config').catch(() => null),
+                StorageManager.get('cb_theme').catch(() => null),
+                StorageManager.get('chatbridge_gemini_key').catch(() => null)
+              ]);
+
+              const records = [];
+              const keys = [
+                { key: 'chatbridge_conversations_v1', val: convs },
+                { key: 'chatbridge_agent_context_injector', val: contexts },
+                { key: 'chatbridge_agent_tracked_topics', val: trackedTopics },
+                { key: 'chatbridge_agent_handoff_drafts', val: handoffDrafts },
+                { key: 'chatbridge_agent_pulse_sessions', val: pulseSessions },
+                { key: 'chatbridge_agent_catchmeup', val: catchMeUp },
+                { key: 'chatbridge_agent_shadow_memory', val: shadowMemory },
+                { key: 'chatbridge_config', val: config },
+                { key: 'cb_theme', val: theme },
+                { key: 'chatbridge_gemini_key', val: geminiKey }
+              ];
+              for (const item of keys) {
+                if (item.val !== null && item.val !== undefined) {
+                  if (Array.isArray(item.val) && item.val.length === 0) continue;
+                  records.push({ key: item.key, value: item.val });
+                }
+              }
+
               const payload = {
                 exportDate: new Date().toISOString(),
-                data: data || []
+                data: records
               };
               const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
               const url = URL.createObjectURL(blob);
@@ -14754,10 +15150,24 @@ Output ONLY the 5 numbered questions, no other text.`;
               a.download = `chatbridge-export-${new Date().getTime()}.json`;
               a.click();
               URL.revokeObjectURL(url);
+
+              // Log the export in migration history
+              try {
+                const history = await StorageManager.getMigrationExports().catch(() => []);
+                const entry = {
+                  ts: Date.now(),
+                  type: 'export',
+                  recordsCount: records.length,
+                  keys: records.map(r => r.key)
+                };
+                history.unshift(entry);
+                await StorageManager.setMigrationExports(history.slice(0, 10));
+              } catch (_) {}
               
-              if(data && data.length > 0) {
-                  CBAnalytics.track('smart_workspace', 'migration_kit_export_success', { records: data.length });
-                 statusDiv.textContent = `Exported ${data.length} records successfully.`;
+              if(records.length > 0) {
+                  CBAnalytics.track('smart_workspace', 'migration_kit_export_success', { records: records.length });
+                 statusDiv.textContent = `Exported ${records.length} settings categories successfully.`;
+                 statusDiv.style.color = "var(--cb-accent-success)";
               } else {
                   CBAnalytics.track('smart_workspace', 'migration_kit_export_empty');
                  statusDiv.textContent = "Exported empty environment (no local context saved yet).";
@@ -14782,10 +15192,53 @@ Output ONLY the 5 numbered questions, no other text.`;
               try {
                 const parsed = JSON.parse(evt.target.result);
                 if (parsed.data && Array.isArray(parsed.data)) {
-                  await StorageManager.setMigrationExports(parsed.data);
-                  CBAnalytics.track('smart_workspace', 'migration_kit_import_success', { records: parsed.data.length });
-                  statusDiv.textContent = `Successfully imported ${parsed.data.length} records!`;
+                  const allowedKeys = [
+                    'chatbridge_config',
+                    'cb_theme',
+                    'chatbridge_gemini_key',
+                    'chatbridge_agent_catchmeup',
+                    'chatbridge_agent_tracked_topics',
+                    'chatbridge_agent_pulse_sessions',
+                    'chatbridge_agent_handoff_drafts',
+                    'chatbridge_agent_context_injector',
+                    'chatbridge_agent_shadow_memory',
+                    'chatbridge_conversations_v1'
+                  ];
+                  let importCount = 0;
+                  for (const record of parsed.data) {
+                    if (record && typeof record === 'object' && record.key && allowedKeys.includes(record.key)) {
+                      if (record.key === 'chatbridge_conversations_v1') {
+                        await saveConversationsAsync(record.value);
+                        try {
+                          chrome.runtime.sendMessage({
+                            type: 'replace_conversations',
+                            payload: { conversations: record.value }
+                          });
+                        } catch (_) {}
+                      } else {
+                        await StorageManager.set(record.key, record.value);
+                      }
+                      importCount++;
+                    }
+                  }
+
+                  // Log the import in migration history
+                  try {
+                    const history = await StorageManager.getMigrationExports().catch(() => []);
+                    const entry = {
+                      ts: Date.now(),
+                      type: 'import',
+                      recordsCount: importCount,
+                      keys: parsed.data.map(r => r.key).filter(k => allowedKeys.includes(k))
+                    };
+                    history.unshift(entry);
+                    await StorageManager.setMigrationExports(history.slice(0, 10));
+                  } catch (_) {}
+
+                  CBAnalytics.track('smart_workspace', 'migration_kit_import_success', { records: importCount });
+                  statusDiv.textContent = `Successfully imported ${importCount} settings categories!`;
                   statusDiv.style.color = 'var(--cb-accent-success)';
+                  toast('Migration settings imported successfully');
                 } else {
                   throw new Error("Invalid export format.");
                 }
@@ -24543,6 +24996,30 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
               finish(sorted);
             }
           } catch (e) { finish([]); }
+        }
+      });
+    }
+
+    // Save conversations with fallback and cache update
+    function saveConversationsAsync(conversations) {
+      return new Promise((resolve, reject) => {
+        try {
+          if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+            chrome.storage.local.set({ 'chatbridge_conversations_v1': conversations }, () => {
+              if (chrome && chrome.runtime && chrome.runtime.lastError) {
+                reject(new Error(chrome.runtime.lastError.message));
+              } else {
+                try { __cbConvCache.data = conversations; __cbConvCache.ts = Date.now(); } catch (_) { }
+                resolve();
+              }
+            });
+          } else {
+            localStorage.setItem('chatbridge_conversations_v1', JSON.stringify(conversations));
+            try { __cbConvCache.data = conversations; __cbConvCache.ts = Date.now(); } catch (_) { }
+            resolve();
+          }
+        } catch (e) {
+          reject(e);
         }
       });
     }
