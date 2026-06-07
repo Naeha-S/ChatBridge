@@ -7,8 +7,8 @@ const startIndex = contentScriptCode.indexOf('function normalizeMessages(');
 const endIndex = contentScriptCode.indexOf('// expose a very small', startIndex);
 const normalizeCode = contentScriptCode.substring(startIndex, endIndex);
 
-const adaptersCode = fs.readFileSync(path.resolve(__dirname, '../../adapters.js'), 'utf8');
-const storageCode = fs.readFileSync(path.resolve(__dirname, '../../storage.js'), 'utf8');
+const adaptersCode = fs.readFileSync(path.resolve(__dirname, '../../core/adapters.js'), 'utf8');
+const storageCode = fs.readFileSync(path.resolve(__dirname, '../../core/storage.js'), 'utf8');
 
 eval(normalizeCode);
 eval(adaptersCode);

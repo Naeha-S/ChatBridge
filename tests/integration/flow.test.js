@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 
 // Load adapters, normalizeMessages, scan, and restore scripts into test environment
-const adaptersCode = fs.readFileSync(path.resolve(__dirname, '../../adapters.js'), 'utf8');
+const adaptersCode = fs.readFileSync(path.resolve(__dirname, '../../core/adapters.js'), 'utf8');
 const scanCode = fs.readFileSync(path.resolve(__dirname, '../../content/features/scan.js'), 'utf8');
 const restoreCode = fs.readFileSync(path.resolve(__dirname, '../../content/features/restore.js'), 'utf8');
 

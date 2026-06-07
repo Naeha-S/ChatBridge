@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 
 // Evaluate adapters.js in the global JSDOM scope
-const adaptersCode = fs.readFileSync(path.resolve(__dirname, '../../adapters.js'), 'utf8');
+const adaptersCode = fs.readFileSync(path.resolve(__dirname, '../../core/adapters.js'), 'utf8');
 eval(adaptersCode);
 
 describe('Adapters Unit Tests', () => {

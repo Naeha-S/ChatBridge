@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 
 // Load adapters.js into test environment
-const adaptersCode = fs.readFileSync(path.resolve(__dirname, '../../adapters.js'), 'utf8');
+const adaptersCode = fs.readFileSync(path.resolve(__dirname, '../../core/adapters.js'), 'utf8');
 eval(adaptersCode);
 
 describe('Adapter Selector Regression & Layout Retro-compatibility Tests', () => {

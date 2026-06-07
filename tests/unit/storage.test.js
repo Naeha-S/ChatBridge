@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 
 // Evaluate storage.js in global JSDOM scope
-const storageCode = fs.readFileSync(path.resolve(__dirname, '../../storage.js'), 'utf8');
+const storageCode = fs.readFileSync(path.resolve(__dirname, '../../core/storage.js'), 'utf8');
 eval(storageCode);
 
 describe('StorageManager Unit Tests', () => {

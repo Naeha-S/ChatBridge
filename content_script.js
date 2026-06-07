@@ -10392,7 +10392,9 @@ ${chatText.substring(0, 10000)}`
             if (summLengthSelect) __cbViewStates.summ.selectValues.length = summLengthSelect.value;
             break;
           case 'trans':
-            if (transSourceText) __cbViewStates.trans.sourceText = transSourceText.textContent || '';
+            if (typeof transCustomInput !== 'undefined' && transCustomInput) {
+              __cbViewStates.trans.sourceText = transCustomInput.value || '';
+            }
             if (transResult) __cbViewStates.trans.result = transResult.dataset.plainText || transResult.textContent || '';
             if (transLangSelect) __cbViewStates.trans.targetLang = transLangSelect.value;
             break;
@@ -10401,7 +10403,7 @@ ${chatText.substring(0, 10000)}`
             if (rewSourceEl) __cbViewStates.rew.result = rewSourceEl.value || rewSourceEl.textContent || '';
             break;
           case 'sync':
-            if (syncSourceText) __cbViewStates.sync.sourceText = syncSourceText.textContent || '';
+            // Obsolete: tone sync is integrated into Rewrite view
             break;
         }
       } catch (e) { debugLog('saveViewState error', e); }
@@ -10426,8 +10428,9 @@ ${chatText.substring(0, 10000)}`
             }
             break;
           case 'trans':
-            if (__cbViewStates.trans.sourceText && transSourceText) {
-              transSourceText.textContent = __cbViewStates.trans.sourceText;
+            if (__cbViewStates.trans.sourceText && typeof transCustomInput !== 'undefined' && transCustomInput) {
+              transCustomInput.value = __cbViewStates.trans.sourceText;
+              try { transCustomInput.dispatchEvent(new Event('input')); } catch (_) {}
             }
             if (__cbViewStates.trans.result && transResult) {
               // Re-render formatted output
@@ -10464,9 +10467,7 @@ ${chatText.substring(0, 10000)}`
             }
             break;
           case 'sync':
-            if (__cbViewStates.sync.sourceText && syncSourceText) {
-              syncSourceText.textContent = __cbViewStates.sync.sourceText;
-            }
+            // Obsolete: tone sync is integrated into Rewrite view
             break;
         }
       } catch (e) { debugLog('restoreViewState error', e); }
@@ -22464,14 +22465,14 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       CBAnalytics.track('quick_action', 'copy_click');
       try {
         let txt = '';
-        if (summView.classList.contains('cb-view-active') && summSourceText && summSourceText.textContent && summSourceText.textContent !== '(no conversation found)' && summSourceText.textContent !== '(no result)') {
-          txt = summSourceText.textContent;
-        } else if (rewView.classList.contains('cb-view-active') && rewSourceText && rewSourceText.textContent && rewSourceText.textContent !== '(no conversation found)' && rewSourceText.textContent !== '(no result)') {
-          txt = rewSourceText.textContent;
-        } else if (transView.classList.contains('cb-view-active') && transResult && (transResult.dataset.plainText || transResult.textContent)) {
-          txt = transResult.dataset.plainText || transResult.textContent;
-        } else if (syncView.classList.contains('cb-view-active') && syncSourceText && syncSourceText.textContent && syncSourceText.textContent !== '(no conversation found)' && syncSourceText.textContent !== '(no result)') {
-          txt = syncSourceText.textContent;
+        if (summView.classList.contains('cb-view-active')) {
+          const resText = summResult ? summResult.textContent : '';
+          const srcText = summSourceText ? summSourceText.textContent : '';
+          txt = resText || srcText || '';
+        } else if (rewView.classList.contains('cb-view-active')) {
+          txt = rewOutputArea ? rewOutputArea.textContent : '';
+        } else if (transView.classList.contains('cb-view-active')) {
+          txt = transResult ? (transResult.dataset.plainText || transResult.textContent) : '';
         }
         if (!txt && preview && preview.textContent && preview.textContent !== 'Preview: (none)' && !preview.textContent.startsWith('Preview:')) {
           txt = preview.textContent;
