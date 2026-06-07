@@ -5,9 +5,26 @@
 	"description": "ChatBridge Chrome extension (Manifest V3) for cross-platform AI conversation workflows.",
 	"scripts": {
 		"check:syntax": "node --check content_script.js && node --check background.js",
-		"check:all": "npm run check:syntax"
+		"check:all": "npm run check:syntax",
+		"test": "jest --testPathIgnorePatterns=tests/smoke --forceExit",
+		"test:unit": "jest tests/unit --forceExit",
+		"test:integration": "jest tests/integration --forceExit",
+		"test:edge": "jest tests/edge_cases --forceExit",
+		"test:regression": "jest tests/regression --forceExit",
+		"test:smoke": "jest tests/smoke --forceExit"
 	},
 	"engines": {
 		"node": ">=18"
+	},
+	"devDependencies": {
+		"jest": "^29.7.0",
+		"jest-environment-jsdom": "^29.7.0",
+		"puppeteer": "^22.6.0"
+	},
+	"jest": {
+		"testEnvironment": "jsdom",
+		"setupFilesAfterEnv": [
+			"<rootDir>/tests/setup.js"
+		]
 	}
 }

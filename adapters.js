@@ -512,10 +512,11 @@ const SiteAdapters = [
 
       // Merge all wrapper sources and dedupe by top-level element
       let combinedWrappers = [...userWrappers, ...assistantWrappers, ...structuralWrappers];
-      combinedWrappers = combinedWrappers.filter((el, idx, arr) => el && !arr.some((other, j) => j !== idx && other.contains(el)));
-      // Remove duplicates by identity
+      // Remove duplicates by identity first to prevent self-containment filter bugs
       const uniq = new Set();
-      combinedWrappers = combinedWrappers.filter(el => { if (uniq.has(el)) return false; uniq.add(el); return true; });
+      combinedWrappers = combinedWrappers.filter(el => { if (!el || uniq.has(el)) return false; uniq.add(el); return true; });
+      // Now filter out descendants
+      combinedWrappers = combinedWrappers.filter((el, idx, arr) => !arr.some((other, j) => j !== idx && other.contains(el)));
 
       console.log('[Claude Debug] Wrapper sources -> user:', userWrappers.length, 'assistant:', assistantWrappers.length, 'struct:', structuralWrappers.length, 'combinedTopLevel:', combinedWrappers.length);
 

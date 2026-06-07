@@ -28,11 +28,11 @@ product. Last updated: 2026-02-18
 
 ### 🧪 Testing
 
-- [ ] Unit tests for core utilities (storage, adapters, normalizeMessages)
-- [ ] Integration tests for scan → transform → restore flow
-- [ ] Edge case tests (empty chats, single message, 1000+ messages)
-- [ ] Cross-browser smoke tests (Chrome stable, Beta, Canary)
-- [ ] Adapter regression tests per platform
+- [x] Unit tests for core utilities (storage, adapters, normalizeMessages)
+- [x] Integration tests for scan → transform → restore flow
+- [x] Edge case tests (empty chats, single message, 1000+ messages)
+- [x] Cross-browser smoke tests (Chrome stable, Beta, Canary)
+- [x] Adapter regression tests per platform
 
 ### 🛡️ Error Handling
 
