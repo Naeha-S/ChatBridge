@@ -142,6 +142,21 @@ async function getNextAvailableModel(preferredModel) {
       return preferredModel;
     }
   }
+
+  // Load balance generic requests across healthy flash models
+  const flashModels = ['gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-1.5-flash'];
+  const healthyFlash = flashModels.filter(m => (state.modelFailureCount[m] || 0) < MAX_MODEL_FAILURES);
+  if (healthyFlash.length > 1 && !preferredModel) {
+    const randIdx = Math.floor(Math.random() * healthyFlash.length);
+    const selected = healthyFlash[randIdx];
+    const priorityIdx = GEMINI_MODEL_PRIORITY.indexOf(selected);
+    if (priorityIdx !== -1) {
+      state.currentModelIndex = priorityIdx;
+      await _saveModelState();
+    }
+    return selected;
+  }
+
   for (let i = 0; i < GEMINI_MODEL_PRIORITY.length; i++) {
     const idx = (state.currentModelIndex + i) % GEMINI_MODEL_PRIORITY.length;
     const model = GEMINI_MODEL_PRIORITY[idx];
@@ -685,6 +700,19 @@ async function cacheClearAll() {
       req.onerror = () => res(false);
     });
   } catch (e) { return false; }
+}
+
+async function recordPerformanceMetric(name, duration) {
+  try {
+    const data = await new Promise(r => chrome.storage.local.get(['cb_telemetry'], r));
+    const telemetry = (data && data.cb_telemetry) || {};
+    if (!telemetry[name]) telemetry[name] = [];
+    telemetry[name].push({ ts: Date.now(), val: parseFloat(parseFloat(duration).toFixed(2)) });
+    if (telemetry[name].length > 100) {
+      telemetry[name] = telemetry[name].slice(-100);
+    }
+    await new Promise(r => chrome.storage.local.set({ cb_telemetry: telemetry }, r));
+  } catch (_) {}
 }
 
 // ─── Drift Detection: Fallback repair prompt generator (no API needed) ────
@@ -1930,6 +1958,13 @@ chrome.commands.onCommand.addListener((command) => {
 
 // simple message handler for future hooks
 function mainMessageListener(msg, sender, sendResponse) {
+  if (msg && msg.type === 'record_metric') {
+    (async () => {
+      await recordPerformanceMetric(msg.name, msg.duration);
+      sendResponse({ ok: true });
+    })();
+    return true;
+  }
   const apiVersion = msg.apiVersion || 'v1';
   // Test HuggingFace API connection
   if (msg && msg.type === 'test_huggingface_api') {
@@ -2202,6 +2237,7 @@ Return ONLY the rewritten text. No preamble. No explanation.`;
           }
         } catch (e) { /* ignore */ }
 
+        const apiStart = performance.now();
         const response = await fetch('https://router.huggingface.co/v1/chat/completions', {
           method: 'POST',
           headers: {
@@ -2218,6 +2254,8 @@ Return ONLY the rewritten text. No preamble. No explanation.`;
             temperature: 0.4
           })
         });
+        const apiDuration = performance.now() - apiStart;
+        recordPerformanceMetric('api_latency', apiDuration);
 
         if (!response.ok) {
           const errorText = await response.text().catch(() => '');
@@ -2832,6 +2870,7 @@ Return ONLY the rewritten text. No preamble. No explanation.`;
           try {
             const controller = new AbortController();
             const to = setTimeout(() => controller.abort(), timeoutMs);
+            const apiStart = performance.now();
             const res = await fetch('https://api.openai.com/v1/chat/completions', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
@@ -2843,6 +2882,8 @@ Return ONLY the rewritten text. No preamble. No explanation.`;
               }),
               signal: controller.signal
             });
+            const apiDuration = performance.now() - apiStart;
+            recordPerformanceMetric('api_latency', apiDuration);
             clearTimeout(to);
             
             const text = await res.text();
@@ -3262,11 +3303,14 @@ Rewritten conversation (optimized for ${tgt}):`;
 
           let res;
           try {
+            const apiStart = performance.now();
             res = await fetch(endpoint, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(body)
             });
+            const apiDuration = performance.now() - apiStart;
+            recordPerformanceMetric('api_latency', apiDuration);
           } catch (fetchError) {
             console.error(`[Gemini] Fetch failed for ${currentModel}:`, fetchError);
             markModelFailed(currentModel, 'fetch_error');
@@ -3465,6 +3509,7 @@ Rewritten conversation (optimized for ${tgt}):`;
           for (const model of models) {
             try {
               const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`;
+              const apiStart = performance.now();
               const resp = await fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -3480,6 +3525,8 @@ Rewritten conversation (optimized for ${tgt}):`;
                   }
                 })
               });
+              const apiDuration = performance.now() - apiStart;
+              recordPerformanceMetric('api_latency', apiDuration);
               if (!resp.ok) continue;
               const data = await resp.json();
               const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
@@ -3493,6 +3540,7 @@ Rewritten conversation (optimized for ${tgt}):`;
           const hfApiKey = await getHuggingFaceApiKey();
           if (!hfApiKey) return null;
           try {
+            const apiStart = performance.now();
             const resp = await fetch('https://router.huggingface.co/novita/v3/openai/chat/completions', {
               method: 'POST',
               headers: { 'Authorization': `Bearer ${hfApiKey}`, 'Content-Type': 'application/json' },
@@ -3507,6 +3555,8 @@ Rewritten conversation (optimized for ${tgt}):`;
                 stream: false
               })
             });
+            const apiDuration = performance.now() - apiStart;
+            recordPerformanceMetric('api_latency', apiDuration);
             if (!resp.ok) return null;
             const data = await resp.json();
             const text = data?.choices?.[0]?.message?.content;
@@ -3921,6 +3971,7 @@ ${payload.text}`;
 
         console.log(`[Llama] Calling HuggingFace router for ${action}...`);
 
+        const apiStart = performance.now();
         const res = await fetch(endpoint, {
           method: 'POST',
           headers: {
@@ -3929,6 +3980,8 @@ ${payload.text}`;
           },
           body: JSON.stringify(body)
         });
+        const apiDuration = performance.now() - apiStart;
+        recordPerformanceMetric('api_latency', apiDuration);
 
         let json;
         try {
@@ -3995,7 +4048,10 @@ ${payload.text}`;
           };
 
           try {
+            const apiStart = performance.now();
             const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+            const apiDuration = performance.now() - apiStart;
+            recordPerformanceMetric('api_latency', apiDuration);
             const text = await res.text();
             let json = {};
             try { json = text ? JSON.parse(text) : {}; } catch (e) { markModelFailed(currentModel, 'parse_error'); lastError = e; continue; }
@@ -4039,7 +4095,10 @@ ${payload.text}`;
           };
 
           try {
+            const apiStart = performance.now();
             const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+            const apiDuration = performance.now() - apiStart;
+            recordPerformanceMetric('api_latency', apiDuration);
             const text = await res.text();
             let json = {};
             try { json = text ? JSON.parse(text) : {}; } catch (e) { markModelFailed(currentModel, 'parse_error'); lastError = e; continue; }
@@ -4085,7 +4144,10 @@ ${payload.text}`;
             };
             if (!systemInstruction) delete body.systemInstruction;
             try {
+              const apiStart = performance.now();
               const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+              const apiDuration = performance.now() - apiStart;
+              recordPerformanceMetric('api_latency', apiDuration);
               const text = await res.text();
               let json = {};
               try { json = text ? JSON.parse(text) : {}; } catch (e) { markModelFailed(currentModel, 'parse_error'); lastError = e; continue; }

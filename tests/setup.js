@@ -47,6 +47,53 @@ global.chrome = {
           setTimeout(callback, 0);
         }
       })
+    },
+    session: {
+      storageMap: {},
+      get: jest.fn((keys, callback) => {
+        const result = {};
+        const map = global.chrome.storage.session.storageMap;
+        if (typeof keys === 'string') {
+          result[keys] = map[keys];
+        } else if (Array.isArray(keys)) {
+          keys.forEach(k => {
+            result[k] = map[k];
+          });
+        } else if (typeof keys === 'object' && keys !== null) {
+          Object.keys(keys).forEach(k => {
+            result[k] = map[k] !== undefined ? map[k] : keys[k];
+          });
+        }
+        if (callback) {
+          setTimeout(() => callback(result), 0);
+        }
+      }),
+      set: jest.fn((items, callback) => {
+        Object.keys(items).forEach(k => {
+          global.chrome.storage.session.storageMap[k] = items[k];
+        });
+        if (callback) {
+          setTimeout(callback, 0);
+        }
+      }),
+      remove: jest.fn((keys, callback) => {
+        if (typeof keys === 'string') {
+          delete global.chrome.storage.session.storageMap[keys];
+        } else if (Array.isArray(keys)) {
+          keys.forEach(k => {
+            delete global.chrome.storage.session.storageMap[k];
+          });
+        }
+        if (callback) {
+          setTimeout(callback, 0);
+        }
+      }),
+      clear: jest.fn((callback) => {
+        global.chrome.storage.session.storageMap = {};
+        if (callback) {
+          setTimeout(callback, 0);
+        }
+      })
     }
   },
   runtime: {

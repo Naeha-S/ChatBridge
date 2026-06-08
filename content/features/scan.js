@@ -148,6 +148,7 @@
         }
 
         let raw = [];
+        const domScanStart = performance.now();
         try {
           if (adapter && typeof adapter.getMessages === 'function') {
             raw = adapter.getMessages() || [];
@@ -243,6 +244,11 @@
             raw = [];
           }
         }
+
+        const domScanDuration = performance.now() - domScanStart;
+        try {
+          chrome.runtime.sendMessage({ type: 'record_metric', name: 'dom_scan', duration: domScanDuration });
+        } catch (_) {}
 
         debugLog('raw messages before normalization:', raw.length);
         try { if (window.ChatBridge && window.ChatBridge._lastScan) window.ChatBridge._lastScan.messageCount = (raw && raw.length) || 0; } catch (_) { }

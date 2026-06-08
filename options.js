@@ -233,6 +233,50 @@
         }
       });
     }
+
+    // Fetch and display Performance Telemetry
+    chrome.storage.local.get(['cb_telemetry'], (res) => {
+      const telemetry = res.cb_telemetry || {};
+      
+      const computeStats = (name) => {
+        const list = telemetry[name] || [];
+        if (list.length === 0) return { avg: 0, p50: 0, p95: 0, p99: 0 };
+        const vals = list.map(item => item.val).sort((a, b) => a - b);
+        const sum = vals.reduce((a, b) => a + b, 0);
+        const avg = sum / vals.length;
+        
+        const getPercentile = (percentile) => {
+          const idx = Math.min(vals.length - 1, Math.floor(vals.length * (percentile / 100)));
+          return vals[idx];
+        };
+        
+        return {
+          avg,
+          p50: getPercentile(50),
+          p95: getPercentile(95),
+          p99: getPercentile(99)
+        };
+      };
+
+      const domScan = computeStats('dom_scan');
+      const uiRender = computeStats('ui_render');
+      const apiLatency = computeStats('api_latency');
+
+      const domScanEl = document.getElementById('perf-dom-scan');
+      if (domScanEl) domScanEl.textContent = `${domScan.avg.toFixed(2)} ms`;
+
+      const uiRenderEl = document.getElementById('perf-ui-render');
+      if (uiRenderEl) uiRenderEl.textContent = `${uiRender.avg.toFixed(2)} ms`;
+
+      const p50El = document.getElementById('perf-api-p50');
+      if (p50El) p50El.textContent = `${apiLatency.p50.toFixed(2)} ms`;
+
+      const p95El = document.getElementById('perf-api-p95');
+      if (p95El) p95El.textContent = `${apiLatency.p95.toFixed(2)} ms`;
+
+      const p99El = document.getElementById('perf-api-p99');
+      if (p99El) p99El.textContent = `${apiLatency.p99.toFixed(2)} ms`;
+    });
   }
 
   loadDashboardStats();

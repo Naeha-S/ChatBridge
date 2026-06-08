@@ -133,6 +133,7 @@
     }
 
     function renderList() {
+        const uiRenderStart = performance.now();
         if (!filteredConversations.length) {
             if (conversations.length === 0) {
                 conversationList.innerHTML = `
@@ -157,6 +158,10 @@
                     }
                 }, 0);
             }
+            const uiRenderDuration = performance.now() - uiRenderStart;
+            try {
+                chrome.runtime.sendMessage({ type: 'record_metric', name: 'ui_render', duration: uiRenderDuration });
+            } catch (_) {}
             return;
         }
 
@@ -204,6 +209,11 @@
 
         // Re-apply translations for static elements if needed
         applyTranslations(currentLang);
+
+        const uiRenderDuration = performance.now() - uiRenderStart;
+        try {
+            chrome.runtime.sendMessage({ type: 'record_metric', name: 'ui_render', duration: uiRenderDuration });
+        } catch (_) {}
     }
 
     function createConversationCard(conv) {

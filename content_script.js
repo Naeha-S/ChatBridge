@@ -4818,6 +4818,16 @@
       } catch (e) { }
     }
 
+    let updatePanelScheduled = false;
+    function scheduleUpdatePanelDynamicLayout() {
+      if (updatePanelScheduled) return;
+      updatePanelScheduled = true;
+      requestAnimationFrame(() => {
+        updatePanelDynamicLayout();
+        updatePanelScheduled = false;
+      });
+    }
+
     updatePanelDynamicLayout();
 
     resizeHandle.addEventListener('mousedown', (e) => {
@@ -4843,7 +4853,7 @@
       const newHeight = Math.max(420, Math.min(maxHeight, startHeight + deltaY));
       panel.style.width = newWidth + 'px';
       panel.style.height = newHeight + 'px';
-      updatePanelDynamicLayout();
+      scheduleUpdatePanelDynamicLayout();
     });
 
     document.addEventListener('mouseup', () => {
@@ -4861,7 +4871,7 @@
     });
 
     window.addEventListener('resize', () => {
-      updatePanelDynamicLayout();
+      scheduleUpdatePanelDynamicLayout();
     });
 
     panel.appendChild(resizeHandle);
@@ -6808,432 +6818,465 @@
     // ============================================
     // SMART QUERY VIEW - Matching Translate/Summarize Style
     // ============================================
-    const smartView = document.createElement('div');
-    smartView.className = 'cb-internal-view';
-    smartView.id = 'cb-smart-view';
-    smartView.setAttribute('data-cb-ignore', 'true');
-    smartView.style.cssText = 'overflow-x: hidden;';
+    let smartView = null;
+    let smartViewInitialized = false;
+    let hostSelect = null;
+    let tagSelect = null;
+    let dateSelect = null;
+    let tkObserver = null;
+    let smartInput = null;
+    let smartResults = null;
+    let smartAnswer = null;
+    let smartProvenance = null;
+    let btnCloseSmart = null;
+    let btnCloseAgent = null;
+    let btnCloseInsights = null;
 
-    // Header with gradient title (matching Translate style exactly)
-    const smartTop = document.createElement('div');
-    smartTop.className = 'cb-view-top';
-    const smartTitle = document.createElement('div');
-    smartTitle.className = 'cb-view-title';
-    smartTitle.innerHTML = '<span class="cb-gradient-text" style="display: inline-flex; align-items: center; gap: 10px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>Smart Query</span>';
-    const btnCloseSmart = document.createElement('button');
-    btnCloseSmart.className = 'cb-view-close';
-    btnCloseSmart.textContent = '✕';
-    btnCloseSmart.setAttribute('aria-label', 'Close Smart Query view');
-    smartTop.appendChild(smartTitle);
-    smartTop.appendChild(btnCloseSmart);
-    smartView.appendChild(smartTop);
+    function lazyInitSmartView() {
+      if (smartViewInitialized) return;
+      smartViewInitialized = true;
 
-    // Premium glassmorphic intro card (matching translate style exactly)
-    const smartIntro = document.createElement('div');
-    smartIntro.className = 'cb-view-intro';
-    smartIntro.innerHTML = '<span style="color: var(--cb-white); font-weight: 600;">Search your conversations</span> using natural language. Find <span style="color: var(--cb-accent-tertiary);">insights</span>, <span style="color: var(--cb-accent-tertiary);">patterns</span>, and <span style="color: var(--cb-accent-tertiary);">key decisions</span> across all saved chats.';
-    smartView.appendChild(smartIntro);
+      smartView = document.createElement('div');
+      smartView.className = 'cb-internal-view';
+      smartView.id = 'cb-smart-view';
+      smartView.setAttribute('data-cb-ignore', 'true');
+      smartView.style.cssText = 'overflow-x: hidden;';
 
-    // Section label for suggestions
-    const suggestLabel = document.createElement('div');
-    suggestLabel.style.cssText = 'font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--cb-subtext); margin-bottom: 6px; opacity: 0.8;';
-    suggestLabel.textContent = 'Quick Search';
-    smartView.appendChild(suggestLabel);
+      // Header with gradient title (matching Translate style exactly)
+      const smartTop = document.createElement('div');
+      smartTop.className = 'cb-view-top';
+      const smartTitle = document.createElement('div');
+      smartTitle.className = 'cb-view-title';
+      smartTitle.innerHTML = '<span class="cb-gradient-text" style="display: inline-flex; align-items: center; gap: 10px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>Smart Query</span>';
+      btnCloseSmart = document.createElement('button');
+      btnCloseSmart.className = 'cb-view-close';
+      btnCloseSmart.textContent = '✕';
+      btnCloseSmart.setAttribute('aria-label', 'Close Smart Query view');
+      smartTop.appendChild(smartTitle);
+      smartTop.appendChild(btnCloseSmart);
+      smartView.appendChild(smartTop);
 
-    // Quick Suggestion Chips (matching translate language chips style)
-    const smartSuggestRow = document.createElement('div');
-    smartSuggestRow.id = 'cb-smart-suggest-row';
-    smartSuggestRow.style.cssText = 'display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px;';
+      // Premium glassmorphic intro card (matching translate style exactly)
+      const smartIntro = document.createElement('div');
+      smartIntro.className = 'cb-view-intro';
+      smartIntro.innerHTML = '<span style="color: var(--cb-white); font-weight: 600;">Search your conversations</span> using natural language. Find <span style="color: var(--cb-accent-tertiary);">insights</span>, <span style="color: var(--cb-accent-tertiary);">patterns</span>, and <span style="color: var(--cb-accent-tertiary);">key decisions</span> across all saved chats.';
+      smartView.appendChild(smartIntro);
 
-    const defaultSuggestions = ['Key decisions', 'Unresolved questions', 'Code examples', 'Action items'];
-    defaultSuggestions.forEach(text => {
-      const chip = document.createElement('button');
-      chip.className = 'cb-lang-chip';
-      chip.textContent = text;
-      chip.style.cssText = 'padding: 5px 10px; background: var(--cb-bg3); border: 1px solid var(--cb-border); border-radius: 20px; color: var(--cb-white); font-size: 11px; font-weight: 500; cursor: pointer; transition: all 0.2s ease;';
-      chip.onmouseenter = () => { chip.style.borderColor = 'var(--cb-accent-primary)'; chip.style.background = 'color-mix(in srgb, var(--cb-accent-primary) 10%, transparent)'; };
-      chip.onmouseleave = () => { chip.style.borderColor = 'var(--cb-border)'; chip.style.background = 'var(--cb-bg3)'; };
-      chip.onclick = () => {
-        const input = smartView.querySelector('#cb-smart-query');
-        if (input) { input.value = text; input.focus(); }
-      };
-      smartSuggestRow.appendChild(chip);
-    });
-    smartView.appendChild(smartSuggestRow);
+      // Section label for suggestions
+      const suggestLabel = document.createElement('div');
+      suggestLabel.style.cssText = 'font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--cb-subtext); margin-bottom: 6px; opacity: 0.8;';
+      suggestLabel.textContent = 'Quick Search';
+      smartView.appendChild(suggestLabel);
 
-    // Section label for filters
-    const filterLabel = document.createElement('div');
-    filterLabel.style.cssText = 'font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--cb-subtext); margin-bottom: 6px; opacity: 0.8;';
-    filterLabel.textContent = 'Filters';
-    smartView.appendChild(filterLabel);
+      // Quick Suggestion Chips (matching translate language chips style)
+      const smartSuggestRow = document.createElement('div');
+      smartSuggestRow.id = 'cb-smart-suggest-row';
+      smartSuggestRow.style.cssText = 'display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px;';
 
-    // Filters row (simple flex-wrap, no container box)
-    const smartFilterRow = document.createElement('div');
-    smartFilterRow.style.cssText = 'display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px;';
+      const defaultSuggestions = ['Key decisions', 'Unresolved questions', 'Code examples', 'Action items'];
+      defaultSuggestions.forEach(text => {
+        const chip = document.createElement('button');
+        chip.className = 'cb-lang-chip';
+        chip.textContent = text;
+        chip.style.cssText = 'padding: 5px 10px; background: var(--cb-bg3); border: 1px solid var(--cb-border); border-radius: 20px; color: var(--cb-white); font-size: 11px; font-weight: 500; cursor: pointer; transition: all 0.2s ease;';
+        chip.onmouseenter = () => { chip.style.borderColor = 'var(--cb-accent-primary)'; chip.style.background = 'color-mix(in srgb, var(--cb-accent-primary) 10%, transparent)'; };
+        chip.onmouseleave = () => { chip.style.borderColor = 'var(--cb-border)'; chip.style.background = 'var(--cb-bg3)'; };
+        chip.onclick = () => {
+          const input = smartView.querySelector('#cb-smart-query');
+          if (input) { input.value = text; input.focus(); }
+        };
+        smartSuggestRow.appendChild(chip);
+      });
+      smartView.appendChild(smartSuggestRow);
 
-    const hostSelect = document.createElement('select');
-    hostSelect.className = 'cb-select';
-    hostSelect.id = 'cb-smart-host';
-    const tagSelect = document.createElement('select');
-    tagSelect.className = 'cb-select';
-    tagSelect.id = 'cb-smart-tag';
-    const dateSelect = document.createElement('select');
-    dateSelect.className = 'cb-select';
-    dateSelect.id = 'cb-smart-date';
+      // Section label for filters
+      const filterLabel = document.createElement('div');
+      filterLabel.style.cssText = 'font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--cb-subtext); margin-bottom: 6px; opacity: 0.8;';
+      filterLabel.textContent = 'Filters';
+      smartView.appendChild(filterLabel);
 
-    // Default options
-    const ho = document.createElement('option'); ho.value = ''; ho.textContent = 'All hosts'; hostSelect.appendChild(ho);
-    const to = document.createElement('option'); to.value = ''; to.textContent = 'All tags'; tagSelect.appendChild(to);
-    ['All time', 'Last 7 days', 'Last 30 days'].forEach(v => {
-      const o = document.createElement('option');
-      o.value = v;
-      o.textContent = v;
-      dateSelect.appendChild(o);
-    });
-    dateSelect.value = 'All time';
+      // Filters row (simple flex-wrap, no container box)
+      const smartFilterRow = document.createElement('div');
+      smartFilterRow.style.cssText = 'display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px;';
 
-    smartFilterRow.appendChild(hostSelect);
-    smartFilterRow.appendChild(tagSelect);
-    smartFilterRow.appendChild(dateSelect);
-    smartView.appendChild(smartFilterRow);
+      hostSelect = document.createElement('select');
+      hostSelect.className = 'cb-select';
+      hostSelect.id = 'cb-smart-host';
+      tagSelect = document.createElement('select');
+      tagSelect.className = 'cb-select';
+      tagSelect.id = 'cb-smart-tag';
+      dateSelect = document.createElement('select');
+      dateSelect.className = 'cb-select';
+      dateSelect.id = 'cb-smart-date';
 
-    // Query input row
-    const smartQueryRow = document.createElement('div');
-    smartQueryRow.style.cssText = 'display: flex; gap: 8px; margin-bottom: 10px;';
+      // Default options
+      const ho = document.createElement('option'); ho.value = ''; ho.textContent = 'All hosts'; hostSelect.appendChild(ho);
+      const to = document.createElement('option'); to.value = ''; to.textContent = 'All tags'; tagSelect.appendChild(to);
+      ['All time', 'Last 7 days', 'Last 30 days'].forEach(v => {
+        const o = document.createElement('option');
+        o.value = v;
+        o.textContent = v;
+        dateSelect.appendChild(o);
+      });
+      dateSelect.value = 'All time';
 
-    const smartInput = document.createElement('input');
-    smartInput.type = 'text';
-    smartInput.className = 'cb-select';
-    smartInput.id = 'cb-smart-query';
-    smartInput.placeholder = 'e.g. What did Gemini say about rate limits?';
-    smartInput.style.cssText = 'flex: 1; min-width: 0;';
-    smartInput.setAttribute('aria-label', 'Smart query input');
+      smartFilterRow.appendChild(hostSelect);
+      smartFilterRow.appendChild(tagSelect);
+      smartFilterRow.appendChild(dateSelect);
+      smartView.appendChild(smartFilterRow);
 
-    const btnSmartSearch = document.createElement('button');
-    btnSmartSearch.className = 'cb-btn cb-btn-primary';
-    btnSmartSearch.id = 'btnSmartSearch';
-    btnSmartSearch.textContent = 'Search';
-    btnSmartSearch.setAttribute('aria-label', 'Search saved chats');
+      // Query input row
+      const smartQueryRow = document.createElement('div');
+      smartQueryRow.style.cssText = 'display: flex; gap: 8px; margin-bottom: 10px;';
 
-    smartQueryRow.appendChild(smartInput);
-    smartQueryRow.appendChild(btnSmartSearch);
-    smartView.appendChild(smartQueryRow);
+      smartInput = document.createElement('input');
+      smartInput.type = 'text';
+      smartInput.className = 'cb-select';
+      smartInput.id = 'cb-smart-query';
+      smartInput.placeholder = 'e.g. What did Gemini say about rate limits?';
+      smartInput.style.cssText = 'flex: 1; min-width: 0;';
+      smartInput.setAttribute('aria-label', 'Smart query input');
 
-    // Results container
-    const smartResults = document.createElement('div');
-    smartResults.id = 'cb-smart-results';
-    smartResults.className = 'cb-view-text';
-    smartResults.style.cssText = 'min-height: 60px; max-height: 200px; overflow-x: hidden;';
-    smartResults.textContent = '(No results yet)';
-    smartView.appendChild(smartResults);
+      const btnSmartSearch = document.createElement('button');
+      btnSmartSearch.className = 'cb-btn cb-btn-primary';
+      btnSmartSearch.id = 'btnSmartSearch';
+      btnSmartSearch.textContent = 'Search';
+      btnSmartSearch.setAttribute('aria-label', 'Search saved chats');
 
-    // Action buttons row
-    const smartAskRow = document.createElement('div');
-    smartAskRow.style.cssText = 'display: flex; gap: 8px; margin-top: 10px;';
+      smartQueryRow.appendChild(smartInput);
+      smartQueryRow.appendChild(btnSmartSearch);
+      smartView.appendChild(smartQueryRow);
 
-    const btnSmartAsk = document.createElement('button');
-    btnSmartAsk.className = 'cb-btn cb-btn-primary cb-view-go';
-    btnSmartAsk.id = 'btnSmartAsk';
-    btnSmartAsk.textContent = 'Ask AI';
-    btnSmartAsk.style.cssText = 'flex: 1;';
-    btnSmartAsk.setAttribute('aria-label', 'Ask AI about selected results');
+      // Results container
+      smartResults = document.createElement('div');
+      smartResults.id = 'cb-smart-results';
+      smartResults.className = 'cb-view-text';
+      smartResults.style.cssText = 'min-height: 60px; max-height: 200px; overflow-x: hidden;';
+      smartResults.textContent = '(No results yet)';
+      smartView.appendChild(smartResults);
 
-    const btnIndexAll = document.createElement('button');
-    btnIndexAll.className = 'cb-btn';
-    btnIndexAll.id = 'btnIndexAll';
-    btnIndexAll.textContent = 'Index Chats';
-    btnIndexAll.title = 'Create embeddings and index all saved chats';
-    btnIndexAll.setAttribute('aria-label', 'Index all saved chats');
+      // Action buttons row
+      const smartAskRow = document.createElement('div');
+      smartAskRow.style.cssText = 'display: flex; gap: 8px; margin-top: 10px;';
 
-    smartAskRow.appendChild(btnSmartAsk);
-    smartAskRow.appendChild(btnIndexAll);
-    smartView.appendChild(smartAskRow);
+      const btnSmartAsk = document.createElement('button');
+      btnSmartAsk.className = 'cb-btn cb-btn-primary cb-view-go';
+      btnSmartAsk.id = 'btnSmartAsk';
+      btnSmartAsk.textContent = 'Ask AI';
+      btnSmartAsk.style.cssText = 'flex: 1;';
+      btnSmartAsk.setAttribute('aria-label', 'Ask AI about selected results');
 
-    // AI Answer Display
-    const smartAnswer = document.createElement('div');
-    smartAnswer.id = 'cb-smart-answer';
-    smartAnswer.className = 'cb-view-result';
-    smartAnswer.textContent = '';
-    smartView.appendChild(smartAnswer);
+      const btnIndexAll = document.createElement('button');
+      btnIndexAll.className = 'cb-btn';
+      btnIndexAll.id = 'btnIndexAll';
+      btnIndexAll.textContent = 'Index Chats';
+      btnIndexAll.title = 'Create embeddings and index all saved chats';
+      btnIndexAll.setAttribute('aria-label', 'Index all saved chats');
 
-    // Provenance/Source Citations
-    const smartProvenance = document.createElement('div');
-    smartProvenance.id = 'cb-smart-provenance';
-    smartProvenance.style.cssText = 'font-size: 12px; margin-top: 8px; color: var(--cb-subtext);';
-    smartProvenance.textContent = '';
-    smartView.appendChild(smartProvenance);
+      smartAskRow.appendChild(btnSmartAsk);
+      smartAskRow.appendChild(btnIndexAll);
+      smartView.appendChild(smartAskRow);
 
-    panel.appendChild(smartView);
+      // AI Answer Display
+      smartAnswer = document.createElement('div');
+      smartAnswer.id = 'cb-smart-answer';
+      smartAnswer.className = 'cb-view-result';
+      smartAnswer.textContent = '';
+      smartView.appendChild(smartAnswer);
 
-    // Agent Hub view (replaces Knowledge Graph) - Multi-agent system
-    const agentView = document.createElement('div'); agentView.className = 'cb-internal-view'; agentView.id = 'cb-agent-view'; agentView.setAttribute('data-cb-ignore', 'true');
-    const agentTop = document.createElement('div'); agentTop.className = 'cb-view-top';
-    const agentTitle = document.createElement('div'); agentTitle.className = 'cb-view-title'; agentTitle.innerHTML = '<span class="cb-gradient-text" style="display: inline-flex; align-items: center; gap: 10px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a4 4 0 0 1 4 4c0 1.95-1.4 3.58-3.25 3.93"/><path d="M12 2a4 4 0 0 0-4 4c0 1.95 1.4 3.58 3.25 3.93"/><rect x="8" y="14" width="8" height="6" rx="1"/><line x1="9" y1="18" x2="15" y2="18"/><line x1="12" y1="14" x2="12" y2="10"/></svg>Agent Utilities</span>';
-    const btnCloseAgent = document.createElement('button'); btnCloseAgent.className = 'cb-view-close'; btnCloseAgent.textContent = '✕';
-    btnCloseAgent.setAttribute('aria-label', 'Close Agents');
-    agentTop.appendChild(agentTitle); agentTop.appendChild(btnCloseAgent);
-    agentView.appendChild(agentTop);
+      // Provenance/Source Citations
+      smartProvenance = document.createElement('div');
+      smartProvenance.id = 'cb-smart-provenance';
+      smartProvenance.style.cssText = 'font-size: 12px; margin-top: 8px; color: var(--cb-subtext);';
+      smartProvenance.textContent = '';
+      smartView.appendChild(smartProvenance);
 
-    const agentIntro = document.createElement('div'); agentIntro.className = 'cb-view-intro'; agentIntro.textContent = '6 intelligence agents that work across all your AI conversations.';
-    agentView.appendChild(agentIntro);
-
-    // Agent content container (will be populated by renderAgentHub)
-    const agentContent = document.createElement('div'); agentContent.id = 'cb-agent-content'; agentContent.style.cssText = 'padding:8px 0;overflow-y:auto;max-height:none;';
-    agentView.appendChild(agentContent);
-
-    panel.appendChild(agentView);
-
-    // ============================================
-    // INSIGHTS / SMART WORKSPACE VIEW
-    // ============================================
-    const insightsView = document.createElement('div'); insightsView.className = 'cb-internal-view'; insightsView.id = 'cb-insights-view'; insightsView.setAttribute('data-cb-ignore', 'true');
-    const insightsTop = document.createElement('div'); insightsTop.className = 'cb-view-top'; insightsTop.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;';
-    const insightsTitle = document.createElement('div'); insightsTitle.className = 'cb-view-title';
-    insightsTitle.innerHTML = '<span class="cb-gradient-text" style="display: inline-flex; align-items: center; gap: 10px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>Smart Workspace</span>';
-    const btnCloseInsights = document.createElement('button'); btnCloseInsights.className = 'cb-view-close';
-    btnCloseInsights.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
-    btnCloseInsights.setAttribute('aria-label', 'Close Smart Workspace view');
-    insightsTop.appendChild(insightsTitle); insightsTop.appendChild(btnCloseInsights);
-    insightsView.appendChild(insightsTop);
-
-    const insightsIntro = document.createElement('div'); insightsIntro.className = 'cb-view-intro';
-    insightsIntro.textContent = 'Practical tools to help you work smarter: compare models, merge threads, extract content, and stay organized.';
-    insightsView.appendChild(insightsIntro);
-
-    const insightsContent = document.createElement('div'); insightsContent.id = 'cb-insights-content'; insightsContent.style.cssText = 'padding:12px 0;overflow-y:auto;overflow-x:hidden;max-height:calc(100vh - 250px);';
-    // Add default insights blocks with luxury styling
-    insightsContent.innerHTML = `
-    <div class="cb-insights-section">
-      <div class="cb-insight-block" id="cb-media-library-block">
-        <div class="cb-insight-title" style="justify-content:space-between;">
-          <span style="display:flex;align-items:center;gap:8px;">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-            Media Library
-          </span>
-          <span id="cb-media-library-count" style="font-size:10px;background:var(--cb-bg3);border:1px solid var(--cb-border);padding:3px 10px;border-radius:12px;color:var(--cb-accent-primary);font-weight:600;">0</span>
-        </div>
-        <div class="cb-insight-content">Access images from your scanned conversations. Click to insert into chat.</div>
-        <div id="cb-media-library-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(60px,1fr));gap:8px;margin-top:14px;max-height:180px;overflow-y:auto;"></div>
-        <button id="cb-media-library-refresh" class="cb-btn" style="width:100%;margin-top:14px;font-size:11px;padding:10px;display:flex;align-items:center;justify-content:center;gap:6px;">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-          Refresh Library
-        </button>
-      </div>
-      <div class="cb-insight-block">
-        <div class="cb-insight-title">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-          Compare Models
-        </div>
-        <div class="cb-insight-content">Compare responses from different AI models side-by-side. Spot differences, strengths, and weaknesses.</div>
-      </div>
-      <div class="cb-insight-block">
-        <div class="cb-insight-title">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3v12"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>
-          Merge Threads
-        </div>
-        <div class="cb-insight-content">Combine multiple chat threads into a unified view. Perfect for project tracking and research.</div>
-      </div>
-      <div class="cb-insight-block">
-        <div class="cb-insight-title">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-          Extract Key Content
-        </div>
-        <div class="cb-insight-content">Extract highlights, action items, and decisions from conversations. Perfect for meeting notes.</div>
-      </div>
-      <div class="cb-insight-block">
-        <div class="cb-insight-title">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
-          Organize & Tag
-        </div>
-        <div class="cb-insight-content">Tag, categorize, and search your chats for easy retrieval. Never lose important info.</div>
-      </div>
-    </div>
-  `;
-    insightsView.appendChild(insightsContent);
-
-    // Media Library functionality - load images and enable insertion
-    async function loadMediaLibrary() {
-      try {
-        const grid = document.getElementById('cb-media-library-grid');
-        const countEl = document.getElementById('cb-media-library-count');
-        if (!grid) return;
-
-        // Get images from vault
-        let images = [];
-        if (typeof window.ChatBridge !== 'undefined' && typeof window.ChatBridge.getImageVault === 'function') {
-          images = await window.ChatBridge.getImageVault();
-        }
-
-        countEl.textContent = String(images.length);
-        grid.innerHTML = '';
-
-        if (images.length === 0) {
-          grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:rgba(255,255,255,0.5);font-size:11px;padding:20px;">No images yet. Scan a conversation with images first.</div>';
-          return;
-        }
-
-        // Display up to 12 images
-        images.slice(0, 12).forEach(imgData => {
-          const thumb = document.createElement('div');
-          thumb.style.cssText = 'position:relative;aspect-ratio:1;border-radius:6px;overflow:hidden;border:1px solid color-mix(in srgb, var(--cb-accent-primary) 30%, transparent);cursor:pointer;background:rgba(0,0,0,0.3);transition:all 0.2s;';
-
-          const img = document.createElement('img');
-          img.src = imgData.src;
-          img.style.cssText = 'width:100%;height:100%;object-fit:cover;';
-          img.loading = 'lazy';
-          img.onerror = () => { thumb.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div>'; };
-
-          thumb.appendChild(img);
-
-          // Hover effect
-          thumb.addEventListener('mouseenter', () => {
-            thumb.style.transform = 'scale(1.05)';
-            thumb.style.borderColor = 'color-mix(in srgb, var(--cb-accent-primary) 80%, transparent)';
-          });
-          thumb.addEventListener('mouseleave', () => {
-            thumb.style.transform = 'scale(1)';
-            thumb.style.borderColor = 'color-mix(in srgb, var(--cb-accent-primary) 30%, transparent)';
-          });
-
-          // Click to insert into chat
-          thumb.addEventListener('click', () => insertImageToChat(imgData));
-
-          grid.appendChild(thumb);
-        });
-
-        if (images.length > 12) {
-          const moreLabel = document.createElement('div');
-          moreLabel.style.cssText = 'grid-column:1/-1;text-align:center;color:color-mix(in srgb, var(--cb-accent-primary) 80%, transparent);font-size:11px;padding:8px;cursor:pointer;';
-          moreLabel.textContent = `+${images.length - 12} more in Image Vault`;
-          grid.appendChild(moreLabel);
-        }
-      } catch (e) {
-        console.warn('[ChatBridge] loadMediaLibrary error:', e);
-      }
+      panel.appendChild(smartView);
     }
 
-    // Insert image into current AI chat
-    async function insertImageToChat(imgData) {
-      try {
-        console.log('[ChatBridge] Uploading image to chat as file:', imgData.src.substring(0, 50) + '...');
+    let agentView = null;
+    let agentViewInitialized = false;
+    function lazyInitAgentView() {
+      if (agentViewInitialized) return;
+      agentViewInitialized = true;
 
-        // Try to find the file input element
-        let fileInput = null;
+      // Agent Hub view (replaces Knowledge Graph) - Multi-agent system
+      agentView = document.createElement('div'); agentView.className = 'cb-internal-view'; agentView.id = 'cb-agent-view'; agentView.setAttribute('data-cb-ignore', 'true');
+      const agentTop = document.createElement('div'); agentTop.className = 'cb-view-top';
+      const agentTitle = document.createElement('div'); agentTitle.className = 'cb-view-title'; agentTitle.innerHTML = '<span class="cb-gradient-text" style="display: inline-flex; align-items: center; gap: 10px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a4 4 0 0 1 4 4c0 1.95-1.4 3.58-3.25 3.93"/><path d="M12 2a4 4 0 0 0-4 4c0 1.95 1.4 3.58 3.25 3.93"/><rect x="8" y="14" width="8" height="6" rx="1"/><line x1="9" y1="18" x2="15" y2="18"/><line x1="12" y1="14" x2="12" y2="10"/></svg>Agent Utilities</span>';
+      btnCloseAgent = document.createElement('button'); btnCloseAgent.className = 'cb-view-close'; btnCloseAgent.textContent = '✕';
+      btnCloseAgent.setAttribute('aria-label', 'Close Agents');
+      agentTop.appendChild(agentTitle); agentTop.appendChild(btnCloseAgent);
+      agentView.appendChild(agentTop);
 
-        // Try using adapter first
-        const adapter = (typeof window.pickAdapter === 'function') ? window.pickAdapter() : null;
-        if (adapter && typeof adapter.getFileInput === 'function') {
-          fileInput = adapter.getFileInput();
-        }
+      const agentIntro = document.createElement('div'); agentIntro.className = 'cb-view-intro'; agentIntro.textContent = '6 intelligence agents that work across all your AI conversations.';
+      agentView.appendChild(agentIntro);
 
-        // Fallback: find file input manually
-        if (!fileInput) {
-          const fileInputs = Array.from(document.querySelectorAll('input[type="file"]'));
-          for (const fi of fileInputs) {
-            try {
-              const cs = window.getComputedStyle(fi);
-              if (cs.display !== 'none' && cs.visibility !== 'hidden') {
-                fileInput = fi;
-                break;
-              }
-            } catch (e) { }
-          }
-          // Use first one if no visible one found
-          if (!fileInput && fileInputs.length > 0) {
-            fileInput = fileInputs[0];
-          }
-        }
+      // Agent content container (will be populated by renderAgentHub)
+      const agentContent = document.createElement('div'); agentContent.id = 'cb-agent-content'; agentContent.style.cssText = 'padding:8px 0;overflow-y:auto;max-height:none;';
+      agentView.appendChild(agentContent);
 
-        // If we found a file input, upload the image as a file
-        if (fileInput) {
-          console.log('[ChatBridge] Found file input, uploading as file...');
+      panel.appendChild(agentView);
+    }
 
-          // Fetch the image and convert to blob
-          let blob;
-          if (imgData.src.startsWith('data:')) {
-            // Data URL - convert directly
-            const response = await fetch(imgData.src);
-            blob = await response.blob();
-          } else {
-            // External URL - use background script proxy to avoid CORS
-            const res = await new Promise((resolve) => {
-              chrome.runtime.sendMessage({ type: 'fetch_blob', url: imgData.src }, resolve);
-            });
+    let insightsView = null;
+    let insightsViewInitialized = false;
+    function lazyInitInsightsView() {
+      if (insightsViewInitialized) return;
+      insightsViewInitialized = true;
 
-            if (!res || !res.ok) {
-              throw new Error(res?.error || 'Failed to fetch image');
-            }
+      // ============================================
+      // INSIGHTS / SMART WORKSPACE VIEW
+      // ============================================
+      insightsView = document.createElement('div'); insightsView.className = 'cb-internal-view'; insightsView.id = 'cb-insights-view'; insightsView.setAttribute('data-cb-ignore', 'true');
+      const insightsTop = document.createElement('div'); insightsTop.className = 'cb-view-top'; insightsTop.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;';
+      const insightsTitle = document.createElement('div'); insightsTitle.className = 'cb-view-title';
+      insightsTitle.innerHTML = '<span class="cb-gradient-text" style="display: inline-flex; align-items: center; gap: 10px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>Smart Workspace</span>';
+      btnCloseInsights = document.createElement('button'); btnCloseInsights.className = 'cb-view-close';
+      btnCloseInsights.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+      btnCloseInsights.setAttribute('aria-label', 'Close Smart Workspace view');
+      insightsTop.appendChild(insightsTitle); insightsTop.appendChild(btnCloseInsights);
+      insightsView.appendChild(insightsTop);
 
-            const response = await fetch(res.data);
-            blob = await response.blob();
-          }
+      const insightsIntro = document.createElement('div'); insightsIntro.className = 'cb-view-intro';
+      insightsIntro.textContent = 'Practical tools to help you work smarter: compare models, merge threads, extract content, and stay organized.';
+      insightsView.appendChild(insightsIntro);
 
-          // Create a File object
-          const filename = imgData.filename || `image-${Date.now()}.${blob.type.split('/')[1] || 'png'}`;
-          const file = new File([blob], filename, { type: blob.type || 'image/png' });
+      const insightsContent = document.createElement('div'); insightsContent.id = 'cb-insights-content'; insightsContent.style.cssText = 'padding:12px 0;overflow-y:auto;overflow-x:hidden;max-height:calc(100vh - 250px);';
+      // Add default insights blocks with luxury styling
+      insightsContent.innerHTML = `
+      <div class="cb-insights-section">
+        <div class="cb-insight-block" id="cb-media-library-block">
+          <div class="cb-insight-title" style="justify-content:space-between;">
+            <span style="display:flex;align-items:center;gap:8px;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+              Media Library
+            </span>
+            <span id="cb-media-library-count" style="font-size:10px;background:var(--cb-bg3);border:1px solid var(--cb-border);padding:3px 10px;border-radius:12px;color:var(--cb-accent-primary);font-weight:600;">0</span>
+          </div>
+          <div class="cb-insight-content">Access images from your scanned conversations. Click to insert into chat.</div>
+          <div id="cb-media-library-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(60px,1fr));gap:8px;margin-top:14px;max-height:180px;overflow-y:auto;"></div>
+          <button id="cb-media-library-refresh" class="cb-btn" style="width:100%;margin-top:14px;font-size:11px;padding:10px;display:flex;align-items:center;justify-content:center;gap:6px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+            Refresh Library
+          </button>
+        </div>
+        <div class="cb-insight-block">
+          <div class="cb-insight-title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+            Compare Models
+          </div>
+          <div class="cb-insight-content">Compare responses from different AI models side-by-side. Spot differences, strengths, and weaknesses.</div>
+        </div>
+        <div class="cb-insight-block">
+          <div class="cb-insight-title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3v12"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>
+            Merge Threads
+          </div>
+          <div class="cb-insight-content">Combine multiple chat threads into a unified view. Perfect for project tracking and research.</div>
+        </div>
+        <div class="cb-insight-block">
+          <div class="cb-insight-title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            Extract Key Content
+          </div>
+          <div class="cb-insight-content">Extract highlights, action items, and decisions from conversations. Perfect for meeting notes.</div>
+        </div>
+        <div class="cb-insight-block">
+          <div class="cb-insight-title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+            Organize & Tag
+          </div>
+          <div class="cb-insight-content">Tag, categorize, and search your chats for easy retrieval. Never lose important info.</div>
+        </div>
+      </div>
+    `;
+      insightsView.appendChild(insightsContent);
 
-          // Use DataTransfer to set the file
-          const dt = new DataTransfer();
-          dt.items.add(file);
-          fileInput.files = dt.files;
-
-          // Trigger change event
-          fileInput.dispatchEvent(new Event('change', { bubbles: true }));
-
-          toast('Image uploaded as file! ✨');
-          console.log('[ChatBridge] Image uploaded successfully as:', filename);
-        } else {
-          // No file input found - fallback to clipboard
-          console.log('[ChatBridge] No file input found, using clipboard fallback...');
-
-          let blob;
-          if (imgData.src.startsWith('data:')) {
-            const response = await fetch(imgData.src);
-            blob = await response.blob();
-          } else {
-            const res = await new Promise((resolve) => {
-              chrome.runtime.sendMessage({ type: 'fetch_blob', url: imgData.src }, resolve);
-            });
-
-            if (!res || !res.ok) {
-              throw new Error(res?.error || 'Failed to fetch image');
-            }
-
-            const response = await fetch(res.data);
-            blob = await response.blob();
-          }
-
-          const item = new ClipboardItem({ [blob.type || 'image/png']: blob });
-          await navigator.clipboard.write([item]);
-          toast('Image copied to clipboard! Press Ctrl+V to paste. 📋');
-          console.log('[ChatBridge] Image copied to clipboard');
-        }
-      } catch (e) {
-        console.error('[ChatBridge] insertImageToChat error:', e);
+      // Media Library functionality - load images and enable insertion
+      async function loadMediaLibrary() {
         try {
-          // Final fallback - copy URL to clipboard
-          await navigator.clipboard.writeText(imgData.src);
-          toast('Error uploading image. URL copied to clipboard.');
-        } catch (_) {
-          toast('Failed to insert image');
+          const grid = (shadow && typeof shadow.getElementById === 'function') ? shadow.getElementById('cb-media-library-grid') : null;
+          const countEl = (shadow && typeof shadow.getElementById === 'function') ? shadow.getElementById('cb-media-library-count') : null;
+          if (!grid || !countEl) return;
+
+          // Get images from vault
+          let images = [];
+          if (typeof window.ChatBridge !== 'undefined' && typeof window.ChatBridge.getImageVault === 'function') {
+            images = await window.ChatBridge.getImageVault();
+          }
+
+          countEl.textContent = String(images.length);
+          grid.innerHTML = '';
+
+          if (images.length === 0) {
+            grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:rgba(255,255,255,0.5);font-size:11px;padding:20px;">No images yet. Scan a conversation with images first.</div>';
+            return;
+          }
+
+          // Display up to 12 images
+          images.slice(0, 12).forEach(imgData => {
+            const thumb = document.createElement('div');
+            thumb.style.cssText = 'position:relative;aspect-ratio:1;border-radius:6px;overflow:hidden;border:1px solid color-mix(in srgb, var(--cb-accent-primary) 30%, transparent);cursor:pointer;background:rgba(0,0,0,0.3);transition:all 0.2s;';
+
+            const img = document.createElement('img');
+            img.src = imgData.src;
+            img.style.cssText = 'width:100%;height:100%;object-fit:cover;';
+            img.loading = 'lazy';
+            img.onerror = () => { thumb.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div>'; };
+
+            thumb.appendChild(img);
+
+            // Hover effect
+            thumb.addEventListener('mouseenter', () => {
+              thumb.style.transform = 'scale(1.05)';
+              thumb.style.borderColor = 'color-mix(in srgb, var(--cb-accent-primary) 80%, transparent)';
+            });
+            thumb.addEventListener('mouseleave', () => {
+              thumb.style.transform = 'scale(1)';
+              thumb.style.borderColor = 'color-mix(in srgb, var(--cb-accent-primary) 30%, transparent)';
+            });
+
+            // Click to insert into chat
+            thumb.addEventListener('click', () => insertImageToChat(imgData));
+
+            grid.appendChild(thumb);
+          });
+
+          if (images.length > 12) {
+            const moreLabel = document.createElement('div');
+            moreLabel.style.cssText = 'grid-column:1/-1;text-align:center;color:color-mix(in srgb, var(--cb-accent-primary) 80%, transparent);font-size:11px;padding:8px;cursor:pointer;';
+            moreLabel.textContent = `+${images.length - 12} more in Image Vault`;
+            grid.appendChild(moreLabel);
+          }
+        } catch (e) {
+          console.warn('[ChatBridge] loadMediaLibrary error:', e);
         }
       }
-    }
 
-    // Set up refresh button handler after content is appended
-    setTimeout(() => {
-      const refreshBtn = (shadow && typeof shadow.getElementById === 'function') ? shadow.getElementById('cb-media-library-refresh') : null;
-      if (refreshBtn) {
-        refreshBtn.addEventListener('click', () => {
-          loadMediaLibrary();
-          toast('Media library refreshed');
-        });
+      // Insert image into current AI chat
+      async function insertImageToChat(imgData) {
+        try {
+          console.log('[ChatBridge] Uploading image to chat as file:', imgData.src.substring(0, 50) + '...');
+
+          // Try to find the file input element
+          let fileInput = null;
+
+          // Try using adapter first
+          const adapter = (typeof window.pickAdapter === 'function') ? window.pickAdapter() : null;
+          if (adapter && typeof adapter.getFileInput === 'function') {
+            fileInput = adapter.getFileInput();
+          }
+
+          // Fallback: find file input manually
+          if (!fileInput) {
+            const fileInputs = Array.from(document.querySelectorAll('input[type="file"]'));
+            for (const fi of fileInputs) {
+              try {
+                const cs = window.getComputedStyle(fi);
+                if (cs.display !== 'none' && cs.visibility !== 'hidden') {
+                  fileInput = fi;
+                  break;
+                }
+              } catch (e) { }
+            }
+            // Use first one if no visible one found
+            if (!fileInput && fileInputs.length > 0) {
+              fileInput = fileInputs[0];
+            }
+          }
+
+          // If we found a file input, upload the image as a file
+          if (fileInput) {
+            console.log('[ChatBridge] Found file input, uploading as file...');
+
+            // Fetch the image and convert to blob
+            let blob;
+            if (imgData.src.startsWith('data:')) {
+              // Data URL - convert directly
+              const response = await fetch(imgData.src);
+              blob = await response.blob();
+            } else {
+              // External URL - use background script proxy to avoid CORS
+              const res = await new Promise((resolve) => {
+                chrome.runtime.sendMessage({ type: 'fetch_blob', url: imgData.src }, resolve);
+              });
+
+              if (!res || !res.ok) {
+                throw new Error(res?.error || 'Failed to fetch image');
+              }
+
+              const response = await fetch(res.data);
+              blob = await response.blob();
+            }
+
+            // Create a File object
+            const filename = imgData.filename || `image-${Date.now()}.${blob.type.split('/')[1] || 'png'}`;
+            const file = new File([blob], filename, { type: blob.type || 'image/png' });
+
+            // Use DataTransfer to set the file
+            const dt = new DataTransfer();
+            dt.items.add(file);
+            fileInput.files = dt.files;
+
+            // Trigger change event
+            fileInput.dispatchEvent(new Event('change', { bubbles: true }));
+
+            toast('Image uploaded as file! ✨');
+            console.log('[ChatBridge] Image uploaded successfully as:', filename);
+          } else {
+            // No file input found - fallback to clipboard
+            console.log('[ChatBridge] No file input found, using clipboard fallback...');
+
+            let blob;
+            if (imgData.src.startsWith('data:')) {
+              const response = await fetch(imgData.src);
+              blob = await response.blob();
+            } else {
+              const res = await new Promise((resolve) => {
+                chrome.runtime.sendMessage({ type: 'fetch_blob', url: imgData.src }, resolve);
+              });
+
+              if (!res || !res.ok) {
+                throw new Error(res?.error || 'Failed to fetch image');
+              }
+
+              const response = await fetch(res.data);
+              blob = await response.blob();
+            }
+
+            const item = new ClipboardItem({ [blob.type || 'image/png']: blob });
+            await navigator.clipboard.write([item]);
+            toast('Image copied to clipboard! Press Ctrl+V to paste. 📋');
+            console.log('[ChatBridge] Image copied to clipboard');
+          }
+        } catch (e) {
+          console.error('[ChatBridge] insertImageToChat error:', e);
+          try {
+            // Final fallback - copy URL to clipboard
+            await navigator.clipboard.writeText(imgData.src);
+            toast('Error uploading image. URL copied to clipboard.');
+          } catch (_) {
+            toast('Failed to insert image');
+          }
+        }
       }
-      // Initial load
-      loadMediaLibrary();
-    }, 100);
 
-    panel.appendChild(insightsView);
+      // Set up refresh button handler after content is appended
+      setTimeout(() => {
+        const refreshBtn = (shadow && typeof shadow.getElementById === 'function') ? shadow.getElementById('cb-media-library-refresh') : null;
+        if (refreshBtn) {
+          refreshBtn.addEventListener('click', () => {
+            loadMediaLibrary();
+            toast('Media library refreshed');
+          });
+        }
+        // Initial load
+        loadMediaLibrary();
+      }, 100);
+
+      panel.appendChild(insightsView);
+    }
 
     // ============================================
     // TOOLKIT VIEW — 8 forward-facing action tools
@@ -7355,7 +7398,7 @@
       });
     }
 
-    const tkObserver = new MutationObserver(() => tkApplyPremiumTheme(tkSubPanel));
+    tkObserver = new MutationObserver(() => tkApplyPremiumTheme(tkSubPanel));
     tkObserver.observe(tkSubPanel, { childList: true, subtree: true });
 
     // ---- Toolkit sub-panel helpers ----
@@ -10493,7 +10536,7 @@ ${chatText.substring(0, 10000)}`
         try { if (typeof settingsPanel !== 'undefined' && settingsPanel) settingsPanel.classList.remove('cb-view-active'); } catch (_) { }
         try { if (typeof syncView !== 'undefined' && syncView) syncView.classList.remove('cb-view-active'); } catch (_) { }
         try { if (typeof optimizerView !== 'undefined' && optimizerView) optimizerView.classList.remove('cb-view-active'); } catch (_) { }
-        try { if (typeof toolkitView !== 'undefined' && toolkitView) { toolkitView.classList.remove('cb-view-active'); try { speechSynthesis.cancel(); } catch (_) { } } } catch (_) { }
+        try { if (typeof toolkitView !== 'undefined' && toolkitView) { toolkitView.classList.remove('cb-view-active'); try { speechSynthesis.cancel(); } catch (_) { } try { if (tkObserver) tkObserver.disconnect(); } catch (_) { } } } catch (_) { }
 
         // Close dynamically created views (Smart Queries, etc.)
         try {
@@ -22449,12 +22492,20 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       closeAllViews();
       tkShowGrid();
       toolkitView.classList.add('cb-view-active');
+      try {
+        if (tkObserver && tkSubPanel) {
+          tkObserver.observe(tkSubPanel, { childList: true, subtree: true });
+        }
+      } catch (_) { }
     });
 
     // Close Toolkit view
     btnCloseToolkit.addEventListener('click', () => {
       toolkitView.classList.remove('cb-view-active');
       try { speechSynthesis.cancel(); } catch (_) { }
+      try {
+        if (tkObserver) tkObserver.disconnect();
+      } catch (_) { }
     });
 
     // ⚡ Sidebar Quick Actions Event Listeners
@@ -23071,6 +23122,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
     // Agent: Open view (Integrated into sidebar)
     btnKnowledgeGraph.addEventListener('click', () => {
       try {
+        lazyInitAgentView();
         // We always stay in the sidebar now for better consistency
         closeAllViews();
         agentView.classList.add('cb-view-active');
@@ -23093,14 +23145,10 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       }
     });
 
-    // Agent: Close view
-    btnCloseAgent.addEventListener('click', () => {
-      agentView.classList.remove('cb-view-active');
-    });
-
     // Insights: Open Smart Workspace view
     btnInsights.addEventListener('click', () => {
       try {
+        lazyInitInsightsView();
         closeAllViews();
         insightsView.classList.add('cb-view-active');
         queueInsightsHubRender().catch((e) => {
@@ -23120,11 +23168,6 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         toast('Failed to open Smart Workspace');
         debugLog('Insights open error', e);
       }
-    });
-
-    // Insights: Close view
-    btnCloseInsights.addEventListener('click', () => {
-      insightsView.classList.remove('cb-view-active');
     });
 
     // Knowledge Graph: Render force-directed graph on canvas
@@ -25981,18 +26024,6 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
         debugLog('open smart view', e);
       }
     });
-
-
-    btnCloseSmart.addEventListener('click', () => { try { smartView.classList.remove('cb-view-active'); } catch (e) { } });
-
-    // (Agent Hub button handler defined above at ~L15252)
-
-    btnCloseAgent.addEventListener('click', () => { try { agentView.classList.remove('cb-view-active'); } catch (e) { } });
-
-    // Insights close handler (main handler is at renderInsightsHub)
-    btnCloseInsights.addEventListener('click', () => { try { insightsView.classList.remove('cb-view-active'); } catch (e) { } });
-
-
     // Simple in-memory cache and batched storage writes for responsiveness
     const __cbConvCache = { data: [], ts: 0 };
     const __cbSetQueue = new Map(); // key -> { value, timer }

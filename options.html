@@ -1423,6 +1423,60 @@
           </div>
         </div>
 
+        <div class="card" style="margin-top: 16px;">
+          <div class="card-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+            Performance Profiling (Last 100 Operations)
+          </div>
+          <div class="stats-grid">
+            <div class="stat-item">
+              <div class="stat-icon" style="color: var(--accent-1);">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect>
+                  <rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect>
+                  <line x1="6" y1="6" x2="6.01" y2="6"></line>
+                  <line x1="6" y1="18" x2="6.01" y2="18"></line>
+                </svg>
+              </div>
+              <div class="stat-info">
+                <div class="stat-value" id="perf-dom-scan">0.00 ms</div>
+                <div class="stat-label">DOM Scan Time (Avg)</div>
+              </div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-icon" style="color: var(--accent-2);">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                </svg>
+              </div>
+              <div class="stat-info">
+                <div class="stat-value" id="perf-ui-render">0.00 ms</div>
+                <div class="stat-label">UI Render Time (Avg)</div>
+              </div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-icon" style="color: var(--success);">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="18" y1="20" x2="18" y2="10"></line>
+                  <line x1="12" y1="20" x2="12" y2="4"></line>
+                  <line x1="6" y1="20" x2="6" y2="14"></line>
+                </svg>
+              </div>
+              <div class="stat-info">
+                <div class="stat-value" style="font-size: 13px; line-height: 1.4; display: flex; flex-direction: column;" id="perf-api-percentiles">
+                  <div>p50: <strong id="perf-api-p50">—</strong></div>
+                  <div>p95: <strong id="perf-api-p95">—</strong></div>
+                  <div>p99: <strong id="perf-api-p99">—</strong></div>
+                </div>
+                <div class="stat-label">API Latency</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div class="card">
           <div class="card-title">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">

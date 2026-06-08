@@ -163,4 +163,53 @@ describe('ChatBridge Core AI API Optimizations', () => {
       expect(isAsync).toBe(true);
     });
   });
+
+  describe('Model Load Balancing', () => {
+    beforeEach(() => {
+      global.chrome.storage.session.storageMap = {};
+      _modelStateCache = null;
+    });
+
+    test('getNextAvailableModel distributes generic request across healthy flash models', async () => {
+      const selectedModels = new Set();
+      for (let i = 0; i < 20; i++) {
+        // Clearing cache to simulate fresh load balance selection
+        _modelStateCache = null;
+        const model = await getNextAvailableModel(null);
+        selectedModels.add(model);
+      }
+      expect(selectedModels.has('gemini-3.5-flash')).toBe(true);
+      expect(selectedModels.has('gemini-2.5-flash')).toBe(true);
+      expect(selectedModels.has('gemini-1.5-flash')).toBe(true);
+    });
+
+    test('getNextAvailableModel respects preferred model if healthy', async () => {
+      const model = await getNextAvailableModel('gemini-3.1-pro');
+      expect(model).toBe('gemini-3.1-pro');
+    });
+
+    test('getNextAvailableModel falls back when preferred model fails', async () => {
+      await markModelFailed('gemini-3.1-pro', 429);
+      _modelStateCache = null;
+      const model = await getNextAvailableModel('gemini-3.1-pro');
+      expect(model).not.toBe('gemini-3.1-pro');
+    });
+  });
+
+  describe('Performance Telemetry', () => {
+    beforeEach(() => {
+      global.chrome.storage.local.storageMap = {};
+    });
+
+    test('recordPerformanceMetric saves metrics and caps at 100 entries', async () => {
+      for (let i = 0; i < 105; i++) {
+        await recordPerformanceMetric('test_metric', i);
+      }
+      const data = global.chrome.storage.local.storageMap['cb_telemetry'];
+      expect(data).toBeDefined();
+      expect(data['test_metric'].length).toBe(100);
+      expect(data['test_metric'][0].val).toBe(5);
+      expect(data['test_metric'][99].val).toBe(104);
+    });
+  });
 });

@@ -1,12 +1,3 @@
-# ChatBridge — Progress Checklist
-
-Tracks remaining work to take ChatBridge from working extension to deployable
-product. Last updated: 2026-02-18
-
-**Legend:** `[x]` Done — `[-]` In progress — `[ ]` Not started
-
----
-## Phase 2 — Core AI Infrastructure
 
 ### ☁️ Cloud & Hosting
 
@@ -14,27 +5,6 @@ product. Last updated: 2026-02-18
 - [ ] Serverless hosting exploration (Cloudflare Workers / Vercel Edge)
 - [ ] Cloudflare environment setup (wrangler config, secrets, routes)
 - [ ] API gateway / proxy to protect raw keys from client
-
-### 📐 API Planning & Optimization
-
-- [ ] Prompt size optimization — trim context to stay under token limits
-- [ ] Response caching strategy (TTL, invalidation)
-- [ ] Batch request support where applicable
-- [ ] API versioning plan for future endpoints
-- [ ] Empty state handling (no conversations, no API key, no results)
-
-
-### ⚡ Performance
-
-- [ ] Load balancing / request distribution for higher traffic
-- [ ] Performance profiling (scan time, UI render, API latency)
-- [ ] Lazy-load heavy views (Smart Query, Agent, Knowledge Graph)
-- [ ] Debounce / throttle frequent DOM operations
-- [ ] Memory leak audit on long-running tabs
-
----
-
-## Phase 4 — Analytics & Product Intelligence
 
 ### 📊 Analytics
 
@@ -51,9 +21,6 @@ product. Last updated: 2026-02-18
 - [ ] Error rate monitoring with alerting
 - [ ] Session duration and engagement metrics
 
----
-
-## Phase 5 — UX & Product Polish
 
 ### 🎨 Interface
 
@@ -76,7 +43,6 @@ product. Last updated: 2026-02-18
 - [ ] Tooltip hints for new users
 - [ ] API key setup wizard with validation
 
-## Phase 6 — Productization
 
 ### 🔐 Auth & Login
 
@@ -100,8 +66,3 @@ product. Last updated: 2026-02-18
 - [ ] Version bump and changelog
 - [ ] CI/CD pipeline (lint, test, build, package .crx)
 - [ ] Staged rollout plan (beta → public)
-
----
-
-_Keep this file updated as items are completed. Mark `[-]` when actively working
-on something._
