@@ -1199,10 +1199,16 @@
       });
 
       // Input logic — auto-resize capped at 120px
-      textarea.addEventListener('input', () => {
+      // Debounce helper for input resizing
+      function __cb_debounce(fn, wait) {
+        let t = null;
+        return function(...args) { if (t) clearTimeout(t); t = setTimeout(() => { t = null; fn.apply(this, args); }, wait); };
+      }
+
+      textarea.addEventListener('input', __cb_debounce(() => {
         textarea.style.height = 'auto';
         textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
-      });
+      }, 80));
 
       // Summary Checkbox Logic
       const chk = this.container.querySelector('#chk-synthesis');

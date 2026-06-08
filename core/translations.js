@@ -72,7 +72,12 @@ const TRANSLATIONS = {
         conversationDeleted: 'Conversation deleted',
         allCleared: 'All conversations cleared',
         languageSaved: 'Language saved',
-        themeChanged: 'Theme changed'
+        themeChanged: 'Theme changed',
+        noSearchResults: 'No matching conversations found',
+        apiKeysMissing: 'API Keys Missing',
+        apiKeysMissingDetail: 'Configure your API keys in Options to enable AI features.',
+        clearCache: 'Clear Cache',
+        cacheCleared: 'Cache cleared successfully'
     },
 
     es: {
@@ -130,7 +135,12 @@ const TRANSLATIONS = {
         conversationDeleted: 'Conversación eliminada',
         allCleared: 'Todas las conversaciones eliminadas',
         languageSaved: 'Idioma guardado',
-        themeChanged: 'Tema cambiado'
+        themeChanged: 'Tema cambiado',
+        noSearchResults: 'No se encontraron conversaciones coincidentes',
+        apiKeysMissing: 'Faltan claves API',
+        apiKeysMissingDetail: 'Configure sus claves API en Opciones para activar funciones IA.',
+        clearCache: 'Limpiar Caché',
+        cacheCleared: 'Caché limpiada con éxito'
     },
 
     fr: {
@@ -188,7 +198,12 @@ const TRANSLATIONS = {
         conversationDeleted: 'Conversation supprimée',
         allCleared: 'Toutes les conversations effacées',
         languageSaved: 'Langue sauvegardée',
-        themeChanged: 'Thème changé'
+        themeChanged: 'Thème changé',
+        noSearchResults: 'Aucune conversation correspondante trouvée',
+        apiKeysMissing: 'Clés API manquantes',
+        apiKeysMissingDetail: 'Configurez vos clés API dans les Options pour activer les fonctionnalités IA.',
+        clearCache: 'Vider le cache',
+        cacheCleared: 'Cache vidé avec succès'
     },
 
     de: {
@@ -246,7 +261,12 @@ const TRANSLATIONS = {
         conversationDeleted: 'Unterhaltung gelöscht',
         allCleared: 'Alle Unterhaltungen gelöscht',
         languageSaved: 'Sprache gespeichert',
-        themeChanged: 'Thema geändert'
+        themeChanged: 'Thema geändert',
+        noSearchResults: 'Keine übereinstimmenden Unterhaltungen gefunden',
+        apiKeysMissing: 'API-Schlüssel fehlen',
+        apiKeysMissingDetail: 'Konfigurieren Sie Ihre API-Schlüssel in den Optionen, um KI-Funktionen zu aktivieren.',
+        clearCache: 'Cache leeren',
+        cacheCleared: 'Cache erfolgreich geleert'
     },
 
     ja: {
@@ -304,7 +324,12 @@ const TRANSLATIONS = {
         conversationDeleted: '会話を削除しました',
         allCleared: 'すべての会話を削除しました',
         languageSaved: '言語を保存しました',
-        themeChanged: 'テーマを変更しました'
+        themeChanged: 'テーマを変更しました',
+        noSearchResults: '一致する会話が見つかりません',
+        apiKeysMissing: 'APIキーが未設定です',
+        apiKeysMissingDetail: 'AI機能を有効にするには、オプションでAPIキーを設定してください。',
+        clearCache: 'キャッシュを消去',
+        cacheCleared: 'キャッシュを消去しました'
     },
 
     zh: {
@@ -362,7 +387,12 @@ const TRANSLATIONS = {
         conversationDeleted: '对话已删除',
         allCleared: '所有对话已清除',
         languageSaved: '语言已保存',
-        themeChanged: '主题已更改'
+        themeChanged: '主题已更改',
+        noSearchResults: '未找到匹配的对话',
+        apiKeysMissing: '未配置 API 密钥',
+        apiKeysMissingDetail: '请在选项中配置您的 API 密钥以启用 AI 功能。',
+        clearCache: '清除缓存',
+        cacheCleared: '缓存已成功清除'
     },
 
     ko: {
@@ -420,7 +450,12 @@ const TRANSLATIONS = {
         conversationDeleted: '대화가 삭제되었습니다',
         allCleared: '모든 대화가 삭제되었습니다',
         languageSaved: '언어가 저장되었습니다',
-        themeChanged: '테마가 변경되었습니다'
+        themeChanged: '테마가 변경되었습니다',
+        noSearchResults: '일치하는 대화가 없습니다',
+        apiKeysMissing: 'API 키 누락됨',
+        apiKeysMissingDetail: 'AI 기능을 활성화하려면 옵션에서 API 키를 설정하십시오.',
+        clearCache: '캐시 지우기',
+        cacheCleared: '캐시가 성공적으로 지워졌습니다'
     },
 
     pt: {
@@ -478,7 +513,12 @@ const TRANSLATIONS = {
         conversationDeleted: 'Conversa excluída',
         allCleared: 'Todas as conversas limpas',
         languageSaved: 'Idioma salvo',
-        themeChanged: 'Tema alterado'
+        themeChanged: 'Tema alterado',
+        noSearchResults: 'Nenhuma conversa correspondente encontrada',
+        apiKeysMissing: 'Chaves API ausentes',
+        apiKeysMissingDetail: 'Configure suas chaves API nas Opções para ativar os recursos de IA.',
+        clearCache: 'Limpar Cache',
+        cacheCleared: 'Cache limpo com sucesso'
     },
 
     hi: {
@@ -536,7 +576,12 @@ const TRANSLATIONS = {
         conversationDeleted: 'बातचीत हटाई गई',
         allCleared: 'सभी बातचीत हटाई गईं',
         languageSaved: 'भाषा सहेजी गई',
-        themeChanged: 'थीम बदली गई'
+        themeChanged: 'थीम बदली गई',
+        noSearchResults: 'कोई मिलती-जुलती बातचीत नहीं मिली',
+        apiKeysMissing: 'API कुंजी गायब है',
+        apiKeysMissingDetail: 'एआई सुविधाओं को सक्षम करने के लिए विकल्पों में अपनी एपीआई कुंजी कॉन्फ़िगर करें।',
+        clearCache: 'कैश साफ़ करें',
+        cacheCleared: 'कैश सफलतापूर्वक साफ़ कर दिया गया'
     }
 };
 

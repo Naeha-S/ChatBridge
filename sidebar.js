@@ -45,6 +45,9 @@
         // Event Listeners
         setupEventListeners();
 
+        // Check keys
+        await checkApiKeys();
+
         // Handle initial selection if passed in URL
         const urlParams = new URLSearchParams(window.location.search);
         const initialIndex = urlParams.get('index');
@@ -80,6 +83,37 @@
         });
     }
 
+    async function checkApiKeys() {
+        const warningEl = document.getElementById('api-keys-warning');
+        if (!warningEl) return;
+        
+        return new Promise((resolve) => {
+            chrome.storage.local.get(['chatbridge_hf_key', 'chatbridge_gemini_key', 'chatbridge_openai_key', 'chatbridge_api_nvidia'], (res) => {
+                const hasHf = !!res.chatbridge_hf_key;
+                const hasGemini = !!res.chatbridge_gemini_key;
+                const hasOpenai = !!res.chatbridge_openai_key;
+                const hasNvidia = !!res.chatbridge_api_nvidia;
+                
+                if (!hasHf && !hasGemini && !hasOpenai && !hasNvidia) {
+                    warningEl.style.display = 'flex';
+                    const link = document.getElementById('api-keys-warning-link');
+                    if (link) {
+                        link.onclick = () => {
+                            try {
+                                chrome.runtime.openOptionsPage();
+                            } catch (e) {
+                                window.open(chrome.runtime.getURL('options.html'));
+                            }
+                        };
+                    }
+                } else {
+                    warningEl.style.display = 'none';
+                }
+                resolve();
+            });
+        });
+    }
+
     // ============================================
     // RENDERING
     // ============================================
@@ -100,11 +134,29 @@
 
     function renderList() {
         if (!filteredConversations.length) {
-            conversationList.innerHTML = `
-        <div style="text-align: center; padding: 40px; color: var(--text-secondary);">
-          <div style="font-size: 13px;">${window.t ? window.t('noConversations', currentLang) : 'No conversations found'}</div>
-        </div>
-      `;
+            if (conversations.length === 0) {
+                conversationList.innerHTML = `
+            <div style="text-align: center; padding: 40px; color: var(--text-secondary);">
+              <div style="font-size: 13px;">${window.t ? window.t('noConversations', currentLang) : 'No conversations found'}</div>
+            </div>
+          `;
+            } else {
+                conversationList.innerHTML = `
+            <div style="text-align: center; padding: 40px; color: var(--text-secondary); display: flex; flex-direction: column; align-items: center; gap: 12px;">
+              <div style="font-size: 13px;">${window.t ? window.t('noSearchResults', currentLang) : 'No matching conversations found'}</div>
+              <button id="btn-clear-search" style="padding: 6px 12px; border-radius: 8px; background: var(--bg-input); border: 1px solid var(--border); color: var(--text-primary); cursor: pointer; font-size: 12px; font-weight: 500; transition: all 0.2s;">Clear Search</button>
+            </div>
+          `;
+                setTimeout(() => {
+                    const btn = document.getElementById('btn-clear-search');
+                    if (btn) {
+                        btn.onclick = () => {
+                            searchInput.value = '';
+                            filterConversations('', document.querySelector('.chip.active').dataset.filter);
+                        };
+                    }
+                }, 0);
+            }
             return;
         }
 
@@ -279,12 +331,21 @@
     // ============================================
     // LOGIC & EVENTS
     // ============================================
+    // Lightweight debounce helper for frequent UI events
+    function debounce(fn, wait) {
+        let t = null;
+        return function(...args) {
+            if (t) clearTimeout(t);
+            t = setTimeout(() => { t = null; fn.apply(this, args); }, wait);
+        };
+    }
     function setupEventListeners() {
         // Search
-        searchInput.addEventListener('input', (e) => {
+        const debouncedSearch = debounce((e) => {
             const query = e.target.value.toLowerCase();
             filterConversations(query, document.querySelector('.chip.active').dataset.filter);
-        });
+        }, 180);
+        searchInput.addEventListener('input', debouncedSearch);
 
         // Chips
         filterChips.addEventListener('click', (e) => {

@@ -21,26 +21,8 @@ product. Last updated: 2026-02-18
 - [ ] Response caching strategy (TTL, invalidation)
 - [ ] Batch request support where applicable
 - [ ] API versioning plan for future endpoints
-
----
-
-## Phase 3 — Reliability & Engineering Quality
-
-### 🧪 Testing
-
-- [x] Unit tests for core utilities (storage, adapters, normalizeMessages)
-- [x] Integration tests for scan → transform → restore flow
-- [x] Edge case tests (empty chats, single message, 1000+ messages)
-- [x] Cross-browser smoke tests (Chrome stable, Beta, Canary)
-- [x] Adapter regression tests per platform
-
-### 🛡️ Error Handling
-
-- [x] Global error boundary in content script
-- [x] Background service worker crash recovery
 - [ ] Empty state handling (no conversations, no API key, no results)
-- [x] User-facing error banner with retry + report
-- [x] Structured error logging (severity, context, stack)
+
 
 ### ⚡ Performance
 

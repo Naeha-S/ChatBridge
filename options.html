@@ -1347,6 +1347,22 @@
 
       <!-- Dashboard Section -->
       <section class="section active" id="section-dashboard">
+        <!-- Missing Keys Warning Banner -->
+        <div id="options-api-warning" class="card warning-card" style="display: none; border-left: 4px solid #f59e0b; background: rgba(245, 158, 11, 0.04); margin-bottom: 16px;">
+          <div class="card-title" style="color: #f59e0b; display: flex; align-items: center; gap: 8px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="stroke: #f59e0b; width: 20px; height: 20px;">
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+              <line x1="12" y1="9" x2="12" y2="13"></line>
+              <line x1="12" y1="17" x2="12.01" y2="17"></line>
+            </svg>
+            <span data-i18n="apiKeysMissing">API Keys Missing</span>
+          </div>
+          <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 12px;" data-i18n="apiKeysMissingDetail">
+            Configure your API keys in Options to enable AI features.
+          </p>
+          <button class="btn btn-secondary" id="btn-go-to-api" style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); color: #f59e0b; cursor: pointer;">Configure Keys</button>
+        </div>
+
         <div class="card">
           <div class="card-title">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
@@ -1710,6 +1726,20 @@
             </div>
             <button class="btn btn-secondary" id="btn-rebuild-embeddings">Rebuild</button>
           </div>
+        </div>
+
+        <!-- Caching Strategy Card -->
+        <div class="card" style="margin-top: 16px;">
+          <div class="card-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="stroke: var(--accent-1); width: 20px; height: 20px; vertical-align: middle; margin-right: 8px;">
+              <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
+            </svg>
+            <span data-i18n="clearCache">Clear Cache</span>
+          </div>
+          <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 16px;">
+            Clear cached API responses to force fresh requests to AI models.
+          </p>
+          <button class="btn btn-secondary" id="btn-clear-cache" data-i18n="clearCache">Clear Cache</button>
         </div>
       </section>
 

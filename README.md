@@ -240,27 +240,30 @@ Adapter • Observer • Strategy • Singleton
 ```
 ChatBridge/
 ├── manifest.json              # Extension manifest (MV3)
-├── content_script.js          # Core logic, UI, and sidebar injection
-├── background.js              # API calls, rate limiting, events
-├── adapters.js                # Platform-specific message extractors
-├── storage.js                 # Chrome storage abstraction
-├── config.js                  # Runtime configuration
-├── security.js                # Input sanitization & data detection
-├── smartFeatures.js           # Smart context injection
-├── SegmentEngine.js           # Text segmentation engine
-├── IntentAnalyzer.js          # Intent classification
-├── MemoryRetrieval.js         # Memory retrieval pipeline
-├── smartQueries.js/html/css   # Smart Query UI & logic
-├── sidebar.html/js            # History sidebar interface
-├── popup.html/js              # Popup menu
-├── options.html/js            # Settings page
-├── translations.js            # i18n translations
-├── summarize_tab.html/js      # Standalone summarize tab
-├── utils/constants.js         # Shared constants
-├── utils/rewriter.js          # Rewrite utility (code-block-safe)
-├── icons/                     # Toolbar icons
-├── fonts/                     # Inter font files
-├── documentation/             # Technical docs
+├── content_script.js          # Main content script and UI injection
+├── background.js              # Background service worker (API routing, caching)
+├── core/                      # Consolidated core business logic
+│   ├── config.js              # Configuration & storage compliance shim
+│   ├── translations.js        # i18n translations
+│   ├── security.js            # Input sanitization & data detection
+│   ├── adapters.js            # Platform-specific DOM adapters
+│   ├── storage.js             # Chrome storage manager and fallbacks
+│   ├── smartFeatures.js       # Smart context features
+│   ├── SegmentEngine.js       # Conversation segmentation
+│   ├── IntentAnalyzer.js      # Intent classification
+│   ├── MemoryRetrieval.js     # Hybrid search & reasoning retrieval
+│   ├── drift_profiles.js      # Platform drift signature profiling
+│   ├── smartQueries.js        # Semantic search logic
+│   └── agents.js              # Agent Signal Bus & signal handling
+├── content/                   # Modular sidebar features
+├── utils/                     # Platform registry & rewriters
+├── popup.html/js              # Toolbar popup
+├── options.html/js            # Settings panel
+├── sidebar.html/js            # History workspace panel
+├── playground/                # Sandboxed prototype & demo interfaces
+├── icons/                     # Extension icons
+├── fonts/                     # Inter web fonts
+├── documentation/             # Project guides & documentation
 └── README.md
 ```
 

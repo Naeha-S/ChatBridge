@@ -69,20 +69,57 @@
   async function checkCurrentTab() {
     try {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      let isPlatform = false;
+      let platformName = null;
 
       if (tab && tab.url) {
         const url = new URL(tab.url);
-        const platformName = platformRegistry ? platformRegistry.getPlatformName(url.hostname) : null;
+        platformName = platformRegistry ? platformRegistry.getPlatformName(url.hostname) : null;
+        isPlatform = !!platformName;
+      }
 
-        if (platformName) {
-          statusDot.classList.add('active');
-          statusText.textContent = `Ready on ${platformName}`;
-          statusDetail.textContent = 'Click the floating button to open ChatBridge';
-        } else {
-          statusDot.classList.remove('active');
-          statusText.textContent = 'Navigate to an AI chat';
-          statusDetail.textContent = 'ChatGPT, Claude, Gemini, and more';
+      // Check if API keys are missing
+      const keys = await new Promise(r => {
+        chrome.storage.local.get(['chatbridge_hf_key', 'chatbridge_gemini_key', 'chatbridge_openai_key', 'chatbridge_api_nvidia'], r);
+      });
+      const hasHf = !!keys.chatbridge_hf_key;
+      const hasGemini = !!keys.chatbridge_gemini_key;
+      const hasOpenai = !!keys.chatbridge_openai_key;
+      const hasNvidia = !!keys.chatbridge_api_nvidia;
+
+      if (!hasHf && !hasGemini && !hasOpenai && !hasNvidia) {
+        statusDot.className = 'status-indicator';
+        statusDot.style.background = '#f59e0b';
+        statusDot.style.boxShadow = '0 0 0 4px rgba(245, 158, 11, 0.15)';
+        statusText.textContent = 'API Keys Missing';
+        statusText.style.color = '#f59e0b';
+        statusDetail.textContent = 'Click to configure keys in Options';
+        
+        // Add click listener on status card to open options
+        const statusCard = document.querySelector('.status-card');
+        if (statusCard) {
+          statusCard.style.cursor = 'pointer';
+          statusCard.onclick = () => {
+            chrome.runtime.openOptionsPage();
+          };
         }
+        return;
+      } else {
+        // Reset styles if keys are present
+        statusText.style.color = '';
+        statusDot.style.background = '';
+        statusDot.style.boxShadow = '';
+        const statusCard = document.querySelector('.status-card');
+        if (statusCard) {
+          statusCard.style.cursor = '';
+          statusCard.onclick = null;
+        }
+      }
+
+      if (isPlatform) {
+        statusDot.classList.add('active');
+        statusText.textContent = `Ready on ${platformName}`;
+        statusDetail.textContent = 'Click the floating button to open ChatBridge';
       } else {
         statusDot.classList.remove('active');
         statusText.textContent = 'Navigate to an AI chat';

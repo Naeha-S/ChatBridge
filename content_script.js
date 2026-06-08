@@ -24483,6 +24483,49 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
     const _CB_TOKEN_CACHE_MAX = 50;
     const _CB_TOKEN_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
+    function trimPromptText(text, maxChars = 60000) {
+      if (!text || typeof text !== 'string' || text.length <= maxChars) {
+        return text;
+      }
+      
+      if (text.includes('\n\n')) {
+        const turns = text.split('\n\n');
+        let trimmedText = '';
+        let keptTurns = [];
+        let currentLength = 0;
+        
+        let systemPrompt = '';
+        let startIdx = 0;
+        if (turns[0] && (turns[0].startsWith('User: ') || turns[0].startsWith('System: ') || turns[0].includes('instruction'))) {
+          systemPrompt = turns[0];
+          startIdx = 1;
+          currentLength += systemPrompt.length + 2;
+        }
+        
+        for (let i = turns.length - 1; i >= startIdx; i--) {
+          const turn = turns[i];
+          if (currentLength + turn.length + 2 > maxChars) {
+            break;
+          }
+          keptTurns.unshift(turn);
+          currentLength += turn.length + 2;
+        }
+        
+        if (keptTurns.length < (turns.length - startIdx)) {
+          const omissionPlaceholder = '... [older conversation history omitted due to token limits] ...';
+          if (systemPrompt) {
+            trimmedText = [systemPrompt, omissionPlaceholder, ...keptTurns].join('\n\n');
+          } else {
+            trimmedText = [omissionPlaceholder, ...keptTurns].join('\n\n');
+          }
+          return trimmedText;
+        }
+      }
+      
+      const truncatedText = text.slice(0, maxChars - 50);
+      return truncatedText + '\n... [truncated due to context size limits]';
+    }
+
     function _normalize(str) { return String(str || '').replace(/\s+/g, ' ').trim(); }
     function _hashKey(s) { let h = 0; for (let i = 0; i < s.length; i++) { h = ((h << 5) - h) + s.charCodeAt(i); h |= 0; } return h.toString(36); }
     function _isSimplePrompt(t) {
@@ -24532,7 +24575,10 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           text = optimizePrompt(text);
         }
 
-        // Update payload with optimized text
+        // Apply prompt size optimization (trim context to stay under token limits)
+        text = trimPromptText(text);
+
+        // Update payload with optimized and trimmed text
         if (text !== originalText && payload) {
           payload = Object.assign({}, payload, { text });
         }

@@ -799,6 +799,76 @@
         height: 40px;
       }
     }
+    .api-keys-warning {
+      margin: 8px 12px;
+      padding: 10px 12px;
+      background: rgba(245, 158, 11, 0.1);
+      border: 1px solid rgba(245, 158, 11, 0.25);
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 11px;
+      color: #f59e0b;
+      animation: fadeIn 0.3s ease-in-out;
+    }
+    .theme-light .api-keys-warning {
+      background: rgba(217, 119, 6, 0.08);
+      border-color: rgba(217, 119, 6, 0.2);
+      color: #b45309;
+    }
+    .theme-brutalism .api-keys-warning {
+      background: #FFFBEB;
+      border: 2px solid #000;
+      box-shadow: 2px 2px 0 #000;
+      color: #000;
+      border-radius: 0;
+    }
+    .theme-synthwave .api-keys-warning {
+      background: rgba(255, 45, 149, 0.08);
+      border-color: rgba(255, 45, 149, 0.3);
+      color: #FF2D95;
+    }
+    .theme-glass .api-keys-warning {
+      background: rgba(255, 143, 163, 0.08);
+      border-color: rgba(255, 143, 163, 0.2);
+      color: #ff8fa3;
+    }
+    .api-keys-warning-title {
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .api-keys-warning-detail {
+      opacity: 0.85;
+      line-height: 1.4;
+    }
+    .api-keys-warning-link {
+      margin-top: 4px;
+      color: var(--accent-1);
+      text-decoration: underline;
+      cursor: pointer;
+      font-weight: 600;
+      align-self: flex-start;
+      transition: opacity 0.2s;
+    }
+    .api-keys-warning-link:hover {
+      opacity: 0.8;
+    }
+    .theme-synthwave .api-keys-warning-link {
+      color: #00F0FF;
+    }
+    .theme-glass .api-keys-warning-link {
+      color: #b48eff;
+    }
+    .theme-brutalism .api-keys-warning-link {
+      color: #4ECDC4;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
   </style>
 
 </head>
@@ -828,6 +898,15 @@
         <div class="chip active" data-filter="all" data-i18n="all">All</div>
         <!-- Chips populated by JS -->
       </div>
+    </div>
+    <div id="api-keys-warning" class="api-keys-warning" style="display: none;">
+      <div class="api-keys-warning-title">
+        <span>⚠️</span> <span data-i18n="apiKeysMissing">API Keys Missing</span>
+      </div>
+      <div class="api-keys-warning-detail" data-i18n="apiKeysMissingDetail">
+        Configure your API keys in Options to enable AI features.
+      </div>
+      <span class="api-keys-warning-link" id="api-keys-warning-link">Configure Keys →</span>
     </div>
     <div class="conversation-list" id="conversation-list">
       <!-- Populated by JS -->

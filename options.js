@@ -208,6 +208,7 @@
     if (platformsEl) platformsEl.textContent = platforms.size;
 
     const apiStatusEl = document.getElementById('dashboard-api-status');
+    const optionsApiWarning = document.getElementById('options-api-warning');
     if (apiStatusEl) {
       chrome.storage.local.get(['chatbridge_hf_key', 'chatbridge_gemini_key', 'chatbridge_api_nvidia'], (res) => {
         const hasHf = !!res.chatbridge_hf_key;
@@ -218,9 +219,17 @@
         if (active >= 1) {
           apiStatusEl.textContent = `${active} Active`;
           apiStatusEl.style.color = active >= 2 ? 'var(--success)' : 'var(--warning)';
+          if (optionsApiWarning) optionsApiWarning.style.display = 'none';
         } else {
           apiStatusEl.textContent = 'None';
           apiStatusEl.style.color = 'var(--text-muted)';
+          if (optionsApiWarning) {
+            optionsApiWarning.style.display = 'block';
+            const btnGoToApi = document.getElementById('btn-go-to-api');
+            if (btnGoToApi) {
+              btnGoToApi.onclick = () => navigateToSection('api-keys');
+            }
+          }
         }
       });
     }
@@ -632,6 +641,21 @@
     chrome.storage.local.set({ cb_language: lang }, () => {
       const t = window.t || ((k) => k);
       showToast(t('languageSaved', lang), 'success');
+    });
+  });
+
+  // ============================================
+  // CACHE MANAGEMENT
+  // ============================================
+  const btnClearCache = document.getElementById('btn-clear-cache');
+  btnClearCache?.addEventListener('click', () => {
+    chrome.runtime.sendMessage({ type: 'clear_cache' }, (response) => {
+      const t = window.t || ((k) => k);
+      if (response && response.ok) {
+        showToast(t('cacheCleared', currentLang), 'success');
+      } else {
+        showToast('Failed to clear cache.', 'error');
+      }
     });
   });
 

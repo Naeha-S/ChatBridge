@@ -599,6 +599,94 @@ function cosine(a, b) {
   if (na === 0 || nb === 0) return 0; return dot / (Math.sqrt(na) * Math.sqrt(nb));
 }
 
+// Truncate/trim prompt text to stay under token limits
+function trimPromptText(text, maxChars = 60000) {
+  if (!text || typeof text !== 'string' || text.length <= maxChars) {
+    return text;
+  }
+  
+  if (text.includes('\n\n')) {
+    const turns = text.split('\n\n');
+    let trimmedText = '';
+    let keptTurns = [];
+    let currentLength = 0;
+    
+    let systemPrompt = '';
+    let startIdx = 0;
+    if (turns[0] && (turns[0].startsWith('User: ') || turns[0].startsWith('System: ') || turns[0].includes('instruction'))) {
+      systemPrompt = turns[0];
+      startIdx = 1;
+      currentLength += systemPrompt.length + 2;
+    }
+    
+    for (let i = turns.length - 1; i >= startIdx; i--) {
+      const turn = turns[i];
+      if (currentLength + turn.length + 2 > maxChars) {
+        break;
+      }
+      keptTurns.unshift(turn);
+      currentLength += turn.length + 2;
+    }
+    
+    if (keptTurns.length < (turns.length - startIdx)) {
+      const omissionPlaceholder = '... [older conversation history omitted due to token limits] ...';
+      if (systemPrompt) {
+        trimmedText = [systemPrompt, omissionPlaceholder, ...keptTurns].join('\n\n');
+      } else {
+        trimmedText = [omissionPlaceholder, ...keptTurns].join('\n\n');
+      }
+      return trimmedText;
+    }
+  }
+  
+  const truncatedText = text.slice(0, maxChars - 50);
+  return truncatedText + '\n... [truncated due to context size limits]';
+}
+
+function trimOpenAiMessages(messages, maxChars = 60000) {
+  if (!Array.isArray(messages) || messages.length === 0) return messages;
+  let currentLength = 0;
+  let kept = [];
+  
+  let systemMsg = null;
+  let startIdx = 0;
+  if (messages[0] && messages[0].role === 'system') {
+    systemMsg = messages[0];
+    startIdx = 1;
+    currentLength += (systemMsg.content || '').length;
+  }
+  
+  for (let i = messages.length - 1; i >= startIdx; i--) {
+    const msg = messages[i];
+    const len = (msg.content || '').length;
+    if (currentLength + len > maxChars) {
+      break;
+    }
+    kept.unshift(msg);
+    currentLength += len;
+  }
+  
+  if (kept.length < (messages.length - startIdx)) {
+    const omission = { role: 'system', content: '... [older conversation history omitted due to token limits] ...' };
+    return systemMsg ? [systemMsg, omission, ...kept] : [omission, ...kept];
+  }
+  return messages;
+}
+
+async function cacheClearAll() {
+  try {
+    if (!cacheDb) await openCacheDB();
+    if (!cacheDb) return false;
+    return await new Promise((res) => {
+      const tx = cacheDb.transaction([C_STORE], 'readwrite');
+      const st = tx.objectStore(C_STORE);
+      const req = st.clear();
+      req.onsuccess = () => res(true);
+      req.onerror = () => res(false);
+    });
+  } catch (e) { return false; }
+}
+
 // ─── Drift Detection: Fallback repair prompt generator (no API needed) ────
 function generateFallbackRepairPrompt(sourceContext, severity) {
   // Extract key sentences from source context for a rule-based repair prompt
@@ -1841,7 +1929,8 @@ chrome.commands.onCommand.addListener((command) => {
 });
 
 // simple message handler for future hooks
-chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+function mainMessageListener(msg, sender, sendResponse) {
+  const apiVersion = msg.apiVersion || 'v1';
   // Test HuggingFace API connection
   if (msg && msg.type === 'test_huggingface_api') {
     (async () => {
@@ -2220,6 +2309,63 @@ Return ONLY the rewritten text. No preamble. No explanation.`;
         try { chrome.storage.local.set({ 'chatbridge:conversations': [] }, () => { }); } catch (e) { }
         sendResponse({ ok: true });
       } catch (e) { sendResponse({ ok: false, error: e && e.message }); }
+    })();
+    return true;
+  }
+
+  // Handler to clear all Cached API responses
+  if (msg && msg.type === 'clear_cache') {
+    (async () => {
+      const ok = await cacheClearAll();
+      sendResponse({ ok });
+    })();
+    return true;
+  }
+
+  // Handler to execute a batch of API requests in parallel with concurrency limiting
+  if (msg && msg.type === 'batch_requests') {
+    (async () => {
+      try {
+        const payload = msg.payload || {};
+        const requests = Array.isArray(payload.requests) ? payload.requests : [];
+        const concurrency = Math.min(5, Math.max(1, payload.concurrency || 3));
+        
+        console.log(`[Batch] Executing ${requests.length} requests with concurrency ${concurrency} (apiVersion: ${apiVersion})...`);
+        
+        const results = new Array(requests.length);
+        let index = 0;
+        
+        async function worker() {
+          while (index < requests.length) {
+            const currentIdx = index++;
+            const req = requests[currentIdx];
+            if (!req || !req.type) {
+              results[currentIdx] = { ok: false, error: 'invalid_request', message: 'Request must have type.' };
+              continue;
+            }
+            
+            // Execute using our mainMessageListener internally
+            results[currentIdx] = await new Promise((resolve) => {
+              const isAsync = mainMessageListener(req, {}, (res) => {
+                resolve(res || { ok: false, error: 'no_response' });
+              });
+              if (isAsync !== true) {
+                resolve({ ok: false, error: 'sync_error', message: 'Message was handled synchronously.' });
+              }
+            });
+          }
+        }
+        
+        const workers = [];
+        for (let i = 0; i < concurrency; i++) {
+          workers.push(worker());
+        }
+        await Promise.all(workers);
+        
+        sendResponse({ ok: true, results });
+      } catch (e) {
+        sendResponse({ ok: false, error: 'batch_failed', message: e.message });
+      }
     })();
     return true;
   }
@@ -2658,18 +2804,24 @@ Return ONLY the rewritten text. No preamble. No explanation.`;
         }
 
         const promptText = payload.text || payload.prompt || '';
-        const messages = payload.messages || (promptText ? [{ role: 'user', content: promptText }] : []);
+        let messages = payload.messages || (promptText ? [{ role: 'user', content: promptText }] : []);
         
+        // Trim messages to fit under token limits
+        messages = trimOpenAiMessages(messages);
+
         if (messages.length === 0) {
            return sendResponse({ ok: false, error: 'invalid_request', message: 'No messages or prompt provided.' });
         }
 
         // Cache lookup (5 minute TTL)
+        const bypassCache = payload.bypassCache || payload.forceRefresh || false;
         try {
-          const cacheKey = hashString(stableStringify({ type: 'call_openai', model, messages }));
-          const rec = await cacheGet(cacheKey);
-          if (rec && rec.ts && rec.ttl && (Date.now() - rec.ts) < rec.ttl && rec.response) {
-            return sendResponse(rec.response);
+          if (!bypassCache) {
+            const cacheKey = hashString(stableStringify({ type: 'call_openai', model, messages }));
+            const rec = await cacheGet(cacheKey);
+            if (rec && rec.ts && rec.ttl && (Date.now() - rec.ts) < rec.ttl && rec.response) {
+              return sendResponse(rec.response);
+            }
           }
         } catch (e) { /* ignore cache errors */ }
 
@@ -3066,12 +3218,18 @@ Rewritten conversation (optimized for ${tgt}):`;
         } else {
           promptText = payload.text || '';
         }
+        // Trim promptText to stay under limits
+        promptText = trimPromptText(promptText);
+
         // Before making network call, check cache for this prompt
+        const bypassCache = payload.bypassCache || payload.forceRefresh || false;
         try {
-          const cacheKey = hashString(stableStringify({ type: 'call_gemini', action: payload.action || 'unknown', prompt: promptText, length: payload.length || '', summaryType: payload.summaryType || '' }));
-          const rec = await cacheGet(cacheKey);
-          if (rec && rec.ts && rec.ttl && (Date.now() - rec.ts) < rec.ttl && rec.response) {
-            return sendResponse(rec.response);
+          if (!bypassCache) {
+            const cacheKey = hashString(stableStringify({ type: 'call_gemini', action: payload.action || 'unknown', prompt: promptText, length: payload.length || '', summaryType: payload.summaryType || '' }));
+            const rec = await cacheGet(cacheKey);
+            if (rec && rec.ts && rec.ttl && (Date.now() - rec.ts) < rec.ttl && rec.response) {
+              return sendResponse(rec.response);
+            }
           }
         } catch (e) { /* ignore */ }
         geminiApiKey = await getGeminiApiKey();
@@ -3191,10 +3349,11 @@ Rewritten conversation (optimized for ${tgt}):`;
           markModelSuccess(currentModel);
           console.log(`[Gemini] ✓ Success with model: ${currentModel}`);
 
-          // Cache successful result (5min TTL)
+          // Cache successful result (30min default TTL)
           try {
             const cacheKey = hashString(stableStringify({ type: 'call_gemini', action: payload.action || 'unknown', prompt: promptText, length: payload.length || '', summaryType: payload.summaryType || '' }));
-            await cachePut({ id: cacheKey, ts: Date.now(), ttl: 1000 * 60 * 30, response: { ok: true, result, model: currentModel } }); // 30min cache (was 5min)
+            const ttl = (typeof payload.ttl === 'number') ? payload.ttl : 1000 * 60 * 30;
+            await cachePut({ id: cacheKey, ts: Date.now(), ttl, response: { ok: true, result, model: currentModel } });
             cacheCleanExpired();
           } catch (e) { /* ignore */ }
 
@@ -3259,6 +3418,26 @@ Rewritten conversation (optimized for ${tgt}):`;
         if (!prompt) {
           return sendResponse({ ok: false, error: 'empty_prompt', message: 'No prompt provided to agent_route.' });
         }
+
+        const bypassCache = payload.bypassCache || payload.forceRefresh || false;
+        const cacheKey = hashString(stableStringify({
+          type: 'agent_route',
+          routeMode,
+          prompt,
+          complexity,
+          retrievalEnabled,
+          agentTab,
+          retrievalScope
+        }));
+
+        try {
+          if (!bypassCache) {
+            const rec = await cacheGet(cacheKey);
+            if (rec && rec.ts && rec.ttl && (Date.now() - rec.ts) < rec.ttl && rec.response) {
+              return sendResponse(rec.response);
+            }
+          }
+        } catch (e) { /* ignore cache errors */ }
 
         async function withTimeout(promise, timeoutMs) {
           let timer = null;
@@ -3435,9 +3614,9 @@ Rewritten conversation (optimized for ${tgt}):`;
             contextText: '',
             sources: Array.isArray(preprocessedContext?.retrievalSources) ? preprocessedContext.retrievalSources : []
           };
-        const enrichedPrompt = preprocessedPrompt || (retrieval.contextText
+        const enrichedPrompt = trimPromptText(preprocessedPrompt || (retrieval.contextText
           ? `${prompt}\n\nRelevant memory retrieved from previous conversations:\n${retrieval.contextText}\n\nUse this context if helpful, but do not fabricate details.`
-          : prompt);
+          : prompt));
 
         let result = null;
 
@@ -3520,7 +3699,7 @@ Rewritten conversation (optimized for ${tgt}):`;
           }
         }
 
-        return sendResponse(Object.assign({}, result, {
+        const finalResponse = Object.assign({}, result, {
           ok: true,
           route_mode: selectedModel,
           latency_ms: Date.now() - startMs,
@@ -3535,7 +3714,16 @@ Rewritten conversation (optimized for ${tgt}):`;
           route_preferred: routeHints.preferredRoute || '',
           tool_registry: Object.keys(AGENT_TOOL_REGISTRY),
           tool_execution: toolExecution
-        }));
+        });
+
+        // Cache successful agent routing response (5min TTL)
+        try {
+          const ttl = (typeof payload.ttl === 'number') ? payload.ttl : 1000 * 60 * 5;
+          await cachePut({ id: cacheKey, ts: Date.now(), ttl, response: finalResponse });
+          cacheCleanExpired();
+        } catch (e) { /* ignore cache write errors */ }
+
+        return sendResponse(finalResponse);
       } catch (e) {
         return sendResponse({ ok: false, error: 'agent_route_error', message: (e && e.message) || String(e), latency_ms: Date.now() - startMs });
       }
@@ -3707,6 +3895,21 @@ ${payload.text}`;
           promptText = payload.text || '';
         }
 
+        // Trim promptText to stay under limits
+        promptText = trimPromptText(promptText);
+
+        // Before making network call, check cache for this prompt
+        const bypassCache = payload.bypassCache || payload.forceRefresh || false;
+        const cacheKey = hashString(stableStringify({ type: 'call_llama', action: payload.action || 'unknown', prompt: promptText, targetLang: payload.targetLang || '' }));
+        try {
+          if (!bypassCache) {
+            const rec = await cacheGet(cacheKey);
+            if (rec && rec.ts && rec.ttl && (Date.now() - rec.ts) < rec.ttl && rec.response) {
+              return sendResponse(rec.response);
+            }
+          }
+        } catch (e) { /* ignore cache errors */ }
+
         // Call HuggingFace router API
         const endpoint = 'https://router.huggingface.co/v1/chat/completions';
         const body = {
@@ -3752,7 +3955,16 @@ ${payload.text}`;
         const result = json.choices[0].message?.content || '';
         console.log(`[Llama] ✓ Success for ${action}: ${result.length} chars`);
 
-        return sendResponse({ ok: true, result, model: 'llama-3.1-8b' });
+        const responseObj = { ok: true, result, model: 'llama-3.1-8b' };
+        
+        // Cache successful result (30min default TTL)
+        try {
+          const ttl = (typeof payload.ttl === 'number') ? payload.ttl : 1000 * 60 * 30;
+          await cachePut({ id: cacheKey, ts: Date.now(), ttl, response: responseObj });
+          cacheCleanExpired();
+        } catch (e) { /* ignore cache write errors */ }
+
+        return sendResponse(responseObj);
       } catch (e) {
         console.warn('[Llama API] Fetch failed:', e?.message || e);
         const userMsg = (e?.message || '').includes('Failed to fetch')
@@ -3973,5 +4185,5 @@ ${payload.text}`;
     })();
     return true;
   }
-
-});
+}
+chrome.runtime.onMessage.addListener(mainMessageListener);
