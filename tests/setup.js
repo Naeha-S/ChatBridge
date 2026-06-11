@@ -153,3 +153,24 @@ if (typeof HTMLElement !== 'undefined' && !Object.prototype.hasOwnProperty.call(
   });
 }
 
+// Mock getBoundingClientRect in JSDOM to return non-zero dimensions by default
+if (typeof Element !== 'undefined' && Element.prototype) {
+  const originalGetBoundingClientRect = Element.prototype.getBoundingClientRect;
+  Element.prototype.getBoundingClientRect = function() {
+    const rect = originalGetBoundingClientRect ? originalGetBoundingClientRect.call(this) : { top: 0, left: 0, bottom: 0, right: 0, width: 0, height: 0 };
+    // If it's the default zero rect from jsdom, return a mock visible rect instead
+    if (rect.width === 0 && rect.height === 0 && rect.top === 0 && rect.left === 0) {
+      return {
+        top: 0,
+        left: 0,
+        bottom: 100,
+        right: 100,
+        width: 100,
+        height: 100
+      };
+    }
+    return rect;
+  };
+}
+
+

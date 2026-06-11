@@ -32,6 +32,43 @@
         cleanText = cleanText.replace(/^(Assistant|User|System|AI):\s*/i, '');
         restoreLog('Cleaned text (first 100 chars):', cleanText.slice(0, 100));
 
+        // Auto-summarize check for long content
+        const wordCount = cleanText.split(/\s+/).filter(Boolean).length;
+        if (cleanText.length >= 5000 || wordCount >= 1200) {
+          restoreLog(`Text qualifies for auto-summarize (length: ${cleanText.length}, words: ${wordCount})`);
+          toast('Summarizing large context...');
+          try {
+            const summaryResult = await new Promise((resolve) => {
+              chrome.runtime.sendMessage({
+                type: 'call_gemini',
+                payload: {
+                  action: 'summarize',
+                  text: cleanText,
+                  length: 'comprehensive',
+                  summaryType: 'transfer'
+                }
+              }, (res) => {
+                if (chrome.runtime.lastError) {
+                  resolve({ ok: false, error: chrome.runtime.lastError.message });
+                } else {
+                  resolve(res || { ok: false });
+                }
+              });
+            });
+
+            if (summaryResult && summaryResult.ok && summaryResult.result) {
+              restoreLog('Auto-summarization successful');
+              cleanText = summaryResult.result + '\n\n---\n[SYSTEM: The user just restored this past conversation summary. Analyze the context above, but DO NOT summarize it or answer it yet. Acknowledge by simply saying "Context restored. Ready for your next prompt." and await instructions.]';
+            } else {
+              restoreLog('Auto-summarization failed, falling back to full text:', summaryResult ? summaryResult.error || summaryResult.message : 'empty');
+              toast('Summarization failed. Transferring full text...');
+            }
+          } catch (sumErr) {
+            restoreLog('Auto-summarization exception:', sumErr);
+            toast('Summarization error. Transferring full text...');
+          }
+        }
+
         let input = null;
         try {
           const pick = (typeof window.pickAdapter === 'function') ? window.pickAdapter : null;

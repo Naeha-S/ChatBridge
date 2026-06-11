@@ -116,7 +116,7 @@
   const DOM_STABLE_TIMEOUT_MS = 100; // Quick timeout for snappy response
   const SCROLL_MAX_STEPS = 2; // Minimal steps for speed
   const SCROLL_STEP_PAUSE_MS = 5; // Near-instant scrolling
-  const SKIP_SCROLL_ON_SCAN = true; // Skip scrolling - most modern chats don't need it
+  const SKIP_SCROLL_ON_SCAN = false; // Enabled scrolling by default to support virtualized lists
   const DEBUG = !!(typeof window !== 'undefined' && window.__CHATBRIDGE_DEBUG === true);
 
   function debugLog(...args) { if (!DEBUG) return; try { console.debug('[ChatBridge]', ...args); } catch (e) { } }
@@ -6852,6 +6852,10 @@
       btnCloseSmart.className = 'cb-view-close';
       btnCloseSmart.textContent = '✕';
       btnCloseSmart.setAttribute('aria-label', 'Close Smart Query view');
+      btnCloseSmart.addEventListener('click', () => {
+        smartView.classList.remove('cb-view-active');
+        try { updatePanelDynamicLayout(); } catch (_) { }
+      });
       smartTop.appendChild(smartTitle);
       smartTop.appendChild(btnCloseSmart);
       smartView.appendChild(smartTop);
@@ -7006,6 +7010,10 @@
       const agentTitle = document.createElement('div'); agentTitle.className = 'cb-view-title'; agentTitle.innerHTML = '<span class="cb-gradient-text" style="display: inline-flex; align-items: center; gap: 10px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a4 4 0 0 1 4 4c0 1.95-1.4 3.58-3.25 3.93"/><path d="M12 2a4 4 0 0 0-4 4c0 1.95 1.4 3.58 3.25 3.93"/><rect x="8" y="14" width="8" height="6" rx="1"/><line x1="9" y1="18" x2="15" y2="18"/><line x1="12" y1="14" x2="12" y2="10"/></svg>Agent Utilities</span>';
       btnCloseAgent = document.createElement('button'); btnCloseAgent.className = 'cb-view-close'; btnCloseAgent.textContent = '✕';
       btnCloseAgent.setAttribute('aria-label', 'Close Agents');
+      btnCloseAgent.addEventListener('click', () => {
+        agentView.classList.remove('cb-view-active');
+        try { updatePanelDynamicLayout(); } catch (_) { }
+      });
       agentTop.appendChild(agentTitle); agentTop.appendChild(btnCloseAgent);
       agentView.appendChild(agentTop);
 
@@ -7020,6 +7028,7 @@
     }
 
     let insightsView = null;
+    let insightsContent = null;
     let insightsViewInitialized = false;
     function lazyInitInsightsView() {
       if (insightsViewInitialized) return;
@@ -7035,6 +7044,10 @@
       btnCloseInsights = document.createElement('button'); btnCloseInsights.className = 'cb-view-close';
       btnCloseInsights.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
       btnCloseInsights.setAttribute('aria-label', 'Close Smart Workspace view');
+      btnCloseInsights.addEventListener('click', () => {
+        insightsView.classList.remove('cb-view-active');
+        try { updatePanelDynamicLayout(); } catch (_) { }
+      });
       insightsTop.appendChild(insightsTitle); insightsTop.appendChild(btnCloseInsights);
       insightsView.appendChild(insightsTop);
 
@@ -7042,7 +7055,7 @@
       insightsIntro.textContent = 'Practical tools to help you work smarter: compare models, merge threads, extract content, and stay organized.';
       insightsView.appendChild(insightsIntro);
 
-      const insightsContent = document.createElement('div'); insightsContent.id = 'cb-insights-content'; insightsContent.style.cssText = 'padding:12px 0;overflow-y:auto;overflow-x:hidden;max-height:calc(100vh - 250px);';
+      insightsContent = document.createElement('div'); insightsContent.id = 'cb-insights-content'; insightsContent.style.cssText = 'padding:12px 0;overflow-y:auto;overflow-x:hidden;max-height:calc(100vh - 250px);';
       // Add default insights blocks with luxury styling
       insightsContent.innerHTML = `
       <div class="cb-insights-section">

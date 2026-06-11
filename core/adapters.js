@@ -15,6 +15,22 @@ function applyCandidateFilter(nodes) {
   });
 }
 
+function findScrollableContainer(startNode) {
+  try {
+    if (!startNode) return document.scrollingElement || document.documentElement;
+    let p = startNode;
+    while (p && p !== document.body && p !== document.documentElement) {
+      const style = window.getComputedStyle(p);
+      const overflowY = style.getPropertyValue('overflow-y') || style.getPropertyValue('overflow') || '';
+      if (p.scrollHeight > p.clientHeight && (overflowY.includes('auto') || overflowY.includes('scroll'))) {
+        return p;
+      }
+      p = p.parentElement;
+    }
+  } catch (e) { }
+  return document.scrollingElement || document.documentElement;
+}
+
 function adapterDebug(label, payload) {
   if (typeof window !== 'undefined' && typeof window.debugLog === 'function') {
     window.debugLog(label, payload);
@@ -74,7 +90,14 @@ const AdapterGeneric = {
   id: "generic",
   label: "Generic",
   detect: () => true, // fallback applies everywhere
-  scrollContainer: () => document.scrollingElement || document.documentElement,
+  scrollContainer: () => {
+    const startNode = document.querySelector('.conversation') ||
+                      document.querySelector('.messages') ||
+                      document.querySelector('.chat') ||
+                      document.querySelector('main') ||
+                      document.body;
+    return findScrollableContainer(startNode);
+  },
   getFileInput: () => {
     try {
       // Prefer file input near the text input/composer
@@ -176,7 +199,16 @@ const AdapterGeneric = {
 
       // Now extract messages from the wrapper
       const candidates = Array.from(wrapper.children)
-        .filter(n => n && n.innerText && normalizeText(n.innerText).length > 3);
+        .filter(n => {
+          if (!n || !n.innerText || normalizeText(n.innerText).length <= 3) return false;
+          try {
+            const rect = n.getBoundingClientRect ? n.getBoundingClientRect() : null;
+            if (rect && (rect.width === 0 || rect.height === 0)) return false;
+            const style = window.getComputedStyle(n);
+            if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') return false;
+            return true;
+          } catch (_) { return true; }
+        });
 
       // map to structured messages (in DOM order)
       const mapped = candidates.map(n => ({ el: n, text: normalizeText(n.innerText), top: (() => { try { return n.getBoundingClientRect().top } catch (e) { return 0 } })(), role: guessRoleFromElement(n) }));
@@ -265,10 +297,19 @@ function findChatContainerNearby(input) {
 function extractMessagesFromContainer(container, selectors) {
   const sel = (selectors && selectors.length) ? selectors.join(',') : '.message, .group, .markdown, .prose, .text-base, .message-text, .chat-bubble, .answer, p, li, div';
   let nodes = [];
+  const isVisible = (el) => {
+    try {
+      const rect = el.getBoundingClientRect ? el.getBoundingClientRect() : null;
+      if (rect && (rect.width === 0 || rect.height === 0)) return false;
+      const style = window.getComputedStyle(el);
+      if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') return false;
+      return true;
+    } catch (_) { return true; }
+  };
   try {
-    nodes = Array.from(container.querySelectorAll(sel)).filter(n => n && n.innerText && n.innerText.trim().length > 1);
+    nodes = Array.from(container.querySelectorAll(sel)).filter(n => n && n.innerText && n.innerText.trim().length > 1 && isVisible(n));
   } catch (e) {
-    nodes = Array.from(container.querySelectorAll('p, div, span')).filter(n => n && n.innerText && n.innerText.trim().length > 1);
+    nodes = Array.from(container.querySelectorAll('p, div, span')).filter(n => n && n.innerText && n.innerText.trim().length > 1 && isVisible(n));
   }
   // sort by DOM position
   const mapped = nodes.map(n => ({ el: n, text: n.innerText.trim() }));
@@ -319,7 +360,14 @@ const SiteAdapters = [
       segParams: { maxTurnsPerSegment: 7, roleClusterThreshold: 5, topicShiftSensitivity: 0.6 }
     },
     detect: () => location.hostname.includes("chat.openai.com") || location.hostname.includes("chatgpt.com"),
-    scrollContainer: () => document.querySelector('[data-testid="conversation-turns"]')?.parentElement || document.querySelector('main') || document.scrollingElement,
+    scrollContainer: () => {
+      const startNode = document.querySelector('[data-testid="conversation-turns"]') ||
+                        document.querySelector('[data-message-author-role]') ||
+                        document.querySelector('article') ||
+                        document.querySelector('main') ||
+                        document.body;
+      return findScrollableContainer(startNode);
+    },
     getMessages: () => {
       const container = document.querySelector('[data-testid="conversation-turns"]') || document.querySelector('main') || document.body;
       if (!container) {
@@ -353,14 +401,20 @@ const SiteAdapters = [
           }
         }
 
-        const body = w.querySelector('.markdown, .prose, .text-base, [data-testid*="message"]') || w;
+        const body = w.querySelector('.markdown') || 
+                     w.querySelector('.prose') || 
+                     w.querySelector('[data-testid*="message"]') || 
+                     w.querySelector('.text-base') || 
+                     w;
         if (!body) {
           console.log(`[ChatGPT Debug] Wrapper ${i}: SKIPPED (no body)`);
           return;
         }
 
+        const rect = body.getBoundingClientRect ? body.getBoundingClientRect() : null;
+        const wRect = w.getBoundingClientRect ? w.getBoundingClientRect() : null;
         const style = window.getComputedStyle(body);
-        if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') {
+        if ((rect && (rect.width === 0 || rect.height === 0)) || (wRect && (wRect.width === 0 || wRect.height === 0)) || style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') {
           console.log(`[ChatGPT Debug] Wrapper ${i}: SKIPPED (hidden) role=${role}`);
           return;
         }
@@ -437,7 +491,14 @@ const SiteAdapters = [
       segParams: { maxTurnsPerSegment: 5, roleClusterThreshold: 6, topicShiftSensitivity: 0.6 }
     },
     detect: () => location.hostname.includes("claude.ai"),
-    scrollContainer: () => document.querySelector('[data-testid="chat-scroll"]') || document.querySelector('[data-testid="conversation-view"]') || document.querySelector('main') || document.scrollingElement,
+    scrollContainer: () => {
+      const startNode = document.querySelector('[data-testid="chat-scroll"]') ||
+                        document.querySelector('[data-testid="conversation-view"]') ||
+                        document.querySelector('.standard-markdown') ||
+                        document.querySelector('main') ||
+                        document.body;
+      return findScrollableContainer(startNode);
+    },
     getMessages: () => {
       // Try to find the actual conversation container, not just body
       let container = document.querySelector('[data-testid="conversation-view"]') ||
@@ -515,6 +576,16 @@ const SiteAdapters = [
       // Remove duplicates by identity first to prevent self-containment filter bugs
       const uniq = new Set();
       combinedWrappers = combinedWrappers.filter(el => { if (!el || uniq.has(el)) return false; uniq.add(el); return true; });
+      // Filter out hidden wrappers (zero width/height or display:none)
+      combinedWrappers = combinedWrappers.filter(el => {
+        try {
+          const rect = el.getBoundingClientRect ? el.getBoundingClientRect() : null;
+          if (rect && (rect.width === 0 || rect.height === 0)) return false;
+          const style = window.getComputedStyle(el);
+          if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') return false;
+          return true;
+        } catch (_) { return true; }
+      });
       // Now filter out descendants
       combinedWrappers = combinedWrappers.filter((el, idx, arr) => !arr.some((other, j) => j !== idx && other.contains(el)));
 
@@ -715,7 +786,7 @@ const SiteAdapters = [
         } catch (e) { }
       }
 
-      return best || document.querySelector('main') || document.scrollingElement;
+      return findScrollableContainer(best || document.body);
     },
 
     getMessages: () => {
@@ -772,11 +843,20 @@ const SiteAdapters = [
       // Filter containers conservatively. Accept native Gemini tags immediately.
       messageContainers = messageContainers.filter(container => {
         try {
+          const rect = container.getBoundingClientRect ? container.getBoundingClientRect() : null;
+          if (rect && (rect.width === 0 || rect.height === 0)) return false;
+          const style = window.getComputedStyle(container);
+          if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') return false;
+
           const tag = (container.tagName || '').toLowerCase();
 
           // If it's a native Gemini element, accept it if it has any text.
           if (tag === 'user-query' || tag === 'model-response') {
-            const contentNode = container.querySelector('message-content, .markdown.markdown-main-panel, .message-text, [data-test-id="model-response-text"]') || container;
+            const contentNode = container.querySelector('message-content') ||
+                                container.querySelector('.markdown.markdown-main-panel') ||
+                                container.querySelector('[data-test-id="model-response-text"]') ||
+                                container.querySelector('.message-text') ||
+                                container;
             const text = (contentNode.innerText || contentNode.textContent || '').trim();
             const ok = !!text && text.length >= 3;
             if (!ok) console.log('[Gemini Debug] Dropping native tag (no text):', tag, contentNode && contentNode.innerText?.slice(0, 40));
@@ -790,7 +870,11 @@ const SiteAdapters = [
             return false;
           }
 
-          const contentNode = container.querySelector('message-content, .markdown.markdown-main-panel, .message-text, [data-test-id="model-response-text"]') || container;
+          const contentNode = container.querySelector('message-content') ||
+                              container.querySelector('.markdown.markdown-main-panel') ||
+                              container.querySelector('[data-test-id="model-response-text"]') ||
+                              container.querySelector('.message-text') ||
+                              container;
           const text = (contentNode.innerText || contentNode.textContent || '').trim();
           if (!text || text.length < 10) {
             console.log('[Gemini Debug] Excluding container (too short):', container.tagName, text?.slice(0, 40));
@@ -845,7 +929,11 @@ const SiteAdapters = [
         // Extract text from the content area, not chrome
         let text = '';
         try {
-          const contentNode = container.querySelector('message-content, .markdown.markdown-main-panel, .message-text, [data-test-id="model-response-text"]') || container;
+          const contentNode = container.querySelector('message-content') ||
+                              container.querySelector('.markdown.markdown-main-panel') ||
+                              container.querySelector('[data-test-id="model-response-text"]') ||
+                              container.querySelector('.message-text') ||
+                              container;
           text = (contentNode.innerText || contentNode.textContent || '').trim();
         } catch (e) {
           text = (container.innerText || '').trim();
@@ -920,7 +1008,10 @@ const SiteAdapters = [
           const isUser = cls.includes('user') || cls.includes('query') || cls.includes('human');
 
           // Get text content from the prose/markdown area
-          const textEl = block.querySelector('.prose, .markdown, [class*="message-content"]') || block;
+          const textEl = block.querySelector('.prose') ||
+                         block.querySelector('.markdown') ||
+                         block.querySelector('[class*="message-content"]') ||
+                         block;
           const text = (textEl.innerText || '').trim();
 
           if (text && text.length > 3) {
@@ -1006,7 +1097,11 @@ const SiteAdapters = [
 
       messageContainers.forEach(container => {
         // Find the actual text content, not the entire container
-        const textEl = container.querySelector('[class*="Message_text"], [class*="Markdown_markdownContainer"], [class*="markdown"], .prose') || container;
+        const textEl = container.querySelector('[class*="Message_text"]') ||
+                       container.querySelector('[class*="Markdown_markdownContainer"]') ||
+                       container.querySelector('[class*="markdown"]') ||
+                       container.querySelector('.prose') ||
+                       container;
         const text = (textEl.innerText || '').trim();
 
         // Skip if too short, is a script, JSON, or system text
@@ -1574,7 +1669,11 @@ const SiteAdapters = [
         const assistantRows = Array.from(document.querySelectorAll('.group\\/assistant-message, [data-testid="assistant-message"]'));
 
         userRows.forEach((row) => {
-          const body = row.querySelector('[class*="text-response"], .whitespace-pre-wrap, span, div') || row;
+          const body = row.querySelector('[class*="text-response"]') ||
+                       row.querySelector('.whitespace-pre-wrap') ||
+                       row.querySelector('span') ||
+                       row.querySelector('div') ||
+                       row;
           const text = normalize(body && body.innerText);
           if (!text) return;
           if (isMetaUiChromeText(text)) return;
@@ -1583,7 +1682,11 @@ const SiteAdapters = [
         });
 
         assistantRows.forEach((row) => {
-          const body = row.querySelector('[class*="text-response"], .whitespace-pre-wrap, span, div') || row;
+          const body = row.querySelector('[class*="text-response"]') ||
+                       row.querySelector('.whitespace-pre-wrap') ||
+                       row.querySelector('span') ||
+                       row.querySelector('div') ||
+                       row;
           const text = normalize(body && body.innerText);
           if (!text) return;
           if (isMetaUiChromeText(text)) return;

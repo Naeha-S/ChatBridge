@@ -18,6 +18,59 @@
       getDebugFlags
     } = deps;
 
+    function mergeMessageSequences(olderMsgs, newerMsgs) {
+      if (!olderMsgs || !olderMsgs.length) return newerMsgs || [];
+      if (!newerMsgs || !newerMsgs.length) return olderMsgs || [];
+      
+      const m = olderMsgs.length;
+      const n = newerMsgs.length;
+      
+      // Compute DP table for LCS (Longest Common Subsequence)
+      const dp = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));
+      
+      const match = (msg1, msg2) => {
+        if (!msg1 || !msg2) return false;
+        if (msg1.role !== msg2.role) return false;
+        const t1 = (msg1.text || '').trim();
+        const t2 = (msg2.text || '').trim();
+        return t1 === t2;
+      };
+      
+      for (let i = 1; i <= m; i++) {
+        for (let j = 1; j <= n; j++) {
+          if (match(olderMsgs[i - 1], newerMsgs[j - 1])) {
+            dp[i][j] = dp[i - 1][j - 1] + 1;
+          } else {
+            dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
+          }
+        }
+      }
+      
+      // Backtrack to build the merged list preserving order and deduplicating
+      const merged = [];
+      let i = m;
+      let j = n;
+      
+      while (i > 0 || j > 0) {
+        if (i > 0 && j > 0 && match(olderMsgs[i - 1], newerMsgs[j - 1])) {
+          // Overlapping/matching elements: keep the olderMsgs version (preserves whitespace/formatting preferences of the earlier scanned list)
+          merged.unshift(olderMsgs[i - 1]);
+          i--;
+          j--;
+        } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
+          // Unique to newerMsgs (newer part of conversation)
+          merged.unshift(newerMsgs[j - 1]);
+          j--;
+        } else {
+          // Unique to olderMsgs (older/further scrolled part of conversation)
+          merged.unshift(olderMsgs[i - 1]);
+          i--;
+        }
+      }
+      
+      return merged;
+    }
+
     async function scanChat() {
       const now = Date.now();
       if (now - scanState.lastScanTimestamp < SCAN_DEBOUNCE_MS) {
@@ -119,58 +172,238 @@
           debugLog('_lastScan init error:', e);
         }
 
-        if (!SKIP_SCROLL_ON_SCAN) {
+        let scrollContainer = null;
+        try {
+          scrollContainer = (adapter && typeof adapter.scrollContainer === 'function')
+            ? adapter.scrollContainer()
+            : null;
+          debugLog('scrollContainer from adapter:', !!scrollContainer);
+        } catch (e) {
+          debugLog('adapter.scrollContainer error:', e);
+        }
+        
+        if (!scrollContainer) {
+          scrollContainer = container || document.querySelector('main') || document.body;
+        }
+
+        const isWindow = scrollContainer === document.body || scrollContainer === document.documentElement || scrollContainer === document.scrollingElement;
+
+        const getScrollTop = () => {
+          if (isWindow) {
+            return window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
+          }
+          return scrollContainer ? scrollContainer.scrollTop : 0;
+        };
+
+        const setScrollTop = (val) => {
+          if (isWindow) {
+            window.scrollTo({ top: val, behavior: 'auto' });
+          } else if (scrollContainer) {
+            scrollContainer.scrollTop = val;
+          }
+        };
+
+        const getClientHeight = () => {
+          if (isWindow) {
+            return window.innerHeight;
+          }
+          return scrollContainer ? scrollContainer.clientHeight : 800;
+        };
+
+        let raw = [];
+        const domScanStart = performance.now();
+
+        // Save original scroll position
+        const originalScrollTop = getScrollTop();
+
+        try {
+          if (adapter && typeof adapter.getMessages === 'function') {
+            raw = adapter.getMessages() || [];
+            debugLog('Initial adapter.getMessages returned:', raw.length, 'messages');
+          }
+        } catch (e) {
+          debugLog('Initial adapter.getMessages error:', e);
+        }
+
+        let overlay = null;
+        let styleTag = null;
+
+        const needsScroll = !SKIP_SCROLL_ON_SCAN && scrollContainer && originalScrollTop > 50 && raw.length > 4;
+        if (needsScroll) {
           try {
-            await scrollContainerToTop(container);
-            debugLog('scroll complete');
+            // Inject spinner keyframes if not already present
+            if (!document.getElementById('cb-spin-style')) {
+              styleTag = document.createElement('style');
+              styleTag.id = 'cb-spin-style';
+              styleTag.textContent = `
+                @keyframes cb-spin {
+                  0% { transform: rotate(0deg); }
+                  100% { transform: rotate(360deg); }
+                }
+              `;
+              document.head.appendChild(styleTag);
+            }
+
+            // Create and position overlay
+            const rect = scrollContainer.getBoundingClientRect();
+            overlay = document.createElement('div');
+            overlay.id = 'cb-scan-overlay';
+            overlay.style.cssText = `
+              position: fixed;
+              top: ${rect.top}px;
+              left: ${rect.left}px;
+              width: ${rect.width}px;
+              height: ${rect.height}px;
+              background: rgba(255, 255, 255, 0.15);
+              backdrop-filter: blur(10px);
+              -webkit-backdrop-filter: blur(10px);
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              z-index: 999999;
+              transition: opacity 0.2s ease;
+              pointer-events: all;
+            `;
+
+            const isDarkMode = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) || 
+                               document.documentElement.classList.contains('dark') || 
+                               document.body.classList.contains('dark');
+
+            overlay.innerHTML = `
+              <div style="
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                background: ${isDarkMode ? 'rgba(15, 23, 42, 0.9)' : 'rgba(255, 255, 255, 0.9)'};
+                color: ${isDarkMode ? '#f8fafc' : '#0f172a'};
+                padding: 24px 32px;
+                border-radius: 16px;
+                box-shadow: 0 10px 25px -5px rgba(0,0,0,0.3);
+                border: 1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'};
+                font-family: system-ui, -apple-system, sans-serif;
+              ">
+                <div style="
+                  width: 32px;
+                  height: 32px;
+                  border: 3px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'};
+                  border-top: 3px solid #3b82f6;
+                  border-radius: 50%;
+                  animation: cb-spin 0.8s linear infinite;
+                  margin-bottom: 12px;
+                "></div>
+                <div style="font-weight: 600; font-size: 14px;">Scanning Chat...</div>
+                <div style="font-size: 11px; color: ${isDarkMode ? '#94a3b8' : '#64748b'}; margin-top: 4px;">Capturing conversation history</div>
+              </div>
+            `;
+
+            document.body.appendChild(overlay);
           } catch (e) {
-            debugLog('scroll error:', e);
+            console.warn('[ChatBridge] Could not create scan overlay:', e);
+          }
+
+          try {
+            console.log('[ChatBridge Debug] Starting scroll-based message accumulation...');
+            console.log('[ChatBridge Debug] scrollContainer:', scrollContainer.tagName, scrollContainer.className);
+            console.log('[ChatBridge Debug] scrollContainer dimensions:', {
+              scrollTop: scrollContainer.scrollTop,
+              scrollHeight: scrollContainer.scrollHeight,
+              clientHeight: scrollContainer.clientHeight
+            });
+            console.log('[ChatBridge Debug] isWindow:', isWindow);
+            
+            let cur = getScrollTop();
+            console.log('[ChatBridge Debug] Initial getScrollTop():', cur);
+            let steps = 0;
+            const isChatGPT = !!(adapter && adapter.id === 'chatgpt');
+            const maxSteps = isChatGPT ? 80 : 30;
+            const stepFraction = isChatGPT ? 0.95 : 0.85;
+            const maxStalledSteps = isChatGPT ? 4 : 1;
+            let stalledSteps = 0;
+            let lastMessageCount = raw.length;
+            
+            while (steps < maxSteps) {
+              const targetScrollTop = Math.max(0, cur - Math.ceil(getClientHeight() * stepFraction));
+              console.log(`[ChatBridge Debug] Step ${steps}: cur=${cur}, targetScrollTop=${targetScrollTop}`);
+              setScrollTop(targetScrollTop);
+              
+              // Wait for scroll to register and DOM to stabilize
+              await new Promise(r => setTimeout(r, 80));
+              if (typeof waitForDomStability === 'function') {
+                await waitForDomStability(scrollContainer, 100, 400);
+              } else {
+                await new Promise(r => setTimeout(r, 120));
+              }
+              
+              let stepRaw = [];
+              try {
+                if (adapter && typeof adapter.getMessages === 'function') {
+                  stepRaw = adapter.getMessages() || [];
+                }
+              } catch (e) {
+                console.log('[ChatBridge Debug] Step scan error:', e);
+              }
+              
+              if (stepRaw.length > 0) {
+                raw = mergeMessageSequences(stepRaw, raw);
+              }
+              
+              const nextCur = getScrollTop();
+              
+              // Determine if new messages were successfully loaded in this step
+              const messageCountChanged = raw.length > lastMessageCount;
+              console.log(`[ChatBridge Debug] Step ${steps} after scroll: nextCur=${nextCur}, raw.length=${raw.length}, messageCountChanged=${messageCountChanged}`);
+              lastMessageCount = raw.length;
+              stalledSteps = messageCountChanged ? 0 : stalledSteps + 1;
+              
+              // If we tried to scroll up but scroll position did not change AND we did not load any new messages,
+              // we have likely reached the top or a virtualized loading boundary.
+              if (nextCur === cur && !messageCountChanged && stalledSteps >= maxStalledSteps) {
+                console.log(`[ChatBridge Debug] Step ${steps} BREAK: nextCur === cur (${nextCur} === ${cur}) and no new messages`);
+                break;
+              }
+              
+              // If we are at scroll position 0 and no new messages were loaded, we are at the top.
+              if (nextCur === 0 && !messageCountChanged && stalledSteps >= maxStalledSteps) {
+                console.log(`[ChatBridge Debug] Step ${steps} BREAK: nextCur === 0 and no new messages`);
+                break;
+              }
+              
+              cur = nextCur;
+              steps++;
+            }
+            console.log(`[ChatBridge Debug] Scroll accumulation complete. Steps: ${steps}, Accumulated messages: ${raw.length}`);
+          } catch (e) {
+            console.log('[ChatBridge Debug] Scroll accumulation error:', e);
             try {
               if (window.ChatBridge && window.ChatBridge._lastScan) {
                 window.ChatBridge._lastScan.errors.push('scroll_failed: ' + (e.message || String(e)));
               }
             } catch (_) { }
-          }
-        } else {
-          debugLog('scroll skipped for speed');
-        }
+          } finally {
+            // Restore original scroll position
+            try {
+              setScrollTop(originalScrollTop);
+              debugLog('Restored original scroll position:', originalScrollTop);
+            } catch (_) {}
 
-        try {
-          await waitForDomStability(container);
-          debugLog('DOM stable');
-        } catch (e) {
-          debugLog('DOM stability wait error:', e);
-          try {
-            if (window.ChatBridge && window.ChatBridge._lastScan) {
-              window.ChatBridge._lastScan.errors.push('stability_timeout: ' + (e.message || String(e)));
-            }
-          } catch (_) { }
-        }
-
-        let raw = [];
-        const domScanStart = performance.now();
-        try {
-          if (adapter && typeof adapter.getMessages === 'function') {
-            raw = adapter.getMessages() || [];
-            debugLog('adapter.getMessages returned:', raw.length, 'messages');
-            if (Array.isArray(raw)) {
-              for (const message of raw) {
-                try {
-                  if (message && message.el && !message.attachments) {
-                    const attachments = extractAttachmentsFromElement(message.el);
-                    if (attachments && attachments.length) message.attachments = attachments;
-                  }
-                } catch (_) { }
+            // Remove overlay with a fade out
+            if (overlay) {
+              try {
+                overlay.style.opacity = '0';
+                setTimeout(() => {
+                  try { overlay.remove(); } catch (_) {}
+                }, 200);
+              } catch (_) {
+                try { overlay.remove(); } catch (_) {}
               }
             }
-          }
-        } catch (e) {
-          debugLog('adapter.getMessages error:', e);
-          try {
-            if (window.ChatBridge && window.ChatBridge._lastScan) {
-              window.ChatBridge._lastScan.errors.push('adapter_failed: ' + (e.message || String(e)));
+            if (styleTag) {
+              try { styleTag.remove(); } catch (_) {}
             }
-          } catch (_) { }
+          }
+        } else {
+          debugLog('scroll skipped (disabled or no container)');
         }
 
         if ((!raw || !raw.length) && typeof window.AdapterGeneric !== 'undefined' && typeof window.AdapterGeneric.getMessages === 'function') {
@@ -242,6 +475,18 @@
           } catch (e) {
             debugLog('node mapping error:', e);
             raw = [];
+          }
+        }
+
+        // Extract attachments for all collected messages if not already present
+        if (Array.isArray(raw)) {
+          for (const message of raw) {
+            try {
+              if (message && message.el && !message.attachments) {
+                const attachments = extractAttachmentsFromElement(message.el);
+                if (attachments && attachments.length) message.attachments = attachments;
+              }
+            } catch (_) { }
           }
         }
 
@@ -364,7 +609,7 @@
       }
     }
 
-    return { scanChat };
+    return { scanChat, mergeMessageSequences };
   }
 
   window.ChatBridgeContentScan = { createFeature };

@@ -180,4 +180,77 @@ describe('Adapters Unit Tests', () => {
     const input = adapter.getInput();
     expect(input.id).toBe('generic-input');
   });
+
+  test('findScrollableContainer finds the correct scrollable ancestor or falls back to scrollingElement', () => {
+    const originalGetComputedStyle = window.getComputedStyle;
+    window.getComputedStyle = (el) => {
+      if (el.id === 'scrollable') {
+        return { getPropertyValue: (prop) => prop === 'overflow-y' ? 'auto' : '' };
+      }
+      return { getPropertyValue: () => '' };
+    };
+
+    document.body.innerHTML = `
+      <div id="outer">
+        <div id="scrollable">
+          <div id="inner">
+            <span id="target">Content</span>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const scrollableEl = document.getElementById('scrollable');
+    const targetEl = document.getElementById('target');
+
+    Object.defineProperty(scrollableEl, 'scrollHeight', { value: 1000, configurable: true });
+    Object.defineProperty(scrollableEl, 'clientHeight', { value: 500, configurable: true });
+
+    const result = findScrollableContainer(targetEl);
+    expect(result.id).toBe('scrollable');
+
+    const nonScrollableEl = document.getElementById('outer');
+    const fallbackResult = findScrollableContainer(nonScrollableEl);
+    expect(fallbackResult).toBe(document.scrollingElement || document.documentElement);
+
+    window.getComputedStyle = originalGetComputedStyle;
+  });
+
+  test('ChatGPT adapter skips hidden messages', () => {
+    setHostname('chatgpt.com');
+    const adapter = pickAdapter();
+
+    // Mock ChatGPT DOM structures with a hidden message
+    document.body.innerHTML = `
+      <div data-testid="conversation-turns">
+        <div data-message-author-role="user" class="user-turn">
+          <div class="text-base">Hello, is anyone there?</div>
+        </div>
+        <div data-message-author-role="assistant" class="assistant-turn" id="hidden-turn">
+          <div class="markdown">This is a hidden assistant message</div>
+        </div>
+        <div data-message-author-role="assistant" class="assistant-turn">
+          <div class="markdown">Yes, how can I assist you today?</div>
+        </div>
+      </div>
+    `;
+
+    // Make the hidden turn return 0 width/height
+    const hiddenTurn = document.getElementById('hidden-turn');
+    const bodyEl = hiddenTurn.querySelector('.markdown');
+    bodyEl.getBoundingClientRect = () => ({
+      top: 0,
+      left: 0,
+      bottom: 0,
+      right: 0,
+      width: 0,
+      height: 0
+    });
+
+    const msgs = adapter.getMessages();
+    expect(msgs).toHaveLength(2);
+    expect(msgs[0].text).toBe('Hello, is anyone there?');
+    expect(msgs[1].text).toBe('Yes, how can I assist you today?');
+  });
 });
+
