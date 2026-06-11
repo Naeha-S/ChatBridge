@@ -8,6 +8,7 @@ eval(restoreCode);
 describe('Restore Auto-summarization Tests', () => {
   let restoreFeatureInstance;
   let mockTextarea;
+  let mockToast;
 
   beforeEach(() => {
     document.body.innerHTML = '';
@@ -29,9 +30,10 @@ describe('Restore Auto-summarization Tests', () => {
       }
     });
 
+    mockToast = jest.fn();
     const restoreDeps = {
       restoreLog: jest.fn(),
-      toast: jest.fn(),
+      toast: mockToast,
       findVisibleInputCandidate: () => mockTextarea,
       waitForComposer: () => Promise.resolve(mockTextarea),
       attachFilesToChat: () => Promise.resolve(true),
@@ -92,5 +94,24 @@ describe('Restore Auto-summarization Tests', () => {
     );
     expect(mockTextarea.value).toContain('This is a mock summarized conversation.');
     expect(mockTextarea.value).toContain('[SYSTEM: The user just restored this past conversation summary.');
+  });
+
+  test('handles auto-summarization failure and warns user with detailed error', async () => {
+    // Mock chrome.runtime.sendMessage to return failure with a custom message
+    chrome.runtime.sendMessage = jest.fn((message, callback) => {
+      if (message.type === 'call_gemini' && message.payload.action === 'summarize') {
+        setTimeout(() => callback({ ok: false, error: 'no_api_key', message: 'Gemini API key is missing' }), 0);
+      } else {
+        setTimeout(() => callback({ ok: true }), 0);
+      }
+    });
+
+    const text = 'A'.repeat(5500);
+    const result = await restoreFeatureInstance.restoreToChat(text);
+
+    expect(result).toBe(true);
+    // Since auto-summarization failed, it should warn the user and fall back to restoring the full text
+    expect(mockToast).toHaveBeenCalledWith('⚠️ Auto-summarize failed (Gemini API key is missing). Transferring full text...');
+    expect(mockTextarea.value).toBe(text);
   });
 });

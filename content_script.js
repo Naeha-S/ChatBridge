@@ -5452,11 +5452,11 @@
           }
         } else {
           setMiniState(miniSummarize, 'idle');
-          toast('Could not generate summary');
+          toast(response && response.message ? response.message : 'Could not generate summary');
         }
       } catch (e) {
         setMiniState(miniSummarize, 'idle');
-        toast('Summarize failed');
+        toast('Summarize failed: ' + (e.message || 'Unknown error'));
         debugLog('miniSummarize error', e);
       }
     });
@@ -5485,11 +5485,11 @@
           }
         } else {
           setMiniState(miniOptimize, 'idle');
-          toast('Could not optimize prompt');
+          toast(response && response.message ? response.message : 'Could not optimize prompt');
         }
       } catch (e) {
         setMiniState(miniOptimize, 'idle');
-        toast('Optimize failed');
+        toast('Optimize failed: ' + (e.message || 'Unknown error'));
         debugLog('miniOptimize error', e);
       }
     });
@@ -10298,22 +10298,35 @@ ${chatText.substring(0, 10000)}`
         const geminiKey = geminiKeyInput.value.trim();
         const hfKey = hfKeyInput.value.trim();
 
+        if (typeof chrome === 'undefined' || !chrome.storage || !chrome.storage.local) {
+          throw new Error('Extension storage is not available. Please reload the page.');
+        }
+
         // Save to chrome storage
         await new Promise((resolve, reject) => {
-          chrome.storage.local.set({
-            chatbridge_gemini_key: geminiKey,
-            chatbridge_hf_key: hfKey
-          }, () => {
-            if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
-            else resolve();
-          });
+          try {
+            chrome.storage.local.set({
+              chatbridge_gemini_key: geminiKey,
+              chatbridge_hf_key: hfKey
+            }, () => {
+              if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
+              else resolve();
+            });
+          } catch (err) {
+            reject(err);
+          }
         });
 
         toast('✓ API keys saved');
         saveKeysBtn.textContent = '✅ Saved!';
         setTimeout(() => { saveKeysBtn.textContent = '💾 Save Keys'; }, 2000);
       } catch (e) {
-        toast('Failed to save keys');
+        const errMsg = e && e.message ? e.message : String(e);
+        if (errMsg.includes('context invalidated')) {
+          toast('Failed to save keys: Extension was reloaded. Please refresh the page.');
+        } else {
+          toast('Failed to save keys: ' + errMsg);
+        }
         debugLog('save keys error', e);
       }
     });
@@ -10321,18 +10334,28 @@ ${chatText.substring(0, 10000)}`
     // Load saved keys when settings opens
     btnSettings.addEventListener('click', async () => {
       try {
+        if (typeof chrome === 'undefined' || !chrome.storage || !chrome.storage.local) {
+          debugLog('load settings failed: chrome.storage.local is not available');
+          return;
+        }
         chrome.storage.local.get(['chatbridge_gemini_key', 'chatbridge_hf_key', 'cb_detail_level', 'cb_analytics_optin'], (result) => {
-          if (result.chatbridge_gemini_key) geminiKeyInput.value = result.chatbridge_gemini_key;
-          if (result.chatbridge_hf_key) hfKeyInput.value = result.chatbridge_hf_key;
-          analyticsToggle.checked = !!result.cb_analytics_optin;
-          CBAnalytics.setEnabled(analyticsToggle.checked);
+          if (chrome.runtime.lastError) {
+            debugLog('load settings runtime error', chrome.runtime.lastError);
+            return;
+          }
+          if (result) {
+            if (result.chatbridge_gemini_key) geminiKeyInput.value = result.chatbridge_gemini_key;
+            if (result.chatbridge_hf_key) hfKeyInput.value = result.chatbridge_hf_key;
+            analyticsToggle.checked = !!result.cb_analytics_optin;
+            CBAnalytics.setEnabled(analyticsToggle.checked);
 
-          // Highlight current detail level
-          const level = result.cb_detail_level || 'concise';
-          [btnConcise, btnDetailed, btnExpert].forEach(btn => {
-            btn.style.background = btn.dataset.level === level ? 'var(--cb-accent-primary)' : '';
-            btn.style.color = btn.dataset.level === level ? '#fff' : '';
-          });
+            // Highlight current detail level
+            const level = result.cb_detail_level || 'concise';
+            [btnConcise, btnDetailed, btnExpert].forEach(btn => {
+              btn.style.background = btn.dataset.level === level ? 'var(--cb-accent-primary)' : '';
+              btn.style.color = btn.dataset.level === level ? '#fff' : '';
+            });
+          }
         });
       } catch (e) { debugLog('load settings failed', e); }
     });
@@ -24776,7 +24799,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       if (text.length <= chunkSize) {
         const res = await callGeminiAsync({ action: 'summarize', text, length: options.length || 'medium', summaryType: options.summaryType || 'paragraph' });
         if (res && res.ok) { try { onProgress && onProgress({ phase: 'done' }); } catch (e) { }; return res.result; }
-        throw new Error(res && res.error ? res.error : 'summarize-failed');
+        throw new Error(res && res.message ? res.message : (res && res.error ? res.error : 'summarize-failed'));
       }
       // Split text into chunks on paragraph boundaries to avoid cutting sentences
       const paragraphs = text.split(/\n\s*\n/);
@@ -24798,33 +24821,37 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       async function summarizeChunk(chunkText) {
         const chunkLen = options.chunkLength || 'short';
         const summaryType = 'bullet';
-        try {
-          // first attempt
-          const a = await callGeminiAsync({ action: 'summarize', text: chunkText, length: chunkLen, summaryType });
-          if (a && a.ok) return a.result;
-          debugLog('hierarchicalSummarize: chunk primary failed', a);
-        } catch (e) { debugLog('hierarchicalSummarize: chunk primary threw', e); }
+        
+        // first attempt
+        const a = await callGeminiAsync({ action: 'summarize', text: chunkText, length: chunkLen, summaryType });
+        if (a && a.ok) return a.result;
+        if (a && (a.error === 'no_api_key' || a.error === 'gemini_http_error')) {
+          throw new Error(a.message || 'Gemini API key not configured or invalid.');
+        }
+        debugLog('hierarchicalSummarize: chunk primary failed', a);
 
         // brief wait then retry once
         try { await sleep(250); } catch (e) { }
-        try {
-          const b = await callGeminiAsync({ action: 'summarize', text: chunkText, length: chunkLen, summaryType });
-          if (b && b.ok) return b.result;
-          debugLog('hierarchicalSummarize: chunk retry failed', b);
-        } catch (e) { debugLog('hierarchicalSummarize: chunk retry threw', e); }
+        const b = await callGeminiAsync({ action: 'summarize', text: chunkText, length: chunkLen, summaryType });
+        if (b && b.ok) return b.result;
+        if (b && (b.error === 'no_api_key' || b.error === 'gemini_http_error')) {
+          throw new Error(b.message || 'Gemini API key not configured or invalid.');
+        }
+        debugLog('hierarchicalSummarize: chunk retry failed', b);
 
         // fallback: simpler instruction which sometimes succeeds where default fails
-        try {
-          const fbPrompt = 'Provide a short bullet-point summary of the following text, listing the main points.';
-          const f = await callGeminiAsync({ action: 'summarize', text: chunkText, length: chunkLen, summaryType: 'paragraph', prompt: fbPrompt });
-          if (f && f.ok) return f.result;
-          console.error('[ChatBridge] hierarchicalSummarize: chunk fallback failed', f);
-        } catch (e) { console.error('[ChatBridge] hierarchicalSummarize: chunk fallback threw', e); }
+        const fbPrompt = 'Provide a short bullet-point summary of the following text, listing the main points.';
+        const f = await callGeminiAsync({ action: 'summarize', text: chunkText, length: chunkLen, summaryType: 'paragraph', prompt: fbPrompt });
+        if (f && f.ok) return f.result;
+        if (f && (f.error === 'no_api_key' || f.error === 'gemini_http_error')) {
+          throw new Error(f.message || 'Gemini API key not configured or invalid.');
+        }
+        console.error('[ChatBridge] hierarchicalSummarize: chunk fallback failed', f);
 
         // All API calls failed - extract key sentences as fallback
         console.warn('[ChatBridge] All Gemini API calls failed for chunk, using text extraction fallback');
         const sentences = chunkText.split(/[.!?]+/).filter(s => s.trim().length > 10).slice(0, 5);
-        return '\u2022 ' + sentences.map(s => s.trim()).join('\\n\u2022 ');
+        return '\u2022 ' + sentences.map(s => s.trim()).join('\n\u2022 ');
       }
 
       for (let i = 0; i < chunks.length; i += maxParallel) {
@@ -24845,14 +24872,21 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         try { onProgress && onProgress({ phase: 'merging' }); } catch (e) { }
         let mergeRes = await callGeminiAsync({ action: 'summarize', text: mergeInput, length: options.length || 'medium', summaryType: options.summaryType || 'paragraph', prompt: mergePrompt });
         if (mergeRes && mergeRes.ok) { try { onProgress && onProgress({ phase: 'done' }); } catch (e) { }; return mergeRes.result; }
+        if (mergeRes && (mergeRes.error === 'no_api_key' || mergeRes.error === 'gemini_http_error')) {
+          throw new Error(mergeRes.message || 'Gemini API key not configured or invalid.');
+        }
         debugLog('hierarchicalSummarize: primary merge failed', mergeRes);
 
         // Retry once with the same payload (some transient backend issues recover on retry)
         try {
           const retryRes = await callGeminiAsync({ action: 'summarize', text: mergeInput, length: options.length || 'medium', summaryType: options.summaryType || 'paragraph', prompt: mergePrompt });
           if (retryRes && retryRes.ok) { try { onProgress && onProgress({ phase: 'done' }); } catch (e) { }; return retryRes.result; }
+          if (retryRes && (retryRes.error === 'no_api_key' || retryRes.error === 'gemini_http_error')) {
+            throw new Error(retryRes.message || 'Gemini API key not configured or invalid.');
+          }
           debugLog('hierarchicalSummarize: retry merge failed', retryRes);
         } catch (retryErr) {
+          if (retryErr.message && (retryErr.message.includes('API key') || retryErr.message.includes('configured') || retryErr.message.includes('invalid'))) throw retryErr;
           debugLog('hierarchicalSummarize: retry merge threw', retryErr);
         }
 
@@ -24861,12 +24895,19 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           const fallbackPrompt = 'Produce a single coherent, concise summary from the following chunk summaries. Preserve the key points and overall context.';
           const fallbackRes = await callGeminiAsync({ action: 'summarize', text: mergeInput, length: options.length || 'medium', summaryType: options.summaryType || 'paragraph', prompt: fallbackPrompt });
           if (fallbackRes && fallbackRes.ok) { try { onProgress && onProgress({ phase: 'done' }); } catch (e) { }; return fallbackRes.result; }
+          if (fallbackRes && (fallbackRes.error === 'no_api_key' || fallbackRes.error === 'gemini_http_error')) {
+            throw new Error(fallbackRes.message || 'Gemini API key not configured or invalid.');
+          }
           debugLog('hierarchicalSummarize: fallback summarize failed', fallbackRes);
         } catch (fbErr) {
+          if (fbErr.message && (fbErr.message.includes('API key') || fbErr.message.includes('configured') || fbErr.message.includes('invalid'))) throw fbErr;
           debugLog('hierarchicalSummarize: fallback summarize threw', fbErr);
         }
 
       } catch (e) {
+        if (e.message && (e.message.includes('API key') || e.message.includes('configured') || e.message.includes('invalid'))) {
+          throw e;
+        }
         debugLog('hierarchicalSummarize: merge attempt threw', e);
       }
 
@@ -24927,12 +24968,22 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         debugLog('[Translation] Trying Gemini...');
         const preferredModel = deepThinking ? 'gemini-3.1-pro' : 'gemini-3.5-flash';
         const r = await callGeminiAsync({ action: 'translate', text: chunkText, targetLang, model: preferredModel });
+        if (r && !r.ok) {
+          if (r.error === 'no_api_key' || r.error === 'gemini_http_error') {
+            throw new Error(r.message || 'Gemini API key error');
+          }
+        }
         return r && r.ok ? r.result : null;
       }
 
       async function tryLlama(chunkText) {
         debugLog('[Translation] Trying Llama...');
         const r = await callLlamaAsync({ action: 'translate', text: chunkText, targetLang });
+        if (r && !r.ok) {
+          if (r.error === 'no_api_key' || r.error === 'api_error' || r.error === 'fetch_error') {
+            throw new Error(r.message || 'Llama API key error');
+          }
+        }
         return r && r.ok ? r.result : null;
       }
 
@@ -24941,6 +24992,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       if (hasLlama) order.push(tryLlama);
 
       async function translateChunk(chunkText) {
+        let lastError = null;
         for (const attemptFn of order) {
           try {
             const res = await attemptFn(chunkText);
@@ -24949,9 +25001,13 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
             }
           } catch (e) {
             debugLog('[Translation] Attempt failed', e);
+            lastError = e;
+            if (e.message && (e.message.includes('API key') || e.message.includes('configured') || e.message.includes('permission') || e.message.includes('lacks permissions') || e.message.includes('invalid'))) {
+              throw e;
+            }
           }
         }
-        throw new Error('All translation models failed');
+        throw lastError || new Error('All translation models failed');
       }
 
       if (workText.length <= chunkSize) {
@@ -25007,7 +25063,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         const res = await callGeminiAsync(Object.assign({ action, text }, perChunkExtra));
         if (res && res.ok) { try { onProgress && onProgress({ phase: 'done' }); } catch (e) { }; return res.result; }
         debugLog('[hierarchicalProcess] Single chunk call failed:', res?.error);
-        throw new Error(res && res.error ? res.error : `${action}-failed`);
+        throw new Error(res && res.message ? res.message : (res && res.error ? res.error : `${action}-failed`));
       }
       const paragraphs = text.split(/\n\s*\n/);
       const chunks = [];
@@ -25046,12 +25102,12 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         try { onProgress && onProgress({ phase: 'merging' }); } catch (e) { }
         const mergeRes = await callGeminiAsync({ action: 'syncTone', text: tonePrompt, length: options.length || 'medium', sourceModel: src, targetModel: tgt });
         if (mergeRes && mergeRes.ok) { try { onProgress && onProgress({ phase: 'done' }); } catch (e) { }; return mergeRes.result; }
-        throw new Error('syncTone-merge-failed');
+        throw new Error(mergeRes && mergeRes.message ? mergeRes.message : 'syncTone-merge-failed');
       }
       try { onProgress && onProgress({ phase: 'merging' }); } catch (e) { }
       const mergeRes = await callGeminiAsync({ action: 'prompt', text: mergeText, length: options.length || 'medium' });
       if (mergeRes && mergeRes.ok) { try { onProgress && onProgress({ phase: 'done' }); } catch (e) { }; return mergeRes.result; }
-      throw new Error('merge-failed');
+      throw new Error(mergeRes && mergeRes.message ? mergeRes.message : 'merge-failed');
     }
 
     // Selects template via background templates and handles chunk/merge.
@@ -25594,7 +25650,13 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
               }
 
               CBAnalytics.track('quick_action', 'optimize_success', { inputChars: originalText.length, outputChars: optimizedText.length, model: result.model || 'unknown' });
-              toast(result.model === 'llama' ? '✓ Prompt optimized (fallback)' : '✓ Prompt optimized!');
+              if (result.model === 'local') {
+                toast('⚠️ Using basic local optimizer. Configure Gemini API key in Options for better results.');
+              } else if (result.model === 'llama') {
+                toast('✓ Prompt optimized (fallback)');
+              } else {
+                toast('✓ Prompt optimized!');
+              }
             } else {
               CBAnalytics.track('quick_action', 'optimize_failed', { message: String(result?.error || 'Unknown error') });
               toast('Optimization failed: ' + (result?.error || 'Unknown error'));
@@ -25674,9 +25736,21 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
           // Automatically insert it into the active chat composer
           const success = await restoreToChat(optimizedText);
           if (success) {
-            toast(result.model === 'llama' ? '✓ Prompt optimized and inserted (fallback)' : '✓ Prompt optimized and inserted!');
+            if (result.model === 'local') {
+              toast('⚠️ Using basic local optimizer (no API key). Inserted to chat.');
+            } else if (result.model === 'llama') {
+              toast('✓ Prompt optimized and inserted (fallback)');
+            } else {
+              toast('✓ Prompt optimized and inserted!');
+            }
           } else {
-            toast(result.model === 'llama' ? '✓ Prompt optimized (fallback)' : '✓ Prompt optimized');
+            if (result.model === 'local') {
+              toast('⚠️ Using basic local optimizer (no API key).');
+            } else if (result.model === 'llama') {
+              toast('✓ Prompt optimized (fallback)');
+            } else {
+              toast('✓ Prompt optimized');
+            }
           }
         } else {
           toast('Optimization failed: ' + (result?.error || 'Unknown error'));

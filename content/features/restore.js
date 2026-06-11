@@ -61,11 +61,14 @@
               cleanText = summaryResult.result + '\n\n---\n[SYSTEM: The user just restored this past conversation summary. Analyze the context above, but DO NOT summarize it or answer it yet. Acknowledge by simply saying "Context restored. Ready for your next prompt." and await instructions.]';
             } else {
               restoreLog('Auto-summarization failed, falling back to full text:', summaryResult ? summaryResult.error || summaryResult.message : 'empty');
-              toast('Summarization failed. Transferring full text...');
+              const errDetail = summaryResult && (summaryResult.message || summaryResult.error);
+              const warnMsg = errDetail ? `Auto-summarize failed (${errDetail}).` : 'Summarization failed.';
+              toast(`⚠️ ${warnMsg} Transferring full text...`);
             }
           } catch (sumErr) {
             restoreLog('Auto-summarization exception:', sumErr);
-            toast('Summarization error. Transferring full text...');
+            const errDetail = sumErr && (sumErr.message || sumErr);
+            toast(`⚠️ Summarization error (${errDetail}). Transferring full text...`);
           }
         }
 

@@ -2965,7 +2965,42 @@ Return ONLY the rewritten text. No preamble. No explanation.`;
           systemInstruction = 'You are an elite summarization specialist trained to distill complex information into clear, actionable summaries. You adapt your output style precisely to the requested format while preserving all critical information. Never add meta-commentary like "Here is a summary" - output ONLY the summary itself.';
           // Use summary length/type if provided
           let opts = '';
-          if (payload.length === 'comprehensive') {
+          if (payload.summaryType === 'transfer') {
+            // Optimized AI-to-AI handoff schema
+            const lenHint = payload.length ? `Aim for a ${payload.length} length.` : '';
+            promptText = `Generate a summary optimized for AI-to-AI context transfer. ${lenHint}
+
+Follow this exact structure with section headers (do not add extra commentary outside sections):
+
+1) Context & Core Goal:
+- Describe the user's primary objective, role, background, and target outcome. Explicitly note any major instructions, preferences, or critical context shifts that occurred during the chat (e.g., "the user repeatedly requested to be taught the underlying concepts rather than just getting answers to questions/MCQs"). One to three sentences.
+
+2) Key Documents & Resources:
+- Identify all files, documents, datasets, or PDFs uploaded or referenced in the conversation (e.g., specific assignment PDFs). Briefly describe their role in the discussion.
+
+3) Chronological Progression of Topics:
+- Bullet points tracing the progression of the conversation from start to finish in chronological order. Describe what was discussed, what concepts were taught or solved, and how the conversation transitioned.
+
+4) Key Decisions & Causal Links:
+- Explain logical connections (e.g., "X led to Y because Z"). Detail any technical constraints, preferences, rules, or design decisions established.
+
+5) Current Status:
+- Describe where the conversation left off: what is completed, what is ongoing, and what remains blocked or unresolved.
+
+6) Next Steps / Suggested Continuation:
+- Provide 3–6 concrete, specific, and actionable next steps for the next AI to continue.
+
+7) AI Handoff TL;DR:
+- A single cohesive paragraph synthesizing the current task, user constraints, preferred tone/format, and immediate next focus.
+
+Constraints:
+- Preserve all important technical details, terminology, exact version numbers, and specific references.
+- DO NOT truncate sentences or cut off explanations mid-sentence.
+- Ensure the chronology flows logically.
+
+Source conversation:
+${payload.text}`;
+          } else if (payload.length === 'comprehensive') {
             promptText = `Create a DETAILED, COMPREHENSIVE summary of this conversation that preserves ALL important context, topics, decisions, and nuances. This summary will be used by AI tools to continue the conversation seamlessly, so DO NOT omit any significant information. Include:
 - All key topics and subtopics discussed in detail
 - Important decisions, conclusions, or outcomes reached
@@ -2978,42 +3013,7 @@ Return ONLY the rewritten text. No preamble. No explanation.`;
 Make this summary as thorough as needed to capture the full context - prioritize completeness and clarity over brevity.\n\n${payload.text}`;
           } else {
             // Advanced style-specific prompting
-            if (payload.summaryType === 'transfer') {
-              // Optimized AI-to-AI handoff schema
-              const lenHint = payload.length ? `Aim for a ${payload.length} length.` : '';
-              promptText = `Generate a summary optimized for AI-to-AI context transfer. ${lenHint}
-
-Follow this exact structure with section headers (do not add extra commentary outside sections):
-
-1) Context Overview:
-- Who the user is and their role, background, and working style. If not explicit, infer from the conversation. One to two sentences.
-
-2) Ongoing Goals:
-- Bullet list of the user's current long-term aims and recurring themes (e.g., building tools, content series, learning tracks). Keep each goal on one line.
-
-3) Recent Topics (Chronological):
-- 5–10 concise bullets describing what was discussed, in order. Include technical keywords and short details. Keep them brief.
-
-4) Causal Links and Relationships:
-- Explain how topics connect (e.g., "X led to Y because Z"). Mention dependencies, constraints, or design decisions.
-
-5) Current Status:
-- What is completed vs ongoing vs blocked. Use labels [done], [ongoing], [blocked].
-
-6) Next Steps / Suggested Continuation:
-- 3–6 concrete, actionable next steps for the next AI to continue. Be specific and reference the items above.
-
-7) AI Handoff TL;DR:
-- One paragraph the next AI can read to pick up immediately. Include the current task, constraints, and preferred tone/format.
-
-Constraints:
-- Preserve important technical details, terminology, and user intent.
-- Prefer crisp, skimmable bullets. Keep narrative tone pragmatic, not verbose.
-- If user identity/goals are unclear, sensibly infer from context and mark with (inferred).
-
-Source conversation:
-${payload.text}`;
-            } else if (payload.summaryType === 'bullet') {
+            if (payload.summaryType === 'bullet') {
               const lengthGuide = {
                 concise: '3-5 bullets maximum, ultra-brief',
                 short: '5-8 key bullets',
@@ -3259,8 +3259,8 @@ Rewritten conversation (optimized for ${tgt}):`;
         } else {
           promptText = payload.text || '';
         }
-        // Trim promptText to stay under limits
-        promptText = trimPromptText(promptText);
+        // Trim promptText to stay under limits (higher limit for Gemini due to its large context window)
+        promptText = trimPromptText(promptText, 500000);
 
         // Before making network call, check cache for this prompt
         const bypassCache = payload.bypassCache || payload.forceRefresh || false;
