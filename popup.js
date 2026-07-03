@@ -136,12 +136,30 @@
   // Load conversation stats
   async function loadStats() {
     try {
-      // Get conversations from storage
-      const result = await new Promise((resolve) => {
-        chrome.storage.local.get(['chatbridge:conversations'], resolve);
-      });
+      // Get conversations from storage/background
+      const conversations = await new Promise((resolve) => {
+        try {
+          chrome.runtime.sendMessage({ type: 'get_conversations' }, (res) => {
+            if (chrome.runtime.lastError) {
+              fallback();
+              return;
+            }
+            if (res && res.ok && Array.isArray(res.conversations)) {
+              resolve(res.conversations);
+            } else {
+              fallback();
+            }
+          });
+        } catch (e) {
+          fallback();
+        }
 
-      const conversations = result['chatbridge:conversations'] || [];
+        function fallback() {
+          chrome.storage.local.get(['chatbridge:conversations'], (result) => {
+            resolve(result['chatbridge:conversations'] || []);
+          });
+        }
+      });
 
       // Count conversations
       chatsCount.textContent = formatNumber(conversations.length);

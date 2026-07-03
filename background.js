@@ -358,6 +358,30 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             if (ok) count++;
           } catch (e) { /* continue */ }
         }
+        if (count > 0) {
+          try {
+            chrome.storage.local.get(['chatbridge:conversations'], (data) => {
+              try {
+                let existing = Array.isArray(data['chatbridge:conversations']) ? data['chatbridge:conversations'] : [];
+                const merged = new Map();
+                for (const c of convs) {
+                  const id = String(c.ts || c.id || Date.now());
+                  merged.set(id, Object.assign({ id }, c));
+                }
+                for (const c of existing) {
+                  const id = String(c.ts || c.id || Date.now());
+                  if (!merged.has(id)) {
+                    merged.set(id, c);
+                  }
+                }
+                const sorted = Array.from(merged.values())
+                  .sort((a, b) => (b.ts || 0) - (a.ts || 0))
+                  .slice(0, 50);
+                chrome.storage.local.set({ 'chatbridge:conversations': sorted });
+              } catch (e) { /* ignore mirror errors */ }
+            });
+          } catch (e) { /* ignore */ }
+        }
         sendResponse({ ok: true, migrated: count });
       } catch (e) { sendResponse({ ok: false, error: e && e.message }); }
     })();

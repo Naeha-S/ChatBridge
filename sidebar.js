@@ -67,19 +67,39 @@
 
     async function loadConversations() {
         return new Promise((resolve) => {
-            chrome.storage.local.get(STORAGE_KEYS, (result) => {
-                for (const key of STORAGE_KEYS) {
-                    if (result[key] && Array.isArray(result[key])) {
-                        conversations = result[key];
-                        filteredConversations = [...conversations];
-                        resolve();
+            try {
+                chrome.runtime.sendMessage({ type: 'get_conversations' }, (res) => {
+                    if (chrome.runtime.lastError) {
+                        fallback();
                         return;
                     }
-                }
-                conversations = [];
-                filteredConversations = [];
-                resolve();
-            });
+                    if (res && res.ok && Array.isArray(res.conversations)) {
+                        conversations = res.conversations;
+                        filteredConversations = [...conversations];
+                        resolve();
+                    } else {
+                        fallback();
+                    }
+                });
+            } catch (e) {
+                fallback();
+            }
+
+            function fallback() {
+                chrome.storage.local.get(STORAGE_KEYS, (result) => {
+                    for (const key of STORAGE_KEYS) {
+                        if (result[key] && Array.isArray(result[key])) {
+                            conversations = result[key];
+                            filteredConversations = [...conversations];
+                            resolve();
+                            return;
+                        }
+                    }
+                    conversations = [];
+                    filteredConversations = [];
+                    resolve();
+                });
+            }
         });
     }
 

@@ -169,15 +169,33 @@
 
   async function getConversations() {
     return new Promise((resolve) => {
-      chrome.storage.local.get(STORAGE_KEYS, (result) => {
-        for (const key of STORAGE_KEYS) {
-          if (result[key] && Array.isArray(result[key]) && result[key].length > 0) {
-            resolve(result[key]);
+      try {
+        chrome.runtime.sendMessage({ type: 'get_conversations' }, (res) => {
+          if (chrome.runtime.lastError) {
+            fallback();
             return;
           }
-        }
-        resolve([]);
-      });
+          if (res && res.ok && Array.isArray(res.conversations)) {
+            resolve(res.conversations);
+          } else {
+            fallback();
+          }
+        });
+      } catch (e) {
+        fallback();
+      }
+
+      function fallback() {
+        chrome.storage.local.get(STORAGE_KEYS, (result) => {
+          for (const key of STORAGE_KEYS) {
+            if (result[key] && Array.isArray(result[key]) && result[key].length > 0) {
+              resolve(result[key]);
+              return;
+            }
+          }
+          resolve([]);
+        });
+      }
     });
   }
 
@@ -571,6 +589,8 @@
         const updates = {};
         STORAGE_KEYS.forEach(key => updates[key] = currentArr);
         chrome.storage.local.set(updates, () => {
+          // Sync to background (IndexedDB)
+          try { chrome.runtime.sendMessage({ type: 'replace_conversations', payload: { conversations: currentArr } }); } catch (_) { }
           loadHistory();
           loadDashboardStats();
           showToast(t('conversationDeleted', currentLang), 'success');

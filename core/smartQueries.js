@@ -1333,12 +1333,12 @@
       });
     }
 
-    showKeywordSuggestions() {
+    async showKeywordSuggestions() {
       const suggestionsArea = this.container.querySelector('#sq-suggestions-area');
       if (!suggestionsArea) return;
 
       // Extract keywords from current conversation
-      const context = this.getContext();
+      const context = await this.getContext();
       const keywords = this.extractKeywords(context);
 
       if (keywords.length === 0) {

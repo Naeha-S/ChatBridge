@@ -1204,84 +1204,95 @@
         });
       }
 
-      // Listen for active session changes from other tabs/sidebar to keep in sync
+      // Listen for active session and conversation changes from other tabs/sidebar to keep in sync
       if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.onChanged) {
         chrome.storage.onChanged.addListener((changes, area) => {
           try {
-            if (area === 'local' && changes && changes['chatbridge:active_session']) {
-              const active = changes['chatbridge:active_session'].newValue;
-              const sRoot = (typeof shadow !== 'undefined') ? shadow : (document.getElementById('cb-host')?.shadowRoot || null);
-              if (active) {
-                window.ChatBridge.setLastScan(active);
-                window.ChatBridge.selectedConversation = active.conversation || active;
-                try { window.ChatBridge._lastScanResult = active.messages || active.conversation || []; } catch (_) { }
+            if (area === 'local' && changes) {
+              let shouldRefreshHistory = false;
 
-                // Update premium preview card
-                try {
-                  const msgs = active.messages || active.conversation || [];
-                  const previewStatsEl = sRoot ? sRoot.querySelector('#cb-preview-stats') : null;
-                  const previewTextEl = sRoot ? sRoot.querySelector('#cb-preview-text') : null;
-                  const wordCount = msgs.reduce((acc, m) => acc + ((m.text || m.content || '').split(/\s+/).length), 0);
-                  if (previewStatsEl) previewStatsEl.innerHTML = `<span class="cb-preview-stat">${wordCount.toLocaleString()} words</span><span class="cb-preview-stat">${msgs.length} msgs</span>`;
-                  if (previewTextEl) { previewTextEl.textContent = active.text.slice(0, 150) + (active.text.length > 150 ? '...' : ''); previewTextEl.style.opacity = '1'; }
-                  if (typeof window.__CB_UPDATE_STATUS === 'function') window.__CB_UPDATE_STATUS('Session Active', 'active');
-                } catch (_) { }
-              } else {
-                // Active session cleared, fall back to last saved chat
-                chrome.storage.local.get(['chatbridge:conversations'], (data) => {
+              if (changes['chatbridge:active_session']) {
+                shouldRefreshHistory = true;
+                const active = changes['chatbridge:active_session'].newValue;
+                const sRoot = (typeof shadow !== 'undefined') ? shadow : (document.getElementById('cb-host')?.shadowRoot || null);
+                if (active) {
+                  window.ChatBridge.setLastScan(active);
+                  window.ChatBridge.selectedConversation = active.conversation || active;
+                  try { window.ChatBridge._lastScanResult = active.messages || active.conversation || []; } catch (_) { }
+
+                  // Update premium preview card
                   try {
-                    const key = 'chatbridge:conversations';
-                    const convs = data[key] || [];
-                    if (Array.isArray(convs) && convs.length > 0) {
-                      const latest = convs[0];
-                      const msgs = latest.messages || latest.conversation || [];
-                      const fullText = msgs.map(m => `${m.role === 'user' ? 'User' : 'AI'}: ${m.text || m.content || ''}`).join('\n\n');
-                      window.ChatBridge.setLastScan({
-                        ts: latest.ts,
-                        platform: latest.platform || 'unknown',
-                        model: latest.model || 'unknown',
-                        messages: msgs,
-                        conversation: latest,
-                        text: fullText,
-                        timestamp: latest.ts
-                      });
-                      window.ChatBridge.selectedConversation = latest;
-                      try { window.ChatBridge._lastScanResult = msgs; } catch (_) { }
+                    const msgs = active.messages || active.conversation || [];
+                    const previewStatsEl = sRoot ? sRoot.querySelector('#cb-preview-stats') : null;
+                    const previewTextEl = sRoot ? sRoot.querySelector('#cb-preview-text') : null;
+                    const wordCount = msgs.reduce((acc, m) => acc + ((m.text || m.content || '').split(/\s+/).length), 0);
+                    if (previewStatsEl) previewStatsEl.innerHTML = `<span class="cb-preview-stat">${wordCount.toLocaleString()} words</span><span class="cb-preview-stat">${msgs.length} msgs</span>`;
+                    if (previewTextEl) { previewTextEl.textContent = active.text.slice(0, 150) + (active.text.length > 150 ? '...' : ''); previewTextEl.style.opacity = '1'; }
+                    if (typeof window.__CB_UPDATE_STATUS === 'function') window.__CB_UPDATE_STATUS('Session Active', 'active');
+                  } catch (_) { }
+                } else {
+                  // Active session cleared, fall back to last saved chat
+                  chrome.storage.local.get(['chatbridge:conversations'], (data) => {
+                    try {
+                      const key = 'chatbridge:conversations';
+                      const convs = data[key] || [];
+                      if (Array.isArray(convs) && convs.length > 0) {
+                        const latest = convs[0];
+                        const msgs = latest.messages || latest.conversation || [];
+                        const fullText = msgs.map(m => `${m.role === 'user' ? 'User' : 'AI'}: ${m.text || m.content || ''}`).join('\n\n');
+                        window.ChatBridge.setLastScan({
+                          ts: latest.ts,
+                          platform: latest.platform || 'unknown',
+                          model: latest.model || 'unknown',
+                          messages: msgs,
+                          conversation: latest,
+                          text: fullText,
+                          timestamp: latest.ts
+                        });
+                        window.ChatBridge.selectedConversation = latest;
+                        try { window.ChatBridge._lastScanResult = msgs; } catch (_) { }
 
-                      // Update premium preview card
-                      try {
-                        const previewStatsEl = sRoot ? sRoot.querySelector('#cb-preview-stats') : null;
-                        const previewTextEl = sRoot ? sRoot.querySelector('#cb-preview-text') : null;
-                        const wordCount = msgs.reduce((acc, m) => acc + ((m.text || m.content || '').split(/\s+/).length), 0);
-                        if (previewStatsEl) previewStatsEl.innerHTML = `<span class="cb-preview-stat">${wordCount.toLocaleString()} words</span><span class="cb-preview-stat">${msgs.length} msgs</span>`;
-                        if (previewTextEl) { previewTextEl.textContent = fullText.slice(0, 150) + (fullText.length > 150 ? '...' : ''); previewTextEl.style.opacity = '1'; }
-                        if (typeof window.__CB_UPDATE_STATUS === 'function') window.__CB_UPDATE_STATUS('Session Active', 'active');
-                      } catch (_) { }
-                    } else {
-                      lastScannedText = '';
-                      window.ChatBridge._lastScanData = null;
-                      window.ChatBridge.selectedConversation = null;
-                      try { window.ChatBridge._lastScanResult = null; } catch (_) { }
+                        // Update premium preview card
+                        try {
+                          const previewStatsEl = sRoot ? sRoot.querySelector('#cb-preview-stats') : null;
+                          const previewTextEl = sRoot ? sRoot.querySelector('#cb-preview-text') : null;
+                          const wordCount = msgs.reduce((acc, m) => acc + ((m.text || m.content || '').split(/\s+/).length), 0);
+                          if (previewStatsEl) previewStatsEl.innerHTML = `<span class="cb-preview-stat">${wordCount.toLocaleString()} words</span><span class="cb-preview-stat">${msgs.length} msgs</span>`;
+                          if (previewTextEl) { previewTextEl.textContent = fullText.slice(0, 150) + (fullText.length > 150 ? '...' : ''); previewTextEl.style.opacity = '1'; }
+                          if (typeof window.__CB_UPDATE_STATUS === 'function') window.__CB_UPDATE_STATUS('Session Active', 'active');
+                        } catch (_) { }
+                      } else {
+                        lastScannedText = '';
+                        window.ChatBridge._lastScanData = null;
+                        window.ChatBridge.selectedConversation = null;
+                        try { window.ChatBridge._lastScanResult = null; } catch (_) { }
 
-                      // Reset preview card
-                      try {
-                        const previewStatsEl = sRoot ? sRoot.querySelector('#cb-preview-stats') : null;
-                        const previewTextEl = sRoot ? sRoot.querySelector('#cb-preview-text') : null;
-                        if (previewStatsEl) previewStatsEl.innerHTML = '<span class="cb-preview-stat">0 words</span><span class="cb-preview-stat">0 msgs</span>';
-                        if (previewTextEl) { previewTextEl.textContent = 'Scan a conversation to see preview...'; previewTextEl.style.opacity = ''; }
-                        if (typeof window.__CB_UPDATE_STATUS === 'function') window.__CB_UPDATE_STATUS('Idle', 'idle');
-                      } catch (_) { }
-                    }
-                  } catch (err) { }
-                });
+                        // Reset preview card
+                        try {
+                          const previewStatsEl = sRoot ? sRoot.querySelector('#cb-preview-stats') : null;
+                          const previewTextEl = sRoot ? sRoot.querySelector('#cb-preview-text') : null;
+                          if (previewStatsEl) previewStatsEl.innerHTML = '<span class="cb-preview-stat">0 words</span><span class="cb-preview-stat">0 msgs</span>';
+                          if (previewTextEl) { previewTextEl.textContent = 'Scan a conversation to see preview...'; previewTextEl.style.opacity = ''; }
+                          if (typeof window.__CB_UPDATE_STATUS === 'function') window.__CB_UPDATE_STATUS('Idle', 'idle');
+                        } catch (_) { }
+                      }
+                    } catch (err) { }
+                  });
+                }
               }
 
-              // Refresh history UI to update active item highlights
-              try {
-                if (typeof window.ChatBridge.refreshHistory === 'function') {
-                  window.ChatBridge.refreshHistory();
-                }
-              } catch (_) { }
+              if (changes['chatbridge:conversations']) {
+                shouldRefreshHistory = true;
+              }
+
+              if (shouldRefreshHistory) {
+                // Refresh history UI to update active item highlights
+                try {
+                  if (typeof window.ChatBridge.refreshHistory === 'function') {
+                    window.ChatBridge.refreshHistory();
+                  }
+                } catch (_) { }
+              }
             }
           } catch (err) {
             console.error('[ChatBridge] Sync session load failed:', err);
@@ -1302,7 +1313,37 @@
         if (lastScannedText && lastScannedText.length > 10) {
           return lastScannedText;
         }
-        // Priority 3: Re-scan the page
+        // Priority 3: Try loading from saved conversations for this URL first
+        if (typeof loadConversationsAsync === 'function') {
+          try {
+            const convs = await loadConversationsAsync();
+            if (Array.isArray(convs) && convs.length) {
+              const currentUrl = window.location.href;
+              let sel = convs.find(c => c.url === currentUrl);
+              if (!sel) {
+                sel = convs.find(c => c.platform === window.location.hostname);
+              }
+              if (sel && sel.conversation && sel.conversation.length) {
+                const text = sel.conversation.map(m => `${m.role}: ${m.text}`).join('\n\n');
+                lastScannedText = text;
+                // Update memory cache
+                if (window.ChatBridge && window.ChatBridge.setLastScan) {
+                  window.ChatBridge.setLastScan({
+                    messages: sel.conversation,
+                    text: text,
+                    conversation: sel,
+                    timestamp: sel.ts,
+                    platform: sel.platform
+                  });
+                }
+                return text;
+              }
+            }
+          } catch (e) {
+            debugLog('loadConversationsAsync in getConversationText failed:', e);
+          }
+        }
+        // Priority 4: Re-scan the page
         const msgs = await scanChat();
         if (msgs && msgs.length > 0) {
           const text = msgs.map(m => `${m.role}: ${m.text}`).join('\n\n');
@@ -1315,6 +1356,99 @@
         return lastScannedText || '';
       }
     }
+
+    async function getCachedScanMessages() {
+      const lastScan = window.ChatBridge && window.ChatBridge.getLastScan ? window.ChatBridge.getLastScan() : null;
+      if (lastScan && lastScan.messages && lastScan.messages.length > 0) {
+        return lastScan.messages;
+      }
+      try {
+        const convs = await loadConversationsAsync();
+        if (Array.isArray(convs)) {
+          const currentUrl = window.location.href;
+          let match = convs.find(c => c.url === currentUrl);
+          if (!match) {
+            match = convs.find(c => c.platform === window.location.hostname);
+          }
+          if (match && Array.isArray(match.conversation) && match.conversation.length > 0) {
+            if (window.ChatBridge && window.ChatBridge.setLastScan) {
+              window.ChatBridge.setLastScan({
+                messages: match.conversation,
+                text: match.conversation.map(m => `${m.role}: ${m.text}`).join('\n\n'),
+                conversation: match,
+                timestamp: match.ts,
+                platform: match.platform
+              });
+            }
+            return match.conversation;
+          }
+        }
+      } catch (e) {
+        debugLog('getCachedScanMessages error', e);
+      }
+      return null;
+    }
+
+    function parseRobustJSON(str) {
+      if (!str) throw new Error('Empty input');
+      let raw = str.replace(/```json?\s*/gi, '').replace(/```/g, '').trim();
+      try {
+        return JSON.parse(raw);
+      } catch (e) {}
+
+      const startIndices = [];
+      for (let i = 0; i < raw.length; i++) {
+        if (raw[i] === '{' || raw[i] === '[') {
+          startIndices.push({ index: i, char: raw[i] });
+        }
+      }
+
+      for (const start of startIndices) {
+        const startIdx = start.index;
+        const openChar = start.char;
+        const closeChar = openChar === '{' ? '}' : ']';
+
+        let depth = 0;
+        let inString = false;
+        let escape = false;
+
+        for (let i = startIdx; i < raw.length; i++) {
+          const char = raw[i];
+          if (escape) {
+            escape = false;
+            continue;
+          }
+          if (char === '\\') {
+            escape = true;
+            continue;
+          }
+          if (char === '"') {
+            inString = !inString;
+            continue;
+          }
+          if (!inString) {
+            if (char === openChar) {
+              depth++;
+            } else if (char === closeChar) {
+              depth--;
+              if (depth === 0) {
+                const candidate = raw.substring(startIdx, i + 1);
+                try {
+                  const cleaned = candidate
+                    .replace(/\/\*[\s\S]*?\*\//g, '')
+                    .replace(/(^|[^\\])\/\/.*$/gm, '$1');
+                  return JSON.parse(cleaned);
+                } catch (parseErr) {
+                  break;
+                }
+              }
+            }
+          }
+        }
+      }
+      throw new Error('Could not find or parse valid JSON');
+    }
+
 
     // Continuum context state (global)
     let continuumContextState = {
@@ -4351,7 +4485,7 @@
   .cb-panel::-webkit-scrollbar-track { background: var(--cb-bg); border-radius: var(--cb-scrollbar-radius); }
   .cb-panel::-webkit-scrollbar-thumb { background: var(--cb-scrollbar-thumb); border-radius: var(--cb-scrollbar-radius); }
   .cb-panel::-webkit-scrollbar-thumb:hover { background: var(--cb-scrollbar-thumb-hover); }
-  .cb-header { display:flex; flex-direction:row; align-items:flex-start; justify-content:space-between; padding:var(--cb-space-xl) var(--cb-space-xl) var(--cb-space-sm) var(--cb-space-xl); gap:var(--cb-space-md); position: relative; }
+  .cb-header { display:flex; flex-direction:row; align-items:flex-start; justify-content:space-between; padding:var(--cb-space-xl) var(--cb-space-xl) var(--cb-space-sm) var(--cb-space-xl); gap:var(--cb-space-md); position: sticky; top: 0; background: var(--cb-bg2); z-index: 100; box-sizing: border-box; }
   .cb-title { font-weight:700; font-size:21px; letter-spacing:-0.02em; color: var(--cb-white); background: linear-gradient(135deg, var(--cb-accent-primary), var(--cb-accent-secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
   .cb-subtitle { font-size:12px; color: var(--cb-subtext); font-weight:500; margin-top:4px; margin-bottom:2px; letter-spacing:-0.01em; opacity:0.8; }
   .cb-badge { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, var(--cb-accent-primary), var(--cb-accent-secondary)); color: #ffffff; font-weight: 800; font-size: 15px; letter-spacing: -0.5px; box-shadow: 0 4px 16px var(--cb-shadow); margin-right: 14px; animation: cb-badge-float 3s ease-in-out infinite; transition: box-shadow 0.3s, transform 0.3s; }
@@ -4419,7 +4553,7 @@
   .cb-btn-secondary:hover { background: var(--cb-bg3); border-color: var(--cb-accent-primary); color: var(--cb-white) !important; }
   .cb-btn-tertiary { background: none; border: none; color: var(--cb-subtext) !important; padding:var(--cb-space-sm) var(--cb-space-md); font-weight:500; }
   .cb-btn-tertiary:hover { background: var(--cb-bg3); color: var(--cb-white) !important; }
-  .cb-scan-row { padding: 12px var(--cb-space-xl) var(--cb-space-sm) var(--cb-space-xl); }
+  .cb-scan-row { padding: 12px var(--cb-space-xl) var(--cb-space-sm) var(--cb-space-xl); position: sticky; top: 62px; background: var(--cb-bg2); z-index: 99; box-sizing: border-box; }
   .cb-scan-wide { width: 100%; margin: 0; padding:12px 16px; font-size:13px; font-weight:700; border-radius:var(--cb-radius-md); display:block; letter-spacing:0.02em; }
       .cb-btn-danger { background: rgba(255,30,86,0.1); border:1px solid rgba(255,30,86,0.3); color:#FF7A9A !important; font-size:13px; padding:8px 12px; }
       .cb-btn-danger:hover { background: rgba(255,30,86,0.15); border-color: rgba(255,30,86,0.5); color:#FF9CB3 !important; box-shadow: 0 4px 12px rgba(255,30,86,0.2); transform: translateY(-2px); }
@@ -4528,7 +4662,7 @@
   .cb-replies::-webkit-scrollbar { width: 8px; }
   .cb-replies::-webkit-scrollbar-track { background: rgba(16,24,43,0.4); border-radius: 10px; }
   .cb-replies::-webkit-scrollbar-thumb { background: linear-gradient(180deg, var(--cb-accent-primary), var(--cb-accent-secondary)); border-radius: 10px; border: 2px solid rgba(10,15,28,0.4); }
-  .cb-reply { background: linear-gradient(135deg, rgba(16,24,43,0.9), rgba(10,15,28,0.85)); border: 1px solid color-mix(in srgb, var(--cb-accent-primary) 20%, transparent); border-radius: 12px; padding: 14px 16px; font-size: 13px; line-height: 1.5; cursor: pointer; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); position:relative; min-height: 56px; max-height: 68px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+  .cb-reply { background: linear-gradient(135deg, rgba(16,24,43,0.9), rgba(10,15,28,0.85)); border: 1px solid color-mix(in srgb, var(--cb-accent-primary) 20%, transparent); border-radius: 12px; padding: 12px 16px; font-size: 13px; line-height: 1.5; cursor: pointer; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); position:relative; min-height: 56px; max-height: 90px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
   .cb-reply:hover { border-color: color-mix(in srgb, var(--cb-accent-primary) 60%, transparent); box-shadow: 0 6px 20px color-mix(in srgb, var(--cb-accent-primary) 25%, transparent), 0 0 24px color-mix(in srgb, var(--cb-accent-primary) 15%, transparent); transform: translateY(-2px) scale(1.01); background: linear-gradient(135deg, rgba(20,28,50,0.95), rgba(12,18,32,0.9)); }
   .cb-reply.cb-selected { border-color: var(--cb-accent-primary); background: linear-gradient(135deg, color-mix(in srgb, var(--cb-accent-primary) 18%, transparent), color-mix(in srgb, var(--cb-accent-primary) 12%, transparent)); box-shadow: 0 8px 24px color-mix(in srgb, var(--cb-accent-primary) 35%, transparent), inset 0 1px 0 rgba(255,255,255,0.08); border-width: 2px; }
   .cb-reply-preview { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; color: var(--cb-white); font-size: 13px; line-height: 1.5; white-space: normal; word-break: break-word; font-weight: 500; }
@@ -6323,7 +6457,7 @@
     const rewFilterBtn = document.createElement('button');
     rewFilterBtn.className = 'cb-btn cb-btn-secondary';
     rewFilterBtn.style.cssText = 'padding:6px 12px;font-size:10px;border-radius:16px;background:transparent;border:1px solid var(--cb-border);';
-    rewFilterBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>All';
+    rewFilterBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>Filter: All';
 
     rewReplyControls.appendChild(rewMultiBtn);
     rewReplyControls.appendChild(rewFilterBtn);
@@ -6995,10 +7129,16 @@
       smartProvenance.textContent = '';
       smartView.appendChild(smartProvenance);
 
-      panel.appendChild(smartView);
+      const historyWrapper = panel.querySelector('.cb-history-wrapper');
+      if (historyWrapper) {
+        panel.insertBefore(smartView, historyWrapper);
+      } else {
+        panel.appendChild(smartView);
+      }
     }
 
     let agentView = null;
+    let agentContent = null;
     let agentViewInitialized = false;
     function lazyInitAgentView() {
       if (agentViewInitialized) return;
@@ -7021,10 +7161,15 @@
       agentView.appendChild(agentIntro);
 
       // Agent content container (will be populated by renderAgentHub)
-      const agentContent = document.createElement('div'); agentContent.id = 'cb-agent-content'; agentContent.style.cssText = 'padding:8px 0;overflow-y:auto;max-height:none;';
+      agentContent = document.createElement('div'); agentContent.id = 'cb-agent-content'; agentContent.style.cssText = 'padding:8px 0;overflow-y:auto;max-height:none;';
       agentView.appendChild(agentContent);
 
-      panel.appendChild(agentView);
+      const historyWrapper = panel.querySelector('.cb-history-wrapper');
+      if (historyWrapper) {
+        panel.insertBefore(agentView, historyWrapper);
+      } else {
+        panel.appendChild(agentView);
+      }
     }
 
     let insightsView = null;
@@ -7288,7 +7433,12 @@
         loadMediaLibrary();
       }, 100);
 
-      panel.appendChild(insightsView);
+      const historyWrapper = panel.querySelector('.cb-history-wrapper');
+      if (historyWrapper) {
+        panel.insertBefore(insightsView, historyWrapper);
+      } else {
+        panel.appendChild(insightsView);
+      }
     }
 
     // ============================================
@@ -7788,8 +7938,7 @@
             if (!res || !res.ok || !res.result) throw new Error(res?.error || 'No result');
             let parsed;
             try {
-              const cleaned = res.result.replace(/```json?\s*/g, '').replace(/```/g, '').trim();
-              parsed = JSON.parse(cleaned);
+              parsed = parseRobustJSON(res.result);
             } catch (_) { throw new Error('Could not parse podcast script'); }
 
             if (!Array.isArray(parsed) || !parsed.length) throw new Error('No podcast script generated');
@@ -8023,8 +8172,7 @@ ${chatText.substring(0, 10000)}`
 
           let parsed;
           try {
-            const cleaned = res.result.replace(/```json?\s*/g, '').replace(/```/g, '').trim();
-            parsed = JSON.parse(cleaned);
+            parsed = parseRobustJSON(res.result);
           } catch (_) { throw new Error('Could not parse contradiction report'); }
 
           const contradictions = Array.isArray(parsed?.contradictions) ? parsed.contradictions : [];
@@ -8798,8 +8946,7 @@ ${chatText.substring(0, 10000)}`
 
           let parsed;
           try {
-            const cleaned = res.result.replace(/```json?\s*/g, '').replace(/```/g, '').trim();
-            parsed = JSON.parse(cleaned);
+            parsed = parseRobustJSON(res.result);
           } catch (_) { throw new Error('Could not parse fact check report'); }
 
           const claims = Array.isArray(parsed?.claims) ? parsed.claims : [];
@@ -9003,8 +9150,7 @@ ${chatText.substring(0, 10000)}`
         if (!res || !res.ok || !res.result) throw new Error(res?.error || 'No result');
         let items;
         try {
-          const cleaned = res.result.replace(/```json?\s*/g, '').replace(/```/g, '').trim();
-          items = JSON.parse(cleaned);
+          items = parseRobustJSON(res.result);
         } catch (_) { throw new Error('Could not parse action items'); }
 
         if (!Array.isArray(items) || !items.length) throw new Error('No action items found');
@@ -10604,7 +10750,14 @@ ${chatText.substring(0, 10000)}`
       try {
         const convs = await loadConversationsAsync();
         if (Array.isArray(convs) && convs.length) {
-          const sel = convs[0];
+          const currentUrl = window.location.href;
+          let sel = convs.find(c => c.url === currentUrl);
+          if (!sel) {
+            sel = convs.find(c => c.platform === window.location.hostname);
+          }
+          if (!sel) {
+            sel = convs[0];
+          }
           if (sel && sel.conversation && sel.conversation.length) return sel.conversation.map(m => `${m.role}: ${m.text}`).join('\n\n');
         }
       } catch (e) { debugLog('load convs', e); }
@@ -13258,6 +13411,18 @@ Output ONLY the 5 numbered questions, no other text.`;
             <div class="cb-pd-empty-desc">Click Generate to create<br>thought-provoking prompts</div>
           </div>
         `;
+
+        // Try to load the most recent prompts for this URL from history
+        try {
+          const history = JSON.parse(localStorage.getItem('chatbridge:prompt_history') || '[]');
+          const recentForUrl = history.find(h => h.url === window.location.href);
+          if (recentForUrl && recentForUrl.prompts) {
+            renderPrompts(recentForUrl.prompts, [], promptsList);
+          }
+        } catch (e) {
+          debugLog('Failed to load recent prompts from history', e);
+        }
+
         container.appendChild(promptsList);
 
         // Hover effects handled by CSS :hover on .cb-pd-btn-generate, .cb-pd-icon-btn
@@ -13270,9 +13435,13 @@ Output ONLY the 5 numbered questions, no other text.`;
           btnGenerate.classList.add('cb-pd-btn-generate--loading');
 
           try {
-            const msgs = await scanChat();
+            // Use cached scan if available; only call scanChat() if no prior data
+            let msgs = await getCachedScanMessages();
             if (!msgs || msgs.length === 0) {
-              toast('No messages to analyze');
+              msgs = await scanChat();
+            }
+            if (!msgs || msgs.length === 0) {
+              toast('No messages to analyze — scan a conversation first');
               promptsList.innerHTML = '<div class="cb-pd-error">No prompts generated</div>';
               return;
             }
@@ -22833,6 +23002,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         };
 
         const allMessages = await getBestSourceMessages();
+        const allConversations = await loadConversationsAsync().catch(() => []);
 
         exportPanel = document.createElement('div');
         exportPanel.id = 'cb-export-panel';
@@ -22841,6 +23011,12 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
             <h4 style="margin:0;font-size:14px;font-weight:600;color:var(--cb-white);">Export Chat</h4>
             <button id="close-export-panel" style="background:none;border:none;color:var(--cb-subtext);cursor:pointer;font-size:16px;padding:4px;">✕</button>
+          </div>
+
+          <div style="font-size:11px;color:var(--cb-subtext);margin-bottom:6px;">Source</div>
+          <div id="cb-export-source-chips" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:10px;">
+            <button class="cb-export-btn cb-export-chip" data-source-type="active">Active Chat</button>
+            <button class="cb-export-btn cb-export-chip" data-source-type="all">All Scanned Chats</button>
           </div>
 
           <div style="font-size:11px;color:var(--cb-subtext);margin-bottom:6px;">Format</div>
@@ -22884,22 +23060,24 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         shadow.getElementById('close-export-panel')?.addEventListener('click', () => exportPanel.remove());
 
         const state = {
+          sourceType: 'active',
           format: 'markdown',
           scope: 'full',
           includeMeta: true
         };
 
-        const getScopedMessages = () => {
-          if (state.scope === 'ai') {
-            return allMessages.filter((msg) => msg.role === 'assistant');
+        const scopeConvoMessages = (messages, scope) => {
+          const normalized = normalizeMessages(messages);
+          if (scope === 'ai') {
+            return normalized.filter((msg) => msg.role === 'assistant');
           }
-          if (state.scope === 'user') {
-            return allMessages.filter((msg) => msg.role === 'user');
+          if (scope === 'user') {
+            return normalized.filter((msg) => msg.role === 'user');
           }
-          if (state.scope === 'qa') {
+          if (scope === 'qa') {
             const scoped = [];
             let pendingUser = null;
-            allMessages.forEach((msg) => {
+            normalized.forEach((msg) => {
               if (msg.role === 'user') {
                 pendingUser = msg;
                 return;
@@ -22911,7 +23089,14 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
             });
             return scoped;
           }
-          return allMessages.slice();
+          return normalized;
+        };
+
+        const getScopedMessages = () => {
+          if (state.sourceType === 'all') {
+            return allConversations.flatMap(c => scopeConvoMessages(c.conversation || c.messages || [], state.scope));
+          }
+          return scopeConvoMessages(allMessages, state.scope);
         };
 
         const escapeForHtml = (value) => String(value || '')
@@ -22933,9 +23118,25 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         const buildOutput = () => {
           const scopedMessages = getScopedMessages();
           const meta = buildMetaHeader(scopedMessages.length);
-          const title = 'ChatBridge Export';
+          const title = state.sourceType === 'all' ? 'ChatBridge All Scanned Chats Export' : 'ChatBridge Export';
 
           if (state.format === 'json') {
+            if (state.sourceType === 'all') {
+              const data = allConversations.map(c => {
+                const msgs = scopeConvoMessages(c.conversation || c.messages || [], state.scope);
+                return {
+                  title: generateConversationTitle(c.conversation || c.messages || []),
+                  platform: c.platform || 'Unknown',
+                  date: new Date(c.ts || c.timestamp || Date.now()).toLocaleString(),
+                  messages: msgs.map(msg => ({ role: msg.role, text: msg.text }))
+                };
+              });
+              return {
+                text: JSON.stringify(data, null, 2),
+                ext: 'json',
+                mime: 'application/json'
+              };
+            }
             return {
               text: JSON.stringify(scopedMessages.map((msg) => ({ role: msg.role, text: msg.text })), null, 2),
               ext: 'json',
@@ -22944,6 +23145,28 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           }
 
           if (state.format === 'html') {
+            if (state.sourceType === 'all') {
+              const sections = allConversations.map(c => {
+                const msgs = scopeConvoMessages(c.conversation || c.messages || [], state.scope);
+                const t = generateConversationTitle(c.conversation || c.messages || []);
+                const dateStr = new Date(c.ts || c.timestamp || Date.now()).toLocaleString();
+                const plat = c.platform || 'Unknown';
+                const metaBlock = state.includeMeta
+                  ? `<div><strong>Platform:</strong> ${escapeForHtml(plat)}<br><strong>Date:</strong> ${escapeForHtml(dateStr)}<br><strong>Message Count:</strong> ${msgs.length}</div>`
+                  : '';
+                const rows = msgs
+                  .map((msg) => `<p><strong>${msg.role === 'assistant' ? 'AI' : 'User'}:</strong> ${escapeForHtml(msg.text).replace(/\n/g, '<br>')}</p>`)
+                  .join('\n');
+                return `<section style="margin-bottom:30px;border-bottom:1px solid #ccc;padding-bottom:20px;"><h2>${escapeForHtml(t)}</h2>${metaBlock}${rows}</section>`;
+              }).join('\n');
+
+              return {
+                text: `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title></head><body><h1>${title}</h1>${sections}</body></html>`,
+                ext: 'html',
+                mime: 'text/html'
+              };
+            }
+
             const metaBlock = meta
               ? `<div><strong>Platform:</strong> ${escapeForHtml(meta.platform)}<br><strong>Date:</strong> ${escapeForHtml(meta.date)}<br><strong>Message Count:</strong> ${meta.messageCount}</div><hr>`
               : '';
@@ -22958,6 +23181,32 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           }
 
           if (state.format === 'text') {
+            if (state.sourceType === 'all') {
+              const body = allConversations.map(c => {
+                const msgs = scopeConvoMessages(c.conversation || c.messages || [], state.scope);
+                const t = generateConversationTitle(c.conversation || c.messages || []);
+                const dateStr = new Date(c.ts || c.timestamp || Date.now()).toLocaleString();
+                const plat = c.platform || 'Unknown';
+                const header = state.includeMeta
+                  ? [
+                    `Title: ${t}`,
+                    `Platform: ${plat}`,
+                    `Date: ${dateStr}`,
+                    `Message Count: ${msgs.length}`,
+                    ''.padEnd(40, '-')
+                  ].join('\n') + '\n'
+                  : `Title: ${t}\n`;
+                const rows = msgs.map((msg) => `${msg.role === 'assistant' ? 'AI' : 'User'}: ${msg.text}`).join('\n\n');
+                return `${header}${rows}`;
+              }).join('\n\n' + ''.padEnd(56, '=') + '\n\n');
+
+              return {
+                text: `ChatBridge All Scanned Chats Export\nDate: ${exportedAt.toLocaleString()}\nTotal Chats: ${allConversations.length}\n` + ''.padEnd(56, '=') + '\n\n' + body,
+                ext: 'txt',
+                mime: 'text/plain'
+              };
+            }
+
             const header = meta
               ? [
                 `${title}`,
@@ -22974,6 +23223,33 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
               text: `${header}${body}`.trim(),
               ext: 'txt',
               mime: 'text/plain'
+            };
+          }
+
+          // Markdown
+          if (state.sourceType === 'all') {
+            const body = allConversations.map(c => {
+              const msgs = scopeConvoMessages(c.conversation || c.messages || [], state.scope);
+              const t = generateConversationTitle(c.conversation || c.messages || []);
+              const dateStr = new Date(c.ts || c.timestamp || Date.now()).toLocaleString();
+              const plat = c.platform || 'Unknown';
+              const header = state.includeMeta
+                ? [
+                  `## ${t}`,
+                  `- Platform: ${plat}`,
+                  `- Date: ${dateStr}`,
+                  `- Message Count: ${msgs.length}`,
+                  ''
+                ].join('\n')
+                : `## ${t}\n\n`;
+              const rows = msgs.map((msg) => `**${msg.role === 'assistant' ? 'AI' : 'User'}:**\n${msg.text}`).join('\n\n');
+              return `${header}${rows}`;
+            }).join('\n\n---\n\n');
+
+            return {
+              text: `# ChatBridge All Scanned Chats Export\n\n- Date: ${exportedAt.toLocaleString()}\n- Total Chats: ${allConversations.length}\n\n---\n\n` + body,
+              ext: 'md',
+              mime: 'text/markdown'
             };
           }
 
@@ -23001,6 +23277,12 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         };
 
         const renderActiveChipState = () => {
+          exportPanel.querySelectorAll('[data-source-type]').forEach((btn) => {
+            const active = btn.getAttribute('data-source-type') === state.sourceType;
+            btn.style.background = active ? 'color-mix(in srgb, var(--cb-accent-primary) 18%, var(--cb-bg3))' : '';
+            btn.style.borderColor = active ? 'color-mix(in srgb, var(--cb-accent-primary) 40%, var(--cb-border))' : '';
+            btn.style.color = active ? 'var(--cb-accent-primary)' : '';
+          });
           exportPanel.querySelectorAll('[data-format]').forEach((btn) => {
             const active = btn.getAttribute('data-format') === state.format;
             btn.style.background = active ? 'color-mix(in srgb, var(--cb-accent-primary) 18%, var(--cb-bg3))' : '';
@@ -23021,11 +23303,19 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           if (!previewEl || !metaEl) return;
 
           const output = buildOutput();
-          previewEl.textContent = output.text || 'No content available. Run Scan first.';
+          previewEl.textContent = output.text || 'No content available.';
           const count = getScopedMessages().length;
           metaEl.textContent = `${count} message${count === 1 ? '' : 's'} • ${state.format.toUpperCase()} • ${state.scope.toUpperCase()}`;
           renderActiveChipState();
         };
+
+        exportPanel.querySelectorAll('[data-source-type]').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            state.sourceType = btn.getAttribute('data-source-type') || 'active';
+            CBAnalytics.track('quick_action', 'export_source_select', { sourceType: state.sourceType });
+            refreshPreview();
+          });
+        });
 
         exportPanel.querySelectorAll('[data-format]').forEach((btn) => {
           btn.addEventListener('click', () => {
@@ -23071,8 +23361,8 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         });
 
         refreshPreview();
-        if (!allMessages.length) {
-          toast('No active messages found yet. Run Scan to populate export.');
+        if (!allMessages.length && !allConversations.length) {
+          toast('No active messages or saved conversations found to export.');
         }
       } catch (e) {
         toast('Export failed');
@@ -24125,7 +24415,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
 
     btnRestore.addEventListener('click', async () => {
       try {
-        // Priority 1: Use selected conversation from history (if user clicked "Open" previously)
+        // Priority 1: Use selected conversation from history (if user clicked one in history panel)
         let sel = null;
         try {
           if (window.ChatBridge && window.ChatBridge.selectedConversation &&
@@ -24136,13 +24426,24 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           }
         } catch (e) { }
 
-        // Priority 2: Load from saved conversations
+        // If no conversation is selected yet, scroll to history panel so user can pick one
         if (!sel) {
           const list = await loadConversationsAsync();
           const arr = Array.isArray(list) ? list : [];
-          if (!arr.length) { toast('No saved conversations'); return; }
-          // Use most recent conversation
-          sel = arr[0];
+          if (!arr.length) { toast('No saved conversations yet. Scan a chat to save it!'); return; }
+
+          // Scroll to history section and show hint
+          try {
+            const histWrapper = panel.querySelector('.cb-history-wrapper');
+            if (histWrapper) {
+              histWrapper.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              histWrapper.style.transition = 'box-shadow 0.3s ease';
+              histWrapper.style.boxShadow = '0 0 0 2px var(--cb-accent-primary), 0 0 20px color-mix(in srgb, var(--cb-accent-primary) 30%, transparent)';
+              setTimeout(() => { try { histWrapper.style.boxShadow = ''; } catch (_) {} }, 2000);
+            }
+          } catch (_) {}
+          toast('\u{1F4CB} Pick a conversation from History below, then click Restore again');
+          return;
         }
 
         if (!sel || !sel.conversation || !sel.conversation.length) {
@@ -25279,9 +25580,15 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       return normalized.length > 120 ? normalized.slice(0, 117) + '...' : normalized;
     }
 
-    async function loadAssistantReplies() {
+    async function loadAssistantReplies(forceScan = false) {
       try {
-        const msgs = await scanChat();
+        let msgs = null;
+        const lastScan = window.ChatBridge.getLastScan ? window.ChatBridge.getLastScan() : null;
+        if (!forceScan && lastScan && lastScan.messages && lastScan.messages.length > 0) {
+          msgs = lastScan.messages;
+        } else {
+          msgs = await scanChat();
+        }
         let candidates = (msgs || []).filter(m => (m && m.text && m.text.trim().length > 0));
         if (_rewFilter === 'assistant') candidates = candidates.filter(m => m.role === 'assistant');
         else if (_rewFilter === 'user') candidates = candidates.filter(m => m.role === 'user');
@@ -25320,14 +25627,24 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         if (!list) return;
         while (list.firstChild) list.removeChild(list.firstChild);
         if (!_cbRepliesData.length) {
-          const empty = document.createElement('div'); empty.style.cssText = 'font-size:12px;color:var(--cb-subtext)'; empty.textContent = 'No assistant replies found.'; list.appendChild(empty); return;
+          const empty = document.createElement('div');
+          empty.style.cssText = 'font-size:12px;color:var(--cb-subtext);text-align:center;padding:16px 0;';
+          const filterHint = _rewFilter !== 'all' ? ` (filter: ${_rewFilter})` : '';
+          empty.innerHTML = `<div style="opacity:0.6;margin-bottom:6px;">No messages found${filterHint}.</div><div style="font-size:11px;opacity:0.45;">Scan a conversation first, or change the filter.</div>`;
+          list.appendChild(empty); return;
         }
         for (const r of _cbRepliesData) {
           const bubble = document.createElement('div'); bubble.className = 'cb-reply'; bubble.dataset.id = r.id;
           if (_cbSelectedReplyId === r.id || _cbSelectedReplyIds.has(r.id)) bubble.classList.add('cb-selected');
+          // Role badge
+          const roleBadge = document.createElement('span');
+          const isUser = r.role === 'user';
+          roleBadge.style.cssText = `display:inline-flex;align-items:center;gap:3px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;padding:1px 6px;border-radius:20px;margin-bottom:6px;${isUser ? 'color:#60a5fa;background:rgba(96,165,250,0.15);border:1px solid rgba(96,165,250,0.3);' : 'color:var(--cb-accent-primary);background:color-mix(in srgb,var(--cb-accent-primary) 15%,transparent);border:1px solid color-mix(in srgb,var(--cb-accent-primary) 30%,transparent);'}`;
+          roleBadge.textContent = isUser ? '👤 User' : '🤖 AI';
+          bubble.appendChild(roleBadge);
           const previewEl = document.createElement('div'); previewEl.className = 'cb-reply-preview'; previewEl.textContent = r.preview;
           bubble.appendChild(previewEl);
-          const meta = document.createElement('div'); meta.className = 'cb-reply-meta'; meta.textContent = `${r.role === 'user' ? 'User' : 'AI'} • ${r.text.length} chars`;
+          const meta = document.createElement('div'); meta.className = 'cb-reply-meta'; meta.textContent = `${r.text.length} chars`;
           bubble.appendChild(meta);
           bubble.addEventListener('click', () => {
             if (_rewMultiMode) {
@@ -25362,7 +25679,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           restoreViewState('rew');
           rewView.classList.add('cb-view-active');
           // Still load replies to maintain state
-          await loadAssistantReplies();
+          await loadAssistantReplies(false);
         } else {
           // Open the view immediately so user sees it
           rewView.classList.add('cb-view-active');
@@ -25379,8 +25696,8 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
             } catch (e) { debugLog('Rewrite auto-scan error', e); }
           }
 
-          // Load replies on open
-          await loadAssistantReplies();
+          // Load replies on open without forcing double scan
+          await loadAssistantReplies(false);
         }
       } catch (e) { toast('Failed to open Rewrite: ' + (e.message || e)); }
     });
@@ -25404,8 +25721,9 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         if (_rewFilter === 'all') _rewFilter = 'assistant';
         else if (_rewFilter === 'assistant') _rewFilter = 'user';
         else _rewFilter = 'all';
-        rewFilterBtn.textContent = 'Filter: ' + (_rewFilter === 'all' ? 'All' : (_rewFilter === 'assistant' ? 'Assistant' : 'User'));
-        await loadAssistantReplies();
+        const filterLabel = _rewFilter === 'all' ? 'All' : (_rewFilter === 'assistant' ? '🤖 AI only' : '👤 User only');
+        rewFilterBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>${filterLabel}`;
+        await loadAssistantReplies(false);
       });
     } catch (e) { }
 
@@ -25912,7 +26230,8 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
         } else if (mode === 'custom') {
           textToTranslate = content[0]?.text || '';
         } else {
-          textToTranslate = content.map(m => `${m.role === 'user' ? 'User' : 'AI'}: ${m.text}`).join('\n\n');
+          // Use stable Unicode role markers that won't be translated by AI models
+          textToTranslate = content.map(m => `\u27E6${m.role === 'user' ? 'USER' : 'AI'}\u27E7 ${m.text}`).join('\n\n');
         }
 
         if (!textToTranslate || textToTranslate.length < 2) {
@@ -25942,13 +26261,17 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
             if (!p.trim()) return;
             const para = document.createElement('div');
             para.style.cssText = 'margin-bottom:12px;line-height:1.7;';
-            // Detect role labels (User: / AI:) and style them
-            const roleMatch = p.trim().match(/^(User|AI):\s*/i);
+            // Detect stable Unicode role markers (⟦USER⟧ / ⟦AI⟧) or fallback to User:/AI: labels
+            const roleMatch = p.trim().match(/^\u27E6(USER|AI)\u27E7\s*/i) || p.trim().match(/^(User|AI):\s*/i);
             if (roleMatch) {
+              const roleKey = (roleMatch[1] || '').toUpperCase();
+              const isUser = roleKey === 'USER';
               const label = document.createElement('span');
-              label.style.cssText = 'font-weight:600;color:var(--cb-accent-primary);font-size:11px;text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:4px;opacity:0.7;';
-              label.textContent = roleMatch[1];
+              label.style.cssText = `font-weight:700;font-size:10px;text-transform:uppercase;letter-spacing:0.06em;display:inline-flex;align-items:center;gap:5px;margin-bottom:5px;padding:2px 8px;border-radius:20px;${isUser ? 'color:#60a5fa;background:rgba(96,165,250,0.12);border:1px solid rgba(96,165,250,0.25);' : 'color:var(--cb-accent-primary);background:color-mix(in srgb,var(--cb-accent-primary) 12%,transparent);border:1px solid color-mix(in srgb,var(--cb-accent-primary) 25%,transparent);'}`;
+              label.textContent = isUser ? '👤 User' : '🤖 AI';
+              para.style.cssText = 'margin-bottom:14px;';
               para.appendChild(label);
+              para.appendChild(document.createElement('br'));
               const textNode = document.createTextNode(p.trim().slice(roleMatch[0].length));
               para.appendChild(textNode);
             } else {
@@ -25972,7 +26295,20 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
             if (!p.trim()) return;
             const para = document.createElement('div');
             para.style.cssText = 'margin-bottom:12px;line-height:1.7;';
-            para.textContent = p.trim();
+            const roleMatch = p.trim().match(/^\u27E6(USER|AI)\u27E7\s*/i) || p.trim().match(/^(User|AI):\s*/i);
+            if (roleMatch) {
+              const roleKey = (roleMatch[1] || '').toUpperCase();
+              const isUser = roleKey === 'USER';
+              const label = document.createElement('span');
+              label.style.cssText = `font-weight:700;font-size:10px;text-transform:uppercase;letter-spacing:0.06em;display:inline-flex;align-items:center;gap:5px;margin-bottom:5px;padding:2px 8px;border-radius:20px;${isUser ? 'color:#60a5fa;background:rgba(96,165,250,0.12);border:1px solid rgba(96,165,250,0.25);' : 'color:var(--cb-accent-primary);background:color-mix(in srgb,var(--cb-accent-primary) 12%,transparent);border:1px solid color-mix(in srgb,var(--cb-accent-primary) 25%,transparent);'}`;
+              label.textContent = isUser ? '👤 User' : '🤖 AI';
+              para.style.cssText = 'margin-bottom:14px;';
+              para.appendChild(label);
+              para.appendChild(document.createElement('br'));
+              para.appendChild(document.createTextNode(p.trim().slice(roleMatch[0].length)));
+            } else {
+              para.textContent = p.trim();
+            }
             transResult.appendChild(para);
           });
           transResult.dataset.plainText = result;
@@ -26013,6 +26349,7 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
       if (__cbSmartOpenBusy) return; // simple click guard to avoid double-activation
       __cbSmartOpenBusy = true;
       try {
+        lazyInitSmartView();
         closeAllViews();
 
         // Use new SmartQueryUI if available
@@ -26268,7 +26605,7 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
 
         const messageTimeout = setTimeout(() => {
           fallbackLoad();
-        }, 2500);
+        }, 150);
 
         // Try background handler first
         try {
@@ -26287,7 +26624,15 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
                     const mirror = Array.isArray(data['chatbridge:conversations']) ? data['chatbridge:conversations'] : [];
                     const v1 = Array.isArray(data['chatbridge_conversations_v1']) ? data['chatbridge_conversations_v1'] : [];
                     const merged = mergeAndSortConversations(r.conversations || [], mirror, v1);
+                    const cachedLen = Array.isArray(__cbConvCache.data) ? __cbConvCache.data.length : 0;
                     try { __cbConvCache.data = merged; __cbConvCache.ts = Date.now(); } catch (_) { }
+                    if (done) {
+                      if (merged.length !== cachedLen) {
+                        if (typeof window.ChatBridge.refreshHistory === 'function') {
+                          window.ChatBridge.refreshHistory();
+                        }
+                      }
+                    }
                     finish(merged);
                   } catch (e) { finish(r.conversations); }
                 });
@@ -27699,20 +28044,20 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
           @keyframes cb-toast-slide-in { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
           @keyframes cb-toast-slide-out { from { transform: translateX(0); opacity: 1; } to { transform: translateX(100%); opacity: 0; } }
         `;
-        document.head.appendChild(style);
+        shadow.appendChild(style);
         toastStylesInjected = true;
       } catch (e) { /* styles optional */ }
     }
 
     function getToastContainer() {
-      if (!toastContainer || !document.body.contains(toastContainer)) {
+      if (!toastContainer || !shadow.contains(toastContainer)) {
         ensureToastStyles();
         toastContainer = document.createElement('div');
         toastContainer.id = 'cb-toast-container';
         toastContainer.setAttribute('data-cb-ignore', 'true');
         toastContainer.style.cssText = 'position:fixed;bottom:18px;left:18px;z-index:2147483647;display:flex;flex-direction:column-reverse;gap:8px;pointer-events:none;';
-        document.body.appendChild(toastContainer);
-        console.log('[ChatBridge] Toast container created');
+        shadow.appendChild(toastContainer);
+        console.log('[ChatBridge] Toast container created in Shadow DOM');
       }
       return toastContainer;
     }
@@ -28417,7 +28762,45 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
         }, 1000);
       }
 
-      setTimeout(async () => { const msgs = await scanChat(); if (msgs && msgs.length) { await saveConversation({ platform: location.hostname, url: location.href, ts: Date.now(), conversation: msgs }); debugLog('auto-saved', msgs.length); } }, 450);
+      setTimeout(async () => { const msgs = await scanChat(); if (msgs && msgs.length) { await saveConversation({ platform: location.hostname, url: location.href, ts: Date.now(), conversation: msgs }); debugLog('auto-saved', msgs.length); } }, 3000);
+
+      // Auto-scan on keypress (Enter) or click (Send button) to capture live chat updates
+      let autoScanTimeout = null;
+      const triggerAutoScan = () => {
+        if (autoScanTimeout) clearTimeout(autoScanTimeout);
+        autoScanTimeout = setTimeout(async () => {
+          try {
+            const msgs = await scanChat();
+            if (msgs && msgs.length) {
+              await saveConversation({
+                platform: location.hostname,
+                url: location.href,
+                ts: Date.now(),
+                conversation: msgs
+              });
+              debugLog('auto-saved on activity', msgs.length);
+              if (window.ChatBridge && typeof window.ChatBridge.refreshHistory === 'function') {
+                window.ChatBridge.refreshHistory();
+              }
+            }
+          } catch (e) {
+            debugLog('Auto-save activity error', e);
+          }
+        }, 3000);
+      };
+
+      window.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && e.target && (e.target.tagName === 'TEXTAREA' || e.target.getAttribute('contenteditable') === 'true')) {
+          triggerAutoScan();
+        }
+      }, { passive: true });
+
+      window.addEventListener('click', (e) => {
+        const btn = e.target.closest('button');
+        if (btn && (btn.getAttribute('aria-label')?.toLowerCase().includes('send') || btn.querySelector('svg')?.innerHTML.includes('arrow') || btn.id === 'send-button')) {
+          triggerAutoScan();
+        }
+      }, { passive: true });
     } catch (e) { debugLog('boot error', e); }
   }
 
