@@ -155,6 +155,13 @@
       const input = findContinueInsertInput();
       if (!input) return;
 
+      const existing = (input.isContentEditable || input.contentEditable === 'true') ? input.textContent : input.value;
+      if (existing && existing.trim().length > 0) {
+        console.log('[ChatBridge] Input is already populated, skipping auto-insert to prevent duplicate/overwriting');
+        clearContinueContext();
+        return;
+      }
+
       insertContinueText(input, continueData.text);
       clearContinueContext();
       console.log('[ChatBridge] Auto-inserted continue context!');

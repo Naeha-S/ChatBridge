@@ -132,6 +132,27 @@
           return false;
         }
 
+        // Check if the input already contains this text to prevent duplicate insertion
+        const existingText = (input.isContentEditable || input.contentEditable === 'true') ? input.textContent : input.value;
+        const existingTextNorm = (existingText || '').trim().replace(/\s+/g, ' ');
+        const cleanTextNorm = cleanText.trim().replace(/\s+/g, ' ');
+        if (existingTextNorm) {
+          if (existingTextNorm === cleanTextNorm) {
+            restoreLog('Input already contains exact text, skipping duplicate insert');
+            if (opts.successToast) toast(opts.successToast);
+            return true;
+          }
+          if (cleanTextNorm.length > 100 && existingTextNorm.length > 100) {
+            const prefix1 = cleanTextNorm.substring(0, 100);
+            const prefix2 = existingTextNorm.substring(0, 100);
+            if (prefix1 === prefix2) {
+              restoreLog('Input already contains matching prefix text, skipping duplicate insert');
+              if (opts.successToast) toast(opts.successToast);
+              return true;
+            }
+          }
+        }
+
         input.focus();
         let success = false;
         try {

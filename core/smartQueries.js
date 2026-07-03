@@ -2076,11 +2076,22 @@ Synthesize now:`;
     getStoredConversationsForContext() {
       return new Promise((resolve) => {
         try {
-          chrome.storage.local.get(['chatbridge_conversations_v1'], (res) => {
-            const list = Array.isArray(res && res.chatbridge_conversations_v1)
-              ? res.chatbridge_conversations_v1
-              : [];
-            resolve(list);
+          chrome.storage.local.get(['chatbridge:conversations', 'chatbridge_conversations_v1'], (res) => {
+            const primary = Array.isArray(res && res['chatbridge:conversations']) ? res['chatbridge:conversations'] : [];
+            const v1 = Array.isArray(res && res.chatbridge_conversations_v1) ? res.chatbridge_conversations_v1 : [];
+            
+            // Merge both and deduplicate by ID or ts
+            const merged = [];
+            const seen = new Set();
+            [...primary, ...v1].forEach(c => {
+              if (!c) return;
+              const id = String(c.id || c.ts || '');
+              if (!id || seen.has(id)) return;
+              seen.add(id);
+              merged.push(c);
+            });
+            
+            resolve(merged);
           });
         } catch (e) {
           console.warn('[SmartQuery] getStoredConversationsForContext failed', e);
