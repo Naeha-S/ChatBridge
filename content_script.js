@@ -9143,8 +9143,8 @@ ${chatText.substring(0, 10000)}`
       try {
         const res = await callGeminiAsync({
           action: 'custom',
-          systemInstruction: 'You are a project manager. Extract action items and return ONLY a JSON array of tasks.',
-          text: `From the following conversation, extract all action items, TODOs, next steps, decisions, and follow-ups. Return ONLY a JSON array where each item has "task" (the action), "priority" ("high"/"medium"/"low"), and "category" ("todo"/"decision"/"followup"/"idea"). Be thorough.\n\nConversation:\n${chatText.substring(0, 8000)}`
+          systemInstruction: 'You are a project manager. Extract action items and return ONLY a JSON array of tasks. Always return a valid JSON array, even if empty.',
+          text: `From the following conversation, extract all action items, TODOs, next steps, decisions, follow-ups, and implied actions (things someone would need to do based on the discussion). Return ONLY a JSON array where each item has "task" (the action), "priority" ("high"/"medium"/"low"), and "category" ("todo"/"decision"/"followup"/"idea"). Include implied next steps — for example, if code was discussed, extracting, testing or implementing it counts. If there are truly no actions, return [].\n\nConversation:\n${chatText.substring(0, 8000)}`
         });
 
         if (!res || !res.ok || !res.result) throw new Error(res?.error || 'No result');
@@ -9153,7 +9153,37 @@ ${chatText.substring(0, 10000)}`
           items = parseRobustJSON(res.result);
         } catch (_) { throw new Error('Could not parse action items'); }
 
-        if (!Array.isArray(items) || !items.length) throw new Error('No action items found');
+        if (!Array.isArray(items)) throw new Error('Unexpected response format');
+
+        if (!items.length) {
+          // Friendly empty state — not an error
+          shadow.getElementById('tk-sub-content').innerHTML = `
+            <style>
+              .act-empty-card {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                text-align: center;
+                padding: 24px 16px;
+                border-radius: 12px;
+                background: var(--cb-bg2);
+                border: 1px dashed var(--cb-border);
+                gap: 10px;
+                margin-top: 4px;
+              }
+              .act-empty-icon { font-size: 28px; opacity: 0.7; }
+              .act-empty-title { font-size: 12.5px; font-weight: 700; color: var(--cb-text); }
+              .act-empty-msg { font-size: 11px; color: var(--cb-subtext); line-height: 1.5; max-width: 240px; }
+            </style>
+            <div class="act-empty-card">
+              <div class="act-empty-icon">✅</div>
+              <div class="act-empty-title">No action items found</div>
+              <div class="act-empty-msg">This conversation doesn't appear to contain any clear tasks, decisions, or follow-ups. Try a conversation with project discussion or technical planning.</div>
+            </div>
+          `;
+          return;
+        }
 
         const priorityColors = { high: '#ef4444', medium: '#f59e0b', low: '#22c55e' };
         const categoryIcons = { todo: '☑️', decision: '⚖️', followup: '🔄', idea: '💡' };
@@ -27940,6 +27970,25 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
                   // Also store as _lastScanResult for features that check it directly
                   try { window.ChatBridge._lastScanResult = msgs; } catch (_) { }
 
+                  // CRITICAL: Invalidate the cached view states so Summary, Rewrite, and Translate
+                  // reload fresh content from this selected conversation the next time they are opened.
+                  // Without this, they restore stale content from the previous session indefinitely.
+                  try {
+                    __cbViewStates.summ.sourceText = '';
+                    __cbViewStates.summ.result = '';
+                    __cbViewStates.trans.sourceText = '';
+                    __cbViewStates.trans.result = '';
+                    __cbViewStates.rew.result = '';
+                  } catch (_) { }
+
+                  // Also update summSourceText in-place immediately if the Summarize view is already open
+                  try {
+                    if (typeof summSourceText !== 'undefined' && summSourceText) {
+                      summSourceText.textContent = fullText;
+                      if (typeof updateSummStats === 'function') updateSummStats(fullText);
+                    }
+                  } catch (_) { }
+
                   // Persist as active session
                   if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
                     chrome.storage.local.set({ 'chatbridge:active_session': activeSessionData }, () => {
@@ -27980,8 +28029,11 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
                   if (typeof announce === 'function') announce(`Loaded conversation: ${descriptivePhrase}`);
                   toast(`Loaded ${msgs.length} messages`);
 
-                  // Re-render to update active state
-                  refreshHistory(filterText);
+                  // Re-render to update active state — always with empty filter and fresh cache
+                  // so ALL conversations are visible (not just ones matching an old search term)
+                  try { historySearchInput.value = ''; } catch (_) { }
+                  try { __cbConvCache.ts = 0; } catch (_) { } // invalidate cache for fresh fetch
+                  refreshHistory('');
                 } catch (e) { debugLog('handleOpen error', e); }
               };
 
