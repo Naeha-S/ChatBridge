@@ -1,0 +1,239 @@
+@font-face {
+  font-family: "ChatBridge Sans";
+  src: url("fonts/Inter-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "ChatBridge Sans";
+  src: url("fonts/Inter-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+:root {
+  --bg: #060709;
+  --text: #eff3f8;
+  --muted: #97a3b4;
+  --accent: #8fb5ff;
+  --accent-strong: #b69bff;
+  --accent-warm: #e7c18f;
+  --line: rgba(214, 220, 230, 0.12);
+  --shadow: 0 28px 90px rgba(0, 0, 0, 0.42);
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(143, 181, 255, 0.09), transparent 24%),
+    radial-gradient(circle at 88% 4%, rgba(182, 155, 255, 0.06), transparent 18%),
+    linear-gradient(180deg, #050608 0%, #0a0c10 100%);
+  color: var(--text);
+  font-family: "ChatBridge Sans", system-ui, sans-serif;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+.page-shell {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.ambient {
+  position: absolute;
+  filter: blur(60px);
+  opacity: 0.55;
+}
+
+.ambient-a {
+  top: 64px;
+  left: -80px;
+  width: 360px;
+  height: 360px;
+  background: rgba(143, 181, 255, 0.11);
+}
+
+.ambient-b {
+  bottom: 80px;
+  right: -120px;
+  width: 340px;
+  height: 340px;
+  background: rgba(231, 193, 143, 0.08);
+}
+
+.grid-noise {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 72px 72px;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.45), transparent 88%);
+}
+
+.goodbye-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 32px 20px;
+}
+
+.goodbye-card {
+  width: min(560px, 100%);
+  padding: 40px 34px 32px;
+  border-radius: 32px;
+  border: 1px solid var(--line);
+  background:
+    radial-gradient(circle at 100% 0%, rgba(143, 181, 255, 0.1), transparent 34%),
+    linear-gradient(180deg, rgba(18, 22, 27, 0.96), rgba(10, 12, 16, 0.94));
+  box-shadow: var(--shadow);
+  text-align: center;
+}
+
+.goodbye-logo-wrap {
+  display: inline-flex;
+  padding: 10px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 18px;
+}
+
+.goodbye-logo {
+  border-radius: 18px;
+  display: block;
+}
+
+.goodbye-kicker {
+  margin: 0 0 10px;
+  color: var(--accent-warm);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.goodbye-card h1 {
+  margin: 0 0 14px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(2.4rem, 5vw, 3.4rem);
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+
+.goodbye-copy {
+  margin: 0 auto 24px;
+  max-width: 440px;
+  color: var(--muted);
+  line-height: 1.75;
+  font-size: 1rem;
+}
+
+.goodbye-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+}
+
+.btn-primary,
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+  padding: 0 20px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  font: inherit;
+  text-decoration: none;
+  transition: transform 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+  color: #081011;
+  font-weight: 700;
+  box-shadow: 0 18px 36px rgba(143, 181, 255, 0.18);
+}
+
+.btn-primary:hover,
+.btn-secondary:hover {
+  transform: translateY(-2px);
+}
+
+.btn-secondary {
+  border-color: rgba(209, 218, 229, 0.14);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text);
+}
+
+.goodbye-note {
+  text-align: left;
+  padding: 16px 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(209, 218, 229, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+  margin-bottom: 18px;
+}
+
+.goodbye-note strong {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 0.92rem;
+}
+
+.goodbye-note p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.65;
+}
+
+.goodbye-footer-links {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.goodbye-footer-links a {
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.goodbye-footer-links a:hover {
+  color: var(--text);
+}
+
+@media (max-width: 640px) {
+  .goodbye-card {
+    padding: 32px 22px 26px;
+  }
+
+  .goodbye-actions {
+    flex-direction: column;
+  }
+
+  .btn-primary,
+  .btn-secondary {
+    width: 100%;
+  }
+}

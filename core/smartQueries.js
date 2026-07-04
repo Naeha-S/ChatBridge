@@ -167,7 +167,9 @@
   -webkit-font-smoothing: antialiased;
   width: 100%;
   max-width: 100%;
+  min-height: 320px;
   height: 100%;
+  flex: 1 1 auto;
   overflow-x: hidden;
   overflow-y: hidden;
   position: relative;
@@ -863,19 +865,33 @@
 
     injectStyles(root) {
       if (!root) return;
-      // Prevent duplicate injection in the same root
-      if (root.querySelector && root.querySelector('#sq-injected-styles')) return;
-      if (root.getElementById && root.getElementById('sq-injected-styles')) return;
+      const roots = new Set();
+      if (root.head || root.appendChild) roots.add(root);
+      if (this.container) {
+        const containerRoot = this.container.getRootNode();
+        if (containerRoot) roots.add(containerRoot);
+      }
 
-      const style = document.createElement('style');
-      style.id = 'sq-injected-styles';
-      style.textContent = UI_STYLES;
+      roots.forEach((target) => {
+        if (target.querySelector && target.querySelector('#sq-injected-styles')) return;
+        if (target.getElementById && target.getElementById('sq-injected-styles')) return;
 
-      // Handle both Head and ShadowRoot
-      if (root.head) {
-        root.head.appendChild(style);
-      } else {
-        root.appendChild(style);
+        const style = document.createElement('style');
+        style.id = 'sq-injected-styles';
+        style.textContent = UI_STYLES;
+
+        if (target.head) {
+          target.head.appendChild(style);
+        } else {
+          target.insertBefore(style, target.firstChild || null);
+        }
+      });
+
+      if (this.container && !this.container.querySelector('#sq-injected-styles-inline')) {
+        const inline = document.createElement('style');
+        inline.id = 'sq-injected-styles-inline';
+        inline.textContent = UI_STYLES;
+        this.container.insertBefore(inline, this.container.firstChild || null);
       }
     }
 
@@ -937,6 +953,7 @@
 
     render(container) {
       if (!container) return;
+      const remount = this.container !== container;
       this.container = container;
       this.injectStyles(container.getRootNode());
       this.detectAndAdaptTheme();
@@ -1045,12 +1062,29 @@
         </div>
       `;
 
-      this.attachEvents();
+      if (remount || !this._eventsAttached) {
+        this.attachEvents();
+        this._eventsAttached = true;
+      }
       this.updateHistoryList();
       this.enhanceAriaLabels(this.container);
 
       if (this.mode === 'live') {
         this.showKeywordSuggestions();
+      }
+    }
+
+    async refreshLiveState() {
+      if (!this.container) return;
+      try {
+        if (this.memoryRetrieval) {
+          await this.memoryRetrieval.loadCachedSegments();
+        }
+      } catch (_) { }
+      if (this.mode === 'live') {
+        await this.showKeywordSuggestions();
+      } else if (this.mode === 'memory') {
+        this.showSuggestions();
       }
     }
 
@@ -1116,17 +1150,17 @@
               });
             });
 
-            // Also trigger basic refresh if available
-            if (window.indexAllChats) { // Fallback if exposed
-              await window.indexAllChats();
+            if (!this.memoryRetrieval) await this.initialize();
+            if (this.memoryRetrieval && typeof this.memoryRetrieval.indexAllConversations === 'function') {
+              await this.memoryRetrieval.indexAllConversations();
             }
 
             indexBtn.innerHTML = '✓ Trained';
-            setTimeout(() => { indexBtn.innerHTML = '↻ Train Memory'; indexBtn.disabled = false; }, 2000);
+            setTimeout(() => { indexBtn.innerHTML = '↻ Train'; indexBtn.disabled = false; }, 2000);
           } catch (e) {
             console.error('Indexing failed', e);
             indexBtn.innerHTML = '✕ Error';
-            setTimeout(() => { indexBtn.innerHTML = '↻ Train Memory'; indexBtn.disabled = false; }, 2000);
+            setTimeout(() => { indexBtn.innerHTML = '↻ Train'; indexBtn.disabled = false; }, 2000);
           }
         });
       }
@@ -1173,19 +1207,19 @@
           // Update helper text dynamically
           if (this.mode === 'live') {
             modeHelper.textContent = "Reason only over this conversation";
-            synthesisWrapper.style.display = "none";
+            if (synthesisWrapper) synthesisWrapper.style.display = "none";
             if (askSpan) askSpan.textContent = "Ask AI";
             textarea.placeholder = "Ask about decisions, confusions, patterns...";
             // Show keyword suggestions for current chat
             this.showKeywordSuggestions();
           } else if (this.mode === 'graph') {
             modeHelper.textContent = "Query your cross-platform knowledge graph";
-            synthesisWrapper.style.display = "none";
+            if (synthesisWrapper) synthesisWrapper.style.display = "none";
             if (askSpan) askSpan.textContent = "Query Graph";
             textarea.placeholder = "What have I discussed about React hooks across all platforms?";
           } else {
             modeHelper.textContent = "Reason across all saved conversations";
-            synthesisWrapper.style.display = "flex";
+            if (synthesisWrapper) synthesisWrapper.style.display = "flex";
             if (askSpan) askSpan.textContent = "Search Memory";
             textarea.placeholder = "Find patterns across your knowledge base...";
             this.showSuggestions();
@@ -1221,10 +1255,17 @@
       }
 
       // Ask Logic with debouncing
+      if (!askBtn) {
+        console.error('[SmartQuery] Ask button missing from DOM');
+        return;
+      }
       askBtn.addEventListener('click', async () => {
         const query = textarea.value.trim();
         console.log('[SmartQuery] Ask button clicked', { query, mode: this.mode });
-        if (!query) return;
+        if (!query) {
+          this.showToast('Type a question first');
+          return;
+        }
         console.log('[SmartQuery] Starting query in mode:', this.mode);
 
         this.addToHistory(query);
@@ -1276,25 +1317,27 @@
         }
       });
 
-      // Keyboard shortcuts
-
-      // Keyboard shortcuts
-      document.addEventListener('keydown', (e) => {
-        // Ctrl/Cmd + K to focus query input
-        if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-          e.preventDefault();
-          textarea.focus();
-        }
-        // Enter in textarea with Ctrl to submit
-        if (textarea === document.activeElement && (e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-          e.preventDefault();
-          askBtn.click();
-        }
-        // Escape to close sidebar
-        if (e.key === 'Escape') {
-          sidebar.classList.remove('open');
-        }
-      });
+      // Keyboard shortcuts (bind once)
+      if (!this._globalKeysBound) {
+        this._globalKeysBound = true;
+        document.addEventListener('keydown', (e) => {
+          if (!this.container || !this.container.isConnected) return;
+          const input = this.container.querySelector('#sq-query-input');
+          const ask = this.container.querySelector('#btn-ask');
+          const sidebarEl = this.container.querySelector('#sq-sidebar');
+          if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+            e.preventDefault();
+            input?.focus();
+          }
+          if (input === document.activeElement && (e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+            e.preventDefault();
+            ask?.click();
+          }
+          if (e.key === 'Escape' && sidebarEl) {
+            sidebarEl.classList.remove('open');
+          }
+        });
+      }
 
       // ARIA live region for loading states
       const ariaLive = document.createElement('div');
@@ -1342,7 +1385,7 @@
       const keywords = this.extractKeywords(context);
 
       if (keywords.length === 0) {
-        suggestionsArea.style.display = 'none';
+        this.showSuggestions();
         return;
       }
 
@@ -1502,17 +1545,28 @@ Provide a clear, thorough answer. If the question is about continuing the conver
         return;
       }
       if (!this.memoryRetrieval) await this.initialize();
+      await this.ensureMemoryIndexFresh();
 
       // Announce search start
       this.announceLoadingProgress('searching', 0);
 
-      const rawResults = await this.memoryRetrieval.search(query, { limit: 50 });
+      let rawResults = [];
+      if (this.memoryRetrieval) {
+        rawResults = await this.memoryRetrieval.search(query, { limit: 50 }) || [];
+      }
+
+      if (!rawResults.length) {
+        const vectorResults = await this.runVectorQuery(query, 50);
+        if (vectorResults && vectorResults.ok && Array.isArray(vectorResults.results) && vectorResults.results.length) {
+          rawResults = await this.vectorResultsToMemoryFormat(vectorResults.results);
+        }
+      }
 
       if (!rawResults || rawResults.length === 0) {
         this.renderEmptyState(container, {
           icon: '🔎',
           title: 'No memories found',
-          message: 'No saved memory matches this query yet. Try Train, adjust wording, or widen filters.'
+          message: 'Scan chats, click Train, then search again. Try broader wording or reset filters.'
         });
         return;
       }
@@ -1877,6 +1931,85 @@ Synthesize now:`;
 
     // --- Helpers ---
 
+    async ensureMemoryIndexFresh() {
+      if (!this.memoryRetrieval) await this.initialize();
+      if (!this.memoryRetrieval) return;
+
+      try {
+        await this.memoryRetrieval.loadCachedSegments();
+      } catch (e) {
+        console.warn('[SmartQuery] loadCachedSegments failed', e);
+      }
+
+      const segmentCount = this.memoryRetrieval.segmentEngine
+        ? this.memoryRetrieval.segmentEngine.getAllSegments().length
+        : 0;
+
+      if (segmentCount === 0 && typeof this.memoryRetrieval.indexAllConversations === 'function') {
+        try {
+          await this.memoryRetrieval.indexAllConversations();
+        } catch (e) {
+          console.warn('[SmartQuery] indexAllConversations failed', e);
+        }
+      }
+    }
+
+    runVectorQuery(query, topK = 50) {
+      return new Promise((resolve) => {
+        try {
+          chrome.runtime.sendMessage(
+            { type: 'vector_query', payload: { query, topK } },
+            (res) => {
+              if (chrome.runtime.lastError) return resolve({ ok: false, error: chrome.runtime.lastError.message });
+              resolve(res || { ok: false });
+            }
+          );
+        } catch (e) {
+          resolve({ ok: false, error: e && e.message });
+        }
+      });
+    }
+
+    async vectorResultsToMemoryFormat(vectorResults) {
+      const convs = await this.getStoredConversationsForContext();
+      return (vectorResults || []).map((r, idx) => {
+        const id = String(r.id || '');
+        const conv = (convs || []).find(c => String(c.ts) === id || String(c.id) === id);
+        const meta = r.metadata || {};
+        const platform = (conv && conv.platform) || meta.platform || 'unknown';
+        const ts = (conv && conv.ts) || meta.ts || Date.now();
+        const messages = conv ? (conv.conversation || []) : [];
+        const textFromMeta = meta.excerpt || meta.snippet || '';
+
+        let excerptMessages;
+        if (messages.length) {
+          excerptMessages = messages.slice(-6).map(m => ({
+            role: m.role === 'user' ? 'user' : 'assistant',
+            text: String(m.text || '').slice(0, 200)
+          }));
+        } else if (textFromMeta) {
+          excerptMessages = [{ role: 'assistant', text: String(textFromMeta).slice(0, 400) }];
+        } else {
+          return null;
+        }
+
+        return {
+          rank: idx + 1,
+          segment: {
+            platform,
+            timestamp: ts,
+            startIndex: 0,
+            endIndex: Math.max(0, excerptMessages.length - 1),
+            messages: excerptMessages
+          },
+          score: typeof r.score === 'number' ? r.score : 0.5,
+          relevanceLevel: 'medium',
+          relevanceReason: 'Semantic vector match',
+          excerpt: excerptMessages
+        };
+      }).filter(Boolean);
+    }
+
     checkRateLimit() {
       const now = Date.now();
       if (now - this.lastQueryTime < 3000) { // 3 second cooldown
@@ -2069,7 +2202,7 @@ Synthesize now:`;
       if (!Array.isArray(messages)) return [];
       return messages
         .filter(m => m && (m.role === 'user' || m.role === 'assistant'))
-        .map(m => ({ role: m.role, text: String(m.text || '').trim() }))
+        .map(m => ({ role: m.role, text: String(m.text || m.content || '').trim() }))
         .filter(m => m.text.length >= 8 && !this.isLikelyUiNoiseText(m.text));
     }
 
@@ -2130,6 +2263,27 @@ Synthesize now:`;
             usefulCount: useful.length,
             preview: useful.slice(-3).map(m => ({ role: m.role, text: m.text.slice(0, 80) }))
           });
+        }
+
+        if (contextMessages.length < 3) {
+          if (window.ChatBridge && typeof window.ChatBridge.getLastScan === 'function') {
+            const scan = window.ChatBridge.getLastScan();
+            const scanMsgs = scan && (
+              scan.messages ||
+              (scan.conversation && scan.conversation.conversation) ||
+              (Array.isArray(scan.conversation) ? scan.conversation : null)
+            );
+            if (Array.isArray(scanMsgs) && scanMsgs.length) {
+              const usefulScan = this.extractUsefulMessages(scanMsgs);
+              if (usefulScan.length) {
+                contextMessages = usefulScan.slice(-12);
+                source = 'last-scan';
+              }
+            } else if (scan && scan.text && String(scan.text).trim().length >= 20) {
+              contextMessages = [{ role: 'assistant', text: String(scan.text).trim().slice(0, 4000) }];
+              source = 'last-scan-text';
+            }
+          }
         }
 
         if (contextMessages.length < 3) {
@@ -2632,5 +2786,5 @@ Synthesize now:`;
 
   // Export
   window.SmartQueryUI = SmartQueryUI;
-  console.log('[ChatBridge] SmartQueryUI v3 (Enhanced) Loaded');
+  console.log('[ChatBridge] SmartQueryUI v3.1 (Fixed) Loaded');
 });

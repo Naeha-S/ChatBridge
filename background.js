@@ -258,6 +258,12 @@ self.addEventListener('unhandledrejection', (event) => {
 chrome.runtime.onInstalled.addListener((details) => {
   console.log("ChatBridge installed/updated");
 
+  try {
+    chrome.runtime.setUninstallURL(chrome.runtime.getURL('goodbye.html'));
+  } catch (e) {
+    console.warn('[ChatBridge] setUninstallURL failed:', e);
+  }
+
   // Open the welcome page on first install only
   if (details.reason === 'install') {
     chrome.tabs.create({ url: chrome.runtime.getURL('welcome.html') });
@@ -266,13 +272,17 @@ chrome.runtime.onInstalled.addListener((details) => {
   recoverBackgroundState();
 });
 
+try {
+  chrome.runtime.setUninstallURL(chrome.runtime.getURL('goodbye.html'));
+} catch (_) { }
+
 chrome.runtime.onStartup.addListener(() => {
   recoverBackgroundState();
 });
 
 // Migration endpoint: content script can send stored conversations to background for persistent storage
-chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-  if (!msg || !msg.type) return;
+function handleMessageMigration(msg, sender, sendResponse) {
+  if (!msg || !msg.type) return false;
 
   // CLOUDFLARE FIX: Proxy fetch requests through background to avoid triggering security
   if (msg.type === 'fetch_blob') {
@@ -412,7 +422,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
 
   return false;
-});
+}
 
 // ─── MV3-Safe Alarms for Background Tasks ────────────────────────────────
 // setInterval cannot work in MV3 because the worker dies after ~30s.
@@ -1306,49 +1316,78 @@ async function fetchEmbeddingNvidia(text) {
   return { vector, provider: 'nvidia', model: 'llama-nemotron-embed-1b-v2' };
 }
 
-async function fetchEmbeddingViaGemini(text) {
-  try {
-    const geminiKey = await getGeminiApiKey();
-    console.log('[ChatBridge] fetchEmbeddingViaGemini - key check:', { present: !!geminiKey, length: geminiKey ? geminiKey.length : 0 });
-    if (!geminiKey) throw new Error('no_gemini_key');
+const GEMINI_EMBEDDING_MODELS = ['gemini-embedding-001', 'gemini-embedding-2'];
 
-    const keyMasked = geminiKey ? (geminiKey.slice(0, 4) + '...' + geminiKey.slice(-4)) : '(empty)';
-    console.log('[ChatBridge] fetchEmbeddingViaGemini - calling Gemini with key:', keyMasked);
-    
-    const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/embedding-001:embedContent?key=' + encodeURIComponent(geminiKey), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'models/embedding-001',
-        content: { parts: [{ text: text.slice(0, 100) }] }
-      })
-    });
-
-    console.log('[ChatBridge] fetchEmbeddingViaGemini - response:', { status: response.status, ok: response.ok });
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('[ChatBridge] fetchEmbeddingViaGemini - error:', errorText.slice(0, 300));
-      if (response.status === 401 || response.status === 403) throw new Error('invalid_api_key');
-      if (response.status === 429) throw new Error('rate_limited');
-      throw new Error(`http_${response.status}`);
-    }
-
-    const json = await response.json();
-    console.log('[ChatBridge] fetchEmbeddingViaGemini - response keys:', Object.keys(json), 'has embedding:', !!(json && json.embedding));
-    const embValues = json && json.embedding && json.embedding.values;
-    if (!Array.isArray(embValues) || !embValues.length) throw new Error('empty_embedding');
-    const vector = normalizeEmbeddingVector(embValues);
-    return { vector, provider: 'gemini', model: 'embedding-001' };
-  } catch (e) {
-    if (e.message.includes('no_gemini_key')) throw e;
-    throw new Error('gemini_embedding_failed: ' + (e.message || 'unknown'));
-  }
+function extractGeminiEmbeddingValues(json) {
+  if (!json || typeof json !== 'object') return null;
+  const direct = json.embedding && json.embedding.values;
+  if (Array.isArray(direct) && direct.length) return direct;
+  const batch = json.embeddings && json.embeddings[0] && json.embeddings[0].values;
+  if (Array.isArray(batch) && batch.length) return batch;
+  return null;
 }
 
-async function fetchEmbeddingPreferred(text) {
+async function fetchEmbeddingViaGemini(text, options = {}) {
+  const geminiKey = await getGeminiApiKey();
+  if (!geminiKey) throw new Error('no_gemini_key');
+
+  const inputText = String(text || '').slice(0, 8192);
+  if (!inputText.trim()) throw new Error('empty_text');
+
+  const taskType = options.taskType || 'SEMANTIC_SIMILARITY';
+  let lastError = null;
+
+  for (const modelName of GEMINI_EMBEDDING_MODELS) {
+    try {
+      const body = {
+        model: `models/${modelName}`,
+        content: { parts: [{ text: inputText }] }
+      };
+      if (modelName === 'gemini-embedding-001') {
+        body.taskType = taskType;
+      }
+
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:embedContent?key=${encodeURIComponent(geminiKey)}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.warn('[ChatBridge] fetchEmbeddingViaGemini - model failed:', modelName, response.status, errorText.slice(0, 200));
+        if (response.status === 401 || response.status === 403) throw new Error('invalid_api_key');
+        if (response.status === 429) throw new Error('rate_limited');
+        lastError = new Error(`http_${response.status}`);
+        continue;
+      }
+
+      const json = await response.json();
+      const embValues = extractGeminiEmbeddingValues(json);
+      if (!Array.isArray(embValues) || !embValues.length) {
+        lastError = new Error('empty_embedding');
+        continue;
+      }
+
+      const vector = normalizeEmbeddingVector(embValues);
+      console.log('[ChatBridge] fetchEmbeddingViaGemini - success:', { model: modelName, length: vector.length });
+      return { vector, provider: 'gemini', model: modelName };
+    } catch (e) {
+      if (e.message === 'invalid_api_key' || e.message === 'rate_limited') throw e;
+      lastError = e;
+    }
+  }
+
+  throw new Error('gemini_embedding_failed: ' + ((lastError && lastError.message) || 'all_models_failed'));
+}
+
+async function fetchEmbeddingPreferred(text, options = {}) {
   // Priority 1: Try Gemini (user has saved it for Ask AI)
   try {
-    const gemini = await fetchEmbeddingViaGemini(text);
+    const gemini = await fetchEmbeddingViaGemini(text, options);
     if (gemini && Array.isArray(gemini.vector)) return gemini;
   } catch (e) {
     console.debug('[ChatBridge] Gemini embedding failed:', e.message);
@@ -1384,9 +1423,9 @@ async function fetchEmbeddingOpenAI(text) {
 }
 
 // Message handlers for vector index / query
-chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+function handleMessageVectors(msg, sender, sendResponse) {
   try {
-    if (!msg || !msg.type) return;
+    if (!msg || !msg.type) return false;
     if (msg.type === 'vector_index') {
       (async () => {
         try {
@@ -1404,7 +1443,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           let embeddingModel = payload.embeddingModel || null;
           if (!embedding) {
             try {
-              const embOut = await fetchEmbeddingPreferred(text);
+              const embOut = await fetchEmbeddingPreferred(text, { taskType: 'RETRIEVAL_DOCUMENT' });
               embedding = embOut && embOut.vector;
               embeddingProvider = embOut && embOut.provider;
               embeddingModel = embOut && embOut.model;
@@ -1444,8 +1483,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           
           console.log('[ChatBridge] vector_query - starting for query:', q.slice(0, 50));
           // get embedding for query
-          const qemb = await fetchEmbeddingOpenAI(q);
-          console.log('[ChatBridge] vector_query - embedding result:', { hasEmbedding: !!qemb, length: qemb ? qemb.length : 0 });
+          const qembOut = await fetchEmbeddingPreferred(q, { taskType: 'RETRIEVAL_QUERY' });
+          const qemb = qembOut && qembOut.vector;
+          console.log('[ChatBridge] vector_query - embedding result:', { hasEmbedding: !!qemb, length: qemb ? qemb.length : 0, model: qembOut && qembOut.model });
           
           if (!qemb) return sendResponse({ ok: false, error: 'no_embedding' });
           
@@ -1561,7 +1601,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
               const id = String(c.ts || Date.now());
               const text = (c.conversation || []).map(m => `${m.role}: ${m.text}`).join('\n\n');
               if (!text || text.trim().length < 20) continue;
-              const embOut = await fetchEmbeddingPreferred(text);
+              const embOut = await fetchEmbeddingPreferred(text, { taskType: 'RETRIEVAL_DOCUMENT' });
               if (!embOut || !embOut.vector) continue;
               const obj = {
                 id,
@@ -1961,7 +2001,8 @@ Provide a concise, factual answer based ONLY on the graph data above. If the gra
     }
 
   } catch (e) { /* ignore other messages here */ }
-});
+  return false;
+}
 
 // Keyboard command listener - forwards commands to active tab
 chrome.commands.onCommand.addListener((command) => {
@@ -2351,6 +2392,36 @@ Return ONLY the rewritten text. No preamble. No explanation.`;
     return true;
   }
 
+  // Delete a single conversation from IndexedDB and all storage mirrors
+  if (msg && msg.type === 'delete_conversation') {
+    (async () => {
+      try {
+        const id = String((msg.payload && msg.payload.id) || '');
+        if (!id) return sendResponse({ ok: false, error: 'no_id' });
+        await convoDelete(id);
+        const keys = ['chatbridge:conversations', 'chatbridge_conversations_v1', 'chatbridge_conversations'];
+        const data = await new Promise((resolve) => {
+          try { chrome.storage.local.get(keys, resolve); } catch (_) { resolve({}); }
+        });
+        const updates = {};
+        keys.forEach((key) => {
+          if (Array.isArray(data[key])) {
+            updates[key] = data[key].filter((c) => String(c.id || c.ts || '') !== id);
+          }
+        });
+        if (Object.keys(updates).length) {
+          await new Promise((resolve) => {
+            try { chrome.storage.local.set(updates, resolve); } catch (_) { resolve(); }
+          });
+        }
+        sendResponse({ ok: true });
+      } catch (e) {
+        sendResponse({ ok: false, error: e && e.message });
+      }
+    })();
+    return true;
+  }
+
   // Handler to clear all conversations from persistent DB and mirror store
   if (msg && msg.type === 'clear_conversations') {
     (async () => {
@@ -2368,7 +2439,13 @@ Return ONLY the rewritten text. No preamble. No explanation.`;
           });
         }
         // Clear mirror
-        try { chrome.storage.local.set({ 'chatbridge:conversations': [] }, () => { }); } catch (e) { }
+        try {
+          chrome.storage.local.set({
+            'chatbridge:conversations': [],
+            chatbridge_conversations_v1: [],
+            chatbridge_conversations: []
+          }, () => { });
+        } catch (e) { }
         sendResponse({ ok: true });
       } catch (e) { sendResponse({ ok: false, error: e && e.message }); }
     })();
@@ -2518,11 +2595,10 @@ Return ONLY the rewritten text. No preamble. No explanation.`;
               let arr = Array.isArray(data['chatbridge:conversations']) ? data['chatbridge:conversations'] : [];
               // Put newest first
               arr.unshift(obj);
-              // MEMORY OPTIMIZATION: Keep max 50 conversations
-              const MAX_CONVERSATIONS = 50;
+              // Mirror cap — IndexedDB keeps the full archive; mirror is a fast UI cache
+              const MAX_CONVERSATIONS = 500;
               if (arr.length > MAX_CONVERSATIONS) {
                 arr = arr.slice(0, MAX_CONVERSATIONS);
-                console.log(`[ChatBridge] Trimmed conversations to ${MAX_CONVERSATIONS} (was ${arr.length})`);
               }
               chrome.storage.local.set({ 'chatbridge:conversations': arr });
             } catch (e) { /* ignore mirror errors */ }
@@ -3811,8 +3887,9 @@ Rewritten conversation (optimized for ${tgt}):`;
     (async () => {
       try {
         const HF_API_KEY = await getHuggingFaceApiKey();
-        if (!HF_API_KEY) {
-          return sendResponse({ ok: false, error: 'no_api_key', message: 'HuggingFace API key not configured.' });
+        const geminiApiKey = await getGeminiApiKey();
+        if (!HF_API_KEY && !geminiApiKey) {
+          return sendResponse({ ok: false, error: 'no_api_key', message: 'API key not configured. Configure Gemini or HuggingFace in ChatBridge Options.' });
         }
 
         const payload = msg.payload || {};
@@ -3983,6 +4060,82 @@ ${payload.text}`;
             }
           }
         } catch (e) { /* ignore cache errors */ }
+
+        if (!HF_API_KEY && geminiApiKey) {
+          // Fallback to Gemini
+          let lastError = null;
+          const maxRetries = GEMINI_MODEL_PRIORITY.length;
+          const preferredModel = payload.model;
+          
+          for (let attempt = 0; attempt < maxRetries; attempt++) {
+            const currentModel = await getNextAvailableModel(preferredModel);
+            const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${currentModel}:generateContent?key=${geminiApiKey}`;
+            const body = {
+              contents: [{ parts: [{ text: promptText }] }],
+              generationConfig: {
+                temperature: 0.7,
+                maxOutputTokens: 4096
+              }
+            };
+
+            console.log(`[Gemini Fallback in call_llama] Attempt ${attempt + 1}/${maxRetries} using model: ${currentModel}`);
+            let res;
+            try {
+              const apiStart = performance.now();
+              res = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+              });
+              const apiDuration = performance.now() - apiStart;
+              recordPerformanceMetric('api_latency', apiDuration);
+            } catch (fetchError) {
+              console.error(`[Gemini Fallback] Fetch failed for ${currentModel}:`, fetchError);
+              markModelFailed(currentModel, 'fetch_error');
+              lastError = { model: currentModel, error: fetchError };
+              continue;
+            }
+
+            let json;
+            try {
+              const text = await res.text();
+              json = text ? JSON.parse(text) : {};
+            } catch (e) {
+              console.warn('[Gemini Fallback] Failed to parse response:', e);
+              markModelFailed(currentModel, 'parse_error');
+              lastError = e;
+              continue;
+            }
+
+            if (!res.ok) {
+              console.warn('[Gemini Fallback]', res.status, json?.error?.message || '');
+              markModelFailed(currentModel, res.status);
+              lastError = json;
+              continue;
+            }
+
+            if (!json.candidates || !json.candidates[0] || !json.candidates[0].content || !json.candidates[0].content.parts || !json.candidates[0].content.parts[0]) {
+              markModelFailed(currentModel, 'no_candidates');
+              lastError = 'no_candidates';
+              continue;
+            }
+
+            const result = json.candidates[0].content.parts[0].text || '';
+            markModelSuccess(currentModel);
+            console.log(`[Gemini Fallback] ✓ Success: ${result.length} chars`);
+            const responseObj = { ok: true, result, model: currentModel };
+            
+            // Cache successful result (30min default TTL)
+            try {
+              const ttl = (typeof payload.ttl === 'number') ? payload.ttl : 1000 * 60 * 30;
+              await cachePut({ id: cacheKey, ts: Date.now(), ttl, response: responseObj });
+            } catch (e) {}
+
+            return sendResponse(responseObj);
+          }
+
+          return sendResponse({ ok: false, error: 'gemini_fallback_failed', message: 'Gemini fallback failed. Check options or try again.', detail: lastError });
+        }
 
         // Call HuggingFace router API
         const endpoint = 'https://router.huggingface.co/v1/chat/completions';
@@ -4271,5 +4424,11 @@ ${payload.text}`;
     })();
     return true;
   }
+  return false;
 }
-chrome.runtime.onMessage.addListener(mainMessageListener);
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (handleMessageMigration(msg, sender, sendResponse)) return true;
+  if (handleMessageVectors(msg, sender, sendResponse)) return true;
+  if (mainMessageListener(msg, sender, sendResponse)) return true;
+  return false;
+});

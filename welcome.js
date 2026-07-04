@@ -18,8 +18,10 @@
   };
 
   bind("btn-go-chat", () => chrome.tabs.create({ url: "https://chatgpt.com/" }));
+  bind("btn-go-chat-footer", () => chrome.tabs.create({ url: "https://chatgpt.com/" }));
   bind("btn-options", openOptions);
   bind("btn-options-nav", openOptions);
+  bind("btn-options-footer", openOptions);
   bind("btn-dashboard", openOptions);
 
   const planStorageKey = "chatbridge_subscription_tier";

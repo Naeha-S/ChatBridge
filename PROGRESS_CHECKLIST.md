@@ -14,23 +14,6 @@
 - [ ] Observe user behavior patterns (which platforms, which transforms)
 - [ ] Dashboard or export for usage data
 
-### 📈 Instrumentation
-
-- [ ] API call success / failure rate tracking
-- [ ] Latency percentiles (p50, p95, p99)
-- [ ] Error rate monitoring with alerting
-- [ ] Session duration and engagement metrics
-
-
-### 🎨 Interface
-
-- [ ] Snappy responsive UX — audit all interactions for lag
-- [ ] Skeleton loaders for every async view
-- [ ] Micro-animations (fade-in, slide-up, scale-pop)
-- [ ] Focus-visible outlines + high-contrast mode
-- [ ] ARIA live regions for screen readers
-- [ ] Mobile-friendly sidebar layout (if applicable)
-
 ### 🖼️ Branding
 
 - [ ] Logo finalization (avatar, toolbar icon, options page)
@@ -43,6 +26,7 @@
 - [ ] Tooltip hints for new users
 - [ ] API key setup wizard with validation
 
+## Phase 6 — Productization
 
 ### 🔐 Auth & Login
 
@@ -66,3 +50,4 @@
 - [ ] Version bump and changelog
 - [ ] CI/CD pipeline (lint, test, build, package .crx)
 - [ ] Staged rollout plan (beta → public)
+

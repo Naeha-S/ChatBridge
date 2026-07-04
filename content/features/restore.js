@@ -18,7 +18,8 @@
           fallbackToClipboard: true,
           fallbackToast: 'Copied to clipboard',
           successToast: 'Restored to chat',
-          waitTimeoutMs: 10000
+          waitTimeoutMs: 10000,
+          skipAutoSummarize: false
         }, options || {});
 
         restoreLog('Starting restoreToChat with text length:', text ? text.length : 0);
@@ -32,9 +33,9 @@
         cleanText = cleanText.replace(/^(Assistant|User|System|AI):\s*/i, '');
         restoreLog('Cleaned text (first 100 chars):', cleanText.slice(0, 100));
 
-        // Auto-summarize check for long content
+        // Auto-summarize check for long content (skip when caller already summarized)
         const wordCount = cleanText.split(/\s+/).filter(Boolean).length;
-        if (cleanText.length >= 5000 || wordCount >= 1200) {
+        if (!opts.skipAutoSummarize && (cleanText.length >= 5000 || wordCount >= 1200)) {
           restoreLog(`Text qualifies for auto-summarize (length: ${cleanText.length}, words: ${wordCount})`);
           toast('Summarizing large context...');
           try {

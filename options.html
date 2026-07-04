@@ -1490,6 +1490,23 @@
             <button class="btn btn-secondary" id="quick-theme">Change Theme</button>
           </div>
         </div>
+
+        <div class="card" style="margin-top: 16px;">
+          <div class="card-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line>
+            </svg>
+            Site Visibility
+          </div>
+          <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.55; margin-bottom: 14px;">
+            ChatBridge stays off on sites you remove via the floating avatar menu. Re-enable them here anytime.
+          </p>
+          <div id="disabled-sites-empty" style="display:none; padding: 14px 16px; border-radius: 12px; border: 1px dashed var(--border); color: var(--text-secondary); font-size: 13px;">
+            No sites blocked. Use the small × on the floating avatar to hide ChatBridge on a specific site.
+          </div>
+          <div id="disabled-sites-list" style="display: grid; gap: 8px;"></div>
+        </div>
       </section>
 
       <!-- API Keys Section -->

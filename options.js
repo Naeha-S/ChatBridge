@@ -297,7 +297,64 @@
     });
   }
 
+  const DISABLED_SITES_KEY = 'chatbridge:disabled_sites';
+
+  function loadDisabledSites() {
+    const listEl = document.getElementById('disabled-sites-list');
+    const emptyEl = document.getElementById('disabled-sites-empty');
+    if (!listEl || !emptyEl) return;
+
+    chrome.storage.local.get([DISABLED_SITES_KEY], (data) => {
+      const sites = Array.isArray(data[DISABLED_SITES_KEY]) ? data[DISABLED_SITES_KEY] : [];
+      listEl.innerHTML = '';
+
+      if (!sites.length) {
+        emptyEl.style.display = 'block';
+        listEl.style.display = 'none';
+        return;
+      }
+
+      emptyEl.style.display = 'none';
+      listEl.style.display = 'grid';
+
+      sites.forEach((site) => {
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border-radius:12px;border:1px solid var(--border);background:var(--bg-elevated);';
+
+        const label = document.createElement('div');
+        label.style.cssText = 'font-size:13px;color:var(--text-primary);font-weight:600;';
+        label.textContent = site;
+
+        const hint = document.createElement('div');
+        hint.style.cssText = 'font-size:11px;color:var(--text-secondary);margin-top:2px;';
+        hint.textContent = 'Avatar and sidebar blocked';
+
+        const copyWrap = document.createElement('div');
+        copyWrap.appendChild(label);
+        copyWrap.appendChild(hint);
+
+        const btn = document.createElement('button');
+        btn.className = 'btn btn-secondary';
+        btn.type = 'button';
+        btn.textContent = 'Re-enable';
+        btn.style.cssText = 'flex-shrink:0;padding:8px 12px;font-size:12px;';
+        btn.addEventListener('click', () => {
+          const next = sites.filter((entry) => String(entry).toLowerCase() !== String(site).toLowerCase());
+          chrome.storage.local.set({ [DISABLED_SITES_KEY]: next }, () => {
+            showToast(`${site} re-enabled. Refresh that tab to see ChatBridge again.`, 'success');
+            loadDisabledSites();
+          });
+        });
+
+        row.appendChild(copyWrap);
+        row.appendChild(btn);
+        listEl.appendChild(row);
+      });
+    });
+  }
+
   loadDashboardStats();
+  loadDisabledSites();
 
   // ============================================
   // API KEY MANAGEMENT

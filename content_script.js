@@ -1449,6 +1449,43 @@
       throw new Error('Could not find or parse valid JSON');
     }
 
+    function normalizeActionItemsFromParsed(parsed) {
+      if (parsed == null) return [];
+      let raw = parsed;
+      if (!Array.isArray(raw) && typeof raw === 'object') {
+        const listKeys = ['items', 'action_items', 'actionItems', 'tasks', 'actions', 'checklist', 'results', 'data'];
+        for (const key of listKeys) {
+          if (Array.isArray(raw[key])) {
+            raw = raw[key];
+            break;
+          }
+        }
+        if (!Array.isArray(raw) && (raw.task || raw.action || raw.text || raw.description || raw.title)) {
+          raw = [raw];
+        }
+      }
+      if (!Array.isArray(raw)) return [];
+      return raw.map((item) => {
+        if (typeof item === 'string') {
+          const task = item.trim();
+          return task ? { task, priority: 'medium', category: 'todo' } : null;
+        }
+        if (!item || typeof item !== 'object') return null;
+        const task = String(item.task || item.action || item.text || item.description || item.title || item.content || '').trim();
+        if (!task) return null;
+        let priority = String(item.priority || item.urgency || 'medium').toLowerCase();
+        if (!['high', 'medium', 'low'].includes(priority)) priority = 'medium';
+        let category = String(item.category || item.type || item.kind || 'todo').toLowerCase();
+        if (!['todo', 'decision', 'followup', 'idea'].includes(category)) {
+          if (category.includes('decision')) category = 'decision';
+          else if (category.includes('follow')) category = 'followup';
+          else if (category.includes('idea')) category = 'idea';
+          else category = 'todo';
+        }
+        return { task, priority, category };
+      }).filter(Boolean);
+    }
+
 
     // Continuum context state (global)
     let continuumContextState = {
@@ -1466,6 +1503,132 @@
     avatar.style.cssText = 'position:fixed;bottom:22px;right:26px;width:52px;height:52px;border-radius:50%;z-index:2147483647;display:flex;align-items:center;justify-content:center;cursor:pointer;background:transparent;box-shadow:none;transition: transform .15s ease, filter .15s ease;overflow:visible;';
     avatar.addEventListener('mouseenter', () => { try { avatar.style.transform = 'translateY(-3px) scale(1.08)'; avatar.querySelector('img').style.filter = 'drop-shadow(0 0 12px rgba(0, 212, 255, 0.7)) drop-shadow(0 0 24px rgba(124, 58, 237, 0.6))'; } catch (e) { } });
     avatar.addEventListener('mouseleave', () => { try { avatar.style.transform = ''; avatar.querySelector('img').style.filter = 'drop-shadow(0 0 8px rgba(0, 212, 255, 0.5)) drop-shadow(0 0 16px rgba(124, 58, 237, 0.4))'; } catch (e) { } });
+
+    window.__CHATBRIDGE_AVATAR_SUPPRESSED = false;
+
+    const dismissBtn = document.createElement('button');
+    dismissBtn.type = 'button';
+    dismissBtn.id = 'cb-avatar-dismiss';
+    dismissBtn.setAttribute('aria-label', 'Hide ChatBridge on this page');
+    dismissBtn.setAttribute('data-cb-ignore', 'true');
+    dismissBtn.textContent = '×';
+    dismissBtn.style.cssText = 'position:absolute;top:-2px;right:-2px;width:18px;height:18px;border-radius:50%;border:1px solid rgba(255,255,255,0.18);background:rgba(12,14,18,0.92);color:#e5e7eb;font-size:13px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;z-index:2;opacity:0.82;transition:opacity .15s ease, transform .15s ease, background .15s ease;box-shadow:0 2px 8px rgba(0,0,0,0.35);';
+    dismissBtn.addEventListener('mouseenter', () => { dismissBtn.style.opacity = '1'; dismissBtn.style.transform = 'scale(1.06)'; });
+    dismissBtn.addEventListener('mouseleave', () => { dismissBtn.style.opacity = '0.82'; dismissBtn.style.transform = ''; });
+
+    const dismissMenu = document.createElement('div');
+    dismissMenu.id = 'cb-avatar-dismiss-menu';
+    dismissMenu.setAttribute('data-cb-ignore', 'true');
+    dismissMenu.hidden = true;
+    dismissMenu.style.cssText = 'position:fixed;z-index:2147483648;min-width:210px;padding:8px;border-radius:14px;border:1px solid rgba(255,255,255,0.12);background:rgba(12,14,18,0.96);backdrop-filter:blur(16px);box-shadow:0 16px 40px rgba(0,0,0,0.45);display:flex;flex-direction:column;gap:4px;';
+
+    const dismissMenuStyle = document.createElement('style');
+    dismissMenuStyle.textContent = `
+      #cb-avatar-dismiss-menu button {
+        width: 100%;
+        text-align: left;
+        border: 0;
+        border-radius: 10px;
+        padding: 10px 12px;
+        background: transparent;
+        color: #e5e7eb;
+        font: 600 12px/1.35 Inter, system-ui, sans-serif;
+        cursor: pointer;
+      }
+      #cb-avatar-dismiss-menu button:hover {
+        background: rgba(255,255,255,0.06);
+      }
+      #cb-avatar-dismiss-menu .cb-dismiss-danger {
+        color: #fca5a5;
+      }
+      #cb-avatar-dismiss-menu .cb-dismiss-muted {
+        color: #94a3b8;
+      }
+    `;
+    document.head.appendChild(dismissMenuStyle);
+
+    const btnRemoveSite = document.createElement('button');
+    btnRemoveSite.type = 'button';
+    btnRemoveSite.className = 'cb-dismiss-danger';
+    btnRemoveSite.textContent = 'Remove from this site';
+
+    const btnHideSession = document.createElement('button');
+    btnHideSession.type = 'button';
+    btnHideSession.textContent = 'Hide for now';
+
+    const btnDismissCancel = document.createElement('button');
+    btnDismissCancel.type = 'button';
+    btnDismissCancel.className = 'cb-dismiss-muted';
+    btnDismissCancel.textContent = 'Cancel';
+
+    dismissMenu.appendChild(btnRemoveSite);
+    dismissMenu.appendChild(btnHideSession);
+    dismissMenu.appendChild(btnDismissCancel);
+    document.body.appendChild(dismissMenu);
+
+    function closeDismissMenu() {
+      dismissMenu.hidden = true;
+    }
+
+    function positionDismissMenu() {
+      const rect = avatar.getBoundingClientRect();
+      dismissMenu.style.left = Math.max(12, rect.right - dismissMenu.offsetWidth) + 'px';
+      dismissMenu.style.top = Math.max(12, rect.top - dismissMenu.offsetHeight - 10) + 'px';
+    }
+
+    function suppressAvatar(options = {}) {
+      window.__CHATBRIDGE_AVATAR_SUPPRESSED = true;
+      avatar.style.display = 'none';
+      try {
+        const hostEl = document.getElementById('cb-host');
+        if (hostEl) hostEl.style.display = 'none';
+      } catch (_) { }
+      closeDismissMenu();
+      if (options.sessionOnly && bootstrap.hideAvatarForSession) bootstrap.hideAvatarForSession();
+      if (options.toast) toast(options.toast);
+    }
+
+    dismissBtn.addEventListener('mousedown', (e) => { e.stopPropagation(); e.preventDefault(); });
+    dismissBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      if (dismissMenu.hidden) {
+        dismissMenu.hidden = false;
+        positionDismissMenu();
+      } else {
+        closeDismissMenu();
+      }
+    });
+
+    btnRemoveSite.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const hostname = bootstrap.getCurrentHostname ? bootstrap.getCurrentHostname() : window.location.hostname;
+      if (bootstrap.addDisabledSite) {
+        bootstrap.addDisabledSite(hostname, () => {
+          suppressAvatar({ toast: `ChatBridge hidden on ${hostname}. Re-enable in Dashboard → Site visibility.` });
+        });
+      } else {
+        suppressAvatar({ toast: 'ChatBridge hidden on this site.' });
+      }
+    });
+
+    btnHideSession.addEventListener('click', (e) => {
+      e.stopPropagation();
+      suppressAvatar({ sessionOnly: true, toast: 'ChatBridge hidden until you refresh this tab.' });
+    });
+
+    btnDismissCancel.addEventListener('click', (e) => {
+      e.stopPropagation();
+      closeDismissMenu();
+    });
+
+    document.addEventListener('click', (e) => {
+      if (dismissMenu.hidden) return;
+      if (dismissMenu.contains(e.target) || e.target === dismissBtn) return;
+      closeDismissMenu();
+    }, true);
+
+    avatar.appendChild(dismissBtn);
 
     // ========== DRAG AND DROP FUNCTIONALITY ==========
     let isDragging = false;
@@ -1669,16 +1832,17 @@
     // Periodic check to ensure avatar stays visible (every 3 seconds)
     setInterval(() => {
       try {
-        const existingAvatar = document.getElementById('cb-avatar');
-        if (!existingAvatar || !document.body.contains(existingAvatar)) {
-          console.log('[ChatBridge] Avatar missing, re-injecting...');
-          if (existingAvatar) existingAvatar.remove();
-          document.body.appendChild(avatar);
-        }
-        // Ensure visibility
-        if (existingAvatar && existingAvatar.style.display === 'none') {
-          existingAvatar.style.display = 'flex';
-        }
+        if (window.__CHATBRIDGE_AVATAR_SUPPRESSED || (bootstrap.isAvatarHiddenForSession && bootstrap.isAvatarHiddenForSession())) return;
+        bootstrap.getDisabledSites((list) => {
+          if (bootstrap.isSiteDisabled && bootstrap.isSiteDisabled(bootstrap.getCurrentHostname(), list)) return;
+
+          const existingAvatar = document.getElementById('cb-avatar');
+          if (!existingAvatar || !document.body.contains(existingAvatar)) {
+            console.log('[ChatBridge] Avatar missing, re-injecting...');
+            if (existingAvatar) existingAvatar.remove();
+            document.body.appendChild(avatar);
+          }
+        });
       } catch (e) {
         console.error('[ChatBridge] Avatar visibility check failed:', e);
       }
@@ -4601,6 +4765,248 @@
       .cb-view-close:hover { background:var(--cb-bg3); border-color: var(--cb-accent-primary); box-shadow: 0 2px 8px color-mix(in srgb, var(--cb-accent-primary) 20%, transparent); transform: translateY(-1px); }
       .cb-view-title { font-weight:700; font-size:18px; color:var(--cb-white); letter-spacing:-0.01em; }
       .cb-view-intro { font-size:12px; color:var(--cb-subtext); line-height:1.5; margin:8px 0 10px 0; padding:10px 12px; background:var(--cb-bg3); border-left:3px solid var(--cb-accent-primary); border-radius:8px; }
+
+      /* Settings panel */
+      #cb-settings-panel.cb-view-active {
+        display: flex;
+        flex-direction: column;
+        max-height: calc(100vh - 150px);
+        padding-bottom: 8px;
+      }
+      .cb-settings-scroll {
+        flex: 1;
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding: 4px 2px 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        scrollbar-width: thin;
+        scrollbar-color: color-mix(in srgb, var(--cb-accent-primary) 35%, transparent) transparent;
+      }
+      .cb-settings-hero {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 14px 16px;
+        border-radius: 14px;
+        border: 1px solid color-mix(in srgb, var(--cb-accent-primary) 22%, var(--cb-border));
+        background: linear-gradient(135deg, color-mix(in srgb, var(--cb-accent-primary) 10%, var(--cb-bg3)), color-mix(in srgb, var(--cb-accent-secondary) 6%, var(--cb-bg2)));
+      }
+      .cb-settings-hero-copy strong {
+        display: block;
+        font-size: 13px;
+        color: var(--cb-white);
+        margin-bottom: 4px;
+      }
+      .cb-settings-hero-copy span {
+        font-size: 11px;
+        color: var(--cb-subtext);
+        line-height: 1.45;
+      }
+      .cb-settings-card {
+        padding: 14px 14px 12px;
+        border-radius: 14px;
+        border: 1px solid var(--cb-border);
+        background: linear-gradient(180deg, color-mix(in srgb, var(--cb-bg3) 88%, transparent), var(--cb-bg2));
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
+      }
+      .cb-settings-card-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin-bottom: 10px;
+      }
+      .cb-settings-card-title {
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--cb-white);
+        letter-spacing: 0.02em;
+      }
+      .cb-settings-card-desc {
+        font-size: 11px;
+        color: var(--cb-subtext);
+        line-height: 1.45;
+        margin-bottom: 10px;
+      }
+      .cb-settings-grid-3 {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px;
+      }
+      .cb-settings-pill {
+        min-height: 38px;
+        padding: 8px 10px;
+        border-radius: 10px;
+        border: 1px solid var(--cb-border);
+        background: var(--cb-bg);
+        color: var(--cb-subtext);
+        font-size: 11px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.18s ease;
+      }
+      .cb-settings-pill:hover {
+        border-color: color-mix(in srgb, var(--cb-accent-primary) 35%, var(--cb-border));
+        color: var(--cb-white);
+      }
+      .cb-settings-pill.is-active {
+        background: linear-gradient(135deg, color-mix(in srgb, var(--cb-accent-primary) 85%, #000), color-mix(in srgb, var(--cb-accent-secondary) 70%, #000));
+        border-color: color-mix(in srgb, var(--cb-accent-primary) 45%, transparent);
+        color: #fff;
+        box-shadow: 0 6px 16px color-mix(in srgb, var(--cb-accent-primary) 22%, transparent);
+      }
+      .cb-settings-field-label {
+        font-size: 10px;
+        font-weight: 700;
+        color: var(--cb-subtext);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        margin-bottom: 6px;
+      }
+      .cb-settings-input-row {
+        display: flex;
+        gap: 6px;
+        margin-bottom: 10px;
+      }
+      .cb-settings-input {
+        flex: 1;
+        background: var(--cb-bg);
+        border: 1px solid var(--cb-border);
+        color: var(--cb-white);
+        padding: 9px 10px;
+        border-radius: 10px;
+        font-size: 11px;
+        outline: none;
+        transition: border-color 0.18s ease, box-shadow 0.18s ease;
+      }
+      .cb-settings-input:focus {
+        border-color: var(--cb-accent-primary);
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--cb-accent-primary) 14%, transparent);
+      }
+      .cb-settings-icon-btn {
+        width: 38px;
+        min-width: 38px;
+        padding: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .cb-settings-toggle-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 10px 12px;
+        border-radius: 10px;
+        background: var(--cb-bg);
+        border: 1px solid var(--cb-border);
+        margin-bottom: 10px;
+      }
+      .cb-settings-toggle-copy strong {
+        display: block;
+        font-size: 11px;
+        color: var(--cb-white);
+        margin-bottom: 2px;
+      }
+      .cb-settings-toggle-copy span {
+        font-size: 10px;
+        color: var(--cb-subtext);
+        line-height: 1.4;
+      }
+      .cb-settings-actions {
+        display: flex;
+        gap: 8px;
+      }
+      .cb-settings-actions .cb-btn {
+        flex: 1;
+        padding: 9px 10px;
+        font-size: 11px;
+      }
+      .cb-settings-kbd-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 6px;
+      }
+      .cb-settings-kbd-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 10px;
+        border-radius: 10px;
+        background: var(--cb-bg);
+        border: 1px solid var(--cb-border);
+        font-size: 11px;
+        color: var(--cb-subtext);
+      }
+      .cb-settings-kbd-row kbd {
+        background: var(--cb-bg3);
+        border: 1px solid var(--cb-border);
+        border-radius: 6px;
+        padding: 2px 7px;
+        font-size: 10px;
+        color: var(--cb-white);
+        font-family: ui-monospace, monospace;
+      }
+      .cb-settings-site-list {
+        display: grid;
+        gap: 6px;
+      }
+      .cb-settings-site-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 8px 10px;
+        border-radius: 10px;
+        background: var(--cb-bg);
+        border: 1px solid var(--cb-border);
+        font-size: 11px;
+        color: var(--cb-white);
+      }
+      .cb-settings-site-empty {
+        padding: 10px 12px;
+        border-radius: 10px;
+        border: 1px dashed var(--cb-border);
+        font-size: 11px;
+        color: var(--cb-subtext);
+        line-height: 1.45;
+      }
+      .cb-settings-about {
+        text-align: center;
+        padding: 8px 4px 2px;
+      }
+      .cb-settings-about-logo {
+        font-size: 16px;
+        font-weight: 700;
+        color: var(--cb-white);
+        margin-bottom: 4px;
+      }
+      .cb-settings-about-meta {
+        font-size: 10px;
+        color: var(--cb-subtext);
+        margin-bottom: 8px;
+      }
+      .cb-settings-about-links {
+        display: flex;
+        justify-content: center;
+        gap: 12px;
+      }
+      .cb-settings-about-links a {
+        color: var(--cb-accent-primary);
+        font-size: 11px;
+        text-decoration: none;
+        font-weight: 600;
+      }
+      .cb-settings-link-btn {
+        white-space: nowrap;
+        padding: 8px 12px;
+        font-size: 11px;
+        font-weight: 700;
+      }
       .cb-view-select { margin:10px 0 14px 0; width:100%; }
   .cb-view-text { width:100%; min-height:60px; max-height:200px; resize:vertical; background:var(--cb-bg); color:var(--cb-white); border:1px solid var(--cb-border); padding:12px; border-radius:10px; font-family:inherit; white-space:pre-wrap; overflow-y:auto; overflow-x:hidden; font-size:13px; line-height:1.6; transition: all 0.2s ease; box-sizing: border-box; }
   .cb-view-text:focus { border-color: var(--cb-accent-primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--cb-accent-primary) 15%, transparent); outline: none; }
@@ -6962,6 +7368,11 @@
     let smartResults = null;
     let smartAnswer = null;
     let smartProvenance = null;
+    let smartSuggestRow = null;
+    let btnSmartSearch = null;
+    let btnSmartAsk = null;
+    let btnIndexAll = null;
+    let smartLegacyHandlersWired = false;
     let btnCloseSmart = null;
     let btnCloseAgent = null;
     let btnCloseInsights = null;
@@ -7007,7 +7418,7 @@
       smartView.appendChild(suggestLabel);
 
       // Quick Suggestion Chips (matching translate language chips style)
-      const smartSuggestRow = document.createElement('div');
+      smartSuggestRow = document.createElement('div');
       smartSuggestRow.id = 'cb-smart-suggest-row';
       smartSuggestRow.style.cssText = 'display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px;';
 
@@ -7075,7 +7486,7 @@
       smartInput.style.cssText = 'flex: 1; min-width: 0;';
       smartInput.setAttribute('aria-label', 'Smart query input');
 
-      const btnSmartSearch = document.createElement('button');
+      btnSmartSearch = document.createElement('button');
       btnSmartSearch.className = 'cb-btn cb-btn-primary';
       btnSmartSearch.id = 'btnSmartSearch';
       btnSmartSearch.textContent = 'Search';
@@ -7097,14 +7508,14 @@
       const smartAskRow = document.createElement('div');
       smartAskRow.style.cssText = 'display: flex; gap: 8px; margin-top: 10px;';
 
-      const btnSmartAsk = document.createElement('button');
+      btnSmartAsk = document.createElement('button');
       btnSmartAsk.className = 'cb-btn cb-btn-primary cb-view-go';
       btnSmartAsk.id = 'btnSmartAsk';
       btnSmartAsk.textContent = 'Ask AI';
       btnSmartAsk.style.cssText = 'flex: 1;';
       btnSmartAsk.setAttribute('aria-label', 'Ask AI about selected results');
 
-      const btnIndexAll = document.createElement('button');
+      btnIndexAll = document.createElement('button');
       btnIndexAll.className = 'cb-btn';
       btnIndexAll.id = 'btnIndexAll';
       btnIndexAll.textContent = 'Index Chats';
@@ -7135,6 +7546,8 @@
       } else {
         panel.appendChild(smartView);
       }
+
+      wireSmartQueryLegacyHandlers();
     }
 
     let agentView = null;
@@ -9143,17 +9556,26 @@ ${chatText.substring(0, 10000)}`
       try {
         const res = await callGeminiAsync({
           action: 'custom',
-          systemInstruction: 'You are a project manager. Extract action items and return ONLY a JSON array of tasks. Always return a valid JSON array, even if empty.',
-          text: `From the following conversation, extract all action items, TODOs, next steps, decisions, follow-ups, and implied actions (things someone would need to do based on the discussion). Return ONLY a JSON array where each item has "task" (the action), "priority" ("high"/"medium"/"low"), and "category" ("todo"/"decision"/"followup"/"idea"). Include implied next steps — for example, if code was discussed, extracting, testing or implementing it counts. If there are truly no actions, return [].\n\nConversation:\n${chatText.substring(0, 8000)}`
+          temperature: 0.2,
+          systemInstruction: 'You are a project manager. Extract action items and return ONLY valid JSON. No markdown, no commentary.',
+          text: `From the following conversation, extract all action items, TODOs, next steps, decisions, follow-ups, and implied actions.
+
+Return ONLY valid JSON in this exact shape:
+[
+  { "task": "action description", "priority": "high|medium|low", "category": "todo|decision|followup|idea" }
+]
+
+If there are truly no actions, return [].
+
+Conversation:
+${chatText.substring(0, 8000)}`
         });
 
         if (!res || !res.ok || !res.result) throw new Error(res?.error || 'No result');
         let items;
         try {
-          items = parseRobustJSON(res.result);
+          items = normalizeActionItemsFromParsed(parseRobustJSON(res.result));
         } catch (_) { throw new Error('Could not parse action items'); }
-
-        if (!Array.isArray(items)) throw new Error('Unexpected response format');
 
         if (!items.length) {
           // Friendly empty state — not an error
@@ -9806,31 +10228,49 @@ ${chatText.substring(0, 10000)}`
 
     // History section with clear button
     // Settings Panel
-    const settingsPanel = document.createElement('div'); settingsPanel.className = 'cb-internal-view'; settingsPanel.id = 'cb-settings-panel'; settingsPanel.style.display = 'none';
+    const settingsPanel = document.createElement('div');
+    settingsPanel.className = 'cb-internal-view';
+    settingsPanel.id = 'cb-settings-panel';
     settingsPanel.setAttribute('data-cb-ignore', 'true');
-    const settingsTop = document.createElement('div'); settingsTop.className = 'cb-view-top';
-    const settingsTitle = document.createElement('div'); settingsTitle.className = 'cb-view-title'; settingsTitle.innerHTML = '<span class="cb-gradient-text" style="display: inline-flex; align-items: center; gap: 10px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>Settings</span>';
-    const btnCloseSettings = document.createElement('button'); btnCloseSettings.className = 'cb-view-close'; btnCloseSettings.textContent = '✕';
+    const settingsTop = document.createElement('div');
+    settingsTop.className = 'cb-view-top';
+    const settingsTitle = document.createElement('div');
+    settingsTitle.className = 'cb-view-title';
+    settingsTitle.innerHTML = '<span class="cb-gradient-text" style="display:inline-flex;align-items:center;gap:10px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>Settings</span>';
+    const btnCloseSettings = document.createElement('button');
+    btnCloseSettings.className = 'cb-view-close';
+    btnCloseSettings.textContent = '✕';
     btnCloseSettings.setAttribute('aria-label', 'Close settings');
-    settingsTop.appendChild(settingsTitle); settingsTop.appendChild(btnCloseSettings);
+    settingsTop.appendChild(settingsTitle);
+    settingsTop.appendChild(btnCloseSettings);
     settingsPanel.appendChild(settingsTop);
 
-    // Settings content
-    const settingsContent = document.createElement('div'); settingsContent.style.cssText = 'padding: 16px 0; display: flex; flex-direction: column; gap: 16px;';
+    const settingsContent = document.createElement('div');
+    settingsContent.className = 'cb-settings-scroll';
 
-    // Theme setting
-    const themeSection = document.createElement('div'); themeSection.style.cssText = 'padding-bottom: 16px; border-bottom: 1px solid var(--cb-border);';
-    const themeLabel = document.createElement('div'); themeLabel.style.cssText = 'font-weight: 600; margin-bottom: 10px; color: var(--cb-white);'; themeLabel.textContent = '🎨 Theme';
-    const themeButtons = document.createElement('div'); themeButtons.style.cssText = 'display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;';
-    const btnDarkTheme = document.createElement('button'); btnDarkTheme.className = 'cb-btn'; btnDarkTheme.textContent = '\uD83C\uDF19 Dark'; btnDarkTheme.dataset.theme = 'dark';
-    const btnLightTheme = document.createElement('button'); btnLightTheme.className = 'cb-btn'; btnLightTheme.textContent = '\u2600\uFE0F Light'; btnLightTheme.dataset.theme = 'light';
-    const btnSynthwaveTheme = document.createElement('button'); btnSynthwaveTheme.className = 'cb-btn'; btnSynthwaveTheme.textContent = '\uD83C\uDFB5 Synthwave'; btnSynthwaveTheme.dataset.theme = 'synthwave';
-    const btnSkeuomorphicTheme = document.createElement('button'); btnSkeuomorphicTheme.className = 'cb-btn'; btnSkeuomorphicTheme.textContent = '\uD83D\uDD29 Skeuomorphic'; btnSkeuomorphicTheme.dataset.theme = 'skeuomorphic';
-    const btnBrutalismTheme = document.createElement('button'); btnBrutalismTheme.className = 'cb-btn'; btnBrutalismTheme.textContent = '\uD83D\uDFE8 Brutalism'; btnBrutalismTheme.dataset.theme = 'brutalism';
-    const btnGlassTheme = document.createElement('button'); btnGlassTheme.className = 'cb-btn'; btnGlassTheme.textContent = '\uD83E\uDEE7 Claymorphism'; btnGlassTheme.dataset.theme = 'glass';
+    const settingsHero = document.createElement('div');
+    settingsHero.className = 'cb-settings-hero';
+    settingsHero.innerHTML = '<div class="cb-settings-hero-copy"><strong>Full dashboard</strong><span>History, themes, site visibility, and advanced options.</span></div>';
+    const btnOpenDashboard = document.createElement('button');
+    btnOpenDashboard.className = 'cb-btn cb-btn-primary cb-settings-link-btn';
+    btnOpenDashboard.textContent = 'Open Dashboard';
+    settingsHero.appendChild(btnOpenDashboard);
+    settingsContent.appendChild(settingsHero);
+
+    const themeSection = document.createElement('div');
+    themeSection.className = 'cb-settings-card';
+    themeSection.innerHTML = '<div class="cb-settings-card-head"><div class="cb-settings-card-title">Appearance</div></div><div class="cb-settings-card-desc">Choose how the sidebar looks on AI sites.</div>';
+    const themeButtons = document.createElement('div');
+    themeButtons.className = 'cb-settings-grid-3';
+    const btnDarkTheme = document.createElement('button'); btnDarkTheme.className = 'cb-settings-pill'; btnDarkTheme.textContent = '🌙 Dark'; btnDarkTheme.dataset.theme = 'dark';
+    const btnLightTheme = document.createElement('button'); btnLightTheme.className = 'cb-settings-pill'; btnLightTheme.textContent = '☀️ Light'; btnLightTheme.dataset.theme = 'light';
+    const btnSynthwaveTheme = document.createElement('button'); btnSynthwaveTheme.className = 'cb-settings-pill'; btnSynthwaveTheme.textContent = '🌆 Synth'; btnSynthwaveTheme.dataset.theme = 'synthwave';
+    const btnSkeuomorphicTheme = document.createElement('button'); btnSkeuomorphicTheme.className = 'cb-settings-pill'; btnSkeuomorphicTheme.textContent = '🔩 Skeuo'; btnSkeuomorphicTheme.dataset.theme = 'skeuomorphic';
+    const btnBrutalismTheme = document.createElement('button'); btnBrutalismTheme.className = 'cb-settings-pill'; btnBrutalismTheme.textContent = '🟨 Brutal'; btnBrutalismTheme.dataset.theme = 'brutalism';
+    const btnGlassTheme = document.createElement('button'); btnGlassTheme.className = 'cb-settings-pill'; btnGlassTheme.textContent = '🫧 Clay'; btnGlassTheme.dataset.theme = 'glass';
     themeButtons.appendChild(btnDarkTheme); themeButtons.appendChild(btnLightTheme); themeButtons.appendChild(btnSynthwaveTheme);
     themeButtons.appendChild(btnSkeuomorphicTheme); themeButtons.appendChild(btnBrutalismTheme); themeButtons.appendChild(btnGlassTheme);
-    themeSection.appendChild(themeLabel); themeSection.appendChild(themeButtons);
+    themeSection.appendChild(themeButtons);
     settingsContent.appendChild(themeSection);
 
     // ============================================
@@ -10068,12 +10508,24 @@ ${chatText.substring(0, 10000)}`
     btnClearHistory.addEventListener('click', async () => {
       if (!confirm('Are you sure you want to clear ALL historical conversations? This cannot be undone.')) return;
       try {
-        const convs = await loadConversationsAsync();
-        for (const c of convs) {
-          await new Promise(r => chrome.runtime.sendMessage({ type: 'delete_conversation', payload: { id: String(c.ts) } }, r));
-        }
+        await new Promise((resolve) => {
+          chrome.runtime.sendMessage({ type: 'clear_conversations' }, () => resolve());
+        });
+        try {
+          localStorage.removeItem('chatbridge:conversations');
+          localStorage.removeItem('chatbridge_conversations_v1');
+          localStorage.removeItem('chatbridge_conversations');
+        } catch (_) { }
+        try {
+          chrome.storage.local.set({
+            'chatbridge:conversations': [],
+            chatbridge_conversations_v1: [],
+            chatbridge_conversations: []
+          });
+        } catch (_) { }
+        try { __cbConvCache.data = []; __cbConvCache.ts = 0; } catch (_) { }
         toast('History cleared');
-        refreshHistory();
+        refreshHistory('', 0, true);
       } catch (e) { toast('Clear failed'); }
     });
 
@@ -10774,10 +11226,32 @@ ${chatText.substring(0, 10000)}`
       } catch (e) { debugLog('closeAllViews error', e); }
     }
 
-    // Helper to load conversation text from lastScannedText or saved conversations
+    // Helper to load conversation text using active session first, then selected chat, then history fallback.
     async function getConversationText() {
-      if (lastScannedText && lastScannedText.trim()) return lastScannedText.trim();
       try {
+        // Priority 1: Active session via getLastScan()
+        const lastScan = window.ChatBridge && window.ChatBridge.getLastScan ? window.ChatBridge.getLastScan() : null;
+        if (lastScan && lastScan.text && lastScan.text.length > 10) {
+          return String(lastScan.text).trim();
+        }
+
+        // Priority 2: Selected conversation from history/library
+        const selected = window.ChatBridge && window.ChatBridge.selectedConversation ? window.ChatBridge.selectedConversation : null;
+        const selectedMsgs = selected && Array.isArray(selected.conversation)
+          ? selected.conversation
+          : (selected && Array.isArray(selected.messages) ? selected.messages : []);
+        if (selectedMsgs.length) {
+          const selectedText = selectedMsgs.map(m => `${m.role || 'user'}: ${m.text || m.content || ''}`).join('\n\n').trim();
+          if (selectedText.length > 10) {
+            lastScannedText = selectedText;
+            return selectedText;
+          }
+        }
+
+        // Priority 3: lastScannedText cache
+        if (lastScannedText && lastScannedText.trim()) return lastScannedText.trim();
+
+        // Priority 4: Most relevant saved conversation
         const convs = await loadConversationsAsync();
         if (Array.isArray(convs) && convs.length) {
           const currentUrl = window.location.href;
@@ -10788,9 +11262,21 @@ ${chatText.substring(0, 10000)}`
           if (!sel) {
             sel = convs[0];
           }
-          if (sel && sel.conversation && sel.conversation.length) return sel.conversation.map(m => `${m.role}: ${m.text}`).join('\n\n');
+
+          const msgs = sel && Array.isArray(sel.conversation)
+            ? sel.conversation
+            : (sel && Array.isArray(sel.messages) ? sel.messages : []);
+          if (msgs.length) {
+            const text = msgs.map(m => `${m.role || 'user'}: ${m.text || m.content || ''}`).join('\n\n').trim();
+            if (text.length > 10) {
+              lastScannedText = text;
+              return text;
+            }
+          }
         }
-      } catch (e) { debugLog('load convs', e); }
+      } catch (e) {
+        debugLog('getConversationText fallback load failed', e);
+      }
       return '';
     }
 
@@ -24443,22 +24929,55 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       } catch (e) { }
     }
 
+    const RESTORE_FULL_MESSAGE_LIMIT = 15;
+
+    function getConversationMessages(conv) {
+      if (!conv || typeof conv !== 'object') return [];
+      if (Array.isArray(conv.conversation) && conv.conversation.length) return conv.conversation;
+      if (Array.isArray(conv.messages) && conv.messages.length) return conv.messages;
+      return [];
+    }
+
+    function resolveRestoreConversation() {
+      try {
+        if (window.ChatBridge && window.ChatBridge.selectedConversation) {
+          const sel = window.ChatBridge.selectedConversation;
+          const msgs = getConversationMessages(sel);
+          if (msgs.length) return Object.assign({}, sel, { conversation: msgs });
+        }
+      } catch (_) { }
+
+      try {
+        const scan = (window.ChatBridge && typeof window.ChatBridge.getLastScan === 'function')
+          ? window.ChatBridge.getLastScan()
+          : null;
+        if (scan) {
+          const scanMsgs = Array.isArray(scan.messages) && scan.messages.length
+            ? scan.messages
+            : getConversationMessages(scan.conversation);
+          if (scanMsgs.length) {
+            const base = (scan.conversation && typeof scan.conversation === 'object') ? scan.conversation : {};
+            return Object.assign({}, base, {
+              conversation: scanMsgs,
+              platform: base.platform || scan.platform || 'unknown',
+              model: base.model || scan.model || '',
+              ts: base.ts || scan.ts || scan.timestamp || Date.now(),
+              summary: base.summary || scan.summary
+            });
+          }
+        }
+      } catch (_) { }
+
+      return null;
+    }
+
     btnRestore.addEventListener('click', async () => {
       try {
-        // Priority 1: Use selected conversation from history (if user clicked one in history panel)
-        let sel = null;
-        try {
-          if (window.ChatBridge && window.ChatBridge.selectedConversation &&
-            window.ChatBridge.selectedConversation.conversation &&
-            window.ChatBridge.selectedConversation.conversation.length > 0) {
-            sel = window.ChatBridge.selectedConversation;
-            debugLog('[Restore] Using selected conversation from history');
-          }
-        } catch (e) { }
+        let sel = resolveRestoreConversation();
 
         // If no conversation is selected yet, scroll to history panel so user can pick one
         if (!sel) {
-          const list = await loadConversationsAsync();
+          const list = await loadConversationsAsync({ forceRefresh: true });
           const arr = Array.isArray(list) ? list : [];
           if (!arr.length) { toast('No saved conversations yet. Scan a chat to save it!'); return; }
 
@@ -24476,28 +24995,30 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           return;
         }
 
-        if (!sel || !sel.conversation || !sel.conversation.length) {
+        const conversation = getConversationMessages(sel);
+        if (!conversation.length) {
           toast('No messages in selected conversation');
           return;
         }
+        sel = Object.assign({}, sel, { conversation });
 
         // Count messages for user feedback
-        const userMsgs = sel.conversation.filter(m => m.role === 'user').length;
-        const aiMsgs = sel.conversation.filter(m => m.role === 'assistant').length;
-        const msgCount = sel.conversation.length;
+        const userMsgs = conversation.filter(m => m.role === 'user').length;
+        const aiMsgs = conversation.filter(m => m.role === 'assistant').length;
+        const msgCount = conversation.length;
         const platform = sel.platform || 'unknown';
         const model = sel.model || '';
 
         // Show toast with what's being restored (no confirmation needed)
         toast(`Restoring ${msgCount} msgs from ${platform}${model ? ' (' + model + ')' : ''}...`);
 
-        // Auto-summarize if 20+ messages to preserve context without overwhelming the chat
+        // Insert up to 15 messages verbatim; summarize when larger
         let formatted = '';
-        if (msgCount >= 20 && (!sel.summary || sel.summary.trim().length === 0)) {
+        if (msgCount > RESTORE_FULL_MESSAGE_LIMIT && (!sel.summary || sel.summary.trim().length === 0)) {
           // Auto-summarize for better context preservation with persistent status
           updateRestoreStatus(`Preparing autosummary for ${msgCount} messages...`);
           try {
-            const fullText = sel.conversation.map(m => `${m.role}: ${m.text}`).join('\n\n');
+            const fullText = conversation.map(m => `${m.role}: ${m.text || m.content || ''}`).join('\n\n');
             const RESTORE_MERGE_PROMPT = 'You are generating a long, transfer-ready summary of a multi-turn conversation suitable for ANY AI tool (ChatGPT, Claude, Gemini, Copilot, etc.).\n\n'
               + 'Output STRICTLY in clean Markdown with the following sections:\n\n'
               + '1) Executive Overview\n'
@@ -24547,21 +25068,21 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           } catch (sumErr) {
             debugLog('Auto-summarize failed, using full text', sumErr);
             updateRestoreStatus('Autosummary failed. Falling back to full text...');
-            formatted = sel.conversation.map(m => (m.role === 'user' ? 'User: ' : 'Assistant: ') + m.text).join('\n\n') + '\n\n---\n[SYSTEM: The user just restored this past conversation. Analyze the context above, but DO NOT summarize it or answer it yet. Acknowledge by simply saying "Context restored. Ready for your next prompt." and await instructions.]';
+            formatted = conversation.map(m => (m.role === 'user' ? 'User: ' : 'Assistant: ') + (m.text || m.content || '')).join('\n\n') + '\n\n---\n[SYSTEM: The user just restored this past conversation. Analyze the context above, but DO NOT summarize it or answer it yet. Acknowledge by simply saying "Context restored. Ready for your next prompt." and await instructions.]';
           }
         } else if (sel.summary && typeof sel.summary === 'string' && sel.summary.trim().length > 100) {
           // Use existing summary (only if it's a real, non-trivial summary)
           updateRestoreStatus('Using existing saved summary. Restoring to chat...');
           formatted = sel.summary.trim() + '\n\n---\n[SYSTEM: The user just restored this past conversation summary. Analyze the context above, but DO NOT summarize it or answer it yet. Acknowledge by simply saying "Context restored. Ready for your next prompt." and await instructions.]';
         } else {
-          // Use full conversation for small chats (or if summary is missing/invalid)
+          // Use full conversation for small chats (up to 15 messages)
           updateRestoreStatus('Restoring full conversation...');
-          formatted = sel.conversation.map(m => (m.role === 'user' ? 'User: ' : 'Assistant: ') + m.text).join('\n\n') + '\n\n---\n[SYSTEM: The user just restored this past conversation. Analyze the context above, but DO NOT summarize it or answer it yet. Acknowledge by simply saying "Context restored. Ready for your next prompt." and await instructions.]';
+          formatted = conversation.map(m => (m.role === 'user' ? 'User: ' : 'Assistant: ') + (m.text || m.content || '')).join('\n\n') + '\n\n---\n[SYSTEM: The user just restored this past conversation. Analyze the context above, but DO NOT summarize it or answer it yet. Acknowledge by simply saying "Context restored. Ready for your next prompt." and await instructions.]';
         }
         // Collect attachments from conversation
         const allAtts = [];
         try {
-          for (const m of sel.conversation) {
+          for (const m of conversation) {
             if (Array.isArray(m.attachments) && m.attachments.length) allAtts.push(...m.attachments);
           }
         } catch (e) { }
@@ -24569,8 +25090,9 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         // Use the restoreToChat function which has all the proper logic
         updateRestoreStatus('Restoring into the chat composer...');
         const success = await restoreToChat(formatted, allAtts, {
-          fallbackToClipboard: false,
-          fallbackToast: null
+          fallbackToClipboard: true,
+          fallbackToast: 'Copied to clipboard — paste into chat',
+          skipAutoSummarize: true
         });
         if (success) hideRestoreStatus(true); else hideRestoreStatus(false);
         if (!success) {
@@ -26374,6 +26896,7 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
     // Smart Query handlers (open instantly, lazy-populate filters/suggestions)
     let __cbSmartOpenBusy = false;
     let __cbSmartQueryUI = null;
+    let __cbSmartQueryShellReady = false;
 
     btnSmartQuery.addEventListener('click', async () => {
       if (__cbSmartOpenBusy) return; // simple click guard to avoid double-activation
@@ -26394,45 +26917,54 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
             // Ensure Smart View is top-most (higher than base 100)
             smartView.style.zIndex = '200';
 
-            // Clear the smart view content and render new UI
-            smartView.innerHTML = '';
-
-            // Re-add close button header
-            const topBar = document.createElement('div');
-            topBar.className = 'cb-view-top';
-            topBar.innerHTML = `
-              <div class="cb-view-title">🔬 Smart Query</div>
-              <button class="cb-view-close" id="btnCloseSmart2" aria-label="Close Smart Query">✕</button>
-            `;
-            smartView.appendChild(topBar);
-
-            // Create container for SmartQueryUI - RESPONSIVE HEIGHT
-            const sqContainer = document.createElement('div');
-            sqContainer.id = 'cb-smart-query-container';
-            // Responsive height that wraps content (no min-height) but caps at max-height
-            sqContainer.style.cssText = 'width: 100%; max-height: min(70vh, 550px); overflow: hidden; display: flex; flex-direction: column;';
-            smartView.appendChild(sqContainer);
-
-            // Render the new UI
-            __cbSmartQueryUI.render(sqContainer);
-
-            // Attach close handler
-            const closeBtn = smartView.querySelector('#btnCloseSmart2');
-            if (closeBtn) {
-              closeBtn.addEventListener('click', () => {
-                try { smartView.classList.remove('cb-view-active'); } catch (e) { }
+            if (!__cbSmartQueryShellReady) {
+              Array.from(smartView.children).forEach(child => {
+                if (child.id === 'cb-smart-query-modern-wrap') return;
+                if (child.classList.contains('cb-view-top')) return;
+                child.classList.add('cb-smart-legacy-part');
+                child.style.display = 'none';
               });
+
+              const modernWrap = document.createElement('div');
+              modernWrap.id = 'cb-smart-query-modern-wrap';
+              modernWrap.style.cssText = 'width:100%;min-height:360px;max-height:min(70vh,550px);display:flex;flex-direction:column;overflow:hidden;';
+
+              const sqContainer = document.createElement('div');
+              sqContainer.id = 'cb-smart-query-container';
+              sqContainer.style.cssText = 'width:100%;height:100%;min-height:360px;display:flex;flex-direction:column;overflow:hidden;flex:1;';
+              modernWrap.appendChild(sqContainer);
+              smartView.appendChild(modernWrap);
+
+              __cbSmartQueryUI.render(sqContainer);
+              __cbSmartQueryShellReady = true;
+            } else {
+              smartView.querySelectorAll('.cb-smart-legacy-part').forEach(el => { el.style.display = 'none'; });
+              const modernWrap = smartView.querySelector('#cb-smart-query-modern-wrap');
+              if (modernWrap) modernWrap.style.display = 'flex';
+              await __cbSmartQueryUI.refreshLiveState();
             }
 
             smartView.classList.add('cb-view-active');
+            try { updatePanelDynamicLayout(); } catch (_) { }
             __cbSmartOpenBusy = false;
             return;
           } catch (e) {
             debugLog('SmartQueryUI render failed, falling back to legacy', e);
+            __cbSmartQueryShellReady = false;
+            try {
+              const modernWrap = smartView.querySelector('#cb-smart-query-modern-wrap');
+              if (modernWrap) modernWrap.remove();
+              smartView.querySelectorAll('.cb-smart-legacy-part').forEach(el => { el.style.display = ''; });
+            } catch (_) { }
           }
         }
 
-        // Legacy fallback: Reset visible state immediately for perceived snappiness
+        // Legacy fallback
+        try {
+          const modernWrap = smartView.querySelector('#cb-smart-query-modern-wrap');
+          if (modernWrap) modernWrap.style.display = 'none';
+          smartView.querySelectorAll('.cb-smart-legacy-part').forEach(el => { el.style.display = ''; });
+        } catch (_) { }
         try { smartResults.textContent = '(No results yet)'; } catch (_) { }
         try { smartAnswer.textContent = ''; } catch (_) { }
         try { smartInput.value = ''; } catch (_) { }
@@ -26583,10 +27115,11 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
     }
 
     // Load conversations as a Promise with cache: prefer background persistent store, fallback to window.getConversations or localStorage
-    function loadConversationsAsync() {
+    function loadConversationsAsync(options) {
+      const forceRefresh = !!(options && options.forceRefresh);
       return new Promise(res => {
         let done = false;
-        const CONVERSATION_KEYS = ['chatbridge:conversations', 'chatbridge_conversations_v1'];
+        const CONVERSATION_KEYS = ['chatbridge:conversations', 'chatbridge_conversations_v1', 'chatbridge_conversations'];
         const normalizeConversationShape = (item) => {
           if (!item || typeof item !== 'object') return null;
           const normalized = { ...item };
@@ -26623,19 +27156,32 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
         const finish = (value) => {
           if (done) return;
           done = true;
-          res(value);
+          try {
+            const list = Array.isArray(value) ? value : [];
+            if (list.length > 0) {
+              __cbConvCache.data = list;
+              __cbConvCache.ts = Date.now();
+            } else if (forceRefresh) {
+              __cbConvCache.ts = 0;
+            }
+          } catch (_) { }
+          res(Array.isArray(value) ? value : []);
         };
 
-        // Return cached list if fresh (< 1000ms)
+        // Return cached list if fresh (< 3s) and non-empty
         try {
-          if (Array.isArray(__cbConvCache.data) && __cbConvCache.ts && (Date.now() - __cbConvCache.ts) < 1000) {
+          if (!forceRefresh &&
+            Array.isArray(__cbConvCache.data) &&
+            __cbConvCache.data.length > 0 &&
+            __cbConvCache.ts &&
+            (Date.now() - __cbConvCache.ts) < 3000) {
             return finish(__cbConvCache.data);
           }
         } catch (_) { }
 
         const messageTimeout = setTimeout(() => {
           fallbackLoad();
-        }, 150);
+        }, 1200);
 
         // Try background handler first
         try {
@@ -26653,7 +27199,8 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
                   try {
                     const mirror = Array.isArray(data['chatbridge:conversations']) ? data['chatbridge:conversations'] : [];
                     const v1 = Array.isArray(data['chatbridge_conversations_v1']) ? data['chatbridge_conversations_v1'] : [];
-                    const merged = mergeAndSortConversations(r.conversations || [], mirror, v1);
+                    const legacy = Array.isArray(data['chatbridge_conversations']) ? data['chatbridge_conversations'] : [];
+                    const merged = mergeAndSortConversations(r.conversations || [], mirror, v1, legacy);
                     const cachedLen = Array.isArray(__cbConvCache.data) ? __cbConvCache.data.length : 0;
                     try { __cbConvCache.data = merged; __cbConvCache.ts = Date.now(); } catch (_) { }
                     if (done) {
@@ -26695,7 +27242,8 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
               chrome.storage.local.get(CONVERSATION_KEYS, (data) => {
                 const arr = Array.isArray(data['chatbridge:conversations']) ? data['chatbridge:conversations'] : [];
                 const v1 = Array.isArray(data['chatbridge_conversations_v1']) ? data['chatbridge_conversations_v1'] : [];
-                const mergedStore = mergeAndSortConversations(arr, v1);
+                const legacy = Array.isArray(data['chatbridge_conversations']) ? data['chatbridge_conversations'] : [];
+                const mergedStore = mergeAndSortConversations(arr, v1, legacy);
                 if (mergedStore.length > 0) {
                   // Sort newest first
                   const sorted = mergedStore;
@@ -26706,7 +27254,8 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
                   try {
                     const localPrimary = JSON.parse(localStorage.getItem('chatbridge:conversations') || '[]');
                     const localV1 = JSON.parse(localStorage.getItem('chatbridge_conversations_v1') || '[]');
-                    const sorted = mergeAndSortConversations(localPrimary, localV1);
+                    const localLegacy = JSON.parse(localStorage.getItem('chatbridge_conversations') || '[]');
+                    const sorted = mergeAndSortConversations(localPrimary, localV1, localLegacy);
                     try { __cbConvCache.data = sorted; __cbConvCache.ts = Date.now(); } catch (_) { }
                     finish(sorted);
                   } catch (e) { finish([]); }
@@ -26716,7 +27265,8 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
               // Final fallback if chrome APIs not available
               const arr = JSON.parse(localStorage.getItem('chatbridge:conversations') || '[]');
               const v1 = JSON.parse(localStorage.getItem('chatbridge_conversations_v1') || '[]');
-              const sorted = mergeAndSortConversations(arr, v1);
+              const legacy = JSON.parse(localStorage.getItem('chatbridge_conversations') || '[]');
+              const sorted = mergeAndSortConversations(arr, v1, legacy);
               try { __cbConvCache.data = sorted; __cbConvCache.ts = Date.now(); } catch (_) { }
               finish(sorted);
             }
@@ -27167,8 +27717,12 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
       `;
     }
 
-    // Add Enter key handler for smart search input
-    smartInput.addEventListener('keydown', (e) => {
+    function wireSmartQueryLegacyHandlers() {
+      if (smartLegacyHandlersWired || !smartInput || !btnSmartSearch || !btnSmartAsk || !btnIndexAll) return;
+      smartLegacyHandlersWired = true;
+
+      // Add Enter key handler for smart search input
+      smartInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
         e.preventDefault();
         btnSmartSearch.click();
@@ -27700,6 +28254,7 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
         removeLoadingFromButton(btnIndexAll, prev);
       }
     });
+    }
 
     // Generate a concise descriptive title from conversation content
     function generateConversationTitle(conversation) {
@@ -27728,8 +28283,8 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
       }
     }
 
-    function refreshHistory(filterText = '') {
-      loadConversationsAsync().then(async (list) => {
+    function refreshHistory(filterText = '', attempt = 0, forceRefresh = false) {
+      loadConversationsAsync({ forceRefresh: forceRefresh || attempt === 0 }).then(async (list) => {
         let arr = Array.isArray(list) ? list : [];
 
         if (!arr.length) {
@@ -27737,19 +28292,34 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
             const directFallback = await new Promise((resolve) => {
               try {
                 if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-                  chrome.storage.local.get(['chatbridge:conversations', 'chatbridge_conversations_v1'], (data) => {
+                  chrome.storage.local.get(['chatbridge:conversations', 'chatbridge_conversations_v1', 'chatbridge_conversations'], (data) => {
                     const primary = Array.isArray(data['chatbridge:conversations']) ? data['chatbridge:conversations'] : [];
                     const v1 = Array.isArray(data['chatbridge_conversations_v1']) ? data['chatbridge_conversations_v1'] : [];
-                    resolve([...(primary || []), ...(v1 || [])]);
+                    const legacy = Array.isArray(data['chatbridge_conversations']) ? data['chatbridge_conversations'] : [];
+                    resolve([...(primary || []), ...(v1 || []), ...(legacy || [])]);
                   });
                   return;
                 }
               } catch (_) { }
-              resolve([]);
+              try {
+                const localPrimary = JSON.parse(localStorage.getItem('chatbridge:conversations') || '[]');
+                const localV1 = JSON.parse(localStorage.getItem('chatbridge_conversations_v1') || '[]');
+                const localLegacy = JSON.parse(localStorage.getItem('chatbridge_conversations') || '[]');
+                resolve([].concat(localPrimary || [], localV1 || [], localLegacy || []));
+              } catch (_) {
+                resolve([]);
+              }
             });
 
             if (Array.isArray(directFallback) && directFallback.length > 0) {
-              arr = directFallback.sort((a, b) => (b.ts || b.timestamp || 0) - (a.ts || a.timestamp || 0));
+              const merged = new Map();
+              directFallback.forEach((raw) => {
+                if (!raw || typeof raw !== 'object') return;
+                const id = String(raw.id || raw.ts || '');
+                if (!id) return;
+                if (!merged.has(id)) merged.set(id, raw);
+              });
+              arr = Array.from(merged.values()).sort((a, b) => (b.ts || b.timestamp || 0) - (a.ts || a.timestamp || 0));
               try { __cbConvCache.data = arr; __cbConvCache.ts = Date.now(); } catch (_) { }
             }
           } catch (_) { }
@@ -27759,13 +28329,23 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
 
         if (filter) {
           arr = arr.filter(c => {
-            const text = (c.conversation || []).map(m => m.text || m.content || '').join(' ').toLowerCase();
-            const title = generateConversationTitle(c.conversation).toLowerCase();
+            const msgs = getConversationMessages(c);
+            const text = msgs.map(m => m.text || m.content || '').join(' ').toLowerCase();
+            const title = generateConversationTitle(msgs).toLowerCase();
             return title.includes(filter) || text.includes(filter);
           });
         }
 
         if (!arr.length) {
+          // Background service worker can be cold after extension reload.
+          // Retry a few times on initial open so history hydrates without requiring Scan Chat.
+          if (!filter && attempt < 5) {
+            const retryDelayMs = 400 * (attempt + 1);
+            setTimeout(() => {
+              try { refreshHistory(filterText, attempt + 1, true); } catch (_) { }
+            }, retryDelayMs);
+          }
+
           historyEl.innerHTML = filter
             ? `<div class="cb-history-empty">${renderSidebarEmptyCard({
               icon: '🔎',
@@ -27822,7 +28402,8 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
             historyEl.appendChild(groupHeader);
 
             for (const s of items) {
-              const descriptivePhrase = generateConversationTitle(s.conversation);
+              const msgs = getConversationMessages(s);
+              const descriptivePhrase = generateConversationTitle(msgs);
               const isActive = window.ChatBridge.selectedConversation && window.ChatBridge.selectedConversation.ts === s.ts;
 
               const row = document.createElement('div');
@@ -27871,71 +28452,32 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
               delBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>';
               delBtn.onclick = (e) => {
                 e.stopPropagation();
-                if (confirm('Delete this conversation?')) {
-                  const key = 'chatbridge:conversations';
-                  chrome.storage.local.get([key], (data) => {
-                    let convs = data[key] || [];
-                    const idx = convs.findIndex(c => c.ts === s.ts);
-                    if (idx >= 0) {
-                      convs.splice(idx, 1);
-                      chrome.storage.local.set({ [key]: convs }, () => {
-                        // If deleted conversation was the active one, clear active state
+                if (confirm('Delete this conversation permanently?')) {
+                  const convId = String(s.id || s.ts || '');
+                  chrome.runtime.sendMessage({ type: 'delete_conversation', payload: { id: convId } }, () => {
+                    try {
+                      const selConv = window.ChatBridge.selectedConversation;
+                      if (selConv && String(selConv.ts || selConv.id || '') === convId) {
+                        chrome.storage.local.remove(['chatbridge:active_session'], () => {
+                          debugLog('[History Delete] Cleared active session from storage');
+                        });
+                        window.ChatBridge.selectedConversation = null;
+                        window.ChatBridge._lastScanData = null;
+                        try { window.ChatBridge._lastScanResult = null; } catch (_) { }
+                        lastScannedText = '';
                         try {
-                          const selConv = window.ChatBridge.selectedConversation;
-                          if (selConv && selConv.ts === s.ts) {
-                            // Clear active session from storage
-                            chrome.storage.local.remove(['chatbridge:active_session'], () => {
-                              debugLog('[History Delete] Cleared active session from storage');
-                            });
-
-                            if (convs.length > 0) {
-                              const latest = convs[0];
-                              const msgs = latest.messages || latest.conversation || [];
-                              const fullText = msgs.map(m => `${m.role === 'user' ? 'User' : 'AI'}: ${m.text || m.content || ''}`).join('\n\n');
-                              window.ChatBridge.setLastScan({
-                                ts: latest.ts,
-                                platform: latest.platform || 'unknown',
-                                model: latest.model || 'unknown',
-                                messages: msgs,
-                                conversation: latest,
-                                text: fullText,
-                                timestamp: latest.ts
-                              });
-                              window.ChatBridge.selectedConversation = latest;
-                              try { window.ChatBridge._lastScanResult = msgs; } catch (_) { }
-
-                              // Update preview stats
-                              try {
-                                const previewStatsEl = shadow.querySelector('#cb-preview-stats');
-                                const previewTextEl = shadow.querySelector('#cb-preview-text');
-                                const wordCount = msgs.reduce((acc, m) => acc + ((m.text || m.content || '').split(/\s+/).length), 0);
-                                if (previewStatsEl) previewStatsEl.innerHTML = `<span class="cb-preview-stat">${wordCount.toLocaleString()} words</span><span class="cb-preview-stat">${msgs.length} msgs</span>`;
-                                if (previewTextEl) { previewTextEl.textContent = fullText.slice(0, 150) + (fullText.length > 150 ? '...' : ''); previewTextEl.style.opacity = '1'; }
-                                if (typeof window.__CB_UPDATE_STATUS === 'function') window.__CB_UPDATE_STATUS('Session Active', 'active');
-                              } catch (_) { }
-                            } else {
-                              lastScannedText = '';
-                              window.ChatBridge._lastScanData = null;
-                              window.ChatBridge.selectedConversation = null;
-                              try { window.ChatBridge._lastScanResult = null; } catch (_) { }
-                              // Reset preview card
-                              try {
-                                const pStats = shadow.querySelector('#cb-preview-stats');
-                                const pText = shadow.querySelector('#cb-preview-text');
-                                if (pStats) pStats.innerHTML = '<span class="cb-preview-stat">0 words</span><span class="cb-preview-stat">0 msgs</span>';
-                                if (pText) { pText.textContent = 'Scan a conversation to see preview...'; pText.style.opacity = ''; }
-                                try { preview.textContent = 'Preview: (none)'; } catch (_) { }
-                                if (typeof window.__CB_UPDATE_STATUS === 'function') window.__CB_UPDATE_STATUS('Idle', 'idle');
-                              } catch (_) { }
-                            }
-                          }
+                          const pStats = shadow.querySelector('#cb-preview-stats');
+                          const pText = shadow.querySelector('#cb-preview-text');
+                          if (pStats) pStats.innerHTML = '<span class="cb-preview-stat">0 words</span><span class="cb-preview-stat">0 msgs</span>';
+                          if (pText) { pText.textContent = 'Scan a conversation to see preview...'; pText.style.opacity = ''; }
+                          try { preview.textContent = 'Preview: (none)'; } catch (_) { }
+                          if (typeof window.__CB_UPDATE_STATUS === 'function') window.__CB_UPDATE_STATUS('Idle', 'idle');
                         } catch (_) { }
-                        // Sync to background
-                        try { chrome.runtime.sendMessage({ type: 'replace_conversations', payload: { conversations: convs } }); } catch (_) { }
-                        toast('Conversation deleted');
-                        refreshHistory(filterText);
-                      });
-                    }
+                      }
+                    } catch (_) { }
+                    try { __cbConvCache.ts = 0; } catch (_) { }
+                    toast('Conversation deleted');
+                    refreshHistory(filterText, 0, true);
                   });
                 }
               };
@@ -27945,7 +28487,7 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
               // Click handler: load conversation as current scan
               const handleOpen = () => {
                 try {
-                  const msgs = s.conversation || [];
+                  const msgs = getConversationMessages(s);
                   const fullText = msgs.map(m => `${m.role === 'user' ? 'User' : 'AI'}: ${m.text || m.content || ''}`).join('\n\n');
 
                   // Update lastScannedText so all features (summarize, rewrite, translate, etc.) use this
@@ -28029,11 +28571,11 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
                   if (typeof announce === 'function') announce(`Loaded conversation: ${descriptivePhrase}`);
                   toast(`Loaded ${msgs.length} messages`);
 
-                  // Re-render to update active state — always with empty filter and fresh cache
-                  // so ALL conversations are visible (not just ones matching an old search term)
-                  try { historySearchInput.value = ''; } catch (_) { }
-                  try { __cbConvCache.ts = 0; } catch (_) { } // invalidate cache for fresh fetch
-                  refreshHistory('');
+                  // Re-render active highlight while preserving the user's current history filter.
+                  const currentFilter = (historySearchInput && typeof historySearchInput.value === 'string')
+                    ? historySearchInput.value
+                    : '';
+                  refreshHistory(currentFilter);
                 } catch (e) { debugLog('handleOpen error', e); }
               };
 
@@ -28051,9 +28593,27 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
 
     // Expose globally
     window.ChatBridge.refreshHistory = refreshHistory;
+    window.ChatBridge.loadConversationsAsync = loadConversationsAsync;
 
-    // Initial load
-    setTimeout(refreshHistory, 200);
+    // Initial load — hydrate all saved chats on panel open (not only after scan)
+    refreshHistory('', 0, true);
+    setTimeout(() => refreshHistory('', 0, true), 800);
+    setTimeout(() => refreshHistory('', 0, true), 2500);
+
+    try {
+      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.onChanged) {
+        chrome.storage.onChanged.addListener((changes, area) => {
+          if (area !== 'local') return;
+          if (changes['chatbridge:conversations'] || changes.chatbridge_conversations_v1 || changes.chatbridge_conversations) {
+            try { __cbConvCache.ts = 0; } catch (_) { }
+            try {
+              const filter = historySearchInput ? historySearchInput.value : '';
+              refreshHistory(filter, 0, true);
+            } catch (_) { }
+          }
+        });
+      }
+    } catch (_) { }
 
     // chatSelect removed - preview is now updated directly when clicking history items
 
@@ -28634,8 +29194,14 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
   // bootstrap UI and auto-scan
   // CLOUDFLARE FIX: Wait for page to be fully loaded before injecting UI
   function initChatBridge() {
-    try {
-      const ui = injectUI();
+    bootstrap.shouldInjectUI((shouldInject) => {
+      if (!shouldInject) {
+        console.log('[ChatBridge] UI suppressed on this tab/site:', window.location.hostname);
+        return;
+      }
+
+      try {
+        const ui = injectUI();
 
       // Initialize MCP Bridge to enable agent-to-agent communication
       if (typeof window.MCPBridge !== 'undefined') {
@@ -28854,6 +29420,7 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
         }
       }, { passive: true });
     } catch (e) { debugLog('boot error', e); }
+    });
   }
 
   // CLOUDFLARE FIX: Defer initialization until page is fully loaded

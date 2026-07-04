@@ -171,14 +171,112 @@
     }
   }
 
+  const DISABLED_SITES_KEY = 'chatbridge:disabled_sites';
+  const SESSION_HIDE_KEY = 'chatbridge:avatar_session_hidden';
+
+  function getCurrentHostname() {
+    return String(typeof window !== 'undefined' ? window.location.hostname : '').toLowerCase();
+  }
+
+  function isAvatarHiddenForSession() {
+    try {
+      return sessionStorage.getItem(SESSION_HIDE_KEY) === '1';
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function hideAvatarForSession() {
+    try {
+      sessionStorage.setItem(SESSION_HIDE_KEY, '1');
+    } catch (_) { }
+  }
+
+  function getDisabledSites(callback) {
+    if (!hasExtensionStorageLocal()) {
+      callback([]);
+      return;
+    }
+    try {
+      chrome.storage.local.get([DISABLED_SITES_KEY], (data) => {
+        const sites = data && data[DISABLED_SITES_KEY];
+        callback(Array.isArray(sites) ? sites : []);
+      });
+    } catch (_) {
+      callback([]);
+    }
+  }
+
+  function isSiteDisabled(hostname, disabledList) {
+    const host = String(hostname || '').toLowerCase();
+    return (disabledList || []).some((site) => String(site || '').toLowerCase() === host);
+  }
+
+  function addDisabledSite(hostname, callback) {
+    const host = String(hostname || '').toLowerCase();
+    if (!host) {
+      if (typeof callback === 'function') callback([]);
+      return;
+    }
+    getDisabledSites((list) => {
+      if (list.includes(host)) {
+        if (typeof callback === 'function') callback(list);
+        return;
+      }
+      const next = list.concat(host);
+      try {
+        chrome.storage.local.set({ [DISABLED_SITES_KEY]: next }, () => {
+          if (typeof callback === 'function') callback(next);
+        });
+      } catch (_) {
+        if (typeof callback === 'function') callback(list);
+      }
+    });
+  }
+
+  function removeDisabledSite(hostname, callback) {
+    const host = String(hostname || '').toLowerCase();
+    getDisabledSites((list) => {
+      const next = list.filter((site) => String(site || '').toLowerCase() !== host);
+      try {
+        chrome.storage.local.set({ [DISABLED_SITES_KEY]: next }, () => {
+          if (typeof callback === 'function') callback(next);
+        });
+      } catch (_) {
+        if (typeof callback === 'function') callback(list);
+      }
+    });
+  }
+
+  function shouldInjectUI(callback) {
+    if (isAvatarHiddenForSession()) {
+      callback(false);
+      return;
+    }
+    const hostname = getCurrentHostname();
+    getDisabledSites((list) => {
+      callback(!isSiteDisabled(hostname, list));
+    });
+  }
+
   window.ChatBridgeContentBootstrap = {
     ensureSingleInjection,
     initGlobalState,
     shouldInjectOnCurrentSite,
+    shouldInjectUI,
     hasExtensionRuntime,
     hasExtensionStorageLocal,
     escapeHtml,
     isSafeUrl,
-    checkContinueWithAutoInsert
+    checkContinueWithAutoInsert,
+    getCurrentHostname,
+    isAvatarHiddenForSession,
+    hideAvatarForSession,
+    getDisabledSites,
+    isSiteDisabled,
+    addDisabledSite,
+    removeDisabledSite,
+    DISABLED_SITES_KEY,
+    SESSION_HIDE_KEY
   };
 })();
