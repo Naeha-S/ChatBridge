@@ -16,7 +16,7 @@
     "https://api-inference.huggingface.co/*",
     "https://router.huggingface.co/*",
     "https://integrate.api.nvidia.com/*",
-    "https://chatbridge-gateway.chatbridgeai.workers.dev/*"
+    "https://chatbridge-gateway.chatbridge-cloud.workers.dev/*"
   ],
   "optional_host_permissions": [
     "https://*.workers.dev/*",

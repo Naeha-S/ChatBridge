@@ -20,7 +20,7 @@ export const CLOUD_STORAGE_KEYS = {
 
 
 
-export const DEFAULT_GATEWAY_URL = 'https://chatbridge-gateway.chatbridgeai.workers.dev';
+export const DEFAULT_GATEWAY_URL = 'https://chatbridge-gateway.chatbridge-cloud.workers.dev';
 
 export const DEFAULT_GATEWAY_TOKEN = 'j3Wb5g4hQdN1Yk8m7rP2Xz9LwUaCt6FvE0sI+BnJeRc=';
 

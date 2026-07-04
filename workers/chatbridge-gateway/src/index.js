@@ -418,6 +418,22 @@ export default {
 
     const url = new URL(request.url);
 
+    if ((url.pathname === '/' || url.pathname === '') && request.method === 'GET') {
+
+      return json({
+
+        ok: true,
+
+        service: 'chatbridge-gateway',
+
+        status: 'online',
+
+        message: 'ChatBridge Cloud Gateway is running. Configure this URL in your extension Options page.'
+
+      });
+
+    }
+
 
 
     if (url.pathname === '/v1/info' && request.method === 'GET') {

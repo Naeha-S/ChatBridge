@@ -1344,14 +1344,15 @@
           </svg>
           <span data-i18n="dashboard">Dashboard</span>
         </div>
-        <div class="nav-item" data-section="api-keys">
+        <div class="nav-item" data-section="analytics">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
-            <path
-              d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4">
-            </path>
+            <line x1="18" y1="20" x2="18" y2="10"></line>
+            <line x1="12" y1="20" x2="12" y2="4"></line>
+            <line x1="6" y1="20" x2="6" y2="14"></line>
           </svg>
-          <span data-i18n="apiKeys">API Keys</span>
+          <span data-i18n="analytics">Analytics</span>
         </div>
+
         <div class="nav-item" data-section="history">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="10"></circle>
@@ -1391,21 +1392,7 @@
 
       <!-- Dashboard Section -->
       <section class="section active" id="section-dashboard">
-        <!-- Missing Keys Warning Banner -->
-        <div id="options-api-warning" class="card warning-card" style="display: none; border-left: 4px solid #f59e0b; background: rgba(245, 158, 11, 0.04); margin-bottom: 16px;">
-          <div class="card-title" style="color: #f59e0b; display: flex; align-items: center; gap: 8px;">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="stroke: #f59e0b; width: 20px; height: 20px;">
-              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-              <line x1="12" y1="9" x2="12" y2="13"></line>
-              <line x1="12" y1="17" x2="12.01" y2="17"></line>
-            </svg>
-            <span data-i18n="apiKeysMissing">API Keys Missing</span>
-          </div>
-          <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 12px;" data-i18n="apiKeysMissingDetail">
-            Configure your API keys in Options to enable AI features.
-          </p>
-          <button class="btn btn-secondary" id="btn-go-to-api" style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); color: #f59e0b; cursor: pointer;">Configure Keys</button>
-        </div>
+
 
         <div class="card">
           <div class="card-title">
@@ -1530,7 +1517,7 @@
           </div>
           <div class="quick-actions">
             <button class="btn btn-secondary" id="quick-history">View History</button>
-            <button class="btn btn-secondary" id="quick-api">Configure APIs</button>
+            <button class="btn btn-secondary" id="quick-analytics">View Analytics</button>
             <button class="btn btn-secondary" id="quick-theme">Change Theme</button>
           </div>
         </div>
@@ -1553,173 +1540,128 @@
         </div>
       </section>
 
-      <!-- API Keys Section -->
-      <section class="section" id="section-api-keys">
-        <!-- Cloud Gateway -->
-        <div class="card" style="margin-bottom: 16px; border-left: 4px solid var(--accent-1);">
+      <!-- Analytics Section -->
+      <section class="section" id="section-analytics">
+        <!-- Privacy Control Card -->
+        <div class="card" style="margin-bottom: 16px; border-left: 4px solid var(--success);">
           <div class="card-title">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
             </svg>
-            Cloud Gateway
+            Privacy & Telemetry Controls
           </div>
-          <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.55; margin: 0 0 16px;">
-            Route AI requests through your hosted Cloudflare Worker so provider keys never live in the browser.
-            <a href="https://github.com/Naeha-S/ChatBridge/tree/main/workers/chatbridge-gateway" target="_blank" rel="noopener" style="color: var(--accent-1);">Deploy guide →</a>
+          <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.55; margin-bottom: 16px;">
+            Enable local telemetry to track your usage statistics, feature calls, and estimated tokens over time. All data remains 100% local and private to your browser storage.
           </p>
-
-          <div class="settings-row">
+          <div class="settings-row" style="padding-top: 0; padding-bottom: 16px;">
             <div>
-              <div class="settings-label">Use Cloud Gateway</div>
-              <div class="settings-desc">When enabled, LLM calls go through your server proxy</div>
+              <div class="settings-label">Enable Telemetry Dashboard</div>
+              <div class="settings-desc">Keep a rolling 30-day log of local scans and transforms</div>
             </div>
             <label class="cloud-toggle">
-              <input type="checkbox" id="cloudEnabled" />
+              <input type="checkbox" id="analyticsEnabled" />
               <span class="cloud-toggle-track"></span>
             </label>
           </div>
-
-          <div class="api-row" style="margin-top: 12px;">
-            <div class="api-info">
-              <div class="api-name">Gateway URL</div>
-              <div class="api-link">https://your-worker.workers.dev</div>
-            </div>
-            <div class="api-input-wrap" style="flex: 1.5;">
-              <input type="url" id="cloudGatewayUrl" class="api-input" placeholder="https://chatbridge-gateway.example.workers.dev" />
-            </div>
-          </div>
-
-          <div class="api-row">
-            <div class="api-info">
-              <div class="api-name">Access Token</div>
-              <div class="api-link">CHATBRIDGE_PROXY_SECRET</div>
-            </div>
-            <div class="api-input-wrap">
-              <input type="password" id="cloudAccessToken" class="api-input" placeholder="Bearer secret from wrangler" />
-              <button class="api-toggle" id="cloud-token-toggle" type="button">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                  <circle cx="12" cy="12" r="3"></circle>
-                </svg>
-              </button>
-            </div>
-            <div class="api-status" id="cloudStatus">
-              <span class="status-dot"></span>
-              <span>Not configured</span>
-            </div>
-            <button class="btn btn-primary" id="btn-save-cloud">Save</button>
-            <button class="btn btn-secondary" id="btn-test-cloud">Test</button>
-          </div>
-
-          <div id="cloud-providers" style="display:none; margin-top: 12px; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--border); background: rgba(255,255,255,0.02); font-size: 12px; color: var(--text-secondary);"></div>
-        </div>
-
-        <div class="card">
-          <div class="card-title">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
-              <path
-                d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4">
-              </path>
-            </svg>
-            API Keys
-          </div>
-
-          <!-- HuggingFace -->
-          <div class="api-row">
-            <div class="api-info">
-              <div class="api-name">HuggingFace</div>
-              <a href="https://huggingface.co/settings/tokens" target="_blank" class="api-link">Get key →</a>
-            </div>
-            <div class="api-input-wrap">
-              <input type="password" id="hfApiKey" class="api-input" placeholder="hf_xxxxxxxxxx" />
-              <button class="api-toggle" id="hf-toggle" type="button">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                  stroke-linejoin="round">
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                  <circle cx="12" cy="12" r="3"></circle>
-                </svg>
-              </button>
-            </div>
-            <div class="api-status" id="hfStatus">
-              <span class="status-dot"></span>
-              <span>Not set</span>
-            </div>
-            <button class="btn btn-primary" id="btn-save-hf">Save</button>
-          </div>
-
-          <!-- Gemini -->
-          <div class="api-row">
-            <div class="api-info">
-              <div class="api-name">Gemini</div>
-              <a href="https://makersuite.google.com/app/apikey" target="_blank" class="api-link">Get key →</a>
-            </div>
-            <div class="api-input-wrap">
-              <input type="password" id="geminiApiKey" class="api-input" placeholder="AIzaSy..." />
-              <button class="api-toggle" id="gemini-toggle" type="button">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                  stroke-linejoin="round">
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                  <circle cx="12" cy="12" r="3"></circle>
-                </svg>
-              </button>
-            </div>
-            <div class="api-status" id="geminiStatus">
-              <span class="status-dot"></span>
-              <span>Not set</span>
-            </div>
-            <button class="btn btn-primary" id="btn-save-gemini">Save</button>
-          </div>
-
-          <!-- NVIDIA (Embeddings) -->
-          <div class="api-row">
-            <div class="api-info">
-              <div class="api-name">NVIDIA</div>
-              <a href="https://build.nvidia.com/" target="_blank" class="api-link">Get key →</a>
-            </div>
-            <div class="api-input-wrap">
-              <input type="password" id="nvidiaApiKey" class="api-input" placeholder="nvapi-..." />
-              <button class="api-toggle" id="nvidia-toggle" type="button">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                  stroke-linejoin="round">
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                  <circle cx="12" cy="12" r="3"></circle>
-                </svg>
-              </button>
-            </div>
-            <div class="api-status" id="nvidiaStatus">
-              <span class="status-dot"></span>
-              <span>Not set</span>
-            </div>
-            <button class="btn btn-primary" id="btn-save-nvidia">Save</button>
-          </div>
-
-          <div class="api-row">
-            <div class="api-info">
-              <div class="api-name">Embeddings</div>
-              <div class="api-link">Reindex memory vectors</div>
-            </div>
-            <div class="api-input-wrap"></div>
-            <div class="api-status" id="rebuildStatus">
-              <span class="status-dot"></span>
-              <span>Idle</span>
-            </div>
-            <button class="btn btn-secondary" id="btn-rebuild-embeddings">Rebuild</button>
+          <div class="quick-actions" style="margin-top: 12px; display: none;" id="analytics-actions-container">
+            <button class="btn btn-secondary" id="btn-export-telemetry">Export Data (JSON)</button>
+            <button class="btn btn-danger" id="btn-clear-telemetry">Clear All History</button>
           </div>
         </div>
 
-        <div class="card" style="margin-top: 16px;">
-          <div class="card-title">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="stroke: var(--accent-1); width: 20px; height: 20px; vertical-align: middle; margin-right: 8px;">
-              <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
-            </svg>
-            <span data-i18n="clearCache">Clear Cache</span>
-          </div>
-          <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 16px;">
-            Clear cached API responses to force fresh requests to AI models.
+        <!-- Opt-in message banner -->
+        <div id="analytics-optin-warning" class="card" style="border-left: 4px solid var(--warning); background: rgba(210, 153, 34, 0.04); text-align: center; padding: 32px 24px;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="stroke: var(--warning); width: 48px; height: 48px; margin-bottom: 16px;">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+          </svg>
+          <h3 style="font-size: 16px; font-weight: 600; color: var(--text-primary); margin-bottom: 8px;">Telemetry Dashboard Disabled</h3>
+          <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.5; max-width: 480px; margin: 0 auto 16px;">
+            To view detailed usage statistics, token consumption trends, and feature breakdown charts, please toggle on "Enable Telemetry Dashboard" above.
           </p>
-          <button class="btn btn-secondary" id="btn-clear-cache" data-i18n="clearCache">Clear Cache</button>
+          <button class="btn btn-primary" id="btn-quick-optin">Enable Dashboard</button>
+        </div>
+
+        <!-- Telemetry Dashboard Content -->
+        <div id="analytics-content-container" style="display: none;">
+          <!-- Telemetry Summary Cards -->
+          <div class="card">
+            <div class="card-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="9" y1="3" x2="9" y2="21"></line>
+              </svg>
+              Rolling 30-Day Summary
+            </div>
+            <div class="stats-grid">
+              <div class="stat-item">
+                <div class="stat-icon" style="color: var(--accent-1);">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 16 14"></polyline>
+                  </svg>
+                </div>
+                <div class="stat-info">
+                  <div class="stat-value" id="stats-total-calls">0</div>
+                  <div class="stat-label">AI Call Operations</div>
+                </div>
+              </div>
+              <div class="stat-item">
+                <div class="stat-icon" style="color: var(--accent-2);">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                  </svg>
+                </div>
+                <div class="stat-info">
+                  <div class="stat-value" id="stats-total-tokens">0</div>
+                  <div class="stat-label">Est. Tokens Consumed</div>
+                  <div style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;">
+                    In: <span id="stats-in-tokens">0</span> | Out: <span id="stats-out-tokens">0</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Charts Card -->
+          <div class="card" style="margin-top: 16px;">
+            <div class="card-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path>
+                <path d="M22 12A10 10 0 0 0 12 2v10z"></path>
+              </svg>
+              Usage Distributions
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
+              <div style="text-align: center;">
+                <h4 style="font-size: 13px; font-weight: 600; color: var(--text-secondary); margin-bottom: 12px;">Feature Call Mix</h4>
+                <canvas id="chartFeatures" width="300" height="200" style="max-width: 100%; height: 200px;"></canvas>
+              </div>
+              <div style="text-align: center;">
+                <h4 style="font-size: 13px; font-weight: 600; color: var(--text-secondary); margin-bottom: 12px;">AI Provider Distribution</h4>
+                <canvas id="chartProviders" width="300" height="200" style="max-width: 100%; height: 200px;"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <!-- Trend Chart Card -->
+          <div class="card" style="margin-top: 16px;">
+            <div class="card-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+                <polyline points="17 6 23 6 23 12"></polyline>
+              </svg>
+              Daily Token Consumption (7-Day Trend)
+            </div>
+            <div style="text-align: center; padding: 10px 0;">
+              <canvas id="chartTokensTrend" width="600" height="220" style="width: 100%; height: 220px;"></canvas>
+            </div>
+          </div>
         </div>
       </section>
+
+
 
       <!-- History Section -->
       <section class="section" id="section-history">
@@ -1787,36 +1729,18 @@
           </div>
         </div>
 
-        <!-- Language Settings -->
-        <div class="card">
+        <!-- Clear Cache Card -->
+        <div class="card" style="margin-top: 16px;">
           <div class="card-title">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="10"></circle>
-              <line x1="2" y1="12" x2="22" y2="12"></line>
-              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z">
-              </path>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="stroke: var(--accent-1); width: 20px; height: 20px; vertical-align: middle; margin-right: 8px;">
+              <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
             </svg>
-            Language
+            <span data-i18n="clearCache">Clear Cache</span>
           </div>
-          <div class="settings-row">
-            <div>
-              <div class="settings-label">Interface Language</div>
-              <div class="settings-desc">Choose your preferred language</div>
-            </div>
-            <div class="select-wrap">
-              <select id="language-select">
-                <option value="en">English</option>
-                <option value="es">Español</option>
-                <option value="fr">Français</option>
-                <option value="de">Deutsch</option>
-                <option value="ja">日本語</option>
-                <option value="zh">中文</option>
-                <option value="ko">한국어</option>
-                <option value="pt">Português</option>
-                <option value="hi">हिन्दी</option>
-              </select>
-            </div>
-          </div>
+          <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 16px;">
+            Clear cached API responses to force fresh requests to AI models.
+          </p>
+          <button class="btn btn-secondary" id="btn-clear-cache" data-i18n="clearCache">Clear Cache</button>
         </div>
       </section>
 
@@ -1892,6 +1816,7 @@
 
   <script src="core/translations.js"></script>
   <script src="core/security.js"></script>
+  <script src="core/analytics.js"></script>
   <script src="options.js"></script>
 </body>
 

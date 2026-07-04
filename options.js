@@ -104,9 +104,10 @@
   }
 
   // Section title keys mapping
+  // Section title keys mapping
   const sectionTitleKeys = {
     'dashboard': 'dashboard',
-    'api-keys': 'apiKeys',
+    'analytics': 'analytics',
     'history': 'history',
     'appearance': 'appearance',
     'about': 'about'
@@ -138,11 +139,17 @@
       const titleKey = sectionTitleKeys[sectionId];
       pageTitle.textContent = window.t(titleKey, currentLang);
     }
+
+    if (sectionId === 'analytics') {
+      if (typeof loadAndRenderAnalytics === 'function') {
+        loadAndRenderAnalytics();
+      }
+    }
   }
 
   // Quick action buttons
   document.getElementById('quick-history')?.addEventListener('click', () => navigateToSection('history'));
-  document.getElementById('quick-api')?.addEventListener('click', () => navigateToSection('api-keys'));
+  document.getElementById('quick-analytics')?.addEventListener('click', () => navigateToSection('analytics'));
   document.getElementById('quick-theme')?.addEventListener('click', () => navigateToSection('appearance'));
 
   // ============================================
@@ -228,38 +235,11 @@
     const apiStatusEl = document.getElementById('dashboard-api-status');
     const optionsApiWarning = document.getElementById('options-api-warning');
     if (apiStatusEl) {
-      chrome.storage.local.get(['chatbridge_hf_key', 'chatbridge_gemini_key', 'chatbridge_api_nvidia', 'chatbridge_cloud_enabled', 'chatbridge_api_cloud', 'chatbridge_cloud_token'], async (res) => {
-        const cloudEnabled = !!res.chatbridge_cloud_enabled;
-        const hasCloudToken = !!(res.chatbridge_api_cloud || res.chatbridge_cloud_token);
-
-        if (cloudEnabled && hasCloudToken) {
-          apiStatusEl.textContent = 'Cloud Gateway';
-          apiStatusEl.style.color = 'var(--success)';
-          if (optionsApiWarning) optionsApiWarning.style.display = 'none';
-          return;
-        }
-
-        const hasHf = !!res.chatbridge_hf_key;
-        const hasGemini = !!res.chatbridge_gemini_key;
-        const hasNvidia = !!res.chatbridge_api_nvidia;
-        const active = (hasHf ? 1 : 0) + (hasGemini ? 1 : 0) + (hasNvidia ? 1 : 0);
-
-        if (active >= 1) {
-          apiStatusEl.textContent = `${active} Active`;
-          apiStatusEl.style.color = active >= 2 ? 'var(--success)' : 'var(--warning)';
-          if (optionsApiWarning) optionsApiWarning.style.display = 'none';
-        } else {
-          apiStatusEl.textContent = 'None';
-          apiStatusEl.style.color = 'var(--text-muted)';
-          if (optionsApiWarning) {
-            optionsApiWarning.style.display = 'block';
-            const btnGoToApi = document.getElementById('btn-go-to-api');
-            if (btnGoToApi) {
-              btnGoToApi.onclick = () => navigateToSection('api-keys');
-            }
-          }
-        }
-      });
+      apiStatusEl.textContent = 'Cloud Gateway';
+      apiStatusEl.style.color = 'var(--success)';
+    }
+    if (optionsApiWarning) {
+      optionsApiWarning.style.display = 'none';
     }
 
     // Fetch and display Performance Telemetry
@@ -365,402 +345,6 @@
 
   loadDashboardStats();
   loadDisabledSites();
-
-  // ============================================
-  // CLOUD GATEWAY
-  // ============================================
-  const cloudEnabledInput = document.getElementById('cloudEnabled');
-  const cloudGatewayUrlInput = document.getElementById('cloudGatewayUrl');
-  const cloudAccessTokenInput = document.getElementById('cloudAccessToken');
-  const cloudStatus = document.getElementById('cloudStatus');
-  const cloudProvidersEl = document.getElementById('cloud-providers');
-  const btnSaveCloud = document.getElementById('btn-save-cloud');
-  const btnTestCloud = document.getElementById('btn-test-cloud');
-  const cloudTokenToggle = document.getElementById('cloud-token-toggle');
-
-  function renderCloudProviders(providers) {
-    if (!cloudProvidersEl || !providers) return;
-    const labels = Object.entries(providers).map(([name, ready]) => {
-      const color = ready ? 'var(--success)' : 'var(--text-muted)';
-      return `<span style="margin-right:12px;"><strong style="color:${color};">${ready ? '●' : '○'}</strong> ${name}</span>`;
-    });
-    cloudProvidersEl.innerHTML = `<strong>Server providers:</strong> ${labels.join('')}`;
-    cloudProvidersEl.style.display = 'block';
-  }
-
-  const DEFAULT_GATEWAY_URL = 'https://chatbridge-gateway.chatbridgeai.workers.dev';
-  const DEFAULT_GATEWAY_TOKEN = 'j3Wb5g4hQdN1Yk8m7rP2Xz9LwUaCt6FvE0sI+BnJeRc=';
-
-  async function loadCloudSettings() {
-    chrome.storage.local.get(['chatbridge_cloud_enabled', 'chatbridge_cloud_url', 'chatbridge_api_cloud', 'chatbridge_cloud_token'], async (res) => {
-      const enabled = res.chatbridge_cloud_enabled !== undefined ? !!res.chatbridge_cloud_enabled : true;
-      if (cloudEnabledInput) cloudEnabledInput.checked = enabled;
-      if (cloudGatewayUrlInput) cloudGatewayUrlInput.value = res.chatbridge_cloud_url || DEFAULT_GATEWAY_URL;
-
-      let token = '';
-      try {
-        if (res.chatbridge_api_cloud && window.ChatBridgeSecurity?.getApiKey) {
-          token = await window.ChatBridgeSecurity.getApiKey('cloud');
-        } else if (res.chatbridge_cloud_token) {
-          token = res.chatbridge_cloud_token;
-        } else {
-          token = DEFAULT_GATEWAY_TOKEN;
-        }
-      } catch (_) { }
-
-      if (token && cloudAccessTokenInput) {
-        cloudAccessTokenInput.value = token;
-        updateApiStatus(cloudStatus, 'Configured', 'success');
-      }
-    });
-  }
-
-  loadCloudSettings();
-
-  cloudTokenToggle?.addEventListener('click', () => {
-    if (!cloudAccessTokenInput) return;
-    cloudAccessTokenInput.type = cloudAccessTokenInput.type === 'password' ? 'text' : 'password';
-  });
-
-  cloudEnabledInput?.addEventListener('change', () => {
-    chrome.storage.local.set({ chatbridge_cloud_enabled: !!cloudEnabledInput.checked }, () => {
-      showToast(cloudEnabledInput.checked ? 'Cloud gateway enabled' : 'Cloud gateway disabled', 'success');
-      loadDashboardStats();
-    });
-  });
-
-  async function requestCloudHostPermission(baseUrl) {
-    if (!chrome.permissions || !chrome.permissions.request) return true;
-    try {
-      const origin = new URL(baseUrl).origin + '/*';
-      const has = await chrome.permissions.contains({ origins: [origin] });
-      if (has) return true;
-      return new Promise((resolve) => {
-        chrome.permissions.request({ origins: [origin] }, (granted) => {
-          resolve(!!granted);
-        });
-      });
-    } catch (_) {
-      return false;
-    }
-  }
-
-  async function testCloudConnection(tokenOverride) {
-    const enabled = !!cloudEnabledInput?.checked;
-    const baseUrl = (cloudGatewayUrlInput?.value || '').trim();
-    const token = (tokenOverride || cloudAccessTokenInput?.value || '').trim();
-
-    if (enabled && baseUrl) {
-      const permitted = await requestCloudHostPermission(baseUrl);
-      if (!permitted) {
-        updateApiStatus(cloudStatus, 'Permission denied', 'error');
-        showToast('Host permission for the gateway URL was denied.', 'error');
-        return { ok: false, error: 'permission_denied', message: 'Host permission denied.' };
-      }
-    }
-
-    updateApiStatus(cloudStatus, 'Connecting…', 'pending');
-    return new Promise((resolve) => {
-      chrome.runtime.sendMessage({
-        type: 'test_cloud_proxy',
-        config: { enabled, baseUrl, token },
-      }, (response) => {
-        if (chrome.runtime.lastError) {
-          updateApiStatus(cloudStatus, 'Error', 'error');
-          showToast(chrome.runtime.lastError.message, 'error');
-          resolve(null);
-          return;
-        }
-        if (response && response.ok) {
-          updateApiStatus(cloudStatus, 'Connected', 'success');
-          renderCloudProviders(response.providers);
-          showToast('Gateway connection successful', 'success');
-          resolve(response);
-        } else {
-          updateApiStatus(cloudStatus, 'Failed', 'error');
-          showToast((response && response.message) || 'Gateway test failed', 'error');
-          resolve(response);
-        }
-      });
-    });
-  }
-
-  btnTestCloud?.addEventListener('click', () => testCloudConnection());
-
-  btnSaveCloud?.addEventListener('click', async () => {
-    const enabled = !!cloudEnabledInput?.checked;
-    const baseUrl = (cloudGatewayUrlInput?.value || '').trim().replace(/\/+$/, '');
-    const token = (cloudAccessTokenInput?.value || '').trim();
-    const t = window.t || ((k) => k);
-
-    if (!baseUrl && enabled) {
-      showToast('Gateway URL is required when cloud mode is enabled', 'error');
-      return;
-    }
-
-    if (!token) {
-      if (!confirm('Remove stored cloud gateway credentials?')) return;
-      chrome.storage.local.remove(['chatbridge_api_cloud', 'chatbridge_cloud_token', 'chatbridge_cloud_url'], () => {
-        if (cloudAccessTokenInput) cloudAccessTokenInput.value = '';
-        updateApiStatus(cloudStatus, 'Not configured', '');
-        if (cloudProvidersEl) cloudProvidersEl.style.display = 'none';
-        showToast('Cloud credentials removed', 'success');
-        loadDashboardStats();
-      });
-      return;
-    }
-
-    btnSaveCloud.textContent = t('saving', currentLang);
-    btnSaveCloud.disabled = true;
-    updateApiStatus(cloudStatus, t('connecting', currentLang), 'pending');
-
-    const testResult = await testCloudConnection(token);
-    if (!testResult || !testResult.ok) {
-      btnSaveCloud.textContent = 'Save';
-      btnSaveCloud.disabled = false;
-      return;
-    }
-
-    try {
-      if (!window.ChatBridgeSecurity?.saveApiKey) {
-        throw new Error('Security module unavailable');
-      }
-      const saved = await window.ChatBridgeSecurity.saveApiKey('cloud', token);
-      if (!saved) throw new Error('Failed to encrypt token');
-
-      chrome.storage.local.set({
-        chatbridge_cloud_enabled: enabled,
-        chatbridge_cloud_url: baseUrl,
-      }, () => {
-        chrome.storage.local.remove(['chatbridge_cloud_token']);
-        btnSaveCloud.textContent = 'Save';
-        btnSaveCloud.disabled = false;
-        updateApiStatus(cloudStatus, t('connected', currentLang), 'success');
-        showToast('Cloud gateway saved', 'success');
-        loadDashboardStats();
-      });
-    } catch (e) {
-      btnSaveCloud.textContent = 'Save';
-      btnSaveCloud.disabled = false;
-      updateApiStatus(cloudStatus, 'Failed', 'error');
-      showToast(e.message || 'Failed to save cloud settings', 'error');
-    }
-  });
-
-  // ============================================
-  // API KEY MANAGEMENT
-  // ============================================
-  const hfApiKeyInput = document.getElementById('hfApiKey');
-  const geminiApiKeyInput = document.getElementById('geminiApiKey');
-  const nvidiaApiKeyInput = document.getElementById('nvidiaApiKey');
-  const btnSaveHF = document.getElementById('btn-save-hf');
-  const btnSaveGemini = document.getElementById('btn-save-gemini');
-  const btnSaveNvidia = document.getElementById('btn-save-nvidia');
-  const btnRebuildEmbeddings = document.getElementById('btn-rebuild-embeddings');
-  const hfStatus = document.getElementById('hfStatus');
-  const geminiStatus = document.getElementById('geminiStatus');
-  const nvidiaStatus = document.getElementById('nvidiaStatus');
-  const rebuildStatus = document.getElementById('rebuildStatus');
-  const hfToggle = document.getElementById('hf-toggle');
-  const geminiToggle = document.getElementById('gemini-toggle');
-  const nvidiaToggle = document.getElementById('nvidia-toggle');
-
-  chrome.storage.local.get(['chatbridge_hf_key', 'chatbridge_gemini_key'], async (res) => {
-    if (res.chatbridge_hf_key) {
-      hfApiKeyInput.value = res.chatbridge_hf_key;
-      updateApiStatus(hfStatus, window.t ? window.t('connected', currentLang) : 'Connected', 'success');
-    }
-    if (res.chatbridge_gemini_key) {
-      geminiApiKeyInput.value = res.chatbridge_gemini_key;
-      updateApiStatus(geminiStatus, window.t ? window.t('connected', currentLang) : 'Connected', 'success');
-    }
-
-    try {
-      if (window.ChatBridgeSecurity && typeof window.ChatBridgeSecurity.getApiKey === 'function') {
-        const nvidiaKey = await window.ChatBridgeSecurity.getApiKey('nvidia');
-        if (nvidiaKey) {
-          nvidiaApiKeyInput.value = nvidiaKey;
-          updateApiStatus(nvidiaStatus, window.t ? window.t('connected', currentLang) : 'Connected', 'success');
-        }
-      }
-    } catch (e) {
-      console.warn('[ChatBridge Options] Failed to load encrypted NVIDIA key:', e);
-    }
-  });
-
-  hfToggle?.addEventListener('click', () => {
-    hfApiKeyInput.type = hfApiKeyInput.type === 'password' ? 'text' : 'password';
-  });
-
-  geminiToggle?.addEventListener('click', () => {
-    geminiApiKeyInput.type = geminiApiKeyInput.type === 'password' ? 'text' : 'password';
-  });
-
-  nvidiaToggle?.addEventListener('click', () => {
-    nvidiaApiKeyInput.type = nvidiaApiKeyInput.type === 'password' ? 'text' : 'password';
-  });
-
-  btnSaveHF?.addEventListener('click', async () => {
-    const v = (hfApiKeyInput.value || '').trim();
-    const t = window.t || ((k) => k);
-
-    if (!v) {
-      if (!confirm('Remove stored HuggingFace API key?')) return;
-      chrome.storage.local.remove(['chatbridge_hf_key'], () => {
-        hfApiKeyInput.value = '';
-        updateApiStatus(hfStatus, t('notSet', currentLang), '');
-        showToast(t('keyRemoved', currentLang), 'success');
-        loadDashboardStats();
-      });
-      return;
-    }
-
-    btnSaveHF.textContent = t('saving', currentLang);
-    btnSaveHF.disabled = true;
-    updateApiStatus(hfStatus, t('connecting', currentLang), 'pending');
-
-    chrome.runtime.sendMessage({ type: 'test_huggingface_api', apiKey: v }, (response) => {
-      btnSaveHF.textContent = t('save', currentLang);
-      btnSaveHF.disabled = false;
-
-      if (response && response.ok) {
-        chrome.storage.local.set({ chatbridge_hf_key: v }, () => {
-          updateApiStatus(hfStatus, t('connected', currentLang), 'success');
-          showToast(t('keySaved', currentLang), 'success');
-          loadDashboardStats();
-        });
-      } else if (response && response.status === 503) {
-        chrome.storage.local.set({ chatbridge_hf_key: v }, () => {
-          updateApiStatus(hfStatus, t('modelLoading', currentLang), 'pending');
-          showToast(t('keySaved', currentLang), 'warning');
-          loadDashboardStats();
-        });
-      } else {
-        updateApiStatus(hfStatus, t('invalidKey', currentLang), 'error');
-        showToast(t('invalidKey', currentLang), 'error');
-      }
-    });
-  });
-
-  btnSaveGemini?.addEventListener('click', async () => {
-    const v = (geminiApiKeyInput.value || '').trim();
-    const t = window.t || ((k) => k);
-
-    if (!v) {
-      if (!confirm('Remove stored Gemini API key?')) return;
-      chrome.storage.local.remove(['chatbridge_gemini_key'], () => {
-        geminiApiKeyInput.value = '';
-        updateApiStatus(geminiStatus, t('notSet', currentLang), '');
-        showToast(t('keyRemoved', currentLang), 'success');
-        loadDashboardStats();
-      });
-      return;
-    }
-
-    btnSaveGemini.textContent = t('saving', currentLang);
-    btnSaveGemini.disabled = true;
-    updateApiStatus(geminiStatus, t('connecting', currentLang), 'pending');
-
-    chrome.runtime.sendMessage({ type: 'test_gemini_api', apiKey: v }, (response) => {
-      btnSaveGemini.textContent = t('save', currentLang);
-      btnSaveGemini.disabled = false;
-
-      if (response && response.ok) {
-        chrome.storage.local.set({ chatbridge_gemini_key: v }, () => {
-          updateApiStatus(geminiStatus, t('connected', currentLang), 'success');
-          showToast(t('keySaved', currentLang), 'success');
-          loadDashboardStats();
-        });
-      } else {
-        updateApiStatus(geminiStatus, t('invalidKey', currentLang), 'error');
-        showToast(t('invalidKey', currentLang), 'error');
-      }
-    });
-  });
-
-
-  btnSaveNvidia?.addEventListener('click', async () => {
-    const v = (nvidiaApiKeyInput.value || '').trim();
-    const t = window.t || ((k) => k);
-
-    if (!v) {
-      if (!confirm('Remove stored NVIDIA API key?')) return;
-      chrome.storage.local.remove(['chatbridge_api_nvidia'], () => {
-        nvidiaApiKeyInput.value = '';
-        updateApiStatus(nvidiaStatus, t('notSet', currentLang), '');
-        showToast(t('keyRemoved', currentLang), 'success');
-        loadDashboardStats();
-      });
-      return;
-    }
-
-    btnSaveNvidia.textContent = t('saving', currentLang);
-    btnSaveNvidia.disabled = true;
-    updateApiStatus(nvidiaStatus, t('connecting', currentLang), 'pending');
-
-    chrome.runtime.sendMessage({ type: 'test_nvidia_api', apiKey: v }, async (response) => {
-      btnSaveNvidia.textContent = t('save', currentLang);
-      btnSaveNvidia.disabled = false;
-
-      if (response && response.ok) {
-        try {
-          if (!window.ChatBridgeSecurity || typeof window.ChatBridgeSecurity.saveApiKey !== 'function') {
-            updateApiStatus(nvidiaStatus, t('invalidKey', currentLang), 'error');
-            showToast('Security module unavailable', 'error');
-            return;
-          }
-
-          const saved = await window.ChatBridgeSecurity.saveApiKey('nvidia', v);
-          if (!saved) {
-            updateApiStatus(nvidiaStatus, t('invalidKey', currentLang), 'error');
-            showToast('Failed to save encrypted key', 'error');
-            return;
-          }
-
-          updateApiStatus(nvidiaStatus, t('connected', currentLang), 'success');
-          showToast(t('keySaved', currentLang), 'success');
-          loadDashboardStats();
-        } catch (e) {
-          updateApiStatus(nvidiaStatus, t('invalidKey', currentLang), 'error');
-          showToast('Failed to save key', 'error');
-        }
-      } else {
-        updateApiStatus(nvidiaStatus, t('invalidKey', currentLang), 'error');
-        showToast(t('invalidKey', currentLang), 'error');
-      }
-    });
-  });
-
-  btnRebuildEmbeddings?.addEventListener('click', async () => {
-    const t = window.t || ((k) => k);
-    btnRebuildEmbeddings.disabled = true;
-    updateApiStatus(rebuildStatus, t('connecting', currentLang), 'pending');
-
-    try {
-      const response = await new Promise((resolve, reject) => {
-        chrome.runtime.sendMessage({ type: 'vector_index_all', payload: { clearExisting: true } }, (response) => {
-          if (chrome.runtime.lastError) return reject(new Error(chrome.runtime.lastError.message));
-          if (!response || !response.ok) return reject(new Error((response && response.error) || 'rebuild_failed'));
-          return resolve(response);
-        });
-      });
-      updateApiStatus(rebuildStatus, 'Done', 'success');
-      showToast(`Embeddings rebuilt (${response.indexed || 0} indexed)`, 'success');
-    } catch (e) {
-      updateApiStatus(rebuildStatus, 'Failed', 'error');
-      showToast('Embedding rebuild failed', 'error');
-    } finally {
-      btnRebuildEmbeddings.disabled = false;
-    }
-  });
-
-  function updateApiStatus(element, text, type) {
-    if (!element) return;
-    const dot = element.querySelector('.status-dot');
-    const span = element.querySelector('span:last-child');
-    if (dot) dot.className = 'status-dot ' + type;
-    if (span) span.textContent = text;
-  }
 
   // ============================================
   // HISTORY MANAGEMENT
@@ -929,31 +513,12 @@
   // ============================================
   // LANGUAGE MANAGEMENT
   // ============================================
-  const languageSelect = document.getElementById('language-select');
-
   chrome.storage.local.get(['cb_language'], res => {
     const savedLang = res.cb_language || 'en';
     currentLang = savedLang;
-    if (languageSelect) languageSelect.value = savedLang;
 
     // Apply translations on load
     setTimeout(() => applyTranslations(savedLang), 100);
-  });
-
-  languageSelect?.addEventListener('change', () => {
-    const lang = languageSelect.value;
-    currentLang = lang;
-
-    // Apply translations immediately
-    applyTranslations(lang);
-
-    // Reload dynamic content with new language
-    loadHistory();
-
-    chrome.storage.local.set({ cb_language: lang }, () => {
-      const t = window.t || ((k) => k);
-      showToast(t('languageSaved', lang), 'success');
-    });
   });
 
   // ============================================
@@ -991,6 +556,400 @@
       setTimeout(() => toast.remove(), 300);
     }, 3000);
   }
+
+  // ============================================
+  // ANALYTICS & TELEMETRY DASHBOARD
+  // ============================================
+  async function loadAndRenderAnalytics() {
+    if (typeof AnalyticsManager === 'undefined') return;
+
+    const enabled = await AnalyticsManager.isEnabled();
+    
+    // Update opt-in toggle UI
+    const toggle = document.getElementById('analyticsEnabled');
+    if (toggle) toggle.checked = enabled;
+
+    const actionsContainer = document.getElementById('analytics-actions-container');
+    const optinWarning = document.getElementById('analytics-optin-warning');
+    const contentContainer = document.getElementById('analytics-content-container');
+
+    if (enabled) {
+      if (optinWarning) optinWarning.style.display = 'none';
+      if (actionsContainer) actionsContainer.style.display = 'flex';
+      if (contentContainer) contentContainer.style.display = 'block';
+
+      const summary = await AnalyticsManager.getSummary();
+      
+      // Populate summary numbers
+      const totalCallsEl = document.getElementById('stats-total-calls');
+      const totalTokensEl = document.getElementById('stats-total-tokens');
+      const inTokensEl = document.getElementById('stats-in-tokens');
+      const outTokensEl = document.getElementById('stats-out-tokens');
+
+      if (totalCallsEl) totalCallsEl.textContent = summary.transformCount.toLocaleString();
+      if (totalTokensEl) totalTokensEl.textContent = summary.totalTokens.toLocaleString();
+      if (inTokensEl) inTokensEl.textContent = summary.inputTokens.toLocaleString();
+      if (outTokensEl) outTokensEl.textContent = summary.outputTokens.toLocaleString();
+
+      // Render Canvas-based charts
+      renderFeatureChart(summary.features);
+      renderProviderChart(summary.providers);
+      renderTrendChart(summary.dailyTrend);
+    } else {
+      if (optinWarning) optinWarning.style.display = 'block';
+      if (actionsContainer) actionsContainer.style.display = 'none';
+      if (contentContainer) contentContainer.style.display = 'none';
+    }
+  }
+
+  // Pure Canvas Bar Chart for Feature Usage
+  function renderFeatureChart(features) {
+    const canvas = document.getElementById('chartFeatures');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const width = canvas.width;
+    const height = canvas.height;
+    ctx.clearRect(0, 0, width, height);
+
+    const data = [
+      { label: 'Summarize', value: features.summarize || 0 },
+      { label: 'Rewrite', value: features.rewrite || 0 },
+      { label: 'Translate', value: features.translate || 0 },
+      { label: 'Sync Tone', value: features.syncTone || 0 },
+      { label: 'Custom', value: features.custom || 0 }
+    ];
+
+    const maxValue = Math.max(...data.map(d => d.value), 5);
+    const chartLeft = 85;
+    const chartWidth = width - chartLeft - 40;
+    const barHeight = 18;
+    const barSpacing = 32;
+
+    ctx.font = '500 11px Inter, sans-serif';
+    ctx.textBaseline = 'middle';
+
+    data.forEach((d, idx) => {
+      const y = 20 + idx * barSpacing;
+      
+      // Draw label
+      ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--text-secondary').trim() || '#8b949e';
+      ctx.textAlign = 'right';
+      ctx.fillText(d.label, chartLeft - 12, y + barHeight / 2);
+
+      // Draw bar background track
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.03)';
+      ctx.beginPath();
+      ctx.roundRect ? ctx.roundRect(chartLeft, y, chartWidth, barHeight, 4) : ctx.rect(chartLeft, y, chartWidth, barHeight);
+      ctx.fill();
+
+      // Draw filled bar
+      if (d.value > 0) {
+        const barValWidth = (d.value / maxValue) * chartWidth;
+        const grad = ctx.createLinearGradient(chartLeft, y, chartLeft + barValWidth, y);
+        const accent1 = getComputedStyle(document.body).getPropertyValue('--accent-1').trim() || '#00D4FF';
+        const accent2 = getComputedStyle(document.body).getPropertyValue('--accent-2').trim() || '#7C3AED';
+        grad.addColorStop(0, accent1);
+        grad.addColorStop(1, accent2);
+        
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.roundRect ? ctx.roundRect(chartLeft, y, barValWidth, barHeight, 4) : ctx.rect(chartLeft, y, barValWidth, barHeight);
+        ctx.fill();
+      }
+
+      // Draw value label
+      ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--text-primary').trim() || '#e6edf3';
+      ctx.textAlign = 'left';
+      ctx.fillText(d.value.toString(), chartLeft + ((d.value > 0) ? (d.value / maxValue) * chartWidth + 8 : 8), y + barHeight / 2);
+    });
+  }
+
+  // Pure Canvas Donut Chart for Provider Distribution
+  function renderProviderChart(providers) {
+    const canvas = document.getElementById('chartProviders');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const width = canvas.width;
+    const height = canvas.height;
+    ctx.clearRect(0, 0, width, height);
+
+    const rawData = [
+      { label: 'Gemini', value: providers.gemini || 0, color: '#7C3AED' },
+      { label: 'OpenAI', value: providers.openai || 0, color: '#10b981' },
+      { label: 'HuggingFace', value: providers.huggingface || 0, color: '#fbbf24' },
+      { label: 'Nvidia', value: providers.nvidia || 0, color: '#76b900' },
+      { label: 'Local', value: providers.local || 0, color: '#6b7280' }
+    ];
+
+    const data = rawData.filter(d => d.value > 0);
+    const total = data.reduce((acc, d) => acc + d.value, 0);
+
+    const centerX = 80;
+    const centerY = height / 2;
+    const outerRadius = 60;
+    const innerRadius = 38;
+
+    if (total === 0) {
+      // Draw empty donut state
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+      ctx.lineWidth = 14;
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, (outerRadius + innerRadius) / 2, 0, 2 * Math.PI);
+      ctx.stroke();
+
+      ctx.fillStyle = '#8b949e';
+      ctx.font = '500 11px Inter, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('No data', centerX, centerY);
+
+      // Draw placeholder legend
+      ctx.textAlign = 'left';
+      ctx.fillText('No calls made yet.', 160, centerY);
+      return;
+    }
+
+    let startAngle = -0.5 * Math.PI;
+    data.forEach(d => {
+      const sliceAngle = (d.value / total) * 2 * Math.PI;
+      const endAngle = startAngle + sliceAngle;
+
+      ctx.fillStyle = d.color;
+      ctx.beginPath();
+      ctx.moveTo(centerX, centerY);
+      ctx.arc(centerX, centerY, outerRadius, startAngle, endAngle);
+      ctx.closePath();
+      ctx.fill();
+
+      startAngle = endAngle;
+    });
+
+    // Draw inner cutout circle to make it a donut
+    const baseColor = getComputedStyle(document.body).getPropertyValue('--bg-base').trim() || '#0a0e1a';
+    ctx.fillStyle = baseColor;
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, innerRadius, 0, 2 * Math.PI);
+    ctx.fill();
+
+    // Draw legend
+    const legendX = 160;
+    const legendStartY = 28;
+    const spacing = 28;
+
+    ctx.font = '500 11px Inter, sans-serif';
+    ctx.textBaseline = 'middle';
+    ctx.textAlign = 'left';
+
+    rawData.forEach((d, idx) => {
+      const y = legendStartY + idx * spacing;
+      
+      // Color block
+      ctx.fillStyle = d.color;
+      ctx.beginPath();
+      ctx.roundRect ? ctx.roundRect(legendX, y - 5, 10, 10, 2) : ctx.rect(legendX, y - 5, 10, 10);
+      ctx.fill();
+
+      // Text label
+      ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--text-primary').trim() || '#e6edf3';
+      ctx.fillText(d.label, legendX + 16, y);
+
+      // Percentage
+      const pct = total > 0 && d.value > 0 ? Math.round((d.value / total) * 100) : 0;
+      ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--text-muted').trim() || '#8b949e';
+      ctx.fillText(`${pct}% (${d.value})`, legendX + 90, y);
+    });
+  }
+
+  // Pure Canvas Line Trend Chart for daily tokens
+  function renderTrendChart(dailyTrend) {
+    const canvas = document.getElementById('chartTokensTrend');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const width = canvas.width;
+    const height = canvas.height;
+    ctx.clearRect(0, 0, width, height);
+
+    const dates = Object.keys(dailyTrend).sort();
+    const data = dates.map(d => dailyTrend[d]);
+
+    const maxVal = Math.max(...data.map(d => d.tokens), 500);
+    const maxValue = Math.ceil(maxVal / 100) * 100; // round up to nearest 100
+
+    const padLeft = 50;
+    const padRight = 20;
+    const padTop = 20;
+    const padBottom = 30;
+
+    const chartWidth = width - padLeft - padRight;
+    const chartHeight = height - padTop - padBottom;
+
+    // Draw horizontal gridlines & Y labels
+    const gridCount = 4;
+    ctx.font = '500 10px Inter, sans-serif';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+
+    for (let i = 0; i <= gridCount; i++) {
+      const yVal = Math.round((maxValue / gridCount) * i);
+      const y = padTop + chartHeight - (i / gridCount) * chartHeight;
+
+      // Draw gridline
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(padLeft, y);
+      ctx.lineTo(width - padRight, y);
+      ctx.stroke();
+
+      // Draw Y label
+      ctx.fillStyle = '#8b949e';
+      ctx.fillText(yVal >= 1000 ? (yVal / 1000).toFixed(1) + 'k' : yVal.toString(), padLeft - 10, y);
+    }
+
+    // Map coordinates
+    const points = data.map((d, idx) => {
+      const x = padLeft + idx * (chartWidth / (dates.length - 1));
+      const y = padTop + chartHeight - (d.tokens / maxValue) * chartHeight;
+      return { x, y, tokens: d.tokens, date: dates[idx] };
+    });
+
+    // Draw area under curve
+    if (points.length > 0) {
+      const grad = ctx.createLinearGradient(0, padTop, 0, padTop + chartHeight);
+      const accentGlow = 'rgba(0, 212, 255, 0.16)';
+      grad.addColorStop(0, accentGlow);
+      grad.addColorStop(1, 'rgba(0, 212, 255, 0)');
+
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.moveTo(points[0].x, padTop + chartHeight);
+      
+      // Draw smooth curve path
+      ctx.lineTo(points[0].x, points[0].y);
+      for (let i = 0; i < points.length - 1; i++) {
+        const xc = (points[i].x + points[i + 1].x) / 2;
+        const yc = (points[i].y + points[i + 1].y) / 2;
+        ctx.quadraticCurveTo(points[i].x, points[i].y, xc, yc);
+      }
+      ctx.lineTo(points[points.length - 1].x, points[points.length - 1].y);
+      ctx.lineTo(points[points.length - 1].x, padTop + chartHeight);
+      ctx.closePath();
+      ctx.fill();
+
+      // Draw line stroke
+      const strokeGrad = ctx.createLinearGradient(padLeft, 0, width - padRight, 0);
+      const accent1 = getComputedStyle(document.body).getPropertyValue('--accent-1').trim() || '#00D4FF';
+      const accent2 = getComputedStyle(document.body).getPropertyValue('--accent-2').trim() || '#7C3AED';
+      strokeGrad.addColorStop(0, accent1);
+      strokeGrad.addColorStop(1, accent2);
+
+      ctx.strokeStyle = strokeGrad;
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(points[0].x, points[0].y);
+      
+      for (let i = 0; i < points.length - 1; i++) {
+        const xc = (points[i].x + points[i + 1].x) / 2;
+        const yc = (points[i].y + points[i + 1].y) / 2;
+        ctx.quadraticCurveTo(points[i].x, points[i].y, xc, yc);
+      }
+      ctx.lineTo(points[points.length - 1].x, points[points.length - 1].y);
+      ctx.stroke();
+
+      // Draw circles on points
+      points.forEach(p => {
+        // Outer glow
+        ctx.fillStyle = 'rgba(0, 212, 255, 0.25)';
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 6, 0, 2 * Math.PI);
+        ctx.fill();
+
+        // Inner solid dot
+        ctx.fillStyle = '#fff';
+        ctx.strokeStyle = accent1;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 3, 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.stroke();
+      });
+    }
+
+    // Draw X labels (date days)
+    ctx.fillStyle = '#8b949e';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    points.forEach(p => {
+      const parts = p.date.split('-');
+      const label = parts.length === 3 ? `${parts[1]}/${parts[2]}` : p.date;
+      ctx.fillText(label, p.x, padTop + chartHeight + 10);
+    });
+  }
+
+  // Register events on options page DOM load
+  async function initAnalyticsUI() {
+    const toggle = document.getElementById('analyticsEnabled');
+    if (toggle) {
+      toggle.addEventListener('change', async (e) => {
+        if (typeof AnalyticsManager !== 'undefined') {
+          const checked = e.target.checked;
+          await AnalyticsManager.setEnabled(checked);
+          showToast(checked ? 'Local telemetry dashboard enabled.' : 'Telemetry disabled. History cleared.', 'success');
+          loadAndRenderAnalytics();
+        }
+      });
+    }
+
+    const quickOptin = document.getElementById('btn-quick-optin');
+    if (quickOptin) {
+      quickOptin.addEventListener('click', async () => {
+        if (typeof AnalyticsManager !== 'undefined') {
+          await AnalyticsManager.setEnabled(true);
+          showToast('Local telemetry dashboard enabled.', 'success');
+          loadAndRenderAnalytics();
+        }
+      });
+    }
+
+    const clearBtn = document.getElementById('btn-clear-telemetry');
+    if (clearBtn) {
+      clearBtn.addEventListener('click', async () => {
+        if (confirm('Are you sure you want to permanently erase all local telemetry data? This action cannot be undone.')) {
+          if (typeof AnalyticsManager !== 'undefined') {
+            await AnalyticsManager.clearTelemetry();
+            showToast('All local telemetry data erased.', 'success');
+            loadAndRenderAnalytics();
+          }
+        }
+      });
+    }
+
+    const exportBtn = document.getElementById('btn-export-telemetry');
+    if (exportBtn) {
+      exportBtn.addEventListener('click', async () => {
+        if (typeof AnalyticsManager !== 'undefined') {
+          try {
+            const records = await AnalyticsManager.getTelemetry();
+            const blob = new Blob([JSON.stringify(records, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `chatbridge_telemetry_${Date.now()}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showToast('Telemetry report exported successfully.', 'success');
+          } catch (e) {
+            showToast('Export failed: ' + e.message, 'error');
+          }
+        }
+      });
+    }
+  }
+
+  // Call immediately to register options page triggers
+  setTimeout(initAnalyticsUI, 100);
 
   // ============================================
   // HASH NAVIGATION

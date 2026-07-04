@@ -4,6 +4,8 @@ import {
   testCloudProxyConnection,
   invalidateCloudProxyCache,
 } from './core/cloudProxy.js';
+import AnalyticsManager from './core/analytics.js';
+
 
 // background.js
 
@@ -2659,6 +2661,16 @@ Return ONLY the rewritten text. No preamble. No explanation.`;
             } catch (e) { /* ignore mirror errors */ }
           });
         } catch (e) { /* ignore */ }
+
+        // Log analytics scan event
+        try {
+          const platform = conv.platform || '';
+          const msgCount = Array.isArray(conv.messages) ? conv.messages.length : 0;
+          await AnalyticsManager.logScan(platform, msgCount);
+        } catch (analyticsErr) {
+          console.warn('[Analytics] Failed to log scan:', analyticsErr);
+        }
+
         sendResponse({ ok: !!ok });
       } catch (e) {
         sendResponse({ ok: false, error: e && e.message });
@@ -3065,6 +3077,26 @@ Return ONLY the rewritten text. No preamble. No explanation.`;
               cacheCleanExpired();
             } catch (e) { /* ignore cache write errors */ }
             
+            // Log analytics transform event
+            try {
+              const inputTokens = json.usage?.prompt_tokens;
+              const outputTokens = json.usage?.completion_tokens;
+              const platform = payload.platform || '';
+              const feature = payload.action || 'chat';
+              await AnalyticsManager.logTransform({
+                platform,
+                feature,
+                model,
+                provider: 'openai',
+                inputText: messages.map(m => m.content).join('\n'),
+                outputText: result,
+                inputTokens,
+                outputTokens
+              });
+            } catch (analyticsErr) {
+              console.warn('[Analytics] Failed to log OpenAI transform:', analyticsErr);
+            }
+
             return sendResponse({ ok: true, assistant, result });
           } catch (e) {
             lastErr = e;
@@ -3555,6 +3587,26 @@ Rewritten conversation (optimized for ${tgt}):`;
             await cachePut({ id: cacheKey, ts: Date.now(), ttl, response: { ok: true, result, model: currentModel } });
             cacheCleanExpired();
           } catch (e) { /* ignore */ }
+
+          // Log analytics transform event
+          try {
+            const inputTokens = json.usageMetadata?.promptTokenCount;
+            const outputTokens = json.usageMetadata?.candidatesTokenCount;
+            const platform = payload.platform || '';
+            const feature = payload.action || 'chat';
+            await AnalyticsManager.logTransform({
+              platform,
+              feature,
+              model: currentModel,
+              provider: 'gemini',
+              inputText: promptText,
+              outputText: result,
+              inputTokens,
+              outputTokens
+            });
+          } catch (analyticsErr) {
+            console.warn('[Analytics] Failed to log Gemini transform:', analyticsErr);
+          }
 
           return sendResponse({ ok: true, result, model: currentModel });
         }
@@ -4249,6 +4301,23 @@ ${payload.text}`;
           cacheCleanExpired();
         } catch (e) { /* ignore cache write errors */ }
 
+        // Log analytics transform event
+        try {
+          const inputTokens = json.usage?.prompt_tokens;
+          const outputTokens = json.usage?.completion_tokens;
+          const platform = payload.platform || '';
+          await AnalyticsManager.logTransform({
+            platform,
+            feature: action,
+            model: 'llama-3.1-8b',
+            provider: 'huggingface',
+            inputText: promptText,
+            outputText: result,
+            inputTokens,
+            outputTokens
+          });
+        } catch (e) {}
+
         return sendResponse(responseObj);
       } catch (e) {
         console.warn('[Llama API] Fetch failed:', e?.message || e);
@@ -4296,6 +4365,24 @@ ${payload.text}`;
 
             const result = json.candidates[0].content.parts[0].text || '';
             markModelSuccess(currentModel);
+
+            // Log analytics transform event
+            try {
+              const inputTokens = json.usageMetadata?.promptTokenCount;
+              const outputTokens = json.usageMetadata?.candidatesTokenCount;
+              const platform = msg.platform || '';
+              await AnalyticsManager.logTransform({
+                platform,
+                feature: 'translate',
+                model: currentModel,
+                provider: 'gemini',
+                inputText: promptText,
+                outputText: result,
+                inputTokens,
+                outputTokens
+              });
+            } catch (e) {}
+
             return sendResponse({ ok: true, translated: result, model: currentModel });
 
           } catch (e) {
@@ -4343,6 +4430,24 @@ ${payload.text}`;
 
             const result = json.candidates[0].content.parts[0].text || '';
             markModelSuccess(currentModel);
+
+            // Log analytics transform event
+            try {
+              const inputTokens = json.usageMetadata?.promptTokenCount;
+              const outputTokens = json.usageMetadata?.candidatesTokenCount;
+              const platform = msg.platform || '';
+              await AnalyticsManager.logTransform({
+                platform,
+                feature: 'summarize',
+                model: currentModel,
+                provider: 'gemini',
+                inputText: promptText,
+                outputText: result,
+                inputTokens,
+                outputTokens
+              });
+            } catch (e) {}
+
             return sendResponse({ ok: true, summary: result, model: currentModel });
 
           } catch (e) {
@@ -4415,6 +4520,18 @@ ${payload.text}`;
             .replace(/^(Here's|Here is|Below is) (your|the) (rewritten|rephrased) (text|version)[:\s]*\n\n/gim, '')
             .trim();
 
+          // Log analytics
+          try {
+            await AnalyticsManager.logTransform({
+              platform: msg.platform || '',
+              feature: 'rewrite',
+              model: r.model,
+              provider: 'gemini',
+              inputText: prompt,
+              outputText: result
+            });
+          } catch (e) {}
+
           return sendResponse({ ok: true, result: result, model: r.model });
         }
         if (type === 'extract_meaning') {
@@ -4469,6 +4586,18 @@ ${payload.text}`;
             if (!r.ok) throw new Error(r.error || 'style_failed');
             return r.text;
           })();
+          // Log analytics
+          try {
+            await AnalyticsManager.logTransform({
+              platform: msg.platform || '',
+              feature: 'rewrite',
+              model: 'gemini-1.5-flash',
+              provider: 'gemini',
+              inputText: Array.isArray(msg.content) ? msg.content.map(m => m.text).join('\n') : String(msg.content || ''),
+              outputText: styled
+            });
+          } catch (e) {}
+
           return sendResponse({ ok: true, result: styled });
         }
 
