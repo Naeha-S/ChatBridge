@@ -1,10 +1,11 @@
 
 ### ☁️ Cloud & Hosting
 
-- [ ] Cloud server connection with auth + encryption
-- [ ] Serverless hosting exploration (Cloudflare Workers / Vercel Edge)
-- [ ] Cloudflare environment setup (wrangler config, secrets, routes)
-- [ ] API gateway / proxy to protect raw keys from client
+- [x] Cloud server connection with auth + encryption
+- [x] Serverless hosting exploration (Cloudflare Workers / Vercel Edge)
+- [x] Cloudflare environment setup (wrangler config, secrets, routes)
+- [x] API gateway / proxy to protect raw keys from client
+- [ ] Add CloudFlare/Backend API Keys to project *(set via `wrangler secret put` on deploy)*
 
 ### 📊 Analytics
 

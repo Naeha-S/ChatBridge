@@ -167,11 +167,26 @@ cd ChatBridge
 3. Click **Load unpacked** → select `ChatBridge` directory
 4. Pin the ⚡ icon for quick access
 
-### API Key Setup (Optional)
+### API Key Setup (Optional — BYOK)
 
 1. Get a free Gemini API key from [Google AI Studio](https://makersuite.google.com/app/apikey)
 2. Click ChatBridge ⚡ icon → **Settings**
 3. Paste your key and save
+
+### Cloud Gateway (Optional — hosted keys)
+
+Keep provider API keys on a Cloudflare Worker instead of in the browser:
+
+```bash
+cd workers/chatbridge-gateway
+npm install
+cp .dev.vars.example .dev.vars   # add CHATBRIDGE_PROXY_SECRET + provider keys
+npm run deploy
+```
+
+Then in **Options → API Keys → Cloud Gateway**: enable, paste your Worker URL and access token, test, and save.
+
+See [workers/chatbridge-gateway/README.md](workers/chatbridge-gateway/README.md) for full deployment steps.
 
 ---
 
@@ -223,6 +238,7 @@ cd ChatBridge
 * Google Gemini API (summarize, rewrite, translate)
 * HuggingFace Inference API (Gemma, Llama)
 * OpenAI API (optional fallback)
+* **Cloudflare Workers gateway** (optional — server-side key proxy)
 * Hierarchical chunking & parallel processing
 * Retry, caching & fallback logic
 

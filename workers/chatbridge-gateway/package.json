@@ -1,0 +1,14 @@
+{
+  "name": "chatbridge-gateway",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ChatBridge Cloudflare API gateway — keeps provider keys off the client.",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail"
+  },
+  "devDependencies": {
+    "wrangler": "^4.14.0"
+  }
+}

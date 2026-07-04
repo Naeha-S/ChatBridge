@@ -1,0 +1,6 @@
+# Copy to .dev.vars for local `wrangler dev` (never commit .dev.vars)
+CHATBRIDGE_PROXY_SECRET=dev-only-change-me-use-openssl-rand-base64-32
+GEMINI_API_KEY=
+OPENAI_API_KEY=
+HUGGINGFACE_API_KEY=
+NVIDIA_API_KEY=

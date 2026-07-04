@@ -1,0 +1,42 @@
+name = "chatbridge-gateway"
+main = "src/index.js"
+compatibility_date = "2024-12-01"
+
+# Deploy:
+#   cd workers/chatbridge-gateway
+#   npm install
+#   npx wrangler secret put CHATBRIDGE_PROXY_SECRET
+#   npx wrangler secret put GEMINI_API_KEY        # optional — set providers you proxy
+#   npx wrangler secret put OPENAI_API_KEY
+#   npx wrangler secret put HUGGINGFACE_API_KEY
+#   npx wrangler secret put NVIDIA_API_KEY
+#   npm run deploy
+#
+# After deploy, use: https://chatbridge-gateway.<account>.workers.dev
+# Configure that URL + CHATBRIDGE_PROXY_SECRET in ChatBridge Options → Cloud Gateway.
+
+[vars]
+ENVIRONMENT = "production"
+[[kv_namespaces]]
+binding = "RATE_LIMIT"
+id = "a9b18014a07d4d3ab3bf61c0513c7011"
+# Custom domain (after DNS is configured):
+# [[routes]]
+# pattern = "gateway.chatbridge.dev/*"
+# zone_name = "chatbridge.dev"
+
+[env.staging]
+name = "chatbridge-gateway-staging"
+
+[env.staging.vars]
+ENVIRONMENT = "staging"
+
+[env.development]
+name = "chatbridge-gateway-dev"
+
+[env.development.vars]
+ENVIRONMENT = "development"
+
+[observability.logs]
+enabled = false
+invocation_logs = true

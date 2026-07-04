@@ -228,7 +228,17 @@
     const apiStatusEl = document.getElementById('dashboard-api-status');
     const optionsApiWarning = document.getElementById('options-api-warning');
     if (apiStatusEl) {
-      chrome.storage.local.get(['chatbridge_hf_key', 'chatbridge_gemini_key', 'chatbridge_api_nvidia'], (res) => {
+      chrome.storage.local.get(['chatbridge_hf_key', 'chatbridge_gemini_key', 'chatbridge_api_nvidia', 'chatbridge_cloud_enabled', 'chatbridge_api_cloud', 'chatbridge_cloud_token'], async (res) => {
+        const cloudEnabled = !!res.chatbridge_cloud_enabled;
+        const hasCloudToken = !!(res.chatbridge_api_cloud || res.chatbridge_cloud_token);
+
+        if (cloudEnabled && hasCloudToken) {
+          apiStatusEl.textContent = 'Cloud Gateway';
+          apiStatusEl.style.color = 'var(--success)';
+          if (optionsApiWarning) optionsApiWarning.style.display = 'none';
+          return;
+        }
+
         const hasHf = !!res.chatbridge_hf_key;
         const hasGemini = !!res.chatbridge_gemini_key;
         const hasNvidia = !!res.chatbridge_api_nvidia;
@@ -355,6 +365,187 @@
 
   loadDashboardStats();
   loadDisabledSites();
+
+  // ============================================
+  // CLOUD GATEWAY
+  // ============================================
+  const cloudEnabledInput = document.getElementById('cloudEnabled');
+  const cloudGatewayUrlInput = document.getElementById('cloudGatewayUrl');
+  const cloudAccessTokenInput = document.getElementById('cloudAccessToken');
+  const cloudStatus = document.getElementById('cloudStatus');
+  const cloudProvidersEl = document.getElementById('cloud-providers');
+  const btnSaveCloud = document.getElementById('btn-save-cloud');
+  const btnTestCloud = document.getElementById('btn-test-cloud');
+  const cloudTokenToggle = document.getElementById('cloud-token-toggle');
+
+  function renderCloudProviders(providers) {
+    if (!cloudProvidersEl || !providers) return;
+    const labels = Object.entries(providers).map(([name, ready]) => {
+      const color = ready ? 'var(--success)' : 'var(--text-muted)';
+      return `<span style="margin-right:12px;"><strong style="color:${color};">${ready ? '●' : '○'}</strong> ${name}</span>`;
+    });
+    cloudProvidersEl.innerHTML = `<strong>Server providers:</strong> ${labels.join('')}`;
+    cloudProvidersEl.style.display = 'block';
+  }
+
+  const DEFAULT_GATEWAY_URL = 'https://chatbridge-gateway.chatbridgeai.workers.dev';
+  const DEFAULT_GATEWAY_TOKEN = 'j3Wb5g4hQdN1Yk8m7rP2Xz9LwUaCt6FvE0sI+BnJeRc=';
+
+  async function loadCloudSettings() {
+    chrome.storage.local.get(['chatbridge_cloud_enabled', 'chatbridge_cloud_url', 'chatbridge_api_cloud', 'chatbridge_cloud_token'], async (res) => {
+      const enabled = res.chatbridge_cloud_enabled !== undefined ? !!res.chatbridge_cloud_enabled : true;
+      if (cloudEnabledInput) cloudEnabledInput.checked = enabled;
+      if (cloudGatewayUrlInput) cloudGatewayUrlInput.value = res.chatbridge_cloud_url || DEFAULT_GATEWAY_URL;
+
+      let token = '';
+      try {
+        if (res.chatbridge_api_cloud && window.ChatBridgeSecurity?.getApiKey) {
+          token = await window.ChatBridgeSecurity.getApiKey('cloud');
+        } else if (res.chatbridge_cloud_token) {
+          token = res.chatbridge_cloud_token;
+        } else {
+          token = DEFAULT_GATEWAY_TOKEN;
+        }
+      } catch (_) { }
+
+      if (token && cloudAccessTokenInput) {
+        cloudAccessTokenInput.value = token;
+        updateApiStatus(cloudStatus, 'Configured', 'success');
+      }
+    });
+  }
+
+  loadCloudSettings();
+
+  cloudTokenToggle?.addEventListener('click', () => {
+    if (!cloudAccessTokenInput) return;
+    cloudAccessTokenInput.type = cloudAccessTokenInput.type === 'password' ? 'text' : 'password';
+  });
+
+  cloudEnabledInput?.addEventListener('change', () => {
+    chrome.storage.local.set({ chatbridge_cloud_enabled: !!cloudEnabledInput.checked }, () => {
+      showToast(cloudEnabledInput.checked ? 'Cloud gateway enabled' : 'Cloud gateway disabled', 'success');
+      loadDashboardStats();
+    });
+  });
+
+  async function requestCloudHostPermission(baseUrl) {
+    if (!chrome.permissions || !chrome.permissions.request) return true;
+    try {
+      const origin = new URL(baseUrl).origin + '/*';
+      const has = await chrome.permissions.contains({ origins: [origin] });
+      if (has) return true;
+      return new Promise((resolve) => {
+        chrome.permissions.request({ origins: [origin] }, (granted) => {
+          resolve(!!granted);
+        });
+      });
+    } catch (_) {
+      return false;
+    }
+  }
+
+  async function testCloudConnection(tokenOverride) {
+    const enabled = !!cloudEnabledInput?.checked;
+    const baseUrl = (cloudGatewayUrlInput?.value || '').trim();
+    const token = (tokenOverride || cloudAccessTokenInput?.value || '').trim();
+
+    if (enabled && baseUrl) {
+      const permitted = await requestCloudHostPermission(baseUrl);
+      if (!permitted) {
+        updateApiStatus(cloudStatus, 'Permission denied', 'error');
+        showToast('Host permission for the gateway URL was denied.', 'error');
+        return { ok: false, error: 'permission_denied', message: 'Host permission denied.' };
+      }
+    }
+
+    updateApiStatus(cloudStatus, 'Connecting…', 'pending');
+    return new Promise((resolve) => {
+      chrome.runtime.sendMessage({
+        type: 'test_cloud_proxy',
+        config: { enabled, baseUrl, token },
+      }, (response) => {
+        if (chrome.runtime.lastError) {
+          updateApiStatus(cloudStatus, 'Error', 'error');
+          showToast(chrome.runtime.lastError.message, 'error');
+          resolve(null);
+          return;
+        }
+        if (response && response.ok) {
+          updateApiStatus(cloudStatus, 'Connected', 'success');
+          renderCloudProviders(response.providers);
+          showToast('Gateway connection successful', 'success');
+          resolve(response);
+        } else {
+          updateApiStatus(cloudStatus, 'Failed', 'error');
+          showToast((response && response.message) || 'Gateway test failed', 'error');
+          resolve(response);
+        }
+      });
+    });
+  }
+
+  btnTestCloud?.addEventListener('click', () => testCloudConnection());
+
+  btnSaveCloud?.addEventListener('click', async () => {
+    const enabled = !!cloudEnabledInput?.checked;
+    const baseUrl = (cloudGatewayUrlInput?.value || '').trim().replace(/\/+$/, '');
+    const token = (cloudAccessTokenInput?.value || '').trim();
+    const t = window.t || ((k) => k);
+
+    if (!baseUrl && enabled) {
+      showToast('Gateway URL is required when cloud mode is enabled', 'error');
+      return;
+    }
+
+    if (!token) {
+      if (!confirm('Remove stored cloud gateway credentials?')) return;
+      chrome.storage.local.remove(['chatbridge_api_cloud', 'chatbridge_cloud_token', 'chatbridge_cloud_url'], () => {
+        if (cloudAccessTokenInput) cloudAccessTokenInput.value = '';
+        updateApiStatus(cloudStatus, 'Not configured', '');
+        if (cloudProvidersEl) cloudProvidersEl.style.display = 'none';
+        showToast('Cloud credentials removed', 'success');
+        loadDashboardStats();
+      });
+      return;
+    }
+
+    btnSaveCloud.textContent = t('saving', currentLang);
+    btnSaveCloud.disabled = true;
+    updateApiStatus(cloudStatus, t('connecting', currentLang), 'pending');
+
+    const testResult = await testCloudConnection(token);
+    if (!testResult || !testResult.ok) {
+      btnSaveCloud.textContent = 'Save';
+      btnSaveCloud.disabled = false;
+      return;
+    }
+
+    try {
+      if (!window.ChatBridgeSecurity?.saveApiKey) {
+        throw new Error('Security module unavailable');
+      }
+      const saved = await window.ChatBridgeSecurity.saveApiKey('cloud', token);
+      if (!saved) throw new Error('Failed to encrypt token');
+
+      chrome.storage.local.set({
+        chatbridge_cloud_enabled: enabled,
+        chatbridge_cloud_url: baseUrl,
+      }, () => {
+        chrome.storage.local.remove(['chatbridge_cloud_token']);
+        btnSaveCloud.textContent = 'Save';
+        btnSaveCloud.disabled = false;
+        updateApiStatus(cloudStatus, t('connected', currentLang), 'success');
+        showToast('Cloud gateway saved', 'success');
+        loadDashboardStats();
+      });
+    } catch (e) {
+      btnSaveCloud.textContent = 'Save';
+      btnSaveCloud.disabled = false;
+      updateApiStatus(cloudStatus, 'Failed', 'error');
+      showToast(e.message || 'Failed to save cloud settings', 'error');
+    }
+  });
 
   // ============================================
   // API KEY MANAGEMENT

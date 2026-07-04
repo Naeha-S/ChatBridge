@@ -15,7 +15,15 @@
     "https://api.openai.com/*",
     "https://api-inference.huggingface.co/*",
     "https://router.huggingface.co/*",
-    "https://integrate.api.nvidia.com/*"
+    "https://integrate.api.nvidia.com/*",
+    "https://chatbridge-gateway.chatbridgeai.workers.dev/*"
+  ],
+  "optional_host_permissions": [
+    "https://*.workers.dev/*",
+    "https://gateway.chatbridge.dev/*",
+    "http://localhost/*",
+    "http://127.0.0.1/*",
+    "*://*/*"
   ],
   "action": {
     "default_popup": "popup.html",

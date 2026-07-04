@@ -31,6 +31,7 @@ web-ext-artifacts/
 
 # Wrangler
 .wrangler/
+**/.dev.vars
 
 # Misc
 *.log

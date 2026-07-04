@@ -1,3 +1,10 @@
+import {
+  chatbridgeFetch,
+  isCloudProxyActive,
+  testCloudProxyConnection,
+  invalidateCloudProxyCache,
+} from './core/cloudProxy.js';
+
 // background.js
 
 if (typeof globalThis.browser === 'undefined' && typeof globalThis.chrome !== 'undefined') {
@@ -255,14 +262,36 @@ self.addEventListener('unhandledrejection', (event) => {
   reportBackgroundError(event && event.reason, 'service_worker.unhandledrejection', 'critical');
 });
 
+// chrome.runtime.setUninstallURL only accepts http(s) URLs — not chrome-extension:// pages.
+const CHATBRIDGE_UNINSTALL_URL = 'https://naeha-s.github.io/ChatBridge/goodbye.html';
+const CHATBRIDGE_UNINSTALL_URL_FALLBACK = 'https://github.com/Naeha-S/ChatBridge';
+
+async function configureUninstallFarewellUrl() {
+  let url = CHATBRIDGE_UNINSTALL_URL;
+  try {
+    const stored = await chrome.storage.local.get(['chatbridge_uninstall_url']);
+    const override = String(stored.chatbridge_uninstall_url || '').trim();
+    if (override && /^https?:\/\//i.test(override)) url = override;
+  } catch (_) { }
+
+  const candidates = [url, CHATBRIDGE_UNINSTALL_URL_FALLBACK].filter(
+    (candidate, index, list) => /^https?:\/\//i.test(candidate) && list.indexOf(candidate) === index
+  );
+
+  for (const candidate of candidates) {
+    try {
+      await chrome.runtime.setUninstallURL(candidate);
+      return;
+    } catch (e) {
+      console.debug('[ChatBridge] setUninstallURL failed:', candidate, e && e.message);
+    }
+  }
+}
+
 chrome.runtime.onInstalled.addListener((details) => {
   console.log("ChatBridge installed/updated");
 
-  try {
-    chrome.runtime.setUninstallURL(chrome.runtime.getURL('goodbye.html'));
-  } catch (e) {
-    console.warn('[ChatBridge] setUninstallURL failed:', e);
-  }
+  configureUninstallFarewellUrl();
 
   // Open the welcome page on first install only
   if (details.reason === 'install') {
@@ -272,9 +301,7 @@ chrome.runtime.onInstalled.addListener((details) => {
   recoverBackgroundState();
 });
 
-try {
-  chrome.runtime.setUninstallURL(chrome.runtime.getURL('goodbye.html'));
-} catch (_) { }
+configureUninstallFarewellUrl();
 
 chrome.runtime.onStartup.addListener(() => {
   recoverBackgroundState();
@@ -927,12 +954,31 @@ async function getHuggingFaceApiKey(opts) {
   }
 }
 
+async function hasProviderAccess(provider) {
+  if (await isCloudProxyActive()) return true;
+  switch (provider) {
+    case 'gemini':
+      return !!(await getGeminiApiKey());
+    case 'openai':
+      return !!(await getOpenAIApiKey());
+    case 'huggingface':
+      return !!(await getHuggingFaceApiKey());
+    case 'nvidia':
+      return !!(await getNvidiaApiKey());
+    default:
+      return false;
+  }
+}
+
 // Keep cache fresh when the key changes in Options
 try {
   if (chrome.storage && chrome.storage.onChanged) {
     chrome.storage.onChanged.addListener((changes, area) => {
       try {
         if (area === 'local') {
+          if (changes && (changes.chatbridge_cloud_enabled || changes.chatbridge_cloud_url || changes.chatbridge_cloud_token || changes.chatbridge_api_cloud)) {
+            invalidateCloudProxyCache();
+          }
           if (changes && changes.chatbridge_gemini_key) {
             __cbGeminiKeyCache = { value: changes.chatbridge_gemini_key.newValue || null, ts: Date.now() };
           }
@@ -1285,9 +1331,9 @@ function normalizeEmbeddingVector(raw) {
 
 async function fetchEmbeddingNvidia(text) {
   const nvidiaApiKey = await getNvidiaApiKey();
-  if (!nvidiaApiKey) throw new Error('no_api_key');
+  if (!(await hasProviderAccess('nvidia'))) throw new Error('no_api_key');
 
-  const response = await fetch('https://integrate.api.nvidia.com/v1/embeddings', {
+  const response = await chatbridgeFetch('https://integrate.api.nvidia.com/v1/embeddings', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${nvidiaApiKey}`,
@@ -1329,7 +1375,7 @@ function extractGeminiEmbeddingValues(json) {
 
 async function fetchEmbeddingViaGemini(text, options = {}) {
   const geminiKey = await getGeminiApiKey();
-  if (!geminiKey) throw new Error('no_gemini_key');
+  if (!(await hasProviderAccess('gemini'))) throw new Error('no_gemini_key');
 
   const inputText = String(text || '').slice(0, 8192);
   if (!inputText.trim()) throw new Error('empty_text');
@@ -1347,8 +1393,8 @@ async function fetchEmbeddingViaGemini(text, options = {}) {
         body.taskType = taskType;
       }
 
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:embedContent?key=${encodeURIComponent(geminiKey)}`,
+      const response = await chatbridgeFetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:embedContent?key=${encodeURIComponent(geminiKey || 'proxy')}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1750,7 +1796,7 @@ OUTPUT ONLY THE REPAIR PROMPT:`;
             ? await getNextAvailableModel()
             : 'gemini-3.5-flash';
 
-          const apiUrl = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${geminiApiKey}`;
+          const apiUrl = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${geminiApiKey || 'proxy'}`;
 
           const body = {
             systemInstruction: { parts: [{ text: systemInstruction }] },
@@ -1761,7 +1807,7 @@ OUTPUT ONLY THE REPAIR PROMPT:`;
             }
           };
 
-          const response = await fetch(apiUrl, {
+          const response = await chatbridgeFetch(apiUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body)
@@ -1862,14 +1908,14 @@ Rules:
 - Relationships must reference entities in the entities array`;
 
           const model = await getNextAvailableModel();
-          const apiUrl = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${geminiApiKey}`;
+          const apiUrl = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${geminiApiKey || 'proxy'}`;
           const body = {
             systemInstruction: { parts: [{ text: systemInstruction }] },
             contents: [{ role: 'user', parts: [{ text: promptText }] }],
             generationConfig: { maxOutputTokens: 1024, temperature: 0.2 }
           };
 
-          const response = await fetch(apiUrl, {
+          const response = await chatbridgeFetch(apiUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body)
@@ -1970,14 +2016,14 @@ ${graphContext}
 Provide a concise, factual answer based ONLY on the graph data above. If the graph doesn't contain relevant information, say so. Reference specific platforms and conversations where topics were discussed.`;
 
           const model = await getNextAvailableModel();
-          const apiUrl = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${geminiApiKey}`;
+          const apiUrl = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${geminiApiKey || 'proxy'}`;
           const body = {
             systemInstruction: { parts: [{ text: systemInstruction }] },
             contents: [{ role: 'user', parts: [{ text: promptText }] }],
             generationConfig: { maxOutputTokens: 512, temperature: 0.3 }
           };
 
-          const response = await fetch(apiUrl, {
+          const response = await chatbridgeFetch(apiUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body)
@@ -2031,6 +2077,15 @@ function mainMessageListener(msg, sender, sendResponse) {
     return true;
   }
   const apiVersion = msg.apiVersion || 'v1';
+
+  if (msg && msg.type === 'test_cloud_proxy') {
+    (async () => {
+      const result = await testCloudProxyConnection(msg.config || null);
+      sendResponse(result);
+    })();
+    return true;
+  }
+
   // Test HuggingFace API connection
   if (msg && msg.type === 'test_huggingface_api') {
     (async () => {
@@ -2146,7 +2201,7 @@ function mainMessageListener(msg, sender, sendResponse) {
     (async () => {
       try {
         const hfKey = await getHuggingFaceApiKey();
-        if (!hfKey) {
+        if (!(await hasProviderAccess('huggingface'))) {
           return sendResponse({ ok: false, error: 'no_api_key', message: 'HuggingFace API key not configured.' });
         }
 
@@ -2303,7 +2358,7 @@ Return ONLY the rewritten text. No preamble. No explanation.`;
         } catch (e) { /* ignore */ }
 
         const apiStart = performance.now();
-        const response = await fetch('https://router.huggingface.co/v1/chat/completions', {
+        const response = await chatbridgeFetch('https://router.huggingface.co/v1/chat/completions', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${hfKey}`,
@@ -2937,7 +2992,7 @@ Return ONLY the rewritten text. No preamble. No explanation.`;
         const model = payload.model || 'gpt-4o-mini';
         const timeoutMs = (typeof payload.timeout === 'number') ? payload.timeout : 25000;
         
-        if (!key) {
+        if (!(await hasProviderAccess('openai'))) {
           return sendResponse({ ok: false, error: 'no_api_key', message: 'OpenAI API key not configured.' });
         }
 
@@ -2971,7 +3026,7 @@ Return ONLY the rewritten text. No preamble. No explanation.`;
             const controller = new AbortController();
             const to = setTimeout(() => controller.abort(), timeoutMs);
             const apiStart = performance.now();
-            const res = await fetch('https://api.openai.com/v1/chat/completions', {
+            const res = await chatbridgeFetch('https://api.openai.com/v1/chat/completions', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
               body: JSON.stringify({
@@ -3045,7 +3100,7 @@ Return ONLY the rewritten text. No preamble. No explanation.`;
         await recordRequest('gemini');
 
         let geminiApiKey = await getGeminiApiKey();
-        if (!geminiApiKey) {
+        if (!(await hasProviderAccess('gemini'))) {
           return sendResponse({ ok: false, error: 'no_api_key', message: 'Gemini API key not configured. Open ChatBridge Options to set it.' });
         }
         const payload = msg.payload || {};
@@ -3374,7 +3429,7 @@ Rewritten conversation (optimized for ${tgt}):`;
           }
         } catch (e) { /* ignore */ }
         geminiApiKey = await getGeminiApiKey();
-        if (!geminiApiKey) {
+        if (!(await hasProviderAccess('gemini'))) {
           return sendResponse({ ok: false, error: 'no_api_key', message: 'Gemini API key not configured.' });
         }
 
@@ -3385,7 +3440,7 @@ Rewritten conversation (optimized for ${tgt}):`;
 
         for (let attempt = 0; attempt < maxRetries; attempt++) {
           const currentModel = await getNextAvailableModel(preferredModel);
-          const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${currentModel}:generateContent?key=${geminiApiKey}`;
+          const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${currentModel}:generateContent?key=${geminiApiKey || 'proxy'}`;
           const body = {
             systemInstruction: systemInstruction ? { parts: [{ text: systemInstruction }] } : undefined,
             contents: [{ parts: [{ text: promptText }] }],
@@ -3404,7 +3459,7 @@ Rewritten conversation (optimized for ${tgt}):`;
           let res;
           try {
             const apiStart = performance.now();
-            res = await fetch(endpoint, {
+            res = await chatbridgeFetch(endpoint, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(body)
@@ -3602,15 +3657,15 @@ Rewritten conversation (optimized for ${tgt}):`;
           if (!rateCheck.allowed || !limiterTry()) return null;
 
           const geminiApiKey = await getGeminiApiKey();
-          if (!geminiApiKey) return null;
+          if (!(await hasProviderAccess('gemini'))) return null;
 
           await recordRequest('gemini');
           const models = ['gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-3.1-pro', 'gemini-2.5-pro'];
           for (const model of models) {
             try {
-              const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`;
+              const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey || 'proxy'}`;
               const apiStart = performance.now();
-              const resp = await fetch(url, {
+              const resp = await chatbridgeFetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -3641,7 +3696,7 @@ Rewritten conversation (optimized for ${tgt}):`;
           if (!hfApiKey) return null;
           try {
             const apiStart = performance.now();
-            const resp = await fetch('https://router.huggingface.co/novita/v3/openai/chat/completions', {
+            const resp = await chatbridgeFetch('https://router.huggingface.co/novita/v3/openai/chat/completions', {
               method: 'POST',
               headers: { 'Authorization': `Bearer ${hfApiKey}`, 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -3888,7 +3943,7 @@ Rewritten conversation (optimized for ${tgt}):`;
       try {
         const HF_API_KEY = await getHuggingFaceApiKey();
         const geminiApiKey = await getGeminiApiKey();
-        if (!HF_API_KEY && !geminiApiKey) {
+        if (!(await hasProviderAccess('huggingface')) && !(await hasProviderAccess('gemini'))) {
           return sendResponse({ ok: false, error: 'no_api_key', message: 'API key not configured. Configure Gemini or HuggingFace in ChatBridge Options.' });
         }
 
@@ -4069,7 +4124,7 @@ ${payload.text}`;
           
           for (let attempt = 0; attempt < maxRetries; attempt++) {
             const currentModel = await getNextAvailableModel(preferredModel);
-            const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${currentModel}:generateContent?key=${geminiApiKey}`;
+            const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${currentModel}:generateContent?key=${geminiApiKey || 'proxy'}`;
             const body = {
               contents: [{ parts: [{ text: promptText }] }],
               generationConfig: {
@@ -4082,7 +4137,7 @@ ${payload.text}`;
             let res;
             try {
               const apiStart = performance.now();
-              res = await fetch(endpoint, {
+              res = await chatbridgeFetch(endpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body)
@@ -4149,7 +4204,7 @@ ${payload.text}`;
         console.log(`[Llama] Calling HuggingFace router for ${action}...`);
 
         const apiStart = performance.now();
-        const res = await fetch(endpoint, {
+        const res = await chatbridgeFetch(endpoint, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -4211,14 +4266,14 @@ ${payload.text}`;
     (async () => {
       try {
         let geminiApiKey = await getGeminiApiKey();
-        if (!geminiApiKey) return sendResponse({ ok: false, error: 'no_api_key', message: 'Gemini API key not configured.' });
+        if (!(await hasProviderAccess('gemini'))) return sendResponse({ ok: false, error: 'no_api_key', message: 'Gemini API key not configured.' });
         const promptText = msg.prompt || msg.text;
         let lastError = null;
         const maxRetries = GEMINI_MODEL_PRIORITY.length;
 
         for (let attempt = 0; attempt < maxRetries; attempt++) {
           const currentModel = await getNextAvailableModel();
-          const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${currentModel}:generateContent?key=${geminiApiKey}`;
+          const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${currentModel}:generateContent?key=${geminiApiKey || 'proxy'}`;
           const body = {
             contents: [{ parts: [{ text: promptText }] }],
             generationConfig: { temperature: 0.2, topP: 0.9, topK: 20, maxOutputTokens: 4096 }
@@ -4226,7 +4281,7 @@ ${payload.text}`;
 
           try {
             const apiStart = performance.now();
-            const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+            const res = await chatbridgeFetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
             const apiDuration = performance.now() - apiStart;
             recordPerformanceMetric('api_latency', apiDuration);
             const text = await res.text();
@@ -4258,14 +4313,14 @@ ${payload.text}`;
     (async () => {
       try {
         let geminiApiKey = await getGeminiApiKey();
-        if (!geminiApiKey) return sendResponse({ ok: false, error: 'no_api_key', message: 'Gemini API key not configured.' });
+        if (!(await hasProviderAccess('gemini'))) return sendResponse({ ok: false, error: 'no_api_key', message: 'Gemini API key not configured.' });
         const promptText = msg.prompt || msg.text;
         let lastError = null;
         const maxRetries = GEMINI_MODEL_PRIORITY.length;
 
         for (let attempt = 0; attempt < maxRetries; attempt++) {
           const currentModel = await getNextAvailableModel();
-          const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${currentModel}:generateContent?key=${geminiApiKey}`;
+          const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${currentModel}:generateContent?key=${geminiApiKey || 'proxy'}`;
           const body = {
             contents: [{ parts: [{ text: promptText }] }],
             generationConfig: { temperature: 0.3, topP: 0.9, topK: 20, maxOutputTokens: 2048 }
@@ -4273,7 +4328,7 @@ ${payload.text}`;
 
           try {
             const apiStart = performance.now();
-            const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+            const res = await chatbridgeFetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
             const apiDuration = performance.now() - apiStart;
             recordPerformanceMetric('api_latency', apiDuration);
             const text = await res.text();
@@ -4313,7 +4368,7 @@ ${payload.text}`;
           let lastError = null;
           for (let attempt = 0; attempt < GEMINI_MODEL_PRIORITY.length; attempt++) {
             const currentModel = await getNextAvailableModel();
-            const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${currentModel}:generateContent?key=${geminiApiKey}`;
+            const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${currentModel}:generateContent?key=${geminiApiKey || 'proxy'}`;
             const body = {
               systemInstruction: systemInstruction ? { parts: [{ text: systemInstruction }] } : undefined,
               contents: [{ parts: [{ text: promptText }] }],
@@ -4322,7 +4377,7 @@ ${payload.text}`;
             if (!systemInstruction) delete body.systemInstruction;
             try {
               const apiStart = performance.now();
-              const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+              const res = await chatbridgeFetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
               const apiDuration = performance.now() - apiStart;
               recordPerformanceMetric('api_latency', apiDuration);
               const text = await res.text();

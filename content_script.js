@@ -5272,14 +5272,10 @@
         chrome.storage.local.get(['cb_theme'], (r) => {
           try {
             const theme = r?.cb_theme || 'dark';
-            // Remove all theme classes first
             host.classList.remove('cb-theme-light', 'cb-theme-synthwave', 'cb-theme-skeuomorphic', 'cb-theme-brutalism', 'cb-theme-glass');
-
-            // Apply selected theme
             if (theme !== 'dark') {
               host.classList.add(`cb-theme-${theme}`);
             }
-            // dark is default (no class needed)
           } catch (e) { }
         });
       }
@@ -10273,74 +10269,66 @@ ${chatText.substring(0, 10000)}`
     themeSection.appendChild(themeButtons);
     settingsContent.appendChild(themeSection);
 
-    // ============================================
-    // API Keys Section
-    // ============================================
-    const apiSection = document.createElement('div'); apiSection.style.cssText = 'padding-bottom: 16px; border-bottom: 1px solid var(--cb-border);';
-    const apiLabel = document.createElement('div'); apiLabel.style.cssText = 'font-weight: 600; margin-bottom: 10px; color: var(--cb-white);'; apiLabel.textContent = '🔑 API Keys';
-    apiSection.appendChild(apiLabel);
+    const apiSection = document.createElement('div');
+    apiSection.className = 'cb-settings-card';
+    apiSection.innerHTML = '<div class="cb-settings-card-head"><div class="cb-settings-card-title">API Keys</div></div><div class="cb-settings-card-desc">Stored locally in your browser. Required for summaries, Ask AI, and agents.</div>';
 
-    // Gemini API Key
-    const geminiKeyWrap = document.createElement('div'); geminiKeyWrap.style.cssText = 'margin-bottom: 10px;';
-    const geminiKeyLabel = document.createElement('div'); geminiKeyLabel.style.cssText = 'font-size: 11px; color: var(--cb-subtext); margin-bottom: 4px;'; geminiKeyLabel.textContent = 'Gemini API Key';
-    const geminiKeyRow = document.createElement('div'); geminiKeyRow.style.cssText = 'display: flex; gap: 6px;';
-    const geminiKeyInput = document.createElement('input'); geminiKeyInput.type = 'password'; geminiKeyInput.id = 'cb-gemini-key'; geminiKeyInput.placeholder = 'Enter Gemini API key...';
-    geminiKeyInput.style.cssText = 'flex: 1; background: var(--cb-bg); border: 1px solid var(--cb-border); color: var(--cb-white); padding: 8px; border-radius: 6px; font-size: 11px;';
-    const geminiKeyToggle = document.createElement('button'); geminiKeyToggle.className = 'cb-btn'; geminiKeyToggle.textContent = '👁'; geminiKeyToggle.title = 'Show/hide';
-    geminiKeyToggle.style.cssText = 'padding: 6px 10px;';
+    const geminiKeyWrap = document.createElement('div');
+    const geminiKeyLabel = document.createElement('div'); geminiKeyLabel.className = 'cb-settings-field-label'; geminiKeyLabel.textContent = 'Gemini API Key';
+    const geminiKeyRow = document.createElement('div'); geminiKeyRow.className = 'cb-settings-input-row';
+    const geminiKeyInput = document.createElement('input'); geminiKeyInput.type = 'password'; geminiKeyInput.id = 'cb-gemini-key'; geminiKeyInput.className = 'cb-settings-input'; geminiKeyInput.placeholder = 'AIzaSy...';
+    const geminiKeyToggle = document.createElement('button'); geminiKeyToggle.className = 'cb-btn cb-settings-icon-btn'; geminiKeyToggle.textContent = '👁'; geminiKeyToggle.title = 'Show/hide';
     geminiKeyRow.appendChild(geminiKeyInput); geminiKeyRow.appendChild(geminiKeyToggle);
     geminiKeyWrap.appendChild(geminiKeyLabel); geminiKeyWrap.appendChild(geminiKeyRow);
     apiSection.appendChild(geminiKeyWrap);
 
-    // Hugging Face API Key
-    const hfKeyWrap = document.createElement('div'); hfKeyWrap.style.cssText = 'margin-bottom: 10px;';
-    const hfKeyLabel = document.createElement('div'); hfKeyLabel.style.cssText = 'font-size: 11px; color: var(--cb-subtext); margin-bottom: 4px;'; hfKeyLabel.textContent = 'Hugging Face Token';
-    const hfKeyRow = document.createElement('div'); hfKeyRow.style.cssText = 'display: flex; gap: 6px;';
-    const hfKeyInput = document.createElement('input'); hfKeyInput.type = 'password'; hfKeyInput.id = 'cb-hf-key'; hfKeyInput.placeholder = 'Enter HF token...';
-    hfKeyInput.style.cssText = 'flex: 1; background: var(--cb-bg); border: 1px solid var(--cb-border); color: var(--cb-white); padding: 8px; border-radius: 6px; font-size: 11px;';
-    const hfKeyToggle = document.createElement('button'); hfKeyToggle.className = 'cb-btn'; hfKeyToggle.textContent = '👁'; hfKeyToggle.title = 'Show/hide';
-    hfKeyToggle.style.cssText = 'padding: 6px 10px;';
+    const hfKeyWrap = document.createElement('div');
+    const hfKeyLabel = document.createElement('div'); hfKeyLabel.className = 'cb-settings-field-label'; hfKeyLabel.textContent = 'Hugging Face Token';
+    const hfKeyRow = document.createElement('div'); hfKeyRow.className = 'cb-settings-input-row';
+    const hfKeyInput = document.createElement('input'); hfKeyInput.type = 'password'; hfKeyInput.id = 'cb-hf-key'; hfKeyInput.className = 'cb-settings-input'; hfKeyInput.placeholder = 'hf_...';
+    const hfKeyToggle = document.createElement('button'); hfKeyToggle.className = 'cb-btn cb-settings-icon-btn'; hfKeyToggle.textContent = '👁'; hfKeyToggle.title = 'Show/hide';
     hfKeyRow.appendChild(hfKeyInput); hfKeyRow.appendChild(hfKeyToggle);
     hfKeyWrap.appendChild(hfKeyLabel); hfKeyWrap.appendChild(hfKeyRow);
     apiSection.appendChild(hfKeyWrap);
 
-    // Save keys button
-    const saveKeysBtn = document.createElement('button'); saveKeysBtn.className = 'cb-btn cb-btn-primary'; saveKeysBtn.textContent = '💾 Save Keys';
-    saveKeysBtn.style.cssText = 'width: 100%; padding: 8px;';
+    const saveKeysBtn = document.createElement('button'); saveKeysBtn.className = 'cb-btn cb-btn-primary'; saveKeysBtn.textContent = 'Save API Keys';
+    saveKeysBtn.style.cssText = 'width:100%;padding:10px;font-size:11px;font-weight:700;';
     apiSection.appendChild(saveKeysBtn);
     settingsContent.appendChild(apiSection);
 
-    // ============================================
-    // Analytics Section (Phase 4)
-    // ============================================
-    const analyticsSection = document.createElement('div'); analyticsSection.style.cssText = 'padding-bottom: 16px; border-bottom: 1px solid var(--cb-border);';
-    const analyticsLabel = document.createElement('div'); analyticsLabel.style.cssText = 'font-weight: 600; margin-bottom: 10px; color: var(--cb-white);'; analyticsLabel.textContent = '📊 Privacy Analytics';
-    const analyticsHint = document.createElement('div'); analyticsHint.style.cssText = 'font-size:11px;color:var(--cb-subtext);line-height:1.5;margin-bottom:10px;'; analyticsHint.textContent = 'Opt-in only. Usage events remain local in your browser.';
-    const analyticsToggleRow = document.createElement('label'); analyticsToggleRow.style.cssText = 'display:flex;align-items:center;gap:8px;font-size:11px;color:var(--cb-white);margin-bottom:10px;cursor:pointer;';
-    const analyticsToggle = document.createElement('input'); analyticsToggle.type = 'checkbox'; analyticsToggle.id = 'cb-analytics-optin'; analyticsToggle.style.accentColor = 'var(--cb-accent-primary)';
-    const analyticsToggleText = document.createElement('span'); analyticsToggleText.textContent = 'Enable local usage analytics';
-    analyticsToggleRow.appendChild(analyticsToggle); analyticsToggleRow.appendChild(analyticsToggleText);
-    const analyticsActions = document.createElement('div'); analyticsActions.style.cssText = 'display:flex;gap:8px;';
-    const analyticsExportBtn = document.createElement('button'); analyticsExportBtn.className = 'cb-btn'; analyticsExportBtn.style.cssText = 'flex:1;padding:8px;font-size:11px;'; analyticsExportBtn.textContent = 'Export Analytics';
-    const analyticsClearBtn = document.createElement('button'); analyticsClearBtn.className = 'cb-btn'; analyticsClearBtn.style.cssText = 'flex:1;padding:8px;font-size:11px;'; analyticsClearBtn.textContent = 'Clear Analytics';
+    const analyticsSection = document.createElement('div');
+    analyticsSection.className = 'cb-settings-card';
+    analyticsSection.innerHTML = '<div class="cb-settings-card-head"><div class="cb-settings-card-title">Privacy Analytics</div></div>';
+    const analyticsToggleRow = document.createElement('div');
+    analyticsToggleRow.className = 'cb-settings-toggle-row';
+    const analyticsToggleCopy = document.createElement('div');
+    analyticsToggleCopy.className = 'cb-settings-toggle-copy';
+    analyticsToggleCopy.innerHTML = '<strong>Local usage analytics</strong><span>Opt-in only. Events never leave your browser.</span>';
+    const analyticsToggle = document.createElement('input');
+    analyticsToggle.type = 'checkbox';
+    analyticsToggle.id = 'cb-analytics-optin';
+    analyticsToggle.style.accentColor = 'var(--cb-accent-primary)';
+    analyticsToggleRow.appendChild(analyticsToggleCopy);
+    analyticsToggleRow.appendChild(analyticsToggle);
+    const analyticsActions = document.createElement('div');
+    analyticsActions.className = 'cb-settings-actions';
+    const analyticsExportBtn = document.createElement('button'); analyticsExportBtn.className = 'cb-btn'; analyticsExportBtn.textContent = 'Export';
+    const analyticsClearBtn = document.createElement('button'); analyticsClearBtn.className = 'cb-btn'; analyticsClearBtn.textContent = 'Clear';
     analyticsActions.appendChild(analyticsExportBtn); analyticsActions.appendChild(analyticsClearBtn);
-    analyticsSection.appendChild(analyticsLabel);
-    analyticsSection.appendChild(analyticsHint);
     analyticsSection.appendChild(analyticsToggleRow);
     analyticsSection.appendChild(analyticsActions);
     settingsContent.appendChild(analyticsSection);
 
-    // ============================================
-    // Detail Level Section
-    // ============================================
-    const detailSection = document.createElement('div'); detailSection.style.cssText = 'padding-bottom: 16px; border-bottom: 1px solid var(--cb-border);';
-    const detailLabel = document.createElement('div'); detailLabel.style.cssText = 'font-weight: 600; margin-bottom: 10px; color: var(--cb-white);'; detailLabel.textContent = '📊 Response Detail Level';
-    const detailButtons = document.createElement('div'); detailButtons.style.cssText = 'display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;';
-    const btnConcise = document.createElement('button'); btnConcise.className = 'cb-btn'; btnConcise.textContent = '⚡ Concise'; btnConcise.dataset.level = 'concise'; btnConcise.id = 'cb-detail-concise';
-    const btnDetailed = document.createElement('button'); btnDetailed.className = 'cb-btn'; btnDetailed.textContent = '📝 Detailed'; btnDetailed.dataset.level = 'detailed'; btnDetailed.id = 'cb-detail-detailed';
-    const btnExpert = document.createElement('button'); btnExpert.className = 'cb-btn'; btnExpert.textContent = '🎓 Expert'; btnExpert.dataset.level = 'expert'; btnExpert.id = 'cb-detail-expert';
+    const detailSection = document.createElement('div');
+    detailSection.className = 'cb-settings-card';
+    detailSection.innerHTML = '<div class="cb-settings-card-head"><div class="cb-settings-card-title">Response Detail</div></div><div class="cb-settings-card-desc">Default verbosity for AI-powered tools in the sidebar.</div>';
+    const detailButtons = document.createElement('div');
+    detailButtons.className = 'cb-settings-grid-3';
+    const btnConcise = document.createElement('button'); btnConcise.className = 'cb-settings-pill'; btnConcise.textContent = '⚡ Concise'; btnConcise.dataset.level = 'concise'; btnConcise.id = 'cb-detail-concise';
+    const btnDetailed = document.createElement('button'); btnDetailed.className = 'cb-settings-pill'; btnDetailed.textContent = '📝 Detailed'; btnDetailed.dataset.level = 'detailed'; btnDetailed.id = 'cb-detail-detailed';
+    const btnExpert = document.createElement('button'); btnExpert.className = 'cb-settings-pill'; btnExpert.textContent = '🎓 Expert'; btnExpert.dataset.level = 'expert'; btnExpert.id = 'cb-detail-expert';
     detailButtons.appendChild(btnConcise); detailButtons.appendChild(btnDetailed); detailButtons.appendChild(btnExpert);
-    detailSection.appendChild(detailLabel); detailSection.appendChild(detailButtons);
+    detailSection.appendChild(detailButtons);
     settingsContent.appendChild(detailSection);
 
     
@@ -10348,26 +10336,28 @@ ${chatText.substring(0, 10000)}`
     // Response Calibrator Section
     // ============================================
     const calSection = document.createElement('div');
-    calSection.style.cssText = 'padding-bottom: 16px; border-bottom: 1px solid var(--cb-border);';
+    calSection.className = 'cb-settings-card';
     const calLabel = document.createElement('div');
-    calLabel.style.cssText = 'font-weight: 600; margin-bottom: 10px; color: var(--cb-white); display: flex; justify-content: space-between; align-items: center;';
-    
-    const calLabelText = document.createElement('span');
-    calLabelText.textContent = '🎛️ Response Calibrator';
-    
+    calLabel.className = 'cb-settings-card-head';
+    const calLabelText = document.createElement('div');
+    calLabelText.className = 'cb-settings-card-title';
+    calLabelText.textContent = 'Response Calibrator';
     const calEnableBtn = document.createElement('button');
-    calEnableBtn.className = 'cb-btn';
-    calEnableBtn.style.cssText = 'padding: 4px 8px; font-size: 10px;';
-    
+    calEnableBtn.className = 'cb-btn cb-settings-link-btn';
     calLabel.appendChild(calLabelText);
     calLabel.appendChild(calEnableBtn);
     calSection.appendChild(calLabel);
+    const calDesc = document.createElement('div');
+    calDesc.className = 'cb-settings-card-desc';
+    calDesc.textContent = 'Tailor AI output to your experience level and domain.';
+    calSection.appendChild(calDesc);
 
     const calTogglesWrap = document.createElement('div');
-    calTogglesWrap.style.cssText = 'display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 10px;';
-    const btnCalBeginner = document.createElement('button'); btnCalBeginner.className = 'cb-btn'; btnCalBeginner.textContent = 'Beginner'; btnCalBeginner.dataset.level = 'Beginner';
-    const btnCalNormal = document.createElement('button'); btnCalNormal.className = 'cb-btn'; btnCalNormal.textContent = 'Normal'; btnCalNormal.dataset.level = 'Normal';
-    const btnCalExpert = document.createElement('button'); btnCalExpert.className = 'cb-btn'; btnCalExpert.textContent = 'Expert'; btnCalExpert.dataset.level = 'Expert';
+    calTogglesWrap.className = 'cb-settings-grid-3';
+    calTogglesWrap.style.marginBottom = '10px';
+    const btnCalBeginner = document.createElement('button'); btnCalBeginner.className = 'cb-settings-pill'; btnCalBeginner.textContent = 'Beginner'; btnCalBeginner.dataset.level = 'Beginner';
+    const btnCalNormal = document.createElement('button'); btnCalNormal.className = 'cb-settings-pill'; btnCalNormal.textContent = 'Normal'; btnCalNormal.dataset.level = 'Normal';
+    const btnCalExpert = document.createElement('button'); btnCalExpert.className = 'cb-settings-pill'; btnCalExpert.textContent = 'Expert'; btnCalExpert.dataset.level = 'Expert';
     calTogglesWrap.appendChild(btnCalBeginner); calTogglesWrap.appendChild(btnCalNormal); calTogglesWrap.appendChild(btnCalExpert);
     calSection.appendChild(calTogglesWrap);
 
@@ -10377,14 +10367,12 @@ ${chatText.substring(0, 10000)}`
     const createCtxInput = (label, placeholder) => {
        const wrap = document.createElement('div');
        const lbl = document.createElement('div');
-       lbl.style.cssText = 'font-size: 10px; color: var(--cb-subtext); margin-bottom: 4px; text-transform: uppercase;';
+       lbl.className = 'cb-settings-field-label';
        lbl.textContent = label;
        const inp = document.createElement('input');
        inp.type = 'text';
        inp.placeholder = placeholder;
-       inp.style.cssText = 'width: 100%; background: var(--cb-bg); border: 1px solid var(--cb-border); color: var(--cb-white); padding: 8px; border-radius: 6px; font-size: 11px; outline:none; transition:border 0.2s; box-sizing: border-box;';
-       inp.addEventListener('focus', () => inp.style.borderColor = 'var(--cb-accent-primary)');
-       inp.addEventListener('blur', () => inp.style.borderColor = 'var(--cb-border)');
+       inp.className = 'cb-settings-input';
        wrap.appendChild(lbl);
        wrap.appendChild(inp);
        return {wrap, inp};
@@ -10420,9 +10408,7 @@ ${chatText.substring(0, 10000)}`
       calEnableBtn.style.background = calState.enabled ? 'rgba(74, 222, 128, 0.1)' : 'transparent';
 
       [btnCalBeginner, btnCalNormal, btnCalExpert].forEach(b => {
-        const isActive = (b.dataset.level === calState.level);
-        b.style.background = isActive ? 'var(--cb-accent-primary)' : '';
-        b.style.color = isActive ? '#fff' : '';
+        b.classList.toggle('is-active', b.dataset.level === calState.level);
       });
       
       calDetailsWrap.style.opacity = calState.enabled ? '1' : '0.5';
@@ -10462,33 +10448,111 @@ ${chatText.substring(0, 10000)}`
 
     updateCalUI();
 
+    const sitesSection = document.createElement('div');
+    sitesSection.className = 'cb-settings-card';
+    sitesSection.innerHTML = '<div class="cb-settings-card-head"><div class="cb-settings-card-title">Site Visibility</div></div><div class="cb-settings-card-desc">Sites hidden via the avatar × menu. Re-enable them here or in the dashboard.</div>';
+    const settingsSitesEmpty = document.createElement('div');
+    settingsSitesEmpty.className = 'cb-settings-site-empty';
+    settingsSitesEmpty.id = 'cb-settings-sites-empty';
+    settingsSitesEmpty.textContent = 'No blocked sites on this device.';
+    const settingsSitesList = document.createElement('div');
+    settingsSitesList.className = 'cb-settings-site-list';
+    settingsSitesList.id = 'cb-settings-sites-list';
+    sitesSection.appendChild(settingsSitesEmpty);
+    sitesSection.appendChild(settingsSitesList);
+    settingsContent.appendChild(sitesSection);
+
+    const themeButtonsAll = [btnDarkTheme, btnLightTheme, btnSynthwaveTheme, btnSkeuomorphicTheme, btnBrutalismTheme, btnGlassTheme];
+    const detailButtonsAll = [btnConcise, btnDetailed, btnExpert];
+
+    function markSettingsPills(buttons, activeValue, attr) {
+      buttons.forEach((btn) => {
+        if (!btn) return;
+        btn.classList.toggle('is-active', String(btn.dataset[attr] || '') === String(activeValue || ''));
+      });
+    }
+
+    function renderSettingsSites() {
+      if (!bootstrap.getDisabledSites) return;
+      bootstrap.getDisabledSites((sites) => {
+        settingsSitesList.innerHTML = '';
+        if (!sites.length) {
+          settingsSitesEmpty.style.display = 'block';
+          settingsSitesList.style.display = 'none';
+          return;
+        }
+        settingsSitesEmpty.style.display = 'none';
+        settingsSitesList.style.display = 'grid';
+        sites.forEach((site) => {
+          const row = document.createElement('div');
+          row.className = 'cb-settings-site-row';
+          const label = document.createElement('span');
+          label.textContent = site;
+          const btn = document.createElement('button');
+          btn.className = 'cb-btn cb-settings-link-btn';
+          btn.textContent = 'Enable';
+          btn.addEventListener('click', () => {
+            if (!bootstrap.removeDisabledSite) return;
+            bootstrap.removeDisabledSite(site, () => {
+              toast(`${site} re-enabled. Refresh that tab to see ChatBridge.`);
+              renderSettingsSites();
+            });
+          });
+          row.appendChild(label);
+          row.appendChild(btn);
+          settingsSitesList.appendChild(row);
+        });
+      });
+    }
+
+    function loadSettingsState() {
+      try {
+        if (typeof chrome === 'undefined' || !chrome.storage || !chrome.storage.local) return;
+        chrome.storage.local.get(['chatbridge_gemini_key', 'chatbridge_hf_key', 'cb_detail_level', 'cb_analytics_optin', 'cb_theme'], (result) => {
+          if (chrome.runtime.lastError || !result) return;
+          if (result.chatbridge_gemini_key) geminiKeyInput.value = result.chatbridge_gemini_key;
+          if (result.chatbridge_hf_key) hfKeyInput.value = result.chatbridge_hf_key;
+          analyticsToggle.checked = !!result.cb_analytics_optin;
+          CBAnalytics.setEnabled(analyticsToggle.checked);
+          markSettingsPills(themeButtonsAll, result.cb_theme || 'dark', 'theme');
+          markSettingsPills(detailButtonsAll, result.cb_detail_level || 'concise', 'level');
+        });
+      } catch (e) { debugLog('load settings failed', e); }
+      renderSettingsSites();
+    }
+
 // ============================================
-    // Keyboard Shortcuts Section
-    // ============================================
-    const shortcutsSection = document.createElement('div'); shortcutsSection.style.cssText = 'padding-bottom: 16px; border-bottom: 1px solid var(--cb-border);';
-    const shortcutsLabel = document.createElement('div'); shortcutsLabel.style.cssText = 'font-weight: 600; margin-bottom: 10px; color: var(--cb-white);'; shortcutsLabel.textContent = '⌨️ Keyboard Shortcuts';
-    const shortcutsList = document.createElement('div'); shortcutsList.style.cssText = 'display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 11px;';
+    const shortcutsSection = document.createElement('div');
+    shortcutsSection.className = 'cb-settings-card';
+    shortcutsSection.innerHTML = '<div class="cb-settings-card-head"><div class="cb-settings-card-title">Keyboard Shortcuts</div></div>';
+    const shortcutsList = document.createElement('div');
+    shortcutsList.className = 'cb-settings-kbd-grid';
     shortcutsList.innerHTML = `
-      <div style="display:flex;justify-content:space-between;padding:4px 8px;background:var(--cb-bg);border-radius:4px;"><span>Scan Chat</span><kbd style="background:var(--cb-border);padding:2px 6px;border-radius:3px;">S</kbd></div>
-      <div style="display:flex;justify-content:space-between;padding:4px 8px;background:var(--cb-bg);border-radius:4px;"><span>Restore</span><kbd style="background:var(--cb-border);padding:2px 6px;border-radius:3px;">R</kbd></div>
-      <div style="display:flex;justify-content:space-between;padding:4px 8px;background:var(--cb-bg);border-radius:4px;"><span>Copy</span><kbd style="background:var(--cb-border);padding:2px 6px;border-radius:3px;">C</kbd></div>
-      <div style="display:flex;justify-content:space-between;padding:4px 8px;background:var(--cb-bg);border-radius:4px;"><span>Close</span><kbd style="background:var(--cb-border);padding:2px 6px;border-radius:3px;">Esc</kbd></div>
+      <div class="cb-settings-kbd-row"><span>Scan chat</span><kbd>S</kbd></div>
+      <div class="cb-settings-kbd-row"><span>Restore</span><kbd>R</kbd></div>
+      <div class="cb-settings-kbd-row"><span>Copy</span><kbd>C</kbd></div>
+      <div class="cb-settings-kbd-row"><span>Close panel</span><kbd>Esc</kbd></div>
     `;
-    shortcutsSection.appendChild(shortcutsLabel); shortcutsSection.appendChild(shortcutsList);
+    shortcutsSection.appendChild(shortcutsList);
     settingsContent.appendChild(shortcutsSection);
 
-    // ============================================
-    // About Section
-    // ============================================
-    const aboutSection = document.createElement('div'); aboutSection.style.cssText = 'text-align: center; padding-top: 8px;';
-    aboutSection.innerHTML = `
-      <div style="font-size: 18px; margin-bottom: 6px;">🌉 ChatBridge</div>
-      <div style="font-size: 11px; color: var(--cb-subtext); margin-bottom: 8px;">Version 1.0.0 • Your AI conversation companion</div>
-      <div style="display: flex; justify-content: center; gap: 12px;">
-        <a href="https://github.com/Naeha-S/ChatBridge" target="_blank" style="color: var(--cb-accent-primary); font-size: 11px; text-decoration: none;">📦 GitHub</a>
-        <a href="mailto:feedback@chatbridge.dev" style="color: var(--cb-accent-primary); font-size: 11px; text-decoration: none;">💬 Feedback</a>
-      </div>
-    `;
+    const aboutSection = document.createElement('div');
+    aboutSection.className = 'cb-settings-about';
+    const settingsVersionEl = document.createElement('div');
+    settingsVersionEl.className = 'cb-settings-about-meta';
+    settingsVersionEl.id = 'cb-settings-version';
+    try {
+      const manifest = chrome.runtime.getManifest();
+      settingsVersionEl.textContent = `Version ${manifest && manifest.version ? manifest.version : '1.4.2'} • Local-first AI workspace`;
+    } catch (_) {
+      settingsVersionEl.textContent = 'Version 1.4.2 • Local-first AI workspace';
+    }
+    aboutSection.innerHTML = '<div class="cb-settings-about-logo">🌉 ChatBridge</div>';
+    aboutSection.appendChild(settingsVersionEl);
+    const aboutLinks = document.createElement('div');
+    aboutLinks.className = 'cb-settings-about-links';
+    aboutLinks.innerHTML = '<a href="https://github.com/Naeha-S/ChatBridge" target="_blank" rel="noopener">GitHub</a><a href="mailto:feedback@chatbridge.dev">Feedback</a>';
+    aboutSection.appendChild(aboutLinks);
     settingsContent.appendChild(aboutSection);
 
     settingsPanel.appendChild(settingsContent);
@@ -10860,44 +10924,44 @@ ${chatText.substring(0, 10000)}`
     btnSettings.addEventListener('click', () => {
       try {
         closeAllViews();
-        const settingsPanel = shadow.getElementById('cb-settings-panel');
-        if (settingsPanel) {
-          settingsPanel.style.display = settingsPanel.style.display === 'none' ? 'block' : 'none';
-          settingsPanel.classList.toggle('cb-view-active');
+        const panelEl = shadow.getElementById('cb-settings-panel');
+        if (!panelEl) return;
+        const isOpen = panelEl.classList.contains('cb-view-active');
+        if (isOpen) {
+          panelEl.classList.remove('cb-view-active');
+        } else {
+          panelEl.classList.add('cb-view-active');
+          loadSettingsState();
         }
       } catch (e) { debugLog('settings toggle failed', e); }
     });
 
-    // Close settings button
     btnCloseSettings.addEventListener('click', () => {
       try {
-        const settingsPanel = shadow.getElementById('cb-settings-panel');
-        if (settingsPanel) {
-          settingsPanel.style.display = 'none';
-          settingsPanel.classList.remove('cb-view-active');
-        }
+        const panelEl = shadow.getElementById('cb-settings-panel');
+        if (panelEl) panelEl.classList.remove('cb-view-active');
       } catch (e) { }
     });
 
+    btnOpenDashboard.addEventListener('click', () => {
+      try {
+        if (chrome.runtime.openOptionsPage) chrome.runtime.openOptionsPage();
+        else window.open(chrome.runtime.getURL('options.html'), '_blank');
+      } catch (e) {
+        toast('Could not open dashboard');
+      }
+    });
+
     // Theme switchers
-    // Universal theme button handler for all 6 themes
     [btnDarkTheme, btnLightTheme, btnSynthwaveTheme, btnSkeuomorphicTheme, btnBrutalismTheme, btnGlassTheme].forEach(btn => {
       if (!btn) return;
       btn.addEventListener('click', () => {
         try {
           const theme = btn.dataset.theme;
-          // Remove all theme classes
           host.classList.remove('cb-theme-light', 'cb-theme-synthwave', 'cb-theme-skeuomorphic', 'cb-theme-brutalism', 'cb-theme-glass');
-
-          // Add new theme class (except for dark which is default)
-          if (theme !== 'dark') {
-            host.classList.add(`cb-theme-${theme}`);
-          }
-
-          // Save preference
+          if (theme !== 'dark') host.classList.add(`cb-theme-${theme}`);
           chrome.storage.local.set({ cb_theme: theme });
-
-          // Toast with emoji
+          markSettingsPills(themeButtonsAll, theme, 'theme');
           const emojis = { light: '☀️', dark: '🌙', synthwave: '🌆', skeuomorphic: '🔩', brutalism: '🟨', glass: '🫧' };
           const names = { light: 'Light', dark: 'Dark', synthwave: 'Synthwave', skeuomorphic: 'Skeuomorphic', brutalism: 'Neo Brutalism', glass: 'Claymorphism' };
           toast(`${emojis[theme] || '🎨'} ${names[theme] || theme} theme enabled`);
@@ -10946,8 +11010,8 @@ ${chatText.substring(0, 10000)}`
         });
 
         toast('✓ API keys saved');
-        saveKeysBtn.textContent = '✅ Saved!';
-        setTimeout(() => { saveKeysBtn.textContent = '💾 Save Keys'; }, 2000);
+        saveKeysBtn.textContent = 'Saved ✓';
+        setTimeout(() => { saveKeysBtn.textContent = 'Save API Keys'; }, 2000);
       } catch (e) {
         const errMsg = e && e.message ? e.message : String(e);
         if (errMsg.includes('context invalidated')) {
@@ -10959,34 +11023,7 @@ ${chatText.substring(0, 10000)}`
       }
     });
 
-    // Load saved keys when settings opens
-    btnSettings.addEventListener('click', async () => {
-      try {
-        if (typeof chrome === 'undefined' || !chrome.storage || !chrome.storage.local) {
-          debugLog('load settings failed: chrome.storage.local is not available');
-          return;
-        }
-        chrome.storage.local.get(['chatbridge_gemini_key', 'chatbridge_hf_key', 'cb_detail_level', 'cb_analytics_optin'], (result) => {
-          if (chrome.runtime.lastError) {
-            debugLog('load settings runtime error', chrome.runtime.lastError);
-            return;
-          }
-          if (result) {
-            if (result.chatbridge_gemini_key) geminiKeyInput.value = result.chatbridge_gemini_key;
-            if (result.chatbridge_hf_key) hfKeyInput.value = result.chatbridge_hf_key;
-            analyticsToggle.checked = !!result.cb_analytics_optin;
-            CBAnalytics.setEnabled(analyticsToggle.checked);
-
-            // Highlight current detail level
-            const level = result.cb_detail_level || 'concise';
-            [btnConcise, btnDetailed, btnExpert].forEach(btn => {
-              btn.style.background = btn.dataset.level === level ? 'var(--cb-accent-primary)' : '';
-              btn.style.color = btn.dataset.level === level ? '#fff' : '';
-            });
-          }
-        });
-      } catch (e) { debugLog('load settings failed', e); }
-    });
+    // Load saved keys when settings opens — handled by loadSettingsState()
 
     analyticsToggle.addEventListener('change', () => {
       CBAnalytics.setEnabled(analyticsToggle.checked);
@@ -11020,17 +11057,8 @@ ${chatText.substring(0, 10000)}`
       btn.addEventListener('click', () => {
         try {
           const level = btn.dataset.level;
-
-          // Update visual state
-          [btnConcise, btnDetailed, btnExpert].forEach(b => {
-            b.style.background = b === btn ? 'var(--cb-accent-primary)' : '';
-            b.style.color = b === btn ? '#fff' : '';
-          });
-
-          // Save preference
+          markSettingsPills(detailButtonsAll, level, 'level');
           chrome.storage.local.set({ cb_detail_level: level });
-
-          // Toast
           const labels = { concise: '⚡ Concise', detailed: '📝 Detailed', expert: '🎓 Expert' };
           toast(`${labels[level]} mode enabled`);
         } catch (e) { debugLog('detail level switch failed', e); }
