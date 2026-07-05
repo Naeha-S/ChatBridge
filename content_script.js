@@ -9804,7 +9804,6 @@ ${chatText.substring(0, 8000)}`
         <div style="margin-bottom:12px;">
           <label class="cs-label">Language</label>
           <select id="tk-code-lang" class="cs-select">
-            <option value="javascript">JavaScript</option>
             <option value="html">HTML (runs in iframe)</option>
             <option value="python">Python (copy + open editor)</option>
           </select>
@@ -9845,45 +9844,7 @@ ${chatText.substring(0, 8000)}`
 
         if (!code.trim()) { toast('Enter some code first'); return; }
 
-        if (lang === 'javascript') {
-          outputEl.innerHTML = '<div style="font-size:11px;color:var(--cb-subtext);margin-bottom:4px;">Output:</div>';
-          const outBox = document.createElement('pre');
-          outBox.className = 'cs-out-box';
-          outputEl.appendChild(outBox);
-
-          // Run JS in a sandboxed iframe to prevent access to extension context
-          const sbIframe = document.createElement('iframe');
-          sbIframe.sandbox = 'allow-scripts';
-          sbIframe.style.display = 'none';
-          document.body.appendChild(sbIframe);
-          const sbHtml = `<!DOCTYPE html><html><body><script>
-var logs = [];
-var fakeConsole = {
-  log: function() { var a = Array.prototype.slice.call(arguments); logs.push(a.map(function(x){ return typeof x === 'object' ? JSON.stringify(x, null, 2) : String(x); }).join(' ')); },
-  error: function() { logs.push('ERROR: ' + Array.prototype.slice.call(arguments).join(' ')); },
-  warn: function() { logs.push('WARN: ' + Array.prototype.slice.call(arguments).join(' ')); }
-};
-try {
-  var result = (new Function('console', ${JSON.stringify(code)}))(fakeConsole);
-  if (result !== undefined && !logs.length) logs.push(String(result));
-  parent.postMessage({ type: 'cb-sandbox-result', output: logs.join('\\n') || '(no output)', error: false }, '*');
-} catch (e) {
-  parent.postMessage({ type: 'cb-sandbox-result', output: 'Error: ' + e.message, error: true }, '*');
-}
-<\/script></body></html>`;
-          const onMsg = (ev) => {
-            if (ev.source === sbIframe.contentWindow && ev.data && ev.data.type === 'cb-sandbox-result') {
-              window.removeEventListener('message', onMsg);
-              outBox.textContent = ev.data.output;
-              if (ev.data.error) outBox.style.color = '#ef4444';
-              try { sbIframe.remove(); } catch (_) { }
-            }
-          };
-          window.addEventListener('message', onMsg);
-          sbIframe.srcdoc = sbHtml;
-          // Timeout fallback in case sandbox doesn't respond
-          setTimeout(() => { window.removeEventListener('message', onMsg); try { sbIframe.remove(); } catch (_) { } if (!outBox.textContent) outBox.textContent = '(timed out)'; }, 5000);
-        } else if (lang === 'html') {
+        if (lang === 'html') {
           outputEl.innerHTML = '<div style="font-size:11px;color:var(--cb-subtext);margin-bottom:4px;">Preview:</div>';
           const iframe = document.createElement('iframe');
           iframe.style.cssText = 'width:100%;min-height:200px;border-radius:6px;border:1px solid var(--cb-border);background:#fff;';

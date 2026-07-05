@@ -4,7 +4,7 @@ import {
   testCloudProxyConnection,
   invalidateCloudProxyCache,
 } from './core/cloudProxy.js';
-import AnalyticsManager from './core/analytics.js';
+import AnalyticsManager from './core/telemetry.js';
 
 
 // background.js
@@ -86,12 +86,9 @@ async function recordRequest(limiterName) {
 
 // --- Model Failover State (persisted to chrome.storage.session) ---
 const GEMINI_MODEL_PRIORITY = [
-  'gemini-3.5-flash',         // Fastest & newest stable
-  'gemini-2.5-flash',         // Stable mid-generation
-  'gemini-1.5-flash',         // Extremely reliable legacy fallback
-  'gemini-3.1-pro',           // High quality newer stable
-  'gemini-2.5-pro',           // High quality mid-generation
-  'gemini-1.5-pro'            // High quality legacy fallback
+  'gemini-2.0-flash',         // Fastest & newest stable
+  'gemini-1.5-pro',           // High quality
+  'gemini-1.5-flash'          // Extremely reliable legacy fallback
 ];
 
 const MAX_MODEL_FAILURES = 1;
@@ -1433,15 +1430,15 @@ async function fetchEmbeddingViaGemini(text, options = {}) {
 }
 
 async function fetchEmbeddingPreferred(text, options = {}) {
-  // Priority 1: Try Gemini (user has saved it for Ask AI)
+  // Priority 1: Use local embedding via content script (Transformers.js/ONNX) to avoid BYOK costs/limits
   try {
-    const gemini = await fetchEmbeddingViaGemini(text, options);
-    if (gemini && Array.isArray(gemini.vector)) return gemini;
+    const local = await getLocalEmbeddingViaContent(text);
+    if (local && Array.isArray(local)) return { vector: local, provider: 'local', model: 'content-script-transformer' };
   } catch (e) {
-    console.debug('[ChatBridge] Gemini embedding failed:', e.message);
+    console.debug('[ChatBridge] Local embedding failed:', e.message);
   }
 
-  // Priority 2: Try NVIDIA
+  // Priority 2: Try NVIDIA if local fails
   try {
     const nvidia = await fetchEmbeddingNvidia(text);
     if (nvidia && Array.isArray(nvidia.vector)) return nvidia;
@@ -1449,12 +1446,12 @@ async function fetchEmbeddingPreferred(text, options = {}) {
     console.debug('[ChatBridge] NVIDIA embedding failed:', e.message);
   }
 
-  // Priority 3: Fall back to local embedding via content script
+  // Priority 3: Try Gemini (only if user has BYOK set up, but we deprioritize it)
   try {
-    const local = await getLocalEmbeddingViaContent(text);
-    if (local && Array.isArray(local)) return { vector: local, provider: 'local', model: 'content-script-transformer' };
+    const gemini = await fetchEmbeddingViaGemini(text, options);
+    if (gemini && Array.isArray(gemini.vector)) return gemini;
   } catch (e) {
-    console.debug('[ChatBridge] Local embedding failed:', e.message);
+    console.debug('[ChatBridge] Gemini embedding failed:', e.message);
   }
 
   return null;

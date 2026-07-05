@@ -236,7 +236,7 @@
     const optionsApiWarning = document.getElementById('options-api-warning');
     if (apiStatusEl) {
       apiStatusEl.textContent = 'Cloud Gateway';
-      apiStatusEl.style.color = 'var(--success)';
+      apiStatusEl.style.color = 'var(--ok)';
     }
     if (optionsApiWarning) {
       optionsApiWarning.style.display = 'none';
@@ -309,15 +309,15 @@
 
       sites.forEach((site) => {
         const row = document.createElement('div');
-        row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border-radius:12px;border:1px solid var(--border);background:var(--bg-elevated);';
+        row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg-input);';
 
         const label = document.createElement('div');
-        label.style.cssText = 'font-size:13px;color:var(--text-primary);font-weight:600;';
+        label.style.cssText = 'font-size:13px;color:var(--text);font-weight:500;font-family:monospace;';
         label.textContent = site;
 
         const hint = document.createElement('div');
-        hint.style.cssText = 'font-size:11px;color:var(--text-secondary);margin-top:2px;';
-        hint.textContent = 'Avatar and sidebar blocked';
+        hint.style.cssText = 'font-size:11px;color:var(--text-2);margin-top:2px;';
+        hint.textContent = 'Avatar and sidebar hidden';
 
         const copyWrap = document.createElement('div');
         copyWrap.appendChild(label);
@@ -552,7 +552,7 @@
     document.body.appendChild(toast);
 
     setTimeout(() => {
-      toast.style.animation = 'slideOut 0.3s ease forwards';
+      toast.style.animation = 'toastOut 0.25s ease forwards';
       setTimeout(() => toast.remove(), 300);
     }, 3000);
   }
@@ -632,7 +632,7 @@
       const y = 20 + idx * barSpacing;
       
       // Draw label
-      ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--text-secondary').trim() || '#8b949e';
+      ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--text-2').trim() || '#7d8590';
       ctx.textAlign = 'right';
       ctx.fillText(d.label, chartLeft - 12, y + barHeight / 2);
 
@@ -646,8 +646,8 @@
       if (d.value > 0) {
         const barValWidth = (d.value / maxValue) * chartWidth;
         const grad = ctx.createLinearGradient(chartLeft, y, chartLeft + barValWidth, y);
-        const accent1 = getComputedStyle(document.body).getPropertyValue('--accent-1').trim() || '#00D4FF';
-        const accent2 = getComputedStyle(document.body).getPropertyValue('--accent-2').trim() || '#7C3AED';
+        const accent1 = getComputedStyle(document.body).getPropertyValue('--accent').trim() || '#58a6ff';
+        const accent2 = getComputedStyle(document.body).getPropertyValue('--accent-2').trim() || '#bc8cff';
         grad.addColorStop(0, accent1);
         grad.addColorStop(1, accent2);
         
@@ -658,7 +658,7 @@
       }
 
       // Draw value label
-      ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--text-primary').trim() || '#e6edf3';
+      ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--text').trim() || '#e6edf3';
       ctx.textAlign = 'left';
       ctx.fillText(d.value.toString(), chartLeft + ((d.value > 0) ? (d.value / maxValue) * chartWidth + 8 : 8), y + barHeight / 2);
     });
@@ -725,7 +725,7 @@
     });
 
     // Draw inner cutout circle to make it a donut
-    const baseColor = getComputedStyle(document.body).getPropertyValue('--bg-base').trim() || '#0a0e1a';
+    const baseColor = getComputedStyle(document.body).getPropertyValue('--bg').trim() || '#0d1117';
     ctx.fillStyle = baseColor;
     ctx.beginPath();
     ctx.arc(centerX, centerY, innerRadius, 0, 2 * Math.PI);
@@ -750,12 +750,12 @@
       ctx.fill();
 
       // Text label
-      ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--text-primary').trim() || '#e6edf3';
+      ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--text').trim() || '#e6edf3';
       ctx.fillText(d.label, legendX + 16, y);
 
       // Percentage
       const pct = total > 0 && d.value > 0 ? Math.round((d.value / total) * 100) : 0;
-      ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--text-muted').trim() || '#8b949e';
+      ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--text-3').trim() || '#484f58';
       ctx.fillText(`${pct}% (${d.value})`, legendX + 90, y);
     });
   }
@@ -816,9 +816,9 @@
     // Draw area under curve
     if (points.length > 0) {
       const grad = ctx.createLinearGradient(0, padTop, 0, padTop + chartHeight);
-      const accentGlow = 'rgba(0, 212, 255, 0.16)';
+      const accentGlow = 'rgba(88, 166, 255, 0.14)';
       grad.addColorStop(0, accentGlow);
-      grad.addColorStop(1, 'rgba(0, 212, 255, 0)');
+      grad.addColorStop(1, 'rgba(88, 166, 255, 0)');
 
       ctx.fillStyle = grad;
       ctx.beginPath();
@@ -838,8 +838,8 @@
 
       // Draw line stroke
       const strokeGrad = ctx.createLinearGradient(padLeft, 0, width - padRight, 0);
-      const accent1 = getComputedStyle(document.body).getPropertyValue('--accent-1').trim() || '#00D4FF';
-      const accent2 = getComputedStyle(document.body).getPropertyValue('--accent-2').trim() || '#7C3AED';
+      const accent1 = getComputedStyle(document.body).getPropertyValue('--accent').trim() || '#58a6ff';
+      const accent2 = getComputedStyle(document.body).getPropertyValue('--accent-2').trim() || '#bc8cff';
       strokeGrad.addColorStop(0, accent1);
       strokeGrad.addColorStop(1, accent2);
 
@@ -859,7 +859,7 @@
       // Draw circles on points
       points.forEach(p => {
         // Outer glow
-        ctx.fillStyle = 'rgba(0, 212, 255, 0.25)';
+        ctx.fillStyle = 'rgba(88, 166, 255, 0.2)';
         ctx.beginPath();
         ctx.arc(p.x, p.y, 6, 0, 2 * Math.PI);
         ctx.fill();
@@ -946,6 +946,9 @@
         }
       });
     }
+
+    // Load initial state
+    loadAndRenderAnalytics();
   }
 
   // Call immediately to register options page triggers

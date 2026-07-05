@@ -73,7 +73,7 @@ global.chrome.alarms = { create: jest.fn(), onAlarm: { addListener: jest.fn() } 
 global.self = { addEventListener: jest.fn() };
 
 // Evaluate dependencies in the global test environment
-let analyticsCode = fs.readFileSync(path.resolve(__dirname, '../../core/analytics.js'), 'utf8')
+let analyticsCode = fs.readFileSync(path.resolve(__dirname, '../../core/telemetry.js'), 'utf8')
   .replace(/^\s*export\s+default\s+\w+\s*;?/gm, '')
   .replace(/^\s*export\s+\{[^}]+\}\s*;?/gm, '');
 eval(analyticsCode);

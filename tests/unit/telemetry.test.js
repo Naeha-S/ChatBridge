@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 
 // Evaluate analytics.js in global JSDOM scope
-const analyticsCode = fs.readFileSync(path.resolve(__dirname, '../../core/analytics.js'), 'utf8')
+const analyticsCode = fs.readFileSync(path.resolve(__dirname, '../../core/telemetry.js'), 'utf8')
   .replace(/^\s*export\s+default\s+\w+\s*;?/gm, '')
   .replace(/^\s*export\s+\{[^}]+\}\s*;?/gm, '');
 eval(analyticsCode);

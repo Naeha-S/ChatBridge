@@ -5,6 +5,7 @@ const TRANSLATIONS = {
     en: {
         // Sidebar
         dashboard: 'Dashboard',
+        analytics: 'Analytics',
         apiKeys: 'API Keys',
         history: 'History',
         appearance: 'Appearance',
