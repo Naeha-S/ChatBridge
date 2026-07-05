@@ -11,8 +11,7 @@ This document lists the external API endpoints currently used by ChatBridge.
   - `gemini-1.5-pro`
   - `gemini-1.5-flash`
 - Endpoint:
-  - `https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent`
-  - Legacy/test usage also exists at `https://generativelanguage.googleapis.com/v1/models/{model}:generateContent`
+  - `https://generativelanguage.googleapis.com/v1/models/{model}:generateContent`
 - Auth: API key in query string (`?key=...`).
 - Used in: `background.js` (`call_gemini`, `agent_route`, and provider fallback logic).
 
@@ -65,12 +64,12 @@ This document lists the external API endpoints currently used by ChatBridge.
 
 ## Embedding Endpoints
 
-### Gemini Embeddings
+## Gemini Embeddings
 - Models:
   - `gemini-embedding-001`
   - `gemini-embedding-2`
 - Endpoint:
-  - `https://generativelanguage.googleapis.com/v1beta/models/{model}:embedContent`
+  - `https://generativelanguage.googleapis.com/v1/models/{model}:embedContent`
 - Used in: `background.js` (`fetchEmbeddingViaGemini`).
 
 ### NVIDIA Embeddings

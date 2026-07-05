@@ -49,6 +49,220 @@ async function _saveRateLimits() {
   try { await chrome.storage.session.set({ cb_rateLimiters: _rateLimitCache }); } catch (_) { }
 }
 
+const BILLING_STORAGE_KEYS = {
+  tier: 'chatbridge_subscription_tier',
+  balance: 'chatbridge_credits_balance',
+  lastReset: 'chatbridge_credits_last_reset',
+  geminiKey: 'chatbridge_gemini_key',
+  openaiKey: 'chatbridge_openai_key',
+  hfKey: 'chatbridge_hf_key',
+  nvidiaKey: 'chatbridge_api_nvidia',
+};
+
+const DEFAULT_FREE_CREDITS = 100;
+const TIER_CREDIT_LIMITS = {
+  free: 100,
+  pro: 2000,
+  max: 10000
+};
+
+const FREE_PROXY_GEMINI_MODEL = 'gemini-1.5-flash';
+const FREE_PROXY_LLAMA_MODEL = 'meta-llama/Meta-Llama-3.1-8B-Instruct';
+
+const AI_CREDIT_COSTS = Object.freeze({
+  summarize: 1,
+  translate: 1,
+  rewrite: 1,
+  syncTone: 1,
+  optimize: 1,
+  titles: 1,
+  extract_meaning: 1,
+  structure_document: 1,
+  apply_style_document: 1,
+  call_gemini: 3,
+  call_openai: 3,
+  call_llama: 3,
+  query: 3,
+  chat: 3,
+  prompt: 3,
+  insights: 3,
+  chat_to_document: 3,
+  agent_route: 5,
+  multi_chat_reasoning: 5,
+});
+
+function getCreditCost(action) {
+  const key = String(action || '').trim().toLowerCase();
+  return AI_CREDIT_COSTS[key] || 0;
+}
+
+function isPaidTier(tier) {
+  return tier === 'pro' || tier === 'max';
+}
+
+function shouldResetCredits(lastResetTs, nowTs = Date.now()) {
+  const lastReset = Number(lastResetTs || 0);
+  if (!lastReset) return true;
+  const previous = new Date(lastReset);
+  const current = new Date(nowTs);
+  return previous.getUTCFullYear() !== current.getUTCFullYear() ||
+    previous.getUTCMonth() !== current.getUTCMonth();
+}
+
+async function storageLocalGet(keys) {
+  return await new Promise((resolve) => chrome.storage.local.get(keys, resolve));
+}
+
+async function storageLocalSet(items) {
+  return await new Promise((resolve) => chrome.storage.local.set(items, resolve));
+}
+
+async function getBillingState() {
+  const defaults = {
+    [BILLING_STORAGE_KEYS.tier]: 'free',
+    [BILLING_STORAGE_KEYS.balance]: null,
+    [BILLING_STORAGE_KEYS.lastReset]: Date.now()
+  };
+  const data = await storageLocalGet(defaults);
+  const now = Date.now();
+  let tier = String(data[BILLING_STORAGE_KEYS.tier] || 'free').toLowerCase();
+  if (!['free', 'pro', 'max'].includes(tier)) tier = 'free';
+
+  const limit = TIER_CREDIT_LIMITS[tier] || 100;
+  let balance = data[BILLING_STORAGE_KEYS.balance] !== null && data[BILLING_STORAGE_KEYS.balance] !== undefined
+    ? Number(data[BILLING_STORAGE_KEYS.balance])
+    : limit;
+  if (!Number.isFinite(balance)) balance = limit;
+
+  let lastReset = Number(data[BILLING_STORAGE_KEYS.lastReset] || 0) || 0;
+
+  if (shouldResetCredits(lastReset, now)) {
+    balance = limit;
+    lastReset = now;
+    await storageLocalSet({
+      [BILLING_STORAGE_KEYS.balance]: balance,
+      [BILLING_STORAGE_KEYS.lastReset]: lastReset,
+      [BILLING_STORAGE_KEYS.tier]: tier
+    });
+  }
+
+  return { tier, balance, lastReset };
+}
+
+async function setBillingCredits(balance, lastReset = Date.now()) {
+  const normalized = Math.max(0, Number(balance) || 0);
+  await storageLocalSet({
+    [BILLING_STORAGE_KEYS.balance]: normalized,
+    [BILLING_STORAGE_KEYS.lastReset]: lastReset
+  });
+  return normalized;
+}
+
+async function hasLocalProviderAccess(provider) {
+  switch (provider) {
+    case 'gemini':
+      return !!(await getGeminiApiKey({ force: true }));
+    case 'openai':
+      return !!(await getOpenAIApiKey({ force: true }));
+    case 'huggingface':
+      return !!(await getHuggingFaceApiKey({ force: true }));
+    case 'nvidia':
+      return !!(await getNvidiaApiKey({ force: true }));
+    default:
+      return false;
+  }
+}
+
+async function hasAnyLocalProviderAccess() {
+  const checks = await Promise.all([
+    hasLocalProviderAccess('gemini'),
+    hasLocalProviderAccess('openai'),
+    hasLocalProviderAccess('huggingface'),
+    hasLocalProviderAccess('nvidia'),
+  ]);
+  return checks.some(Boolean);
+}
+
+async function checkAndDeductCredits(action, provider) {
+  const cost = getCreditCost(action);
+  const billing = await getBillingState();
+  const usingPersonalKey = provider ? await hasLocalProviderAccess(provider) : await hasAnyLocalProviderAccess();
+  const bypassCredits = cost === 0 || usingPersonalKey || isPaidTier(billing.tier);
+  const forceFreeProxy = !usingPersonalKey && !isPaidTier(billing.tier);
+
+  if (bypassCredits) {
+    return {
+      ok: true,
+      action,
+      provider,
+      cost,
+      tier: billing.tier,
+      usingPersonalKey,
+      forceFreeProxy,
+      deducted: false,
+      balance: billing.balance,
+      balanceAfter: billing.balance
+    };
+  }
+
+  if (billing.balance < cost) {
+    return {
+      ok: false,
+      error: 'insufficient_credits',
+      message: `This action requires ${cost} credits. You have ${billing.balance} remaining.`,
+      action,
+      provider,
+      cost,
+      tier: billing.tier,
+      usingPersonalKey: false,
+      forceFreeProxy: true,
+      deducted: false,
+      balance: billing.balance,
+      balanceAfter: billing.balance
+    };
+  }
+
+  const balanceAfter = await setBillingCredits(billing.balance - cost, billing.lastReset || Date.now());
+  return {
+    ok: true,
+    action,
+    provider,
+    cost,
+    tier: billing.tier,
+    usingPersonalKey: false,
+    forceFreeProxy: true,
+    deducted: true,
+    balance: billing.balance,
+    balanceAfter
+  };
+}
+
+async function refundCredits(transaction) {
+  if (!transaction || !transaction.deducted || !transaction.cost) return null;
+  const billing = await getBillingState();
+  const nextBalance = await setBillingCredits(billing.balance + transaction.cost, billing.lastReset || Date.now());
+  return nextBalance;
+}
+
+async function finalizeCreditTransaction(transaction, response) {
+  const result = response && typeof response === 'object' ? { ...response } : { ok: false, error: 'unknown_error' };
+  if (!transaction) return result;
+
+  if (transaction.deducted && !result.ok) {
+    const refundedBalance = await refundCredits(transaction);
+    result.credits = {
+      refunded: true,
+      remaining: refundedBalance !== null ? refundedBalance : transaction.balance
+    };
+  } else {
+    result.credits = {
+      refunded: false,
+      remaining: transaction.balanceAfter
+    };
+  }
+  return result;
+}
+
 async function checkRateLimit(limiterName) {
   const limits = await _loadRateLimits();
   const limiter = limits[limiterName] || { requests: [] };

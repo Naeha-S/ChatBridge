@@ -17,6 +17,16 @@
     chrome.tabs.create({ url: chrome.runtime.getURL("options.html") });
   };
 
+  const openLoginPage = () => {
+    const loginUrl = chrome.runtime.getURL("login.html");
+    if (chrome.tabs && chrome.tabs.create) {
+      chrome.tabs.create({ url: loginUrl });
+      return;
+    }
+
+    window.location.href = loginUrl;
+  };
+
   bind("btn-go-chat", () => chrome.tabs.create({ url: "https://chatgpt.com/" }));
   bind("btn-go-chat-footer", () => chrome.tabs.create({ url: "https://chatgpt.com/" }));
   bind("btn-options", openOptions);
@@ -32,6 +42,7 @@
   initHeroShader();
   initCardStack();
   initPricing();
+  initAuth();
 
   const nav = document.querySelector(".nav");
   const navSectionLinks = document.querySelectorAll('.nav-links a[href^="#"]');
@@ -471,8 +482,16 @@
     }
 
     // --- Modal actions ---
-    const openPlanModal = ({ plan = "pro" } = {}) => {
+    const openPlanModal = async ({ plan = "pro" } = {}) => {
       selectedPlan = plan;
+
+      // Check login state first
+      const authData = await new Promise(res => chrome.storage.local.get(["chatbridge_logged_in"], res));
+      if (!authData || !authData.chatbridge_logged_in) {
+        window.alert("Please log in to continue with the free tier or upgrade your subscription.");
+        openLoginPage();
+        return;
+      }
       
       if (plan === "free") {
         if (window.confirm("Do you want to switch back to the Free plan? Your credits will be reset to 100/month.")) {
@@ -861,5 +880,215 @@
       autoRotate = true;
       startAutoRotate();
     }
+  }
+
+  function initAuth() {
+    const loginModal = document.getElementById("login-modal");
+    const btnNavLogin = document.getElementById("btn-nav-login");
+    const navUserProfile = document.getElementById("nav-user-profile");
+    const navUserEmail = document.getElementById("nav-user-email");
+    const btnNavLogout = document.getElementById("btn-nav-logout");
+    const btnFreeAction = document.getElementById("btn-free-action");
+
+    const loginForm = document.getElementById("login-form");
+    const btnOauthGoogle = document.getElementById("btn-oauth-google");
+    const btnOauthGithub = document.getElementById("btn-oauth-github");
+    const loginFormView = document.getElementById("login-form-view");
+    const loginSuccessView = document.getElementById("login-success-view");
+    const loginEmailInput = document.getElementById("login-email");
+    const loginConfirmBtn = document.getElementById("login-modal-confirm");
+
+    if (!loginModal) return;
+
+    const authKeys = {
+      loggedIn: "chatbridge_logged_in",
+      userEmail: "chatbridge_user_email",
+      tier: "chatbridge_subscription_tier",
+      balance: "chatbridge_credits_balance",
+      lastReset: "chatbridge_credits_last_reset"
+    };
+
+    const getAuthLocal = (keys) =>
+      new Promise((resolve) => {
+        try {
+          chrome.storage.local.get(keys, resolve);
+        } catch (_) {
+          resolve({});
+        }
+      });
+
+    const setAuthLocal = (items) =>
+      new Promise((resolve) => {
+        try {
+          chrome.storage.local.set(items, resolve);
+        } catch (_) {
+          resolve();
+        }
+      });
+
+    // Check auth state on load
+    const updateAuthStateUI = async () => {
+      const data = await getAuthLocal([authKeys.loggedIn, authKeys.userEmail, authKeys.tier]);
+      const isLoggedIn = !!data[authKeys.loggedIn];
+      const email = data[authKeys.userEmail] || "";
+      const tier = String(data[authKeys.tier] || "free").toLowerCase();
+
+      if (isLoggedIn) {
+        if (btnNavLogin) btnNavLogin.style.display = "none";
+        if (navUserProfile) navUserProfile.style.display = "inline-flex";
+        if (navUserEmail) navUserEmail.textContent = email;
+
+        // Update pricing cards button text based on plan tier
+        if (btnFreeAction) {
+          if (tier === "free") {
+            btnFreeAction.textContent = "Current Plan (Free Tier)";
+            btnFreeAction.disabled = true;
+            btnFreeAction.className = "btn-pricing-action secondary";
+          } else {
+            btnFreeAction.textContent = "Switch to Free Tier";
+            btnFreeAction.disabled = false;
+            btnFreeAction.className = "btn-pricing-action secondary pricing-action";
+          }
+        }
+
+        const btnProAction = document.querySelector('.pricing-card-redesign[id="card-pro"] .pricing-action');
+        if (btnProAction) {
+          if (tier === "pro") {
+            btnProAction.textContent = "Current Plan (Pro)";
+            btnProAction.disabled = true;
+            btnProAction.className = "btn-pricing-action primary";
+          } else if (tier === "max") {
+            btnProAction.textContent = "Downgrade to Pro";
+            btnProAction.disabled = false;
+            btnProAction.className = "btn-pricing-action secondary pricing-action";
+          } else {
+            btnProAction.textContent = "Upgrade to Pro";
+            btnProAction.disabled = false;
+            btnProAction.className = "btn-pricing-action primary pricing-action";
+          }
+        }
+
+        const btnMaxAction = document.querySelector('.pricing-card-redesign[id="card-max"] .pricing-action');
+        if (btnMaxAction) {
+          if (tier === "max") {
+            btnMaxAction.textContent = "Current Plan (Max)";
+            btnMaxAction.disabled = true;
+            btnMaxAction.className = "btn-pricing-action primary";
+          } else {
+            btnMaxAction.textContent = "Upgrade to Max";
+            btnMaxAction.disabled = false;
+            btnMaxAction.className = "btn-pricing-action primary pricing-action";
+          }
+        }
+      } else {
+        if (btnNavLogin) btnNavLogin.style.display = "inline-block";
+        if (navUserProfile) navUserProfile.style.display = "none";
+
+        if (btnFreeAction) {
+          btnFreeAction.textContent = "Continue with Free Tier";
+          btnFreeAction.disabled = false;
+          btnFreeAction.className = "btn-pricing-action secondary";
+        }
+      }
+    };
+
+    updateAuthStateUI();
+
+    const openLoginPageFromWelcome = () => {
+      openLoginPage();
+    };
+
+    const closeLoginModal = () => {
+      loginModal.hidden = true;
+      document.body.style.overflow = "";
+    };
+
+    // Binding open/close handlers
+    if (btnNavLogin) btnNavLogin.addEventListener("click", openLoginPageFromWelcome);
+    bind("login-modal-close", closeLoginModal);
+    bind("login-modal-cancel", closeLoginModal);
+    const loginBackdrop = document.getElementById("login-modal-backdrop");
+    if (loginBackdrop) {
+      loginBackdrop.addEventListener("click", closeLoginModal);
+    }
+
+    // Logout handler
+    if (btnNavLogout) {
+      btnNavLogout.addEventListener("click", async () => {
+        if (window.confirm("Are you sure you want to log out? Your subscription status will revert to Free.")) {
+          await setAuthLocal({
+            [authKeys.loggedIn]: false,
+            [authKeys.userEmail]: "",
+            [authKeys.tier]: "free",
+            [authKeys.balance]: 100,
+            [authKeys.lastReset]: Date.now()
+          });
+          window.alert("Successfully logged out.");
+          window.location.reload();
+        }
+      });
+    }
+
+    // Submit handler (Simulated Cloud Auth Login)
+    const handleLoginSuccess = async (email) => {
+      if (loginConfirmBtn) {
+        loginConfirmBtn.disabled = true;
+        loginConfirmBtn.textContent = "Authenticating...";
+      }
+      
+      const oauthBtns = [btnOauthGoogle, btnOauthGithub];
+      oauthBtns.forEach(btn => { if (btn) btn.disabled = true; });
+      if (loginEmailInput) loginEmailInput.disabled = true;
+
+      // Simulate network latency (1.2s)
+      await new Promise(r => setTimeout(r, 1200));
+
+      // Get current tier to see if they already have one, otherwise set free with 100 credits
+      const currentData = await getAuthLocal([authKeys.tier]);
+      const currentTier = currentData[authKeys.tier] || "free";
+      const initialCredits = currentTier === "max" ? 10000 : (currentTier === "pro" ? 2000 : 100);
+
+      await setAuthLocal({
+        [authKeys.loggedIn]: true,
+        [authKeys.userEmail]: email,
+        [authKeys.tier]: currentTier,
+        [authKeys.balance]: initialCredits,
+        [authKeys.lastReset]: Date.now()
+      });
+
+      if (loginFormView) loginFormView.style.display = "none";
+      if (loginSuccessView) loginSuccessView.style.display = "block";
+
+      const successText = document.getElementById("login-success-desc-text");
+      if (successText) {
+        successText.textContent = `Welcome back! ${initialCredits.toLocaleString()} monthly credits loaded successfully.`;
+      }
+
+      await new Promise(r => setTimeout(r, 2000));
+
+      if (loginConfirmBtn) loginConfirmBtn.disabled = false;
+      oauthBtns.forEach(btn => { if (btn) btn.disabled = false; });
+      if (loginEmailInput) loginEmailInput.disabled = false;
+
+      closeLoginModal();
+      window.alert("Login successful!");
+      window.location.reload();
+    };
+
+    if (loginForm) {
+      loginForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const email = loginEmailInput ? loginEmailInput.value : "naeha@chatbridge.dev";
+        handleLoginSuccess(email);
+      });
+    }
+
+    if (btnOauthGoogle) {
+      btnOauthGoogle.addEventListener("click", () => handleLoginSuccess("google.user@chatbridge.dev"));
+    }
+    if (btnOauthGithub) {
+      btnOauthGithub.addEventListener("click", () => handleLoginSuccess("github.user@chatbridge.dev"));
+    }
+
   }
 })();

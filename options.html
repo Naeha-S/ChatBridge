@@ -1139,13 +1139,19 @@
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h18"></path><path d="M3 12h12"></path><path d="M3 17h8"></path></svg>
               API Keys
             </div>
-            <button class="btn btn-primary" id="btn-open-pricing" type="button">Upgrade</button>
+            <div style="display:flex; gap:8px;">
+              <button class="btn btn-primary" id="btn-open-pricing" type="button">Upgrade</button>
+              <button class="btn btn-secondary" id="btn-options-logout" type="button" style="display:none;">Sign Out</button>
+            </div>
           </div>
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;">
-            <div style="padding:16px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-input);">
-              <div class="settings-label" id="billing-tier-label">Subscription Plan</div>
-              <div class="settings-desc" id="billing-tier-detail" style="margin-bottom:10px;">Local plan state used for model access and credit checks.</div>
-              <span class="badge" id="billing-tier-badge">Free Tier</span>
+            <div style="padding:16px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-input); display:flex; flex-direction:column; justify-content:space-between;">
+              <div>
+                <div class="settings-label" id="billing-tier-label">Subscription Plan</div>
+                <div class="settings-desc" id="billing-tier-detail" style="margin-bottom:10px;">Local plan state used for model access and credit checks.</div>
+                <span class="badge" id="billing-tier-badge">Free Tier</span>
+              </div>
+              <div class="settings-desc" id="billing-user-email" style="margin-top:12px; font-weight:600;">Not logged in</div>
             </div>
             <div style="padding:16px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-input);">
               <div class="settings-label" id="billing-credits-label" style="margin-bottom:8px;">AI Credits</div>
@@ -1233,21 +1239,6 @@
           </div>
         </div>
 
-        <div class="card section-gap">
-            <div class="card-title" id="billing-dev-title" style="margin-bottom:10px;">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg>
-            Developer Sandbox
-          </div>
-          <p class="card-desc" id="billing-dev-desc">Local controls for validating tier changes, credit exhaustion, and reset behavior during development.</p>
-          <div class="quick-actions" style="margin-bottom:10px;">
-            <button class="btn btn-secondary" id="btn-dev-reset-credits" type="button">Reset Credits</button>
-            <button class="btn btn-secondary" id="btn-dev-spend-5" type="button">Spend 5 Credits</button>
-            <button class="btn btn-secondary" id="btn-dev-free" type="button">Set Free</button>
-            <button class="btn btn-secondary" id="btn-dev-pro" type="button">Set Pro</button>
-            <button class="btn btn-secondary" id="btn-dev-max" type="button">Set Max</button>
-          </div>
-          <div class="settings-desc" id="dev-controls-status">Use these controls to verify the billing UI without a live checkout backend.</div>
-        </div>
       </section>
 
       <section class="section" id="section-history">

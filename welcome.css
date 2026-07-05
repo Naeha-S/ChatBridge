@@ -212,6 +212,34 @@ button {
   color: var(--text);
 }
 
+.nav-cta.secondary {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--muted);
+}
+
+.nav-cta.secondary:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.18);
+  color: var(--text);
+}
+
+.user-email-pill {
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 99px;
+  background: linear-gradient(135deg, rgba(91, 140, 255, 0.08), rgba(139, 92, 246, 0.08));
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  color: #a78bfa;
+  box-shadow: 0 0 12px rgba(139, 92, 246, 0.05);
+  display: inline-block;
+  white-space: nowrap;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .landing-experience {
   position: relative;
 }
@@ -508,6 +536,14 @@ button {
 .hero-details-inner {
   display: grid;
   gap: 18px;
+  padding: 24px;
+  border-radius: 34px;
+  border: 1px solid rgba(209, 218, 229, 0.09);
+  background:
+    radial-gradient(circle at 0% 0%, rgba(143, 181, 255, 0.08), transparent 30%),
+    radial-gradient(circle at 100% 100%, rgba(231, 193, 143, 0.06), transparent 26%),
+    linear-gradient(180deg, rgba(18, 22, 28, 0.96), rgba(12, 15, 20, 0.96));
+  box-shadow: var(--shadow);
 }
 
 .hero-proof {
@@ -1210,17 +1246,26 @@ button {
 .ops-strip {
   max-width: var(--max-width);
   margin: 0 auto;
-  padding: 0 24px 14px;
+  padding: 24px;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px;
+  border-radius: 34px;
+  border: 1px solid rgba(209, 218, 229, 0.09);
+  background:
+    radial-gradient(circle at 0% 0%, rgba(143, 181, 255, 0.08), transparent 28%),
+    radial-gradient(circle at 100% 100%, rgba(231, 193, 143, 0.05), transparent 24%),
+    linear-gradient(180deg, rgba(18, 22, 28, 0.94), rgba(12, 15, 20, 0.96));
+  box-shadow: var(--shadow);
 }
 
 .ops-card {
-  padding: 18px 20px;
-  border-radius: 20px;
-  border: 1px solid rgba(209, 218, 229, 0.08);
-  background: rgba(255, 255, 255, 0.025);
+  padding: 22px 20px;
+  border-radius: 22px;
+  border: 1px solid rgba(209, 218, 229, 0.1);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01)),
+    linear-gradient(180deg, rgba(22, 26, 32, 0.95), rgba(14, 17, 22, 0.95));
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
 }
 
@@ -1278,6 +1323,24 @@ button {
   max-width: var(--max-width);
   margin: 0 auto;
   padding: 88px 24px;
+}
+
+#motion .wrap,
+#how .wrap,
+#tools .wrap,
+#workspace .wrap,
+#agents .wrap,
+#privacy .wrap,
+#setup .wrap {
+  position: relative;
+  border-radius: 38px;
+  border: 1px solid rgba(209, 218, 229, 0.07);
+  background:
+    radial-gradient(circle at 8% 0%, rgba(143, 181, 255, 0.05), transparent 22%),
+    radial-gradient(circle at 92% 100%, rgba(231, 193, 143, 0.035), transparent 18%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.012), rgba(255, 255, 255, 0.004));
+  box-shadow: 0 20px 70px rgba(0, 0, 0, 0.16);
+  overflow: hidden;
 }
 
 .section-head {
@@ -1347,12 +1410,12 @@ button {
   justify-content: space-between;
   gap: 28px;
   padding: 34px 36px;
-  border-radius: calc(var(--radius) + 8px);
+  border-radius: 34px;
   border: 1px solid rgba(209, 218, 229, 0.12);
   background:
     radial-gradient(circle at 0% 0%, rgba(143, 181, 255, 0.14), transparent 34%),
     radial-gradient(circle at 100% 100%, rgba(231, 193, 143, 0.1), transparent 30%),
-    linear-gradient(135deg, rgba(22, 26, 32, 0.96), rgba(12, 15, 20, 0.94));
+    linear-gradient(180deg, rgba(22, 26, 32, 0.98), rgba(12, 15, 20, 0.96));
   box-shadow: var(--shadow);
 }
 
@@ -1490,6 +1553,20 @@ button {
   padding: 24px;
 }
 
+.workflow-card,
+.feature-card,
+.workspace-card,
+.agent-card,
+.privacy-item,
+.setup-card,
+.utility-card {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.022), rgba(255, 255, 255, 0.006)),
+    linear-gradient(180deg, rgba(22, 26, 32, 0.97), rgba(14, 17, 22, 0.96));
+  border-color: rgba(209, 218, 229, 0.11);
+  backdrop-filter: blur(16px);
+}
+
 .workflow-card h3,
 .feature-card h3,
 .workspace-card h3,
@@ -1538,7 +1615,7 @@ button {
 #setup .wrap::before {
   content: "";
   position: absolute;
-  inset: 36px 24px;
+  inset: 28px 24px;
   border-radius: 34px;
   border: 1px solid rgba(209, 218, 229, 0.05);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.016), rgba(255, 255, 255, 0.005));
@@ -1780,13 +1857,13 @@ button {
   display: grid;
   grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
   gap: 16px;
-  padding: 24px;
-  border-radius: calc(var(--radius) + 6px);
-  border: 1px solid rgba(209, 218, 229, 0.08);
+  padding: 28px;
+  border-radius: 34px;
+  border: 1px solid rgba(209, 218, 229, 0.1);
   background:
     radial-gradient(circle at 0% 0%, rgba(231, 193, 143, 0.1), transparent 34%),
-    linear-gradient(130deg, rgba(244, 201, 138, 0.08), rgba(143, 181, 255, 0.05) 30%, rgba(14, 17, 21, 0.92) 72%),
-    rgba(18, 22, 27, 0.92);
+    linear-gradient(130deg, rgba(244, 201, 138, 0.08), rgba(143, 181, 255, 0.05) 30%, rgba(14, 17, 21, 0.94) 72%),
+    rgba(18, 22, 27, 0.94);
   box-shadow: var(--shadow);
 }
 
@@ -2795,6 +2872,15 @@ button {
     radial-gradient(circle at 0% 0%, rgba(182, 155, 255, 0.1), transparent 32%),
     linear-gradient(180deg, rgba(143, 181, 255, 0.08), rgba(18, 22, 27, 0.95) 30%),
     linear-gradient(180deg, rgba(24, 29, 35, 0.92), rgba(18, 22, 27, 0.9));
+}
+
+.setup-card,
+.config-card,
+.utility-card {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.005)),
+    linear-gradient(180deg, rgba(22, 26, 32, 0.97), rgba(14, 17, 22, 0.96));
+  border-color: rgba(209, 218, 229, 0.11);
 }
 
 .setup-keys {

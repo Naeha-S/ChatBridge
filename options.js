@@ -86,22 +86,12 @@
 
     const openPricing = document.getElementById('btn-open-pricing');
     if (openPricing) openPricing.textContent = t('upgrade', lang);
+    const logoutBtn = document.getElementById('btn-options-logout');
+    if (logoutBtn) logoutBtn.textContent = 'Sign Out';
     setText('billing-tier-label', 'subscriptionPlan');
     setText('billing-credits-label', 'aiCredits');
     setText('billing-byok-title', 'bringYourOwnKeys');
     setText('billing-byok-desc', 'savedPersonalKeys');
-    setText('billing-dev-title', 'developerSandbox');
-    setText('billing-dev-desc', 'useTheseControls');
-
-    ['btn-dev-reset-credits', 'btn-dev-spend-5', 'btn-dev-free', 'btn-dev-pro', 'btn-dev-max'].forEach((id) => {
-      const btn = document.getElementById(id);
-      if (!btn) return;
-      if (id === 'btn-dev-reset-credits') btn.textContent = t('resetCredits', lang);
-      if (id === 'btn-dev-spend-5') btn.textContent = t('spendCredits', lang);
-      if (id === 'btn-dev-free') btn.textContent = t('setFree', lang);
-      if (id === 'btn-dev-pro') btn.textContent = t('setPro', lang);
-      if (id === 'btn-dev-max') btn.textContent = t('setMax', lang);
-    });
 
     ['gemini', 'openai', 'hf', 'claude', 'nvidia'].forEach((provider) => {
       const input = document.getElementById(`api-key-${provider}`);
@@ -381,7 +371,9 @@
     openai: 'chatbridge_openai_key',
     hf: 'chatbridge_hf_key',
     claude: 'chatbridge_api_claude',
-    nvidia: 'chatbridge_api_nvidia'
+    nvidia: 'chatbridge_api_nvidia',
+    loggedIn: 'chatbridge_logged_in',
+    userEmail: 'chatbridge_user_email'
   };
   const DEFAULT_FREE_CREDITS = 100;
   const TIER_CREDIT_LIMITS = {
@@ -442,6 +434,8 @@
       [BILLING_KEYS.openai]: '',
       [BILLING_KEYS.hf]: '',
       [BILLING_KEYS.claude]: '',
+      [BILLING_KEYS.loggedIn]: false,
+      [BILLING_KEYS.userEmail]: '',
     });
 
     const tier = String(data[BILLING_KEYS.tier] || 'free').toLowerCase();
@@ -455,21 +449,27 @@
     setText('billing-credits-label', 'aiCredits');
     setText('billing-byok-title', 'bringYourOwnKeys');
     setText('billing-byok-desc', 'savedPersonalKeys');
-    setText('billing-dev-title', 'developerSandbox');
-    setText('billing-dev-desc', 'useTheseControls');
     setText('btn-open-pricing', 'upgrade');
-    setText('btn-dev-reset-credits', 'resetCredits');
-    setText('btn-dev-spend-5', 'spendCredits');
-    setText('btn-dev-free', 'setFree');
-    setText('btn-dev-pro', 'setPro');
-    setText('btn-dev-max', 'setMax');
 
     const tierBadge = document.getElementById('billing-tier-badge');
     const tierDetail = document.getElementById('billing-tier-detail');
     const progressBar = document.getElementById('billing-progress-bar');
     const progressLabel = document.getElementById('billing-progress-label');
     const resetInfo = document.getElementById('billing-reset-info');
-    const devStatus = document.getElementById('dev-controls-status');
+    const userEmailEl = document.getElementById('billing-user-email');
+    const logoutBtn = document.getElementById('btn-options-logout');
+
+    const isLoggedIn = !!data[BILLING_KEYS.loggedIn];
+    const userEmail = data[BILLING_KEYS.userEmail] || '';
+
+    if (userEmailEl) {
+      userEmailEl.textContent = isLoggedIn ? `Logged in as: ${userEmail}` : 'Not logged in';
+      userEmailEl.style.color = isLoggedIn ? 'var(--text)' : 'var(--text-muted)';
+    }
+
+    if (logoutBtn) {
+      logoutBtn.style.display = isLoggedIn ? 'inline-block' : 'none';
+    }
 
     if (tierBadge) {
       tierBadge.textContent = tier === 'pro' ? tKey('proPlan') : tier === 'max' ? tKey('maxPlan') : tKey('freeTier');
@@ -598,42 +598,18 @@
       window.location.href = chrome.runtime.getURL('welcome.html?upgrade=1');
     });
 
-    document.getElementById('btn-dev-reset-credits')?.addEventListener('click', async () => {
-      const data = await getLocal({ [BILLING_KEYS.tier]: 'free' });
-      const tier = String(data[BILLING_KEYS.tier] || 'free').toLowerCase();
-      const limit = TIER_CREDIT_LIMITS[tier] || 100;
-      await setLocal({
-        [BILLING_KEYS.balance]: limit,
-        [BILLING_KEYS.lastReset]: Date.now()
-      });
-      document.getElementById('dev-controls-status').textContent = `${tKey('creditsResetTo')} ${limit}.`;
-      await loadBillingPanel();
-    });
-
-    document.getElementById('btn-dev-spend-5')?.addEventListener('click', async () => {
-      const data = await getLocal({ [BILLING_KEYS.tier]: 'free', [BILLING_KEYS.balance]: null });
-      const tier = String(data[BILLING_KEYS.tier] || 'free').toLowerCase();
-      const limit = TIER_CREDIT_LIMITS[tier] || 100;
-      const currentBalance = data[BILLING_KEYS.balance] !== null && data[BILLING_KEYS.balance] !== undefined
-        ? Number(data[BILLING_KEYS.balance])
-        : limit;
-      const next = Math.max(0, currentBalance - 5);
-      await setLocal({ [BILLING_KEYS.balance]: next });
-      document.getElementById('dev-controls-status').textContent = `${tKey('creditsReducedTo')} ${next}.`;
-      await loadBillingPanel();
-    });
-
-    ['free', 'pro', 'max'].forEach((tier) => {
-      document.getElementById(`btn-dev-${tier}`)?.addEventListener('click', async () => {
-        const limit = TIER_CREDIT_LIMITS[tier] || 100;
+    document.getElementById('btn-options-logout')?.addEventListener('click', async () => {
+      if (window.confirm('Are you sure you want to sign out? Your subscription status will revert to Free.')) {
         await setLocal({
-          [BILLING_KEYS.tier]: tier,
-          [BILLING_KEYS.balance]: limit,
+          [BILLING_KEYS.loggedIn]: false,
+          [BILLING_KEYS.userEmail]: '',
+          [BILLING_KEYS.tier]: 'free',
+          [BILLING_KEYS.balance]: 100,
           [BILLING_KEYS.lastReset]: Date.now()
         });
-        document.getElementById('dev-controls-status').textContent = `${tKey('planSetTo')} ${tier} with ${limit} credits.`;
+        showToast('Successfully signed out.', 'success');
         await loadBillingPanel();
-      });
+      }
     });
   }
 

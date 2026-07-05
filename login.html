@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ChatBridge Login</title>
+  <link rel="stylesheet" href="welcome.css">
+  <link rel="stylesheet" href="login.css">
+</head>
+<body class="login-page">
+  <div class="login-shell" aria-hidden="true">
+    <div class="login-orb login-orb-a"></div>
+    <div class="login-orb login-orb-b"></div>
+    <div class="login-grid"></div>
+  </div>
+
+  <main class="login-layout">
+    <section class="login-brand-panel">
+      <a class="login-brand" href="welcome.html" aria-label="Back to ChatBridge welcome">
+        <img src="logo.png" alt="" width="38" height="38">
+        <div>
+          <span class="login-brand-name">ChatBridge</span>
+          <span class="login-brand-sub">Local-first AI workspace</span>
+        </div>
+      </a>
+
+      <div class="login-copy">
+        <p class="login-kicker">Free tier included</p>
+        <h1>Log in to continue with the free tier</h1>
+        <p class="login-lead">
+          Keep your session state, claim monthly credits, and move conversations between AI tabs without losing context.
+        </p>
+      </div>
+
+      <div class="login-feature-list">
+        <article class="login-feature">
+          <span class="login-feature-title">Continue With</span>
+          <p>Move a selected response into another AI composer in one click.</p>
+        </article>
+        <article class="login-feature">
+          <span class="login-feature-title">Free credits</span>
+          <p>Get 100 monthly credits on the free tier, plus the core scan and rewrite tools.</p>
+        </article>
+        <article class="login-feature">
+          <span class="login-feature-title">Local storage</span>
+          <p>Your login state stays in the browser until you sign out.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="login-card" aria-labelledby="login-title">
+      <div class="login-card-topline">
+        <span class="login-status-pill" id="auth-status-pill">Not signed in</span>
+        <a class="login-back-link" href="welcome.html">Back to welcome</a>
+      </div>
+
+      <div class="login-card-copy">
+        <p class="login-kicker">Account access</p>
+        <h2 id="login-title">Sign in to claim free tier access</h2>
+        <p>
+          Use email/password or a quick OAuth-style login to restore your profile and unlock the free tier.
+        </p>
+      </div>
+
+      <form class="login-form" id="login-form" novalidate>
+        <div class="form-group">
+          <label for="login-email">Email address</label>
+          <input type="email" id="login-email" class="checkout-input" placeholder="you@example.com" required value="naeha@chatbridge.dev">
+        </div>
+
+        <div class="form-group">
+          <label for="login-password">Password</label>
+          <input type="password" id="login-password" class="checkout-input" placeholder="password" required value="password123">
+        </div>
+
+        <div class="login-provider-row">
+          <button type="button" class="login-provider-btn" id="btn-oauth-google">
+            <span>Google</span>
+          </button>
+          <button type="button" class="login-provider-btn" id="btn-oauth-github">
+            <span>GitHub</span>
+          </button>
+        </div>
+
+        <button type="submit" class="login-submit-btn" id="login-submit">Continue</button>
+      </form>
+
+      <div class="login-success" id="login-success" hidden>
+        <div class="login-success-icon">OK</div>
+        <h3>Login successful</h3>
+        <p id="login-success-copy">Your free tier is active and 100 monthly credits are ready.</p>
+        <div class="login-success-actions">
+          <button class="login-submit-btn" id="btn-return-welcome" type="button">Return to welcome</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="login.js"></script>
+</body>
+</html>

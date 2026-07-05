@@ -28,6 +28,13 @@
         <a href="#agents">Agents</a>
         <a href="#pricing">Pricing</a>
         <a href="#setup">Setup</a>
+        <div id="nav-auth-section" style="display: inline-flex; align-items: center; gap: 12px;">
+          <button class="nav-cta secondary" id="btn-nav-login" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); color: var(--text);">Log In</button>
+          <div id="nav-user-profile" style="display: none; align-items: center; gap: 8px;">
+            <span class="user-email-pill" id="nav-user-email" style="font-size: 0.82rem; font-weight: 600; padding: 6px 12px; border-radius: 99px; background: linear-gradient(135deg, rgba(91, 140, 255, 0.1), rgba(139, 92, 246, 0.1)); border: 1px solid rgba(139, 92, 246, 0.2); color: #a78bfa;">you@example.com</span>
+            <button class="nav-cta secondary" id="btn-nav-logout" style="background: transparent; border: none; color: var(--muted); cursor: pointer; padding: 4px 8px; font-size: 0.82rem;">Log Out</button>
+          </div>
+        </div>
         <button class="nav-cta" id="btn-options-nav">Open Settings</button>
       </div>
     </div>
@@ -39,15 +46,14 @@
         <div class="hero-shader" id="hero-shader" aria-hidden="true"></div>
         <div class="hero-shell rv">
           <div class="hero-copy">
-            <p class="hero-kicker">Installed and ready for every AI tab you use</p>
+            <p class="hero-kicker">Installed and ready for your AI workspace</p>
             <h1 class="hero-title">
-              Bring every
+              Keep every
               <span>AI conversation</span>
-              into one visual layer.
+              in one working layer.
             </h1>
             <p class="hero-sub">
-              Scan, reshape, compare, save, and reroute conversations across 25+ AI platforms without
-              sending your data through a middleman.
+              Scan, rewrite, compare, and continue across AI platforms without sending your data through a middleman.
             </p>
             <div class="hero-actions">
               <button class="btn-primary" id="btn-go-chat">Try it on ChatGPT</button>
@@ -58,7 +64,7 @@
           <div class="hero-overlay-card hero-overlay-card-a">
             <span class="overlay-label">Signal</span>
             <strong>From raw thread to usable output</strong>
-            <p>Scan once, then summarize, route, or search across every saved session.</p>
+            <p>Scan once, then summarize, route, search, or hand the work off to another model.</p>
           </div>
 
           <div class="hero-overlay-card hero-overlay-card-b">
@@ -67,7 +73,7 @@
               <span class="stat-num" data-count="25">0</span>
               <span class="stat-suffix">+</span>
             </div>
-            <p>AI platforms connected through current adapters.</p>
+            <p>AI platforms connected through current adapters and workflow hooks.</p>
           </div>
 
           <div class="hero-bottom-bar">
@@ -271,8 +277,8 @@
       <div class="wrap">
         <div class="section-head rv" data-section="00">
           <p class="eyebrow">Motion Layer</p>
-          <h2 class="section-title">A dynamic stack instead of another static grid</h2>
-          <p class="section-sub">This section ports the animated card-stack idea into the current extension stack so the page gets interaction and rhythm without depending on React.</p>
+          <h2 class="section-title">Motion that shows the system working</h2>
+          <p class="section-sub">The page uses lightweight movement to expose the product flow instead of hiding everything in flat blocks.</p>
         </div>
 
         <div class="card-stack-showcase rv">
@@ -282,8 +288,8 @@
           </div>
           <div class="card-stack-panel">
             <p class="eyebrow">Featured Surface</p>
-            <h3 class="card-stack-title">Product surfaces that move when people look closer</h3>
-            <p class="card-stack-copy">A rotating stack highlights different parts of the ecosystem instead of leaving the middle of the page as repeating content blocks.</p>
+            <h3 class="card-stack-title">Product surfaces that reveal more as you inspect them</h3>
+            <p class="card-stack-copy">The rotating stack gives the middle of the page a clear purpose: it previews what ChatBridge actually does.</p>
             <div class="card-stack-meta">
               <span>Auto-rotates in view</span>
               <span>Manual trigger included</span>
@@ -314,8 +320,8 @@
       <div class="wrap">
         <div class="section-head rv" data-section="01">
           <p class="eyebrow">Workflow</p>
-          <h2 class="section-title">A clean operating loop instead of tab chaos</h2>
-          <p class="section-sub">The extension stays close to the browser and does three jobs well: capture context, transform it, and send it where it needs to go.</p>
+          <h2 class="section-title">Capture, transform, route</h2>
+          <p class="section-sub">ChatBridge stays close to the browser and handles capture, transformation, and handoff without extra ceremony.</p>
         </div>
 
         <div class="workflow-grid rv-children">
@@ -342,8 +348,8 @@
       <div class="wrap">
         <div class="section-head rv" data-section="02">
           <p class="eyebrow">Feature System</p>
-          <h2 class="section-title">The page now presents the product like software, not a checklist</h2>
-          <p class="section-sub">Core actions are grouped by how people actually use them: transform content, inspect it, preserve it, and route it forward.</p>
+          <h2 class="section-title">Core actions, grouped by actual use</h2>
+          <p class="section-sub">The page groups the tools by what people do with them: transform content, inspect it, preserve it, and route it forward.</p>
         </div>
 
         <div class="feature-grid rv-children">
@@ -354,7 +360,7 @@
             <div>
               <p class="feature-tag">Transform</p>
               <h3>Summaries, rewrites, translations, and prompt upgrades</h3>
-              <p>The main production tools handle density control, tone changes, multilingual output, and cleaner prompting without leaving the tab.</p>
+              <p>The main tools handle density control, tone changes, multilingual output, and cleaner prompting without leaving the tab.</p>
             </div>
           </article>
 
@@ -411,7 +417,7 @@
         <div class="section-head rv" data-section="03">
           <p class="eyebrow">Workspace</p>
           <h2 class="section-title">A memory surface for cross-model work</h2>
-          <p class="section-sub">This is where the extension stops behaving like a simple utility and starts acting like infrastructure for long-running AI work.</p>
+          <p class="section-sub">Saved chats become reusable context, so long-running work stays organized instead of disappearing into transcripts.</p>
         </div>
 
         <div class="workspace-grid rv-children">
@@ -422,11 +428,11 @@
           </article>
           <article class="workspace-card">
             <h3>Insight Finder</h3>
-            <p>Semantic spotlighting for contradictions, requirements, TODOs, and breakthroughs.</p>
+            <p>Highlight contradictions, requirements, TODOs, and breakthroughs before they get buried.</p>
           </article>
           <article class="workspace-card">
             <h3>Fact-check layer</h3>
-            <p>Flag unsupported claims and questionable statements before they become downstream decisions.</p>
+            <p>Flag unsupported claims and questionable statements before they turn into downstream decisions.</p>
           </article>
           <article class="workspace-card">
             <h3>Thread merge</h3>
@@ -444,8 +450,8 @@
       <div class="wrap">
         <div class="section-head rv" data-section="04">
           <p class="eyebrow">Agent Hub</p>
-          <h2 class="section-title">Eleven agents, presented as a system with roles</h2>
-          <p class="section-sub">The page now separates primary instruments from specialist agents so the lineup reads with purpose instead of as a flat list.</p>
+          <h2 class="section-title">Eleven agents with clear roles</h2>
+          <p class="section-sub">Primary instruments and specialist agents are separated so the lineup reads like a system, not a list.</p>
         </div>
 
         <div class="agent-layout rv-children">
@@ -572,7 +578,7 @@
             <div class="pricing-card-inner">
               <div class="card-header">
                 <span class="tier-name">Free</span>
-                <p class="tier-desc">Perfect for everyday AI productivity.</p>
+                <p class="tier-desc">The free tier for everyday AI productivity and cross-model continuation.</p>
                 <div class="tier-price-wrapper">
                   <span class="currency">₹</span>
                   <span class="price-val" id="price-free">0</span>
@@ -580,7 +586,7 @@
                 </div>
               </div>
               
-              <button class="btn-pricing-action secondary pricing-action" data-plan="free">Stay Free</button>
+              <button class="btn-pricing-action secondary pricing-action" id="btn-free-action" data-plan="free">Continue with Free Tier</button>
               
               <div class="features-separator"></div>
               
@@ -613,12 +619,12 @@
                   <span class="icon-wrap check-icon"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></span>
                   <span class="feature-text">Export Chats</span>
                 </div>
-                
-                <!-- Not Included Features -->
-                <div class="feature-item excluded">
-                  <span class="icon-wrap cross-icon"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></span>
+                <div class="feature-item included">
+                  <span class="icon-wrap check-icon"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></span>
                   <span class="feature-text">Continue With</span>
                 </div>
+                
+                <!-- Not Included Features -->
                 <div class="feature-item excluded">
                   <span class="icon-wrap cross-icon"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></span>
                   <span class="feature-text">Compare AI Models</span>
@@ -1126,14 +1132,14 @@
         <div class="section-head rv" data-section="09">
           <p class="eyebrow">Setup</p>
           <h2 class="section-title">Get productive in two minutes</h2>
-          <p class="section-sub">The onboarding flow stays simple, but the cards now read like clear actions rather than placeholders.</p>
+          <p class="section-sub">The onboarding flow stays simple and each card maps to a real setup step.</p>
         </div>
 
         <div class="setup-grid rv-children">
           <article class="setup-card setup-card-primary">
             <span class="setup-index">01</span>
             <h3>Add your API keys</h3>
-            <p>Bring your own Gemini key, Hugging Face token, or both. Free-tier use is enough for many workflows.</p>
+            <p>Bring your own Gemini key, Hugging Face token, or both. The free tier is enough for core workflows and quick tests.</p>
             <div class="setup-keys">
               <div class="setup-key">
                 <span class="setup-key-name">Gemini</span>
@@ -1318,6 +1324,63 @@
           </div>
           <h3 class="success-title">Upgrade Successful!</h3>
           <p class="success-desc" id="success-desc-text">Your subscription has been activated successfully!</p>
+        </div>
+      </div>
+  </div>
+
+  <!-- Login / Claim Credits Modal -->
+  <div class="plan-modal" id="login-modal" hidden>
+    <div class="plan-modal-backdrop" id="login-modal-backdrop"></div>
+    <div class="plan-modal-card premium-checkout" role="dialog" aria-modal="true" aria-labelledby="login-modal-title" id="login-modal-card">
+      <button class="plan-modal-close" id="login-modal-close" aria-label="Close login">×</button>
+      
+      <!-- Login Form View -->
+      <div id="login-form-view">
+        <div class="checkout-header">
+          <p class="plan-modal-kicker" style="color: #5b8cff; margin-bottom: 4px;">ChatBridge Account</p>
+          <h2 id="login-modal-title">Log in to claim monthly free credits</h2>
+        </div>
+        
+        <form class="checkout-form" id="login-form" onsubmit="return false;">
+          <div class="form-group">
+            <label for="login-email">Email Address</label>
+            <input type="email" id="login-email" class="checkout-input" placeholder="you@example.com" required value="naeha@chatbridge.dev">
+          </div>
+          
+          <div class="form-group">
+            <label for="login-password">Password</label>
+            <input type="password" id="login-password" class="checkout-input" placeholder="••••••••" required value="password123">
+          </div>
+
+          <div style="margin: 8px 0; display: flex; flex-direction: column; gap: 8px; align-items: start; width: 100%;">
+            <span style="font-size: 0.78rem; color: var(--muted-strong);">Or continue with OAuth:</span>
+            <div style="display: flex; gap: 12px; width: 100%;">
+              <button type="button" class="btn-pricing-action secondary" id="btn-oauth-google" style="flex: 1; margin: 0; padding: 10px; font-size: 0.84rem; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; gap: 8px;">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12.24 10.285V13.4h6.887c-.275 1.565-1.88 4.604-6.887 4.604-4.33 0-7.859-3.579-7.859-7.993 0-4.414 3.529-7.993 7.859-7.993 2.46 0 4.105 1.025 5.047 1.926l2.427-2.334C17.955 2.192 15.34 1 12.24 1 6.033 1 1 6.033 1 12.24s5.033 11.24 11.24 11.24c6.478 0 10.793-4.537 10.793-10.986 0-.745-.079-1.3-.176-1.859l-10.617-.36z"/></svg>
+                Google
+              </button>
+              <button type="button" class="btn-pricing-action secondary" id="btn-oauth-github" style="flex: 1; margin: 0; padding: 10px; font-size: 0.84rem; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; gap: 8px;">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+                GitHub
+              </button>
+            </div>
+          </div>
+          
+          <div class="plan-modal-actions" style="margin-top: 16px;">
+            <button type="button" class="btn-pricing-action secondary" id="login-modal-cancel" style="width: auto; margin: 0; padding: 10px 20px; font-size: 0.88rem; border-radius: 10px;">Cancel</button>
+            <button type="submit" class="btn-pricing-action primary" id="login-modal-confirm" style="width: auto; margin: 0; padding: 10px 24px; font-size: 0.88rem; border-radius: 10px;">Log In</button>
+          </div>
+        </form>
+      </div>
+      
+      <!-- Login Success View -->
+      <div id="login-success-view" style="display: none;">
+        <div class="checkout-success-view">
+          <div class="success-icon-animation">
+            <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          </div>
+          <h3 class="success-title">Login Successful!</h3>
+          <p class="success-desc" id="login-success-desc-text">100 monthly free credits claimed successfully.</p>
         </div>
       </div>
     </div>
