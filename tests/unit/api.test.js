@@ -186,21 +186,20 @@ describe('ChatBridge Core AI API Optimizations', () => {
         const model = await getNextAvailableModel(null);
         selectedModels.add(model);
       }
-      expect(selectedModels.has('gemini-3.5-flash')).toBe(true);
-      expect(selectedModels.has('gemini-2.5-flash')).toBe(true);
+      expect(selectedModels.has('gemini-2.0-flash')).toBe(true);
       expect(selectedModels.has('gemini-1.5-flash')).toBe(true);
     });
 
     test('getNextAvailableModel respects preferred model if healthy', async () => {
-      const model = await getNextAvailableModel('gemini-3.1-pro');
-      expect(model).toBe('gemini-3.1-pro');
+      const model = await getNextAvailableModel('gemini-1.5-pro');
+      expect(model).toBe('gemini-1.5-pro');
     });
 
     test('getNextAvailableModel falls back when preferred model fails', async () => {
-      await markModelFailed('gemini-3.1-pro', 429);
+      await markModelFailed('gemini-1.5-pro', 429);
       _modelStateCache = null;
-      const model = await getNextAvailableModel('gemini-3.1-pro');
-      expect(model).not.toBe('gemini-3.1-pro');
+      const model = await getNextAvailableModel('gemini-1.5-pro');
+      expect(model).not.toBe('gemini-1.5-pro');
     });
   });
 

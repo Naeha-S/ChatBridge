@@ -7122,6 +7122,12 @@
     transShortenToggle.id = 'cb-trans-shorten';
     transShortenToggle.className = 'cb-toggle';
     transShortenToggle.style.cssText = 'width:44px;height:24px;cursor:pointer;';
+    chrome.storage.local.get(['chatbridge_trans_shorten'], (res) => {
+      transShortenToggle.checked = res.chatbridge_trans_shorten !== false;
+    });
+    transShortenToggle.addEventListener('change', () => {
+      chrome.storage.local.set({ chatbridge_trans_shorten: transShortenToggle.checked });
+    });
     transShortenRow.appendChild(transShortenLabel);
     transShortenRow.appendChild(transShortenToggle);
     transOptions.appendChild(transShortenRow);
@@ -10489,9 +10495,9 @@ ${chatText.substring(0, 10000)}`
     const shortcutsList = document.createElement('div');
     shortcutsList.className = 'cb-settings-kbd-grid';
     shortcutsList.innerHTML = `
-      <div class="cb-settings-kbd-row"><span>Scan chat</span><kbd>S</kbd></div>
-      <div class="cb-settings-kbd-row"><span>Restore</span><kbd>R</kbd></div>
-      <div class="cb-settings-kbd-row"><span>Copy</span><kbd>C</kbd></div>
+      <div class="cb-settings-kbd-row"><span>Scan chat</span><kbd>Alt + Shift + S</kbd></div>
+      <div class="cb-settings-kbd-row"><span>Restore</span><kbd>Alt + Shift + R</kbd></div>
+      <div class="cb-settings-kbd-row"><span>Copy</span><kbd>Alt + Shift + C</kbd></div>
       <div class="cb-settings-kbd-row"><span>Close panel</span><kbd>Esc</kbd></div>
     `;
     shortcutsSection.appendChild(shortcutsList);
@@ -25808,7 +25814,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
 
       async function tryGemini(chunkText) {
         debugLog('[Translation] Trying Gemini...');
-        const preferredModel = deepThinking ? 'gemini-3.1-pro' : 'gemini-3.5-flash';
+        const preferredModel = deepThinking ? 'gemini-1.5-pro' : 'gemini-2.0-flash';
         const r = await callGeminiAsync({ action: 'translate', text: chunkText, targetLang, model: preferredModel });
         if (r && !r.ok) {
           if (r.error === 'no_api_key' || r.error === 'gemini_http_error') {
@@ -25830,8 +25836,8 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       }
 
       const order = [];
-      if (hasGemini) order.push(tryGemini);
       if (hasLlama) order.push(tryLlama);
+      if (hasGemini) order.push(tryGemini);
 
       async function translateChunk(chunkText) {
         let lastError = null;
@@ -28788,8 +28794,9 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
           const fullText = (conv && conv.conversation) ? conv.conversation.map(m => m.text || '').join('\n') : '';
           const findings = window.ChatBridgeSecurity.detectSensitiveData(fullText);
 
-          if (findings && findings.length > 0) {
-            console.warn('[ChatBridge Security] Sensitive data detected in conversation:', findings);
+            if (findings && findings.length > 0) {
+              const findingsSummary = findings.map(f => `${f.type} (${f.count} matches)`).join(', ');
+              console.warn('[ChatBridge Security] Sensitive data detected in conversation: ' + findingsSummary);
 
             // Auto-sanitize the conversation
             if (Array.isArray(conv.conversation)) {

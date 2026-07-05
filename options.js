@@ -209,8 +209,8 @@
   // ============================================
   // DASHBOARD STATS
   // ============================================
-  async function loadDashboardStats() {
-    const conversations = await getConversations();
+  async function loadDashboardStats(providedArr = null) {
+    const conversations = providedArr || await getConversations();
 
     const chatsEl = document.getElementById('dashboard-chats');
     if (chatsEl) chatsEl.textContent = conversations.length;
@@ -353,8 +353,8 @@
   const historyStats = document.getElementById('history-stats');
   const btnClear = document.getElementById('btn-clear');
 
-  async function loadHistory() {
-    const arr = await getConversations();
+  async function loadHistory(providedArr = null) {
+    const arr = providedArr || await getConversations();
     const t = window.t || ((k) => k);
 
     if (historyStats) {
@@ -423,8 +423,8 @@
         chrome.storage.local.set(updates, () => {
           // Sync to background (IndexedDB)
           try { chrome.runtime.sendMessage({ type: 'replace_conversations', payload: { conversations: currentArr } }); } catch (_) { }
-          loadHistory();
-          loadDashboardStats();
+          loadHistory(currentArr);
+          loadDashboardStats(currentArr);
           showToast(t('conversationDeleted', currentLang), 'success');
         });
       });
@@ -454,8 +454,8 @@
     chrome.storage.local.set(updates, () => {
       // Sync to background (IndexedDB clear)
       try { chrome.runtime.sendMessage({ type: 'clear_conversations' }); } catch (_) { }
-      loadHistory();
-      loadDashboardStats();
+      loadHistory([]);
+      loadDashboardStats([]);
       showToast(window.t ? window.t('allCleared', currentLang) : 'All conversations cleared', 'success');
     });
   });

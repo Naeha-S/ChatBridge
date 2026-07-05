@@ -150,7 +150,7 @@ async function getNextAvailableModel(preferredModel) {
   }
 
   // Load balance generic requests across healthy flash models
-  const flashModels = ['gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-1.5-flash'];
+  const flashModels = ['gemini-2.0-flash', 'gemini-1.5-flash'];
   const healthyFlash = flashModels.filter(m => (state.modelFailureCount[m] || 0) < MAX_MODEL_FAILURES);
   if (healthyFlash.length > 1 && !preferredModel) {
     const randIdx = Math.floor(Math.random() * healthyFlash.length);
@@ -1793,7 +1793,7 @@ OUTPUT ONLY THE REPAIR PROMPT:`;
           // Use existing Gemini API infrastructure
           const model = typeof getNextAvailableModel === 'function'
             ? await getNextAvailableModel()
-            : 'gemini-3.5-flash';
+            : 'gemini-2.0-flash';
 
           const apiUrl = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${geminiApiKey || 'proxy'}`;
 
@@ -2364,7 +2364,7 @@ Return ONLY the rewritten text. No preamble. No explanation.`;
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            model: 'google/gemma-2-2b-it:nebius',
+            model: 'google/gemma-2-2b-it',
             messages: [
               { role: 'system', content: systemPrompt },
               { role: 'user', content: userMessage }
@@ -3525,7 +3525,7 @@ Rewritten conversation (optimized for ${tgt}):`;
             };
             const errorInfo = (Object.hasOwn(httpErrorMap, res.status) ? httpErrorMap[res.status] : null) || 'Unknown error';
 
-            console.error(`[Gemini API Error] HTTP ${res.status} for ${currentModel}:`, json);
+            console.error(`[Gemini API Error] HTTP ${res.status} for ${currentModel}: ` + JSON.stringify(json));
             console.error(`[Gemini API Error] ${errorInfo}`);
 
             // Rate limit (429), server errors (>= 500), model not found (404), or request/model errors (400) that aren't API key errors - try next model
@@ -3551,7 +3551,7 @@ Rewritten conversation (optimized for ${tgt}):`;
 
           // Validate response structure
           if (!json.candidates || !Array.isArray(json.candidates) || json.candidates.length === 0) {
-            console.error(`[Gemini API] No candidates in response for ${currentModel}:`, json);
+            console.error(`[Gemini API] No candidates in response for ${currentModel}: ` + JSON.stringify(json));
             markModelFailed(currentModel, 'no_candidates');
             lastError = { model: currentModel, error: 'no_candidates', body: json };
             continue; // Try next model
@@ -3559,7 +3559,7 @@ Rewritten conversation (optimized for ${tgt}):`;
 
           const candidate = json.candidates[0];
           if (!candidate || !candidate.content || !candidate.content.parts || !Array.isArray(candidate.content.parts) || candidate.content.parts.length === 0) {
-            console.error(`[Gemini API] Invalid candidate structure for ${currentModel}:`, candidate);
+            console.error(`[Gemini API] Invalid candidate structure for ${currentModel}: ` + JSON.stringify(candidate));
             markModelFailed(currentModel, 'invalid_structure');
             lastError = { model: currentModel, error: 'invalid_structure', body: json };
             continue; // Try next model
@@ -3609,7 +3609,9 @@ Rewritten conversation (optimized for ${tgt}):`;
         }
 
         // All models failed, return last error
-        console.error('[Gemini] All models failed, last error:', lastError);
+        let errorMsg = 'All Gemini models failed';
+        try { errorMsg = JSON.stringify(lastError); } catch (_) { errorMsg = String(lastError); }
+        console.error('[Gemini] All models failed, last error: ' + errorMsg);
         return sendResponse({
           ok: false,
           error: 'all_models_failed',
@@ -3709,7 +3711,7 @@ Rewritten conversation (optimized for ${tgt}):`;
           if (!(await hasProviderAccess('gemini'))) return null;
 
           await recordRequest('gemini');
-          const models = ['gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-3.1-pro', 'gemini-2.5-pro'];
+          const models = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'];
           for (const model of models) {
             try {
               const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey || 'proxy'}`;

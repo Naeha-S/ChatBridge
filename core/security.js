@@ -290,7 +290,7 @@ const ChatBridgeSecurity = (() => {
 
     // Log high severity events
     if (entry.severity === 'high' || entry.severity === 'critical') {
-      console.warn('[Security Audit]', entry);
+      console.warn(`[Security Audit] Severity: ${entry.severity}, Type: ${entry.type}, Details: ${JSON.stringify(entry.details)}`);
     }
   }
 

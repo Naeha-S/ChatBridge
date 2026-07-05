@@ -63,35 +63,36 @@
 
     document.addEventListener('keydown', (e) => {
       if (!host || host.style.display === 'none') return;
-      const target = e.target;
-      const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
-      if (isInput && target !== host) return;
-      if (e.ctrlKey || e.altKey || e.metaKey) return;
 
-      const key = e.key.toLowerCase();
-      if (key === 's') {
-        const btnScan = shadow.querySelector('#btnScan');
-        if (btnScan) {
-          e.preventDefault();
-          btnScan.click();
-          btnScan.style.transform = 'scale(0.95)';
-          setTimeout(() => { btnScan.style.transform = ''; }, 150);
-        }
-      } else if (key === 'r') {
-        const btnInsert = shadow.querySelector('#btnInsert') || shadow.querySelector('[id^="btnInsert"]');
-        if (btnInsert) {
-          e.preventDefault();
-          btnInsert.click();
-        }
-      } else if (key === 'c') {
-        const btnCopy = shadow.querySelector('#btnCopy');
-        if (btnCopy) {
-          e.preventDefault();
-          btnCopy.click();
-        }
-      } else if (e.key === 'Escape') {
+      if (e.key === 'Escape') {
         e.preventDefault();
         toggleSidebar();
+        return;
+      }
+
+      if (e.altKey && e.shiftKey) {
+        const key = e.key.toLowerCase();
+        if (key === 's') {
+          const btnScan = shadow.querySelector('#btnScan');
+          if (btnScan) {
+            e.preventDefault();
+            btnScan.click();
+            btnScan.style.transform = 'scale(0.95)';
+            setTimeout(() => { btnScan.style.transform = ''; }, 150);
+          }
+        } else if (key === 'r') {
+          const btnInsert = shadow.querySelector('#btnInsert') || shadow.querySelector('[id^="btnInsert"]');
+          if (btnInsert) {
+            e.preventDefault();
+            btnInsert.click();
+          }
+        } else if (key === 'c') {
+          const btnCopy = shadow.querySelector('#btnCopy');
+          if (btnCopy) {
+            e.preventDefault();
+            btnCopy.click();
+          }
+        }
       }
     });
 

@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Policy — ChatBridge</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    :root {
+      --bg: #0d1117; --bg-card: #161b22; --text: #e6edf3;
+      --text-2: #7d8590; --border: #30363d; --accent: #58a6ff;
+    }
+    body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Geist', system-ui, sans-serif; line-height: 1.7; -webkit-font-smoothing: antialiased; }
+    .page { max-width: 780px; margin: 0 auto; padding: 64px 24px 96px; }
+    .back { display: inline-flex; align-items: center; gap: 6px; color: var(--text-2); text-decoration: none; font-size: 14px; margin-bottom: 48px; transition: color 0.2s; }
+    .back:hover { color: var(--accent); }
+    .back svg { width: 16px; height: 16px; }
+    .badge { display: inline-block; background: rgba(88,166,255,0.1); color: var(--accent); border: 1px solid rgba(88,166,255,0.25); border-radius: 6px; font-size: 12px; font-weight: 600; padding: 3px 10px; margin-bottom: 16px; letter-spacing: 0.04em; text-transform: uppercase; }
+    h1 { font-size: clamp(2rem, 5vw, 2.8rem); font-weight: 700; letter-spacing: -0.03em; margin: 0 0 8px; }
+    .meta { color: var(--text-2); font-size: 14px; margin-bottom: 48px; }
+    .meta a { color: var(--accent); text-decoration: none; }
+    .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 28px 32px; margin-bottom: 20px; }
+    h2 { font-size: 1.1rem; font-weight: 600; margin: 0 0 12px; color: var(--text); }
+    p { margin: 0 0 12px; color: var(--text-2); font-size: 15px; }
+    p:last-child { margin-bottom: 0; }
+    ul { margin: 0 0 12px; padding-left: 20px; color: var(--text-2); font-size: 15px; }
+    ul li { margin-bottom: 6px; }
+    .highlight { color: var(--accent); font-weight: 500; }
+    .footer { text-align: center; padding-top: 48px; font-size: 13px; color: var(--text-2); }
+    .footer a { color: var(--accent); text-decoration: none; }
+    .nav-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 24px; margin-bottom: 16px; }
+    .nav-links a { font-size: 13px; color: var(--text-2); text-decoration: none; transition: color 0.2s; }
+    .nav-links a:hover { color: var(--text); }
+  </style>
+</head>
+<body>
+  <div class="page">
+
+    <div class="badge">Privacy Policy</div>
+    <h1>Privacy Policy</h1>
+    <p class="meta">Last updated: July 5, 2025 &nbsp;·&nbsp; Questions? <a href="mailto:getchatbridge@gmail.com">getchatbridge@gmail.com</a></p>
+
+    <div class="card">
+      <h2>The short version</h2>
+      <p>ChatBridge is a <span class="highlight">local-first</span> Chrome extension. By default, your conversations never leave your browser. No accounts. No tracking. No ads.</p>
+    </div>
+
+    <div class="card">
+      <h2>What data we collect</h2>
+      <p>By default, we collect <strong>nothing</strong>. All conversation data is stored exclusively in your browser's local storage (chrome.storage.local) and IndexedDB.</p>
+      <p>If you optionally enable the Cloud Gateway feature:</p>
+      <ul>
+        <li>API requests are proxied through our Cloudflare Workers endpoint.</li>
+        <li>Requests are not logged or stored by us beyond the duration of the request.</li>
+        <li>You choose which AI provider API key to use — we never store your keys.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2>Data storage</h2>
+      <p>All conversations, settings, and preferences are stored locally in your Chrome browser profile. This data is never synced to any ChatBridge server and is fully under your control. You can delete all data at any time from the Options → History page.</p>
+    </div>
+
+    <div class="card">
+      <h2>Third-party AI services</h2>
+      <p>When you use ChatBridge to send messages to AI providers (OpenAI, Google, Anthropic, etc.), those messages go directly from your browser to those providers. Each provider's own privacy policy applies. ChatBridge does not intercept or store the content of those messages.</p>
+    </div>
+
+    <div class="card">
+      <h2>Telemetry</h2>
+      <p>ChatBridge includes an <strong>opt-in only</strong> basic error telemetry system. It is disabled by default. If enabled, only anonymised error events are sent — never conversation content. You can disable this at any time from the Options → Privacy &amp; Telemetry section.</p>
+    </div>
+
+    <div class="card">
+      <h2>Cookies</h2>
+      <p>ChatBridge as a Chrome extension does not use browser cookies. The extension stores data using the Chrome Extensions storage APIs only. See our <a href="cookies.html" style="color:var(--accent);">Cookie Preferences</a> page for more information.</p>
+    </div>
+
+    <div class="card">
+      <h2>Children's privacy</h2>
+      <p>ChatBridge is not directed at children under the age of 13. We do not knowingly collect personal information from children.</p>
+    </div>
+
+    <div class="card">
+      <h2>Changes to this policy</h2>
+      <p>We may update this policy from time to time. Changes will be reflected by an updated date at the top of this page. For significant changes, we will notify users through the extension.</p>
+    </div>
+
+    <div class="card">
+      <h2>Contact</h2>
+      <p>If you have any questions about this Privacy Policy, please contact us at <a href="mailto:getchatbridge@gmail.com" style="color:var(--accent);">getchatbridge@gmail.com</a>.</p>
+    </div>
+
+    <div class="footer">
+      <div class="nav-links">
+        <a href="cookies.html">Cookie Preferences</a>
+        <a href="terms.html">Terms of Use</a>
+        <a href="privacy.html">Privacy</a>
+        <a href="security.html">Security</a>
+      </div>
+      <p>© 2025 ChatBridge. All rights reserved.</p>
+    </div>
+  </div>
+</body>
+</html>

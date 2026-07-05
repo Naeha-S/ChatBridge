@@ -320,7 +320,24 @@ export async function chatbridgeFetch(url, options = {}) {
 
 
 
-  if (!cfg.ready || !provider) {
+  let hasLocalKey = false;
+  try {
+    const keyMap = {
+      gemini: 'chatbridge_gemini_key',
+      openai: 'chatbridge_openai_key',
+      huggingface: 'chatbridge_hf_key',
+      nvidia: 'chatbridge_api_nvidia'
+    };
+    const storageKey = keyMap[provider];
+    if (storageKey) {
+      const stored = await new Promise(r => chrome.storage.local.get([storageKey], r));
+      if (stored && stored[storageKey]) {
+        hasLocalKey = true;
+      }
+    }
+  } catch (_) {}
+
+  if (!cfg.ready || !provider || hasLocalKey) {
 
     return fetch(url, options);
 

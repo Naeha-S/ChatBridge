@@ -224,3 +224,40 @@ body {
     width: 100%;
   }
 }
+
+.goodbye-legal-footer {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 12px 20px;
+  padding: 20px 24px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.35);
+  text-align: center;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.goodbye-legal-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  align-items: center;
+  justify-content: center;
+}
+
+.goodbye-legal-links a {
+  color: rgba(255, 255, 255, 0.45);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.goodbye-legal-links a:hover {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.goodbye-legal-links span {
+  opacity: 0.3;
+}

@@ -270,12 +270,9 @@
 
     .sidebar-logo {
       width: 32px; height: 32px;
-      background: linear-gradient(135deg, var(--accent), var(--accent-2));
       border-radius: 8px;
-      display: flex; align-items: center; justify-content: center;
-      font-weight: 700; font-size: 12px; color: #fff;
-      letter-spacing: -0.02em;
       flex-shrink: 0;
+      object-fit: cover;
     }
 
     .sidebar-title {
@@ -816,6 +813,33 @@
     }
     .cloud-toggle input:checked + .cloud-toggle-track { background: var(--accent); }
     .cloud-toggle input:checked + .cloud-toggle-track::after { transform: translateX(18px); }
+
+    /* ─────────────────────────────────────────────
+       GLOBAL LEGAL FOOTER
+    ───────────────────────────────────────────── */
+    .legal-footer {
+      padding: 16px 32px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 12px;
+      color: var(--text-3);
+      background: var(--bg);
+    }
+    .legal-footer-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+    .legal-footer-links a {
+      color: var(--text-2);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+    .legal-footer-links a:hover { color: var(--text); }
   </style>
 </head>
 
@@ -825,7 +849,7 @@
     <!-- ───────────────────────── SIDEBAR ───────────────────────── -->
     <aside class="sidebar">
       <div class="sidebar-brand">
-        <div class="sidebar-logo">CB</div>
+        <img class="sidebar-logo" src="logo.png" alt="ChatBridge Logo">
         <div class="sidebar-title">ChatBridge</div>
       </div>
 
@@ -1171,11 +1195,15 @@
       <!-- ══════════════════ ABOUT ══════════════════ -->
       <section class="section" id="section-about">
         <div class="card" style="text-align: center; padding: 48px 24px; border-bottom: none; border-bottom-left-radius: 0; border-bottom-right-radius: 0; margin-bottom: 0;">
-          <div style="width: 72px; height: 72px; background: linear-gradient(135deg, var(--accent), var(--accent-2)); border-radius: 18px; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; font-size: 28px; font-weight: 700; color: #fff; letter-spacing: -0.04em; box-shadow: 0 8px 24px rgba(88,166,255,0.2);">CB</div>
+          <img src="logo.png" alt="ChatBridge Logo" style="width: 72px; height: 72px; margin: 0 auto 20px; display: block; border-radius: 18px; box-shadow: 0 8px 24px rgba(88,166,255,0.2);">
           <h2 style="font-size: 24px; font-weight: 700; color: var(--text); margin-bottom: 8px; letter-spacing: -0.03em;">ChatBridge</h2>
-          <p style="font-size: 14px; color: var(--text-2); max-width: 460px; margin: 0 auto; line-height: 1.5;">The universal bridge between AI chat platforms. Manually scan your visible AI chat session and paste it into another AI chat. Local-only by default.</p>
+          <p style="font-size: 14px; color: var(--text-2); max-width: 460px; margin: 0 auto 20px; line-height: 1.5;">The universal bridge between AI chat platforms. Manually scan your visible AI chat session and paste it into another AI chat. Local-only by default.</p>
+          <a href="mailto:getchatbridge@gmail.com" style="display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--accent); text-decoration: none; font-weight: 500; border: 1px solid var(--border); border-radius: 8px; padding: 6px 14px; background: var(--bg-raised); transition: border-color 0.2s;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            getchatbridge@gmail.com
+          </a>
         </div>
-        <div class="card" style="border-top-left-radius: 0; border-top-right-radius: 0; border-top: 1px solid var(--border); padding-top: 24px;">
+        <div class="card" style="border-top-left-radius: 0; border-top-right-radius: 0; border-top: 1px solid var(--border); border-bottom: none; border-bottom-left-radius: 0; border-bottom-right-radius: 0; padding-top: 24px; margin-bottom: 0;">
           <div class="card-title" style="margin-bottom: 16px;">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
             System Information
@@ -1219,10 +1247,32 @@
             </div>
           </div>
         </div>
+        <!-- Legal Footer -->
+        <div class="card" style="border-top: 1px solid var(--border); border-top-left-radius: 0; border-top-right-radius: 0; padding: 16px 24px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;">
+          <span style="font-size: 12px; color: var(--text-3);">© 2025 ChatBridge. All rights reserved.</span>
+          <div style="display: flex; flex-wrap: wrap; gap: 16px;">
+            <a href="docs/cookies.html" target="_blank" style="font-size: 12px; color: var(--text-2); text-decoration: none; transition: color 0.2s;">Cookie Preferences</a>
+            <a href="docs/terms.html" target="_blank" style="font-size: 12px; color: var(--text-2); text-decoration: none; transition: color 0.2s;">Terms of Use</a>
+            <a href="docs/privacy.html" target="_blank" style="font-size: 12px; color: var(--text-2); text-decoration: none; transition: color 0.2s;">Privacy</a>
+            <a href="docs/security.html" target="_blank" style="font-size: 12px; color: var(--text-2); text-decoration: none; transition: color 0.2s;">Security</a>
+          </div>
+        </div>
       </section>
 
     </main>
   </div>
+
+  <!-- ───── LEGAL FOOTER ───── -->
+  <footer class="legal-footer">
+    <span>© 2025 ChatBridge. All rights reserved.</span>
+    <div class="legal-footer-links">
+      <a href="docs/cookies.html" target="_blank">Cookie Preferences</a>
+      <a href="docs/terms.html" target="_blank">Terms of Use</a>
+      <a href="docs/privacy.html" target="_blank">Privacy</a>
+      <a href="docs/security.html" target="_blank">Security</a>
+      <a href="mailto:getchatbridge@gmail.com">Contact</a>
+    </div>
+  </footer>
 
   <script src="core/translations.js"></script>
   <script src="core/security.js"></script>
