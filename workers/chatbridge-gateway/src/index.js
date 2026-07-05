@@ -22,11 +22,13 @@ const DEFAULT_BASES = {
 
 // Ordered list tried when a provider fails with 429/5xx
 const FALLBACK_CHAIN = ['gemini', 'openai', 'huggingface'];
+const FREE_PROXY_GEMINI_MODEL = 'gemini-1.5-flash';
+const FREE_PROXY_LLAMA_MODEL = 'meta-llama/Meta-Llama-3.1-8B-Instruct';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Authorization, Content-Type, X-ChatBridge-Client, X-CB-No-Cache',
+  'Access-Control-Allow-Headers': 'Authorization, Content-Type, X-ChatBridge-Client, X-CB-No-Cache, X-ChatBridge-Key-Mode, X-ChatBridge-Subscription-Tier, X-ChatBridge-Requested-Provider, X-ChatBridge-Requested-Model, X-ChatBridge-Free-Proxy',
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -67,7 +69,16 @@ function verifyAuth(request, env) {
   return { ok: true, token };
 }
 
-function providerKey(env, provider) {
+function providerKey(env, provider, isPremium = false) {
+  if (isPremium) {
+    switch (provider) {
+      case 'gemini':      return String(env.GEMINI_API_KEY_PREMIUM      || env.GEMINI_API_KEY      || '').trim();
+      case 'openai':      return String(env.OPENAI_API_KEY_PREMIUM      || env.OPENAI_API_KEY      || '').trim();
+      case 'huggingface': return String(env.HUGGINGFACE_API_KEY_PREMIUM || env.HUGGINGFACE_API_KEY || '').trim();
+      case 'nvidia':      return String(env.NVIDIA_API_KEY_PREMIUM      || env.NVIDIA_API_KEY      || '').trim();
+      default:            return '';
+    }
+  }
   switch (provider) {
     case 'gemini':      return String(env.GEMINI_API_KEY      || '').trim();
     case 'openai':      return String(env.OPENAI_API_KEY      || '').trim();
@@ -93,8 +104,8 @@ function buildUpstreamUrl(payload) {
   return upstream;
 }
 
-function applyProviderAuth(provider, upstreamUrl, headers, env) {
-  const key = providerKey(env, provider);
+function applyProviderAuth(provider, upstreamUrl, headers, env, isPremium = false) {
+  const key = providerKey(env, provider, isPremium);
   if (!key) return { ok: false, status: 503, message: `${provider}_key_not_configured` };
 
   if (provider === 'gemini') {
@@ -105,6 +116,39 @@ function applyProviderAuth(provider, upstreamUrl, headers, env) {
   const nextHeaders = { ...headers };
   nextHeaders.Authorization = `Bearer ${key}`;
   return { ok: true, headers: nextHeaders };
+}
+
+function parseBodyObject(payload) {
+  try {
+    if (typeof payload.body === 'string') return JSON.parse(payload.body);
+    return payload.body && typeof payload.body === 'object' ? payload.body : {};
+  } catch (_) {
+    return {};
+  }
+}
+
+function inferRequestedModel(payload) {
+  const path = String(payload.path || '');
+  const pathMatch = path.match(/\/models\/([^:/?]+)(?::|\/|$)/i);
+  if (pathMatch && pathMatch[1]) return decodeURIComponent(pathMatch[1]);
+
+  const body = parseBodyObject(payload);
+  if (typeof body.model === 'string' && body.model.trim()) return body.model.trim();
+
+  return '';
+}
+
+function isFreeProxyRequest(request) {
+  const explicitFree = request.headers.get('X-ChatBridge-Free-Proxy') === '1';
+  const defaultToken = request.headers.get('X-ChatBridge-Key-Mode') === 'default';
+  const tier = String(request.headers.get('X-ChatBridge-Subscription-Tier') || 'free').trim().toLowerCase();
+  return explicitFree || (defaultToken && tier === 'free');
+}
+
+function isAllowedFreeProxyTarget(provider, model) {
+  if (provider === 'gemini') return model === FREE_PROXY_GEMINI_MODEL;
+  if (provider === 'huggingface') return model === FREE_PROXY_LLAMA_MODEL;
+  return false;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -335,7 +379,7 @@ async function checkTieredRateLimit(request, env, token) {
 // FEATURE 2 — MODEL FALLBACKS + CORE PROXY
 // ─────────────────────────────────────────────────────────────────────────────
 
-async function attemptUpstream(provider, payload, env) {
+async function attemptUpstream(provider, payload, env, isPremium = false) {
   const tryPayload = { ...payload, provider };
 
   let upstreamUrl;
@@ -357,7 +401,7 @@ async function attemptUpstream(provider, payload, env) {
     sanitizedHeaders['Content-Type'] = 'application/json';
   }
 
-  const authResult = applyProviderAuth(provider, upstreamUrl, sanitizedHeaders, env);
+  const authResult = applyProviderAuth(provider, upstreamUrl, sanitizedHeaders, env, isPremium);
   if (!authResult.ok) return { ok: false, error: authResult.message, skip: true };
 
   const method  = String(tryPayload.method || 'POST').toUpperCase();
@@ -398,6 +442,35 @@ async function handleProxy(request, env, token) {
   const requestedProvider = String(payload.provider || '').trim();
   if (!DEFAULT_BASES[requestedProvider]) {
     return json({ ok: false, error: 'unknown_provider' }, 400);
+  }
+
+  const requestedModel = inferRequestedModel(payload);
+  const isPremium = !isFreeProxyRequest(request);
+  if (!isPremium && !isAllowedFreeProxyTarget(requestedProvider, requestedModel)) {
+    return json({
+      ok: false,
+      error: 'forbidden_model',
+      message: `Free proxy requests may only use ${FREE_PROXY_GEMINI_MODEL} or ${FREE_PROXY_LLAMA_MODEL}.`,
+      provider: requestedProvider,
+      model: requestedModel || 'unknown',
+    }, 403);
+  }
+
+  if (!isPremium) {
+    const expectedBase = String(DEFAULT_BASES[requestedProvider] || '').trim();
+    const actualBase = String(payload.base || '').trim();
+    const headerProvider = String(request.headers.get('X-ChatBridge-Requested-Provider') || '').trim();
+    const headerModel = String(request.headers.get('X-ChatBridge-Requested-Model') || '').trim();
+
+    if (!actualBase || actualBase !== expectedBase) {
+      return json({ ok: false, error: 'forbidden_base', provider: requestedProvider }, 403);
+    }
+    if (headerProvider && headerProvider !== requestedProvider) {
+      return json({ ok: false, error: 'forbidden_provider', provider: requestedProvider }, 403);
+    }
+    if (headerModel && headerModel !== requestedModel) {
+      return json({ ok: false, error: 'forbidden_model_header', provider: requestedProvider }, 403);
+    }
   }
 
   const ip       = request.headers.get('CF-Connecting-IP') || 'unknown';
@@ -446,14 +519,14 @@ async function handleProxy(request, env, token) {
   // ── FEATURE 2: Try primary provider, fallback on failure ──────────────────
   const providersToTry = [
     requestedProvider,
-    ...FALLBACK_CHAIN.filter(p => p !== requestedProvider && providerKey(env, p)),
+    ...FALLBACK_CHAIN.filter(p => p !== requestedProvider && providerKey(env, p, isPremium)),
   ];
 
   let lastResult = null;
   let usedProvider = requestedProvider;
 
   for (const provider of providersToTry) {
-    const result = await attemptUpstream(provider, payload, env);
+    const result = await attemptUpstream(provider, payload, env, isPremium);
 
     if (result.ok) {
       lastResult   = result;

@@ -548,112 +548,535 @@
       <div class="wrap">
         <div class="section-head rv" data-section="07">
           <p class="eyebrow">Pricing</p>
-          <h2 class="section-title">A clear line between free workflow and paid power</h2>
-          <p class="section-sub">The free plan covers the day-to-day utilities. Pro unlocks cross-model workflow and analysis. Max is for heavy verification, memory, and agentic work. Checkout is a dummy flow for now and can be replaced later with Razorpay or another live gateway.</p>
+          <h2 class="section-title">Scale your AI capabilities on demand</h2>
+          <p class="section-sub">Choose a plan that fits your productivity cycle. All plans run local computations. Upgrading to a paid plan unlocks proxy-based heavy models, advanced retrieval depths, and priority workflow orchestration.</p>
         </div>
 
-        <div class="pricing-grid rv-children">
-          <article class="pricing-card pricing-card-free">
-            <div class="pricing-head">
-              <div>
-                <p class="pricing-tier">Free</p>
-                <h3>Core tools</h3>
+        <!-- Monthly / Yearly Billing Toggle -->
+        <div class="billing-toggle-wrapper">
+          <span class="billing-toggle-label active" id="toggle-monthly-label">Monthly</span>
+          <label class="billing-switch">
+            <input type="checkbox" id="billing-cycle-checkbox">
+            <span class="billing-slider"></span>
+          </label>
+          <span class="billing-toggle-label" id="toggle-yearly-label">Yearly</span>
+          <span class="billing-discount-badge">Save 30% on Pro</span>
+        </div>
+
+        <!-- Pricing Cards Grid -->
+        <div class="pricing-grid-container">
+          
+          <!-- Free Plan Card -->
+          <article class="pricing-card-redesign" id="card-free">
+            <div class="card-glow"></div>
+            <div class="pricing-card-inner">
+              <div class="card-header">
+                <span class="tier-name">Free</span>
+                <p class="tier-desc">Perfect for everyday AI productivity.</p>
+                <div class="tier-price-wrapper">
+                  <span class="currency">₹</span>
+                  <span class="price-val" id="price-free">0</span>
+                  <span class="billing-period" id="period-free">/month</span>
+                </div>
               </div>
-              <div class="pricing-price">₹0</div>
+              
+              <button class="btn-pricing-action secondary pricing-action" data-plan="free">Stay Free</button>
+              
+              <div class="features-separator"></div>
+              
+              <div class="card-features-list">
+                <div class="feature-item included">
+                  <span class="icon-wrap check-icon"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></span>
+                  <span class="feature-text">Scan conversations</span>
+                </div>
+                <div class="feature-item included">
+                  <span class="icon-wrap check-icon"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></span>
+                  <span class="feature-text">100 AI Credits every month</span>
+                </div>
+                <div class="feature-item included">
+                  <span class="icon-wrap check-icon"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></span>
+                  <span class="feature-text">Summaries &amp; Rewrites</span>
+                </div>
+                <div class="feature-item included">
+                  <span class="icon-wrap check-icon"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></span>
+                  <span class="feature-text">Translate &amp; Prompt Enhancer</span>
+                </div>
+                <div class="feature-item included">
+                  <span class="icon-wrap check-icon"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></span>
+                  <span class="feature-text">Extract Content</span>
+                </div>
+                <div class="feature-item included">
+                  <span class="icon-wrap check-icon"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></span>
+                  <span class="feature-text">Themes &amp; Settings</span>
+                </div>
+                <div class="feature-item included">
+                  <span class="icon-wrap check-icon"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></span>
+                  <span class="feature-text">Export Chats</span>
+                </div>
+                
+                <!-- Not Included Features -->
+                <div class="feature-item excluded">
+                  <span class="icon-wrap cross-icon"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></span>
+                  <span class="feature-text">Continue With</span>
+                </div>
+                <div class="feature-item excluded">
+                  <span class="icon-wrap cross-icon"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></span>
+                  <span class="feature-text">Compare AI Models</span>
+                </div>
+                <div class="feature-item excluded">
+                  <span class="icon-wrap cross-icon"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></span>
+                  <span class="feature-text">Merge Threads</span>
+                </div>
+                <div class="feature-item excluded">
+                  <span class="icon-wrap cross-icon"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></span>
+                  <span class="feature-text">Insight Finder</span>
+                </div>
+                <div class="feature-item excluded">
+                  <span class="icon-wrap cross-icon"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></span>
+                  <span class="feature-text">Smart Query</span>
+                </div>
+                <div class="feature-item excluded">
+                  <span class="icon-wrap cross-icon"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></span>
+                  <span class="feature-text">Fact Checking</span>
+                </div>
+                <div class="feature-item excluded">
+                  <span class="icon-wrap cross-icon"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></span>
+                  <span class="feature-text">Premium Agents</span>
+                </div>
+              </div>
             </div>
-            <p class="pricing-copy">For scanning, rewriting, translating, and everyday cleanup.</p>
-            <div class="pricing-feature-list">
-              <span>Scan conversations</span>
-              <span>Summaries and rewrites</span>
-              <span>Translations and prompt upgrades</span>
-              <span>Extract Content</span>
-              <span>Themes, exports, settings</span>
-            </div>
-            <button class="btn-secondary btn-small pricing-action" data-plan="free" data-gateway="sandbox">Stay on Free</button>
           </article>
 
-          <article class="pricing-card pricing-card-pro">
-            <div class="pricing-head">
-              <div>
-                <p class="pricing-tier">Pro</p>
-                <h3>Workflow unlocks</h3>
+          <!-- Pro Plan Card -->
+          <article class="pricing-card-redesign recommended" id="card-pro">
+            <div class="card-glow"></div>
+            <div class="popular-badge">Most Popular</div>
+            <div class="pricing-card-inner">
+              <div class="card-header">
+                <span class="tier-name">Pro</span>
+                <p class="tier-desc">For students, creators, developers, and power users.</p>
+                <div class="tier-price-wrapper">
+                  <span class="currency">₹</span>
+                  <span class="price-val" id="price-pro">299</span>
+                  <span class="billing-period" id="period-pro">/month</span>
+                </div>
+                <span class="yearly-savings-info" id="savings-pro" style="display:none;">billed annually (Save 30%)</span>
               </div>
-              <div class="pricing-price">₹299<span>/mo</span></div>
+              
+              <button class="btn-pricing-action primary pricing-action" data-plan="pro">Upgrade to Pro</button>
+              
+              <div class="features-separator"></div>
+              
+              <div class="card-features-list">
+                <div class="feature-title-above">Everything in Free plus:</div>
+                <div class="feature-item included">
+                  <span class="icon-wrap check-icon"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></span>
+                  <span class="feature-text">2,000 AI Credits/month</span>
+                </div>
+                <div class="feature-item included">
+                  <span class="icon-wrap check-icon"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></span>
+                  <span class="feature-text">Continue any conversation on another AI</span>
+                </div>
+                <div class="feature-item included">
+                  <span class="icon-wrap check-icon"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></span>
+                  <span class="feature-text">Compare ChatGPT, Claude &amp; Gemini side by side</span>
+                </div>
+                <div class="feature-item included">
+                  <span class="icon-wrap check-icon"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></span>
+                  <span class="feature-text">Combine multiple conversations into one</span>
+                </div>
+                <div class="feature-item included">
+                  <span class="icon-wrap check-icon"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></span>
+                  <span class="feature-text">Search every saved conversation instantly</span>
+                </div>
+                <div class="feature-item included">
+                  <span class="icon-wrap check-icon"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></span>
+                  <span class="feature-text">Insight Finder (semantic spotlight)</span>
+                </div>
+                <div class="feature-item included">
+                  <span class="icon-wrap check-icon"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></span>
+                  <span class="feature-text">Advanced Workspace layout</span>
+                </div>
+                <div class="feature-item included">
+                  <span class="icon-wrap check-icon"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></span>
+                  <span class="feature-text">Priority Processing (faster turns)</span>
+                </div>
+              </div>
             </div>
-            <p class="pricing-copy">For routing, comparison, and smarter workspace features.</p>
-            <div class="pricing-feature-list">
-              <span>Continue With</span>
-              <span>Compare Models</span>
-              <span>Merge Threads</span>
-              <span>Insight Finder</span>
-              <span>Smart Query and advanced workspace views</span>
-            </div>
-            <button class="btn-primary btn-small pricing-action" data-plan="pro" data-gateway="sandbox">Upgrade to Pro</button>
           </article>
-
-          <article class="pricing-card pricing-card-max">
-            <div class="pricing-head">
-              <div>
-                <p class="pricing-tier">Max</p>
-                <h3>Deep analysis</h3>
+          
+          <!-- Max Plan Card -->
+          <article class="pricing-card-redesign" id="card-max">
+            <div class="card-glow"></div>
+            <div class="pricing-card-inner">
+              <div class="card-header">
+                <span class="tier-name">Max</span>
+                <p class="tier-desc">For researchers, professionals, and heavy AI workflows.</p>
+                <div class="tier-price-wrapper">
+                  <span class="currency">₹</span>
+                  <span class="price-val" id="price-max">799</span>
+                  <span class="billing-period" id="period-max">/month</span>
+                </div>
+                <span class="yearly-savings-info" id="savings-max" style="display:none;">billed annually (Save 27%)</span>
               </div>
-              <div class="pricing-price">₹799<span>/mo</span></div>
+              
+              <button class="btn-pricing-action primary pricing-action" data-plan="max">Go Max</button>
+              
+              <div class="features-separator"></div>
+              
+              <div class="card-features-list">
+                <div class="feature-title-above">Everything in Pro plus:</div>
+                <div class="feature-item included">
+                  <span class="icon-wrap check-icon"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></span>
+                  <span class="feature-text">10,000 AI Credits/month</span>
+                </div>
+                <div class="feature-item included">
+                  <span class="icon-wrap check-icon"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></span>
+                  <span class="feature-text">Fact-Check &amp; verification models</span>
+                </div>
+                <div class="feature-item included">
+                  <span class="icon-wrap check-icon"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></span>
+                  <span class="feature-text">Advanced Retrieval algorithms</span>
+                </div>
+                <div class="feature-item included">
+                  <span class="icon-wrap check-icon"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></span>
+                  <span class="feature-text">Persistent Memory bank</span>
+                </div>
+                <div class="feature-item included">
+                  <span class="icon-wrap check-icon"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></span>
+                  <span class="feature-text">Premium AI Agents</span>
+                </div>
+                <div class="feature-item included">
+                  <span class="icon-wrap check-icon"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></span>
+                  <span class="feature-text">Future Automations orchestration</span>
+                </div>
+                <div class="feature-item included">
+                  <span class="icon-wrap check-icon"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></span>
+                  <span class="feature-text">Priority Access to Heavy Workflows</span>
+                </div>
+                <div class="feature-item included">
+                  <span class="icon-wrap check-icon"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></span>
+                  <span class="feature-text">Early Access Features</span>
+                </div>
+              </div>
             </div>
-            <p class="pricing-copy">For verification-heavy work, retrieval depth, and premium agents.</p>
-            <div class="pricing-feature-list">
-              <span>Everything in Pro</span>
-              <span>Fact-Check</span>
-              <span>Advanced retrieval and memory surfaces</span>
-              <span>Premium agents and future automation</span>
-              <span>Priority access to heavier workflows</span>
-            </div>
-            <button class="btn-primary btn-small pricing-action" data-plan="max" data-gateway="sandbox">Go Max</button>
           </article>
         </div>
 
-        <div class="pricing-matrix rv">
-          <div class="pricing-matrix-row pricing-matrix-head">
-            <span>Feature</span>
-            <span>Free</span>
-            <span>Pro</span>
-            <span>Max</span>
+        <!-- Trust Indicators -->
+        <div class="trust-indicators-row">
+          <div class="trust-item">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-lock"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+            <span>No credit card required</span>
           </div>
-          <div class="pricing-matrix-row">
-            <span>Extract Content</span>
-            <span>Included</span>
-            <span>Included</span>
-            <span>Included</span>
+          <div class="trust-item">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-check"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            <span>Cancel anytime</span>
           </div>
-          <div class="pricing-matrix-row">
-            <span>Compare Models</span>
-            <span>Upgrade</span>
-            <span>Included</span>
-            <span>Included</span>
+          <div class="trust-item">
+            <svg viewBox="0 0 40 16" width="40" height="16" fill="currentColor" class="stripe-logo"><path d="M40 7.82c0-.85-.38-1.57-1-2-.66-.45-1.57-.68-2.65-.68-1 0-1.89.22-2.58.55l.48 1.48c.63-.3 1.34-.49 2.07-.49.52 0 .91.1 1.15.28a.72.72 0 0 1 .32.59c0 .48-.42.69-1.22.75-.48 0-1 .09-1.42.27s-.79.43-1.07.78-.42.82-.42 1.37a2.82 2.82 0 0 0 .54 1.76c.46.54 1.14.81 2 .81A3.75 3.75 0 0 0 39 12v1.5a1.86 1.86 0 0 0 1.81.5c.6-.14 1.17-.4 1.66-.75l-.47-1.39A2.39 2.39 0 0 1 40 12zM36.33 11a1.27 1.27 0 0 1-.95-.36.94.94 0 0 1-.22-.64c0-.46.33-.71.95-.78.43 0 .76.08.94.19v.76a1.22 1.22 0 0 1-1 .39zM31 5.3v6.7h.1l2.2-2.2 1.5 1.5-3.8 3.8-1-1v-2.1l-.1-.1a2.89 2.89 0 0 1-2.1.8c-.89 0-1.63-.34-2.18-1s-.82-1.67-.82-2.91V5.3zm-3.23 4.41c0 .76.16 1.32.49 1.67a1.69 1.69 0 0 0 1.31.52c.62 0 1.09-.23 1.35-.67V7.12A1.89 1.89 0 0 0 29.57 6a1.66 1.66 0 0 0-1.31.5c-.33.36-.49.92-.49 1.68zm-5.75-7v2.6h3v1.5h-3v6.3h-1.8V6.8h-1.6V5.3h1.6V3.6zm-5 4.54c0-.85-.39-1.57-1-2s-1.58-.68-2.66-.68a6.56 6.56 0 0 0-2.58.55l.48 1.48a5.29 5.29 0 0 1 2.07-.49c.52 0 .91.1 1.15.28a.72.72 0 0 1 .32.59c0 .48-.42.69-1.22.75-.48 0-1 .09-1.42.27S6.12 9 5.84 9.38s-.42.82-.42 1.37a2.82 2.82 0 0 0 .54 1.76c.46.54 1.14.81 2 .81a3.75 3.75 0 0 0 2.68-1.13v1.5H12.5V5.3h-1.8zm-3.67 3.23a1.27 1.27 0 0 1-.95-.36.94.94 0 0 1-.22-.64c0-.46.33-.71.95-.78.43 0 .76.08.94.19v.76a1.22 1.22 0 0 1-1 .39zm-3.66-8H0v1.5h1.9a1.63 1.63 0 0 0 1.13-.39 1.12 1.12 0 0 0 .32-.82V3.6zm-1.8-1.8a1 1 0 1 1 1 1 1 1 0 0 1-1-1z" fill="currentColor"/></svg>
+            <span>Secure checkout with Stripe</span>
           </div>
-          <div class="pricing-matrix-row">
-            <span>Merge Threads</span>
-            <span>Upgrade</span>
-            <span>Included</span>
-            <span>Included</span>
+        </div>
+
+        <!-- Dynamic Credit Calculator -->
+        <div class="pricing-calculator-card">
+          <div class="calculator-title-wrapper">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#8b5cf6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-info"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+            <h3>Estimate Your AI Credit Needs</h3>
           </div>
-          <div class="pricing-matrix-row">
-            <span>Insight Finder</span>
-            <span>Upgrade</span>
-            <span>Included</span>
-            <span>Included</span>
+          <div class="calculator-content-grid">
+            <div class="calculator-inputs">
+              <div class="calc-group">
+                <label for="calc-daily-conv">
+                  Daily conversation scans / routes:
+                  <span class="highlight-value" id="calc-conv-val">10 / day</span>
+                </label>
+                <input type="range" id="calc-daily-conv" class="calc-slider" min="1" max="100" value="10">
+              </div>
+              <div class="calc-group">
+                <label>Usage Intensity / Features Needed</label>
+                <div class="calc-intensity-options">
+                  <label class="calc-intensity-option">
+                    <input type="radio" name="calc-intensity" value="basic" checked>
+                    <span class="intensity-card">
+                      <strong>Basic</strong>
+                      Scanning, summaries &amp; translations
+                    </span>
+                  </label>
+                  <label class="calc-intensity-option">
+                    <input type="radio" name="calc-intensity" value="advanced">
+                    <span class="intensity-card">
+                      <strong>Advanced</strong>
+                      Model compare, search &amp; workspace
+                    </span>
+                  </label>
+                  <label class="calc-intensity-option">
+                    <input type="radio" name="calc-intensity" value="agentic">
+                    <span class="intensity-card">
+                      <strong>Agentic</strong>
+                      Deep memory, verification &amp; agents
+                    </span>
+                  </label>
+                </div>
+              </div>
+            </div>
+            <div class="calculator-result-panel">
+              <span class="result-heading">Estimated Monthly Credits</span>
+              <div class="result-credits-count" id="calc-credits-result">3,000</div>
+              <div class="result-credits-label">credits / month</div>
+              <div class="result-recommendation">
+                <span>Recommended:</span>
+                <strong id="calc-recommended-plan">Pro Plan</strong>
+              </div>
+              <button class="btn-calculator-cta" id="btn-calc-select-plan">Upgrade to Pro</button>
+            </div>
           </div>
-          <div class="pricing-matrix-row">
-            <span>Continue With</span>
-            <span>Upgrade</span>
-            <span>Included</span>
-            <span>Included</span>
-          </div>
-          <div class="pricing-matrix-row">
-            <span>Fact-Check</span>
-            <span>Upgrade</span>
-            <span>Upgrade</span>
-            <span>Included</span>
-          </div>
+        </div>
+
+        <!-- Comparison Table -->
+        <h3 style="text-align: center; margin-bottom: 24px; font-size: 1.4rem; font-weight: 700;">Compare all features in detail</h3>
+        <div class="comparison-table-wrapper">
+          <table class="comparison-table">
+            <thead>
+              <tr>
+                <th style="width: 40%;">Feature</th>
+                <th style="width: 20%; text-align: center;">Free</th>
+                <th style="width: 20%; text-align: center;">Pro</th>
+                <th style="width: 20%; text-align: center;">Max</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- Category: Core -->
+              <tr class="table-category-header">
+                <td colspan="4">Core capabilities</td>
+              </tr>
+              <tr>
+                <td class="feature-title">
+                  <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"></path><path d="M17 3h2a2 2 0 0 1 2 2v2"></path><path d="M21 17v2a2 2 0 0 1-2 2h-2"></path><path d="M7 21H5a2 2 0 0 1-2-2v-2"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                  Scan conversations
+                </td>
+                <td class="cell-center"><svg class="icon-checkmark" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></td>
+                <td class="cell-center"><svg class="icon-checkmark" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></td>
+                <td class="cell-center"><svg class="icon-checkmark" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></td>
+              </tr>
+              <tr>
+                <td class="feature-title">
+                  <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m0-12.728l.707.707m11.314 11.314l.707.707M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"></path></svg>
+                  Monthly Credits
+                </td>
+                <td class="cell-center" style="font-weight: 700; font-size: 0.8rem; color: var(--muted);">100</td>
+                <td class="cell-center" style="font-weight: 700; font-size: 0.8rem; color: #a78bfa;">2,000</td>
+                <td class="cell-center" style="font-weight: 700; font-size: 0.8rem; color: #5b8cff;">10,000</td>
+              </tr>
+              <tr>
+                <td class="feature-title">
+                  <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                  Summaries &amp; Rewrites
+                </td>
+                <td class="cell-center"><svg class="icon-checkmark" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></td>
+                <td class="cell-center"><svg class="icon-checkmark" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></td>
+                <td class="cell-center"><svg class="icon-checkmark" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></td>
+              </tr>
+              <tr>
+                <td class="feature-title">
+                  <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+                  Translate &amp; Prompt upgrades
+                </td>
+                <td class="cell-center"><svg class="icon-checkmark" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></td>
+                <td class="cell-center"><svg class="icon-checkmark" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></td>
+                <td class="cell-center"><svg class="icon-checkmark" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></td>
+              </tr>
+              <tr>
+                <td class="feature-title">
+                  <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                  Extract Content
+                </td>
+                <td class="cell-center"><svg class="icon-checkmark" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></td>
+                <td class="cell-center"><svg class="icon-checkmark" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></td>
+                <td class="cell-center"><svg class="icon-checkmark" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></td>
+              </tr>
+              <tr>
+                <td class="feature-title">
+                  <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 14.7255 3.09032 17.1962 4.85857 19C5.02845 19.17 5.11339 19.255 5.1611 19.3582C5.2088 19.4613 5.21366 19.5769 5.22338 19.8082C5.25055 20.4552 5.28945 20.8995 5.5898 21.2C5.89015 21.5005 6.33446 21.5395 6.98147 21.5666C7.21279 21.5763 7.32845 21.5812 7.43161 21.6289C7.53477 21.6766 7.61971 21.7616 7.78959 19.3414"></path><circle cx="7.5" cy="10.5" r="1.5"></circle><circle cx="11.5" cy="7.5" r="1.5"></circle><circle cx="16.5" cy="9.5" r="1.5"></circle><circle cx="15.5" cy="14.5" r="1.5"></circle></svg>
+                  Themes &amp; settings
+                </td>
+                <td class="cell-center"><svg class="icon-checkmark" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></td>
+                <td class="cell-center"><svg class="icon-checkmark" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></td>
+                <td class="cell-center"><svg class="icon-checkmark" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></td>
+              </tr>
+              <tr>
+                <td class="feature-title">
+                  <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" y1="2" x2="12" y2="15"></line></svg>
+                  Export chats
+                </td>
+                <td class="cell-center"><svg class="icon-checkmark" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></td>
+                <td class="cell-center"><svg class="icon-checkmark" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></td>
+                <td class="cell-center"><svg class="icon-checkmark" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></td>
+              </tr>
+
+              <!-- Category: Workflows -->
+              <tr class="table-category-header">
+                <td colspan="4">Advanced workflows</td>
+              </tr>
+              <tr>
+                <td class="feature-title">
+                  <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"></path><path d="M4 20L21 3"></path><path d="M21 16v5h-5"></path><path d="M15 15l6 6"></path><path d="M4 4l5 5"></path></svg>
+                  Continue conversations
+                </td>
+                <td class="cell-center"><svg class="icon-cross" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></td>
+                <td class="cell-center"><svg class="icon-checkmark" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></td>
+                <td class="cell-center"><svg class="icon-checkmark" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></td>
+              </tr>
+              <tr>
+                <td class="feature-title">
+                  <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="12" y1="3" x2="12" y2="21"></line></svg>
+                  Compare AI models side-by-side
+                </td>
+                <td class="cell-center"><svg class="icon-cross" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></td>
+                <td class="cell-center"><svg class="icon-checkmark" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></td>
+                <td class="cell-center"><svg class="icon-checkmark" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></td>
+              </tr>
+              <tr>
+                <td class="feature-title">
+                  <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="18" r="3"></circle><circle cx="6" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M18 15V9a4 4 0 0 0-4-4H9"></path><line x1="6" y1="9" x2="6" y2="15"></line></svg>
+                  Merge conversation threads
+                </td>
+                <td class="cell-center"><svg class="icon-cross" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></td>
+                <td class="cell-center"><svg class="icon-checkmark" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></td>
+                <td class="cell-center"><svg class="icon-checkmark" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></td>
+              </tr>
+              <tr>
+                <td class="feature-title">
+                  <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>
+                  Insight Finder
+                </td>
+                <td class="cell-center"><svg class="icon-cross" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></td>
+                <td class="cell-center"><svg class="icon-checkmark" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></td>
+                <td class="cell-center"><svg class="icon-checkmark" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></td>
+              </tr>
+              <tr>
+                <td class="feature-title">
+                  <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><polygon points="11 3 6 11 10 11 9 17 15 9 11 9 11 3"></polygon></svg>
+                  Search all sessions instantly
+                </td>
+                <td class="cell-center"><svg class="icon-cross" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></td>
+                <td class="cell-center"><svg class="icon-checkmark" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></td>
+                <td class="cell-center"><svg class="icon-checkmark" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></td>
+              </tr>
+              <tr>
+                <td class="feature-title">
+                  <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"></rect><rect x="14" y="3" width="7" height="5"></rect><rect x="14" y="12" width="7" height="9"></rect><rect x="3" y="16" width="7" height="5"></rect></svg>
+                  Advanced Workspace layout
+                </td>
+                <td class="cell-center"><svg class="icon-cross" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></td>
+                <td class="cell-center"><svg class="icon-checkmark" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></td>
+                <td class="cell-center"><svg class="icon-checkmark" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></td>
+              </tr>
+              <tr>
+                <td class="feature-title">
+                  <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"></path><path d="M2 17l10 5 10-5"></path><path d="M2 12l10 5 10-5"></path></svg>
+                  Priority Processing
+                </td>
+                <td class="cell-center"><svg class="icon-cross" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></td>
+                <td class="cell-center"><svg class="icon-checkmark" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></td>
+                <td class="cell-center"><svg class="icon-checkmark" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></td>
+              </tr>
+
+              <!-- Category: Power & Automations -->
+              <tr class="table-category-header">
+                <td colspan="4">Deep analysis &amp; automations</td>
+              </tr>
+              <tr>
+                <td class="feature-title">
+                  <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><polyline points="9 11 11 13 15 9"></polyline></svg>
+                  Fact-checking &amp; verification
+                </td>
+                <td class="cell-center"><svg class="icon-cross" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></td>
+                <td class="cell-center"><svg class="icon-cross" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></td>
+                <td class="cell-center"><svg class="icon-checkmark" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></td>
+              </tr>
+              <tr>
+                <td class="feature-title">
+                  <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+                  Advanced Retrieval algorithms
+                </td>
+                <td class="cell-center"><svg class="icon-cross" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></td>
+                <td class="cell-center"><svg class="icon-cross" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></td>
+                <td class="cell-center"><svg class="icon-checkmark" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></td>
+              </tr>
+              <tr>
+                <td class="feature-title">
+                  <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path><path d="M3 12c0 1.66 4 3 9 3s9-1.34 9-3"></path></svg>
+                  Persistent Memory bank
+                </td>
+                <td class="cell-center"><svg class="icon-cross" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></td>
+                <td class="cell-center"><svg class="icon-cross" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></td>
+                <td class="cell-center"><svg class="icon-checkmark" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></td>
+              </tr>
+              <tr>
+                <td class="feature-title">
+                  <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"></rect><circle cx="12" cy="5" r="2"></circle><path d="M12 7v4"></path><line x1="8" y1="16" x2="8.01" y2="16"></line><line x1="16" y1="16" x2="16.01" y2="16"></line></svg>
+                  Premium AI Agents
+                </td>
+                <td class="cell-center"><svg class="icon-cross" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></td>
+                <td class="cell-center"><svg class="icon-cross" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></td>
+                <td class="cell-center"><svg class="icon-checkmark" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></td>
+              </tr>
+              <tr>
+                <td class="feature-title">
+                  <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                  Future Automations
+                </td>
+                <td class="cell-center"><svg class="icon-cross" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></td>
+                <td class="cell-center"><svg class="icon-cross" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></td>
+                <td class="cell-center"><svg class="icon-checkmark" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></td>
+              </tr>
+              <tr>
+                <td class="feature-title">
+                  <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2.5 3.19-2.5 5.5s3.19-1 5.5-2.5l2-2H6.5z"></path><path d="M12 12l9-9-3 12-6-3-3 3-3-3 6-3z"></path></svg>
+                  Priority access to heavy workflows
+                </td>
+                <td class="cell-center"><svg class="icon-cross" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></td>
+                <td class="cell-center"><svg class="icon-cross" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></td>
+                <td class="cell-center"><svg class="icon-checkmark" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></td>
+              </tr>
+              <tr>
+                <td class="feature-title">
+                  <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                  Early Access features
+                </td>
+                <td class="cell-center"><svg class="icon-cross" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></td>
+                <td class="cell-center"><svg class="icon-cross" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></td>
+                <td class="cell-center"><svg class="icon-checkmark" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- FAQ Section Redesign -->
+        <h3 style="text-align: center; margin-bottom: 24px; font-size: 1.4rem; font-weight: 700;">Frequently Asked Questions</h3>
+        <div class="pricing-faq-accordion">
+          <details class="faq-accordion-item">
+            <summary>What are AI Credits?</summary>
+            <p>AI Credits power the advanced features of ChatBridge, such as scanning, rewriting, comparing models, and executing agent workflows. Each action consumes a small number of credits depending on its complexity (e.g., a simple summary vs. a multi-model side-by-side comparison).</p>
+          </details>
+          <details class="faq-accordion-item">
+            <summary>What happens if I run out of credits?</summary>
+            <p>If you exceed your monthly quota, you can either upgrade to a higher tier, buy credit top-ups (available in settings), or bring your own API keys to continue using ChatBridge without credit limits.</p>
+          </details>
+          <details class="faq-accordion-item">
+            <summary>Can I use my own API key (BYOK)?</summary>
+            <p>Yes! ChatBridge supports Bring Your Own Key (BYOK) for all major providers (OpenAI, Anthropic, Google, and OpenRouter). If you use your own API key, advanced features will not consume your monthly ChatBridge credits.</p>
+          </details>
+          <details class="faq-accordion-item">
+            <summary>Can I cancel anytime?</summary>
+            <p>Absolutely. You can cancel your subscription at any time with a single click from the settings page. You will retain access to your plan's benefits until the end of your current billing cycle.</p>
+          </details>
+          <details class="faq-accordion-item">
+            <summary>Which plan is best for me?</summary>
+            <p>The <strong>Free</strong> plan is great for light users who need core utility features. The <strong>Pro</strong> plan is the most popular, tailored for daily power users, developers, and creators. The <strong>Max</strong> plan is designed for researchers and professionals with heavy AI workflows who require fact-checking, persistent memory, and agentic automations.</p>
+          </details>
         </div>
       </div>
     </section>
@@ -761,24 +1184,22 @@
 
           <article class="utility-card">
             <span class="section-mini-number">11</span>
-            <p class="eyebrow">FAQ</p>
-            <h2 class="section-title section-title-small">What people ask first</h2>
-            <details class="faq">
-              <summary>Do I need API keys?</summary>
-              <p>Yes. ChatBridge uses your own Gemini and or Hugging Face credentials instead of routing through a hosted backend.</p>
-            </details>
-            <details class="faq">
-              <summary>Is my data sent anywhere else?</summary>
-              <p>No ChatBridge server sits in the path. Calls go directly from the extension to configured AI providers.</p>
-            </details>
-            <details class="faq">
-              <summary>Can I export my chats?</summary>
-              <p>Yes. Sessions can be exported whenever you want as JSON or Markdown.</p>
-            </details>
-            <details class="faq">
-              <summary>Does it work on mobile?</summary>
-              <p>No. The extension is built for desktop Chrome environments.</p>
-            </details>
+            <p class="eyebrow">Security</p>
+            <h2 class="section-title section-title-small">Privacy Guarantee</h2>
+            <div style="display: flex; flex-direction: column; gap: 14px; margin-top: 18px;">
+              <div style="display: flex; align-items: start; gap: 10px;">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 2px;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                <p style="margin: 0; font-size: 0.88rem; color: var(--muted-strong); line-height: 1.5;"><strong>Local-Only Storage:</strong> Your conversations and API keys are stored securely inside your browser. No external middleman or server ever sees them.</p>
+              </div>
+              <div style="display: flex; align-items: start; gap: 10px;">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 2px;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                <p style="margin: 0; font-size: 0.88rem; color: var(--muted-strong); line-height: 1.5;"><strong>Direct API Connection:</strong> All AI calls go directly from the extension to your configured providers (Google, OpenAI, Anthropic) without passing through ChatBridge routing servers.</p>
+              </div>
+              <div style="display: flex; align-items: start; gap: 10px;">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 2px;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                <p style="margin: 0; font-size: 0.88rem; color: var(--muted-strong); line-height: 1.5;"><strong>Full Auditing:</strong> The extension source code is open to inspect, ensuring transparent behavior and zero telemetric leak of prompt data.</p>
+              </div>
+            </div>
           </article>
         </div>
       </div>
@@ -826,31 +1247,78 @@
 
   <div class="plan-modal" id="plan-modal" hidden>
     <div class="plan-modal-backdrop" data-close-plan-modal="true"></div>
-    <div class="plan-modal-card" role="dialog" aria-modal="true" aria-labelledby="plan-modal-title">
+    <div class="plan-modal-card premium-checkout" role="dialog" aria-modal="true" aria-labelledby="plan-modal-title" id="plan-modal-card">
       <button class="plan-modal-close" id="plan-modal-close" aria-label="Close checkout">×</button>
-      <p class="plan-modal-kicker" id="plan-modal-kicker">Upgrade</p>
-      <h2 id="plan-modal-title">Dummy checkout</h2>
-      <p class="plan-modal-copy" id="plan-modal-copy">Select a plan and test the upgrade flow.</p>
-      <div class="plan-modal-summary">
-        <div>
-          <span class="plan-modal-label">Plan</span>
-          <strong id="plan-modal-plan">Pro</strong>
+      
+      <!-- Checkout Form View -->
+      <div id="checkout-form-view">
+        <div class="checkout-header">
+          <p class="plan-modal-kicker" style="color: #a78bfa; margin-bottom: 4px;">Secure Checkout</p>
+          <h2 id="plan-modal-title">Upgrade your workspace</h2>
         </div>
-        <div>
-          <span class="plan-modal-label">Gateway</span>
-          <strong id="plan-modal-gateway">Sandbox checkout</strong>
+        
+        <div class="checkout-summary-box">
+          <div class="checkout-plan-details">
+            <span class="checkout-plan-name" id="checkout-plan-name">Pro (Monthly)</span>
+            <span class="checkout-plan-desc" id="checkout-plan-desc">2,000 monthly credits + premium features</span>
+          </div>
+          <span class="checkout-plan-price" id="checkout-plan-price">₹299</span>
         </div>
+
+        <form class="checkout-form" id="payment-form" onsubmit="return false;">
+          <div class="form-group">
+            <label for="checkout-email">Email Address</label>
+            <input type="email" id="checkout-email" class="checkout-input" placeholder="you@example.com" required value="naeha@chatbridge.dev">
+          </div>
+          
+          <div class="form-group">
+            <label for="checkout-card-name">Cardholder Name</label>
+            <input type="text" id="checkout-card-name" class="checkout-input" placeholder="Naeha Sharma" required>
+          </div>
+
+          <div class="form-group">
+            <label for="checkout-card-num">Card Details</label>
+            <div class="input-wrapper">
+              <input type="text" id="checkout-card-num" class="checkout-input" placeholder="4242 4242 4242 4242" required maxlength="19">
+              <span class="card-brand-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+              </span>
+            </div>
+          </div>
+
+          <div class="form-row-2">
+            <div class="form-group">
+              <label for="checkout-card-expiry">Expiry Date</label>
+              <input type="text" id="checkout-card-expiry" class="checkout-input" placeholder="MM / YY" required maxlength="5">
+            </div>
+            <div class="form-group">
+              <label for="checkout-card-cvc">CVC</label>
+              <input type="password" id="checkout-card-cvc" class="checkout-input" placeholder="•••" required maxlength="3">
+            </div>
+          </div>
+
+          <div class="stripe-badge-wrapper">
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-lock"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+            <span>Secure payments processed via</span>
+            <svg viewBox="0 0 40 16" width="32" height="13" fill="currentColor" class="stripe-logo"><path d="M40 7.82c0-.85-.38-1.57-1-2-.66-.45-1.57-.68-2.65-.68-1 0-1.89.22-2.58.55l.48 1.48c.63-.3 1.34-.49 2.07-.49.52 0 .91.1 1.15.28a.72.72 0 0 1 .32.59c0 .48-.42.69-1.22.75-.48 0-1 .09-1.42.27s-.79.43-1.07.78-.42.82-.42 1.37a2.82 2.82 0 0 0 .54 1.76c.46.54 1.14.81 2 .81A3.75 3.75 0 0 0 39 12v1.5a1.86 1.86 0 0 0 1.81.5c.6-.14 1.17-.4 1.66-.75l-.47-1.39A2.39 2.39 0 0 1 40 12zM36.33 11a1.27 1.27 0 0 1-.95-.36.94.94 0 0 1-.22-.64c0-.46.33-.71.95-.78.43 0 .76.08.94.19v.76a1.22 1.22 0 0 1-1 .39zM31 5.3v6.7h.1l2.2-2.2 1.5 1.5-3.8 3.8-1-1v-2.1l-.1-.1a2.89 2.89 0 0 1-2.1.8c-.89 0-1.63-.34-2.18-1s-.82-1.67-.82-2.91V5.3zm-3.23 4.41c0 .76.16 1.32.49 1.67a1.69 1.69 0 0 0 1.31.52c.62 0 1.09-.23 1.35-.67V7.12A1.89 1.89 0 0 0 29.57 6a1.66 1.66 0 0 0-1.31.5c-.33.36-.49.92-.49 1.68zm-5.75-7v2.6h3v1.5h-3v6.3h-1.8V6.8h-1.6V5.3h1.6V3.6zm-5 4.54c0-.85-.39-1.57-1-2s-1.58-.68-2.66-.68a6.56 6.56 0 0 0-2.58.55l.48 1.48a5.29 5.29 0 0 1 2.07-.49c.52 0 .91.1 1.15.28a.72.72 0 0 1 .32.59c0 .48-.42.69-1.22.75-.48 0-1 .09-1.42.27S6.12 9 5.84 9.38s-.42.82-.42 1.37a2.82 2.82 0 0 0 .54 1.76c.46.54 1.14.81 2 .81a3.75 3.75 0 0 0 2.68-1.13v1.5H12.5V5.3h-1.8zm-3.67 3.23a1.27 1.27 0 0 1-.95-.36.94.94 0 0 1-.22-.64c0-.46.33-.71.95-.78.43 0 .76.08.94.19v.76a1.22 1.22 0 0 1-1 .39zm-3.66-8H0v1.5h1.9a1.63 1.63 0 0 0 1.13-.39 1.12 1.12 0 0 0 .32-.82V3.6zm-1.8-1.8a1 1 0 1 1 1 1 1 1 0 0 1-1-1z" fill="currentColor"/></svg>
+          </div>
+
+          <div class="plan-modal-actions" style="margin-top: 12px;">
+            <button type="button" class="btn-pricing-action secondary" id="plan-modal-cancel" style="width: auto; margin: 0; padding: 10px 20px; font-size: 0.88rem; border-radius: 10px;">Cancel</button>
+            <button type="submit" class="btn-pricing-action primary" id="plan-modal-confirm" style="width: auto; margin: 0; padding: 10px 24px; font-size: 0.88rem; border-radius: 10px;">Pay Now</button>
+          </div>
+        </form>
       </div>
-      <div class="plan-modal-gateways">
-        <button class="plan-gateway-chip is-active" data-gateway-choice="sandbox">Sandbox</button>
-        <button class="plan-gateway-chip" data-gateway-choice="upi">UPI</button>
-        <button class="plan-gateway-chip" data-gateway-choice="card">Card</button>
-        <button class="plan-gateway-chip" data-gateway-choice="netbanking">Netbanking</button>
-      </div>
-      <div class="plan-modal-note" id="plan-modal-note">This is a placeholder payment flow. When you move to production, wire this state into Razorpay or your chosen gateway.</div>
-      <div class="plan-modal-actions">
-        <button class="btn-secondary btn-small" id="plan-modal-cancel">Cancel</button>
-        <button class="btn-primary btn-small" id="plan-modal-confirm">Activate demo plan</button>
+
+      <!-- Checkout Success View -->
+      <div id="checkout-success-view" style="display: none;">
+        <div class="checkout-success-view">
+          <div class="success-icon-animation">
+            <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          </div>
+          <h3 class="success-title">Upgrade Successful!</h3>
+          <p class="success-desc" id="success-desc-text">Your subscription has been activated successfully!</p>
+        </div>
       </div>
     </div>
   </div>

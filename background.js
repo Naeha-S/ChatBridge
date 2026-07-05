@@ -1393,7 +1393,7 @@ async function fetchEmbeddingViaGemini(text, options = {}) {
       }
 
       const response = await chatbridgeFetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:embedContent?key=${encodeURIComponent(geminiKey || 'proxy')}`,
+        `https://generativelanguage.googleapis.com/v1/models/${modelName}:embedContent?key=${encodeURIComponent(geminiKey || 'proxy')}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -3469,7 +3469,7 @@ Rewritten conversation (optimized for ${tgt}):`;
 
         for (let attempt = 0; attempt < maxRetries; attempt++) {
           const currentModel = await getNextAvailableModel(preferredModel);
-          const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${currentModel}:generateContent?key=${geminiApiKey || 'proxy'}`;
+          const endpoint = `https://generativelanguage.googleapis.com/v1/models/${currentModel}:generateContent?key=${geminiApiKey || 'proxy'}`;
           const body = {
             systemInstruction: systemInstruction ? { parts: [{ text: systemInstruction }] } : undefined,
             contents: [{ parts: [{ text: promptText }] }],
@@ -3714,7 +3714,7 @@ Rewritten conversation (optimized for ${tgt}):`;
           const models = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'];
           for (const model of models) {
             try {
-              const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey || 'proxy'}`;
+              const url = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${geminiApiKey || 'proxy'}`;
               const apiStart = performance.now();
               const resp = await chatbridgeFetch(url, {
                 method: 'POST',
@@ -4175,7 +4175,7 @@ ${payload.text}`;
           
           for (let attempt = 0; attempt < maxRetries; attempt++) {
             const currentModel = await getNextAvailableModel(preferredModel);
-            const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${currentModel}:generateContent?key=${geminiApiKey || 'proxy'}`;
+            const endpoint = `https://generativelanguage.googleapis.com/v1/models/${currentModel}:generateContent?key=${geminiApiKey || 'proxy'}`;
             const body = {
               contents: [{ parts: [{ text: promptText }] }],
               generationConfig: {
@@ -4341,7 +4341,7 @@ ${payload.text}`;
 
         for (let attempt = 0; attempt < maxRetries; attempt++) {
           const currentModel = await getNextAvailableModel();
-          const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${currentModel}:generateContent?key=${geminiApiKey || 'proxy'}`;
+          const endpoint = `https://generativelanguage.googleapis.com/v1/models/${currentModel}:generateContent?key=${geminiApiKey || 'proxy'}`;
           const body = {
             contents: [{ parts: [{ text: promptText }] }],
             generationConfig: { temperature: 0.2, topP: 0.9, topK: 20, maxOutputTokens: 4096 }
@@ -4406,7 +4406,7 @@ ${payload.text}`;
 
         for (let attempt = 0; attempt < maxRetries; attempt++) {
           const currentModel = await getNextAvailableModel();
-          const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${currentModel}:generateContent?key=${geminiApiKey || 'proxy'}`;
+          const endpoint = `https://generativelanguage.googleapis.com/v1/models/${currentModel}:generateContent?key=${geminiApiKey || 'proxy'}`;
           const body = {
             contents: [{ parts: [{ text: promptText }] }],
             generationConfig: { temperature: 0.3, topP: 0.9, topK: 20, maxOutputTokens: 2048 }
@@ -4472,7 +4472,7 @@ ${payload.text}`;
           let lastError = null;
           for (let attempt = 0; attempt < GEMINI_MODEL_PRIORITY.length; attempt++) {
             const currentModel = await getNextAvailableModel();
-            const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${currentModel}:generateContent?key=${geminiApiKey || 'proxy'}`;
+            const endpoint = `https://generativelanguage.googleapis.com/v1/models/${currentModel}:generateContent?key=${geminiApiKey || 'proxy'}`;
             const body = {
               systemInstruction: systemInstruction ? { parts: [{ text: systemInstruction }] } : undefined,
               contents: [{ parts: [{ text: promptText }] }],

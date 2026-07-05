@@ -79,9 +79,34 @@
 
     // Buttons
     document.querySelectorAll('.btn-primary').forEach(btn => {
-      if (btn.id === 'btn-save-hf' || btn.id === 'btn-save-gemini' || btn.id === 'btn-save-nvidia') {
+      if (btn.id === 'btn-save-hf' || btn.id === 'btn-save-gemini' || btn.id === 'btn-save-nvidia' || btn.id === 'btn-save-openai' || btn.id === 'btn-save-claude') {
         if (!btn.disabled) btn.textContent = t('save', lang);
       }
+    });
+
+    const openPricing = document.getElementById('btn-open-pricing');
+    if (openPricing) openPricing.textContent = t('upgrade', lang);
+    setText('billing-tier-label', 'subscriptionPlan');
+    setText('billing-credits-label', 'aiCredits');
+    setText('billing-byok-title', 'bringYourOwnKeys');
+    setText('billing-byok-desc', 'savedPersonalKeys');
+    setText('billing-dev-title', 'developerSandbox');
+    setText('billing-dev-desc', 'useTheseControls');
+
+    ['btn-dev-reset-credits', 'btn-dev-spend-5', 'btn-dev-free', 'btn-dev-pro', 'btn-dev-max'].forEach((id) => {
+      const btn = document.getElementById(id);
+      if (!btn) return;
+      if (id === 'btn-dev-reset-credits') btn.textContent = t('resetCredits', lang);
+      if (id === 'btn-dev-spend-5') btn.textContent = t('spendCredits', lang);
+      if (id === 'btn-dev-free') btn.textContent = t('setFree', lang);
+      if (id === 'btn-dev-pro') btn.textContent = t('setPro', lang);
+      if (id === 'btn-dev-max') btn.textContent = t('setMax', lang);
+    });
+
+    ['gemini', 'openai', 'hf', 'claude', 'nvidia'].forEach((provider) => {
+      const input = document.getElementById(`api-key-${provider}`);
+      const toggle = document.getElementById(`btn-toggle-${provider}`);
+      if (toggle && input) toggle.textContent = input.type === 'password' ? t('show', lang) : t('hide', lang);
     });
 
     const clearBtn = document.getElementById('btn-clear');
@@ -108,6 +133,7 @@
   const sectionTitleKeys = {
     'dashboard': 'dashboard',
     'analytics': 'analytics',
+    'api-keys': 'apiKeys',
     'history': 'history',
     'appearance': 'appearance',
     'about': 'about'
@@ -150,6 +176,7 @@
   // Quick action buttons
   document.getElementById('quick-history')?.addEventListener('click', () => navigateToSection('history'));
   document.getElementById('quick-analytics')?.addEventListener('click', () => navigateToSection('analytics'));
+  document.getElementById('quick-api')?.addEventListener('click', () => navigateToSection('api-keys'));
   document.getElementById('quick-theme')?.addEventListener('click', () => navigateToSection('appearance'));
 
   // ============================================
@@ -345,6 +372,273 @@
 
   loadDashboardStats();
   loadDisabledSites();
+
+  const BILLING_KEYS = {
+    tier: 'chatbridge_subscription_tier',
+    balance: 'chatbridge_credits_balance',
+    lastReset: 'chatbridge_credits_last_reset',
+    gemini: 'chatbridge_gemini_key',
+    openai: 'chatbridge_openai_key',
+    hf: 'chatbridge_hf_key',
+    claude: 'chatbridge_api_claude',
+    nvidia: 'chatbridge_api_nvidia'
+  };
+  const DEFAULT_FREE_CREDITS = 100;
+  const TIER_CREDIT_LIMITS = {
+    free: 100,
+    pro: 2000,
+    max: 10000
+  };
+  const PROVIDER_LABELS = {
+    gemini: 'Gemini',
+    openai: 'OpenAI',
+    hf: 'Hugging Face',
+    claude: 'Claude',
+    nvidia: 'NVIDIA'
+  };
+  const PROVIDER_TEST_TYPES = {
+    gemini: 'test_gemini_api',
+    openai: 'test_openai_api',
+    hf: 'test_huggingface_api',
+    claude: 'test_claude_api',
+    nvidia: 'test_nvidia_api'
+  };
+  const ENCRYPTED_PROVIDERS = new Set(['claude', 'nvidia']);
+
+  function getLocal(keysOrObject) {
+    return new Promise((resolve) => chrome.storage.local.get(keysOrObject, resolve));
+  }
+
+  function setLocal(items) {
+    return new Promise((resolve) => chrome.storage.local.set(items, resolve));
+  }
+
+  function removeLocal(keys) {
+    return new Promise((resolve) => chrome.storage.local.remove(keys, resolve));
+  }
+
+  function formatNextReset(lastReset) {
+    const ts = Number(lastReset || 0) || Date.now();
+    const date = new Date(ts);
+    const next = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 1));
+    return next.toLocaleDateString();
+  }
+
+  function tKey(key, lang = currentLang) {
+    return window.t ? window.t(key, lang) : key;
+  }
+
+  function setText(id, key) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = tKey(key);
+  }
+
+  async function loadBillingPanel() {
+    const data = await getLocal({
+      [BILLING_KEYS.tier]: 'free',
+      [BILLING_KEYS.balance]: null,
+      [BILLING_KEYS.lastReset]: Date.now(),
+      [BILLING_KEYS.gemini]: '',
+      [BILLING_KEYS.openai]: '',
+      [BILLING_KEYS.hf]: '',
+      [BILLING_KEYS.claude]: '',
+    });
+
+    const tier = String(data[BILLING_KEYS.tier] || 'free').toLowerCase();
+    const limit = TIER_CREDIT_LIMITS[tier] || 100;
+    const balance = data[BILLING_KEYS.balance] !== null && data[BILLING_KEYS.balance] !== undefined
+      ? Math.max(0, Number(data[BILLING_KEYS.balance]))
+      : limit;
+    const pct = Math.max(0, Math.min(100, Math.round((balance / limit) * 100)));
+
+    setText('billing-tier-label', 'subscriptionPlan');
+    setText('billing-credits-label', 'aiCredits');
+    setText('billing-byok-title', 'bringYourOwnKeys');
+    setText('billing-byok-desc', 'savedPersonalKeys');
+    setText('billing-dev-title', 'developerSandbox');
+    setText('billing-dev-desc', 'useTheseControls');
+    setText('btn-open-pricing', 'upgrade');
+    setText('btn-dev-reset-credits', 'resetCredits');
+    setText('btn-dev-spend-5', 'spendCredits');
+    setText('btn-dev-free', 'setFree');
+    setText('btn-dev-pro', 'setPro');
+    setText('btn-dev-max', 'setMax');
+
+    const tierBadge = document.getElementById('billing-tier-badge');
+    const tierDetail = document.getElementById('billing-tier-detail');
+    const progressBar = document.getElementById('billing-progress-bar');
+    const progressLabel = document.getElementById('billing-progress-label');
+    const resetInfo = document.getElementById('billing-reset-info');
+    const devStatus = document.getElementById('dev-controls-status');
+
+    if (tierBadge) {
+      tierBadge.textContent = tier === 'pro' ? tKey('proPlan') : tier === 'max' ? tKey('maxPlan') : tKey('freeTier');
+      tierBadge.className = `badge${tier === 'free' ? '' : ' green'}`;
+    }
+    if (tierDetail) {
+      tierDetail.textContent = tier === 'free' ? tKey('sharedProxyCopy') : tKey('paidBypassesCopy');
+    }
+    if (progressBar) progressBar.style.width = `${pct}%`;
+    if (progressLabel) progressLabel.textContent = `${balance} / ${limit} ${tKey('creditsRemaining')}`;
+    if (resetInfo) resetInfo.textContent = `${tKey('nextReset')}: ${formatNextReset(data[BILLING_KEYS.lastReset])}`;
+    if (devStatus) devStatus.textContent = tKey('useTheseControlsCopy');
+
+    const keyMappings = [
+      ['gemini', BILLING_KEYS.gemini],
+      ['openai', BILLING_KEYS.openai],
+      ['hf', BILLING_KEYS.hf],
+      ['claude', BILLING_KEYS.claude],
+    ];
+    keyMappings.forEach(([provider, storageKey]) => {
+      const status = document.getElementById(`status-${provider}`);
+      if (status) status.textContent = data[storageKey] ? tKey('configured') : tKey('notConfigured');
+    });
+
+    try {
+      const encryptedClaude = await ChatBridgeSecurity.getApiKey('claude');
+      const encryptedNvidia = await ChatBridgeSecurity.getApiKey('nvidia');
+      const claudeInput = document.getElementById('api-key-claude');
+      const nvidiaInput = document.getElementById('api-key-nvidia');
+      const claudeStatus = document.getElementById('status-claude');
+      const nvidiaStatus = document.getElementById('status-nvidia');
+      if (claudeInput && encryptedClaude) claudeInput.value = encryptedClaude;
+      if (claudeStatus) claudeStatus.textContent = encryptedClaude ? tKey('configured') : tKey('notConfigured');
+      if (nvidiaInput && encryptedNvidia) nvidiaInput.value = encryptedNvidia;
+      if (nvidiaStatus) nvidiaStatus.textContent = encryptedNvidia ? tKey('configured') : tKey('notConfigured');
+    } catch (_) {}
+
+    const geminiInput = document.getElementById('api-key-gemini');
+    const openaiInput = document.getElementById('api-key-openai');
+    const hfInput = document.getElementById('api-key-hf');
+    if (geminiInput) geminiInput.value = data[BILLING_KEYS.gemini] || '';
+    if (openaiInput) openaiInput.value = data[BILLING_KEYS.openai] || '';
+    if (hfInput) hfInput.value = data[BILLING_KEYS.hf] || '';
+  }
+
+  function bindVisibilityToggle(provider) {
+    const input = document.getElementById(`api-key-${provider}`);
+    const button = document.getElementById(`btn-toggle-${provider}`);
+    if (!input || !button) return;
+    button.addEventListener('click', () => {
+      const nextType = input.type === 'password' ? 'text' : 'password';
+      input.type = nextType;
+      button.textContent = nextType === 'password' ? tKey('show') : tKey('hide');
+    });
+  }
+
+  async function saveProviderKey(provider) {
+    const input = document.getElementById(`api-key-${provider}`);
+    if (!input) return;
+    const value = String(input.value || '').trim();
+    if (!value) {
+      showToast(tKey('enterKeyBeforeSaving'), 'warning');
+      return;
+    }
+
+    if (provider === 'nvidia' || provider === 'claude') {
+      await ChatBridgeSecurity.saveApiKey(provider, value);
+    } else {
+      const keyMap = { gemini: BILLING_KEYS.gemini, openai: BILLING_KEYS.openai, hf: BILLING_KEYS.hf };
+      await setLocal({ [keyMap[provider]]: value });
+    }
+    await loadBillingPanel();
+    const providerLabel = provider === 'hf' ? 'Hugging Face' : provider === 'nvidia' ? 'NVIDIA' : provider === 'claude' ? 'Claude' : provider.charAt(0).toUpperCase() + provider.slice(1);
+    showToast(`${providerLabel} key saved.`, 'success');
+  }
+
+  async function deleteProviderKey(provider) {
+    if (provider === 'nvidia' || provider === 'claude') {
+      await removeLocal(provider === 'nvidia' ? BILLING_KEYS.nvidia : BILLING_KEYS.claude);
+    } else {
+      const keyMap = { gemini: BILLING_KEYS.gemini, openai: BILLING_KEYS.openai, hf: BILLING_KEYS.hf };
+      await removeLocal(keyMap[provider]);
+    }
+    const input = document.getElementById(`api-key-${provider}`);
+    if (input) input.value = '';
+    await loadBillingPanel();
+    const providerLabel = provider === 'hf' ? 'Hugging Face' : provider === 'nvidia' ? 'NVIDIA' : provider === 'claude' ? 'Claude' : provider.charAt(0).toUpperCase() + provider.slice(1);
+    showToast(`${providerLabel} key removed.`, 'success');
+  }
+
+  async function testProviderKey(provider) {
+    const input = document.getElementById(`api-key-${provider}`);
+    const status = document.getElementById(`status-${provider}`);
+    const value = String(input?.value || '').trim();
+    if (!value) {
+      showToast(tKey('enterKeyBeforeTesting'), 'warning');
+      return;
+    }
+    if (status) status.textContent = 'Testing...';
+
+    const typeMap = {
+      gemini: 'test_gemini_api',
+      openai: 'test_openai_api',
+      hf: 'test_huggingface_api',
+      claude: 'test_claude_api',
+      nvidia: 'test_nvidia_api'
+    };
+
+    chrome.runtime.sendMessage({ type: typeMap[provider], apiKey: value }, (response) => {
+      const ok = !!(response && response.ok);
+      if (status) status.textContent = ok ? tKey('connectionOk') : `${tKey('connectionFailed')}${response?.status ? ` (${response.status})` : ''}`;
+      const providerLabel = provider === 'hf' ? 'Hugging Face' : provider === 'nvidia' ? 'NVIDIA' : provider === 'claude' ? 'Claude' : provider.charAt(0).toUpperCase() + provider.slice(1);
+      showToast(ok ? `${providerLabel} ${tKey('connectionSucceeded')}` : `${providerLabel} ${tKey('connectionFailedToast')}`, ok ? 'success' : 'error');
+    });
+  }
+
+  function bindBillingPanel() {
+    ['gemini', 'openai', 'hf', 'claude', 'nvidia'].forEach((provider) => {
+      bindVisibilityToggle(provider);
+      document.getElementById(`btn-save-${provider}`)?.addEventListener('click', () => saveProviderKey(provider));
+      document.getElementById(`btn-delete-${provider}`)?.addEventListener('click', () => deleteProviderKey(provider));
+      document.getElementById(`btn-test-${provider}`)?.addEventListener('click', () => testProviderKey(provider));
+    });
+
+    document.getElementById('btn-open-pricing')?.addEventListener('click', () => {
+      window.location.href = chrome.runtime.getURL('welcome.html?upgrade=1');
+    });
+
+    document.getElementById('btn-dev-reset-credits')?.addEventListener('click', async () => {
+      const data = await getLocal({ [BILLING_KEYS.tier]: 'free' });
+      const tier = String(data[BILLING_KEYS.tier] || 'free').toLowerCase();
+      const limit = TIER_CREDIT_LIMITS[tier] || 100;
+      await setLocal({
+        [BILLING_KEYS.balance]: limit,
+        [BILLING_KEYS.lastReset]: Date.now()
+      });
+      document.getElementById('dev-controls-status').textContent = `${tKey('creditsResetTo')} ${limit}.`;
+      await loadBillingPanel();
+    });
+
+    document.getElementById('btn-dev-spend-5')?.addEventListener('click', async () => {
+      const data = await getLocal({ [BILLING_KEYS.tier]: 'free', [BILLING_KEYS.balance]: null });
+      const tier = String(data[BILLING_KEYS.tier] || 'free').toLowerCase();
+      const limit = TIER_CREDIT_LIMITS[tier] || 100;
+      const currentBalance = data[BILLING_KEYS.balance] !== null && data[BILLING_KEYS.balance] !== undefined
+        ? Number(data[BILLING_KEYS.balance])
+        : limit;
+      const next = Math.max(0, currentBalance - 5);
+      await setLocal({ [BILLING_KEYS.balance]: next });
+      document.getElementById('dev-controls-status').textContent = `${tKey('creditsReducedTo')} ${next}.`;
+      await loadBillingPanel();
+    });
+
+    ['free', 'pro', 'max'].forEach((tier) => {
+      document.getElementById(`btn-dev-${tier}`)?.addEventListener('click', async () => {
+        const limit = TIER_CREDIT_LIMITS[tier] || 100;
+        await setLocal({
+          [BILLING_KEYS.tier]: tier,
+          [BILLING_KEYS.balance]: limit,
+          [BILLING_KEYS.lastReset]: Date.now()
+        });
+        document.getElementById('dev-controls-status').textContent = `${tKey('planSetTo')} ${tier} with ${limit} credits.`;
+        await loadBillingPanel();
+      });
+    });
+  }
+
+  bindBillingPanel();
+  loadBillingPanel();
 
   // ============================================
   // HISTORY MANAGEMENT

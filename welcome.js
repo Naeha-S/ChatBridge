@@ -26,21 +26,8 @@
 
   const planStorageKey = "chatbridge_subscription_tier";
   const planModal = document.getElementById("plan-modal");
-  const planModalKicker = document.getElementById("plan-modal-kicker");
-  const planModalTitle = document.getElementById("plan-modal-title");
-  const planModalCopy = document.getElementById("plan-modal-copy");
-  const planModalPlan = document.getElementById("plan-modal-plan");
-  const planModalGateway = document.getElementById("plan-modal-gateway");
-  const planModalNote = document.getElementById("plan-modal-note");
-  const planGatewayChoices = Array.from(document.querySelectorAll("[data-gateway-choice]"));
   const pricingButtons = Array.from(document.querySelectorAll(".pricing-action"));
-  const planMeta = {
-    free: { label: "Free", cta: "Free plan activated", title: "Stay on Free" },
-    pro: { label: "Pro", cta: "Pro demo activated", title: "Upgrade to Pro" },
-    max: { label: "Max", cta: "Max demo activated", title: "Go Max" },
-  };
   let selectedPlan = "pro";
-  let selectedGateway = "sandbox";
 
   initHeroShader();
   initCardStack();
@@ -362,32 +349,172 @@
       return;
     }
 
-    const updateGatewayChoice = (gateway) => {
-      selectedGateway = gateway;
-      planGatewayChoices.forEach((button) => {
-        button.classList.toggle("is-active", button.dataset.gatewayChoice === gateway);
-      });
-      planModalGateway.textContent =
-        gateway === "sandbox" ? "Sandbox checkout" : gateway.charAt(0).toUpperCase() + gateway.slice(1);
-      if (planModalNote) {
-        planModalNote.textContent =
-          gateway === "sandbox"
-            ? "This is a placeholder payment flow. When you move to production, wire this state into Razorpay or your chosen gateway."
-            : `Selected gateway: ${gateway}. This remains a dummy flow until you connect a live processor.`;
+    const billingToggle = document.getElementById("billing-cycle-checkbox");
+    const monthlyLabel = document.getElementById("toggle-monthly-label");
+    const yearlyLabel = document.getElementById("toggle-yearly-label");
+
+    const priceFree = document.getElementById("price-free");
+    const pricePro = document.getElementById("price-pro");
+    const priceMax = document.getElementById("price-max");
+
+    const periodFree = document.getElementById("period-free");
+    const periodPro = document.getElementById("period-pro");
+    const periodMax = document.getElementById("period-max");
+
+    const savingsPro = document.getElementById("savings-pro");
+    const savingsMax = document.getElementById("savings-max");
+
+    // Modal elements
+    const checkoutPlanName = document.getElementById("checkout-plan-name");
+    const checkoutPlanDesc = document.getElementById("checkout-plan-desc");
+    const checkoutPlanPrice = document.getElementById("checkout-plan-price");
+    const checkoutConfirmBtn = document.getElementById("plan-modal-confirm");
+    const paymentForm = document.getElementById("payment-form");
+    const checkoutFormView = document.getElementById("checkout-form-view");
+    const checkoutSuccessView = document.getElementById("checkout-success-view");
+    const successDescText = document.getElementById("success-desc-text");
+
+    // Calculator elements
+    const calcSlider = document.getElementById("calc-daily-conv");
+    const calcConvVal = document.getElementById("calc-conv-val");
+    const calcCreditsResult = document.getElementById("calc-credits-result");
+    const calcRecommendedPlan = document.getElementById("calc-recommended-plan");
+    const btnCalcSelectPlan = document.getElementById("btn-calc-select-plan");
+
+    // --- Billing cycle toggle ---
+    const updateBillingCycle = () => {
+      if (!billingToggle) return;
+      const isYearly = billingToggle.checked;
+      
+      if (monthlyLabel) monthlyLabel.classList.toggle("active", !isYearly);
+      if (yearlyLabel) yearlyLabel.classList.toggle("active", isYearly);
+
+      if (isYearly) {
+        if (pricePro) pricePro.textContent = "2,499";
+        if (priceMax) priceMax.textContent = "6,999";
+        if (periodPro) periodPro.textContent = "/year";
+        if (periodMax) periodMax.textContent = "/year";
+        if (savingsPro) savingsPro.style.display = "block";
+        if (savingsMax) savingsMax.style.display = "block";
+      } else {
+        if (pricePro) pricePro.textContent = "299";
+        if (priceMax) priceMax.textContent = "799";
+        if (periodPro) periodPro.textContent = "/month";
+        if (periodMax) periodMax.textContent = "/month";
+        if (savingsPro) savingsPro.style.display = "none";
+        if (savingsMax) savingsMax.style.display = "none";
+      }
+      
+      // Update calculator recommendation
+      updateCalculator();
+    };
+
+    if (billingToggle) {
+      billingToggle.addEventListener("change", updateBillingCycle);
+    }
+
+    // --- Calculator ---
+    const updateCalculator = () => {
+      if (!calcSlider) return;
+      const convs = parseInt(calcSlider.value);
+      if (calcConvVal) {
+        calcConvVal.textContent = `${convs} ${convs === 1 ? 'conversation' : 'conversations'} / day`;
+      }
+
+      const intensityEl = document.querySelector('input[name="calc-intensity"]:checked');
+      const intensity = intensityEl ? intensityEl.value : "basic";
+      
+      let multiplier = 1;
+      if (intensity === "advanced") multiplier = 5;
+      else if (intensity === "agentic") multiplier = 25;
+
+      const monthlyCredits = convs * multiplier * 30;
+      if (calcCreditsResult) {
+        calcCreditsResult.textContent = monthlyCredits.toLocaleString();
+      }
+
+      let recommendation = "free";
+      let recText = "Free Plan";
+      let ctaText = "Stay Free";
+
+      if (monthlyCredits > 100 && monthlyCredits <= 2000) {
+        recommendation = "pro";
+        recText = "Pro Plan";
+        ctaText = "Upgrade to Pro";
+      } else if (monthlyCredits > 2000) {
+        recommendation = "max";
+        recText = "Max Plan";
+        ctaText = "Go Max";
+      }
+
+      if (calcRecommendedPlan) {
+        calcRecommendedPlan.textContent = recText;
+      }
+      if (btnCalcSelectPlan) {
+        btnCalcSelectPlan.textContent = ctaText;
+        btnCalcSelectPlan.dataset.plan = recommendation;
       }
     };
 
-    const openPlanModal = ({ plan = "pro", gateway = "sandbox", feature = "" } = {}) => {
-      selectedPlan = planMeta[plan] ? plan : "pro";
-      updateGatewayChoice(gateway);
+    if (calcSlider) {
+      calcSlider.addEventListener("input", updateCalculator);
+    }
+    document.querySelectorAll('input[name="calc-intensity"]').forEach((radio) => {
+      radio.addEventListener("change", updateCalculator);
+    });
+
+    if (btnCalcSelectPlan) {
+      btnCalcSelectPlan.addEventListener("click", () => {
+        const plan = btnCalcSelectPlan.dataset.plan || "pro";
+        openPlanModal({ plan });
+      });
+    }
+
+    // --- Modal actions ---
+    const openPlanModal = ({ plan = "pro" } = {}) => {
+      selectedPlan = plan;
+      
+      if (plan === "free") {
+        if (window.confirm("Do you want to switch back to the Free plan? Your credits will be reset to 100/month.")) {
+          persistPlan("free", 100).then(() => {
+            window.alert("Successfully downgraded to the Free plan.");
+            window.location.reload();
+          });
+        }
+        return;
+      }
+
+      const isYearly = billingToggle ? billingToggle.checked : false;
+      let planDisplayName = "Pro";
+      let planDescription = "2,000 monthly credits + premium features";
+      let planPriceText = "₹299";
+
+      if (plan === "pro") {
+        planDisplayName = isYearly ? "Pro (Yearly)" : "Pro (Monthly)";
+        planPriceText = isYearly ? "₹2,499" : "₹299";
+        planDescription = isYearly 
+          ? "2,000 monthly credits + premium features (billed annually)"
+          : "2,000 monthly credits + premium features";
+      } else if (plan === "max") {
+        planDisplayName = isYearly ? "Max (Yearly)" : "Max (Monthly)";
+        planPriceText = isYearly ? "₹6,999" : "₹799";
+        planDescription = isYearly
+          ? "10,000 monthly credits + advanced retrieval & agents (billed annually)"
+          : "10,000 monthly credits + advanced retrieval & agents";
+      }
+
+      if (checkoutPlanName) checkoutPlanName.textContent = planDisplayName;
+      if (checkoutPlanDesc) checkoutPlanDesc.textContent = planDescription;
+      if (checkoutPlanPrice) checkoutPlanPrice.textContent = planPriceText;
+      if (checkoutConfirmBtn) checkoutConfirmBtn.textContent = `Pay ${planPriceText}`;
+
+      // Reset Modal View state
+      if (checkoutFormView) checkoutFormView.style.display = "block";
+      if (checkoutSuccessView) checkoutSuccessView.style.display = "none";
+      if (paymentForm) paymentForm.reset();
+
       planModal.hidden = false;
       document.body.style.overflow = "hidden";
-      planModalKicker.textContent = feature ? "Upgrade required" : "Dummy checkout";
-      planModalTitle.textContent = planMeta[selectedPlan].title;
-      planModalPlan.textContent = planMeta[selectedPlan].label;
-      planModalCopy.textContent = feature
-        ? `${feature} is outside your current plan. Upgrade here and use the dummy payment flow for now.`
-        : "Select a plan and test the upgrade flow.";
     };
 
     const closePlanModal = () => {
@@ -395,10 +522,14 @@
       document.body.style.overflow = "";
     };
 
-    const persistPlan = (plan) =>
+    const persistPlan = (plan, credits) =>
       new Promise((resolve) => {
         try {
-          chrome.storage.local.set({ [planStorageKey]: plan }, resolve);
+          chrome.storage.local.set({
+            [planStorageKey]: plan,
+            "chatbridge_credits_balance": credits,
+            "chatbridge_credits_last_reset": Date.now()
+          }, resolve);
         } catch (_) {
           resolve();
         }
@@ -408,13 +539,8 @@
       button.addEventListener("click", () => {
         openPlanModal({
           plan: button.dataset.plan || "pro",
-          gateway: button.dataset.gateway || "sandbox",
         });
       });
-    });
-
-    planGatewayChoices.forEach((button) => {
-      button.addEventListener("click", () => updateGatewayChoice(button.dataset.gatewayChoice || "sandbox"));
     });
 
     document.querySelectorAll("[data-close-plan-modal='true']").forEach((node) => {
@@ -422,29 +548,74 @@
     });
     bind("plan-modal-close", closePlanModal);
     bind("plan-modal-cancel", closePlanModal);
-    bind("plan-modal-confirm", async () => {
-      await persistPlan(selectedPlan);
-      closePlanModal();
-      window.alert(`${planMeta[selectedPlan].cta}. Gateway: ${selectedGateway}.`);
-    });
 
+    // Form submit integration (Stripe Simulation)
+    if (paymentForm) {
+      paymentForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        
+        if (checkoutConfirmBtn) {
+          checkoutConfirmBtn.disabled = true;
+          checkoutConfirmBtn.textContent = "Processing payment...";
+        }
+
+        // Disable all inputs in form during simulation
+        const inputs = Array.from(paymentForm.querySelectorAll("input"));
+        inputs.forEach(input => input.disabled = true);
+
+        // Simulate network latency (1.5 seconds)
+        await new Promise(r => setTimeout(r, 1500));
+
+        // Save subscription details and credits
+        const credits = selectedPlan === "max" ? 10000 : 2000;
+        await persistPlan(selectedPlan, credits);
+
+        // Transition to success screen
+        if (checkoutFormView) checkoutFormView.style.display = "none";
+        if (checkoutSuccessView) checkoutSuccessView.style.display = "block";
+        if (successDescText) {
+          successDescText.textContent = `Your ${selectedPlan === 'max' ? 'Max' : 'Pro'} subscription has been activated successfully, and ${credits.toLocaleString()} credits have been added to your balance.`;
+        }
+
+        // Close modal after 2.5 seconds success viewing
+        await new Promise(r => setTimeout(r, 2500));
+        
+        inputs.forEach(input => input.disabled = false);
+        if (checkoutConfirmBtn) checkoutConfirmBtn.disabled = false;
+        
+        closePlanModal();
+        
+        // Dispatch custom storage change event for immediate UI update in options page
+        try {
+          window.dispatchEvent(new Event("storage"));
+        } catch (_) {}
+        
+        // Reload welcome page or notify
+        window.alert(`Subscription activated successfully!`);
+        window.location.reload();
+      });
+    }
+
+    // --- Query params parsing (onboarding check) ---
     try {
       const params = new URLSearchParams(window.location.search);
       const shouldUpgrade = params.get("upgrade") === "1";
-      const feature = params.get("feature") || "";
       const plan = params.get("plan") || "pro";
-      const gateway = params.get("gateway") || "sandbox";
 
       if (shouldUpgrade) {
         const pricingSection = document.getElementById("pricing");
         if (pricingSection) {
           pricingSection.scrollIntoView({ behavior: "smooth", block: "start" });
         }
-        window.setTimeout(() => openPlanModal({ plan, gateway, feature }), 220);
+        window.setTimeout(() => openPlanModal({ plan }), 220);
       }
     } catch (_) {
       // Ignore malformed query params.
     }
+
+    // Init values
+    updateBillingCycle();
+    updateCalculator();
   }
 
   function initSpotlightTracking(cards) {

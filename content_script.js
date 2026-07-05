@@ -25577,7 +25577,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
               out.result = rambleFilter(out.result);
             }
             if (gov.cacheKey && out && out.ok) _cachePut(gov.cacheKey, out);
-            finish(out);
+            finish(handleBillingAwareResult(out));
           });
         } catch (e) { finish({ ok: false, error: e && e.message }); }
       });
@@ -25596,7 +25596,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
               out.result = rambleFilter(out.result);
             }
             if (gov.cacheKey && out && out.ok) _cachePut(gov.cacheKey, out);
-            resolve(out);
+            resolve(handleBillingAwareResult(out));
           });
         } catch (e) { resolve({ ok: false, error: e && e.message }); }
       });
@@ -25612,7 +25612,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
             if (out && out.ok && out.result && typeof out.result === 'string') {
               out.result = rambleFilter(out.result);
             }
-            resolve(out);
+            resolve(handleBillingAwareResult(out));
           });
         } catch (e) { resolve({ ok: false, error: e && e.message }); }
       });
@@ -25850,12 +25850,28 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           } catch (e) {
             debugLog('[Translation] Attempt failed', e);
             lastError = e;
+
+            const errorMsg = e.message || String(e);
+            const isLimitOrExhausted = /quota|rate|limit|exhausted|exhaust|429/i.test(errorMsg);
+            const currentName = attemptFn === tryLlama ? 'Hugging Face' : 'Gemini';
+            const nextAttempt = order[order.indexOf(attemptFn) + 1];
+
+            if (isLimitOrExhausted && nextAttempt) {
+              const nextName = nextAttempt === tryLlama ? 'Hugging Face' : 'Gemini';
+              toast(`⚠️ ${currentName} quota exceeded. Falling back to ${nextName}...`);
+              continue;
+            }
+
             if (e.message && (e.message.includes('API key') || e.message.includes('configured') || e.message.includes('permission') || e.message.includes('lacks permissions') || e.message.includes('invalid'))) {
+              if (order.indexOf(attemptFn) < order.length - 1) {
+                continue;
+              }
               throw e;
             }
           }
         }
-        throw lastError || new Error('All translation models failed');
+        toast('⚠️ All translation models failed due to quota/network limits. Displaying original text.');
+        return chunkText;
       }
 
       if (workText.length <= chunkSize) {
@@ -28711,6 +28727,93 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
         // Log to console instead of alert
         console.log('[ChatBridge] Toast:', msg);
       }
+    }
+
+    let creditPromptEl = null;
+
+    function openCreditUpgradePage(featureTitle = 'AI credits', requiredPlan = 'pro') {
+      try {
+        openUpgradePage(featureTitle, requiredPlan);
+      } catch (_) {
+        try {
+          const params = new URLSearchParams({
+            upgrade: '1',
+            feature: featureTitle,
+            plan: requiredPlan,
+            gateway: CHATBRIDGE_PLAN_GATEWAY
+          });
+          const targetUrl = `${chrome.runtime.getURL('welcome.html')}?${params.toString()}`;
+          window.open(targetUrl, '_blank', 'noopener');
+        } catch (_) { }
+      }
+    }
+
+    function showCreditUpgradePrompt(message) {
+      try {
+        const container = getToastContainer();
+        if (!container) return;
+
+        if (!creditPromptEl) {
+          creditPromptEl = document.createElement('div');
+          creditPromptEl.id = 'cb-credit-upgrade';
+          creditPromptEl.setAttribute('data-cb-ignore', 'true');
+          creditPromptEl.style.cssText = `
+            pointer-events:auto;
+            max-width:320px;
+            background:rgba(10,15,28,0.98);
+            color:#E6E9F0;
+            border:1px solid color-mix(in srgb, var(--cb-accent-primary) 28%, transparent);
+            border-radius:14px;
+            box-shadow:0 10px 24px rgba(0,0,0,0.35);
+            padding:14px 14px 12px;
+            font-family:'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+          `;
+          creditPromptEl.innerHTML = `
+            <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;margin-bottom:8px;">
+              <div style="font-size:13px;font-weight:700;line-height:1.3;">AI credits exhausted</div>
+              <button type="button" aria-label="Dismiss" data-cb-dismiss-credit style="background:transparent;border:0;color:#AEB7CA;font-size:18px;line-height:1;cursor:pointer;padding:0;">&times;</button>
+            </div>
+            <div data-cb-credit-message style="font-size:12px;line-height:1.5;color:#AEB7CA;margin-bottom:12px;"></div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <button type="button" data-cb-credit-upgrade style="border:0;border-radius:10px;padding:9px 12px;background:var(--cb-accent-primary);color:#08111f;font-weight:700;cursor:pointer;">Upgrade</button>
+              <button type="button" data-cb-credit-later style="border:1px solid rgba(255,255,255,0.14);border-radius:10px;padding:9px 12px;background:transparent;color:#E6E9F0;cursor:pointer;">Later</button>
+            </div>
+          `;
+          creditPromptEl.querySelector('[data-cb-credit-upgrade]')?.addEventListener('click', () => {
+            openCreditUpgradePage('AI credits', 'pro');
+          });
+          creditPromptEl.querySelector('[data-cb-credit-later]')?.addEventListener('click', () => {
+            try { creditPromptEl.remove(); } catch (_) { }
+            creditPromptEl = null;
+          });
+          creditPromptEl.querySelector('[data-cb-dismiss-credit]')?.addEventListener('click', () => {
+            try { creditPromptEl.remove(); } catch (_) { }
+            creditPromptEl = null;
+          });
+        }
+
+        const body = creditPromptEl.querySelector('[data-cb-credit-message]');
+        if (body) {
+          body.textContent = message || 'Free-tier credits are exhausted. Upgrade to continue using cloud AI features.';
+        }
+        container.appendChild(creditPromptEl);
+      } catch (e) {
+        console.log('[ChatBridge] Failed to show credit upgrade prompt:', e);
+      }
+    }
+
+    function handleBillingAwareResult(result) {
+      if (!result || result.ok) return result;
+      if (result.error === 'insufficient_credits') {
+        const message = result.message || 'Free-tier credits are exhausted. Upgrade to continue.';
+        const firstPrompt = !creditPromptEl;
+        toast(message);
+        showCreditUpgradePrompt(message);
+        if (firstPrompt) {
+          openCreditUpgradePage('AI credits', 'pro');
+        }
+      }
+      return result;
     }
 
 

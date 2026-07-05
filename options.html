@@ -871,6 +871,15 @@
           </svg>
           <span data-i18n="analytics">Analytics</span>
         </div>
+        <div class="nav-item" data-section="api-keys">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="7.5" cy="15.5" r="2.5"></circle>
+            <path d="M10 15.5h11"></path>
+            <path d="M18 13v5"></path>
+            <path d="M3 8a4 4 0 1 1 7.2 2.4L8 12.5"></path>
+          </svg>
+          <span data-i18n="apiKeys">API Keys</span>
+        </div>
         <div class="nav-item" data-section="history">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="10"></circle>
@@ -1012,6 +1021,7 @@
           <div class="quick-actions">
             <button class="btn btn-secondary" id="quick-history">View History</button>
             <button class="btn btn-secondary" id="quick-analytics">View Analytics</button>
+            <button class="btn btn-secondary" id="quick-api">Configure APIs</button>
             <button class="btn btn-secondary" id="quick-theme">Change Theme</button>
           </div>
         </div>
@@ -1122,6 +1132,124 @@
       </section>
 
       <!-- ══════════════════ HISTORY ══════════════════ -->
+      <section class="section" id="section-api-keys">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h18"></path><path d="M3 12h12"></path><path d="M3 17h8"></path></svg>
+              API Keys
+            </div>
+            <button class="btn btn-primary" id="btn-open-pricing" type="button">Upgrade</button>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;">
+            <div style="padding:16px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-input);">
+              <div class="settings-label" id="billing-tier-label">Subscription Plan</div>
+              <div class="settings-desc" id="billing-tier-detail" style="margin-bottom:10px;">Local plan state used for model access and credit checks.</div>
+              <span class="badge" id="billing-tier-badge">Free Tier</span>
+            </div>
+            <div style="padding:16px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-input);">
+              <div class="settings-label" id="billing-credits-label" style="margin-bottom:8px;">AI Credits</div>
+              <div style="height:10px;border-radius:999px;background:rgba(255,255,255,0.08);overflow:hidden;margin-bottom:8px;">
+                <div id="billing-progress-bar" style="height:100%;width:100%;background:linear-gradient(90deg,var(--accent),var(--accent-2));"></div>
+              </div>
+              <div class="settings-desc" id="billing-progress-label">100 / 100 credits remaining</div>
+              <div class="settings-desc" id="billing-reset-info">Resets monthly</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card section-gap">
+            <div class="card-title" id="billing-byok-title" style="margin-bottom:14px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"></path><path d="M4 12h16"></path><path d="M4 17h10"></path></svg>
+            Bring Your Own Keys
+          </div>
+          <p class="card-desc" id="billing-byok-desc">Saved personal keys prefer direct provider requests and bypass the shared free-tier credit pool.</p>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px;">
+            <div style="padding:14px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-input);">
+              <div class="settings-label" style="margin-bottom:8px;">Gemini</div>
+              <div style="display:flex;gap:8px;margin-bottom:10px;">
+                <input type="password" id="api-key-gemini" placeholder="AIza..." />
+                <button class="btn btn-secondary" id="btn-toggle-gemini" type="button">Show</button>
+              </div>
+              <div class="quick-actions">
+                <button class="btn btn-primary" id="btn-save-gemini" type="button">Save</button>
+                <button class="btn btn-secondary" id="btn-test-gemini" type="button">Test Connection</button>
+                <button class="btn btn-danger" id="btn-delete-gemini" type="button">Delete</button>
+              </div>
+              <div class="settings-desc" id="status-gemini" style="margin-top:10px;">Not configured</div>
+            </div>
+            <div style="padding:14px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-input);">
+              <div class="settings-label" style="margin-bottom:8px;">OpenAI</div>
+              <div style="display:flex;gap:8px;margin-bottom:10px;">
+                <input type="password" id="api-key-openai" placeholder="sk-..." />
+                <button class="btn btn-secondary" id="btn-toggle-openai" type="button">Show</button>
+              </div>
+              <div class="quick-actions">
+                <button class="btn btn-primary" id="btn-save-openai" type="button">Save</button>
+                <button class="btn btn-secondary" id="btn-test-openai" type="button">Test Connection</button>
+                <button class="btn btn-danger" id="btn-delete-openai" type="button">Delete</button>
+              </div>
+              <div class="settings-desc" id="status-openai" style="margin-top:10px;">Not configured</div>
+            </div>
+            <div style="padding:14px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-input);">
+              <div class="settings-label" style="margin-bottom:8px;">Hugging Face</div>
+              <div style="display:flex;gap:8px;margin-bottom:10px;">
+                <input type="password" id="api-key-hf" placeholder="hf_..." />
+                <button class="btn btn-secondary" id="btn-toggle-hf" type="button">Show</button>
+              </div>
+              <div class="quick-actions">
+                <button class="btn btn-primary" id="btn-save-hf" type="button">Save</button>
+                <button class="btn btn-secondary" id="btn-test-hf" type="button">Test Connection</button>
+                <button class="btn btn-danger" id="btn-delete-hf" type="button">Delete</button>
+              </div>
+              <div class="settings-desc" id="status-hf" style="margin-top:10px;">Not configured</div>
+            </div>
+            <div style="padding:14px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-input);">
+              <div class="settings-label" style="margin-bottom:8px;">NVIDIA</div>
+              <div style="display:flex;gap:8px;margin-bottom:10px;">
+                <input type="password" id="api-key-nvidia" placeholder="nvapi-..." />
+                <button class="btn btn-secondary" id="btn-toggle-nvidia" type="button">Show</button>
+              </div>
+              <div class="quick-actions">
+                <button class="btn btn-primary" id="btn-save-nvidia" type="button">Save</button>
+                <button class="btn btn-secondary" id="btn-test-nvidia" type="button">Test Connection</button>
+                <button class="btn btn-danger" id="btn-delete-nvidia" type="button">Delete</button>
+              </div>
+              <div class="settings-desc" id="status-nvidia" style="margin-top:10px;">Not configured</div>
+            </div>
+            <div style="padding:14px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-input);">
+              <div class="settings-label" style="margin-bottom:8px;">Claude / Anthropic</div>
+              <div style="display:flex;gap:8px;margin-bottom:10px;">
+                <input type="password" id="api-key-claude" placeholder="sk-ant-..." />
+                <button class="btn btn-secondary" id="btn-toggle-claude" type="button">Show</button>
+              </div>
+              <div class="quick-actions">
+                <button class="btn btn-primary" id="btn-save-claude" type="button">Save</button>
+                <button class="btn btn-secondary" id="btn-test-claude" type="button">Test Connection</button>
+                <button class="btn btn-danger" id="btn-delete-claude" type="button">Delete</button>
+              </div>
+              <div class="settings-desc" id="status-claude" style="margin-top:10px;">Not configured</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card section-gap">
+            <div class="card-title" id="billing-dev-title" style="margin-bottom:10px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg>
+            Developer Sandbox
+          </div>
+          <p class="card-desc" id="billing-dev-desc">Local controls for validating tier changes, credit exhaustion, and reset behavior during development.</p>
+          <div class="quick-actions" style="margin-bottom:10px;">
+            <button class="btn btn-secondary" id="btn-dev-reset-credits" type="button">Reset Credits</button>
+            <button class="btn btn-secondary" id="btn-dev-spend-5" type="button">Spend 5 Credits</button>
+            <button class="btn btn-secondary" id="btn-dev-free" type="button">Set Free</button>
+            <button class="btn btn-secondary" id="btn-dev-pro" type="button">Set Pro</button>
+            <button class="btn btn-secondary" id="btn-dev-max" type="button">Set Max</button>
+          </div>
+          <div class="settings-desc" id="dev-controls-status">Use these controls to verify the billing UI without a live checkout backend.</div>
+        </div>
+      </section>
+
       <section class="section" id="section-history">
         <div class="card">
           <div class="card-header">

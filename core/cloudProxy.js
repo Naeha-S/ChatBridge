@@ -310,6 +310,23 @@ function normalizeBody(body) {
 
 }
 
+function inferRequestedModel(url, body) {
+
+  const target = String(url || '');
+  const pathMatch = target.match(/\/models\/([^:/?]+)(?::|\/|$)/i);
+  if (pathMatch && pathMatch[1]) {
+    return decodeURIComponent(pathMatch[1]);
+  }
+
+  const normalized = normalizeBody(body);
+  if (normalized && typeof normalized === 'object' && typeof normalized.model === 'string') {
+    return normalized.model;
+  }
+
+  return '';
+
+}
+
 
 
 export async function chatbridgeFetch(url, options = {}) {
@@ -343,6 +360,12 @@ export async function chatbridgeFetch(url, options = {}) {
 
   }
 
+  let subscriptionTier = 'free';
+  try {
+    const storedTier = await new Promise((resolve) => chrome.storage.local.get(['chatbridge_subscription_tier'], resolve));
+    subscriptionTier = String(storedTier && storedTier.chatbridge_subscription_tier || 'free').trim().toLowerCase() || 'free';
+  } catch (_) {}
+
 
 
   const parsed = new URL(url);
@@ -360,6 +383,7 @@ export async function chatbridgeFetch(url, options = {}) {
 
 
   const headers = normalizeHeaders(options.headers);
+  const requestedModel = inferRequestedModel(url, options.body);
 
   delete headers.Authorization;
 
@@ -398,6 +422,11 @@ export async function chatbridgeFetch(url, options = {}) {
       Authorization: `Bearer ${cfg.token}`,
 
       'X-ChatBridge-Client': 'extension',
+      'X-ChatBridge-Key-Mode': cfg.token === DEFAULT_GATEWAY_TOKEN ? 'default' : 'custom',
+      'X-ChatBridge-Subscription-Tier': subscriptionTier,
+      'X-ChatBridge-Requested-Provider': provider,
+      'X-ChatBridge-Requested-Model': requestedModel,
+      'X-ChatBridge-Free-Proxy': subscriptionTier === 'free' ? '1' : '0',
 
     },
 

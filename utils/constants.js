@@ -60,7 +60,7 @@ const ChatBridgeConstants = {
   },
 
   API: {
-    GEMINI_ENDPOINT: 'https://generativelanguage.googleapis.com/v1beta/models',
+    GEMINI_ENDPOINT: 'https://generativelanguage.googleapis.com/v1/models',
     OPENAI_ENDPOINT: 'https://api.openai.com/v1/chat/completions'
   },
 
