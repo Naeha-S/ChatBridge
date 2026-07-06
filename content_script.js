@@ -5761,6 +5761,285 @@
       return String(input.innerText || input.textContent || '').trim();
     };
 
+    const builtInAi = {
+      languageModel: globalThis.LanguageModel || (globalThis.ai && globalThis.ai.languageModel) || null,
+      summarizer: globalThis.Summarizer || (globalThis.ai && globalThis.ai.summarizer) || null,
+      writer: globalThis.Writer || (globalThis.ai && globalThis.ai.writer) || null,
+      rewriter: globalThis.Rewriter || (globalThis.ai && globalThis.ai.rewriter) || null,
+      translator: globalThis.Translator || (globalThis.translation) || (globalThis.ai && globalThis.ai.translator) || null,
+    };
+
+    const hasUserActivation = () => !!(navigator.userActivation && navigator.userActivation.isActive);
+
+    const normalizeAiText = (value) => String(value || '').trim();
+
+    const extractPromptText = (payload) => {
+      if (typeof payload === 'string') return payload;
+      if (!payload || typeof payload !== 'object') return '';
+      return String(payload.prompt || payload.text || payload.input || '').trim();
+    };
+
+    const buildLocalSummaryPrompt = (payload) => {
+      const text = extractPromptText(payload);
+      const length = String(payload.length || 'medium').toLowerCase();
+      const summaryType = String(payload.summaryType || 'paragraph').toLowerCase();
+      if (payload.prompt) return text;
+
+      if (summaryType === 'bullet') {
+        return `Summarize the text as concise bullet points.\n\n${text}`;
+      }
+
+      if (length === 'short') {
+        return `Summarize the following text in 1-2 sentences.\n\n${text}`;
+      }
+
+      return `Summarize the following text clearly and concisely.\n\n${text}`;
+    };
+
+    const buildLocalPromptRequest = (payload) => {
+      const sourceText = extractPromptText(payload);
+      const systemPrompt = String(payload.systemPrompt || '').trim();
+      if (systemPrompt) {
+        return `${systemPrompt}\n\n${sourceText}`.trim();
+      }
+      return sourceText;
+    };
+
+    const buildLocalDocumentContext = (payload, instruction) => {
+      const styleHint = String(payload.styleHint || '').trim();
+      const style = String(payload.style || '').trim();
+      const contextParts = [];
+      if (style) contextParts.push(`Style: ${style}.`);
+      if (styleHint) contextParts.push(`Style hint: ${styleHint}.`);
+      return contextParts.length ? `${instruction} ${contextParts.join(' ')}`.trim() : instruction;
+    };
+
+    const buildLocalRewriteContext = (payload) => {
+      const style = String(payload.style || 'normal').toLowerCase();
+      const styleHint = String(payload.styleHint || '').trim();
+      const stylePrompts = {
+        concise: 'Make the text shorter while preserving meaning.',
+        professional: 'Use a polished professional tone while preserving meaning.',
+        casual: 'Use a natural casual tone while preserving meaning.',
+        formal: 'Use a formal tone while preserving meaning.',
+        expand: 'Add helpful detail while preserving meaning.',
+        normal: 'Rewrite the text for clarity while preserving meaning.',
+      };
+      const instruction = stylePrompts[style] || stylePrompts.normal;
+      return styleHint ? `${instruction} Style hint: ${styleHint}.` : instruction;
+    };
+
+    const runLocalSummarizer = async (payload) => {
+      try {
+        const api = builtInAi.summarizer;
+        if (!api || typeof api.availability !== 'function' || typeof api.create !== 'function') return null;
+
+        const availability = await api.availability();
+        if (availability === 'unavailable') return null;
+        if (availability !== 'available' && !hasUserActivation()) return null;
+
+        let outputLang = 'en';
+        if (payload.targetLangCode && ['de', 'en', 'es', 'fr', 'ja'].includes(payload.targetLangCode.toLowerCase().slice(0, 2))) {
+          outputLang = payload.targetLangCode.toLowerCase().slice(0, 2);
+        } else if (payload.targetLang && ['de', 'en', 'es', 'fr', 'ja'].includes(payload.targetLang.toLowerCase().slice(0, 2))) {
+          outputLang = payload.targetLang.toLowerCase().slice(0, 2);
+        }
+
+        const summarizer = await api.create({ outputLanguage: outputLang });
+        const summary = await summarizer.summarize(buildLocalSummaryPrompt(payload), {
+          context: String(payload.prompt || payload.text || '').slice(0, 1000),
+        });
+        if (typeof summarizer.destroy === 'function') summarizer.destroy();
+        return normalizeAiText(summary);
+      } catch (e) {
+        debugLog('runLocalSummarizer exception', e);
+        return null;
+      }
+    };
+
+    const runLocalPromptModel = async (payload) => {
+      try {
+        const api = builtInAi.languageModel;
+        if (!api || typeof api.availability !== 'function' || typeof api.create !== 'function') return null;
+
+        const availability = await api.availability();
+        if (availability === 'unavailable') return null;
+        if (availability !== 'available' && !hasUserActivation()) return null;
+
+        const session = await api.create();
+        const promptText = buildLocalPromptRequest(payload);
+        const result = await session.prompt(promptText);
+        if (typeof session.destroy === 'function') session.destroy();
+        return normalizeAiText(result);
+      } catch (e) {
+        debugLog('runLocalPromptModel exception', e);
+        return null;
+      }
+    };
+
+    const runLocalWriter = async (payload) => {
+      try {
+        const api = builtInAi.writer;
+        if (!api || typeof api.availability !== 'function' || typeof api.create !== 'function') return null;
+
+        const availability = await api.availability();
+        if (availability === 'unavailable') return null;
+        if (availability !== 'available' && !hasUserActivation()) return null;
+
+        const writer = await api.create();
+        const sourceText = extractPromptText(payload);
+        const context = buildLocalDocumentContext(
+          payload,
+          'Rewrite the text into a clean, well-structured document with readable sections and concise prose.'
+        );
+        const result = await writer.write(sourceText, { context });
+        if (typeof writer.destroy === 'function') writer.destroy();
+        return normalizeAiText(result);
+      } catch (e) {
+        debugLog('runLocalWriter exception', e);
+        return null;
+      }
+    };
+
+    const runLocalRewriter = async (payload) => {
+      try {
+        const api = builtInAi.rewriter;
+        if (!api || typeof api.availability !== 'function' || typeof api.create !== 'function') return null;
+
+        const availability = await api.availability();
+        if (availability === 'unavailable') return null;
+        if (availability !== 'available' && !hasUserActivation()) return null;
+
+        const rewriter = await api.create();
+        const sourceText = extractPromptText(payload);
+        const context = buildLocalRewriteContext(payload);
+        const tone = String(payload.style || '').toLowerCase() === 'casual'
+          ? 'more-casual'
+          : String(payload.style || '').toLowerCase() === 'formal' || String(payload.style || '').toLowerCase() === 'professional'
+            ? 'more-formal'
+            : undefined;
+        const rewriteOptions = { context };
+        if (tone) rewriteOptions.tone = tone;
+        const result = await rewriter.rewrite(sourceText, rewriteOptions);
+        if (typeof rewriter.destroy === 'function') rewriter.destroy();
+        return normalizeAiText(result);
+      } catch (e) {
+        debugLog('runLocalRewriter exception', e);
+        return null;
+      }
+    };
+
+    const runLocalTranslator = async (payload) => {
+      const api = builtInAi.translator;
+      const sourceText = extractPromptText(payload);
+      const targetLangCode = String(payload.targetLangCode || 'en').toLowerCase();
+      const sourceLangCode = String(payload.sourceLangCode || 'auto').toLowerCase();
+
+      try {
+        if (!api) throw new Error('Translator API not available');
+
+        let translatorInstance;
+        const options = {
+          sourceLanguage: sourceLangCode === 'auto' ? 'en' : sourceLangCode,
+          targetLanguage: targetLangCode,
+        };
+
+        if (typeof api.create === 'function') {
+          if (typeof api.canTranslate === 'function') {
+            const availability = await api.canTranslate(options);
+            if (availability === 'unavailable') throw new Error('Language pair unavailable');
+          }
+          translatorInstance = await api.create(options);
+        } else if (typeof api.createTranslator === 'function') {
+          if (typeof api.canTranslate === 'function') {
+            const availability = await api.canTranslate(options);
+            if (availability === 'unavailable') throw new Error('Language pair unavailable');
+          }
+          translatorInstance = await api.createTranslator(options);
+        }
+
+        if (!translatorInstance) throw new Error('Could not create translator instance');
+
+        const result = await translatorInstance.translate(sourceText);
+        if (typeof translatorInstance.destroy === 'function') translatorInstance.destroy();
+        return normalizeAiText(result);
+      } catch (e) {
+        debugLog('runLocalTranslator failed, trying Prompt API fallback...', e);
+        try {
+          const promptText = `Translate the following text to ${payload.targetLang || 'English'}. Output ONLY the translated text with no explanations, notes, or additional commentary:\n\n${sourceText}`;
+          return await runLocalPromptModel({ ...payload, prompt: promptText });
+        } catch (e2) {
+          debugLog('runLocalPromptModel fallback for translation failed', e2);
+        }
+      }
+      return null;
+    };
+
+    const runLocalBuiltInAi = async (payload) => {
+      const action = String(payload && payload.action ? payload.action : 'prompt').toLowerCase();
+
+      try {
+        if (action === 'summarize') {
+          const result = await runLocalSummarizer(payload);
+          if (result) {
+            console.log('[ChatBridge AI] On-device Summarizer API SUCCESS: Ran locally, saved tokens!');
+            return result;
+          } else {
+            console.log('[ChatBridge AI] On-device Summarizer API FAILED or unavailable, falling back to cloud.');
+          }
+        }
+        if (action === 'rewrite_text' || action === 'apply_style_document' || action === 'syncTone') {
+          const result = await runLocalRewriter(payload);
+          if (result) {
+            console.log('[ChatBridge AI] On-device Rewriter API SUCCESS: Ran locally, saved tokens!');
+            return result;
+          } else {
+            console.log('[ChatBridge AI] On-device Rewriter API FAILED or unavailable, falling back to cloud.');
+          }
+        }
+        if (action === 'structure_document' || action === 'chat_to_document') {
+          const result = await runLocalWriter(payload);
+          if (result) {
+            console.log('[ChatBridge AI] On-device Writer API SUCCESS: Ran locally, saved tokens!');
+            return result;
+          } else {
+            console.log('[ChatBridge AI] On-device Writer API FAILED or unavailable, falling back to cloud.');
+          }
+        }
+        if (action === 'extract_meaning') {
+          const result = await runLocalPromptModel(payload);
+          if (result) {
+            console.log('[ChatBridge AI] On-device Prompt API (LanguageModel) SUCCESS: Ran locally, saved tokens!');
+            return result;
+          } else {
+            console.log('[ChatBridge AI] On-device Prompt API (LanguageModel) FAILED or unavailable, falling back to cloud.');
+          }
+        }
+        if (action === 'prompt' || action === 'custom') {
+          const result = await runLocalPromptModel(payload);
+          if (result) {
+            console.log('[ChatBridge AI] On-device Prompt API (LanguageModel) SUCCESS: Ran locally, saved tokens!');
+            return result;
+          } else {
+            console.log('[ChatBridge AI] On-device Prompt API (LanguageModel) FAILED or unavailable, falling back to cloud.');
+          }
+        }
+        if (action === 'translate') {
+          const result = await runLocalTranslator(payload);
+          if (result) {
+            console.log('[ChatBridge AI] On-device Translator API SUCCESS: Ran locally, saved tokens!');
+            return result;
+          } else {
+            console.log('[ChatBridge AI] On-device Translator API FAILED or unavailable, falling back to cloud.');
+          }
+        }
+      } catch (e) {
+        debugLog('runLocalBuiltInAi failed', e);
+      }
+
+      return null;
+    };
+
     // Helper to insert text into chat input (handles textarea, input, contenteditable)
     const insertTextToChat = (text) => {
       try {
@@ -25565,6 +25844,39 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           const gov = await tokenGovernor(Object.assign({}, originalPayload), 'gemini');
           if (gov.intercepted) return finish(gov.res);
 
+          // 1. Try Local On-device AI first (if !skipLocal)
+          if (!gov.payload.skipLocal) {
+            const localResult = await runLocalBuiltInAi(gov.payload);
+            if (localResult) {
+              return finish(handleBillingAwareResult({ ok: true, result: rambleFilter(localResult), model: 'chrome-on-device' }));
+            }
+          }
+
+          // 2. Try Hugging Face (Llama) second (if configured and !skipLlama)
+          let hasLlama = false;
+          try {
+            const keys = await new Promise(r => {
+              chrome.storage.local.get(['chatbridge_hf_key'], d => r(d || {}));
+            });
+            if (keys.chatbridge_hf_key) hasLlama = true;
+          } catch (_) {}
+
+          if (!hasLlama && typeof window !== 'undefined' && window.CHATBRIDGE_CONFIG && window.CHATBRIDGE_CONFIG.HUGGINGFACE_API_KEY) {
+            hasLlama = true;
+          }
+
+          if (hasLlama && !originalPayload.skipLlama) {
+            debugLog('[Fallback] Trying Llama first...');
+            const llamaPayload = Object.assign({}, gov.payload, { skipLocal: true });
+            const llamaRes = await callLlamaAsync(llamaPayload);
+            if (llamaRes && llamaRes.ok) {
+              if (gov.cacheKey) _cachePut(gov.cacheKey, llamaRes);
+              return finish(llamaRes);
+            }
+            debugLog('[Fallback] Llama failed, falling back to Gemini Cloud...', llamaRes?.error);
+          }
+
+          // 3. Try Gemini Cloud third
           // Hard stop for UI responsiveness: never let optimize-style actions hang forever.
           timeoutId = setTimeout(() => {
             finish({ ok: false, error: 'timeout', message: 'Gemini request timed out after 60 seconds.' });
@@ -25582,6 +25894,9 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         } catch (e) { finish({ ok: false, error: e && e.message }); }
       });
     }
+
+    window.ChatBridge = window.ChatBridge || {};
+    window.ChatBridge.callGeminiAsync = callGeminiAsync;
 
     // OpenAI API wrapper with governor (used by EchoSynth)
     function callOpenAIAsync(originalPayload) {
@@ -25769,6 +26084,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
     async function hierarchicalTranslate(text, options) {
       options = options || {};
       const targetLang = options.targetLang || 'English';
+      const targetLangCode = options.targetLangCode || 'en';
       const shorten = !!options.shorten;
       const deepThinking = !!options.deepThinking; // Use 22B model for higher quality
       const chunkSize = options.chunkSize || 18000; // Larger chunks = fewer API calls
@@ -25808,14 +26124,21 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         hasLlama = true;
       }
 
-      if (!hasGemini && !hasLlama) {
-        throw new Error('No API keys configured. Please configure Gemini or HuggingFace API keys in ChatBridge Options.');
+      const hasLocal = !!(builtInAi.translator || builtInAi.languageModel);
+      if (!hasGemini && !hasLlama && !hasLocal) {
+        throw new Error('No API keys configured. Please configure Gemini or HuggingFace API keys in ChatBridge Options, or enable Chrome Built-in AI.');
+      }
+
+      async function tryLocal(chunkText) {
+        debugLog('[Translation] Trying Local On-Device AI...');
+        const res = await runLocalBuiltInAi({ action: 'translate', text: chunkText, targetLang, targetLangCode });
+        return res;
       }
 
       async function tryGemini(chunkText) {
         debugLog('[Translation] Trying Gemini...');
         const preferredModel = deepThinking ? 'gemini-1.5-pro' : 'gemini-2.0-flash';
-        const r = await callGeminiAsync({ action: 'translate', text: chunkText, targetLang, model: preferredModel });
+        const r = await callGeminiAsync({ action: 'translate', text: chunkText, targetLang, targetLangCode, model: preferredModel, skipLocal: true });
         if (r && !r.ok) {
           if (r.error === 'no_api_key' || r.error === 'gemini_http_error') {
             throw new Error(r.message || 'Gemini API key error');
@@ -25836,6 +26159,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       }
 
       const order = [];
+      order.push(tryLocal);
       if (hasLlama) order.push(tryLlama);
       if (hasGemini) order.push(tryGemini);
 
@@ -25853,7 +26177,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
 
             const errorMsg = e.message || String(e);
             const isLimitOrExhausted = /quota|rate|limit|exhausted|exhaust|429/i.test(errorMsg);
-            const currentName = attemptFn === tryLlama ? 'Hugging Face' : 'Gemini';
+            const currentName = attemptFn === tryLocal ? 'Local On-Device AI' : (attemptFn === tryLlama ? 'Hugging Face' : 'Gemini');
             const nextAttempt = order[order.indexOf(attemptFn) + 1];
 
             if (isLimitOrExhausted && nextAttempt) {
@@ -25993,38 +26317,39 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       };
       const mappedStyle = styleMap[styleKey] || 'Humanized';
 
-      // PRIMARY: Try Gemma 2 (best quality for style-conditioned rewrites)
+      // PRIMARY: Try Local On-device Rewrite API (Chrome Built-in AI rewriter)
       try {
         if (onProgress) onProgress({ phase: 'preparing' });
-        debugLog(`[Rewrite] Using Gemma 2 with style: ${mappedStyle}`);
-
-        const gemmaRes = await callGemmaRewriteAsync(text, mappedStyle);
-        if (gemmaRes && gemmaRes.ok && gemmaRes.result) {
+        debugLog(`[Rewrite] Trying local built-in rewriter API with style: ${mappedStyle}`);
+        const localRes = await runLocalRewriter({ action: 'rewrite_text', style: mappedStyle, text: text });
+        if (localRes) {
           if (onProgress) onProgress({ phase: 'done' });
-          return gemmaRes.result;
+          debugLog('[Rewrite] Local built-in rewriter SUCCESS');
+          return localRes;
         }
-        debugLog('[Rewrite] Gemma 2 failed, falling back to Llama', gemmaRes?.error);
+        debugLog('[Rewrite] Local built-in rewriter failed or unavailable, trying Hugging Face Llama');
       } catch (e) {
-        debugLog('[Rewrite] Gemma 2 error, falling back', e);
+        debugLog('[Rewrite] Local built-in rewriter error, trying Hugging Face Llama', e);
       }
 
-      // FALLBACK 1: Llama for shorter texts
-      if (text && text.length < 8000) {
-        try {
-          if (onProgress) onProgress({ phase: 'preparing' });
-          const llamaRes = await callLlamaAsync({
-            action: 'rewrite',
-            text: text,
-            rewriteStyle: styleKey,
-            styleHint: styleHint
-          });
-          if (llamaRes && llamaRes.ok && llamaRes.result) {
-            if (onProgress) onProgress({ phase: 'done' });
-            return llamaRes.result;
-          }
-        } catch (e) {
-          debugLog('[Rewrite] Llama failed, falling back to Gemini', e);
+      // FALLBACK 1: Llama
+      try {
+        if (onProgress) onProgress({ phase: 'preparing' });
+        debugLog(`[Rewrite] Trying Hugging Face Llama with style: ${styleKey}`);
+        const llamaRes = await callLlamaAsync({
+          action: 'rewrite',
+          text: text,
+          rewriteStyle: styleKey,
+          styleHint: styleHint
+        });
+        if (llamaRes && llamaRes.ok && llamaRes.result) {
+          if (onProgress) onProgress({ phase: 'done' });
+          debugLog('[Rewrite] Hugging Face Llama SUCCESS');
+          return llamaRes.result;
         }
+        debugLog('[Rewrite] Hugging Face Llama failed, trying Gemini...');
+      } catch (e) {
+        debugLog('[Rewrite] Llama failed, falling back to Gemini', e);
       }
 
       // FALLBACK 2: Gemini hierarchical processing (for long texts or if all else fails)
@@ -26812,6 +27137,7 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
         debugLog(`[Translation] Starting hierarchical translation (deep=${deepThinking})...`);
         const result = await hierarchicalTranslate(textToTranslate, {
           targetLang: langName,
+          targetLangCode: targetLanguage,
           shorten: shorten,
           deepThinking: deepThinking // Use 22B model if enabled
         });

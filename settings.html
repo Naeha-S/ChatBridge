@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Account Settings</title>
+  <link rel="stylesheet" href="welcome.css">
+  <link rel="stylesheet" href="login.css">
+</head>
+<body class="login-page">
+  <div class="login-shell" aria-hidden="true">
+    <div class="login-orb login-orb-a"></div>
+    <div class="login-orb login-orb-b"></div>
+    <div class="login-grid"></div>
+  </div>
+
+  <main class="login-layout">
+    <section class="login-card">
+      <div class="login-card-topline">
+        <a class="login-back-link" href="popup.html">Back to App</a>
+      </div>
+
+      <div class="login-card-copy">
+        <h2>Account Settings</h2>
+        <p>Manage your account and credits.</p>
+      </div>
+
+      <div id="settings-logged-in" hidden>
+        <div style="margin-bottom: 20px;">
+          <p><strong>Email:</strong> <span id="user-email"></span></p>
+          <p><strong>Tier:</strong> <span id="user-tier" style="text-transform: capitalize;"></span></p>
+          <p><strong>Credits:</strong> <span id="user-credits"></span></p>
+        </div>
+        <button type="button" class="login-provider-btn" id="btn-sign-out" style="border: 1px solid red; color: red;">
+          <span>Sign Out</span>
+        </button>
+      </div>
+
+      <div id="settings-logged-out" hidden>
+        <p style="margin-bottom: 20px;">You are not currently logged in.</p>
+        <button type="button" class="login-provider-btn" id="btn-sign-in">
+          <span>Sign In</span>
+        </button>
+      </div>
+    </section>
+  </main>
+  <script type="module" src="settings.js"></script>
+</body>
+</html>

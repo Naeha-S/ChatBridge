@@ -187,6 +187,21 @@ async function checkAndDeductCredits(action, provider) {
   const cost = getCreditCost(action);
   const billing = await getBillingState();
   const usingPersonalKey = provider ? await hasLocalProviderAccess(provider) : await hasAnyLocalProviderAccess();
+  
+  const data = await storageLocalGet(['chatbridge_logged_in']);
+  const isLoggedIn = !!data.chatbridge_logged_in;
+
+  if (!isLoggedIn && !usingPersonalKey && cost > 0) {
+    return {
+      ok: false,
+      error: 'login_required',
+      message: 'Login required to use free tier credits. Alternatively, provide your own API key.',
+      action, provider, cost,
+      tier: 'free', usingPersonalKey: false, forceFreeProxy: true,
+      deducted: false, balance: billing.balance, balanceAfter: billing.balance
+    };
+  }
+
   const bypassCredits = cost === 0 || usingPersonalKey || isPaidTier(billing.tier);
   const forceFreeProxy = !usingPersonalKey && !isPaidTier(billing.tier);
 
@@ -1607,7 +1622,7 @@ async function fetchEmbeddingViaGemini(text, options = {}) {
       }
 
       const response = await chatbridgeFetch(
-        `https://generativelanguage.googleapis.com/v1/models/${modelName}:embedContent?key=${encodeURIComponent(geminiKey || 'proxy')}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:embedContent?key=${encodeURIComponent(geminiKey || 'proxy')}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -2009,7 +2024,7 @@ OUTPUT ONLY THE REPAIR PROMPT:`;
             ? await getNextAvailableModel()
             : 'gemini-2.0-flash';
 
-          const apiUrl = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${geminiApiKey || 'proxy'}`;
+          const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey || 'proxy'}`;
 
           const body = {
             systemInstruction: { parts: [{ text: systemInstruction }] },
@@ -2121,7 +2136,7 @@ Rules:
 - Relationships must reference entities in the entities array`;
 
           const model = await getNextAvailableModel();
-          const apiUrl = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${geminiApiKey || 'proxy'}`;
+          const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey || 'proxy'}`;
           const body = {
             systemInstruction: { parts: [{ text: systemInstruction }] },
             contents: [{ role: 'user', parts: [{ text: promptText }] }],
@@ -2229,7 +2244,7 @@ ${graphContext}
 Provide a concise, factual answer based ONLY on the graph data above. If the graph doesn't contain relevant information, say so. Reference specific platforms and conversations where topics were discussed.`;
 
           const model = await getNextAvailableModel();
-          const apiUrl = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${geminiApiKey || 'proxy'}`;
+          const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey || 'proxy'}`;
           const body = {
             systemInstruction: { parts: [{ text: systemInstruction }] },
             contents: [{ role: 'user', parts: [{ text: promptText }] }],
@@ -2344,7 +2359,7 @@ function mainMessageListener(msg, sender, sendResponse) {
 
       try {
         // Fixed: gemini-pro is deprecated, using gemini-1.5-flash
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${key}`, {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -3683,7 +3698,7 @@ Rewritten conversation (optimized for ${tgt}):`;
 
         for (let attempt = 0; attempt < maxRetries; attempt++) {
           const currentModel = await getNextAvailableModel(preferredModel);
-          const endpoint = `https://generativelanguage.googleapis.com/v1/models/${currentModel}:generateContent?key=${geminiApiKey || 'proxy'}`;
+          const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${currentModel}:generateContent?key=${geminiApiKey || 'proxy'}`;
           const body = {
             systemInstruction: systemInstruction ? { parts: [{ text: systemInstruction }] } : undefined,
             contents: [{ parts: [{ text: promptText }] }],
@@ -3928,7 +3943,7 @@ Rewritten conversation (optimized for ${tgt}):`;
           const models = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'];
           for (const model of models) {
             try {
-              const url = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${geminiApiKey || 'proxy'}`;
+              const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey || 'proxy'}`;
               const apiStart = performance.now();
               const resp = await chatbridgeFetch(url, {
                 method: 'POST',
@@ -4359,9 +4374,106 @@ Rules:
 
 Text to translate:
 ${payload.text}`;
+        } else if (action === 'summarize') {
+          systemInstruction = 'You are an elite summarization specialist trained to distill complex information into clear, actionable summaries. You adapt your output style precisely to the requested format while preserving all critical information. Never add meta-commentary like "Here is a summary" - output ONLY the summary itself.';
+          if (payload.summaryType === 'transfer') {
+            const lenHint = payload.length ? `Aim for a ${payload.length} length.` : '';
+            promptText = `Generate a summary optimized for AI-to-AI context transfer. ${lenHint}
+
+Follow this exact structure with section headers (do not add extra commentary outside sections):
+
+1) Context & Core Goal:
+- Describe the user's primary objective, role, background, and target outcome. Explicitly note any major instructions, preferences, or critical context shifts that occurred during the chat. One to three sentences.
+
+2) Key Documents & Resources:
+- Identify all files, documents, datasets, or PDFs uploaded or referenced in the conversation. Briefly describe their role in the discussion.
+
+3) Chronological Progression of Topics:
+- Bullet points tracing the progression of the conversation from start to finish in chronological order. Describe what was discussed, what concepts were taught or solved, and how the conversation transitioned.
+
+4) Key Decisions & Causal Links:
+- Explain logical connections. Detail any technical constraints, preferences, rules, or design decisions established.
+
+5) Current Status:
+- Describe where the conversation left off: what is completed, what is ongoing, and what remains blocked or unresolved.
+
+6) Next Steps / Suggested Continuation:
+- Provide 3–6 concrete, specific, and actionable next steps for the next AI to continue.
+
+7) AI Handoff TL;DR:
+- A single cohesive paragraph synthesizing the current task, user constraints, preferred tone/format, and immediate next focus.
+
+Constraints:
+- Preserve all important technical details, terminology, exact version numbers, and specific references.
+- DO NOT truncate sentences or cut off explanations mid-sentence.
+- Ensure the chronology flows logically.
+
+Source conversation:
+${payload.text}`;
+          } else if (payload.length === 'comprehensive') {
+            promptText = `Create a DETAILED, COMPREHENSIVE summary of this conversation that preserves ALL important context, topics, decisions, and nuances. This summary will be used by AI tools to continue the conversation seamlessly, so DO NOT omit any significant information. Include all key topics and subtopics discussed in detail, decisions, conclusions, unresolved questions, technical details, code snippets, user preferences, and context about what worked/failed.\n\n${payload.text}`;
+          } else if (payload.summaryType === 'bullet') {
+            const lengthGuide = {
+              concise: '3-5 bullets maximum, ultra-brief',
+              short: '5-8 key bullets',
+              medium: '8-12 comprehensive bullets',
+              comprehensive: '12-15 detailed bullets',
+              detailed: '15-20 in-depth bullets covering all aspects'
+            };
+            const lenInstr = (Object.hasOwn(lengthGuide, payload.length) ? lengthGuide[payload.length] : null) || '8-12 bullets';
+            promptText = `Transform this text into a ${lenInstr} bullet-point summary. Output only bullets. Source text:\n\n${payload.text}`;
+          } else if (payload.summaryType === 'executive') {
+            const lengthGuide = {
+              concise: '1 short paragraph (3-4 sentences)',
+              short: '1-2 paragraphs with key highlights',
+              medium: '2-3 paragraphs covering major points',
+              comprehensive: '3-4 paragraphs with strategic depth',
+              detailed: '4-5 paragraphs with comprehensive coverage'
+            };
+            const lenInstr = (Object.hasOwn(lengthGuide, payload.length) ? lengthGuide[payload.length] : null) || '2-3 paragraphs';
+            promptText = `Create an executive summary (${lenInstr}) for senior leadership. Start directly with the summary content. Text:\n\n${payload.text}`;
+          } else if (payload.summaryType === 'technical') {
+            const lengthGuide = {
+              concise: 'Core technical facts only (5-8 sentences)',
+              short: 'Key technical points with brief explanations',
+              medium: 'Comprehensive technical coverage',
+              comprehensive: 'Deep technical analysis with context',
+              detailed: 'Exhaustive technical documentation'
+            };
+            const lenInstr = (Object.hasOwn(lengthGuide, payload.length) ? lengthGuide[payload.length] : null) || 'comprehensive technical coverage';
+            promptText = `Create a technical summary (${lenInstr}) for technical stakeholders. Output technical content directly. Source material:\n\n${payload.text}`;
+          } else if (payload.summaryType === 'detailed') {
+            const lengthGuide = {
+              concise: '2-3 paragraphs covering main points',
+              short: '3-4 paragraphs with supporting details',
+              medium: '4-6 paragraphs with comprehensive coverage',
+              comprehensive: '6-8 paragraphs with full context',
+              detailed: '8-12 paragraphs with exhaustive analysis'
+            };
+            const lenInstr = (Object.hasOwn(lengthGuide, payload.length) ? lengthGuide[payload.length] : null) || '4-6 well-developed paragraphs';
+            promptText = `Create a detailed summary (${lenInstr}) that comprehensively covers the content. Output summary directly. Text:\n\n${payload.text}`;
+          } else {
+            const lengthGuide = {
+              concise: '1 concise paragraph (4-6 sentences)',
+              short: '1-2 brief paragraphs',
+              medium: '2-3 well-developed paragraphs',
+              comprehensive: '3-4 comprehensive paragraphs',
+              detailed: '4-5 thorough paragraphs'
+            };
+            const lenInstr = (Object.hasOwn(lengthGuide, payload.length) ? lengthGuide[payload.length] : null) || '2-3 paragraphs';
+            promptText = `Summarize this text as ${lenInstr} with clear, coherent narrative flow. Begin directly with the summary. Text:\n\n${payload.text}`;
+          }
+        } else if (action === 'syncTone') {
+          systemInstruction = 'You are an elite prompt engineer specialized in optimizing conversations for different AI models. Transform inputs to maximize output quality for the target model.';
+          const src = payload.sourceModel || 'SourceModel';
+          const tgt = payload.targetModel || 'TargetModel';
+          promptText = `You are an expert prompt engineer. Your task is to rewrite the following conversation so that it is optimally structured for ${tgt} to understand and respond with the highest quality output. Keep roles, intent, and factual content intact. Original: ${payload.text}`;
+        } else if (action === 'custom') {
+          systemInstruction = payload.systemPrompt || payload.systemInstruction || '';
+          promptText = payload.prompt || payload.text || '';
         } else if (action === 'generate' || action === 'prompt') {
-          // Smart prompts / general generation - use text as-is
-          promptText = payload.text || '';
+          systemInstruction = payload.systemPrompt || '';
+          promptText = payload.prompt || payload.text || '';
         } else {
           promptText = payload.text || '';
         }
@@ -4389,14 +4501,16 @@ ${payload.text}`;
           
           for (let attempt = 0; attempt < maxRetries; attempt++) {
             const currentModel = await getNextAvailableModel(preferredModel);
-            const endpoint = `https://generativelanguage.googleapis.com/v1/models/${currentModel}:generateContent?key=${geminiApiKey || 'proxy'}`;
+            const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${currentModel}:generateContent?key=${geminiApiKey || 'proxy'}`;
             const body = {
+              systemInstruction: systemInstruction ? { parts: [{ text: systemInstruction }] } : undefined,
               contents: [{ parts: [{ text: promptText }] }],
               generationConfig: {
                 temperature: 0.7,
                 maxOutputTokens: 4096
               }
             };
+            if (!systemInstruction) delete body.systemInstruction;
 
             console.log(`[Gemini Fallback in call_llama] Attempt ${attempt + 1}/${maxRetries} using model: ${currentModel}`);
             let res;
@@ -4461,7 +4575,9 @@ ${payload.text}`;
         const endpoint = 'https://router.huggingface.co/v1/chat/completions';
         const body = {
           model: 'meta-llama/Llama-3.1-8B-Instruct:novita',
-          messages: [{ role: 'user', content: promptText }],
+          messages: systemInstruction 
+            ? [{ role: 'system', content: systemInstruction }, { role: 'user', content: promptText }]
+            : [{ role: 'user', content: promptText }],
           temperature: 0.7,
           max_tokens: 4096
         };
@@ -4555,7 +4671,7 @@ ${payload.text}`;
 
         for (let attempt = 0; attempt < maxRetries; attempt++) {
           const currentModel = await getNextAvailableModel();
-          const endpoint = `https://generativelanguage.googleapis.com/v1/models/${currentModel}:generateContent?key=${geminiApiKey || 'proxy'}`;
+          const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${currentModel}:generateContent?key=${geminiApiKey || 'proxy'}`;
           const body = {
             contents: [{ parts: [{ text: promptText }] }],
             generationConfig: { temperature: 0.2, topP: 0.9, topK: 20, maxOutputTokens: 4096 }
@@ -4620,7 +4736,7 @@ ${payload.text}`;
 
         for (let attempt = 0; attempt < maxRetries; attempt++) {
           const currentModel = await getNextAvailableModel();
-          const endpoint = `https://generativelanguage.googleapis.com/v1/models/${currentModel}:generateContent?key=${geminiApiKey || 'proxy'}`;
+          const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${currentModel}:generateContent?key=${geminiApiKey || 'proxy'}`;
           const body = {
             contents: [{ parts: [{ text: promptText }] }],
             generationConfig: { temperature: 0.3, topP: 0.9, topK: 20, maxOutputTokens: 2048 }
@@ -4686,7 +4802,7 @@ ${payload.text}`;
           let lastError = null;
           for (let attempt = 0; attempt < GEMINI_MODEL_PRIORITY.length; attempt++) {
             const currentModel = await getNextAvailableModel();
-            const endpoint = `https://generativelanguage.googleapis.com/v1/models/${currentModel}:generateContent?key=${geminiApiKey || 'proxy'}`;
+            const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${currentModel}:generateContent?key=${geminiApiKey || 'proxy'}`;
             const body = {
               systemInstruction: systemInstruction ? { parts: [{ text: systemInstruction }] } : undefined,
               contents: [{ parts: [{ text: promptText }] }],

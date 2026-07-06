@@ -39,23 +39,33 @@
           restoreLog(`Text qualifies for auto-summarize (length: ${cleanText.length}, words: ${wordCount})`);
           toast('Summarizing large context...');
           try {
-            const summaryResult = await new Promise((resolve) => {
-              chrome.runtime.sendMessage({
-                type: 'call_gemini',
-                payload: {
-                  action: 'summarize',
-                  text: cleanText,
-                  length: 'comprehensive',
-                  summaryType: 'transfer'
-                }
-              }, (res) => {
-                if (chrome.runtime.lastError) {
-                  resolve({ ok: false, error: chrome.runtime.lastError.message });
-                } else {
-                  resolve(res || { ok: false });
-                }
+            let summaryResult = { ok: false };
+            if (window.ChatBridge && typeof window.ChatBridge.callGeminiAsync === 'function') {
+              summaryResult = await window.ChatBridge.callGeminiAsync({
+                action: 'summarize',
+                text: cleanText,
+                length: 'comprehensive',
+                summaryType: 'transfer'
               });
-            });
+            } else {
+              summaryResult = await new Promise((resolve) => {
+                chrome.runtime.sendMessage({
+                  type: 'call_gemini',
+                  payload: {
+                    action: 'summarize',
+                    text: cleanText,
+                    length: 'comprehensive',
+                    summaryType: 'transfer'
+                  }
+                }, (res) => {
+                  if (chrome.runtime.lastError) {
+                    resolve({ ok: false, error: chrome.runtime.lastError.message });
+                  } else {
+                    resolve(res || { ok: false });
+                  }
+                });
+              });
+            }
 
             if (summaryResult && summaryResult.ok && summaryResult.result) {
               restoreLog('Auto-summarization successful');
@@ -161,7 +171,13 @@
             const selection = window.getSelection();
             selection.selectAllChildren(input);
             document.execCommand('delete', false, null);
-            success = document.execCommand('insertText', false, cleanText);
+            if (cleanText.includes('\n')) {
+              const esc = (str) => String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+              const html = cleanText.split('\n').map(line => line ? `<div>${esc(line)}</div>` : '<div><br></div>').join('');
+              success = document.execCommand('insertHTML', false, html);
+            } else {
+              success = document.execCommand('insertText', false, cleanText);
+            }
           } else {
             input.select();
             success = document.execCommand('insertText', false, cleanText);

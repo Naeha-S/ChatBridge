@@ -70,7 +70,7 @@ async function tryGemini(deps, opts) {
 
   for (let attempt = 0; attempt < deps.GEMINI_MODEL_PRIORITY.length; attempt++) {
     const currentModel = await deps.getNextAvailableModel(preferredModel);
-    const endpoint = `https://generativelanguage.googleapis.com/v1/models/${currentModel}:generateContent?key=${geminiKey || 'proxy'}`;
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${currentModel}:generateContent?key=${geminiKey || 'proxy'}`;
 
     const body = {
       systemInstruction: systemInstruction ? { parts: [{ text: systemInstruction }] } : undefined,

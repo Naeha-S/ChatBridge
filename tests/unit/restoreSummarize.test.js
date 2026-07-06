@@ -30,6 +30,11 @@ describe('Restore Auto-summarization Tests', () => {
       }
     });
 
+    // Reset window.ChatBridge
+    if (window.ChatBridge) {
+      delete window.ChatBridge.callGeminiAsync;
+    }
+
     mockToast = jest.fn();
     const restoreDeps = {
       restoreLog: jest.fn(),
@@ -56,7 +61,7 @@ describe('Restore Auto-summarization Tests', () => {
     expect(mockTextarea.value).toBe(text);
   });
 
-  test('auto summarizes long texts (>= 5000 chars)', async () => {
+  test('auto summarizes long texts (>= 5000 chars) via chrome.runtime.sendMessage when ChatBridge is not available', async () => {
     // Generate a string >= 5000 chars
     const text = 'A'.repeat(5500);
     const result = await restoreFeatureInstance.restoreToChat(text);
@@ -74,6 +79,28 @@ describe('Restore Auto-summarization Tests', () => {
     );
     expect(mockTextarea.value).toContain('This is a mock summarized conversation.');
     expect(mockTextarea.value).toContain('[SYSTEM: The user just restored this past conversation summary.');
+  });
+
+  test('auto summarizes long texts (>= 5000 chars) via window.ChatBridge.callGeminiAsync when available', async () => {
+    // Setup window.ChatBridge
+    window.ChatBridge = window.ChatBridge || {};
+    window.ChatBridge.callGeminiAsync = jest.fn().mockResolvedValue({
+      ok: true,
+      result: 'Summarized via ChatBridge.callGeminiAsync!'
+    });
+
+    const text = 'A'.repeat(5500);
+    const result = await restoreFeatureInstance.restoreToChat(text);
+
+    expect(result).toBe(true);
+    expect(window.ChatBridge.callGeminiAsync).toHaveBeenCalledWith({
+      action: 'summarize',
+      text: text,
+      length: 'comprehensive',
+      summaryType: 'transfer'
+    });
+    expect(chrome.runtime.sendMessage).not.toHaveBeenCalled();
+    expect(mockTextarea.value).toContain('Summarized via ChatBridge.callGeminiAsync!');
   });
 
   test('auto summarizes texts with >= 1200 words', async () => {

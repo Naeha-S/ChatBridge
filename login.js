@@ -1,4 +1,5 @@
-"use strict";
+import { auth } from './core/auth.js';
+import { dbAdapter } from './core/dbAdapter.js';
 
 const authKeys = {
   loggedIn: "chatbridge_logged_in",
@@ -37,7 +38,7 @@ const btnOauthGoogle = document.getElementById("btn-oauth-google");
 const btnOauthGithub = document.getElementById("btn-oauth-github");
 const btnReturnWelcome = document.getElementById("btn-return-welcome");
 
-const welcomeUrl = chrome.runtime.getURL("welcome.html");
+const upgradeUrl = chrome.runtime.getURL("upgrade.html");
 
 const setBusyState = (isBusy) => {
   if (loginSubmit) {
@@ -50,8 +51,8 @@ const setBusyState = (isBusy) => {
   });
 };
 
-const navigateHome = () => {
-  window.location.href = welcomeUrl;
+const navigateToUpgrade = () => {
+  window.location.href = upgradeUrl;
 };
 
 const refreshLoggedInState = async () => {
@@ -74,55 +75,70 @@ const refreshLoggedInState = async () => {
   }
 };
 
-const completeLogin = async (email) => {
+const handleProviderLogin = async (provider) => {
   setBusyState(true);
+  try {
+    const session = await auth.login(provider);
+    
+    // Sync profile and get credits from DB
+    await dbAdapter.syncUserProfile(session);
+    let dbInfo = await dbAdapter.getCreditsAndTier(session);
+    
+    // If no dbInfo, default to free 100
+    if (!dbInfo) {
+      dbInfo = { tier: 'free', credits: 100, last_reset: Date.now() };
+      await dbAdapter.updateCredits(session, 100, dbInfo.last_reset);
+    }
+    
+    await setAuthLocal({
+      [authKeys.loggedIn]: true,
+      [authKeys.userEmail]: session.user.email,
+      [authKeys.tier]: dbInfo.tier,
+      [authKeys.balance]: dbInfo.credits,
+      [authKeys.lastReset]: dbInfo.last_reset || Date.now(),
+    });
 
-  await new Promise((resolve) => window.setTimeout(resolve, 900));
+    if (authStatusPill) {
+      authStatusPill.textContent = `Signed in as ${session.user.email}`;
+    }
+    if (loginForm) loginForm.hidden = true;
+    if (loginSuccess) loginSuccess.hidden = false;
+    if (loginSuccessCopy) {
+      loginSuccessCopy.textContent = `Your ${dbInfo.tier} tier is active and ${dbInfo.credits.toLocaleString()} monthly credits are ready.`;
+    }
 
-  const currentData = await getAuthLocal([authKeys.tier]);
-  const currentTier = String(currentData[authKeys.tier] || "free").toLowerCase();
-  const initialCredits = currentTier === "max" ? 10000 : currentTier === "pro" ? 2000 : 100;
+    window.setTimeout(() => {
+      navigateToUpgrade();
+    }, 1500);
 
-  await setAuthLocal({
-    [authKeys.loggedIn]: true,
-    [authKeys.userEmail]: email,
-    [authKeys.tier]: currentTier,
-    [authKeys.balance]: initialCredits,
-    [authKeys.lastReset]: Date.now(),
-  });
-
-  if (authStatusPill) {
-    authStatusPill.textContent = `Signed in as ${email}`;
+  } catch (error) {
+    console.error("Login failed", error);
+    alert("Login failed: " + error.message);
+  } finally {
+    setBusyState(false);
   }
-  if (loginForm) loginForm.hidden = true;
-  if (loginSuccess) loginSuccess.hidden = false;
-  if (loginSuccessCopy) {
-    loginSuccessCopy.textContent = `Your ${currentTier} tier is active and ${initialCredits.toLocaleString()} monthly credits are ready.`;
-  }
-
-  window.setTimeout(() => {
-    navigateHome();
-  }, 1500);
 };
 
+// Handle Email/Password login placeholder
 if (loginForm) {
   loginForm.addEventListener("submit", (event) => {
     event.preventDefault();
-    const email = loginEmail && loginEmail.value.trim() ? loginEmail.value.trim() : "naeha@chatbridge.dev";
-    completeLogin(email);
+    alert("Email/Password login is not implemented in this demo. Please use Google or GitHub.");
   });
 }
 
 if (btnOauthGoogle) {
-  btnOauthGoogle.addEventListener("click", () => completeLogin("google.user@chatbridge.dev"));
+  btnOauthGoogle.addEventListener("click", () => handleProviderLogin("google"));
 }
 
 if (btnOauthGithub) {
-  btnOauthGithub.addEventListener("click", () => completeLogin("github.user@chatbridge.dev"));
+  btnOauthGithub.addEventListener("click", () => handleProviderLogin("github"));
 }
 
 if (btnReturnWelcome) {
-  btnReturnWelcome.addEventListener("click", navigateHome);
+  btnReturnWelcome.addEventListener("click", () => {
+    window.location.href = chrome.runtime.getURL("welcome.html");
+  });
 }
 
 refreshLoggedInState();
