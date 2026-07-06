@@ -2411,6 +2411,77 @@ function mainMessageListener(msg, sender, sendResponse) {
     return true; // Keep channel open for async response
   }
 
+  // Test OpenAI API connection
+  if (msg && msg.type === 'test_openai_api') {
+    (async () => {
+      const key = msg.apiKey;
+      if (!key) {
+        return sendResponse({ ok: false, error: 'No API key provided' });
+      }
+
+      try {
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${key}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            model: 'gpt-4o-mini',
+            messages: [{ role: 'user', content: 'connection test' }],
+            max_tokens: 10
+          })
+        });
+
+        if (response.ok) {
+          return sendResponse({ ok: true, status: 200 });
+        } else {
+          const text = await response.text().catch(() => '');
+          return sendResponse({ ok: false, status: response.status, error: text });
+        }
+      } catch (error) {
+        return sendResponse({ ok: false, error: error.message });
+      }
+    })();
+    return true; // Keep channel open for async response
+  }
+
+  // Test Claude API connection
+  if (msg && msg.type === 'test_claude_api') {
+    (async () => {
+      const key = msg.apiKey;
+      if (!key) {
+        return sendResponse({ ok: false, error: 'No API key provided' });
+      }
+
+      try {
+        const response = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'x-api-key': key,
+            'anthropic-version': '2023-06-01',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            model: 'claude-3-5-sonnet-20241022',
+            max_tokens: 10,
+            messages: [{ role: 'user', content: 'connection test' }]
+          })
+        });
+
+        if (response.ok) {
+          return sendResponse({ ok: true, status: 200 });
+        } else {
+          const text = await response.text().catch(() => '');
+          return sendResponse({ ok: false, status: response.status, error: text });
+        }
+      } catch (error) {
+        return sendResponse({ ok: false, error: error.message });
+      }
+    })();
+    return true; // Keep channel open for async response
+  }
+
   // Test NVIDIA API connection (embeddings)
   if (msg && msg.type === 'test_nvidia_api') {
     (async () => {

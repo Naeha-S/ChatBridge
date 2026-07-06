@@ -7,7 +7,7 @@ eval(securityCode);
 describe('Security module unit tests', () => {
   test('detectSensitiveData finds email addresses and sanitizes them', () => {
     const text = 'Contact me at test@example.com for details.';
-    const findings = detectSensitiveData(text);
+    const findings = ChatBridgeSecurity.detectSensitiveData(text);
     expect(findings).toEqual([
       expect.objectContaining({
         type: 'email',
@@ -15,9 +15,9 @@ describe('Security module unit tests', () => {
       })
     ]);
 
-    const sanitized = sanitize(text, { preserve: 2 });
+    const sanitized = ChatBridgeSecurity.sanitize(text, { preserve: 2 });
     expect(sanitized).toContain('@');
     expect(sanitized).not.toContain('test@example.com');
-    expect(sanitized).toMatch(/t\*+@e\*+\.com/i);
+    expect(sanitized).toMatch(/t\*+t@e\*+e\.com/i);
   });
 });

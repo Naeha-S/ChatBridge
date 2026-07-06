@@ -1281,6 +1281,7 @@
   if (window.location.hash) {
     const hash = window.location.hash.substring(1);
     const sectionMap = {
+      'dashboard': 'dashboard',
       'viewer': 'history',
       'history': 'history',
       'appearance': 'appearance',

@@ -10573,24 +10573,24 @@ ${chatText.substring(0, 10000)}`
 
     const settingsHero = document.createElement('div');
     settingsHero.className = 'cb-settings-hero';
-    settingsHero.innerHTML = '<div class="cb-settings-hero-copy"><strong>Full dashboard</strong><span>History, themes, site visibility, and advanced options.</span></div>';
+    settingsHero.innerHTML = '<div class="cb-settings-hero-copy"><strong>Sidebar settings</strong><span>Control theme, visibility, API access, and quick links from the sidebar.</span></div>';
     const btnOpenDashboard = document.createElement('button');
     btnOpenDashboard.className = 'cb-btn cb-btn-primary cb-settings-link-btn';
-    btnOpenDashboard.textContent = 'Open Dashboard';
+    btnOpenDashboard.textContent = 'Open full dashboard';
     settingsHero.appendChild(btnOpenDashboard);
     settingsContent.appendChild(settingsHero);
 
     const themeSection = document.createElement('div');
     themeSection.className = 'cb-settings-card';
-    themeSection.innerHTML = '<div class="cb-settings-card-head"><div class="cb-settings-card-title">Appearance</div></div><div class="cb-settings-card-desc">Choose how the sidebar looks on AI sites.</div>';
+    themeSection.innerHTML = '<div class="cb-settings-card-head"><div class="cb-settings-card-title">Appearance</div></div><div class="cb-settings-card-desc">Select the sidebar theme and stay in a consistent visual workspace.</div>';
     const themeButtons = document.createElement('div');
     themeButtons.className = 'cb-settings-grid-3';
-    const btnDarkTheme = document.createElement('button'); btnDarkTheme.className = 'cb-settings-pill'; btnDarkTheme.textContent = '🌙 Dark'; btnDarkTheme.dataset.theme = 'dark';
-    const btnLightTheme = document.createElement('button'); btnLightTheme.className = 'cb-settings-pill'; btnLightTheme.textContent = '☀️ Light'; btnLightTheme.dataset.theme = 'light';
-    const btnSynthwaveTheme = document.createElement('button'); btnSynthwaveTheme.className = 'cb-settings-pill'; btnSynthwaveTheme.textContent = '🌆 Synth'; btnSynthwaveTheme.dataset.theme = 'synthwave';
-    const btnSkeuomorphicTheme = document.createElement('button'); btnSkeuomorphicTheme.className = 'cb-settings-pill'; btnSkeuomorphicTheme.textContent = '🔩 Skeuo'; btnSkeuomorphicTheme.dataset.theme = 'skeuomorphic';
-    const btnBrutalismTheme = document.createElement('button'); btnBrutalismTheme.className = 'cb-settings-pill'; btnBrutalismTheme.textContent = '🟨 Brutal'; btnBrutalismTheme.dataset.theme = 'brutalism';
-    const btnGlassTheme = document.createElement('button'); btnGlassTheme.className = 'cb-settings-pill'; btnGlassTheme.textContent = '🫧 Clay'; btnGlassTheme.dataset.theme = 'glass';
+    const btnDarkTheme = document.createElement('button'); btnDarkTheme.className = 'cb-settings-pill'; btnDarkTheme.textContent = 'Dark'; btnDarkTheme.dataset.theme = 'dark';
+    const btnLightTheme = document.createElement('button'); btnLightTheme.className = 'cb-settings-pill'; btnLightTheme.textContent = 'Light'; btnLightTheme.dataset.theme = 'light';
+    const btnSynthwaveTheme = document.createElement('button'); btnSynthwaveTheme.className = 'cb-settings-pill'; btnSynthwaveTheme.textContent = 'Synthwave'; btnSynthwaveTheme.dataset.theme = 'synthwave';
+    const btnSkeuomorphicTheme = document.createElement('button'); btnSkeuomorphicTheme.className = 'cb-settings-pill'; btnSkeuomorphicTheme.textContent = 'Skeuomorphic'; btnSkeuomorphicTheme.dataset.theme = 'skeuomorphic';
+    const btnBrutalismTheme = document.createElement('button'); btnBrutalismTheme.className = 'cb-settings-pill'; btnBrutalismTheme.textContent = 'Neo Brutalism'; btnBrutalismTheme.dataset.theme = 'brutalism';
+    const btnGlassTheme = document.createElement('button'); btnGlassTheme.className = 'cb-settings-pill'; btnGlassTheme.textContent = 'Claymorphism'; btnGlassTheme.dataset.theme = 'glass';
     themeButtons.appendChild(btnDarkTheme); themeButtons.appendChild(btnLightTheme); themeButtons.appendChild(btnSynthwaveTheme);
     themeButtons.appendChild(btnSkeuomorphicTheme); themeButtons.appendChild(btnBrutalismTheme); themeButtons.appendChild(btnGlassTheme);
     themeSection.appendChild(themeButtons);
@@ -10598,13 +10598,13 @@ ${chatText.substring(0, 10000)}`
 
     const apiSection = document.createElement('div');
     apiSection.className = 'cb-settings-card';
-    apiSection.innerHTML = '<div class="cb-settings-card-head"><div class="cb-settings-card-title">API Keys</div></div><div class="cb-settings-card-desc">Stored locally in your browser. Required for summaries, Ask AI, and agents.</div>';
+    apiSection.innerHTML = '<div class="cb-settings-card-head"><div class="cb-settings-card-title">API Keys</div></div><div class="cb-settings-card-desc">Store API keys locally and access advanced providers from the dashboard.</div>';
 
     const geminiKeyWrap = document.createElement('div');
     const geminiKeyLabel = document.createElement('div'); geminiKeyLabel.className = 'cb-settings-field-label'; geminiKeyLabel.textContent = 'Gemini API Key';
     const geminiKeyRow = document.createElement('div'); geminiKeyRow.className = 'cb-settings-input-row';
     const geminiKeyInput = document.createElement('input'); geminiKeyInput.type = 'password'; geminiKeyInput.id = 'cb-gemini-key'; geminiKeyInput.className = 'cb-settings-input'; geminiKeyInput.placeholder = 'AIzaSy...';
-    const geminiKeyToggle = document.createElement('button'); geminiKeyToggle.className = 'cb-btn cb-settings-icon-btn'; geminiKeyToggle.textContent = '👁'; geminiKeyToggle.title = 'Show/hide';
+    const geminiKeyToggle = document.createElement('button'); geminiKeyToggle.className = 'cb-btn cb-settings-icon-btn'; geminiKeyToggle.textContent = 'Show'; geminiKeyToggle.title = 'Show/hide';
     geminiKeyRow.appendChild(geminiKeyInput); geminiKeyRow.appendChild(geminiKeyToggle);
     geminiKeyWrap.appendChild(geminiKeyLabel); geminiKeyWrap.appendChild(geminiKeyRow);
     apiSection.appendChild(geminiKeyWrap);
@@ -10613,12 +10613,25 @@ ${chatText.substring(0, 10000)}`
     const hfKeyLabel = document.createElement('div'); hfKeyLabel.className = 'cb-settings-field-label'; hfKeyLabel.textContent = 'Hugging Face Token';
     const hfKeyRow = document.createElement('div'); hfKeyRow.className = 'cb-settings-input-row';
     const hfKeyInput = document.createElement('input'); hfKeyInput.type = 'password'; hfKeyInput.id = 'cb-hf-key'; hfKeyInput.className = 'cb-settings-input'; hfKeyInput.placeholder = 'hf_...';
-    const hfKeyToggle = document.createElement('button'); hfKeyToggle.className = 'cb-btn cb-settings-icon-btn'; hfKeyToggle.textContent = '👁'; hfKeyToggle.title = 'Show/hide';
+    const hfKeyToggle = document.createElement('button'); hfKeyToggle.className = 'cb-btn cb-settings-icon-btn'; hfKeyToggle.textContent = 'Show'; hfKeyToggle.title = 'Show/hide';
     hfKeyRow.appendChild(hfKeyInput); hfKeyRow.appendChild(hfKeyToggle);
     hfKeyWrap.appendChild(hfKeyLabel); hfKeyWrap.appendChild(hfKeyRow);
     apiSection.appendChild(hfKeyWrap);
 
-    const saveKeysBtn = document.createElement('button'); saveKeysBtn.className = 'cb-btn cb-btn-primary'; saveKeysBtn.textContent = 'Save API Keys';
+    const viewMoreRow = document.createElement('div');
+    viewMoreRow.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-top:8px;gap:10px;';
+    const viewMoreText = document.createElement('div');
+    viewMoreText.style.cssText = 'font-size:11px;color:var(--cb-subtext);line-height:1.4;';
+    viewMoreText.textContent = 'Need more provider or billing controls?';
+    const btnViewMoreApi = document.createElement('button');
+    btnViewMoreApi.className = 'cb-btn cb-btn-secondary cb-settings-link-btn';
+    btnViewMoreApi.textContent = 'View more';
+    btnViewMoreApi.style.whiteSpace = 'nowrap';
+    viewMoreRow.appendChild(viewMoreText);
+    viewMoreRow.appendChild(btnViewMoreApi);
+    apiSection.appendChild(viewMoreRow);
+
+    const saveKeysBtn = document.createElement('button'); saveKeysBtn.className = 'cb-btn cb-btn-primary'; saveKeysBtn.textContent = 'Save API keys';
     saveKeysBtn.style.cssText = 'width:100%;padding:10px;font-size:11px;font-weight:700;';
     apiSection.appendChild(saveKeysBtn);
     settingsContent.appendChild(apiSection);
@@ -10651,9 +10664,9 @@ ${chatText.substring(0, 10000)}`
     detailSection.innerHTML = '<div class="cb-settings-card-head"><div class="cb-settings-card-title">Response Detail</div></div><div class="cb-settings-card-desc">Default verbosity for AI-powered tools in the sidebar.</div>';
     const detailButtons = document.createElement('div');
     detailButtons.className = 'cb-settings-grid-3';
-    const btnConcise = document.createElement('button'); btnConcise.className = 'cb-settings-pill'; btnConcise.textContent = '⚡ Concise'; btnConcise.dataset.level = 'concise'; btnConcise.id = 'cb-detail-concise';
-    const btnDetailed = document.createElement('button'); btnDetailed.className = 'cb-settings-pill'; btnDetailed.textContent = '📝 Detailed'; btnDetailed.dataset.level = 'detailed'; btnDetailed.id = 'cb-detail-detailed';
-    const btnExpert = document.createElement('button'); btnExpert.className = 'cb-settings-pill'; btnExpert.textContent = '🎓 Expert'; btnExpert.dataset.level = 'expert'; btnExpert.id = 'cb-detail-expert';
+    const btnConcise = document.createElement('button'); btnConcise.className = 'cb-settings-pill'; btnConcise.textContent = 'Concise'; btnConcise.dataset.level = 'concise'; btnConcise.id = 'cb-detail-concise';
+    const btnDetailed = document.createElement('button'); btnDetailed.className = 'cb-settings-pill'; btnDetailed.textContent = 'Detailed'; btnDetailed.dataset.level = 'detailed'; btnDetailed.id = 'cb-detail-detailed';
+    const btnExpert = document.createElement('button'); btnExpert.className = 'cb-settings-pill'; btnExpert.textContent = 'Expert'; btnExpert.dataset.level = 'expert'; btnExpert.id = 'cb-detail-expert';
     detailButtons.appendChild(btnConcise); detailButtons.appendChild(btnDetailed); detailButtons.appendChild(btnExpert);
     detailSection.appendChild(detailButtons);
     settingsContent.appendChild(detailSection);
@@ -10729,7 +10742,7 @@ ${chatText.substring(0, 10000)}`
     inpSubdomainsWrap.inp.value = calState.subdomains;
 
     const updateCalUI = () => {
-      calEnableBtn.textContent = calState.enabled ? 'Enabled ✅' : 'Disabled ❌';
+      calEnableBtn.textContent = calState.enabled ? 'Enabled' : 'Disabled';
       calEnableBtn.style.color = calState.enabled ? '#4ade80' : 'var(--cb-subtext)';
       calEnableBtn.style.borderColor = calState.enabled ? 'rgba(74, 222, 128, 0.3)' : 'var(--cb-border)';
       calEnableBtn.style.background = calState.enabled ? 'rgba(74, 222, 128, 0.1)' : 'transparent';
@@ -11272,10 +11285,24 @@ ${chatText.substring(0, 10000)}`
 
     btnOpenDashboard.addEventListener('click', () => {
       try {
-        if (chrome.runtime.openOptionsPage) chrome.runtime.openOptionsPage();
-        else window.open(chrome.runtime.getURL('options.html'), '_blank');
+        const url = chrome.runtime.getURL('options.html#dashboard');
+        if (chrome.runtime.openOptionsPage) {
+          chrome.runtime.openOptionsPage();
+          window.open(url, '_blank');
+        } else {
+          window.open(url, '_blank');
+        }
       } catch (e) {
         toast('Could not open dashboard');
+      }
+    });
+
+    btnViewMoreApi.addEventListener('click', () => {
+      try {
+        const url = chrome.runtime.getURL('options.html#api-keys');
+        window.open(url, '_blank');
+      } catch (e) {
+        toast('Could not open API settings');
       }
     });
 
@@ -11289,9 +11316,8 @@ ${chatText.substring(0, 10000)}`
           if (theme !== 'dark') host.classList.add(`cb-theme-${theme}`);
           chrome.storage.local.set({ cb_theme: theme });
           markSettingsPills(themeButtonsAll, theme, 'theme');
-          const emojis = { light: '☀️', dark: '🌙', synthwave: '🌆', skeuomorphic: '🔩', brutalism: '🟨', glass: '🫧' };
           const names = { light: 'Light', dark: 'Dark', synthwave: 'Synthwave', skeuomorphic: 'Skeuomorphic', brutalism: 'Neo Brutalism', glass: 'Claymorphism' };
-          toast(`${emojis[theme] || '🎨'} ${names[theme] || theme} theme enabled`);
+          toast(`${names[theme] || theme} theme enabled`);
         } catch (e) { debugLog('theme switch failed', e); }
       });
     });
@@ -11302,13 +11328,13 @@ ${chatText.substring(0, 10000)}`
     // Show/hide Gemini key toggle
     geminiKeyToggle.addEventListener('click', () => {
       geminiKeyInput.type = geminiKeyInput.type === 'password' ? 'text' : 'password';
-      geminiKeyToggle.textContent = geminiKeyInput.type === 'password' ? '👁' : '🙈';
+      geminiKeyToggle.textContent = geminiKeyInput.type === 'password' ? 'Show' : 'Hide';
     });
 
     // Show/hide HF key toggle
     hfKeyToggle.addEventListener('click', () => {
       hfKeyInput.type = hfKeyInput.type === 'password' ? 'text' : 'password';
-      hfKeyToggle.textContent = hfKeyInput.type === 'password' ? '👁' : '🙈';
+      hfKeyToggle.textContent = hfKeyInput.type === 'password' ? 'Show' : 'Hide';
     });
 
     // Save keys handler
@@ -11336,9 +11362,9 @@ ${chatText.substring(0, 10000)}`
           }
         });
 
-        toast('✓ API keys saved');
-        saveKeysBtn.textContent = 'Saved ✓';
-        setTimeout(() => { saveKeysBtn.textContent = 'Save API Keys'; }, 2000);
+        toast('API keys saved successfully');
+        saveKeysBtn.textContent = 'Saved';
+        setTimeout(() => { saveKeysBtn.textContent = 'Save API keys'; }, 2000);
       } catch (e) {
         const errMsg = e && e.message ? e.message : String(e);
         if (errMsg.includes('context invalidated')) {
@@ -11386,7 +11412,7 @@ ${chatText.substring(0, 10000)}`
           const level = btn.dataset.level;
           markSettingsPills(detailButtonsAll, level, 'level');
           chrome.storage.local.set({ cb_detail_level: level });
-          const labels = { concise: '⚡ Concise', detailed: '📝 Detailed', expert: '🎓 Expert' };
+          const labels = { concise: 'Concise', detailed: 'Detailed', expert: 'Expert' };
           toast(`${labels[level]} mode enabled`);
         } catch (e) { debugLog('detail level switch failed', e); }
       });

@@ -1,0 +1,17 @@
+{
+  "auth": {
+    "providers": {
+      "emailPassword": true,
+      "googleSignIn": {
+        "oAuthBrandDisplayName": "ChatBridge",
+        "supportEmail": "getchatbridge@gmail.com",
+        "authorizedRedirectUris": [
+          "https://chatbridge-26cdb.firebaseapp.com/__/auth/handler"
+        ]
+      }
+    }
+  },
+  "firestore": {
+    "rules": "firestore.rules"
+  }
+}
