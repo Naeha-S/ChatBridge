@@ -416,6 +416,39 @@
     return next.toLocaleDateString();
   }
 
+  function shouldResetCredits(lastResetTs, nowTs = Date.now()) {
+    const lastReset = Number(lastResetTs || 0);
+    if (!lastReset) return true;
+    const previous = new Date(lastReset);
+    const current = new Date(nowTs);
+    return previous.getUTCFullYear() !== current.getUTCFullYear() ||
+      previous.getUTCMonth() !== current.getUTCMonth();
+  }
+
+  async function refreshBillingState(data) {
+    const tier = String(data[BILLING_KEYS.tier] || 'free').toLowerCase();
+    const limit = TIER_CREDIT_LIMITS[tier] || 100;
+    let balance = data[BILLING_KEYS.balance] !== null && data[BILLING_KEYS.balance] !== undefined
+      ? Math.max(0, Number(data[BILLING_KEYS.balance]))
+      : limit;
+    if (!Number.isFinite(balance)) balance = limit;
+    let lastReset = Number(data[BILLING_KEYS.lastReset] || 0) || 0;
+
+    if (shouldResetCredits(lastReset)) {
+      balance = limit;
+      lastReset = Date.now();
+      await setLocal({
+        [BILLING_KEYS.balance]: balance,
+        [BILLING_KEYS.lastReset]: lastReset,
+        [BILLING_KEYS.tier]: tier
+      });
+      data[BILLING_KEYS.balance] = balance;
+      data[BILLING_KEYS.lastReset] = lastReset;
+    }
+
+    return data;
+  }
+
   function tKey(key, lang = currentLang) {
     return window.t ? window.t(key, lang) : key;
   }
@@ -456,8 +489,10 @@
     const progressBar = document.getElementById('billing-progress-bar');
     const progressLabel = document.getElementById('billing-progress-label');
     const resetInfo = document.getElementById('billing-reset-info');
-    const userEmailEl = document.getElementById('billing-user-email');
+    const userEmailEl = document.getElementById('billing-user-email-text') || document.getElementById('billing-user-email');
     const logoutBtn = document.getElementById('btn-options-logout');
+    const loginBtn = document.getElementById('btn-options-login');
+    const devStatus = document.getElementById('dev-status');
 
     const isLoggedIn = !!data[BILLING_KEYS.loggedIn];
     const userEmail = data[BILLING_KEYS.userEmail] || '';
@@ -465,6 +500,10 @@
     if (userEmailEl) {
       userEmailEl.textContent = isLoggedIn ? `Logged in as: ${userEmail}` : 'Not logged in';
       userEmailEl.style.color = isLoggedIn ? 'var(--text)' : 'var(--text-muted)';
+    }
+
+    if (loginBtn) {
+      loginBtn.style.display = isLoggedIn ? 'none' : 'inline-block';
     }
 
     if (logoutBtn) {
@@ -480,7 +519,15 @@
     }
     if (progressBar) progressBar.style.width = `${pct}%`;
     if (progressLabel) progressLabel.textContent = `${balance} / ${limit} ${tKey('creditsRemaining')}`;
-    if (resetInfo) resetInfo.textContent = `${tKey('nextReset')}: ${formatNextReset(data[BILLING_KEYS.lastReset])}`;
+    if (!isLoggedIn) {
+      if (progressBar) progressBar.style.width = '0%';
+      if (progressLabel) progressLabel.textContent = tKey('loginToViewCredits');
+      if (resetInfo) resetInfo.textContent = tKey('signInToSeeResetDate');
+    } else {
+      if (progressBar) progressBar.style.width = `${pct}%`;
+      if (progressLabel) progressLabel.textContent = `${balance} / ${limit} ${tKey('creditsRemaining')}`;
+      if (resetInfo) resetInfo.textContent = `${tKey('nextReset')}: ${formatNextReset(data[BILLING_KEYS.lastReset])}`;
+    }
     if (devStatus) devStatus.textContent = tKey('useTheseControlsCopy');
 
     const keyMappings = [
@@ -596,6 +643,10 @@
 
     document.getElementById('btn-open-pricing')?.addEventListener('click', () => {
       window.location.href = chrome.runtime.getURL('welcome.html?upgrade=1');
+    });
+
+    document.getElementById('btn-options-login')?.addEventListener('click', () => {
+      chrome.tabs.create({ url: chrome.runtime.getURL('login.html') });
     });
 
     document.getElementById('btn-options-logout')?.addEventListener('click', async () => {
@@ -1242,5 +1293,42 @@
       setTimeout(() => navigateToSection(section), 100);
     }
   }
+
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === 'local') {
+      if (changes.cb_theme) {
+        const theme = changes.cb_theme.newValue || 'dark';
+        themePills.forEach(pill => {
+          if (pill.dataset.theme === theme) {
+            pill.classList.add('active');
+            const inp = pill.querySelector('input');
+            if (inp) inp.checked = true;
+          } else {
+            pill.classList.remove('active');
+          }
+        });
+        applyPageTheme(theme);
+      }
+      if (changes.cb_language) {
+        applyTranslations(changes.cb_language.newValue || 'en');
+      }
+      const billingKeysToSync = [
+        'chatbridge_subscription_tier',
+        'chatbridge_credits_balance',
+        'chatbridge_credits_last_reset',
+        'chatbridge_gemini_key',
+        'chatbridge_openai_key',
+        'chatbridge_hf_key',
+        'chatbridge_api_claude',
+        'chatbridge_api_nvidia',
+        'chatbridge_logged_in',
+        'chatbridge_user_email'
+      ];
+      const hasBillingChanges = Object.keys(changes).some(k => billingKeysToSync.includes(k));
+      if (hasBillingChanges) {
+        loadBillingPanel();
+      }
+    }
+  });
 
 })();

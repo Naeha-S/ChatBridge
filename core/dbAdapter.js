@@ -6,10 +6,10 @@
 
 const PROJECT_REF = 'pdvaydoykjjioudxzkif';
 const SUPABASE_URL = `https://${PROJECT_REF}.supabase.co`;
-const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY_HERE'; // TODO: Replace this!
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBkdmF5ZG95a2pqaW91ZHh6a2lmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMzMjY4NTAsImV4cCI6MjA5ODkwMjg1MH0.v9-QE6nKvjSp6f1-DoIEzMgiRWOU67JNCePAMpRG0ZQ'; // TODO: Replace this!
 
 export const dbAdapter = {
-  
+
   getHeaders(token = null) {
     const headers = {
       'apikey': SUPABASE_ANON_KEY,
@@ -30,7 +30,7 @@ export const dbAdapter = {
    */
   async syncUserProfile(session) {
     if (!session || !session.access_token || !session.user) return null;
-    
+
     try {
       const { user, access_token } = session;
       const payload = {
@@ -47,7 +47,7 @@ export const dbAdapter = {
         },
         body: JSON.stringify(payload)
       });
-      
+
       if (!response.ok) {
         console.warn('Failed to sync profile', await response.text());
         return null;
@@ -64,13 +64,13 @@ export const dbAdapter = {
    */
   async getCreditsAndTier(session) {
     if (!session || !session.access_token || !session.user) return null;
-    
+
     try {
       const response = await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${session.user.id}&select=tier,credits,last_reset`, {
         method: 'GET',
         headers: this.getHeaders(session.access_token)
       });
-      
+
       if (!response.ok) return null;
       const data = await response.json();
       if (data && data.length > 0) {
@@ -88,7 +88,7 @@ export const dbAdapter = {
    */
   async updateCredits(session, newCredits, lastReset) {
     if (!session || !session.access_token || !session.user) return false;
-    
+
     try {
       const payload = {
         credits: newCredits,
@@ -100,7 +100,7 @@ export const dbAdapter = {
         headers: this.getHeaders(session.access_token),
         body: JSON.stringify(payload)
       });
-      
+
       return response.ok;
     } catch (e) {
       console.error('updateCredits error:', e);

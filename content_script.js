@@ -1101,18 +1101,18 @@
     const filtered = out.filter(x => {
       if (!x || !x.text || x.text.length <= 4) return false;
       const t = x.text.trim();
-      
+
       // 1. Skip system buttons/actions
       if (/^(new chat|regenerate|clear|copy|download|history|skip to content|search chats|explore gpts|rizz gpt)$/i.test(t)) return false;
-      
+
       // 2. Filter out raw JSON strings
       if ((t.startsWith('{') && t.endsWith('}')) || (t.startsWith('[') && t.endsWith(']'))) {
         try {
           JSON.parse(t);
           return false; // Valid JSON payload, skip!
-        } catch (_) {}
+        } catch (_) { }
       }
-      
+
       // 3. Filter out minified JS code/functions/environment dumps
       if (/^(!function|function\b|const\b|var\b|let\b|import\b|try\s*\{)/.test(t)) return false;
       if (t.includes('localStorage.getItem') || t.includes('document.documentElement') || t.includes('window.matchMedia')) return false;
@@ -1121,7 +1121,7 @@
       // 4. Filter out typical sidebar/recents navigation dump
       if (t.includes('Chat history') && t.includes('Search chats')) return false;
       if (t.includes('Explore GPTs') && t.includes('Rizz GPT')) return false;
-      
+
       return true;
     });
     return filtered.slice(0, maxMessages);
@@ -1394,7 +1394,7 @@
       let raw = str.replace(/```json?\s*/gi, '').replace(/```/g, '').trim();
       try {
         return JSON.parse(raw);
-      } catch (e) {}
+      } catch (e) { }
 
       const startIndices = [];
       for (let i = 0; i < raw.length; i++) {
@@ -5785,12 +5785,24 @@
       const summaryType = String(payload.summaryType || 'paragraph').toLowerCase();
       if (payload.prompt) return text;
 
-      if (summaryType === 'bullet') {
-        return `Summarize the text as concise bullet points.\n\n${text}`;
+      const summaryPrompts = {
+        bullet: `Summarize the text as concise bullet points.\n\n${text}`,
+        detailed: `Summarize the following text with clear structure, preserving important details and context.\n\n${text}`,
+        executive: `Create an executive summary of the following text, emphasizing decisions, outcomes, and action items. Keep it concise yet informative.\n\n${text}`,
+        technical: `Summarize the following text in a technical style with clear terminology and concrete details.\n\n${text}`,
+        transfer: `Summarize the following text in a concise transfer format suitable for an AI handoff. Output only the summary without extra commentary.\n\n${text}`,
+      };
+
+      if (summaryPrompts[summaryType]) {
+        return summaryPrompts[summaryType];
       }
 
       if (length === 'short') {
         return `Summarize the following text in 1-2 sentences.\n\n${text}`;
+      }
+
+      if (length === 'concise') {
+        return `Summarize the following text briefly and clearly.\n\n${text}`;
       }
 
       return `Summarize the following text clearly and concisely.\n\n${text}`;
@@ -5815,11 +5827,20 @@
     };
 
     const buildLocalRewriteContext = (payload) => {
-      const style = String(payload.style || 'normal').toLowerCase();
+      let style = String(payload.style || 'normal').trim().toLowerCase();
       const styleHint = String(payload.styleHint || '').trim();
+      if (style.startsWith('custom style')) {
+        style = 'customstyle';
+      }
       const stylePrompts = {
+        academic: 'Rewrite the text with an academic tone, using precise language and formal structure.',
+        detailed: 'Rewrite the text with more detail and clarity while preserving meaning.',
+        humanized: 'Rewrite the text in a warm, natural, humanized voice.',
+        creative: 'Rewrite the text in a creative and imaginative style while preserving meaning.',
+        professional: 'Rewrite the text in a polished professional tone with clear structure.',
+        simple: 'Rewrite the text in a simple, easy-to-understand style while preserving meaning.',
+        customstyle: 'Rewrite the text according to the custom style instruction provided.',
         concise: 'Make the text shorter while preserving meaning.',
-        professional: 'Use a polished professional tone while preserving meaning.',
         casual: 'Use a natural casual tone while preserving meaning.',
         formal: 'Use a formal tone while preserving meaning.',
         expand: 'Add helpful detail while preserving meaning.',
@@ -5839,9 +5860,9 @@
         if (availability !== 'available' && !hasUserActivation()) return null;
 
         let outputLang = 'en';
-        if (payload.targetLangCode && ['de', 'en', 'es', 'fr', 'ja'].includes(payload.targetLangCode.toLowerCase().slice(0, 2))) {
+        if (payload.targetLangCode && /^[a-z]{2}$/i.test(payload.targetLangCode.slice(0, 2))) {
           outputLang = payload.targetLangCode.toLowerCase().slice(0, 2);
-        } else if (payload.targetLang && ['de', 'en', 'es', 'fr', 'ja'].includes(payload.targetLang.toLowerCase().slice(0, 2))) {
+        } else if (payload.targetLang && /^[a-z]{2}$/i.test(payload.targetLang.toLowerCase().slice(0, 2))) {
           outputLang = payload.targetLang.toLowerCase().slice(0, 2);
         }
 
@@ -5913,9 +5934,10 @@
         const rewriter = await api.create();
         const sourceText = extractPromptText(payload);
         const context = buildLocalRewriteContext(payload);
-        const tone = String(payload.style || '').toLowerCase() === 'casual'
+        const style = String(payload.style || payload.rewriteStyle || '').toLowerCase();
+        const tone = style === 'casual'
           ? 'more-casual'
-          : String(payload.style || '').toLowerCase() === 'formal' || String(payload.style || '').toLowerCase() === 'professional'
+          : style === 'formal' || style === 'professional'
             ? 'more-formal'
             : undefined;
         const rewriteOptions = { context };
@@ -5988,7 +6010,7 @@
             console.log('[ChatBridge AI] On-device Summarizer API FAILED or unavailable, falling back to cloud.');
           }
         }
-        if (action === 'rewrite_text' || action === 'apply_style_document' || action === 'syncTone') {
+        if (action === 'rewrite' || action === 'rewrite_text' || action === 'apply_style_document' || action === 'syncTone') {
           const result = await runLocalRewriter(payload);
           if (result) {
             console.log('[ChatBridge AI] On-device Rewriter API SUCCESS: Ran locally, saved tokens!');
@@ -6126,7 +6148,7 @@
         try {
           const textEvent = new TextEvent('textInput', { bubbles: true, cancelable: true, data: text });
           input.dispatchEvent(textEvent);
-        } catch (_) {}
+        } catch (_) { }
 
         // Focus the input
         input.focus();
@@ -6384,7 +6406,7 @@
       scanRow.appendChild(btnScan);
       panel.appendChild(scanRow);
 
-      
+
     } catch (e) { try { row1.appendChild(btnScan); } catch (e2) { } }
 
     // Grid: Restore, Query, Agent, Insights, Toolkit, Prompts, Summarize, Rewrite, Translate
@@ -7305,12 +7327,71 @@
     transLangLabel.innerHTML = '<span style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--cb-subtext);opacity:0.8;">Output</span>';
     transLangLabel.style.cssText = 'min-width:50px;';
 
+    const TRANSLATION_LANGUAGE_MAP = {
+      'English': 'en',
+      'Spanish': 'es',
+      'French': 'fr',
+      'German': 'de',
+      'Italian': 'it',
+      'Portuguese': 'pt',
+      'Russian': 'ru',
+      'Japanese': 'ja',
+      'Korean': 'ko',
+      'Chinese': 'zh',
+      'Arabic': 'ar',
+      'Hindi': 'hi',
+      'Dutch': 'nl',
+      'Polish': 'pl',
+      'Turkish': 'tr',
+      'Vietnamese': 'vi',
+      'Thai': 'th',
+      'Swedish': 'sv',
+      'Danish': 'da',
+      'Finnish': 'fi',
+      'Norwegian': 'no',
+      'Czech': 'cs',
+      'Hungarian': 'hu',
+      'Romanian': 'ro',
+      'Greek': 'el',
+      'Hebrew': 'he',
+      'Indonesian': 'id',
+      'Malay': 'ms',
+      'Ukrainian': 'uk',
+      'Bulgarian': 'bg',
+      'Tamil': 'ta',
+      'Bengali': 'bn',
+      'Punjabi': 'pa',
+      'Urdu': 'ur',
+      'Filipino': 'tl',
+      'Malayalam': 'ml',
+      'Telugu': 'te',
+      'Marathi': 'mr',
+      'Gujarati': 'gu',
+      'Kannada': 'kn',
+      'Sinhala': 'si',
+      'Nepali': 'ne',
+      'Persian': 'fa',
+      'Swahili': 'sw',
+      'Afrikaans': 'af',
+      'Catalan': 'ca',
+      'Basque': 'eu',
+      'Galician': 'gl',
+      'Slovak': 'sk',
+      'Slovenian': 'sl',
+      'Croatian': 'hr',
+      'Lithuanian': 'lt',
+      'Latvian': 'lv',
+      'Estonian': 'et',
+      'Maltese': 'mt',
+      'Icelandic': 'is',
+      'Irish': 'ga',
+      'Uighur': 'ug'
+    };
     const transLangSelect = document.createElement('select');
     transLangSelect.className = 'cb-select';
     transLangSelect.id = 'cb-trans-lang';
     transLangSelect.style.cssText = 'flex:1;padding:10px 14px;border-radius:8px;font-weight:500;';
-    const langNameToCode = { 'English': 'en', 'Spanish': 'es', 'French': 'fr', 'German': 'de', 'Italian': 'it', 'Portuguese': 'pt', 'Russian': 'ru', 'Japanese': 'ja', 'Korean': 'ko', 'Chinese': 'zh', 'Arabic': 'ar', 'Hindi': 'hi', 'Dutch': 'nl', 'Polish': 'pl', 'Turkish': 'tr', 'Vietnamese': 'vi', 'Thai': 'th', 'Swedish': 'sv', 'Danish': 'da', 'Finnish': 'fi', 'Norwegian': 'no', 'Czech': 'cs', 'Hungarian': 'hu', 'Romanian': 'ro', 'Greek': 'el', 'Hebrew': 'he', 'Indonesian': 'id', 'Malay': 'ms', 'Ukrainian': 'uk', 'Bulgarian': 'bg', 'Tamil': 'ta' };
-    Object.entries(langNameToCode).forEach(([name, code]) => { const opt = document.createElement('option'); opt.value = code; opt.textContent = name; transLangSelect.appendChild(opt); });
+    Object.entries(TRANSLATION_LANGUAGE_MAP).forEach(([name, code]) => { const opt = document.createElement('option'); opt.value = code; opt.textContent = name; transLangSelect.appendChild(opt); });
 
     const transGearBtn = document.createElement('button');
     transGearBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>';
@@ -8176,7 +8257,7 @@
       card.className = 'cb-insight-block';
       card.id = tool.id;
       card.style.cssText = 'cursor:pointer;transition:all 0.25s cubic-bezier(0.25, 0.8, 0.25, 1);padding:16px;border-radius:14px;background:linear-gradient(155deg, color-mix(in srgb, var(--cb-bg2) 90%, transparent), color-mix(in srgb, var(--cb-bg) 96%, transparent));border:1px solid color-mix(in srgb, var(--cb-border) 86%, transparent);position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:flex-start;box-shadow:0 8px 24px -18px color-mix(in srgb, var(--cb-accent-primary) 18%, transparent), inset 0 1px 0 color-mix(in srgb, var(--cb-text) 7%, transparent);';
-      
+
       card.innerHTML = `
         <div style="width:32px;height:32px;border-radius:8px;background:color-mix(in srgb, var(--cb-accent-primary) 15%, transparent);display:flex;align-items:center;justify-content:center;margin-bottom:12px;color:var(--cb-accent-primary);transition:transform 0.3s ease;flex-shrink:0;">
           ${tool.icon}
@@ -8189,24 +8270,24 @@
         </div>
         <div class="tk-hover-glow" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;background:radial-gradient(80% 80% at 50% 0%, color-mix(in srgb, var(--cb-accent-primary) 15%, transparent) 0%, transparent 100%);opacity:0;transition:opacity 0.3s ease;"></div>
       `;
-      
-      card.addEventListener('mouseenter', () => { 
-        card.style.borderColor = 'var(--cb-accent-primary)'; 
-        card.style.transform = 'translateY(-3px)'; 
+
+      card.addEventListener('mouseenter', () => {
+        card.style.borderColor = 'var(--cb-accent-primary)';
+        card.style.transform = 'translateY(-3px)';
         card.style.boxShadow = '0 8px 24px -6px color-mix(in srgb, var(--cb-accent-primary) 25%, transparent)';
         card.querySelector('.tk-hover-glow').style.opacity = '1';
         card.firstElementChild.style.transform = 'scale(1.1) rotate(-5deg)';
         card.firstElementChild.style.background = 'color-mix(in srgb, var(--cb-accent-primary) 25%, transparent)';
       });
-      card.addEventListener('mouseleave', () => { 
-        card.style.borderColor = 'var(--cb-border)'; 
-        card.style.transform = ''; 
+      card.addEventListener('mouseleave', () => {
+        card.style.borderColor = 'var(--cb-border)';
+        card.style.transform = '';
         card.style.boxShadow = '';
         card.querySelector('.tk-hover-glow').style.opacity = '0';
         card.firstElementChild.style.transform = '';
         card.firstElementChild.style.background = 'color-mix(in srgb, var(--cb-accent-primary) 15%, transparent)';
       });
-      
+
       tkCards[tool.id] = card;
       tkGrid.appendChild(card);
     });
@@ -9364,7 +9445,7 @@ ${chatText.substring(0, 10000)}`
           if (already) {
             row.style.borderColor = 'color-mix(in srgb, var(--cb-accent-primary, #6366f1) 40%, var(--cb-border))';
           }
-          
+
           const roleClass = (msg.role || 'assistant').toLowerCase() === 'user' ? 'sb-tag-user' : 'sb-tag-assistant';
           const toggleText = already ? 'Remove' : 'Add';
           const toggleStyle = already ? 'background:rgba(239,68,68,0.1) !important;color:#f87171 !important;border-color:rgba(239,68,68,0.2) !important;' : '';
@@ -10577,7 +10658,7 @@ ${chatText.substring(0, 10000)}`
     detailSection.appendChild(detailButtons);
     settingsContent.appendChild(detailSection);
 
-    
+
     // ============================================
     // Response Calibrator Section
     // ============================================
@@ -10609,19 +10690,19 @@ ${chatText.substring(0, 10000)}`
 
     const calDetailsWrap = document.createElement('div');
     calDetailsWrap.style.cssText = 'display: flex; flex-direction: column; gap: 8px;';
-    
+
     const createCtxInput = (label, placeholder) => {
-       const wrap = document.createElement('div');
-       const lbl = document.createElement('div');
-       lbl.className = 'cb-settings-field-label';
-       lbl.textContent = label;
-       const inp = document.createElement('input');
-       inp.type = 'text';
-       inp.placeholder = placeholder;
-       inp.className = 'cb-settings-input';
-       wrap.appendChild(lbl);
-       wrap.appendChild(inp);
-       return {wrap, inp};
+      const wrap = document.createElement('div');
+      const lbl = document.createElement('div');
+      lbl.className = 'cb-settings-field-label';
+      lbl.textContent = label;
+      const inp = document.createElement('input');
+      inp.type = 'text';
+      inp.placeholder = placeholder;
+      inp.className = 'cb-settings-input';
+      wrap.appendChild(lbl);
+      wrap.appendChild(inp);
+      return { wrap, inp };
     };
 
     const inpDomainWrap = createCtxInput('Domain / Profession', 'e.g. Software Engineering');
@@ -10632,7 +10713,7 @@ ${chatText.substring(0, 10000)}`
     calDetailsWrap.appendChild(inpYearsWrap.wrap);
     calDetailsWrap.appendChild(inpSubdomainsWrap.wrap);
     calSection.appendChild(calDetailsWrap);
-    
+
     settingsContent.appendChild(calSection);
 
     let calState = {
@@ -10642,7 +10723,7 @@ ${chatText.substring(0, 10000)}`
       years: localStorage.getItem('chatbridge:pref:calibratorYears') || '',
       subdomains: localStorage.getItem('chatbridge:pref:calibratorSubdomains') || ''
     };
-    
+
     inpDomainWrap.inp.value = calState.domain;
     inpYearsWrap.inp.value = calState.years;
     inpSubdomainsWrap.inp.value = calState.subdomains;
@@ -10656,10 +10737,10 @@ ${chatText.substring(0, 10000)}`
       [btnCalBeginner, btnCalNormal, btnCalExpert].forEach(b => {
         b.classList.toggle('is-active', b.dataset.level === calState.level);
       });
-      
+
       calDetailsWrap.style.opacity = calState.enabled ? '1' : '0.5';
       calDetailsWrap.style.pointerEvents = calState.enabled ? 'auto' : 'none';
-      
+
       window.ChatBridgeCalibratorState = () => calState;
     };
 
@@ -10673,23 +10754,23 @@ ${chatText.substring(0, 10000)}`
       b.addEventListener('click', () => {
         calState.level = b.dataset.level;
         localStorage.setItem('chatbridge:pref:calibratorLevel', calState.level);
-        if(!calState.enabled) {
-           calState.enabled = true;
-           localStorage.setItem('chatbridge:pref:calibratorEnabled', 'true');
+        if (!calState.enabled) {
+          calState.enabled = true;
+          localStorage.setItem('chatbridge:pref:calibratorEnabled', 'true');
         }
         updateCalUI();
       });
     });
 
     [inpDomainWrap.inp, inpYearsWrap.inp, inpSubdomainsWrap.inp].forEach(inp => {
-       inp.addEventListener('input', () => {
-         calState.domain = inpDomainWrap.inp.value;
-         calState.years = inpYearsWrap.inp.value;
-         calState.subdomains = inpSubdomainsWrap.inp.value;
-         localStorage.setItem('chatbridge:pref:calibratorDomain', calState.domain);
-         localStorage.setItem('chatbridge:pref:calibratorYears', calState.years);
-         localStorage.setItem('chatbridge:pref:calibratorSubdomains', calState.subdomains);
-       });
+      inp.addEventListener('input', () => {
+        calState.domain = inpDomainWrap.inp.value;
+        calState.years = inpYearsWrap.inp.value;
+        calState.subdomains = inpSubdomainsWrap.inp.value;
+        localStorage.setItem('chatbridge:pref:calibratorDomain', calState.domain);
+        localStorage.setItem('chatbridge:pref:calibratorYears', calState.years);
+        localStorage.setItem('chatbridge:pref:calibratorSubdomains', calState.subdomains);
+      });
     });
 
     updateCalUI();
@@ -10767,7 +10848,7 @@ ${chatText.substring(0, 10000)}`
       renderSettingsSites();
     }
 
-// ============================================
+    // ============================================
     const shortcutsSection = document.createElement('div');
     shortcutsSection.className = 'cb-settings-card';
     shortcutsSection.innerHTML = '<div class="cb-settings-card-head"><div class="cb-settings-card-title">Keyboard Shortcuts</div></div>';
@@ -10793,7 +10874,7 @@ ${chatText.substring(0, 10000)}`
     } catch (_) {
       settingsVersionEl.textContent = 'Version 1.4.2 • Local-first AI workspace';
     }
-    aboutSection.innerHTML = '<div class="cb-settings-about-logo">🌉 ChatBridge</div>';
+    aboutSection.innerHTML = '<div class="cb-settings-about-logo"> ChatBridge</div>';
     aboutSection.appendChild(settingsVersionEl);
     const aboutLinks = document.createElement('div');
     aboutLinks.className = 'cb-settings-about-links';
@@ -11411,7 +11492,7 @@ ${chatText.substring(0, 10000)}`
           case 'trans':
             if (__cbViewStates.trans.sourceText && typeof transCustomInput !== 'undefined' && transCustomInput) {
               transCustomInput.value = __cbViewStates.trans.sourceText;
-              try { transCustomInput.dispatchEvent(new Event('input')); } catch (_) {}
+              try { transCustomInput.dispatchEvent(new Event('input')); } catch (_) { }
             }
             if (__cbViewStates.trans.result && transResult) {
               // Re-render formatted output
@@ -15923,7 +16004,7 @@ Output ONLY the 5 numbered questions, no other text.`;
             const showInspectView = (title, renderContentFn) => {
               const container = toolResultArea.querySelector('.cb-memory-manager-content');
               if (!container) return;
-              
+
               container.innerHTML = `
                 <div style="padding:10px;color:var(--cb-text);">
                   <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
@@ -15935,11 +16016,11 @@ Output ONLY the 5 numbered questions, no other text.`;
                   <div id="cb-mem-inspect-body"></div>
                 </div>
               `;
-              
+
               container.querySelector('#cb-mem-inspect-back').addEventListener('click', () => {
                 memoryCard.click();
               });
-              
+
               const body = container.querySelector('#cb-mem-inspect-body');
               renderContentFn(body);
             };
@@ -15950,14 +16031,14 @@ Output ONLY the 5 numbered questions, no other text.`;
                 body.innerHTML = '<div style="color:var(--cb-subtext);font-size:12px;text-align:center;padding:20px 0;">No conversations saved yet.</div>';
                 return;
               }
-              
+
               body.innerHTML = `
                 <div style="max-height:350px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;">
                   ${convs.map((c, idx) => {
-                    const dateStr = c.ts ? new Date(c.ts).toLocaleString() : 'Unknown date';
-                    const msgCount = Array.isArray(c.conversation) ? c.conversation.length : (Array.isArray(c.messages) ? c.messages.length : 0);
-                    const title = c.title || (c.conversation && c.conversation[0] && c.conversation[0].text ? c.conversation[0].text.slice(0, 40) + '...' : `Chat ${idx + 1}`);
-                    return `
+                const dateStr = c.ts ? new Date(c.ts).toLocaleString() : 'Unknown date';
+                const msgCount = Array.isArray(c.conversation) ? c.conversation.length : (Array.isArray(c.messages) ? c.messages.length : 0);
+                const title = c.title || (c.conversation && c.conversation[0] && c.conversation[0].text ? c.conversation[0].text.slice(0, 40) + '...' : `Chat ${idx + 1}`);
+                return `
                       <div style="padding:10px;background:var(--cb-bg3);border:1px solid var(--cb-border);border-radius:8px;display:flex;justify-content:space-between;align-items:center;gap:10px;">
                         <div style="flex:1;min-width:0;">
                           <div style="font-size:12px;font-weight:600;color:var(--cb-white);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(title)}</div>
@@ -15966,10 +16047,10 @@ Output ONLY the 5 numbered questions, no other text.`;
                         ${inlineBtn('cb-inspect-delete', 'Delete', 'danger')}
                       </div>
                     `;
-                  }).join('')}
+              }).join('')}
                 </div>
               `;
-              
+
               body.querySelectorAll('.cb-inspect-delete').forEach((btn, idx) => {
                 btn.addEventListener('click', async () => {
                   if (confirm('Delete this conversation?')) {
@@ -15987,14 +16068,14 @@ Output ONLY the 5 numbered questions, no other text.`;
 
             // 2. Saved Contexts Inspect View
             const renderContextsInspect = (body) => {
-              const listHtml = !Array.isArray(contexts) || contexts.length === 0 
+              const listHtml = !Array.isArray(contexts) || contexts.length === 0
                 ? '<div style="color:var(--cb-subtext);font-size:12px;text-align:center;padding:20px 0;">No saved contexts.</div>'
                 : `
                   <div style="max-height:240px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;margin-top:10px;">
                     ${contexts.map((c, idx) => {
-                      const text = typeof c === 'string' ? c : (c.text || c.content || '');
-                      const label = typeof c === 'object' && c.label ? c.label : `Context ${idx + 1}`;
-                      return `
+                  const text = typeof c === 'string' ? c : (c.text || c.content || '');
+                  const label = typeof c === 'object' && c.label ? c.label : `Context ${idx + 1}`;
+                  return `
                         <div style="padding:10px;background:var(--cb-bg3);border:1px solid var(--cb-border);border-radius:8px;display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">
                           <div style="flex:1;min-width:0;font-size:11px;">
                             <div style="font-weight:600;color:var(--cb-white);margin-bottom:2px;">${escapeHtml(label)}</div>
@@ -16003,7 +16084,7 @@ Output ONLY the 5 numbered questions, no other text.`;
                           ${inlineBtn('cb-inspect-delete-context', 'Delete', 'danger')}
                         </div>
                       `;
-                    }).join('')}
+                }).join('')}
                   </div>
                 `;
 
@@ -16023,7 +16104,7 @@ Output ONLY the 5 numbered questions, no other text.`;
                 const label = labelInput.value.trim();
                 const text = textInput.value.trim();
                 if (!text) { toast('Context text cannot be empty'); return; }
-                
+
                 const newContexts = [...contexts];
                 newContexts.unshift({ label: label || `Context ${newContexts.length + 1}`, text });
                 await StorageManager.setSavedContexts(newContexts);
@@ -16109,10 +16190,10 @@ Output ONLY the 5 numbered questions, no other text.`;
               body.innerHTML = `
                 <div style="max-height:350px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;">
                   ${handoffDrafts.map((d, idx) => {
-                    const dateStr = d.ts || d.timestamp ? new Date(d.ts || d.timestamp).toLocaleString() : 'Unknown date';
-                    const title = d.title || `Draft ${idx + 1}`;
-                    const sourceText = d.summary || d.content || d.text || '';
-                    return `
+                const dateStr = d.ts || d.timestamp ? new Date(d.ts || d.timestamp).toLocaleString() : 'Unknown date';
+                const title = d.title || `Draft ${idx + 1}`;
+                const sourceText = d.summary || d.content || d.text || '';
+                return `
                       <div style="padding:10px;background:var(--cb-bg3);border:1px solid var(--cb-border);border-radius:8px;display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">
                         <div style="flex:1;min-width:0;font-size:11px;">
                           <div style="font-weight:600;color:var(--cb-white);margin-bottom:2px;">${escapeHtml(title)}</div>
@@ -16122,7 +16203,7 @@ Output ONLY the 5 numbered questions, no other text.`;
                         ${inlineBtn('cb-inspect-delete-handoff', 'Delete', 'danger')}
                       </div>
                     `;
-                  }).join('')}
+              }).join('')}
                 </div>
               `;
 
@@ -16150,10 +16231,10 @@ Output ONLY the 5 numbered questions, no other text.`;
               body.innerHTML = `
                 <div style="max-height:350px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;">
                   ${pulseSessions.map((s, idx) => {
-                    const dateStr = s.date || s.timestamp ? new Date(s.date || s.timestamp).toLocaleString() : 'Unknown date';
-                    const title = s.action || s.event || 'Usage session';
-                    const details = s.meta ? JSON.stringify(s.meta) : (s.query || s.details || '');
-                    return `
+                const dateStr = s.date || s.timestamp ? new Date(s.date || s.timestamp).toLocaleString() : 'Unknown date';
+                const title = s.action || s.event || 'Usage session';
+                const details = s.meta ? JSON.stringify(s.meta) : (s.query || s.details || '');
+                return `
                       <div style="padding:8px;background:var(--cb-bg3);border:1px solid var(--cb-border);border-radius:8px;display:flex;justify-content:space-between;align-items:center;gap:10px;">
                         <div style="flex:1;min-width:0;font-size:10px;">
                           <div style="font-weight:600;color:var(--cb-white);">${escapeHtml(title)}</div>
@@ -16163,7 +16244,7 @@ Output ONLY the 5 numbered questions, no other text.`;
                         ${inlineBtn('cb-inspect-delete-pulse', 'Delete', 'danger')}
                       </div>
                     `;
-                  }).join('')}
+              }).join('')}
                 </div>
               `;
 
@@ -16191,10 +16272,10 @@ Output ONLY the 5 numbered questions, no other text.`;
               body.innerHTML = `
                 <div style="max-height:350px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;">
                   ${migrationExports.map((log, idx) => {
-                    const dateStr = log.ts || log.timestamp ? new Date(log.ts || log.timestamp).toLocaleString() : 'Unknown date';
-                    const typeLabel = log.type === 'export' ? '📤 Export' : (log.type === 'import' ? '📥 Import' : 'Snapshot');
-                    const details = Array.isArray(log.keys) ? log.keys.join(', ') : '';
-                    return `
+                const dateStr = log.ts || log.timestamp ? new Date(log.ts || log.timestamp).toLocaleString() : 'Unknown date';
+                const typeLabel = log.type === 'export' ? '📤 Export' : (log.type === 'import' ? '📥 Import' : 'Snapshot');
+                const details = Array.isArray(log.keys) ? log.keys.join(', ') : '';
+                return `
                       <div style="padding:8px;background:var(--cb-bg3);border:1px solid var(--cb-border);border-radius:8px;display:flex;justify-content:space-between;align-items:center;gap:10px;">
                         <div style="flex:1;min-width:0;font-size:10px;">
                           <div style="font-weight:600;color:${log.type === 'export' ? '#38bdf8' : '#34d399'};">${typeLabel}</div>
@@ -16204,7 +16285,7 @@ Output ONLY the 5 numbered questions, no other text.`;
                         ${inlineBtn('cb-inspect-delete-export', 'Delete', 'danger')}
                       </div>
                     `;
-                  }).join('')}
+              }).join('')}
                 </div>
               `;
 
@@ -16425,20 +16506,20 @@ Output ONLY the 5 numbered questions, no other text.`;
                 };
                 history.unshift(entry);
                 await StorageManager.setMigrationExports(history.slice(0, 10));
-              } catch (_) {}
-              
-              if(records.length > 0) {
-                  CBAnalytics.track('smart_workspace', 'migration_kit_export_success', { records: records.length });
-                 statusDiv.textContent = `Exported ${records.length} settings categories successfully.`;
-                 statusDiv.style.color = "var(--cb-accent-success)";
+              } catch (_) { }
+
+              if (records.length > 0) {
+                CBAnalytics.track('smart_workspace', 'migration_kit_export_success', { records: records.length });
+                statusDiv.textContent = `Exported ${records.length} settings categories successfully.`;
+                statusDiv.style.color = "var(--cb-accent-success)";
               } else {
-                  CBAnalytics.track('smart_workspace', 'migration_kit_export_empty');
-                 statusDiv.textContent = "Exported empty environment (no local context saved yet).";
-                 statusDiv.style.color = "var(--cb-subtext)";
+                CBAnalytics.track('smart_workspace', 'migration_kit_export_empty');
+                statusDiv.textContent = "Exported empty environment (no local context saved yet).";
+                statusDiv.style.color = "var(--cb-subtext)";
               }
               statusDiv.style.display = 'block';
             } catch (err) {
-                CBAnalytics.track('smart_workspace', 'migration_kit_export_error', { message: String(err && (err.message || err)) });
+              CBAnalytics.track('smart_workspace', 'migration_kit_export_error', { message: String(err && (err.message || err)) });
               statusDiv.textContent = 'Export failed: ' + err.message;
               statusDiv.style.color = 'var(--cb-accent-warning)';
               statusDiv.style.display = 'block';
@@ -16477,7 +16558,7 @@ Output ONLY the 5 numbered questions, no other text.`;
                             type: 'replace_conversations',
                             payload: { conversations: record.value }
                           });
-                        } catch (_) {}
+                        } catch (_) { }
                       } else {
                         await StorageManager.set(record.key, record.value);
                       }
@@ -16496,7 +16577,7 @@ Output ONLY the 5 numbered questions, no other text.`;
                     };
                     history.unshift(entry);
                     await StorageManager.setMigrationExports(history.slice(0, 10));
-                  } catch (_) {}
+                  } catch (_) { }
 
                   CBAnalytics.track('smart_workspace', 'migration_kit_import_success', { records: importCount });
                   statusDiv.textContent = `Successfully imported ${importCount} settings categories!`;
@@ -18549,14 +18630,14 @@ Respond with JSON only:
           try {
             setActiveAgentTab('trackthis', { focus: true });
             notif.remove();
-          } catch (_) {}
+          } catch (_) { }
         });
         container.appendChild(notif);
         setTimeout(() => {
           try {
             notif.style.animation = 'cb-toast-slide-out 0.2s ease-in forwards';
-            setTimeout(() => { try { notif.remove(); } catch (_) {} }, 250);
-          } catch (_) {}
+            setTimeout(() => { try { notif.remove(); } catch (_) { } }, 250);
+          } catch (_) { }
         }, 7000);
       } catch (e) { debugLog('showTrackThisHitNotification error', e); }
     }
@@ -19500,20 +19581,20 @@ Respond with JSON only:
           const topicFocus = ((outputArea && outputArea.querySelector('#cb-catchmeup-topic')) || {}).value?.trim() || '';
           const depthVal = selectedDepth || 'standard';
           const depthConfig = {
-            quick:    { maxTokens: 700,  label: 'Quick',     instruction: 'Ultra-concise — 1-2 bullets max per section, headlines only. No elaboration.' },
-            standard: { maxTokens: 1500, label: 'Standard',  instruction: 'Balanced — 3-5 bullets per section with a brief sentence of context on each item.' },
-            deep:     { maxTokens: 3000, label: 'Deep Dive', instruction: 'Detailed — include relevant excerpts or quotes, explain how conversations evolved, and append 2-3 follow-up questions per section.' }
+            quick: { maxTokens: 700, label: 'Quick', instruction: 'Ultra-concise — 1-2 bullets max per section, headlines only. No elaboration.' },
+            standard: { maxTokens: 1500, label: 'Standard', instruction: 'Balanced — 3-5 bullets per section with a brief sentence of context on each item.' },
+            deep: { maxTokens: 3000, label: 'Deep Dive', instruction: 'Detailed — include relevant excerpts or quotes, explain how conversations evolved, and append 2-3 follow-up questions per section.' }
           };
           const depth = depthConfig[depthVal] || depthConfig.standard;
 
           // Compute cutoff timestamp from selected range
           const nowMs = Date.now();
           let cutoffTs;
-          if (selectedRange === 'today')        cutoffTs = nowMs - 86400000;
-          else if (selectedRange === 'week')    cutoffTs = nowMs - 7 * 86400000;
-          else if (selectedRange === 'month')   cutoffTs = nowMs - 30 * 86400000;
+          if (selectedRange === 'today') cutoffTs = nowMs - 86400000;
+          else if (selectedRange === 'week') cutoffTs = nowMs - 7 * 86400000;
+          else if (selectedRange === 'month') cutoffTs = nowMs - 30 * 86400000;
           else if (selectedRange === 'alltime') cutoffTs = 0;
-          else                                  cutoffTs = lastBriefed; // 'last' (since last visit)
+          else cutoffTs = lastBriefed; // 'last' (since last visit)
 
           // Filter by time range
           let newConvos;
@@ -19572,10 +19653,10 @@ ${aiMsgs}`;
           }).join('\n\n========================\n\n');
 
           const rangeLabels = {
-            last:    lastBriefed > 0 ? `since last briefing (${getTimeAgo(lastBriefed)})` : 'all time (first briefing)',
-            today:   'last 24 hours',
-            week:    'last 7 days',
-            month:   'last 30 days',
+            last: lastBriefed > 0 ? `since last briefing (${getTimeAgo(lastBriefed)})` : 'all time (first briefing)',
+            today: 'last 24 hours',
+            week: 'last 7 days',
+            month: 'last 30 days',
             alltime: 'all stored history'
           };
           const rangeLabel = rangeLabels[selectedRange] || 'recent';
@@ -20099,11 +20180,11 @@ Rules:
             const copyChecklistBtn = resultDiv.querySelector('#cb-exec-copy-checklist');
             const insertBtn = resultDiv.querySelector('#cb-exec-insert');
             const handoffBtn = resultDiv.querySelector('#cb-exec-handoff');
-            
+
             if (copyBtn) copyBtn.addEventListener('click', async () => {
               try { await navigator.clipboard.writeText(normalizedResult); toast('Execution plan copied!'); } catch (_) { toast('Copy failed'); }
             });
-            
+
             if (copyChecklistBtn) {
               copyChecklistBtn.addEventListener('click', async () => {
                 let checklistText = `📋 Plan Checklist for "${objective}":\n\n`;
@@ -20125,7 +20206,7 @@ Rules:
             if (insertBtn) insertBtn.addEventListener('click', () => {
               try { insertTextToChat(normalizedResult); toast('Inserted!'); } catch (_) { toast('Insert failed'); }
             });
-            
+
             if (handoffBtn) handoffBtn.addEventListener('click', async () => {
               try {
                 await navigator.clipboard.writeText(normalizedResult);
@@ -20145,7 +20226,7 @@ Rules:
                 const pct = total > 0 ? Math.round((checked / total) * 100) : 0;
                 const progressEl = resultDiv.querySelector('#cb-task-progress');
                 if (progressEl) progressEl.textContent = `${pct}% completed (${checked}/${total})`;
-                
+
                 // Toggle text strike-through
                 const labelSpan = c.nextElementSibling;
                 if (labelSpan) {
@@ -20282,7 +20363,7 @@ Rules:
         const clr = last > prev ? '#10B981' : (last < prev ? '#9CA3AF' : '#F59E0B');
         return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="flex-shrink:0;overflow:visible;">
           <polyline points="${points}" fill="none" stroke="${clr}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.85"/>
-          <circle cx="${(pad + (counts.length-1)*step).toFixed(1)}" cy="${(H - pad - ((last/max)*(H-pad*2))).toFixed(1)}" r="2" fill="${clr}"/>
+          <circle cx="${(pad + (counts.length - 1) * step).toFixed(1)}" cy="${(H - pad - ((last / max) * (H - pad * 2))).toFixed(1)}" r="2" fill="${clr}"/>
         </svg>`;
       }
 
@@ -21563,9 +21644,9 @@ Keep it concise and concrete.`;
                 <div class="cb-agent-result-body">
                   <div>Audience fit: <strong>${scorecard.audienceFit}</strong></div>
                   ${outputFormat === 'briefing'
-                    ? `<div style="margin-top:6px;">Section coverage: <strong>${scorecard.sectionCoverage.matched}/${scorecard.sectionCoverage.total}</strong> required blocks</div>
+                  ? `<div style="margin-top:6px;">Section coverage: <strong>${scorecard.sectionCoverage.matched}/${scorecard.sectionCoverage.total}</strong> required blocks</div>
                   <div style="margin-top:6px;">Action density: <strong>${scorecard.actionCount}</strong> actionable bullets · Open-question signals: <strong>${scorecard.openQuestionSignals}</strong></div>`
-                    : `<div style="margin-top:6px;">Structure depth: <strong>${scorecard.headingCount}</strong> headings · <strong>${scorecard.bulletCount}</strong> bullets</div>
+                  : `<div style="margin-top:6px;">Structure depth: <strong>${scorecard.headingCount}</strong> headings · <strong>${scorecard.bulletCount}</strong> bullets</div>
                   <div style="margin-top:6px;">Readable lines: <strong>${scorecard.lineCount}</strong> · Format: <strong>${formatCfg.label}</strong></div>`}
                 </div>
               </div>` : ''}
@@ -21792,11 +21873,11 @@ Keep it concise and concrete.`;
 
         try {
           const convos = await loadConversationsAsync();
-          
+
           // Get selected range
           const activeRangeBtn = outputArea.querySelector('#cb-pulse-timeframe-group .cb-agent-toggle-active');
           const range = activeRangeBtn ? activeRangeBtn.getAttribute('data-range') : '7';
-          
+
           let filtered = convos;
           if (range === '7') {
             const limit = Date.now() - (7 * 24 * 60 * 60 * 1000);
@@ -21845,7 +21926,7 @@ Keep it concise and concrete.`;
             platformCounts[platform] = (platformCounts[platform] || 0) + 1;
           });
 
-          const platformEntries = Object.entries(platformCounts).sort((a,b) => b[1] - a[1]);
+          const platformEntries = Object.entries(platformCounts).sort((a, b) => b[1] - a[1]);
           const totalFiltered = platformEntries.reduce((sum, e) => sum + e[1], 0);
 
           let conicSegments = [];
@@ -21883,7 +21964,7 @@ Keep it concise and concrete.`;
             });
           });
           const topKeywords = Object.entries(wordFreq)
-            .sort((a,b) => b[1] - a[1])
+            .sort((a, b) => b[1] - a[1])
             .slice(0, 4);
 
           const maxKeywordCount = topKeywords.length > 0 ? topKeywords[0][1] : 1;
@@ -21896,15 +21977,15 @@ Keep it concise and concrete.`;
                 <div style="font-size:11px; font-weight:600; color:var(--cb-subtext); margin-bottom:6px; text-transform:uppercase; letter-spacing:0.5px;">7-Day Activity</div>
                 <div class="cb-heatmap" id="cb-pulse-heatmap-container">
                   ${heatmapDays.map(d => {
-                    const relativeOpacity = d.count > 0 ? 0.35 + (d.count / maxHeatmapCount) * 0.65 : 0.08;
-                    const fillStyle = d.count > 0 ? `background:color-mix(in srgb, var(--_agent-clr, #6366F1) ${relativeOpacity * 100}%, transparent); border-color:var(--_agent-clr, #6366F1);` : '';
-                    return `
+            const relativeOpacity = d.count > 0 ? 0.35 + (d.count / maxHeatmapCount) * 0.65 : 0.08;
+            const fillStyle = d.count > 0 ? `background:color-mix(in srgb, var(--_agent-clr, #6366F1) ${relativeOpacity * 100}%, transparent); border-color:var(--_agent-clr, #6366F1);` : '';
+            return `
                       <div class="cb-heatmap-day" style="${fillStyle}" title="${d.count} chats on ${d.dateString}">
                         <div class="cb-heatmap-val">${d.count}</div>
                         <div class="cb-heatmap-label">${d.label}</div>
                       </div>
                     `;
-                  }).join('')}
+          }).join('')}
                 </div>
               </div>
 
@@ -21922,16 +22003,16 @@ Keep it concise and concrete.`;
                     </div>
                     <div id="cb-pulse-donut-legend" style="flex:1; display:flex; flex-direction:column; gap:4px; font-size:10px; color:var(--cb-subtext);">
                       ${platformEntries.map(([plat, count]) => {
-                        const pct = Math.round((count / totalFiltered) * 100);
-                        const color = colors[plat] || '#8B5CF6';
-                        return `
+            const pct = Math.round((count / totalFiltered) * 100);
+            const color = colors[plat] || '#8B5CF6';
+            return `
                           <div style="display:flex; align-items:center; gap:5px;">
                             <span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:${color};"></span>
                             <span style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--cb-white);">${plat}</span>
                             <span>${pct}%</span>
                           </div>
                         `;
-                      }).join('')}
+          }).join('')}
                     </div>
                   </div>
                 </div>
@@ -21941,8 +22022,8 @@ Keep it concise and concrete.`;
                   <div style="font-size:11px; font-weight:600; color:var(--cb-subtext); margin-bottom:8px; text-transform:uppercase; letter-spacing:0.5px;">Top Keywords</div>
                   <div id="cb-pulse-keywords-container" style="display:flex; flex-direction:column; gap:6px;">
                     ${topKeywords.length > 0 ? topKeywords.map(([word, freq]) => {
-                      const pct = Math.round((freq / maxKeywordCount) * 100);
-                      return `
+            const pct = Math.round((freq / maxKeywordCount) * 100);
+            return `
                         <div class="cb-agent-bar-row">
                           <div class="cb-agent-bar-label" style="width:64px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:left;" title="${word}">${word}</div>
                           <div class="cb-agent-bar-track">
@@ -21951,7 +22032,7 @@ Keep it concise and concrete.`;
                           <div class="cb-agent-bar-value" style="width:24px; text-align:right;">${freq}</div>
                         </div>
                       `;
-                    }).join('') : `<div style="font-size:11px; color:var(--cb-subtext); font-style:italic;">No user keyword metrics calculated.</div>`}
+          }).join('') : `<div style="font-size:11px; color:var(--cb-subtext); font-style:italic;">No user keyword metrics calculated.</div>`}
                   </div>
                 </div>
               </div>
@@ -24251,7 +24332,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
 
         // Ambient: check agent badges on open (non-blocking)
         checkAgentBadges().catch(() => { });
-        
+
         // If the user REALLY wants the floating hub, they can still call it 
         // manually or we could add a button inside the hub later.
         // For now, the integrated experience is safer and more predictable.
@@ -24275,7 +24356,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         const contentEl = (shadow && typeof shadow.getElementById === 'function') ? shadow.getElementById('cb-insights-content') : null;
         if (contentEl) contentEl.scrollTop = 0;
         try { updatePanelDynamicLayout(); } catch (_) { }
-        
+
         // Ensure main panel is scrolled to the bottom so the new view is visible
         if (typeof panel !== 'undefined' && panel) {
           panel.scrollTo({ top: panel.scrollHeight, behavior: 'smooth' });
@@ -25262,9 +25343,9 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
               histWrapper.scrollIntoView({ behavior: 'smooth', block: 'start' });
               histWrapper.style.transition = 'box-shadow 0.3s ease';
               histWrapper.style.boxShadow = '0 0 0 2px var(--cb-accent-primary), 0 0 20px color-mix(in srgb, var(--cb-accent-primary) 30%, transparent)';
-              setTimeout(() => { try { histWrapper.style.boxShadow = ''; } catch (_) {} }, 2000);
+              setTimeout(() => { try { histWrapper.style.boxShadow = ''; } catch (_) { } }, 2000);
             }
-          } catch (_) {}
+          } catch (_) { }
           toast('\u{1F4CB} Pick a conversation from History below, then click Restore again');
           return;
         }
@@ -25693,13 +25774,13 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       if (!text || typeof text !== 'string' || text.length <= maxChars) {
         return text;
       }
-      
+
       if (text.includes('\n\n')) {
         const turns = text.split('\n\n');
         let trimmedText = '';
         let keptTurns = [];
         let currentLength = 0;
-        
+
         let systemPrompt = '';
         let startIdx = 0;
         if (turns[0] && (turns[0].startsWith('User: ') || turns[0].startsWith('System: ') || turns[0].includes('instruction'))) {
@@ -25707,7 +25788,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           startIdx = 1;
           currentLength += systemPrompt.length + 2;
         }
-        
+
         for (let i = turns.length - 1; i >= startIdx; i--) {
           const turn = turns[i];
           if (currentLength + turn.length + 2 > maxChars) {
@@ -25716,7 +25797,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           keptTurns.unshift(turn);
           currentLength += turn.length + 2;
         }
-        
+
         if (keptTurns.length < (turns.length - startIdx)) {
           const omissionPlaceholder = '... [older conversation history omitted due to token limits] ...';
           if (systemPrompt) {
@@ -25727,7 +25808,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           return trimmedText;
         }
       }
-      
+
       const truncatedText = text.slice(0, maxChars - 50);
       return truncatedText + '\n... [truncated due to context size limits]';
     }
@@ -25859,7 +25940,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
               chrome.storage.local.get(['chatbridge_hf_key'], d => r(d || {}));
             });
             if (keys.chatbridge_hf_key) hasLlama = true;
-          } catch (_) {}
+          } catch (_) { }
 
           if (!hasLlama && typeof window !== 'undefined' && window.CHATBRIDGE_CONFIG && window.CHATBRIDGE_CONFIG.HUGGINGFACE_API_KEY) {
             hasLlama = true;
@@ -25984,7 +26065,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       async function summarizeChunk(chunkText) {
         const chunkLen = options.chunkLength || 'short';
         const summaryType = 'bullet';
-        
+
         // first attempt
         const a = await callGeminiAsync({ action: 'summarize', text: chunkText, length: chunkLen, summaryType });
         if (a && a.ok) return a.result;
@@ -26115,7 +26196,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
         });
         if (keys.chatbridge_gemini_key) hasGemini = true;
         if (keys.chatbridge_hf_key) hasLlama = true;
-      } catch (e) {}
+      } catch (e) { }
 
       if (!hasGemini && typeof window !== 'undefined' && window.CHATBRIDGE_CONFIG && window.CHATBRIDGE_CONFIG.GEMINI_API_KEY) {
         hasGemini = true;
@@ -26321,7 +26402,7 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
       try {
         if (onProgress) onProgress({ phase: 'preparing' });
         debugLog(`[Rewrite] Trying local built-in rewriter API with style: ${mappedStyle}`);
-        const localRes = await runLocalRewriter({ action: 'rewrite_text', style: mappedStyle, text: text });
+        const localRes = await runLocalRewriter({ action: 'rewrite_text', style: mappedStyle, styleHint: styleHint, text: text });
         if (localRes) {
           if (onProgress) onProgress({ phase: 'done' });
           debugLog('[Rewrite] Local built-in rewriter SUCCESS');
@@ -27130,7 +27211,7 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
         }
 
         // Get language name
-        const langNames = { en: 'English', es: 'Spanish', fr: 'French', de: 'German', it: 'Italian', pt: 'Portuguese', ru: 'Russian', ja: 'Japanese', ko: 'Korean', zh: 'Chinese', ar: 'Arabic', hi: 'Hindi', nl: 'Dutch', pl: 'Polish', tr: 'Turkish', vi: 'Vietnamese', th: 'Thai', sv: 'Swedish', da: 'Danish', fi: 'Finnish', no: 'Norwegian', cs: 'Czech', hu: 'Hungarian', ro: 'Romanian', el: 'Greek', he: 'Hebrew', id: 'Indonesian', ms: 'Malay', uk: 'Ukrainian', bg: 'Bulgarian', ta: 'Tamil' };
+        const langNames = Object.fromEntries(Object.entries(TRANSLATION_LANGUAGE_MAP).map(([name, code]) => [code, name]));
         const langName = langNames[targetLanguage] || targetLanguage;
 
         // Use hierarchical translation for parallel processing and speed
@@ -28060,537 +28141,537 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
 
       // Add Enter key handler for smart search input
       smartInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        btnSmartSearch.click();
-      }
-    });
-    btnSmartSearch.addEventListener('click', async () => {
-      try {
-        const q = (smartInput && smartInput.value) ? smartInput.value.trim() : '';
-        if (!q) { toast('Type a search query'); return; }
-        smartResults.textContent = 'Searching...'; smartAnswer.textContent = ''; announce('Searching saved chats');
-        // First try semantic vector query via background
-        async function vectorQueryAsync(qstr, topK) {
-          return new Promise(res => {
-            try {
-              chrome.runtime.sendMessage({ type: 'vector_query', payload: { query: qstr, topK: topK || 6 } }, (r) => {
-                if (chrome.runtime.lastError) return res({ ok: false, error: chrome.runtime.lastError.message });
-                return res(r || { ok: false });
-              });
-            } catch (e) { return res({ ok: false, error: e && e.message }); }
-          });
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          btnSmartSearch.click();
         }
-
-        let vectorFailed = false;
-        let vectorError = '';
+      });
+      btnSmartSearch.addEventListener('click', async () => {
         try {
-          const vres = await vectorQueryAsync(q, 8);
-          if (vres && vres.ok && Array.isArray(vres.results) && vres.results.length) {
-            // Map ids back to saved conversations
-            const convs = await loadConversationsAsync();
-            const mapped = vres.results.map(r => {
-              const id = String(r.id || '');
-              const conv = (convs || []).find(c => String(c.ts) === id);
-              const host = (conv && (conv.platform || conv.url)) ? (conv.platform || new URL(conv.url || location.href).hostname) : (r.metadata && (r.metadata.platform || (r.metadata.url && new URL(r.metadata.url).hostname))) || location.hostname;
-              const date = conv ? new Date(conv.ts) : (r.metadata && r.metadata.ts ? new Date(r.metadata.ts) : new Date());
-              const time = date.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-              const full = conv ? ((conv.conversation || []).map(m => `${m.role}: ${m.text}`).join('\n\n')) : (r.metadata && r.metadata.snippet) || '';
-              const snippet = full.length > 400 ? full.slice(0, 400) + '…' : full;
-              const count = conv ? (conv.conversation || []).length : (r.metadata && r.metadata.count) || 0;
-              const topics = conv && Array.isArray(conv.topics) ? conv.topics : (r.metadata && r.metadata.topics ? r.metadata.topics : []);
-              return { host, time, snippet, snippetFull: full, count, score: r.score, id, topics };
-            }).filter(r => r.count > 0);
-            // Deduplicate by ID (keep first occurrence which has highest score)
-            const seenIds = new Set();
-            const deduped = mapped.filter(r => {
-              if (seenIds.has(r.id)) return false;
-              seenIds.add(r.id);
-              return true;
-            }).slice(0, 12);
-            // apply filters from UI
-            try {
-              const selHost = (hostSelect && hostSelect.value) ? hostSelect.value : '';
-              const selTag = (tagSelect && tagSelect.value) ? tagSelect.value : '';
-              const selDate = (dateSelect && dateSelect.value) ? dateSelect.value : 'All time';
-              const now = Date.now();
-              const filtered = deduped.filter(it => {
-                // Filter out conversations with 0 messages
-                if (it.count <= 0) return false;
-                if (selHost && it.host && it.host !== selHost) return false;
-                if (selTag && (!it.topics || !it.topics.some(t => t.toLowerCase() === selTag.toLowerCase()))) return false;
-                if (selDate && selDate !== 'All time') {
-                  const days = selDate === 'Last 7 days' ? 7 : (selDate === 'Last 30 days' ? 30 : 0);
-                  if (days > 0) {
-                    const convTs = (convs || []).find(c => String(c.ts) === String(it.id));
-                    const ts = convTs && convTs.ts ? Number(convTs.ts) : 0;
-                    if (!ts) return false;
-                    if ((now - ts) > days * 24 * 3600 * 1000) return false;
-                  }
-                }
+          const q = (smartInput && smartInput.value) ? smartInput.value.trim() : '';
+          if (!q) { toast('Type a search query'); return; }
+          smartResults.textContent = 'Searching...'; smartAnswer.textContent = ''; announce('Searching saved chats');
+          // First try semantic vector query via background
+          async function vectorQueryAsync(qstr, topK) {
+            return new Promise(res => {
+              try {
+                chrome.runtime.sendMessage({ type: 'vector_query', payload: { query: qstr, topK: topK || 6 } }, (r) => {
+                  if (chrome.runtime.lastError) return res({ ok: false, error: chrome.runtime.lastError.message });
+                  return res(r || { ok: false });
+                });
+              } catch (e) { return res({ ok: false, error: e && e.message }); }
+            });
+          }
+
+          let vectorFailed = false;
+          let vectorError = '';
+          try {
+            const vres = await vectorQueryAsync(q, 8);
+            if (vres && vres.ok && Array.isArray(vres.results) && vres.results.length) {
+              // Map ids back to saved conversations
+              const convs = await loadConversationsAsync();
+              const mapped = vres.results.map(r => {
+                const id = String(r.id || '');
+                const conv = (convs || []).find(c => String(c.ts) === id);
+                const host = (conv && (conv.platform || conv.url)) ? (conv.platform || new URL(conv.url || location.href).hostname) : (r.metadata && (r.metadata.platform || (r.metadata.url && new URL(r.metadata.url).hostname))) || location.hostname;
+                const date = conv ? new Date(conv.ts) : (r.metadata && r.metadata.ts ? new Date(r.metadata.ts) : new Date());
+                const time = date.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                const full = conv ? ((conv.conversation || []).map(m => `${m.role}: ${m.text}`).join('\n\n')) : (r.metadata && r.metadata.snippet) || '';
+                const snippet = full.length > 400 ? full.slice(0, 400) + '…' : full;
+                const count = conv ? (conv.conversation || []).length : (r.metadata && r.metadata.count) || 0;
+                const topics = conv && Array.isArray(conv.topics) ? conv.topics : (r.metadata && r.metadata.topics ? r.metadata.topics : []);
+                return { host, time, snippet, snippetFull: full, count, score: r.score, id, topics };
+              }).filter(r => r.count > 0);
+              // Deduplicate by ID (keep first occurrence which has highest score)
+              const seenIds = new Set();
+              const deduped = mapped.filter(r => {
+                if (seenIds.has(r.id)) return false;
+                seenIds.add(r.id);
                 return true;
               }).slice(0, 12);
-              renderSmartResults(filtered);
-              announce('Search complete');
-            } catch (e) { renderSmartResults(mapped); announce('Search complete'); }
-            return;
-          } else if (vres && !vres.ok) {
-            vectorFailed = true;
-            vectorError = vres.error || 'unknown error';
-          }
-        } catch (e) {
-          debugLog('vector query failed', e);
-          vectorFailed = true;
-          vectorError = e.message || 'exception';
-        }
-
-        // Fallback to local substring search
-        if (vectorFailed && vectorError === 'no_embedding') {
-          toast('⚠️ Semantic search unavailable. Add Gemini API key in Options or check configuration. Using keyword search...');
-        } else if (vectorFailed && vectorError.includes('invalid_api_key')) {
-          toast('⚠️ Invalid Gemini API key. Check your Settings. Using keyword search...');
-        } else if (vectorFailed) {
-          toast('⚠️ AI search failed (' + vectorError + '). Using keyword search...');
-        }
-
-        const convs = await loadConversationsAsync();
-        if (!convs || convs.length === 0) {
-          smartResults.innerHTML = renderSidebarEmptyCard({
-            icon: '🗂️',
-            title: 'No saved conversations yet',
-            message: 'Scan a chat first so Universal Search can index and query it.',
-            actionId: 'cb-smart-empty-scan',
-            actionLabel: 'Scan Chat'
-          });
-          const scanBtn = shadow.getElementById('cb-smart-empty-scan');
-          if (scanBtn) scanBtn.addEventListener('click', () => { try { btnScan.click(); } catch (_) { } });
-          announce('No saved conversations found');
-          return;
-        }
-
-        const ql = q.toLowerCase();
-        const scored = (Array.isArray(convs) ? convs : []).map(s => {
-          const host = (s.platform || s.url || '').toString();
-          const date = new Date(s.ts || Date.now());
-          const time = date.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-          const full = (s.conversation || []).map(m => `${m.role}: ${m.text}`).join('\n\n');
-          const count = (s.conversation || []).length || 0;
-          const score = (full.toLowerCase().split(ql).length - 1) + ((host || '').toLowerCase().includes(ql) ? 1 : 0);
-          const snippet = full.length > 400 ? full.slice(0, 400) + '…' : full;
-          return { s, score, host, time, snippet, snippetFull: full, count };
-        }).filter(x => x.score > 0 && x.count > 0).sort((a, b) => b.score - a.score);
-        // map and apply filters with deduplication
-        const mappedRaw = scored.map(r => ({ id: String(r.s && r.s.ts), host: r.host || new URL(r.s && r.s.url || location.href).hostname, time: r.time, snippet: r.snippet, snippetFull: r.snippetFull, count: r.count, topics: r.s && r.s.topics ? r.s.topics : [] }));
-        // Deduplicate by ID
-        const seenFallbackIds = new Set();
-        const mapped = mappedRaw.filter(r => {
-          if (seenFallbackIds.has(r.id)) return false;
-          seenFallbackIds.add(r.id);
-          return true;
-        }).slice(0, 12);
-        try {
-          const selHost = (hostSelect && hostSelect.value) ? hostSelect.value : '';
-          const selTag = (tagSelect && tagSelect.value) ? tagSelect.value : '';
-          const selDate = (dateSelect && dateSelect.value) ? dateSelect.value : 'All time';
-          const now = Date.now();
-          const filtered = mapped.filter(it => {
-            // Filter out conversations with 0 messages
-            if (it.count <= 0) return false;
-            if (selHost && it.host && it.host !== selHost) return false;
-            if (selTag && (!it.topics || !it.topics.some(t => t.toLowerCase() === selTag.toLowerCase()))) return false;
-            if (selDate && selDate !== 'All time') {
-              const days = selDate === 'Last 7 days' ? 7 : (selDate === 'Last 30 days' ? 30 : 0);
-              if (days > 0) {
-                const convObj = (convs || []).find(c => String(c.ts) === String(it.id));
-                const ts = convObj && convObj.ts ? Number(convObj.ts) : 0;
-                if (!ts) return false;
-                if ((now - ts) > days * 24 * 3600 * 1000) return false;
-              }
+              // apply filters from UI
+              try {
+                const selHost = (hostSelect && hostSelect.value) ? hostSelect.value : '';
+                const selTag = (tagSelect && tagSelect.value) ? tagSelect.value : '';
+                const selDate = (dateSelect && dateSelect.value) ? dateSelect.value : 'All time';
+                const now = Date.now();
+                const filtered = deduped.filter(it => {
+                  // Filter out conversations with 0 messages
+                  if (it.count <= 0) return false;
+                  if (selHost && it.host && it.host !== selHost) return false;
+                  if (selTag && (!it.topics || !it.topics.some(t => t.toLowerCase() === selTag.toLowerCase()))) return false;
+                  if (selDate && selDate !== 'All time') {
+                    const days = selDate === 'Last 7 days' ? 7 : (selDate === 'Last 30 days' ? 30 : 0);
+                    if (days > 0) {
+                      const convTs = (convs || []).find(c => String(c.ts) === String(it.id));
+                      const ts = convTs && convTs.ts ? Number(convTs.ts) : 0;
+                      if (!ts) return false;
+                      if ((now - ts) > days * 24 * 3600 * 1000) return false;
+                    }
+                  }
+                  return true;
+                }).slice(0, 12);
+                renderSmartResults(filtered);
+                announce('Search complete');
+              } catch (e) { renderSmartResults(mapped); announce('Search complete'); }
+              return;
+            } else if (vres && !vres.ok) {
+              vectorFailed = true;
+              vectorError = vres.error || 'unknown error';
             }
+          } catch (e) {
+            debugLog('vector query failed', e);
+            vectorFailed = true;
+            vectorError = e.message || 'exception';
+          }
+
+          // Fallback to local substring search
+          if (vectorFailed && vectorError === 'no_embedding') {
+            toast('⚠️ Semantic search unavailable. Add Gemini API key in Options or check configuration. Using keyword search...');
+          } else if (vectorFailed && vectorError.includes('invalid_api_key')) {
+            toast('⚠️ Invalid Gemini API key. Check your Settings. Using keyword search...');
+          } else if (vectorFailed) {
+            toast('⚠️ AI search failed (' + vectorError + '). Using keyword search...');
+          }
+
+          const convs = await loadConversationsAsync();
+          if (!convs || convs.length === 0) {
+            smartResults.innerHTML = renderSidebarEmptyCard({
+              icon: '🗂️',
+              title: 'No saved conversations yet',
+              message: 'Scan a chat first so Universal Search can index and query it.',
+              actionId: 'cb-smart-empty-scan',
+              actionLabel: 'Scan Chat'
+            });
+            const scanBtn = shadow.getElementById('cb-smart-empty-scan');
+            if (scanBtn) scanBtn.addEventListener('click', () => { try { btnScan.click(); } catch (_) { } });
+            announce('No saved conversations found');
+            return;
+          }
+
+          const ql = q.toLowerCase();
+          const scored = (Array.isArray(convs) ? convs : []).map(s => {
+            const host = (s.platform || s.url || '').toString();
+            const date = new Date(s.ts || Date.now());
+            const time = date.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+            const full = (s.conversation || []).map(m => `${m.role}: ${m.text}`).join('\n\n');
+            const count = (s.conversation || []).length || 0;
+            const score = (full.toLowerCase().split(ql).length - 1) + ((host || '').toLowerCase().includes(ql) ? 1 : 0);
+            const snippet = full.length > 400 ? full.slice(0, 400) + '…' : full;
+            return { s, score, host, time, snippet, snippetFull: full, count };
+          }).filter(x => x.score > 0 && x.count > 0).sort((a, b) => b.score - a.score);
+          // map and apply filters with deduplication
+          const mappedRaw = scored.map(r => ({ id: String(r.s && r.s.ts), host: r.host || new URL(r.s && r.s.url || location.href).hostname, time: r.time, snippet: r.snippet, snippetFull: r.snippetFull, count: r.count, topics: r.s && r.s.topics ? r.s.topics : [] }));
+          // Deduplicate by ID
+          const seenFallbackIds = new Set();
+          const mapped = mappedRaw.filter(r => {
+            if (seenFallbackIds.has(r.id)) return false;
+            seenFallbackIds.add(r.id);
             return true;
           }).slice(0, 12);
-
-          if (filtered.length === 0 && mapped.length > 0) {
-            toast('No results match your filters. Showing all results.');
-            renderSmartResults(mapped);
-          } else {
-            renderSmartResults(filtered);
-          }
-          announce(`Found ${filtered.length || mapped.length} results`);
-        } catch (e) { renderSmartResults(mapped); }
-      } catch (e) {
-        debugLog('smart search error', e);
-        smartResults.innerHTML = renderSidebarEmptyCard({
-          icon: '⚠️',
-          title: 'Search failed',
-          message: escapeHtml(e.message || 'Unexpected error'),
-          actionId: 'cb-smart-search-retry',
-          actionLabel: 'Retry'
-        });
-        const retryBtn = shadow.getElementById('cb-smart-search-retry');
-        if (retryBtn) retryBtn.addEventListener('click', () => { try { btnSmartSearch.click(); } catch (_) { } });
-        toast('Search failed');
-      }
-    });
-
-    btnSmartAsk.addEventListener('click', async () => {
-      try {
-        const q = (smartInput && smartInput.value) ? smartInput.value.trim() : '';
-        if (!q) { toast('Type a question to ask'); return; }
-
-        const hasApiKey = await new Promise((resolve) => {
           try {
-            chrome.storage.local.get(['chatbridge_gemini_key', 'chatbridge_hf_key'], (result) => {
-              const gemini = result && result.chatbridge_gemini_key ? String(result.chatbridge_gemini_key).trim() : '';
-              const hf = result && result.chatbridge_hf_key ? String(result.chatbridge_hf_key).trim() : '';
-              resolve(!!(gemini || hf));
-            });
-          } catch (_) { resolve(false); }
-        });
-
-        if (!hasApiKey) {
-          smartAnswer.innerHTML = renderSidebarEmptyCard({
-            icon: '🔑',
-            title: 'API key required',
-            message: 'Add a Gemini or Hugging Face key in Settings to use Ask AI on saved conversations.',
-            actionId: 'cb-smart-ask-open-settings',
-            actionLabel: 'Open Settings'
-          });
-          const openBtn = shadow.getElementById('cb-smart-ask-open-settings');
-          if (openBtn) openBtn.addEventListener('click', () => { try { btnSettings.click(); } catch (_) { } });
-          announce('Missing API key for Ask AI');
-          return;
-        }
-
-        btnSmartAsk.disabled = true; addLoadingToButton(btnSmartAsk, 'Searching chats…'); smartAnswer.textContent = ''; announce('Searching saved chats for relevant info');
-
-        // First, search saved chats for relevant context
-        let searchResults = [];
-        let vectorSearchError = null;
-        try {
-          console.log('[ChatBridge] Ask AI - calling runVectorQuery with query:', q.slice(0, 50));
-          const vres = await runVectorQuery(q, 8);
-          console.log('[ChatBridge] Ask AI - vector search response:', { ok: vres && vres.ok, error: vres && vres.error, resultCount: vres && vres.results ? vres.results.length : 0 });
-          if (vres && vres.ok && Array.isArray(vres.results)) {
-            searchResults = vres.results;
-          } else if (vres && !vres.ok) {
-            vectorSearchError = vres.error;
-            console.warn('[ChatBridge] Ask AI - vector search returned error:', vectorSearchError);
-          }
-        } catch (searchErr) {
-          vectorSearchError = searchErr.message || 'exception';
-          console.error('[ChatBridge] Ask AI - vector search exception:', vectorSearchError, searchErr);
-          debugLog('Vector search failed', searchErr);
-        }
-
-        addLoadingToButton(btnSmartAsk, 'Asking AI…');
-
-        // TIER 1: Build context from vector search results
-        let ctx = '';
-        if (searchResults.length > 0) {
-          console.log('[ChatBridge] Ask AI - found', searchResults.length, 'search results, building context');
-          const convs = await loadConversationsAsync();
-          for (let i = 0; i < Math.min(6, searchResults.length); i++) {
-            try {
-              const r = searchResults[i];
-              const id = String(r.id || '');
-              const conv = (convs || []).find(c => String(c.ts) === id);
-              if (conv && conv.conversation && conv.conversation.length) {
-                const snippet = conv.conversation.map(m => `${m.role}: ${m.text}`).join('\n').slice(0, 2000);
-                if ((ctx + '\n\n' + snippet).length > 13000) break;
-                ctx += '\n\n--- Conversation excerpt ' + (i + 1) + ' ---\n\n' + snippet;
-              } else {
-                // Fallback to vector metadata text when conversation ID lookup misses.
-                const meta = r && r.metadata ? r.metadata : {};
-                const metaText = String(
-                  meta.snippet || meta.text || meta.preview || meta.content || meta.message || ''
-                ).trim();
-                if (metaText) {
-                  const snippet = metaText.slice(0, 1800);
-                  if ((ctx + '\n\n' + snippet).length > 13000) break;
-                  ctx += '\n\n--- Memory hit ' + (i + 1) + ' ---\n\n' + snippet;
+            const selHost = (hostSelect && hostSelect.value) ? hostSelect.value : '';
+            const selTag = (tagSelect && tagSelect.value) ? tagSelect.value : '';
+            const selDate = (dateSelect && dateSelect.value) ? dateSelect.value : 'All time';
+            const now = Date.now();
+            const filtered = mapped.filter(it => {
+              // Filter out conversations with 0 messages
+              if (it.count <= 0) return false;
+              if (selHost && it.host && it.host !== selHost) return false;
+              if (selTag && (!it.topics || !it.topics.some(t => t.toLowerCase() === selTag.toLowerCase()))) return false;
+              if (selDate && selDate !== 'All time') {
+                const days = selDate === 'Last 7 days' ? 7 : (selDate === 'Last 30 days' ? 30 : 0);
+                if (days > 0) {
+                  const convObj = (convs || []).find(c => String(c.ts) === String(it.id));
+                  const ts = convObj && convObj.ts ? Number(convObj.ts) : 0;
+                  if (!ts) return false;
+                  if ((now - ts) > days * 24 * 3600 * 1000) return false;
                 }
               }
-            } catch (e) { }
-          }
-        }
+              return true;
+            }).slice(0, 12);
 
-        // TIER 2: If vector search gave no usable context, try keyword search on saved chats
-        let usedKeywordFallback = false;
-        if (ctx.trim().length <= 40) {
-          try {
-            const allConvs = await loadConversationsAsync();
-            if (allConvs && allConvs.length > 0) {
-              const ql = q.toLowerCase();
-              const words = ql.split(/\s+/).filter(w => w.length >= 3);
-              const kwMatches = (Array.isArray(allConvs) ? allConvs : [])
-                .map(s => {
-                  const full = (s.conversation || []).map(m => `${m.role}: ${m.text}`).join('\n');
-                  const score = words.reduce((acc, w) => acc + (full.toLowerCase().split(w).length - 1), 0);
-                  return { s, score, full };
-                })
-                .filter(x => x.score > 0 && (x.s.conversation || []).length > 0)
-                .sort((a, b) => b.score - a.score)
-                .slice(0, 3);
-
-              for (let i = 0; i < kwMatches.length; i++) {
-                const snippet = kwMatches[i].full.slice(0, 2000);
-                if ((ctx + '\n\n' + snippet).length > 10000) break;
-                ctx += '\n\n--- Saved chat ' + (i + 1) + ' ---\n\n' + snippet;
-              }
-              if (ctx.trim().length > 40) {
-                usedKeywordFallback = true;
-                console.log('[ChatBridge] Ask AI - keyword fallback found context, length:', ctx.length);
-              }
+            if (filtered.length === 0 && mapped.length > 0) {
+              toast('No results match your filters. Showing all results.');
+              renderSmartResults(mapped);
+            } else {
+              renderSmartResults(filtered);
             }
-          } catch (kwErr) {
-            console.warn('[ChatBridge] Ask AI - keyword fallback failed:', kwErr);
+            announce(`Found ${filtered.length || mapped.length} results`);
+          } catch (e) { renderSmartResults(mapped); }
+        } catch (e) {
+          debugLog('smart search error', e);
+          smartResults.innerHTML = renderSidebarEmptyCard({
+            icon: '⚠️',
+            title: 'Search failed',
+            message: escapeHtml(e.message || 'Unexpected error'),
+            actionId: 'cb-smart-search-retry',
+            actionLabel: 'Retry'
+          });
+          const retryBtn = shadow.getElementById('cb-smart-search-retry');
+          if (retryBtn) retryBtn.addEventListener('click', () => { try { btnSmartSearch.click(); } catch (_) { } });
+          toast('Search failed');
+        }
+      });
+
+      btnSmartAsk.addEventListener('click', async () => {
+        try {
+          const q = (smartInput && smartInput.value) ? smartInput.value.trim() : '';
+          if (!q) { toast('Type a question to ask'); return; }
+
+          const hasApiKey = await new Promise((resolve) => {
+            try {
+              chrome.storage.local.get(['chatbridge_gemini_key', 'chatbridge_hf_key'], (result) => {
+                const gemini = result && result.chatbridge_gemini_key ? String(result.chatbridge_gemini_key).trim() : '';
+                const hf = result && result.chatbridge_hf_key ? String(result.chatbridge_hf_key).trim() : '';
+                resolve(!!(gemini || hf));
+              });
+            } catch (_) { resolve(false); }
+          });
+
+          if (!hasApiKey) {
+            smartAnswer.innerHTML = renderSidebarEmptyCard({
+              icon: '🔑',
+              title: 'API key required',
+              message: 'Add a Gemini or Hugging Face key in Settings to use Ask AI on saved conversations.',
+              actionId: 'cb-smart-ask-open-settings',
+              actionLabel: 'Open Settings'
+            });
+            const openBtn = shadow.getElementById('cb-smart-ask-open-settings');
+            if (openBtn) openBtn.addEventListener('click', () => { try { btnSettings.click(); } catch (_) { } });
+            announce('Missing API key for Ask AI');
+            return;
           }
-        }
 
-        // Build prompt based on what context we have
-        let prompt = '';
-        console.log('[ChatBridge] Ask AI - context assembly:', { ctxLength: ctx.length, searchResults: searchResults.length, vectorSearchError, usedKeywordFallback });
+          btnSmartAsk.disabled = true; addLoadingToButton(btnSmartAsk, 'Searching chats…'); smartAnswer.textContent = ''; announce('Searching saved chats for relevant info');
 
-        if (ctx.trim().length > 40) {
-          // TIER 1 or 2: Grounded answer using saved chat context
-          console.log('[ChatBridge] Ask AI - using grounded context, length:', ctx.length);
-          contextSource = usedKeywordFallback ? 'keyword' : 'vector';
-          prompt = `You are a helpful assistant. The user has saved some of their AI conversations and is asking a question about them. Use the conversation excerpts below to give a direct, helpful answer. If the exact answer isn't in the excerpts, use what's closest and supplement with your general knowledge.\n\nUser question: ${q}\n\nSaved conversation excerpts:${ctx}`;
-        } else {
-          contextSource = 'general';
-          prompt = `User: ${q}\nAssistant:`;
-        }
-
-        const res = await callGeminiAsync({
-          action: 'custom',
-          systemInstruction: 'You are a helpful assistant answering questions about the user\'s saved conversations. Use the conversation excerpts provided to give direct, helpful answers.',
-          text: prompt,
-          length: 'short'
-        });
-        if (res && res.ok) {
-          const answerText = res.result || '(no answer)';
-          const notice = contextSource === 'general' ? '💬 Answering from general knowledge (no matching saved chats found).\n\n' : contextSource === 'keyword' ? '📎 Found a related saved chat.\n\n' : '';
-          smartAnswer.textContent = notice + answerText;
-          announce('Answer ready');
-          // provenance: find which saved conversations / models contributed similar content to this answer
+          // First, search saved chats for relevant context
+          let searchResults = [];
+          let vectorSearchError = null;
           try {
-            smartProvenance.innerHTML = '';
-            const vres = await runVectorQuery(answerText, 12);
-            if (vres && vres.ok && Array.isArray(vres.results) && vres.results.length) {
-              const convs = await loadConversationsAsync();
-              const contribs = [];
-              const contribsWithDetails = [];
-              for (const r of vres.results) {
-                try {
-                  const id = String(r.id || '');
-                  const meta = r.metadata || {};
-                  const conv = (convs || []).find(c => String(c.ts) === id) || null;
-                  // Prefer explicit model field, fallback to platform inference
-                  const explicitModel = conv && conv.model ? conv.model : null;
-                  const platformRaw = conv && conv.platform ? conv.platform : (meta && (meta.platform || meta.url) ? (meta.platform || meta.url) : 'unknown');
-                  const ts = conv && conv.ts ? Number(conv.ts) : (meta && meta.ts ? Number(meta.ts) : 0);
-                  const model = explicitModel || prettyModelName(platformRaw);
-                  const snippet = conv && conv.conversation ? conv.conversation.slice(0, 2).map(m => `${m.role}: ${(m.text || '').slice(0, 120)}`).join('\n') : '(no snippet)';
-                  const entry = { model, ts: ts || 0, rawPlatform: platformRaw, id, snippet };
-                  contribs.push(entry);
-                  contribsWithDetails.push(entry);
-                } catch (e) { debugLog('provenance map entry error', e); }
-              }
-              // sort by ts ascending and dedupe by model keeping first occurrence
-              contribs.sort((a, b) => (a.ts || 0) - (b.ts || 0));
-              const seen = new Set();
-              const uniq = [];
-              for (const c of contribs) {
-                if (!seen.has(c.model)) { seen.add(c.model); uniq.push(c); }
-              }
-              if (uniq.length) {
-                // build human-friendly sentence with clickable model names
-                function fmtDate(ts) { try { if (!ts) return 'an earlier date'; const d = new Date(Number(ts)); return d.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }); } catch (e) { return 'an earlier date'; } }
+            console.log('[ChatBridge] Ask AI - calling runVectorQuery with query:', q.slice(0, 50));
+            const vres = await runVectorQuery(q, 8);
+            console.log('[ChatBridge] Ask AI - vector search response:', { ok: vres && vres.ok, error: vres && vres.error, resultCount: vres && vres.results ? vres.results.length : 0 });
+            if (vres && vres.ok && Array.isArray(vres.results)) {
+              searchResults = vres.results;
+            } else if (vres && !vres.ok) {
+              vectorSearchError = vres.error;
+              console.warn('[ChatBridge] Ask AI - vector search returned error:', vectorSearchError);
+            }
+          } catch (searchErr) {
+            vectorSearchError = searchErr.message || 'exception';
+            console.error('[ChatBridge] Ask AI - vector search exception:', vectorSearchError, searchErr);
+            debugLog('Vector search failed', searchErr);
+          }
 
-                // Create sentence container
-                const sentenceEl = document.createElement('span');
-                sentenceEl.style.color = 'rgba(200,200,200,0.9)';
-                sentenceEl.style.fontSize = '12px';
+          addLoadingToButton(btnSmartAsk, 'Asking AI…');
 
-                if (uniq.length === 1) {
-                  sentenceEl.innerHTML = 'This solution was suggested by ';
-                  const link = document.createElement('a');
-                  link.href = '#';
-                  link.textContent = uniq[0].model;
-                  link.style.color = 'var(--cb-champagne)';
-                  link.style.textDecoration = 'underline';
-                  link.style.cursor = 'pointer';
-                  link.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    openConversationById(uniq[0].id);
-                  });
-                  sentenceEl.appendChild(link);
-                  sentenceEl.appendChild(document.createTextNode(` on ${fmtDate(uniq[0].ts)}.`));
-                } else if (uniq.length === 2) {
-                  sentenceEl.innerHTML = 'This solution was suggested by ';
-                  const link1 = document.createElement('a');
-                  link1.href = '#';
-                  link1.textContent = uniq[0].model;
-                  link1.style.color = 'var(--cb-champagne)';
-                  link1.style.textDecoration = 'underline';
-                  link1.style.cursor = 'pointer';
-                  link1.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    openConversationById(uniq[0].id);
-                  });
-                  sentenceEl.appendChild(link1);
-                  sentenceEl.appendChild(document.createTextNode(` on ${fmtDate(uniq[0].ts)} and refined by `));
-                  const link2 = document.createElement('a');
-                  link2.href = '#';
-                  link2.textContent = uniq[1].model;
-                  link2.style.color = 'var(--cb-champagne)';
-                  link2.style.textDecoration = 'underline';
-                  link2.style.cursor = 'pointer';
-                  link2.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    openConversationById(uniq[1].id);
-                  });
-                  sentenceEl.appendChild(link2);
-                  sentenceEl.appendChild(document.createTextNode(` on ${fmtDate(uniq[1].ts)}.`));
+          // TIER 1: Build context from vector search results
+          let ctx = '';
+          if (searchResults.length > 0) {
+            console.log('[ChatBridge] Ask AI - found', searchResults.length, 'search results, building context');
+            const convs = await loadConversationsAsync();
+            for (let i = 0; i < Math.min(6, searchResults.length); i++) {
+              try {
+                const r = searchResults[i];
+                const id = String(r.id || '');
+                const conv = (convs || []).find(c => String(c.ts) === id);
+                if (conv && conv.conversation && conv.conversation.length) {
+                  const snippet = conv.conversation.map(m => `${m.role}: ${m.text}`).join('\n').slice(0, 2000);
+                  if ((ctx + '\n\n' + snippet).length > 13000) break;
+                  ctx += '\n\n--- Conversation excerpt ' + (i + 1) + ' ---\n\n' + snippet;
                 } else {
-                  const first = uniq[0];
-                  const last = uniq[uniq.length - 1];
-                  const middle = uniq.slice(1, uniq.length - 1);
-                  sentenceEl.innerHTML = 'This solution was first suggested by ';
-                  const link1 = document.createElement('a');
-                  link1.href = '#';
-                  link1.textContent = first.model;
-                  link1.style.color = 'var(--cb-champagne)';
-                  link1.style.textDecoration = 'underline';
-                  link1.style.cursor = 'pointer';
-                  link1.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    openConversationById(first.id);
-                  });
-                  sentenceEl.appendChild(link1);
-                  sentenceEl.appendChild(document.createTextNode(` on ${fmtDate(first.ts)}, refined by ${middle.map(m => m.model).join(', ')} on subsequent dates, and verified by `));
-                  const link2 = document.createElement('a');
-                  link2.href = '#';
-                  link2.textContent = last.model;
-                  link2.style.color = 'var(--cb-champagne)';
-                  link2.style.textDecoration = 'underline';
-                  link2.style.cursor = 'pointer';
-                  link2.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    openConversationById(last.id);
-                  });
-                  sentenceEl.appendChild(link2);
-                  sentenceEl.appendChild(document.createTextNode(` on ${fmtDate(last.ts)}.`));
+                  // Fallback to vector metadata text when conversation ID lookup misses.
+                  const meta = r && r.metadata ? r.metadata : {};
+                  const metaText = String(
+                    meta.snippet || meta.text || meta.preview || meta.content || meta.message || ''
+                  ).trim();
+                  if (metaText) {
+                    const snippet = metaText.slice(0, 1800);
+                    if ((ctx + '\n\n' + snippet).length > 13000) break;
+                    ctx += '\n\n--- Memory hit ' + (i + 1) + ' ---\n\n' + snippet;
+                  }
                 }
+              } catch (e) { }
+            }
+          }
 
-                smartProvenance.appendChild(sentenceEl);
+          // TIER 2: If vector search gave no usable context, try keyword search on saved chats
+          let usedKeywordFallback = false;
+          if (ctx.trim().length <= 40) {
+            try {
+              const allConvs = await loadConversationsAsync();
+              if (allConvs && allConvs.length > 0) {
+                const ql = q.toLowerCase();
+                const words = ql.split(/\s+/).filter(w => w.length >= 3);
+                const kwMatches = (Array.isArray(allConvs) ? allConvs : [])
+                  .map(s => {
+                    const full = (s.conversation || []).map(m => `${m.role}: ${m.text}`).join('\n');
+                    const score = words.reduce((acc, w) => acc + (full.toLowerCase().split(w).length - 1), 0);
+                    return { s, score, full };
+                  })
+                  .filter(x => x.score > 0 && (x.s.conversation || []).length > 0)
+                  .sort((a, b) => b.score - a.score)
+                  .slice(0, 3);
 
-                // Add Details toggle
-                if (contribsWithDetails.length > 1) {
-                  const detailsToggle = document.createElement('a');
-                  detailsToggle.href = '#';
-                  detailsToggle.textContent = ' [Show details]';
-                  detailsToggle.style.color = 'var(--cb-accent)';
-                  detailsToggle.style.fontSize = '11px';
-                  detailsToggle.style.marginLeft = '8px';
-                  detailsToggle.style.cursor = 'pointer';
-                  detailsToggle.style.textDecoration = 'none';
+                for (let i = 0; i < kwMatches.length; i++) {
+                  const snippet = kwMatches[i].full.slice(0, 2000);
+                  if ((ctx + '\n\n' + snippet).length > 10000) break;
+                  ctx += '\n\n--- Saved chat ' + (i + 1) + ' ---\n\n' + snippet;
+                }
+                if (ctx.trim().length > 40) {
+                  usedKeywordFallback = true;
+                  console.log('[ChatBridge] Ask AI - keyword fallback found context, length:', ctx.length);
+                }
+              }
+            } catch (kwErr) {
+              console.warn('[ChatBridge] Ask AI - keyword fallback failed:', kwErr);
+            }
+          }
 
-                  const detailsContainer = document.createElement('div');
-                  detailsContainer.style.display = 'none';
-                  detailsContainer.style.marginTop = '12px';
-                  detailsContainer.style.padding = '10px';
-                  detailsContainer.style.background = 'rgba(20,20,30,0.18)';
-                  detailsContainer.style.borderRadius = '8px';
-                  detailsContainer.style.fontSize = '11px';
-                  detailsContainer.style.maxHeight = '300px';
-                  detailsContainer.style.overflowY = 'auto';
+          // Build prompt based on what context we have
+          let prompt = '';
+          console.log('[ChatBridge] Ask AI - context assembly:', { ctxLength: ctx.length, searchResults: searchResults.length, vectorSearchError, usedKeywordFallback });
 
-                  let isExpanded = false;
-                  detailsToggle.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    isExpanded = !isExpanded;
-                    detailsContainer.style.display = isExpanded ? 'block' : 'none';
-                    detailsToggle.textContent = isExpanded ? ' [Hide details]' : ' [Show details]';
-                  });
+          if (ctx.trim().length > 40) {
+            // TIER 1 or 2: Grounded answer using saved chat context
+            console.log('[ChatBridge] Ask AI - using grounded context, length:', ctx.length);
+            contextSource = usedKeywordFallback ? 'keyword' : 'vector';
+            prompt = `You are a helpful assistant. The user has saved some of their AI conversations and is asking a question about them. Use the conversation excerpts below to give a direct, helpful answer. If the exact answer isn't in the excerpts, use what's closest and supplement with your general knowledge.\n\nUser question: ${q}\n\nSaved conversation excerpts:${ctx}`;
+          } else {
+            contextSource = 'general';
+            prompt = `User: ${q}\nAssistant:`;
+          }
 
-                  // Populate details container
-                  contribsWithDetails.forEach((contrib, idx) => {
-                    const detailRow = document.createElement('div');
-                    detailRow.style.marginBottom = '10px';
-                    detailRow.style.paddingBottom = '10px';
-                    detailRow.style.borderBottom = idx < contribsWithDetails.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none';
+          const res = await callGeminiAsync({
+            action: 'custom',
+            systemInstruction: 'You are a helpful assistant answering questions about the user\'s saved conversations. Use the conversation excerpts provided to give direct, helpful answers.',
+            text: prompt,
+            length: 'short'
+          });
+          if (res && res.ok) {
+            const answerText = res.result || '(no answer)';
+            const notice = contextSource === 'general' ? '💬 Answering from general knowledge (no matching saved chats found).\n\n' : contextSource === 'keyword' ? '📎 Found a related saved chat.\n\n' : '';
+            smartAnswer.textContent = notice + answerText;
+            announce('Answer ready');
+            // provenance: find which saved conversations / models contributed similar content to this answer
+            try {
+              smartProvenance.innerHTML = '';
+              const vres = await runVectorQuery(answerText, 12);
+              if (vres && vres.ok && Array.isArray(vres.results) && vres.results.length) {
+                const convs = await loadConversationsAsync();
+                const contribs = [];
+                const contribsWithDetails = [];
+                for (const r of vres.results) {
+                  try {
+                    const id = String(r.id || '');
+                    const meta = r.metadata || {};
+                    const conv = (convs || []).find(c => String(c.ts) === id) || null;
+                    // Prefer explicit model field, fallback to platform inference
+                    const explicitModel = conv && conv.model ? conv.model : null;
+                    const platformRaw = conv && conv.platform ? conv.platform : (meta && (meta.platform || meta.url) ? (meta.platform || meta.url) : 'unknown');
+                    const ts = conv && conv.ts ? Number(conv.ts) : (meta && meta.ts ? Number(meta.ts) : 0);
+                    const model = explicitModel || prettyModelName(platformRaw);
+                    const snippet = conv && conv.conversation ? conv.conversation.slice(0, 2).map(m => `${m.role}: ${(m.text || '').slice(0, 120)}`).join('\n') : '(no snippet)';
+                    const entry = { model, ts: ts || 0, rawPlatform: platformRaw, id, snippet };
+                    contribs.push(entry);
+                    contribsWithDetails.push(entry);
+                  } catch (e) { debugLog('provenance map entry error', e); }
+                }
+                // sort by ts ascending and dedupe by model keeping first occurrence
+                contribs.sort((a, b) => (a.ts || 0) - (b.ts || 0));
+                const seen = new Set();
+                const uniq = [];
+                for (const c of contribs) {
+                  if (!seen.has(c.model)) { seen.add(c.model); uniq.push(c); }
+                }
+                if (uniq.length) {
+                  // build human-friendly sentence with clickable model names
+                  function fmtDate(ts) { try { if (!ts) return 'an earlier date'; const d = new Date(Number(ts)); return d.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }); } catch (e) { return 'an earlier date'; } }
 
-                    const detailHeader = document.createElement('div');
-                    detailHeader.style.fontWeight = '600';
-                    detailHeader.style.marginBottom = '4px';
-                    detailHeader.style.color = 'var(--cb-champagne)';
+                  // Create sentence container
+                  const sentenceEl = document.createElement('span');
+                  sentenceEl.style.color = 'rgba(200,200,200,0.9)';
+                  sentenceEl.style.fontSize = '12px';
 
-                    const modelLink = document.createElement('a');
-                    modelLink.href = '#';
-                    modelLink.textContent = contrib.model;
-                    modelLink.style.color = 'var(--cb-champagne)';
-                    modelLink.style.textDecoration = 'underline';
-                    modelLink.addEventListener('click', (e) => {
+                  if (uniq.length === 1) {
+                    sentenceEl.innerHTML = 'This solution was suggested by ';
+                    const link = document.createElement('a');
+                    link.href = '#';
+                    link.textContent = uniq[0].model;
+                    link.style.color = 'var(--cb-champagne)';
+                    link.style.textDecoration = 'underline';
+                    link.style.cursor = 'pointer';
+                    link.addEventListener('click', (e) => {
                       e.preventDefault();
-                      openConversationById(contrib.id);
+                      openConversationById(uniq[0].id);
+                    });
+                    sentenceEl.appendChild(link);
+                    sentenceEl.appendChild(document.createTextNode(` on ${fmtDate(uniq[0].ts)}.`));
+                  } else if (uniq.length === 2) {
+                    sentenceEl.innerHTML = 'This solution was suggested by ';
+                    const link1 = document.createElement('a');
+                    link1.href = '#';
+                    link1.textContent = uniq[0].model;
+                    link1.style.color = 'var(--cb-champagne)';
+                    link1.style.textDecoration = 'underline';
+                    link1.style.cursor = 'pointer';
+                    link1.addEventListener('click', (e) => {
+                      e.preventDefault();
+                      openConversationById(uniq[0].id);
+                    });
+                    sentenceEl.appendChild(link1);
+                    sentenceEl.appendChild(document.createTextNode(` on ${fmtDate(uniq[0].ts)} and refined by `));
+                    const link2 = document.createElement('a');
+                    link2.href = '#';
+                    link2.textContent = uniq[1].model;
+                    link2.style.color = 'var(--cb-champagne)';
+                    link2.style.textDecoration = 'underline';
+                    link2.style.cursor = 'pointer';
+                    link2.addEventListener('click', (e) => {
+                      e.preventDefault();
+                      openConversationById(uniq[1].id);
+                    });
+                    sentenceEl.appendChild(link2);
+                    sentenceEl.appendChild(document.createTextNode(` on ${fmtDate(uniq[1].ts)}.`));
+                  } else {
+                    const first = uniq[0];
+                    const last = uniq[uniq.length - 1];
+                    const middle = uniq.slice(1, uniq.length - 1);
+                    sentenceEl.innerHTML = 'This solution was first suggested by ';
+                    const link1 = document.createElement('a');
+                    link1.href = '#';
+                    link1.textContent = first.model;
+                    link1.style.color = 'var(--cb-champagne)';
+                    link1.style.textDecoration = 'underline';
+                    link1.style.cursor = 'pointer';
+                    link1.addEventListener('click', (e) => {
+                      e.preventDefault();
+                      openConversationById(first.id);
+                    });
+                    sentenceEl.appendChild(link1);
+                    sentenceEl.appendChild(document.createTextNode(` on ${fmtDate(first.ts)}, refined by ${middle.map(m => m.model).join(', ')} on subsequent dates, and verified by `));
+                    const link2 = document.createElement('a');
+                    link2.href = '#';
+                    link2.textContent = last.model;
+                    link2.style.color = 'var(--cb-champagne)';
+                    link2.style.textDecoration = 'underline';
+                    link2.style.cursor = 'pointer';
+                    link2.addEventListener('click', (e) => {
+                      e.preventDefault();
+                      openConversationById(last.id);
+                    });
+                    sentenceEl.appendChild(link2);
+                    sentenceEl.appendChild(document.createTextNode(` on ${fmtDate(last.ts)}.`));
+                  }
+
+                  smartProvenance.appendChild(sentenceEl);
+
+                  // Add Details toggle
+                  if (contribsWithDetails.length > 1) {
+                    const detailsToggle = document.createElement('a');
+                    detailsToggle.href = '#';
+                    detailsToggle.textContent = ' [Show details]';
+                    detailsToggle.style.color = 'var(--cb-accent)';
+                    detailsToggle.style.fontSize = '11px';
+                    detailsToggle.style.marginLeft = '8px';
+                    detailsToggle.style.cursor = 'pointer';
+                    detailsToggle.style.textDecoration = 'none';
+
+                    const detailsContainer = document.createElement('div');
+                    detailsContainer.style.display = 'none';
+                    detailsContainer.style.marginTop = '12px';
+                    detailsContainer.style.padding = '10px';
+                    detailsContainer.style.background = 'rgba(20,20,30,0.18)';
+                    detailsContainer.style.borderRadius = '8px';
+                    detailsContainer.style.fontSize = '11px';
+                    detailsContainer.style.maxHeight = '300px';
+                    detailsContainer.style.overflowY = 'auto';
+
+                    let isExpanded = false;
+                    detailsToggle.addEventListener('click', (e) => {
+                      e.preventDefault();
+                      isExpanded = !isExpanded;
+                      detailsContainer.style.display = isExpanded ? 'block' : 'none';
+                      detailsToggle.textContent = isExpanded ? ' [Hide details]' : ' [Show details]';
                     });
 
-                    detailHeader.appendChild(modelLink);
-                    detailHeader.appendChild(document.createTextNode(` • ${fmtDate(contrib.ts)} • ${contrib.rawPlatform}`));
+                    // Populate details container
+                    contribsWithDetails.forEach((contrib, idx) => {
+                      const detailRow = document.createElement('div');
+                      detailRow.style.marginBottom = '10px';
+                      detailRow.style.paddingBottom = '10px';
+                      detailRow.style.borderBottom = idx < contribsWithDetails.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none';
 
-                    const detailSnippet = document.createElement('div');
-                    detailSnippet.style.color = 'rgba(200,200,200,0.8)';
-                    detailSnippet.style.fontSize = '11px';
-                    detailSnippet.style.marginTop = '4px';
-                    detailSnippet.style.whiteSpace = 'pre-wrap';
-                    detailSnippet.textContent = contrib.snippet + '…';
+                      const detailHeader = document.createElement('div');
+                      detailHeader.style.fontWeight = '600';
+                      detailHeader.style.marginBottom = '4px';
+                      detailHeader.style.color = 'var(--cb-champagne)';
 
-                    detailRow.appendChild(detailHeader);
-                    detailRow.appendChild(detailSnippet);
-                    detailsContainer.appendChild(detailRow);
-                  });
+                      const modelLink = document.createElement('a');
+                      modelLink.href = '#';
+                      modelLink.textContent = contrib.model;
+                      modelLink.style.color = 'var(--cb-champagne)';
+                      modelLink.style.textDecoration = 'underline';
+                      modelLink.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        openConversationById(contrib.id);
+                      });
 
-                  smartProvenance.appendChild(detailsToggle);
-                  smartProvenance.appendChild(detailsContainer);
+                      detailHeader.appendChild(modelLink);
+                      detailHeader.appendChild(document.createTextNode(` • ${fmtDate(contrib.ts)} • ${contrib.rawPlatform}`));
+
+                      const detailSnippet = document.createElement('div');
+                      detailSnippet.style.color = 'rgba(200,200,200,0.8)';
+                      detailSnippet.style.fontSize = '11px';
+                      detailSnippet.style.marginTop = '4px';
+                      detailSnippet.style.whiteSpace = 'pre-wrap';
+                      detailSnippet.textContent = contrib.snippet + '…';
+
+                      detailRow.appendChild(detailHeader);
+                      detailRow.appendChild(detailSnippet);
+                      detailsContainer.appendChild(detailRow);
+                    });
+
+                    smartProvenance.appendChild(detailsToggle);
+                    smartProvenance.appendChild(detailsContainer);
+                  }
                 }
               }
-            }
-          } catch (e) { debugLog('provenance generation failed', e); }
-        } else {
-          smartAnswer.textContent = 'AI query failed: ' + (res && res.error ? res.error : 'unknown');
-        }
-      } catch (e) { debugLog('smart ask error', e); smartAnswer.textContent = '(ask failed)'; }
-      finally { removeLoadingFromButton(btnSmartAsk, 'Ask AI'); }
-    });
-
-    // Index all saved conversations via background bulk index
-    btnIndexAll.addEventListener('click', async () => {
-      const prev = btnIndexAll.textContent;
-      addLoadingToButton(btnIndexAll, 'Indexing...');
-      smartAnswer.textContent = '';
-      announce('Indexing all saved chats');
-      try {
-        await optimisticAction({
-          applyOptimistic: () => { smartAnswer.textContent = 'Indexing started…'; smartAnswer.classList.add('cb-fade-in'); },
-          confirmUI: (res) => { try { smartAnswer.textContent = `Indexed ${res.indexed || 0} conversations.`; smartAnswer.classList.add('cb-scale-pop'); announce('Indexing complete'); } catch (e) { } },
-          rollbackUI: (err) => { try { smartAnswer.textContent = 'Index failed: ' + (err && err.message ? err.message : 'unknown'); } catch (e) { } },
-          action: async () => {
-            // call background with exponential backoff
-            const res = await callBackgroundWithBackoff({ type: 'vector_index_all' }, 3, 500);
-            return res;
-          },
-          onError: (err) => {
-            showError('Index all failed: ' + (err && err.message ? err.message : 'unknown'), async () => { try { btnIndexAll.click(); } catch (e) { } });
+            } catch (e) { debugLog('provenance generation failed', e); }
+          } else {
+            smartAnswer.textContent = 'AI query failed: ' + (res && res.error ? res.error : 'unknown');
           }
-        });
-      } catch (e) {
-        debugLog('Index all exception', e);
-      } finally {
-        removeLoadingFromButton(btnIndexAll, prev);
-      }
-    });
+        } catch (e) { debugLog('smart ask error', e); smartAnswer.textContent = '(ask failed)'; }
+        finally { removeLoadingFromButton(btnSmartAsk, 'Ask AI'); }
+      });
+
+      // Index all saved conversations via background bulk index
+      btnIndexAll.addEventListener('click', async () => {
+        const prev = btnIndexAll.textContent;
+        addLoadingToButton(btnIndexAll, 'Indexing...');
+        smartAnswer.textContent = '';
+        announce('Indexing all saved chats');
+        try {
+          await optimisticAction({
+            applyOptimistic: () => { smartAnswer.textContent = 'Indexing started…'; smartAnswer.classList.add('cb-fade-in'); },
+            confirmUI: (res) => { try { smartAnswer.textContent = `Indexed ${res.indexed || 0} conversations.`; smartAnswer.classList.add('cb-scale-pop'); announce('Indexing complete'); } catch (e) { } },
+            rollbackUI: (err) => { try { smartAnswer.textContent = 'Index failed: ' + (err && err.message ? err.message : 'unknown'); } catch (e) { } },
+            action: async () => {
+              // call background with exponential backoff
+              const res = await callBackgroundWithBackoff({ type: 'vector_index_all' }, 3, 500);
+              return res;
+            },
+            onError: (err) => {
+              showError('Index all failed: ' + (err && err.message ? err.message : 'unknown'), async () => { try { btnIndexAll.click(); } catch (e) { } });
+            }
+          });
+        } catch (e) {
+          debugLog('Index all exception', e);
+        } finally {
+          removeLoadingFromButton(btnIndexAll, prev);
+        }
+      });
     }
 
     // Generate a concise descriptive title from conversation content
@@ -29223,9 +29304,9 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
           const fullText = (conv && conv.conversation) ? conv.conversation.map(m => m.text || '').join('\n') : '';
           const findings = window.ChatBridgeSecurity.detectSensitiveData(fullText);
 
-            if (findings && findings.length > 0) {
-              const findingsSummary = findings.map(f => `${f.type} (${f.count} matches)`).join(', ');
-              console.warn('[ChatBridge Security] Sensitive data detected in conversation: ' + findingsSummary);
+          if (findings && findings.length > 0) {
+            const findingsSummary = findings.map(f => `${f.type} (${f.count} matches)`).join(', ');
+            console.warn('[ChatBridge Security] Sensitive data detected in conversation: ' + findingsSummary);
 
             // Auto-sanitize the conversation
             if (Array.isArray(conv.conversation)) {
@@ -29628,223 +29709,223 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
       try {
         const ui = injectUI();
 
-      // Initialize MCP Bridge to enable agent-to-agent communication
-      if (typeof window.MCPBridge !== 'undefined') {
-        try {
-          window.MCPBridge.init();
-          _cbMCPInitialized = true;
+        // Initialize MCP Bridge to enable agent-to-agent communication
+        if (typeof window.MCPBridge !== 'undefined') {
+          try {
+            window.MCPBridge.init();
+            _cbMCPInitialized = true;
 
-          // Register ChatBridge-specific resources
-          window.MCPBridge.registerResource('/chatbridge/scan', async (params) => {
-            try {
-              const msgs = await scanChat();
+            // Register ChatBridge-specific resources
+            window.MCPBridge.registerResource('/chatbridge/scan', async (params) => {
+              try {
+                const msgs = await scanChat();
+                return {
+                  ok: true,
+                  messages: msgs,
+                  count: msgs.length,
+                  platform: detectCurrentPlatform(),
+                  timestamp: Date.now()
+                };
+              } catch (e) {
+                return { ok: false, error: e.message };
+              }
+            });
+
+            window.MCPBridge.registerResource('/chatbridge/restore', async (params) => {
+              try {
+                const text = params.text || '';
+                const attachments = params.attachments || [];
+                const success = await restoreToChat(text, attachments);
+                return { ok: success };
+              } catch (e) {
+                return { ok: false, error: e.message };
+              }
+            });
+
+            window.MCPBridge.registerResource('/chatbridge/status', async (params) => {
               return {
                 ok: true,
-                messages: msgs,
-                count: msgs.length,
                 platform: detectCurrentPlatform(),
+                url: window.location.href,
+                hasRAG: typeof window.RAGEngine !== 'undefined',
+                hasONNX: typeof window.EmbeddingEngine !== 'undefined',
                 timestamp: Date.now()
               };
-            } catch (e) {
-              return { ok: false, error: e.message };
-            }
-          });
+            });
 
-          window.MCPBridge.registerResource('/chatbridge/restore', async (params) => {
-            try {
-              const text = params.text || '';
-              const attachments = params.attachments || [];
-              const success = await restoreToChat(text, attachments);
-              return { ok: success };
-            } catch (e) {
-              return { ok: false, error: e.message };
-            }
-          });
-
-          window.MCPBridge.registerResource('/chatbridge/status', async (params) => {
-            return {
-              ok: true,
-              platform: detectCurrentPlatform(),
-              url: window.location.href,
-              hasRAG: typeof window.RAGEngine !== 'undefined',
-              hasONNX: typeof window.EmbeddingEngine !== 'undefined',
-              timestamp: Date.now()
-            };
-          });
-
-          console.log('[ChatBridge] MCP initialized with', window.MCPBridge.getStats().registeredResources.length, 'resources:', window.MCPBridge.getStats().registeredResources);
-        } catch (e) {
-          console.warn('[ChatBridge] MCP init failed:', e);
+            console.log('[ChatBridge] MCP initialized with', window.MCPBridge.getStats().registeredResources.length, 'resources:', window.MCPBridge.getStats().registeredResources);
+          } catch (e) {
+            console.warn('[ChatBridge] MCP init failed:', e);
+          }
         }
-      }
 
-      // Keyboard command handlers
-      if (ui && ui.avatar && ui.panel) {
-        const registerKeyboardCommandListener = (attempt = 0) => {
-          if (keyboardCommandListenerRegistered) return;
-          const onMessage = getRuntimeMessageApi();
-          if (!onMessage) {
-            if (attempt < 12) {
-              setTimeout(() => registerKeyboardCommandListener(attempt + 1), 250);
+        // Keyboard command handlers
+        if (ui && ui.avatar && ui.panel) {
+          const registerKeyboardCommandListener = (attempt = 0) => {
+            if (keyboardCommandListenerRegistered) return;
+            const onMessage = getRuntimeMessageApi();
+            if (!onMessage) {
+              if (attempt < 12) {
+                setTimeout(() => registerKeyboardCommandListener(attempt + 1), 250);
+                return;
+              }
+              debugLog('[ChatBridge] runtime messaging unavailable after retries; keyboard command listener disabled for this page');
               return;
             }
-            debugLog('[ChatBridge] runtime messaging unavailable after retries; keyboard command listener disabled for this page');
-            return;
-          }
 
-          keyboardCommandListenerRegistered = true;
-          onMessage.addListener((msg, sender, sendResponse) => {
-            if (!msg || !msg.type) return;
+            keyboardCommandListenerRegistered = true;
+            onMessage.addListener((msg, sender, sendResponse) => {
+              if (!msg || !msg.type) return;
 
-            try {
-              if (msg.type === 'keyboard_command') {
-                const command = msg.command;
+              try {
+                if (msg.type === 'keyboard_command') {
+                  const command = msg.command;
 
-                if (command === 'quick-scan') {
-                  if (ui.panel.style.display === 'none') {
-                    ui.avatar.click();
-                  }
-                  setTimeout(() => {
-                    const shadow = ui.panel.getRootNode();
-                    const btnScan = shadow.querySelector('#btnScan');
-                    if (btnScan) btnScan.click();
-                  }, 100);
-                  sendResponse({ ok: true });
-                }
-                else if (command === 'toggle-sidebar') {
-                  ui.avatar.click();
-                  sendResponse({ ok: true });
-                }
-                else if (command === 'insight-finder') {
-                  (async () => {
-                    try {
-                      const msgs = await scanChat();
-                      if (!msgs || msgs.length === 0) {
-                        toast('No messages found in current chat');
-                        sendResponse({ ok: false });
-                        return;
-                      }
-                      const insights = extractInsights(msgs);
-                      const total = Object.values(insights).reduce((sum, arr) => sum + arr.length, 0);
-                      if (total === 0) {
-                        toast('No insights found in this conversation');
-                        sendResponse({ ok: false });
-                        return;
-                      }
-                      showInsightFinderModal(insights, msgs);
-                      toast(`Found ${total} insights`);
-                      sendResponse({ ok: true });
-                    } catch (e) {
-                      debugLog('Insight Finder keyboard error', e);
-                      sendResponse({ ok: false });
+                  if (command === 'quick-scan') {
+                    if (ui.panel.style.display === 'none') {
+                      ui.avatar.click();
                     }
-                  })();
-                  return true;
-                }
-                else if (command === 'close-view') {
-                  const shadow = ui.panel.getRootNode();
-                  const openView = shadow.querySelector('.cb-internal-view.cb-view-active');
-                  if (openView) {
-                    const closeBtn = openView.querySelector('.cb-view-close');
-                    if (closeBtn) closeBtn.click();
-                  } else if (ui.panel.style.display !== 'none') {
-                    ui.avatar.click();
-                  }
-                  sendResponse({ ok: true });
-                }
-                else if (command === 'insert-to-chat') {
-                  const shadow = ui.panel.getRootNode();
-                  const insertBtns = Array.from(shadow.querySelectorAll('[id^="btnInsert"]'));
-                  const visibleBtn = insertBtns.find(btn => {
-                    const view = btn.closest('.cb-internal-view');
-                    return view && view.classList.contains('cb-view-active');
-                  });
-
-                  if (visibleBtn) {
-                    visibleBtn.click();
+                    setTimeout(() => {
+                      const shadow = ui.panel.getRootNode();
+                      const btnScan = shadow.querySelector('#btnScan');
+                      if (btnScan) btnScan.click();
+                    }, 100);
                     sendResponse({ ok: true });
-                  } else {
-                    try {
-                      const t = document.createElement('div');
-                      t.setAttribute('data-cb-ignore', 'true');
-                      t.textContent = 'No insert action available';
-                      t.style.cssText = 'position:fixed;bottom:18px;left:18px;background:rgba(6,20,32,0.9);color:#dff1ff;padding:8px 10px;border-radius:8px;z-index:2147483647;';
-                      document.body.appendChild(t);
-                      setTimeout(() => t.remove(), 2400);
-                    } catch (e) { }
-                    sendResponse({ ok: false, error: 'no_insert_button' });
                   }
+                  else if (command === 'toggle-sidebar') {
+                    ui.avatar.click();
+                    sendResponse({ ok: true });
+                  }
+                  else if (command === 'insight-finder') {
+                    (async () => {
+                      try {
+                        const msgs = await scanChat();
+                        if (!msgs || msgs.length === 0) {
+                          toast('No messages found in current chat');
+                          sendResponse({ ok: false });
+                          return;
+                        }
+                        const insights = extractInsights(msgs);
+                        const total = Object.values(insights).reduce((sum, arr) => sum + arr.length, 0);
+                        if (total === 0) {
+                          toast('No insights found in this conversation');
+                          sendResponse({ ok: false });
+                          return;
+                        }
+                        showInsightFinderModal(insights, msgs);
+                        toast(`Found ${total} insights`);
+                        sendResponse({ ok: true });
+                      } catch (e) {
+                        debugLog('Insight Finder keyboard error', e);
+                        sendResponse({ ok: false });
+                      }
+                    })();
+                    return true;
+                  }
+                  else if (command === 'close-view') {
+                    const shadow = ui.panel.getRootNode();
+                    const openView = shadow.querySelector('.cb-internal-view.cb-view-active');
+                    if (openView) {
+                      const closeBtn = openView.querySelector('.cb-view-close');
+                      if (closeBtn) closeBtn.click();
+                    } else if (ui.panel.style.display !== 'none') {
+                      ui.avatar.click();
+                    }
+                    sendResponse({ ok: true });
+                  }
+                  else if (command === 'insert-to-chat') {
+                    const shadow = ui.panel.getRootNode();
+                    const insertBtns = Array.from(shadow.querySelectorAll('[id^="btnInsert"]'));
+                    const visibleBtn = insertBtns.find(btn => {
+                      const view = btn.closest('.cb-internal-view');
+                      return view && view.classList.contains('cb-view-active');
+                    });
+
+                    if (visibleBtn) {
+                      visibleBtn.click();
+                      sendResponse({ ok: true });
+                    } else {
+                      try {
+                        const t = document.createElement('div');
+                        t.setAttribute('data-cb-ignore', 'true');
+                        t.textContent = 'No insert action available';
+                        t.style.cssText = 'position:fixed;bottom:18px;left:18px;background:rgba(6,20,32,0.9);color:#dff1ff;padding:8px 10px;border-radius:8px;z-index:2147483647;';
+                        document.body.appendChild(t);
+                        setTimeout(() => t.remove(), 2400);
+                      } catch (e) { }
+                      sendResponse({ ok: false, error: 'no_insert_button' });
+                    }
+                  }
+                }
+              } catch (e) {
+                debugLog('keyboard command error', e);
+                sendResponse({ ok: false, error: String(e) });
+              }
+            });
+          };
+
+          registerKeyboardCommandListener();
+          // Note: restore_to_chat listener is registered earlier at the top level
+          // to ensure it's ready when the tab opens
+
+          // Cross-Context Memory: Auto-detect context and suggest connections after page loads
+          setTimeout(async () => {
+            try {
+              // Wait for conversation to load, then check for connections
+              await new Promise(r => setTimeout(r, 3000)); // 3s delay for chat to render
+              const graphKey = 'chatbridge:knowledge_graph';
+              const graph = JSON.parse(localStorage.getItem(graphKey) || '[]');
+
+              // Only auto-suggest if we have a knowledge graph with at least 3 entries
+              if (graph.length >= 3) {
+                await detectAndSuggestContext();
+              }
+            } catch (e) {
+              debugLog('Auto context detection error', e);
+            }
+          }, 1000);
+        }
+
+        setTimeout(async () => { const msgs = await scanChat(); if (msgs && msgs.length) { await saveConversation({ platform: location.hostname, url: location.href, ts: Date.now(), conversation: msgs }); debugLog('auto-saved', msgs.length); } }, 3000);
+
+        // Auto-scan on keypress (Enter) or click (Send button) to capture live chat updates
+        let autoScanTimeout = null;
+        const triggerAutoScan = () => {
+          if (autoScanTimeout) clearTimeout(autoScanTimeout);
+          autoScanTimeout = setTimeout(async () => {
+            try {
+              const msgs = await scanChat();
+              if (msgs && msgs.length) {
+                await saveConversation({
+                  platform: location.hostname,
+                  url: location.href,
+                  ts: Date.now(),
+                  conversation: msgs
+                });
+                debugLog('auto-saved on activity', msgs.length);
+                if (window.ChatBridge && typeof window.ChatBridge.refreshHistory === 'function') {
+                  window.ChatBridge.refreshHistory();
                 }
               }
             } catch (e) {
-              debugLog('keyboard command error', e);
-              sendResponse({ ok: false, error: String(e) });
+              debugLog('Auto-save activity error', e);
             }
-          });
+          }, 3000);
         };
 
-        registerKeyboardCommandListener();
-        // Note: restore_to_chat listener is registered earlier at the top level
-        // to ensure it's ready when the tab opens
-
-        // Cross-Context Memory: Auto-detect context and suggest connections after page loads
-        setTimeout(async () => {
-          try {
-            // Wait for conversation to load, then check for connections
-            await new Promise(r => setTimeout(r, 3000)); // 3s delay for chat to render
-            const graphKey = 'chatbridge:knowledge_graph';
-            const graph = JSON.parse(localStorage.getItem(graphKey) || '[]');
-
-            // Only auto-suggest if we have a knowledge graph with at least 3 entries
-            if (graph.length >= 3) {
-              await detectAndSuggestContext();
-            }
-          } catch (e) {
-            debugLog('Auto context detection error', e);
+        window.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' && e.target && (e.target.tagName === 'TEXTAREA' || e.target.getAttribute('contenteditable') === 'true')) {
+            triggerAutoScan();
           }
-        }, 1000);
-      }
+        }, { passive: true });
 
-      setTimeout(async () => { const msgs = await scanChat(); if (msgs && msgs.length) { await saveConversation({ platform: location.hostname, url: location.href, ts: Date.now(), conversation: msgs }); debugLog('auto-saved', msgs.length); } }, 3000);
-
-      // Auto-scan on keypress (Enter) or click (Send button) to capture live chat updates
-      let autoScanTimeout = null;
-      const triggerAutoScan = () => {
-        if (autoScanTimeout) clearTimeout(autoScanTimeout);
-        autoScanTimeout = setTimeout(async () => {
-          try {
-            const msgs = await scanChat();
-            if (msgs && msgs.length) {
-              await saveConversation({
-                platform: location.hostname,
-                url: location.href,
-                ts: Date.now(),
-                conversation: msgs
-              });
-              debugLog('auto-saved on activity', msgs.length);
-              if (window.ChatBridge && typeof window.ChatBridge.refreshHistory === 'function') {
-                window.ChatBridge.refreshHistory();
-              }
-            }
-          } catch (e) {
-            debugLog('Auto-save activity error', e);
+        window.addEventListener('click', (e) => {
+          const btn = e.target.closest('button');
+          if (btn && (btn.getAttribute('aria-label')?.toLowerCase().includes('send') || btn.querySelector('svg')?.innerHTML.includes('arrow') || btn.id === 'send-button')) {
+            triggerAutoScan();
           }
-        }, 3000);
-      };
-
-      window.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' && e.target && (e.target.tagName === 'TEXTAREA' || e.target.getAttribute('contenteditable') === 'true')) {
-          triggerAutoScan();
-        }
-      }, { passive: true });
-
-      window.addEventListener('click', (e) => {
-        const btn = e.target.closest('button');
-        if (btn && (btn.getAttribute('aria-label')?.toLowerCase().includes('send') || btn.querySelector('svg')?.innerHTML.includes('arrow') || btn.id === 'send-button')) {
-          triggerAutoScan();
-        }
-      }, { passive: true });
-    } catch (e) { debugLog('boot error', e); }
+        }, { passive: true });
+      } catch (e) { debugLog('boot error', e); }
     });
   }
 

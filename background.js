@@ -168,6 +168,8 @@ async function hasLocalProviderAccess(provider) {
       return !!(await getHuggingFaceApiKey({ force: true }));
     case 'nvidia':
       return !!(await getNvidiaApiKey({ force: true }));
+    case 'claude':
+      return !!(await getClaudeApiKey({ force: true }));
     default:
       return false;
   }
@@ -179,6 +181,7 @@ async function hasAnyLocalProviderAccess() {
     hasLocalProviderAccess('openai'),
     hasLocalProviderAccess('huggingface'),
     hasLocalProviderAccess('nvidia'),
+    hasLocalProviderAccess('claude'),
   ]);
   return checks.some(Boolean);
 }
@@ -1104,6 +1107,7 @@ async function getOpenAIApiKey(opts) {
 const __cbHuggingFaceKeyCache = { value: null, ts: 0 };
 const DEV_HARDCODED_HF_KEY = typeof window !== 'undefined' && window.CHATBRIDGE_CONFIG ? window.CHATBRIDGE_CONFIG.HUGGINGFACE_API_KEY : null;
 const __cbNvidiaKeyCache = { value: null, ts: 0 };
+const __cbClaudeKeyCache = { value: null, ts: 0 };
 
 const SECURITY_MASTER_KEY_NAME = 'chatbridge_master_key';
 let __cbSecurityMasterKey = null;
@@ -1155,6 +1159,30 @@ async function getNvidiaApiKey(opts) {
   } catch (_) {
     __cbNvidiaKeyCache.value = null;
     __cbNvidiaKeyCache.ts = now;
+    return null;
+  }
+}
+
+async function getClaudeApiKey(opts) {
+  const force = !!(opts && opts.force);
+  const now = Date.now();
+  if (!force && __cbClaudeKeyCache.value && (now - __cbClaudeKeyCache.ts) < 60_000) {
+    return __cbClaudeKeyCache.value;
+  }
+  try {
+    const encrypted = await new Promise(r => chrome.storage.local.get(['chatbridge_api_claude'], d => r(d && d.chatbridge_api_claude)));
+    if (!encrypted) {
+      __cbClaudeKeyCache.value = null;
+      __cbClaudeKeyCache.ts = now;
+      return null;
+    }
+    const decrypted = await decryptStoredValue(encrypted);
+    __cbClaudeKeyCache.value = decrypted || null;
+    __cbClaudeKeyCache.ts = now;
+    return __cbClaudeKeyCache.value;
+  } catch (_) {
+    __cbClaudeKeyCache.value = null;
+    __cbClaudeKeyCache.ts = now;
     return null;
   }
 }

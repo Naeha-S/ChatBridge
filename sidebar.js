@@ -108,13 +108,14 @@
         if (!warningEl) return;
         
         return new Promise((resolve) => {
-            chrome.storage.local.get(['chatbridge_hf_key', 'chatbridge_gemini_key', 'chatbridge_openai_key', 'chatbridge_api_nvidia'], (res) => {
+            chrome.storage.local.get(['chatbridge_hf_key', 'chatbridge_gemini_key', 'chatbridge_openai_key', 'chatbridge_api_nvidia', 'chatbridge_api_claude'], (res) => {
                 const hasHf = !!res.chatbridge_hf_key;
                 const hasGemini = !!res.chatbridge_gemini_key;
                 const hasOpenai = !!res.chatbridge_openai_key;
                 const hasNvidia = !!res.chatbridge_api_nvidia;
+                const hasClaude = !!res.chatbridge_api_claude;
                 
-                if (!hasHf && !hasGemini && !hasOpenai && !hasNvidia) {
+                if (!hasHf && !hasGemini && !hasOpenai && !hasNvidia && !hasClaude) {
                     warningEl.style.display = 'flex';
                     const link = document.getElementById('api-keys-warning-link');
                     if (link) {
@@ -587,6 +588,22 @@
             el.placeholder = window.t(key, lang);
         });
     }
+
+    chrome.storage.onChanged.addListener((changes, area) => {
+        if (area === 'local') {
+            if (changes.cb_theme) {
+                applyTheme(changes.cb_theme.newValue || 'dark');
+            }
+            if (changes.cb_language) {
+                currentLang = changes.cb_language.newValue || 'en';
+                applyTranslations(currentLang);
+                renderFilters();
+            }
+            if (changes.chatbridge_hf_key || changes.chatbridge_gemini_key || changes.chatbridge_openai_key || changes.chatbridge_api_nvidia || changes.chatbridge_api_claude) {
+                checkApiKeys();
+            }
+        }
+    });
 
     // Init
     init();

@@ -40,6 +40,7 @@ describe('Credits and Billing', () => {
       chatbridge_subscription_tier: 'free',
       chatbridge_credits_balance: 100,
       chatbridge_credits_last_reset: Date.now(),
+      chatbridge_logged_in: true,
     };
     chrome.storage.session.storageMap = {};
   });

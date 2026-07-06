@@ -1151,7 +1151,13 @@
                 <div class="settings-desc" id="billing-tier-detail" style="margin-bottom:10px;">Local plan state used for model access and credit checks.</div>
                 <span class="badge" id="billing-tier-badge">Free Tier</span>
               </div>
-              <div class="settings-desc" id="billing-user-email" style="margin-top:12px; font-weight:600;">Not logged in</div>
+              <div class="settings-desc" id="billing-user-email" style="margin-top:12px; font-weight:600; display:flex; justify-content:space-between; align-items:center; gap:8px;">
+                <span id="billing-user-email-text">Not logged in</span>
+                <div style="display:flex; gap:6px;">
+                  <button class="btn btn-primary" id="btn-options-login" type="button" style="padding:4px 8px; font-size:11px;">Log In</button>
+                  <button class="btn btn-danger" id="btn-options-logout" type="button" style="padding:4px 8px; font-size:11px; display:none;">Sign Out</button>
+                </div>
+              </div>
             </div>
             <div style="padding:16px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-input);">
               <div class="settings-label" id="billing-credits-label" style="margin-bottom:8px;">AI Credits</div>
