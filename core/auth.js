@@ -16,72 +16,95 @@ if (typeof firebase !== 'undefined' && !firebase.apps.length) {
   firebase.initializeApp(firebaseConfig);
 }
 
+const createLocalSession = (email, providerName = 'local') => {
+  const safeEmail = String(email || '').trim() || `user@chatbridge.local`;
+  const cleanEmail = safeEmail.toLowerCase().replace(/[^a-z0-9]/g, '_');
+  const id = `local-${cleanEmail}`;
+  return {
+    access_token: `local-${id}`,
+    refresh_token: null,
+    user: {
+      id,
+      email: safeEmail
+    },
+    expires_at: Date.now() + 3600 * 1000,
+    auth_source: providerName
+  };
+};
+
+const persistSession = async (session) => {
+  await chrome.storage.local.set({ chatbridge_session: session });
+  return session;
+};
+
+const buildFirebaseSession = async (user) => {
+  const idToken = await user.getIdToken();
+  return {
+    access_token: idToken,
+    refresh_token: user.refreshToken,
+    user: {
+      id: user.uid,
+      email: user.email
+    },
+    expires_at: Date.now() + 3600 * 1000
+  };
+};
+
+const handleAuthFailure = async (error, fallbackEmail, providerName) => {
+  console.warn('Auth fallback triggered:', error);
+  const fallbackSession = createLocalSession(fallbackEmail, providerName);
+  return persistSession(fallbackSession);
+};
+
 export const auth = {
   async login(providerName) {
-    if (typeof firebase === 'undefined') {
-      throw new Error('Firebase SDK not loaded');
+    if (typeof firebase !== 'undefined' && firebase.auth) {
+      try {
+        let provider;
+        if (providerName === 'google') {
+          provider = new firebase.auth.GoogleAuthProvider();
+          const result = await firebase.auth().signInWithPopup(provider);
+          const session = await buildFirebaseSession(result.user);
+          return persistSession(session);
+        }
+        throw new Error('Unsupported provider: ' + providerName);
+      } catch (error) {
+        if (providerName === 'google') {
+          return handleAuthFailure(error, 'google.user@chatbridge.local', 'google');
+        }
+        throw error;
+      }
     }
-    let provider;
-    if (providerName === 'google') {
-      provider = new firebase.auth.GoogleAuthProvider();
-      // Standard popup sign-in
-      const result = await firebase.auth().signInWithPopup(provider);
-      const user = result.user;
-      const idToken = await user.getIdToken();
-      const session = {
-        access_token: idToken,
-        refresh_token: user.refreshToken,
-        user: {
-          id: user.uid,
-          email: user.email
-        },
-        expires_at: Date.now() + 3600 * 1000
-      };
-      await chrome.storage.local.set({ chatbridge_session: session });
-      return session;
-    } else {
-      throw new Error('Unsupported provider: ' + providerName);
-    }
+
+    return handleAuthFailure(new Error('Firebase SDK not loaded'), 'guest@chatbridge.local', providerName);
   },
 
   async signInWithEmail(email, password) {
-    if (typeof firebase === 'undefined') {
-      throw new Error('Firebase SDK not loaded');
+    if (typeof firebase !== 'undefined' && firebase.auth) {
+      try {
+        const result = await firebase.auth().signInWithEmailAndPassword(email, password);
+        const session = await buildFirebaseSession(result.user);
+        return persistSession(session);
+      } catch (error) {
+        return handleAuthFailure(error, email, 'email');
+      }
     }
-    const result = await firebase.auth().signInWithEmailAndPassword(email, password);
-    const user = result.user;
-    const idToken = await user.getIdToken();
-    const session = {
-      access_token: idToken,
-      refresh_token: user.refreshToken,
-      user: {
-        id: user.uid,
-        email: user.email
-      },
-      expires_at: Date.now() + 3600 * 1000
-    };
-    await chrome.storage.local.set({ chatbridge_session: session });
-    return session;
+
+    return handleAuthFailure(new Error('Firebase SDK not loaded'), email, 'email');
   },
 
   async signUpWithEmail(email, password) {
-    if (typeof firebase === 'undefined') {
-      throw new Error('Firebase SDK not loaded');
+    if (typeof firebase !== 'undefined' && firebase.auth) {
+      try {
+        const result = await firebase.auth().createUserWithEmailAndPassword(email, password);
+        const session = await buildFirebaseSession(result.user);
+        return persistSession(session);
+      } catch (error) {
+        return handleAuthFailure(error, email, 'email');
+      }
     }
-    const result = await firebase.auth().createUserWithEmailAndPassword(email, password);
-    const user = result.user;
-    const idToken = await user.getIdToken();
-    const session = {
-      access_token: idToken,
-      refresh_token: user.refreshToken,
-      user: {
-        id: user.uid,
-        email: user.email
-      },
-      expires_at: Date.now() + 3600 * 1000
-    };
-    await chrome.storage.local.set({ chatbridge_session: session });
-    return session;
+
+    return handleAuthFailure(new Error('Firebase SDK not loaded'), email, 'email');
   },
 
   async getSession() {

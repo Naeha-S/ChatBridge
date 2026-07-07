@@ -642,11 +642,11 @@
     });
 
     document.getElementById('btn-open-pricing')?.addEventListener('click', () => {
-      window.location.href = chrome.runtime.getURL('welcome.html?upgrade=1');
+      window.location.href = chrome.runtime.getURL('ui/welcome.html?upgrade=1');
     });
 
     document.getElementById('btn-options-login')?.addEventListener('click', () => {
-      chrome.tabs.create({ url: chrome.runtime.getURL('login.html') });
+      chrome.tabs.create({ url: chrome.runtime.getURL('ui/login.html') });
     });
 
     document.getElementById('btn-options-logout')?.addEventListener('click', async () => {

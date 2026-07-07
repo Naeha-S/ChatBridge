@@ -273,13 +273,12 @@ ChatBridge/
 │   └── agents.js              # Agent Signal Bus & signal handling
 ├── content/                   # Modular sidebar features
 ├── utils/                     # Platform registry & rewriters
-├── popup.html/js              # Toolbar popup
-├── options.html/js            # Settings panel
-├── sidebar.html/js            # History workspace panel
-├── playground/                # Sandboxed prototype & demo interfaces
-├── icons/                     # Extension icons
+├── lib/                       # Third-party SDKs (Firebase)
+├── ui/                        # Grouped UI HTML/CSS/JS panels (popup, options, sidebar, login, welcome)
 ├── fonts/                     # Inter web fonts
-├── documentation/             # Project guides & documentation
+├── screenshots/               # Onboarding walkthrough images
+├── docs/                      # GitHub Pages static site (goodbye, legal policies)
+├── documentation/             # Developer guides & system documentation
 └── README.md
 ```
 

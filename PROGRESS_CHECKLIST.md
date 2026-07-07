@@ -1,15 +1,18 @@
+# Progress Checklist - ChatBridge Chrome Extension
+
+## Phase 1 — Design & Prototyping
 
 ### 🖼️ Branding
 
 - [ ] Logo finalization (avatar, toolbar icon, options page)
 - [ ] Consistent icon set across all views
-- [ ] Extension store assets (screenshots, promo tiles, description)
 
 ### 🚀 Onboarding
 
 - [ ] First-scan guided walkthrough
 - [ ] Tooltip hints for new users
 - [ ] API key setup wizard with validation
+
 
 ## Phase 6 — Productization
 

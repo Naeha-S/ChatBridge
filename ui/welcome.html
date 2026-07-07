@@ -3,7 +3,11 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="ChatBridge is a local-first Chrome extension for scanning, rewriting, routing, and remembering AI conversations across ChatGPT, Claude, Gemini, and more.">
   <title>ChatBridge</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Instrument+Serif:ital@1&display=swap">
   <link rel="stylesheet" href="welcome.css">
 </head>
 <body>
@@ -16,7 +20,7 @@
   <nav class="nav">
     <div class="nav-inner">
       <a class="nav-brand" href="#top" aria-label="ChatBridge home">
-        <img src="logo.png" alt="" width="32" height="32" class="nav-icon">
+        <img src="../logo.svg" alt="" width="32" height="32" class="nav-icon" decoding="async">
         <div class="nav-brand-copy">
           <span class="nav-name">ChatBridge</span>
           <span class="nav-meta">Cross-platform AI workspace</span>
@@ -49,7 +53,7 @@
             <p class="hero-kicker">Installed and ready for your AI workspace</p>
             <h1 class="hero-title">
               Keep every
-              <span>AI conversation</span>
+              <em>AI conversation</em>
               in one working layer.
             </h1>
             <p class="hero-sub">
@@ -227,10 +231,10 @@
 
                 <div class="preview-pane" data-pane="memory">
                   <div class="preview-memory">
-                    <div class="memory-cluster cluster-a"></div>
-                    <div class="memory-cluster cluster-b"></div>
-                    <div class="memory-cluster cluster-c"></div>
-                    <div class="memory-cluster cluster-d"></div>
+                    <div class="memory-cluster cluster-a"><span>●</span> Threads</div>
+                    <div class="memory-cluster cluster-b"><span>●</span> Insights</div>
+                    <div class="memory-cluster cluster-c"><span>●</span> Facts</div>
+                    <div class="memory-cluster cluster-d"><span>●</span> Memory</div>
                   </div>
                   <div class="preview-card">
                     <p class="preview-eyebrow">Memory layer</p>
@@ -277,7 +281,7 @@
       <div class="wrap">
         <div class="section-head rv" data-section="00">
           <p class="eyebrow">Motion Layer</p>
-          <h2 class="section-title">Motion that shows the system working</h2>
+          <h2 class="section-title">Motion that <em>shows the system</em> working</h2>
           <p class="section-sub">The page uses lightweight movement to expose the product flow instead of hiding everything in flat blocks.</p>
         </div>
 
@@ -316,170 +320,126 @@
       </article>
     </section>
 
-    <section class="section" id="how">
-      <div class="wrap">
-        <div class="section-head rv" data-section="01">
-          <p class="eyebrow">Workflow</p>
-          <h2 class="section-title">Capture, transform, route</h2>
-          <p class="section-sub">ChatBridge stays close to the browser and handles capture, transformation, and handoff without extra ceremony.</p>
-        </div>
-
-        <div class="workflow-grid rv-children">
-          <article class="workflow-card">
-            <span class="workflow-index">01</span>
-            <h3>Capture the thread</h3>
-            <p>The floating action button scans the current conversation and preserves content, structure, and useful metadata.</p>
-          </article>
-          <article class="workflow-card">
-            <span class="workflow-index">02</span>
-            <h3>Run the right tool</h3>
-            <p>Summarize, rewrite, translate, clean, compare, or pass the session to one of the built-in agents.</p>
-          </article>
-          <article class="workflow-card">
-            <span class="workflow-index">03</span>
-            <h3>Store or reroute</h3>
-            <p>Keep it in memory for later retrieval, export it, or continue the exact work in another AI environment.</p>
-          </article>
-        </div>
-      </div>
-    </section>
-
     <section class="section section-alt" id="tools">
       <div class="wrap">
-        <div class="section-head rv" data-section="02">
-          <p class="eyebrow">Feature System</p>
-          <h2 class="section-title">Core actions, grouped by actual use</h2>
-          <p class="section-sub">The page groups the tools by what people do with them: transform content, inspect it, preserve it, and route it forward.</p>
+        <div class="section-head rv" data-section="01">
+          <p class="eyebrow">Product Dossiers</p>
+          <h2 class="section-title">Capture &amp; <em>Transform</em> Chat Threads</h2>
+          <p class="section-sub">Direct in-tab thread scanning combined with a rich action toolkit to extract key deliverables.</p>
         </div>
 
-        <div class="feature-grid rv-children">
-          <article class="feature-card feature-card-wide">
-            <div class="feature-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24"><path d="M5 6.5h14M5 12h14M5 17.5h9"/></svg>
+        <div class="dossiers-twin-grid rv-children">
+          <!-- Dossier 01 Card -->
+          <div class="dossier-card">
+            <div class="dossier-visual">
+              <img src="../screenshots/Screenshot 2026-07-06 174220.png" alt="Sidebar Scan screenshot" class="dossier-image" width="598" height="958" loading="lazy" decoding="async">
             </div>
-            <div>
-              <p class="feature-tag">Transform</p>
-              <h3>Summaries, rewrites, translations, and prompt upgrades</h3>
-              <p>The main tools handle density control, tone changes, multilingual output, and cleaner prompting without leaving the tab.</p>
+            <div class="dossier-info">
+              <span class="dossier-tag">[DOSSIER_01]</span>
+              <h3 class="dossier-title">Sidebar Scan &amp; Chat Capture</h3>
+              <p class="dossier-desc">Capture full conversations, code blocks, images, and system meta directly in your active tab. Clean noisy transcripts instantly with zero data leak.</p>
+              <ul class="dossier-spec">
+                <li><strong>Active Capture:</strong> Single-click page thread scanning</li>
+                <li><strong>Clean Output:</strong> Formats raw logs into structured markup</li>
+                <li><strong>Local Storage:</strong> Conversation records stay inside your sandbox</li>
+              </ul>
             </div>
-          </article>
+          </div>
 
-          <article class="feature-card">
-            <div class="feature-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24"><path d="M4 12h16M12 4v16"/></svg>
+          <!-- Dossier 02 Card -->
+          <div class="dossier-card">
+            <div class="dossier-visual">
+              <img src="../screenshots/Screenshot 2026-07-06 174258.png" alt="Action Toolkit screenshot" class="dossier-image" width="589" height="961" loading="lazy" decoding="async">
             </div>
-            <p class="feature-tag">Search</p>
-            <h3>Smart Query</h3>
-            <p>Search across saved conversations with platform, date, and topic filtering.</p>
-          </article>
-
-          <article class="feature-card">
-            <div class="feature-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24"><path d="M5 19l14-14M9 5h10v10"/></svg>
+            <div class="dossier-info">
+              <span class="dossier-tag">[DOSSIER_02]</span>
+              <h3 class="dossier-title">Action Toolkit</h3>
+              <p class="dossier-desc">Transform captured text into study material, audio logs, checklists, or clean code blocks with first-class utilities.</p>
+              <ul class="dossier-spec">
+                <li><strong>Podcast &amp; Narrate:</strong> Convert chat logs into listenable podcasts</li>
+                <li><strong>Fact Checker:</strong> Audit assertions against verified sources</li>
+                <li><strong>Code Sandbox:</strong> Extract and run script modules in one place</li>
+              </ul>
             </div>
-            <p class="feature-tag">Transfer</p>
-            <h3>Continue With</h3>
-            <p>Open another AI site and insert content into the new composer automatically.</p>
-          </article>
-
-          <article class="feature-card">
-            <div class="feature-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24"><path d="M7 7h10v10H7z"/><path d="M4 4h10v10"/></svg>
-            </div>
-            <p class="feature-tag">Extraction</p>
-            <h3>Pull out structured signals</h3>
-            <p>Extract code blocks, links, dates, tasks, commands, tables, and high-signal fragments from noisy threads.</p>
-          </article>
-
-          <article class="feature-card feature-card-tall">
-            <div class="feature-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24"><path d="M12 4l7 4v8l-7 4-7-4V8l7-4z"/><path d="M12 12l7-4"/></svg>
-            </div>
-            <p class="feature-tag">Analysis</p>
-            <h3>Compare models and detect contradictions</h3>
-            <p>Use the workspace to spot agreement, disagreement, hallucination risk, and requirements across multiple AI outputs.</p>
-          </article>
-
-          <article class="feature-card feature-card-tall">
-            <div class="feature-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24"><path d="M4 8h16M8 4v16M16 4v16"/></svg>
-            </div>
-            <p class="feature-tag">Operations</p>
-            <h3>Small actions that remove friction</h3>
-            <p>Follow-up prompts, copy modes, cleanup tools, stats, export, and keyboard shortcuts are treated as first-class workflow utilities.</p>
-          </article>
+          </div>
         </div>
       </div>
     </section>
 
     <section class="section" id="workspace">
       <div class="wrap">
-        <div class="section-head rv" data-section="03">
+        <div class="section-head rv" data-section="02">
           <p class="eyebrow">Workspace</p>
-          <h2 class="section-title">A memory surface for cross-model work</h2>
+          <h2 class="section-title">A <em>memory surface</em> for cross-model work</h2>
           <p class="section-sub">Saved chats become reusable context, so long-running work stays organized instead of disappearing into transcripts.</p>
         </div>
 
-        <div class="workspace-grid rv-children">
-          <article class="workspace-card workspace-card-accent">
-            <p class="workspace-tag">Knowledge base</p>
-            <h3>Saved chats become reusable context, not dead transcript archives</h3>
-            <p>Merge related threads, resurface decision points, and keep a clean line from conversation to outcome.</p>
-          </article>
-          <article class="workspace-card">
-            <h3>Insight Finder</h3>
-            <p>Highlight contradictions, requirements, TODOs, and breakthroughs before they get buried.</p>
-          </article>
-          <article class="workspace-card">
-            <h3>Fact-check layer</h3>
-            <p>Flag unsupported claims and questionable statements before they turn into downstream decisions.</p>
-          </article>
-          <article class="workspace-card">
-            <h3>Thread merge</h3>
-            <p>Combine ChatGPT, Claude, and Gemini fragments into one coherent working view.</p>
-          </article>
-          <article class="workspace-card">
-            <h3>History and export</h3>
-            <p>Search everything, filter by platform and date, then export to JSON or Markdown.</p>
-          </article>
+        <div class="dossier-split-layout rv-children">
+          <div class="dossier-card">
+            <div class="dossier-visual">
+              <img src="../screenshots/Screenshot 2026-07-06 174246.png" alt="Smart Workspace screenshot" class="dossier-image" width="591" height="967" loading="lazy" decoding="async">
+            </div>
+            <div class="dossier-info">
+              <span class="dossier-tag">[DOSSIER_03]</span>
+              <h3 class="dossier-title">Smart Workspace Manager</h3>
+              <p class="dossier-desc">Keep your AI conversations organized in a unified local workspace. Compare model outputs side-by-side and merge disparate threads.</p>
+              <ul class="dossier-spec">
+                <li><strong>Model Comparison:</strong> Run side-by-side prompt analysis</li>
+                <li><strong>Thread Merge:</strong> Combine Claude, Gemini, and ChatGPT threads</li>
+                <li><strong>Media Vault:</strong> Index and search all images in your history</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="dossier-split-text">
+            <div class="split-text-item">
+              <span class="split-item-index">03.1</span>
+              <h4>Insight Finder</h4>
+              <p>Highlight contradictions, requirements, TODOs, and breakthroughs before they get buried in long chat streams.</p>
+            </div>
+            <div class="split-text-item">
+              <span class="split-item-index">03.2</span>
+              <h4>Fact-check Layer</h4>
+              <p>Flag unsupported claims and questionable statements before they turn into downstream business decisions.</p>
+            </div>
+            <div class="split-text-item">
+              <span class="split-item-index">03.3</span>
+              <h4>History and Export</h4>
+              <p>Search everything, filter by platform and date, then export to JSON or Markdown with one click.</p>
+            </div>
+          </div>
         </div>
       </div>
     </section>
 
     <section class="section section-alt" id="agents">
       <div class="wrap">
-        <div class="section-head rv" data-section="04">
-          <p class="eyebrow">Agent Hub</p>
-          <h2 class="section-title">Eleven agents with clear roles</h2>
+        <div class="section-head rv" data-section="03">
+          <p class="eyebrow">Active Intelligence</p>
+          <h2 class="section-title">Active <em>intelligence agents</em> with clear roles</h2>
           <p class="section-sub">Primary instruments and specialist agents are separated so the lineup reads like a system, not a list.</p>
         </div>
 
-        <div class="agent-layout rv-children">
-          <div class="agent-core">
-            <article class="agent-card">
-              <span class="agent-label"><span class="agent-pulse"></span>Instrument</span>
-              <h3>Extractor</h3>
-              <p>Turn messages into structured tasks, deadlines, and assignments.</p>
-            </article>
-            <article class="agent-card">
-              <span class="agent-label"><span class="agent-pulse"></span>Instrument</span>
-              <h3>Reduce</h3>
-              <p>Simplify dense conversations into ordered sections with a clear reduction pass.</p>
-            </article>
-            <article class="agent-card">
-              <span class="agent-label"><span class="agent-pulse"></span>Instrument</span>
-              <h3>Compose</h3>
-              <p>Generate emails, notes, updates, and follow-on writing from chat context.</p>
-            </article>
-            <article class="agent-card">
-              <span class="agent-label"><span class="agent-pulse"></span>Instrument</span>
-              <h3>Synthesizer</h3>
-              <p>Run a multi-model query flow and return a unified referee answer.</p>
-            </article>
+        <div class="dossier-split-layout rv-children">
+          <div class="dossier-card">
+            <div class="dossier-visual">
+              <img src="../screenshots/Screenshot 2026-07-06 174234.png" alt="Agent Utilities screenshot" class="dossier-image" width="601" height="967" loading="lazy" decoding="async">
+            </div>
+            <div class="dossier-info">
+              <span class="dossier-tag">[DOSSIER_04]</span>
+              <h3 class="dossier-title">Agent Utilities</h3>
+              <p class="dossier-desc">Run always-on background intelligence agents that summarize briefings, track custom topics, and compile context reports.</p>
+              <ul class="dossier-spec">
+                <li><strong>Catch Me Up:</strong> Briefings of session logs since your last check</li>
+                <li><strong>Track This:</strong> Monitor custom topics cross-platform</li>
+                <li><strong>Handoff:</strong> Package complete contexts to hand off to other models</li>
+              </ul>
+            </div>
           </div>
 
-          <aside class="agent-side">
-            <p class="agent-side-title">Specialist agents</p>
+          <div class="agent-specialist-panel">
+            <h4 class="agent-side-title" style="font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 1.25rem; margin-top: 0;">Specialist line-up</h4>
+            <p class="agent-side-copy" style="margin-bottom: 20px; font-size: 0.95rem; color: var(--aether-vapor); line-height: 1.5;">Activate specialized agents when the work is less about simple copy-pasting and more about deep orchestration and memory recall.</p>
             <div class="agent-chip-list">
               <span class="agent-chip">Continuum</span>
               <span class="agent-chip">Memory Architect</span>
@@ -489,17 +449,26 @@
               <span class="agent-chip">Threadkeeper</span>
               <span class="agent-chip">Multi-AI Planner</span>
             </div>
-            <p class="agent-side-copy">Use the specialist set when the work is less about one transformation and more about orchestration, recall, and continuity.</p>
-          </aside>
+            <div class="agent-checklist" style="margin-top: 24px; display: flex; flex-direction: column; gap: 12px;">
+              <div class="agent-check-row" style="display: flex; gap: 10px; align-items: start; font-size: 0.88rem; color: var(--aether-vapor); line-height: 1.4;">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="var(--aether-positive)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0; margin-top:2px;"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                <span><strong>Multi-Model Orchestrator:</strong> Routes queries dynamically to the most cost-efficient or advanced model.</span>
+              </div>
+              <div class="agent-check-row" style="display: flex; gap: 10px; align-items: start; font-size: 0.88rem; color: var(--aether-vapor); line-height: 1.4;">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="var(--aether-positive)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0; margin-top:2px;"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                <span><strong>Context Packager:</strong> Compiles and structures tokens to minimize context window bloat.</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </section>
 
     <section class="section" id="engine">
       <div class="wrap">
-        <div class="section-head rv" data-section="05">
+        <div class="section-head rv" data-section="04">
           <p class="eyebrow">Under the Hood</p>
-          <h2 class="section-title">The retrieval stack is visible and credible</h2>
+          <h2 class="section-title">The <em>retrieval stack</em> is visible and credible</h2>
           <p class="section-sub">The engine section now reads like architecture: segmented memory, intent scoring, then retrieval and reasoning filters.</p>
         </div>
 
@@ -527,9 +496,9 @@
       <div class="wrap">
         <div class="privacy-panel rv">
           <div class="privacy-copy">
-            <span class="section-mini-number">06</span>
+            <span class="section-mini-number">05</span>
             <p class="eyebrow">Trust & Privacy</p>
-            <h2 class="section-title">Your data stays inside the browser path you control</h2>
+            <h2 class="section-title">Your data stays <em>inside the path</em> you control</h2>
             <p class="section-sub">No telemetry pipeline, no hosted sync layer, no ChatBridge relay. Calls go from the extension straight to the providers you configure.</p>
           </div>
           <div class="privacy-grid">
@@ -552,9 +521,9 @@
 
     <section class="section" id="pricing">
       <div class="wrap">
-        <div class="section-head rv" data-section="07">
+        <div class="section-head rv" data-section="06">
           <p class="eyebrow">Pricing</p>
-          <h2 class="section-title">Scale your AI capabilities on demand</h2>
+          <h2 class="section-title">Scale your AI capabilities <em>on demand</em></h2>
           <p class="section-sub">Choose a plan that fits your productivity cycle. All plans run local computations. Upgrading to a paid plan unlocks proxy-based heavy models, advanced retrieval depths, and priority workflow orchestration.</p>
         </div>
 
@@ -562,7 +531,7 @@
         <div class="billing-toggle-wrapper">
           <span class="billing-toggle-label active" id="toggle-monthly-label">Monthly</span>
           <label class="billing-switch">
-            <input type="checkbox" id="billing-cycle-checkbox">
+            <input type="checkbox" id="billing-cycle-checkbox" aria-label="Annual billing toggle">
             <span class="billing-slider"></span>
           </label>
           <span class="billing-toggle-label" id="toggle-yearly-label">Yearly</span>
@@ -1087,49 +1056,9 @@
       </div>
     </section>
 
-    <section class="section" id="customize">
-      <div class="wrap">
-        <div class="section-head rv" data-section="08">
-          <p class="eyebrow">Personalization</p>
-          <h2 class="section-title">Customization is framed as configuration, not decoration</h2>
-        </div>
-
-        <div class="config-grid rv-children">
-          <article class="config-card config-card-wide">
-            <h3>Theme stack</h3>
-            <div class="theme-swatches" aria-label="Available themes">
-              <span class="theme-dot theme-graphite"></span>
-              <span class="theme-dot theme-porcelain"></span>
-              <span class="theme-dot theme-synth"></span>
-              <span class="theme-dot theme-tan"></span>
-              <span class="theme-dot theme-signal"></span>
-              <span class="theme-dot theme-glass"></span>
-            </div>
-            <p>Dark, light, synthwave, skeuomorphic, brutalism, and glass presets are available without breaking the workflow layout.</p>
-          </article>
-          <article class="config-card">
-            <h3>UI languages</h3>
-            <p>English, Spanish, French, German, Japanese, Chinese, Korean, Portuguese, and Hindi.</p>
-          </article>
-          <article class="config-card">
-            <h3>Detail levels</h3>
-            <p>Concise, detailed, and expert output controls across AI features.</p>
-          </article>
-          <article class="config-card">
-            <h3>Media vault</h3>
-            <p>Browse saved conversation images in a single gallery view.</p>
-          </article>
-          <article class="config-card">
-            <h3>Persistent placement</h3>
-            <p>The floating trigger is draggable and remembers where you put it.</p>
-          </article>
-        </div>
-      </div>
-    </section>
-
     <section class="section section-alt" id="setup">
       <div class="wrap">
-        <div class="section-head rv" data-section="09">
+        <div class="section-head rv" data-section="07">
           <p class="eyebrow">Setup</p>
           <h2 class="section-title">Get productive in two minutes</h2>
           <p class="section-sub">The onboarding flow stays simple and each card maps to a real setup step.</p>
@@ -1175,7 +1104,7 @@
       <div class="wrap">
         <div class="utility-grid rv-children">
           <article class="utility-card">
-            <span class="section-mini-number">10</span>
+            <span class="section-mini-number">08</span>
             <p class="eyebrow">Shortcuts</p>
             <h2 class="section-title section-title-small">Fast controls</h2>
             <div class="shortcut-list">
@@ -1189,7 +1118,7 @@
           </article>
 
           <article class="utility-card">
-            <span class="section-mini-number">11</span>
+            <span class="section-mini-number">09</span>
             <p class="eyebrow">Security</p>
             <h2 class="section-title section-title-small">Privacy Guarantee</h2>
             <div style="display: flex; flex-direction: column; gap: 14px; margin-top: 18px;">

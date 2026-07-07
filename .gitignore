@@ -13,6 +13,7 @@ Desktop.ini
 ehthumbs.db
 
 # IDE / Editor
+.idea/
 *.swp
 *.swo
 *~

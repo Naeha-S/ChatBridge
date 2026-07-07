@@ -202,11 +202,11 @@
 
     // Stat cards - open options with focus on relevant section
     statChats.addEventListener('click', () => {
-      window.open(chrome.runtime.getURL('options.html') + '#viewer');
+      window.open(chrome.runtime.getURL('ui/options.html') + '#viewer');
     });
 
     statMessages.addEventListener('click', () => {
-      window.open(chrome.runtime.getURL('options.html') + '#viewer');
+      window.open(chrome.runtime.getURL('ui/options.html') + '#viewer');
     });
   }
 

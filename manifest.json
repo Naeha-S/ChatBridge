@@ -26,7 +26,7 @@
     "http://127.0.0.1/*"
   ],
   "action": {
-    "default_popup": "popup.html",
+    "default_popup": "ui/popup.html",
     "default_icon": {
       "16": "logo.png",
       "32": "logo.png",
@@ -104,7 +104,7 @@
     }
   ],
   "options_ui": {
-    "page": "options.html",
+    "page": "ui/options.html",
     "open_in_tab": true
   },
   "icons": {
@@ -120,7 +120,7 @@
         "logo.png",
         "fonts/Inter-Regular.woff2",
         "fonts/Inter-Bold.woff2",
-        "options.html"
+        "ui/options.html"
       ],
       "matches": [
         "*://chat.openai.com/*",

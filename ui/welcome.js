@@ -14,11 +14,11 @@
       return;
     }
 
-    chrome.tabs.create({ url: chrome.runtime.getURL("options.html") });
+    chrome.tabs.create({ url: chrome.runtime.getURL("ui/options.html") });
   };
 
   const openLoginPage = () => {
-    const loginUrl = chrome.runtime.getURL("login.html");
+    const loginUrl = chrome.runtime.getURL("ui/login.html");
     if (chrome.tabs && chrome.tabs.create) {
       chrome.tabs.create({ url: loginUrl });
       return;
@@ -203,6 +203,11 @@
       return;
     }
 
+    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    if (prefersReducedMotion.matches) {
+      return;
+    }
+
     const canvas = document.createElement("canvas");
     const gl = canvas.getContext("webgl", {
       antialias: true,
@@ -246,7 +251,15 @@
           }
         }
 
-        color = clamp(color * vec3(0.54, 0.7, 1.0), 0.0, 1.0);
+        // Dynamically blend Aether gradient colors (#4ed8ff, #ff4fa3, #ff8a2a)
+        float angle = atan(uv.y, uv.x);
+        float normAngle = (angle + 3.14159265) / 6.2831853;
+        vec3 c1 = vec3(0.306, 0.847, 1.0);   // #4ed8ff
+        vec3 c2 = vec3(1.0, 0.310, 0.639);   // #ff4fa3
+        vec3 c3 = vec3(1.0, 0.541, 0.165);   // #ff8a2a
+        vec3 mixColor = mix(c1, mix(c2, c3, step(0.5, normAngle)), abs(normAngle - 0.5) * 2.0);
+
+        color = clamp(color * mixColor, 0.0, 1.0);
         float vignette = smoothstep(1.6, 0.2, length(uv));
         gl_FragColor = vec4(color * vignette, 0.9);
       }
@@ -311,8 +324,8 @@
     gl.enableVertexAttribArray(positionLocation);
     gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
 
-    let animationFrameId = 0;
     let startTime = performance.now();
+    let renderQueued = false;
 
     const resize = () => {
       const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
@@ -328,8 +341,8 @@
       gl.uniform2f(resolutionLocation, width, height);
     };
 
-    const render = (now) => {
-      animationFrameId = requestAnimationFrame(render);
+    const render = (now = performance.now()) => {
+      renderQueued = false;
       resize();
       gl.uniform1f(timeLocation, (now - startTime) * 0.001);
       gl.clearColor(0, 0, 0, 0);
@@ -337,15 +350,26 @@
       gl.drawArrays(gl.TRIANGLES, 0, 6);
     };
 
-    resize();
-    animationFrameId = requestAnimationFrame(render);
-    window.addEventListener("resize", resize, { passive: true });
+    const scheduleRender = () => {
+      if (renderQueued) {
+        return;
+      }
+
+      renderQueued = true;
+      requestAnimationFrame(render);
+    };
+
+    scheduleRender();
+    window.addEventListener("resize", scheduleRender, { passive: true });
+    window.addEventListener("load", scheduleRender, { once: true });
+    document.addEventListener("visibilitychange", scheduleRender, { passive: true });
 
     window.addEventListener(
       "beforeunload",
       () => {
-        cancelAnimationFrame(animationFrameId);
-        window.removeEventListener("resize", resize);
+        window.removeEventListener("resize", scheduleRender);
+        window.removeEventListener("load", scheduleRender);
+        document.removeEventListener("visibilitychange", scheduleRender);
         gl.deleteBuffer(buffer);
         gl.deleteProgram(program);
         gl.deleteShader(vertexShader);
@@ -727,29 +751,32 @@
 
     const cardData = [
       {
-        title: "Shadway",
-        description: "SHADCN website collection",
-        image: "https://shadway.online/og-image.png",
+        title: "Sidebar Scan",
+        description: "Capture and clean chat sessions in your tab",
+        image: "../screenshots/Screenshot 2026-07-06 174220.png",
+        width: 598,
+        height: 958,
       },
       {
-        title: "Rizz Ai",
-        description: "Dating AI wingman",
-        image: "https://wrizzai.online/og.png",
+        title: "Agent Utilities",
+        description: "Six active intelligence agents cross-checking facts",
+        image: "../screenshots/Screenshot 2026-07-06 174234.png",
+        width: 601,
+        height: 967,
       },
       {
-        title: "21st.dev",
-        description: "Vibe crafting platform",
-        image: "https://21st.dev/opengraph-image.png",
+        title: "Smart Workspace",
+        description: "Side-by-side model comparison and thread merging",
+        image: "../screenshots/Screenshot 2026-07-06 174246.png",
+        width: 591,
+        height: 967,
       },
       {
-        title: "ChatBridge",
-        description: "Cross-platform AI workflow layer",
-        image: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1200&q=80",
-      },
-      {
-        title: "Research Mode",
-        description: "Structured memory and retrieval surfaces",
-        image: "https://images.unsplash.com/photo-1526379095098-d400fd0bf935?auto=format&fit=crop&w=1200&q=80",
+        title: "Action Toolkit",
+        description: "Convert chats to checklists, podcasts, or sandboxes",
+        image: "../screenshots/Screenshot 2026-07-06 174258.png",
+        width: 589,
+        height: 961,
       },
     ];
 
@@ -781,7 +808,7 @@
         cardElement.style.zIndex = String(30 - index);
         cardElement.innerHTML = `
           <div class="stack-card-media">
-            <img src="${card.image}" alt="${card.title}">
+            <img src="${card.image}" alt="${card.title}" width="${card.width}" height="${card.height}" decoding="async">
           </div>
           <div class="stack-card-body">
             <div class="stack-card-copy">
@@ -862,7 +889,7 @@
       const stackObserver = new IntersectionObserver(
         (entries) => {
           const entry = entries[0];
-          autoRotate = entry.isIntersecting;
+          autoRotate = entry.isIntersecting && !prefersReducedMotion.matches;
 
           if (autoRotate) {
             startAutoRotate();

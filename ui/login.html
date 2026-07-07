@@ -6,8 +6,6 @@
   <title>ChatBridge Login</title>
   <link rel="stylesheet" href="welcome.css">
   <link rel="stylesheet" href="login.css">
-  <script src="lib/firebase/firebase-app-compat.js"></script>
-  <script src="lib/firebase/firebase-auth-compat.js"></script>
 </head>
 <body class="login-page">
   <div class="login-shell" aria-hidden="true">
@@ -19,7 +17,7 @@
   <main class="login-layout">
     <section class="login-brand-panel">
       <a class="login-brand" href="welcome.html" aria-label="Back to ChatBridge welcome">
-        <img src="logo.png" alt="" width="38" height="38">
+        <img src="../logo.svg" alt="" width="38" height="38" decoding="async">
         <div>
           <span class="login-brand-name">ChatBridge</span>
           <span class="login-brand-sub">Local-first AI workspace</span>
@@ -67,12 +65,12 @@
       <form class="login-form" id="login-form" novalidate>
         <div class="form-group">
           <label for="login-email">Email address</label>
-          <input type="email" id="login-email" class="checkout-input" placeholder="you@example.com" required value="naeha@chatbridge.dev">
+          <input type="email" id="login-email" class="checkout-input" placeholder="you@example.com" required>
         </div>
 
         <div class="form-group">
           <label for="login-password">Password</label>
-          <input type="password" id="login-password" class="checkout-input" placeholder="password" required value="password123">
+          <input type="password" id="login-password" class="checkout-input" placeholder="••••••••" required>
         </div>
 
         <div class="login-error" id="login-error" hidden aria-live="assertive"></div>
@@ -101,6 +99,8 @@
     </section>
   </main>
 
+  <script src="../lib/firebase/firebase-app-compat.js"></script>
+  <script src="../lib/firebase/firebase-auth-compat.js"></script>
   <script type="module" src="login.js"></script>
 </body>
 </html>

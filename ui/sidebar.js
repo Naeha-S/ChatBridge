@@ -123,7 +123,7 @@
                             try {
                                 chrome.runtime.openOptionsPage();
                             } catch (e) {
-                                window.open(chrome.runtime.getURL('options.html'));
+                                window.open(chrome.runtime.getURL('ui/options.html'));
                             }
                         };
                     }

@@ -5,6 +5,7 @@ import {
   invalidateCloudProxyCache,
 } from './core/cloudProxy.js';
 import AnalyticsManager from './core/telemetry.js';
+import { dbAdapter } from './core/dbAdapter.js';
 
 
 // background.js
@@ -155,6 +156,17 @@ async function setBillingCredits(balance, lastReset = Date.now()) {
     [BILLING_STORAGE_KEYS.balance]: normalized,
     [BILLING_STORAGE_KEYS.lastReset]: lastReset
   });
+
+  try {
+    const data = await storageLocalGet(['chatbridge_session']);
+    if (data && data.chatbridge_session) {
+      dbAdapter.updateCredits(data.chatbridge_session, normalized, lastReset)
+        .catch(err => console.error('Failed to sync billing credits to DB:', err));
+    }
+  } catch (e) {
+    console.error('Error syncing credits to DB in setBillingCredits:', e);
+  }
+
   return normalized;
 }
 
@@ -526,7 +538,7 @@ chrome.runtime.onInstalled.addListener((details) => {
 
   // Open the welcome page on first install only
   if (details.reason === 'install') {
-    chrome.tabs.create({ url: chrome.runtime.getURL('welcome.html') });
+    chrome.tabs.create({ url: chrome.runtime.getURL('ui/welcome.html') });
   }
 
   recoverBackgroundState();

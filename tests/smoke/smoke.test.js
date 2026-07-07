@@ -40,7 +40,7 @@ describe('ChatBridge Unpacked Extension Smoke Tests', () => {
 
       // Open options.html page of the extension
       const page = await browser.newPage();
-      await page.goto(`chrome-extension://${extensionId}/options.html`, { waitUntil: 'load' });
+      await page.goto(`chrome-extension://${extensionId}/ui/options.html`, { waitUntil: 'load' });
 
       // Verify that options page has loaded and has relevant contents
       const title = await page.title();

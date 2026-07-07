@@ -688,7 +688,7 @@
       a.id = 'cb-avatar'; a.setAttribute('data-cb-ignore', 'true');
       // Use the new ring logo
       const img = document.createElement('img');
-      img.src = chrome.runtime.getURL('logo.png');
+      img.src = chrome.runtime.getURL('logo.svg');
       img.alt = 'ChatBridge';
       img.style.cssText = 'width:100%;height:100%;object-fit:contain;border-radius:0;filter:drop-shadow(0 0 8px rgba(0, 212, 255, 0.5)) drop-shadow(0 0 16px rgba(124, 58, 237, 0.4));';
       a.appendChild(img);
@@ -1153,7 +1153,7 @@
     if (existingAvatar) existingAvatar.remove();
     const avatar = document.createElement('div'); avatar.id = 'cb-avatar'; avatar.setAttribute('data-cb-ignore', 'true');
     const mainAvatarImg = document.createElement('img');
-    mainAvatarImg.src = chrome.runtime.getURL('logo.png');
+    mainAvatarImg.src = chrome.runtime.getURL('logo.svg');
     mainAvatarImg.style.cssText = 'width:100%;height:100%;object-fit:contain;border-radius:0;filter:drop-shadow(0 0 8px rgba(0, 212, 255, 0.5)) drop-shadow(0 0 16px rgba(124, 58, 237, 0.4));';
     mainAvatarImg.alt = 'ChatBridge';
     avatar.appendChild(mainAvatarImg);
@@ -4664,9 +4664,10 @@
   .cb-header-btn.cb-minimize-btn:hover { background: color-mix(in srgb, var(--cb-accent-primary) 15%, transparent); color: var(--cb-accent-primary); border-color: color-mix(in srgb, var(--cb-accent-primary) 30%, transparent); }
   
   /* Minimized Toolbar Mode */
-  .cb-panel.cb-minimized { width: 68px !important; min-width: 68px !important; padding: 0 !important; transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1), min-width 0.35s cubic-bezier(0.4, 0, 0.2, 1); }
+  .cb-panel.cb-minimized { width: 68px !important; min-width: 68px !important; height: auto !important; max-height: calc(100vh - 48px) !important; padding: 0 !important; overflow: hidden !important; transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1), min-width 0.35s cubic-bezier(0.4, 0, 0.2, 1); }
   .cb-panel { transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1), min-width 0.35s cubic-bezier(0.4, 0, 0.2, 1); }
   .cb-panel.cb-minimized > *:not(.cb-mini-toolbar) { display: none !important; opacity: 0; }
+  .cb-panel.cb-minimized .cb-mini-toolbar { height: auto; }
   .cb-panel.cb-panel-resizing { transition: none !important; user-select: none; }
   .cb-panel.cb-minimized .cb-resize-handle { display: none !important; }
   .cb-resize-handle { position: absolute; right: 8px; bottom: 8px; width: 24px; height: 24px; border-radius: 8px; cursor: nwse-resize; display: flex; align-items: center; justify-content: center; color: var(--cb-white); background: color-mix(in srgb, var(--cb-accent-primary) 20%, var(--cb-bg2)); border: 1px solid color-mix(in srgb, var(--cb-accent-primary) 45%, var(--cb-border)); opacity: 0.95; box-shadow: 0 4px 14px color-mix(in srgb, var(--cb-accent-primary) 20%, transparent), inset 0 1px 0 rgba(255,255,255,0.08); z-index: 30; }
@@ -5415,13 +5416,13 @@
     // Header: Premium Glassmorphism Design with Avatar
     const header = document.createElement('div'); header.className = 'cb-header';
 
-    // Logo ring (using logo.png) with glow effect - no black background
+    // Logo ring (using logo.svg) with glow effect - no black background
     const avatarWrap = document.createElement('div');
     avatarWrap.className = 'cb-header-avatar';
     avatarWrap.style.cssText = 'width: 38px; height: 38px; border-radius: 50%; overflow: visible; flex-shrink: 0; animation: cb-badge-float 3s ease-in-out infinite; background: transparent;';
 
     const headerAvatarImg = document.createElement('img');
-    headerAvatarImg.src = chrome.runtime.getURL('logo.png');
+    headerAvatarImg.src = chrome.runtime.getURL('logo.svg');
     headerAvatarImg.alt = 'ChatBridge';
     headerAvatarImg.style.cssText = 'width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 0 6px rgba(0, 212, 255, 0.4)) drop-shadow(0 0 12px rgba(124, 58, 237, 0.3)); background: transparent;';
     avatarWrap.appendChild(headerAvatarImg);
@@ -5557,7 +5558,7 @@
     miniBrand.className = 'cb-mini-logo';
     miniBrand.title = 'ChatBridge - Click to expand';
     const logoImg = document.createElement('img');
-    logoImg.src = chrome.runtime.getURL('logo.png');
+    logoImg.src = chrome.runtime.getURL('logo.svg');
     logoImg.alt = 'ChatBridge';
     miniBrand.appendChild(logoImg);
     miniToolbar.appendChild(miniBrand);
@@ -7761,6 +7762,7 @@
       btnCloseSmart.setAttribute('aria-label', 'Close Smart Query view');
       btnCloseSmart.addEventListener('click', () => {
         smartView.classList.remove('cb-view-active');
+        smartView.style.display = 'none';
         try { updatePanelDynamicLayout(); } catch (_) { }
       });
       smartTop.appendChild(smartTitle);
@@ -11285,7 +11287,7 @@ ${chatText.substring(0, 10000)}`
 
     btnOpenDashboard.addEventListener('click', () => {
       try {
-        const url = chrome.runtime.getURL('options.html#dashboard');
+        const url = chrome.runtime.getURL('ui/options.html#dashboard');
         if (chrome.runtime.openOptionsPage) {
           chrome.runtime.openOptionsPage();
           window.open(url, '_blank');
@@ -11299,7 +11301,7 @@ ${chatText.substring(0, 10000)}`
 
     btnViewMoreApi.addEventListener('click', () => {
       try {
-        const url = chrome.runtime.getURL('options.html#api-keys');
+        const url = chrome.runtime.getURL('ui/options.html#api-keys');
         window.open(url, '_blank');
       } catch (e) {
         toast('Could not open API settings');
@@ -11573,7 +11575,7 @@ ${chatText.substring(0, 10000)}`
         try { if (typeof summView !== 'undefined' && summView) summView.classList.remove('cb-view-active'); } catch (_) { }
         try { if (typeof rewView !== 'undefined' && rewView) rewView.classList.remove('cb-view-active'); } catch (_) { }
         try { if (typeof transView !== 'undefined' && transView) transView.classList.remove('cb-view-active'); } catch (_) { }
-        try { if (typeof smartView !== 'undefined' && smartView) smartView.classList.remove('cb-view-active'); } catch (_) { }
+        try { if (typeof smartView !== 'undefined' && smartView) { smartView.classList.remove('cb-view-active'); smartView.style.display = 'none'; } } catch (_) { }
         try { if (typeof graphView !== 'undefined' && graphView) graphView.classList.remove('cb-view-active'); } catch (_) { }
         try { if (typeof insightsView !== 'undefined' && insightsView) insightsView.classList.remove('cb-view-active'); } catch (_) { }
         try { if (typeof promptDesignerView !== 'undefined' && promptDesignerView) promptDesignerView.classList.remove('cb-view-active'); } catch (_) { }
@@ -11585,8 +11587,11 @@ ${chatText.substring(0, 10000)}`
 
         // Close dynamically created views (Smart Queries, etc.)
         try {
-          const smartQueryView = shadow.getElementById('cb-smart-query-view');
-          if (smartQueryView) smartQueryView.classList.remove('cb-view-active');
+          const smartQueryView = shadow.getElementById('cb-smart-query-view') || shadow.getElementById('cb-smart-view');
+          if (smartQueryView) {
+            smartQueryView.classList.remove('cb-view-active');
+            smartQueryView.style.display = 'none';
+          }
         } catch (_) { }
 
         // Fallback: close ANY element with cb-view-active class in the shadow DOM
@@ -17160,7 +17165,7 @@ Respond with JSON only:
         plan: normalizeSubscriptionPlan(requiredPlan),
         gateway: CHATBRIDGE_PLAN_GATEWAY
       });
-      const targetUrl = `${chrome.runtime.getURL('welcome.html')}?${params.toString()}`;
+      const targetUrl = `${chrome.runtime.getURL('ui/welcome.html')}?${params.toString()}`;
       try {
         chrome.runtime.sendMessage({ type: 'open_tab', url: targetUrl }, () => {
           if (chrome.runtime.lastError) {
@@ -27342,12 +27347,32 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
     let __cbSmartQueryUI = null;
     let __cbSmartQueryShellReady = false;
 
+    function revealSmartQueryView() {
+      try {
+        if (!smartView) {
+          lazyInitSmartView();
+        }
+        if (!smartView) return;
+        smartView.style.display = 'block';
+        smartView.style.zIndex = '200';
+        requestAnimationFrame(() => {
+          try {
+            smartView.classList.add('cb-view-active');
+            try { updatePanelDynamicLayout(); } catch (_) { }
+          } catch (_) { }
+        });
+      } catch (e) {
+        debugLog('revealSmartQueryView failed', e);
+      }
+    }
+
     btnSmartQuery.addEventListener('click', async () => {
       if (__cbSmartOpenBusy) return; // simple click guard to avoid double-activation
       __cbSmartOpenBusy = true;
       try {
         lazyInitSmartView();
         closeAllViews();
+        revealSmartQueryView();
 
         // Use new SmartQueryUI if available
         if (window.SmartQueryUI) {
@@ -27388,8 +27413,7 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
               await __cbSmartQueryUI.refreshLiveState();
             }
 
-            smartView.classList.add('cb-view-active');
-            try { updatePanelDynamicLayout(); } catch (_) { }
+            revealSmartQueryView();
             __cbSmartOpenBusy = false;
             return;
           } catch (e) {
@@ -27412,7 +27436,7 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
         try { smartResults.textContent = '(No results yet)'; } catch (_) { }
         try { smartAnswer.textContent = ''; } catch (_) { }
         try { smartInput.value = ''; } catch (_) { }
-        try { smartView.classList.add('cb-view-active'); } catch (_) { }
+        revealSmartQueryView();
 
         // Defer heavy work to keep first-click instant
         setTimeout(async () => {
@@ -29175,7 +29199,7 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
             plan: requiredPlan,
             gateway: CHATBRIDGE_PLAN_GATEWAY
           });
-          const targetUrl = `${chrome.runtime.getURL('welcome.html')}?${params.toString()}`;
+          const targetUrl = `${chrome.runtime.getURL('ui/welcome.html')}?${params.toString()}`;
           window.open(targetUrl, '_blank', 'noopener');
         } catch (_) { }
       }

@@ -1,5 +1,5 @@
-import { auth } from './core/auth.js';
-import { dbAdapter } from './core/dbAdapter.js';
+import { auth } from '../core/auth.js';
+import { dbAdapter } from '../core/dbAdapter.js';
 
 const authKeys = {
   loggedIn: "chatbridge_logged_in",
@@ -47,7 +47,7 @@ const CREDIT_LIMITS = {
   max: 10000
 };
 
-const upgradeUrl = chrome.runtime.getURL("upgrade.html");
+const optionsUrl = chrome.runtime.getURL("ui/options.html");
 
 const setBusyState = (isBusy) => {
   if (loginSubmit) {
@@ -60,8 +60,8 @@ const setBusyState = (isBusy) => {
   });
 };
 
-const navigateToUpgrade = () => {
-  window.location.href = upgradeUrl;
+const navigateToOptions = () => {
+  window.location.href = optionsUrl;
 };
 
 const refreshLoggedInState = async () => {
@@ -231,7 +231,7 @@ const persistSession = async (session) => {
   }
 
   window.setTimeout(() => {
-    navigateToUpgrade();
+    navigateToOptions();
   }, 1500);
 };
 
@@ -256,7 +256,7 @@ if (btnSignup) {
 
 if (btnReturnWelcome) {
   btnReturnWelcome.addEventListener("click", () => {
-    window.location.href = chrome.runtime.getURL("welcome.html");
+    window.location.href = chrome.runtime.getURL("ui/welcome.html");
   });
 }
 

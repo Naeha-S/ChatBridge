@@ -37,6 +37,27 @@ export const dbAdapter = {
 
   async syncUserProfile(session) {
     if (!session || !session.access_token || !session.user?.id) return null;
+    
+    // If it's a local/fallback session, bypass Firestore REST API entirely
+    if (session.access_token.startsWith('local-')) {
+      try {
+        const localProfileKey = `chatbridge_local_profile_${session.user.id}`;
+        const stored = await new Promise(r => chrome.storage.local.get([localProfileKey], r));
+        const current = stored[localProfileKey] || {
+          email: session.user.email,
+          tier: 'free',
+          credits: 100,
+          last_reset: Date.now()
+        };
+        current.updated_at = new Date().toISOString();
+        await new Promise(r => chrome.storage.local.set({ [localProfileKey]: current }, r));
+        return current;
+      } catch (e) {
+        console.error('Local profile sync error:', e);
+        return null;
+      }
+    }
+
     try {
       const { user, access_token } = session;
       const payload = {
@@ -66,6 +87,23 @@ export const dbAdapter = {
 
   async getCreditsAndTier(session) {
     if (!session || !session.access_token || !session.user?.id) return null;
+
+    if (session.access_token.startsWith('local-')) {
+      try {
+        const localProfileKey = `chatbridge_local_profile_${session.user.id}`;
+        const stored = await new Promise(r => chrome.storage.local.get([localProfileKey], r));
+        return stored[localProfileKey] || {
+          email: session.user.email,
+          tier: 'free',
+          credits: 100,
+          last_reset: Date.now()
+        };
+      } catch (e) {
+        console.error('Local getCreditsAndTier error:', e);
+        return null;
+      }
+    }
+
     try {
       const response = await fetch(this.profileDocPath(session.user.id), {
         method: 'GET',
@@ -82,6 +120,27 @@ export const dbAdapter = {
 
   async updateCredits(session, newCredits, lastReset) {
     if (!session || !session.access_token || !session.user?.id) return false;
+
+    if (session.access_token.startsWith('local-')) {
+      try {
+        const localProfileKey = `chatbridge_local_profile_${session.user.id}`;
+        const stored = await new Promise(r => chrome.storage.local.get([localProfileKey], r));
+        const current = stored[localProfileKey] || {
+          email: session.user.email,
+          tier: 'free',
+          credits: 100,
+          last_reset: Date.now()
+        };
+        current.credits = newCredits;
+        current.last_reset = lastReset;
+        await new Promise(r => chrome.storage.local.set({ [localProfileKey]: current }, r));
+        return true;
+      } catch (e) {
+        console.error('Local updateCredits error:', e);
+        return false;
+      }
+    }
+
     try {
       const payload = {
         fields: {
