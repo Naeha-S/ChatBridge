@@ -4,44 +4,70 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>We'll miss you — ChatBridge</title>
+  
+  <!-- Premium Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  
+  <!-- GSAP for Animations -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+  
+  <!-- Three.js and Vanta.js for Interactive Background -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.topology.min.js"></script>
+
   <link rel="stylesheet" href="goodbye.css">
 </head>
 <body>
-  <div class="page-shell" aria-hidden="true">
-    <div class="ambient ambient-a"></div>
-    <div class="ambient ambient-b"></div>
-    <div class="grid-noise"></div>
-  </div>
+  <!-- Vanta Background Container -->
+  <div id="vanta-bg" class="vanta-container"></div>
 
   <main class="goodbye-shell">
     <div class="goodbye-card">
-      <div class="goodbye-logo-wrap">
-        <img src="https://raw.githubusercontent.com/Naeha-S/ChatBridge/main/logo.png" alt="" width="72" height="72" class="goodbye-logo">
+      <div class="goodbye-logo-wrap gs-reveal">
+        <img src="logo.png" alt="" width="64" height="64" class="goodbye-logo">
       </div>
-      <p class="goodbye-kicker">ChatBridge was uninstalled</p>
-      <h1>We'll miss you.</h1>
-      <p class="goodbye-copy">
-        Thanks for trying ChatBridge. Your conversations stayed in your browser — nothing was sent through our servers.
-        If you change your mind, we're still here.
+      <p class="goodbye-kicker gs-reveal">ChatBridge Uninstalled</p>
+      <h1 class="gs-reveal">We'll miss you.</h1>
+      <p class="goodbye-copy gs-reveal">
+        Thank you for trying ChatBridge. Your conversations stayed completely private in your browser. 
+        If you ever change your mind, we're just a click away.
       </p>
 
-      <div class="goodbye-actions">
-        <a class="btn-primary" href="https://github.com/Naeha-S/ChatBridge" target="_blank" rel="noopener">Reinstall from GitHub</a>
+      <div class="goodbye-actions gs-reveal">
+        <a class="btn-primary" href="https://github.com/Naeha-S/ChatBridge" target="_blank" rel="noopener">
+          <span>Reinstall from GitHub</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+        </a>
         <button class="btn-secondary" id="btn-share-feedback">Share feedback</button>
       </div>
 
-      <div class="goodbye-note">
-        <strong>Before you go for good</strong>
-        <p>If something didn't work, we'd love to know — scan issues, missing platforms, or UI friction. It helps the next person who installs.</p>
+      <div class="goodbye-note gs-reveal">
+        <strong>Help us improve</strong>
+        <p>If something didn't work smoothly, we'd love your feedback. It helps the next person who installs.</p>
       </div>
 
-      <div class="goodbye-footer-links">
-        <a href="https://github.com/Naeha-S/ChatBridge/issues" target="_blank" rel="noopener">Report an issue</a>
+      <div class="goodbye-footer-links gs-reveal">
+        <a href="mailto:getchatbridge@gmail.com?subject=ChatBridge%20Issue" target="_blank" rel="noopener">Contact us</a>
         <span aria-hidden="true">·</span>
         <a href="https://github.com/Naeha-S/ChatBridge" target="_blank" rel="noopener">View source</a>
       </div>
     </div>
   </main>
+
+  <footer class="goodbye-legal-footer">
+    <span>© 2025 ChatBridge</span>
+    <div class="goodbye-legal-links">
+      <a href="cookies.html" target="_blank" rel="noopener">Cookie Preferences</a>
+      <span aria-hidden="true">·</span>
+      <a href="terms.html" target="_blank" rel="noopener">Terms of Use</a>
+      <span aria-hidden="true">·</span>
+      <a href="privacy.html" target="_blank" rel="noopener">Privacy</a>
+      <span aria-hidden="true">·</span>
+      <a href="security.html" target="_blank" rel="noopener">Security</a>
+    </div>
+  </footer>
 
   <script src="goodbye.js"></script>
 </body>
