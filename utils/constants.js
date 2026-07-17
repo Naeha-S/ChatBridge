@@ -15,7 +15,24 @@ const ChatBridgeConstants = {
       'grok.com',
       'copilot.microsoft.com',
       'www.bing.com',
-      'meta.ai'
+      'meta.ai',
+      'duck.ai',
+      'duckduckgo.com',
+      'chat.cohere.com',
+      'coral.cohere.com',
+      'cohere.com',
+      'chat.qwen.ai',
+      'qwen.ai',
+      'chat.lmsys.org',
+      'arena.lmsys.org',
+      'openrouter.ai',
+      'chat.deepinfra.com',
+      'deepinfra.com',
+      'kimi.com',
+      'kimi.la',
+      'kimi.moonshot.cn',
+      'doubao.com',
+      'chatglm.cn'
     ],
 
   TIMING: {

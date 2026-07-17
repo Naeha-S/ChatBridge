@@ -47,6 +47,12 @@ const CREDIT_LIMITS = {
   max: 10000
 };
 
+const TIER_PRIORITY = {
+  free: 0,
+  pro: 1,
+  max: 2
+};
+
 const optionsUrl = chrome.runtime.getURL("ui/options.html");
 
 const setBusyState = (isBusy) => {
@@ -194,6 +200,41 @@ const normalizeBillingInfo = async (session, dbInfo) => {
   };
 };
 
+const mergeBillingInfo = (localInfo, dbInfo) => {
+  const localTier = String(localInfo?.tier || "free").toLowerCase();
+  const remoteTier = String(dbInfo?.tier || "free").toLowerCase();
+  const localPriority = TIER_PRIORITY[localTier] ?? 0;
+  const remotePriority = TIER_PRIORITY[remoteTier] ?? 0;
+
+  if (localPriority > remotePriority) {
+    return {
+      tier: localTier,
+      credits: Number(localInfo?.credits) || CREDIT_LIMITS[localTier] || 100,
+      last_reset: Number(localInfo?.last_reset) || Date.now(),
+    };
+  }
+
+  if (localPriority === remotePriority) {
+    const mergedTier = remoteTier;
+    const mergedCredits = Math.max(
+      Number(localInfo?.credits) || 0,
+      Number(dbInfo?.credits) || 0
+    );
+    const mergedLastReset = Math.max(
+      Number(localInfo?.last_reset) || 0,
+      Number(dbInfo?.last_reset) || 0,
+      Date.now()
+    );
+    return {
+      tier: mergedTier,
+      credits: mergedCredits || CREDIT_LIMITS[mergedTier] || 100,
+      last_reset: mergedLastReset,
+    };
+  }
+
+  return dbInfo;
+};
+
 const clearError = () => {
   if (loginError) {
     loginError.hidden = true;
@@ -203,6 +244,7 @@ const clearError = () => {
 
 const persistSession = async (session) => {
   const userEmail = session?.user?.email || "";
+  const localData = await getAuthLocal([authKeys.tier, authKeys.balance, authKeys.lastReset]);
   await dbAdapter.syncUserProfile(session);
   let dbInfo = await dbAdapter.getCreditsAndTier(session);
 
@@ -211,6 +253,24 @@ const persistSession = async (session) => {
     await dbAdapter.updateCredits(session, 100, dbInfo.last_reset);
   } else {
     dbInfo = await normalizeBillingInfo(session, dbInfo);
+  }
+
+  const mergedInfo = mergeBillingInfo(
+    {
+      tier: localData[authKeys.tier],
+      credits: localData[authKeys.balance],
+      last_reset: localData[authKeys.lastReset],
+    },
+    dbInfo
+  );
+
+  if (
+    mergedInfo.tier !== dbInfo.tier ||
+    mergedInfo.credits !== dbInfo.credits ||
+    mergedInfo.last_reset !== dbInfo.last_reset
+  ) {
+    await dbAdapter.updateTier(session, mergedInfo.tier, mergedInfo.credits, mergedInfo.last_reset);
+    dbInfo = mergedInfo;
   }
 
   await setAuthLocal({

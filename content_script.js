@@ -688,7 +688,7 @@
       a.id = 'cb-avatar'; a.setAttribute('data-cb-ignore', 'true');
       // Use the new ring logo
       const img = document.createElement('img');
-      img.src = chrome.runtime.getURL('logo.svg');
+      img.src = chrome.runtime.getURL('logo.png');
       img.alt = 'ChatBridge';
       img.style.cssText = 'width:100%;height:100%;object-fit:contain;border-radius:0;filter:drop-shadow(0 0 8px rgba(0, 212, 255, 0.5)) drop-shadow(0 0 16px rgba(124, 58, 237, 0.4));';
       a.appendChild(img);
@@ -756,6 +756,15 @@
     if (host.includes('meta.ai')) return 'meta';
     if (host.includes('mistral.ai')) return 'mistral';
     if (host.includes('deepseek.ai') || host.includes('deepseek.com')) return 'deepseek';
+    if (host.includes('duck.ai') || host.includes('duckduckgo.com')) return 'duckduckgo';
+    if (host.includes('cohere.com')) return 'cohere';
+    if (host.includes('qwen.ai')) return 'qwen';
+    if (host.includes('lmsys.org')) return 'lmsys';
+    if (host.includes('openrouter.ai')) return 'openrouter';
+    if (host.includes('deepinfra.com')) return 'deepinfra';
+    if (host.includes('kimi.com') || host.includes('kimi.la') || host.includes('kimi.moonshot.cn')) return 'kimi';
+    if (host.includes('doubao.com')) return 'doubao';
+    if (host.includes('chatglm.cn')) return 'zhipu';
     return 'unknown';
   }
 
@@ -1153,7 +1162,7 @@
     if (existingAvatar) existingAvatar.remove();
     const avatar = document.createElement('div'); avatar.id = 'cb-avatar'; avatar.setAttribute('data-cb-ignore', 'true');
     const mainAvatarImg = document.createElement('img');
-    mainAvatarImg.src = chrome.runtime.getURL('logo.svg');
+    mainAvatarImg.src = chrome.runtime.getURL('logo.png');
     mainAvatarImg.style.cssText = 'width:100%;height:100%;object-fit:contain;border-radius:0;filter:drop-shadow(0 0 8px rgba(0, 212, 255, 0.5)) drop-shadow(0 0 16px rgba(124, 58, 237, 0.4));';
     mainAvatarImg.alt = 'ChatBridge';
     avatar.appendChild(mainAvatarImg);
@@ -5416,13 +5425,13 @@
     // Header: Premium Glassmorphism Design with Avatar
     const header = document.createElement('div'); header.className = 'cb-header';
 
-    // Logo ring (using logo.svg) with glow effect - no black background
+    // Logo ring (using logo.png) with glow effect - no black background
     const avatarWrap = document.createElement('div');
     avatarWrap.className = 'cb-header-avatar';
     avatarWrap.style.cssText = 'width: 38px; height: 38px; border-radius: 50%; overflow: visible; flex-shrink: 0; animation: cb-badge-float 3s ease-in-out infinite; background: transparent;';
 
     const headerAvatarImg = document.createElement('img');
-    headerAvatarImg.src = chrome.runtime.getURL('logo.svg');
+    headerAvatarImg.src = chrome.runtime.getURL('logo.png');
     headerAvatarImg.alt = 'ChatBridge';
     headerAvatarImg.style.cssText = 'width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 0 6px rgba(0, 212, 255, 0.4)) drop-shadow(0 0 12px rgba(124, 58, 237, 0.3)); background: transparent;';
     avatarWrap.appendChild(headerAvatarImg);
@@ -5465,6 +5474,15 @@
       if (host.includes('phind.com')) return 'Phind';
       if (host.includes('you.com')) return 'You.com';
       if (host.includes('character.ai')) return 'Character.AI';
+      if (host.includes('duck.ai') || host.includes('duckduckgo.com')) return 'DuckDuckGo AI';
+      if (host.includes('cohere.com')) return 'Cohere Coral';
+      if (host.includes('qwen.ai')) return 'Qwen';
+      if (host.includes('lmsys.org')) return 'LMSYS Arena';
+      if (host.includes('openrouter.ai')) return 'OpenRouter';
+      if (host.includes('deepinfra.com')) return 'DeepInfra';
+      if (host.includes('kimi.com') || host.includes('kimi.la') || host.includes('kimi.moonshot.cn')) return 'Kimi Chat';
+      if (host.includes('doubao.com')) return 'Doubao';
+      if (host.includes('chatglm.cn')) return 'Zhipu Qingyan';
       return 'AI Chat';
     }
     subtitle.textContent = `Ready on ${getPlatformName()}`;
@@ -5558,7 +5576,7 @@
     miniBrand.className = 'cb-mini-logo';
     miniBrand.title = 'ChatBridge - Click to expand';
     const logoImg = document.createElement('img');
-    logoImg.src = chrome.runtime.getURL('logo.svg');
+    logoImg.src = chrome.runtime.getURL('logo.png');
     logoImg.alt = 'ChatBridge';
     miniBrand.appendChild(logoImg);
     miniToolbar.appendChild(miniBrand);
@@ -15819,7 +15837,15 @@ Output ONLY the 5 numbered questions, no other text.`;
             { id: 'deepseek', name: 'DeepSeek', url: 'https://chat.deepseek.com/', color: '#0066cc', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M23.748 4.482c-.254-.124-.364.113-.512.234-.051.039-.094.09-.137.136-.372.397-.806.657-1.373.626-.829-.046-1.537.214-2.163.848-.133-.782-.575-1.248-1.247-1.548-.352-.156-.708-.311-.955-.65-.172-.241-.219-.51-.305-.774-.055-.16-.11-.323-.293-.35-.2-.031-.278.136-.356.276-.313.572-.434 1.202-.422 1.84.027 1.436.633 2.58 1.838 3.393.137.093.172.187.129.323-.082.28-.18.552-.266.833-.055.179-.137.217-.329.14a5.526 5.526 0 01-1.736-1.18c-.857-.828-1.631-1.742-2.597-2.458a11.365 11.365 0 00-.689-.471c-.985-.957.13-1.743.388-1.836.27-.098.093-.432-.779-.428-.872.004-1.67.295-2.687.684a3.055 3.055 0 01-.465.137 9.597 9.597 0 00-2.883-.102c-1.885.21-3.39 1.102-4.497 2.623C.082 8.606-.231 10.684.152 12.85c.403 2.284 1.569 4.175 3.36 5.653 1.858 1.533 3.997 2.284 6.438 2.14 1.482-.085 3.133-.284 4.994-1.86.47.234.962.327 1.78.397.63.059 1.236-.03 1.705-.128.735-.156.684-.837.419-.961-2.155-1.004-1.682-.595-2.113-.926 1.096-1.296 2.746-2.642 3.392-7.003.05-.347.007-.565 0-.845-.004-.17.035-.237.23-.256a4.173 4.173 0 001.545-.475c1.396-.763 1.96-2.015 2.093-3.517.02-.23-.004-.467-.247-.588zM11.581 18c-2.089-1.642-3.102-2.183-3.52-2.16-.392.024-.321.471-.235.763.09.288.207.486.371.739.114.167.192.416-.113.603-.673.416-1.842-.14-1.897-.167-1.361-.802-2.5-1.86-3.301-3.307-.774-1.393-1.224-2.887-1.298-4.482-.02-.386.093-.522.477-.592a4.696 4.696 0 011.529-.039c2.132.312 3.946 1.265 5.468 2.774.868.86 1.525 1.887 2.202 2.891.72 1.066 1.494 2.082 2.48 2.914.348.292.625.514.891.677-.802.09-2.14.11-3.054-.614zm1-6.44a.306.306 0 01.415-.287.302.302 0 01.2.288.306.306 0 01-.31.307.303.303 0 01-.304-.308zm3.11 1.596c-.2.081-.399.151-.59.16a1.245 1.245 0 01-.798-.254c-.274-.23-.47-.358-.552-.758a1.73 1.73 0 01.016-.588c.07-.327-.008-.537-.239-.727-.187-.156-.426-.199-.688-.199a.559.559 0 01-.254-.078c-.11-.054-.2-.19-.114-.358.028-.054.16-.186.192-.21.356-.202.767-.136 1.146.016.352.144.618.408 1.001.782.391.451.462.576.685.914.176.265.336.537.445.848.067.195-.019.354-.25.452z"/></svg>' },
             { id: 'poe', name: 'Poe', url: 'https://poe.com/', color: '#5a4fcf', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.513V8.36c0-.888-.717-1.608-1.603-1.615h-.013c-.498-.009-1.194-.123-1.688-.619-.44-.439-.584-1.172-.622-1.783l-.001.003c-.002-.014-.002-.03-.003-.044l-.001-.03a1.616 1.616 0 0 0-1.607-1.45H5.54a1.59 1.59 0 0 0-.164.008l-.055.009c-.034.004-.068.008-.102.015l-.069.017c-.028.008-.056.013-.083.022-.024.007-.045.015-.07.024-.026.01-.053.018-.08.03-.021.008-.042.02-.063.029-.027.013-.054.024-.08.038l-.059.034c-.025.015-.052.03-.077.047a.967.967 0 0 0-.061.045c-.021.015-.044.03-.065.05a1.21 1.21 0 0 0-.099.09c-.006.005-.013.01-.018.016l-.014.016a1.59 1.59 0 0 0-.094.102c-.017.02-.03.042-.046.062-.016.021-.033.042-.047.063l-.045.074-.037.062-.036.076a.682.682 0 0 0-.058.143l-.027.075-.02.074a.773.773 0 0 0-.018.078c-.006.03-.009.058-.013.088-.003.022-.008.045-.01.069-.003.022-.003.045-.004.068l-.002-.002c-.036.61-.182 1.345-.62 1.784-.496.495-1.191.61-1.69.618h-.012c-.05 0-.1.003-.147.007a1.27 1.27 0 0 0-.072.012c-.029.004-.057.007-.084.012l-.082.02-.072.018c-.026.009-.052.019-.079.027-.024.009-.048.016-.07.026-.024.01-.048.022-.072.034a.767.767 0 0 0-.072.033l-.068.04-.068.041a1.228 1.228 0 0 0-.072.054c-.018.014-.037.026-.053.04a1.627 1.627 0 0 0-.226.227c-.015.016-.027.036-.041.053a1.398 1.398 0 0 0-.054.074c-.016.022-.028.045-.041.067L.19 7.6c-.012.023-.022.047-.033.07l-.034.073c-.01.024-.017.046-.026.07-.01.027-.02.053-.027.08-.007.023-.012.047-.018.071l-.02.082-.012.084c-.003.024-.009.048-.01.072-.007.052-.01.106-.01.16v4.152c0 .888.717 1.609 1.603 1.616h.01c.5.008 1.196.123 1.69.618.43.43.577 1.143.618 1.746v4.13c0 .524.66.754.986.346l2.333-2.92h11.22c.861 0 1.563-.675 1.611-1.524l.001.003c.037-.61.183-1.344.622-1.783.495-.496 1.19-.61 1.689-.619h.012c.044 0 .088-.003.132-.007l.022-.001A1.613 1.613 0 0 0 24 12.513zm-3.85 1.69c-.502.503-1.215.613-1.717.619H5.566c-.501-.006-1.215-.114-1.717-.618-.408-.409-.565-1.117-.618-1.744V8.415c.052-.627.209-1.337.618-1.745.503-.503 1.216-.613 1.717-.619h12.867c.502.006 1.216.115 1.718.619.409.41.564 1.117.618 1.744v4.041c-.052.63-.209 1.339-.618 1.749zM8.424 7.99c-.892 0-1.615.723-1.615 1.615v1.616a1.615 1.615 0 1 0 3.23 0V9.604c0-.892-.723-1.615-1.615-1.615Zm7.154 0c-.893 0-1.616.723-1.616 1.615v1.616a1.615 1.615 0 1 0 3.231 0V9.604c0-.892-.723-1.615-1.615-1.615z"/></svg>' },
             { id: 'grok', name: 'Grok', url: 'https://grok.com/', color: '#1da1f2', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M9.27 15.29l7.978-5.897c.391-.29.95-.177 1.137.272.98 2.369.542 5.215-1.41 7.169-1.951 1.954-4.667 2.382-7.149 1.406l-2.711 1.257c3.889 2.661 8.611 2.003 11.562-.953 2.341-2.344 3.066-5.539 2.388-8.42l.006.007c-.983-4.232.242-5.924 2.75-9.383.06-.082.12-.164.179-.248l-3.301 3.305v-.01L9.267 15.292M7.623 16.723c-2.792-2.67-2.31-6.801.071-9.184 1.761-1.763 4.647-2.483 7.166-1.425l2.705-1.25a7.808 7.808 0 00-1.829-1A8.975 8.975 0 005.984 5.83c-2.533 2.536-3.33 6.436-1.962 9.764 1.022 2.487-.653 4.246-2.34 6.022-.599.63-1.199 1.259-1.682 1.925l7.62-6.815"/></svg>' },
-            { id: 'meta', name: 'Meta AI', url: 'https://meta.ai/', color: '#0668e1', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6.897 4c1.915 0 3.516.932 5.43 3.376l.282-.373c.19-.246.383-.484.58-.71 l.313-.35C14.588 4.788 15.792 4 17.225 4c1.273 0 2.469.557 3.491 1.516l.218.213c1.73 1.765 2.917 4.71 3.053 8.026l.011.392.002.25c0 1.501-.28 2.759-.818 3.7l-.14.23-.108.153c-.301.42-.664.758-1.086 1.009l-.265.142-.087.04a3.493 3.493 0 0 1-.302.118 4.117 4.117 0 0 1-1.33.208c-.524 0-.996-.067-1.438-.215-.614-.204-1.163-.56-1.726-1.116l-.227-.235c-.753-.812-1.534-1.976-2.493-3.586l-1.43-2.41-.544-.895-1.766 3.13-.343.592C7.597 19.156 6.227 20 4.356 20c-1.21 0-2.205-.42-2.936-1.182l-.168-.184c-.484-.573-.837-1.311-1.043-2.189l-.067-.32a8.69 8.69 0 0 1-.136-1.288L0 14.468c.002-.745.06-1.49.174-2.23l.1-.573c.298-1.53.828-2.958 1.536-4.157l.209-.34c1.177-1.83 2.789-3.053 4.615-3.16L6.897 4zm-.033 2.615l-.201.01c-.83.083-1.606.673-2.252 1.577l-.138.199-.01.018c-.67 1.017-1.185 2.378-1.456 3.845l-.004.022a12.591 12.591 0 00-.207 2.254l.002.188c.004.18.017.36.04.54l.043.291c.092.503.257.908.486 1.208l.117.137c.303.323.698.492 1.17.492 1.1 0 1.796-.676 3.696-3.641l2.175-3.4.454-.701-.139-.198C9.11 7.3 8.084 6.616 6.864 6.616zm10.196-.552l-.176.007c-.635.048-1.223.359-1.82.933l-.196.198c-.439.462-.887 1.064-1.367 1.807l.266.398c.18.274.362.56.55.858l.293.475 1.396 2.335.695 1.114c.583.926 1.03 1.6 1.408 2.082l.213.262c.282.326.529.54.777.673l.102.05c.227.1.457.138.718.138.176.002.35-.023.518-.073.338-.104.61-.32.813-.637l.095-.163.077-.162c.194-.459.29-1.06.29-1.785l-.006-.449c-.08-2.871-.938-5.372-2.2-6.798l-.176-.189c-.67-.683-1.444-1.074-2.27-1.074z"/></svg>' }
+            { id: 'meta', name: 'Meta AI', url: 'https://meta.ai/', color: '#0668e1', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6.897 4c1.915 0 3.516.932 5.43 3.376l.282-.373c.19-.246.383-.484.58-.71 l.313-.35C14.588 4.788 15.792 4 17.225 4c1.273 0 2.469.557 3.491 1.516l.218.213c1.73 1.765 2.917 4.71 3.053 8.026l.011.392.002.25c0 1.501-.28 2.759-.818 3.7l-.14.23-.108.153c-.301.42-.664.758-1.086 1.009l-.265.142-.087.04a3.493 3.493 0 0 1-.302.118 4.117 4.117 0 0 1-1.33.208c-.524 0-.996-.067-1.438-.215-.614-.204-1.163-.56-1.726-1.116l-.227-.235c-.753-.812-1.534-1.976-2.493-3.586l-1.43-2.41-.544-.895-1.766 3.13-.343.592C7.597 19.156 6.227 20 4.356 20c-1.21 0-2.205-.42-2.936-1.182l-.168-.184c-.484-.573-.837-1.311-1.043-2.189l-.067-.32a8.69 8.69 0 0 1-.136-1.288L0 14.468c.002-.745.06-1.49.174-2.23l.1-.573c.298-1.53.828-2.958 1.536-4.157l.209-.34c1.177-1.83 2.789-3.053 4.615-3.16L6.897 4zm-.033 2.615l-.201.01c-.83.083-1.606.673-2.252 1.577l-.138.199-.01.018c-.67 1.017-1.185 2.378-1.456 3.845l-.004.022a12.591 12.591 0 00-.207 2.254l.002.188c.004.18.017.36.04.54l.043.291c.092.503.257.908.486 1.208l.117.137c.303.323.698.492 1.17.492 1.1 0 1.796-.676 3.696-3.641l2.175-3.4.454-.701-.139-.198C9.11 7.3 8.084 6.616 6.864 6.616zm10.196-.552l-.176.007c-.635.048-1.223.359-1.82.933l-.196.198c-.439.462-.887 1.064-1.367 1.807l.266.398c.18.274.362.56.55.858l.293.475 1.396 2.335.695 1.114c.583.926 1.03 1.6 1.408 2.082l.213.262c.282.326.529.54.777.673l.102.05c.227.1.457.138.718.138.176.002.35-.023.518-.073.338-.104.61-.32.813-.637l.095-.163.077-.162c.194-.459.29-1.06.29-1.785l-.006-.449c-.08-2.871-.938-5.372-2.2-6.798l-.176-.189c-.67-.683-1.444-1.074-2.27-1.074z"/></svg>' },
+            { id: 'duckduckgo', name: 'DuckDuckGo AI', url: 'https://duck.ai/', color: '#de5833', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>' },
+            { id: 'cohere', name: 'Cohere Coral', url: 'https://chat.cohere.com/', color: '#3a5f56', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>' },
+            { id: 'qwen', name: 'Qwen', url: 'https://chat.qwen.ai/', color: '#6122d3', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>' },
+            { id: 'lmsys', name: 'LMSYS Arena', url: 'https://chat.lmsys.org/', color: '#ff9900', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>' },
+            { id: 'openrouter', name: 'OpenRouter', url: 'https://openrouter.ai/chat', color: '#7c3aed', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>' },
+            { id: 'kimi', name: 'Kimi Chat', url: 'https://kimi.com/', color: '#ff6b00', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>' },
+            { id: 'doubao', name: 'Doubao', url: 'https://www.doubao.com/', color: '#2f66ff', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>' },
+            { id: 'zhipu', name: 'Zhipu Qingyan', url: 'https://chatglm.cn/', color: '#1144ff', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>' }
           ];
 
           // Build platform grid (using SVG icons)
@@ -24494,7 +24520,16 @@ Be concise. Focus on proper nouns, technical concepts, and actionable insights.`
           'gemini': '#4285f4',
           'copilot': '#00a4ef',
           'perplexity': '#6366f1',
-          'unknown': '#6b7280'
+          'unknown': '#6b7280',
+          'duck.ai': '#de5833',
+          'duckduckgo.com': '#de5833',
+          'cohere.com': '#3a5f56',
+          'qwen.ai': '#6122d3',
+          'lmsys.org': '#ff9900',
+          'openrouter.ai': '#7c3aed',
+          'kimi.com': '#ff6b00',
+          'doubao.com': '#2f66ff',
+          'chatglm.cn': '#1144ff'
         };
 
         // Interaction state
@@ -28094,6 +28129,31 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
         if (host.includes('perplexity.ai')) {
           return 'Perplexity';
         }
+        // New detections
+        if (host.includes('duck.ai') || host.includes('duckduckgo.com')) {
+          return 'DuckDuckGo AI';
+        }
+        if (host.includes('cohere.com')) {
+          return 'Cohere Coral';
+        }
+        if (host.includes('qwen.ai')) {
+          return 'Qwen';
+        }
+        if (host.includes('lmsys.org')) {
+          return 'LMSYS Arena';
+        }
+        if (host.includes('openrouter.ai')) {
+          return 'OpenRouter';
+        }
+        if (host.includes('kimi.com') || host.includes('kimi.la') || host.includes('kimi.moonshot.cn')) {
+          return 'Kimi Chat';
+        }
+        if (host.includes('doubao.com')) {
+          return 'Doubao';
+        }
+        if (host.includes('chatglm.cn')) {
+          return 'Zhipu Qingyan';
+        }
 
         // Fallback to hostname-based
         return prettyModelName(host);
@@ -28113,6 +28173,14 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
       if (p.includes('mistral')) return 'Mistral';
       if (p.includes('perplexity')) return 'Perplexity';
       if (p.includes('bing') || p.includes('copilot')) return 'Copilot/Bing';
+      if (p.includes('duck.ai') || p.includes('duckduckgo')) return 'DuckDuckGo AI';
+      if (p.includes('cohere')) return 'Cohere Coral';
+      if (p.includes('qwen')) return 'Qwen';
+      if (p.includes('lmsys')) return 'LMSYS Arena';
+      if (p.includes('openrouter')) return 'OpenRouter';
+      if (p.includes('kimi')) return 'Kimi Chat';
+      if (p.includes('doubao')) return 'Doubao';
+      if (p.includes('chatglm')) return 'Zhipu Qingyan';
       return (platform.length > 20) ? platform.slice(0, 20) + '…' : platform;
     }
 
@@ -29261,17 +29329,35 @@ Quality Bar: After optimization, the prompt should feel like "This was written b
 
     function handleBillingAwareResult(result) {
       if (!result || result.ok) return result;
+
+      if (result.error === 'waitlisted') {
+        const message = result.message ||
+          'ChatBridge free tier is currently full (1,000 users). Add your own API key in Options for unlimited access, or join the waitlist.';
+        toast('⏳ ' + message, 7000);
+        showCreditUpgradePrompt(message);
+        return result;
+      }
+
       if (result.error === 'insufficient_credits') {
-        const message = result.message || 'Free-tier credits are exhausted. Upgrade to continue.';
+        const resetInfo = result.resetDate ? ` Resets on ${result.resetDate}.` : '';
+        const message = result.message ||
+          `You've used all your free credits this month.${resetInfo} Add your own API key in Options for unlimited access.`;
         const firstPrompt = !creditPromptEl;
-        toast(message);
+        toast('💳 ' + message, 7000);
         showCreditUpgradePrompt(message);
         if (firstPrompt) {
           openCreditUpgradePage('AI credits', 'pro');
         }
       }
+
+      if (result.error === 'login_required') {
+        const message = result.message || 'Login required to use free tier AI features. Add your own API key for instant access without login.';
+        toast('🔐 ' + message, 6000);
+      }
+
       return result;
     }
+
 
 
 

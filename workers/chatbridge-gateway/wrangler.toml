@@ -33,6 +33,11 @@ id = "a9b18014a07d4d3ab3bf61c0513c7011"
 binding = "RESPONSE_CACHE"
 id = "fe5f242b460b4233a189373d5a4b1dd4"
 
+# Per-model daily quota tracking KV
+[[kv_namespaces]]
+binding = "MODEL_QUOTA"
+id = "500c5cd527144063a5809958f1901b0a"
+
 # Audit log D1 database (request history, cost tracking, stats)
 [[d1_databases]]
 binding = "AUDIT_LOG"
@@ -59,4 +64,3 @@ ENVIRONMENT = "development"
 [observability.logs]
 enabled = false
 invocation_logs = true
-

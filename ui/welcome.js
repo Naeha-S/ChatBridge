@@ -36,7 +36,8 @@
 
   const planStorageKey = "chatbridge_subscription_tier";
   const planModal = document.getElementById("plan-modal");
-  const pricingButtons = Array.from(document.querySelectorAll(".pricing-action"));
+  const pricingSection = document.getElementById("pricing");
+  const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
   let selectedPlan = "pro";
 
   initHeroShader();
@@ -203,7 +204,6 @@
       return;
     }
 
-    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
     if (prefersReducedMotion.matches) {
       return;
     }
@@ -521,6 +521,9 @@
         if (window.confirm("Do you want to switch back to the Free plan? Your credits will be reset to 100/month.")) {
           persistPlan("free", 100).then(() => {
             window.alert("Successfully downgraded to the Free plan.");
+            window.setTimeout(() => {
+              window.dispatchEvent(new Event("storage"));
+            }, 0);
             window.location.reload();
           });
         }
@@ -578,13 +581,17 @@
         }
       });
 
-    pricingButtons.forEach((button) => {
-      button.addEventListener("click", () => {
+    if (pricingSection) {
+      pricingSection.addEventListener("click", (event) => {
+        const button = event.target.closest(".pricing-action");
+        if (!button || button.disabled) {
+          return;
+        }
         openPlanModal({
           plan: button.dataset.plan || "pro",
         });
       });
-    });
+    }
 
     document.querySelectorAll("[data-close-plan-modal='true']").forEach((node) => {
       node.addEventListener("click", closePlanModal);
@@ -627,6 +634,9 @@
         if (checkoutConfirmBtn) checkoutConfirmBtn.disabled = false;
         
         closePlanModal();
+        window.setTimeout(() => {
+          window.dispatchEvent(new Event("storage"));
+        }, 0);
         
         // Dispatch custom storage change event for immediate UI update in options page
         try {
@@ -910,22 +920,21 @@
   }
 
   function initAuth() {
-    const loginModal = document.getElementById("login-modal");
     const btnNavLogin = document.getElementById("btn-nav-login");
     const navUserProfile = document.getElementById("nav-user-profile");
     const navUserEmail = document.getElementById("nav-user-email");
     const btnNavLogout = document.getElementById("btn-nav-logout");
     const btnFreeAction = document.getElementById("btn-free-action");
+    const btnProAction = document.getElementById("btn-pro-action");
+    const btnMaxAction = document.getElementById("btn-max-action");
 
     const loginForm = document.getElementById("login-form");
     const btnOauthGoogle = document.getElementById("btn-oauth-google");
     const btnOauthGithub = document.getElementById("btn-oauth-github");
-    const loginFormView = document.getElementById("login-form-view");
-    const loginSuccessView = document.getElementById("login-success-view");
-    const loginEmailInput = document.getElementById("login-email");
     const loginConfirmBtn = document.getElementById("login-modal-confirm");
-
-    if (!loginModal) return;
+    const loginCancelBtn = document.getElementById("login-modal-cancel");
+    const loginCloseBtn = document.getElementById("login-modal-close");
+    const loginBackdrop = document.getElementById("login-modal-backdrop");
 
     const authKeys = {
       loggedIn: "chatbridge_logged_in",
@@ -978,7 +987,6 @@
           }
         }
 
-        const btnProAction = document.querySelector('.pricing-card-redesign[id="card-pro"] .pricing-action');
         if (btnProAction) {
           if (tier === "pro") {
             btnProAction.textContent = "Current Plan (Pro)";
@@ -995,7 +1003,6 @@
           }
         }
 
-        const btnMaxAction = document.querySelector('.pricing-card-redesign[id="card-max"] .pricing-action');
         if (btnMaxAction) {
           if (tier === "max") {
             btnMaxAction.textContent = "Current Plan (Max)";
@@ -1025,30 +1032,28 @@
       openLoginPage();
     };
 
-    const closeLoginModal = () => {
-      loginModal.hidden = true;
-      document.body.style.overflow = "";
-    };
-
-    // Binding open/close handlers
     if (btnNavLogin) btnNavLogin.addEventListener("click", openLoginPageFromWelcome);
-    bind("login-modal-close", closeLoginModal);
-    bind("login-modal-cancel", closeLoginModal);
-    const loginBackdrop = document.getElementById("login-modal-backdrop");
-    if (loginBackdrop) {
-      loginBackdrop.addEventListener("click", closeLoginModal);
-    }
 
     // Logout handler
     if (btnNavLogout) {
       btnNavLogout.addEventListener("click", async () => {
         if (window.confirm("Are you sure you want to log out? Your subscription status will revert to Free.")) {
-          await setAuthLocal({
-            [authKeys.loggedIn]: false,
-            [authKeys.userEmail]: "",
-            [authKeys.tier]: "free",
-            [authKeys.balance]: 100,
-            [authKeys.lastReset]: Date.now()
+          await new Promise((resolve) => {
+            try {
+              chrome.storage.local.remove([
+                "chatbridge_session",
+                "chatbridge_logged_in",
+                "chatbridge_user_email",
+                "chatbridge_subscription_tier",
+                "chatbridge_credits_balance",
+                "chatbridge_credits_last_reset",
+                "chatbridge_waitlisted",
+                "chatbridge_free_user_confirmed",
+                "chatbridge_server_credit_sync_ts"
+              ], resolve);
+            } catch (_) {
+              resolve();
+            }
           });
           window.alert("Successfully logged out.");
           window.location.reload();
@@ -1056,65 +1061,34 @@
       });
     }
 
-    // Submit handler (Simulated Cloud Auth Login)
-    const handleLoginSuccess = async (email) => {
-      if (loginConfirmBtn) {
-        loginConfirmBtn.disabled = true;
-        loginConfirmBtn.textContent = "Authenticating...";
+    const forwardToLoginPage = (event) => {
+      if (event) {
+        event.preventDefault();
       }
-      
-      const oauthBtns = [btnOauthGoogle, btnOauthGithub];
-      oauthBtns.forEach(btn => { if (btn) btn.disabled = true; });
-      if (loginEmailInput) loginEmailInput.disabled = true;
-
-      // Simulate network latency (1.2s)
-      await new Promise(r => setTimeout(r, 1200));
-
-      // Get current tier to see if they already have one, otherwise set free with 100 credits
-      const currentData = await getAuthLocal([authKeys.tier]);
-      const currentTier = currentData[authKeys.tier] || "free";
-      const initialCredits = currentTier === "max" ? 10000 : (currentTier === "pro" ? 2000 : 100);
-
-      await setAuthLocal({
-        [authKeys.loggedIn]: true,
-        [authKeys.userEmail]: email,
-        [authKeys.tier]: currentTier,
-        [authKeys.balance]: initialCredits,
-        [authKeys.lastReset]: Date.now()
-      });
-
-      if (loginFormView) loginFormView.style.display = "none";
-      if (loginSuccessView) loginSuccessView.style.display = "block";
-
-      const successText = document.getElementById("login-success-desc-text");
-      if (successText) {
-        successText.textContent = `Welcome back! ${initialCredits.toLocaleString()} monthly credits loaded successfully.`;
-      }
-
-      await new Promise(r => setTimeout(r, 2000));
-
-      if (loginConfirmBtn) loginConfirmBtn.disabled = false;
-      oauthBtns.forEach(btn => { if (btn) btn.disabled = false; });
-      if (loginEmailInput) loginEmailInput.disabled = false;
-
-      closeLoginModal();
-      window.alert("Login successful!");
-      window.location.reload();
+      openLoginPage();
     };
 
     if (loginForm) {
-      loginForm.addEventListener("submit", (e) => {
-        e.preventDefault();
-        const email = loginEmailInput ? loginEmailInput.value : "naeha@chatbridge.dev";
-        handleLoginSuccess(email);
-      });
+      loginForm.addEventListener("submit", forwardToLoginPage);
     }
 
     if (btnOauthGoogle) {
-      btnOauthGoogle.addEventListener("click", () => handleLoginSuccess("google.user@chatbridge.dev"));
+      btnOauthGoogle.addEventListener("click", forwardToLoginPage);
     }
     if (btnOauthGithub) {
-      btnOauthGithub.addEventListener("click", () => handleLoginSuccess("github.user@chatbridge.dev"));
+      btnOauthGithub.addEventListener("click", forwardToLoginPage);
+    }
+    if (loginConfirmBtn) {
+      loginConfirmBtn.addEventListener("click", forwardToLoginPage);
+    }
+    if (loginCancelBtn) {
+      loginCancelBtn.addEventListener("click", forwardToLoginPage);
+    }
+    if (loginCloseBtn) {
+      loginCloseBtn.addEventListener("click", forwardToLoginPage);
+    }
+    if (loginBackdrop) {
+      loginBackdrop.addEventListener("click", forwardToLoginPage);
     }
 
   }

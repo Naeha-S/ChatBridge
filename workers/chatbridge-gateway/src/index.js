@@ -20,9 +20,43 @@ const DEFAULT_BASES = {
   nvidia:      'https://integrate.api.nvidia.com',
 };
 
-// Ordered list tried when a provider fails with 429/5xx
+// Ordered fallback chain tried when a provider fails with 429/5xx
 const FALLBACK_CHAIN = ['gemini', 'openai', 'huggingface'];
-const FREE_PROXY_GEMINI_MODEL = 'gemini-1.5-flash';
+
+// All Gemini models permitted for free-proxy access (developer's own API keys)
+// Ordered from preferred to emergency fallback — mirrors GEMINI_FREE_MODEL_CHAIN in background.js
+const FREE_PROXY_ALLOWED_MODELS = new Set([
+  'gemini-2.5-flash-lite',   // Primary: 10 RPM, 20 RPD, 250K TPM
+  'gemini-3.1-flash-lite',   // Best RPD (15 RPM, 500 RPD)
+  'gemini-3.5-flash',        // Fallback (5 RPM, 20 RPD)
+  'gemini-3.0-flash',        // Fallback (5 RPM, 20 RPD)
+  'gemini-2.5-flash',        // Fallback (5 RPM, 20 RPD)
+  'gemma-4-26b',             // Emergency: 1500 RPD, unlimited TPM
+  'gemma-4-31b',             // Emergency alt
+]);
+
+// Ordered list for health endpoint reporting
+const FREE_PROXY_MODEL_PRIORITY = [
+  'gemini-2.5-flash-lite',
+  'gemini-3.1-flash-lite',
+  'gemini-3.5-flash',
+  'gemini-3.0-flash',
+  'gemini-2.5-flash',
+  'gemma-4-26b',
+  'gemma-4-31b',
+];
+
+// Per-model daily RPD limits (from Google's free-tier table)
+const MODEL_DAILY_LIMITS = {
+  'gemini-2.5-flash-lite':  20,
+  'gemini-3.1-flash-lite':  500,
+  'gemini-3.5-flash':       20,
+  'gemini-3.0-flash':       20,
+  'gemini-2.5-flash':       20,
+  'gemma-4-26b':            1500,
+  'gemma-4-31b':            1500,
+};
+
 const FREE_PROXY_LLAMA_MODEL = 'meta-llama/Meta-Llama-3.1-8B-Instruct';
 
 const CORS_HEADERS = {
@@ -146,9 +180,52 @@ function isFreeProxyRequest(request) {
 }
 
 function isAllowedFreeProxyTarget(provider, model) {
-  if (provider === 'gemini') return model === FREE_PROXY_GEMINI_MODEL;
+  if (provider === 'gemini') return FREE_PROXY_ALLOWED_MODELS.has(model);
   if (provider === 'huggingface') return model === FREE_PROXY_LLAMA_MODEL;
   return false;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PER-MODEL DAILY QUOTA TRACKING (uses MODEL_QUOTA KV namespace)
+// Tracks how many requests each free-proxy model has served today.
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function getModelDailyUsage(env, model) {
+  if (!env.MODEL_QUOTA) return 0;
+  const today = new Date().toISOString().slice(0, 10);
+  try {
+    const raw = await env.MODEL_QUOTA.get(`mq:${model}:${today}`);
+    return raw ? parseInt(raw, 10) : 0;
+  } catch (_) { return 0; }
+}
+
+async function incrementModelUsage(env, model) {
+  if (!env.MODEL_QUOTA) return;
+  const today = new Date().toISOString().slice(0, 10);
+  const key = `mq:${model}:${today}`;
+  try {
+    const current = await getModelDailyUsage(env, model);
+    await env.MODEL_QUOTA.put(key, String(current + 1), { expirationTtl: 86400 + 3600 });
+  } catch (_) {}
+}
+
+async function isModelQuotaAvailable(env, model) {
+  const limit = MODEL_DAILY_LIMITS[model];
+  if (!limit) return true; // unknown model — let it through
+  const usage = await getModelDailyUsage(env, model);
+  return usage < limit;
+}
+
+async function pickHealthyFreeModel(env, requestedModel) {
+  // If the requested model is still within daily quota, use it
+  if (requestedModel && FREE_PROXY_ALLOWED_MODELS.has(requestedModel)) {
+    if (await isModelQuotaAvailable(env, requestedModel)) return requestedModel;
+  }
+  // Walk the priority list to find the next healthy model
+  for (const model of FREE_PROXY_MODEL_PRIORITY) {
+    if (await isModelQuotaAvailable(env, model)) return model;
+  }
+  return null; // all models exhausted today
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -446,14 +523,37 @@ async function handleProxy(request, env, token) {
 
   const requestedModel = inferRequestedModel(payload);
   const isPremium = !isFreeProxyRequest(request);
-  if (!isPremium && !isAllowedFreeProxyTarget(requestedProvider, requestedModel)) {
-    return json({
-      ok: false,
-      error: 'forbidden_model',
-      message: `Free proxy requests may only use ${FREE_PROXY_GEMINI_MODEL} or ${FREE_PROXY_LLAMA_MODEL}.`,
-      provider: requestedProvider,
-      model: requestedModel || 'unknown',
-    }, 403);
+
+  // For free-proxy requests, check model allowlist AND per-model daily quota.
+  // Auto-route to a healthy model if the requested model is over its daily limit.
+  let effectiveModel = requestedModel;
+  if (!isPremium) {
+    if (!isAllowedFreeProxyTarget(requestedProvider, requestedModel)) {
+      return json({
+        ok: false,
+        error: 'forbidden_model',
+        message: `Free proxy requests may only use models from the approved list. Requested: ${requestedModel || 'unknown'}.`,
+        provider: requestedProvider,
+        model: requestedModel || 'unknown',
+        allowed_models: [...FREE_PROXY_ALLOWED_MODELS],
+      }, 403);
+    }
+
+    if (requestedProvider === 'gemini') {
+      const healthyModel = await pickHealthyFreeModel(env, requestedModel);
+      if (!healthyModel) {
+        return json({
+          ok: false,
+          error: 'daily_quota_exhausted',
+          message: 'All free-tier Gemini models have reached their daily request limit. Try again tomorrow.',
+        }, 429);
+      }
+      effectiveModel = healthyModel;
+      // Rewrite path in payload to use the selected healthy model if different
+      if (healthyModel !== requestedModel && payload.path) {
+        payload = { ...payload, path: payload.path.replace(encodeURIComponent(requestedModel), encodeURIComponent(healthyModel)).replace(requestedModel, healthyModel) };
+      }
+    }
   }
 
   if (!isPremium) {
@@ -570,6 +670,11 @@ async function handleProxy(request, env, token) {
     fallback_used: usedProvider !== requestedProvider ? usedProvider : null,
   });
 
+  // Track per-model daily usage for free-proxy requests
+  if (!isPremium && requestedProvider === 'gemini') {
+    await incrementModelUsage(env, effectiveModel);
+  }
+
   // ── Build response ────────────────────────────────────────────────────────
   const responseHeaders = {
     'Content-Type':            lastResult.contentType,
@@ -580,6 +685,13 @@ async function handleProxy(request, env, token) {
   };
   if (usedProvider !== requestedProvider) {
     responseHeaders['X-CB-Fallback-Provider'] = usedProvider;
+  }
+  // Always report which Gemini model was actually used (may differ from requested due to quota routing)
+  if (effectiveModel) {
+    responseHeaders['X-CB-Model-Used'] = effectiveModel;
+    if (effectiveModel !== requestedModel) {
+      responseHeaders['X-CB-Fallback-Model'] = effectiveModel;
+    }
   }
 
   return new Response(lastResult.body, {
@@ -700,6 +812,28 @@ export default {
     if (url.pathname === '/v1/admin/stats' && request.method === 'GET') {
       if (!auth.ok) return json({ ok: false, error: auth.message }, auth.status);
       return handleAdminStats(env);
+    }
+
+    // ── Public: free-model health endpoint (no auth required) ─────────────────
+    // Returns which free-tier models are currently within their daily quota.
+    // The extension polls this to know which model to request.
+    if (url.pathname === '/api/free-model' && request.method === 'GET') {
+      const today = new Date().toISOString().slice(0, 10);
+      const modelStatus = await Promise.all(
+        FREE_PROXY_MODEL_PRIORITY.map(async (model) => {
+          const usage = await getModelDailyUsage(env, model);
+          const limit = MODEL_DAILY_LIMITS[model] || 0;
+          const available = usage < limit;
+          return { model, usage, limit, available };
+        })
+      );
+      const recommended = modelStatus.find(m => m.available);
+      return json({
+        ok: true,
+        date: today,
+        recommended: recommended ? recommended.model : null,
+        models: modelStatus,
+      });
     }
 
     if (url.pathname === '/v1/proxy' && request.method === 'POST') {

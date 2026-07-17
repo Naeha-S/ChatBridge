@@ -11,6 +11,15 @@
     let filteredConversations = [];
     let selectedIndex = -1;
     let currentLang = 'en';
+    const getActiveFilter = () => document.querySelector('.chip.active')?.dataset.filter || 'all';
+    const getSidebarEl = () => document.querySelector('.sidebar');
+    const getMainEl = () => document.querySelector('.main');
+    const escapeHtml = (value) => String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
 
     // Elements
     const searchInput = document.getElementById('search');
@@ -142,7 +151,7 @@
         const platforms = new Set(conversations.map(c => c.platform || c.host || 'Unknown').map(p => p.toLowerCase()));
         const platformArr = ['all', ...Array.from(platforms)];
 
-        const currentFilter = document.querySelector('.chip.active')?.dataset.filter || 'all';
+        const currentFilter = getActiveFilter();
 
         filterChips.innerHTML = platformArr.map(p => `
       <div class="chip ${p === currentFilter ? 'active' : ''}" 
@@ -174,7 +183,7 @@
                     if (btn) {
                         btn.onclick = () => {
                             searchInput.value = '';
-                            filterConversations('', document.querySelector('.chip.active').dataset.filter);
+                            filterConversations('', getActiveFilter());
                         };
                     }
                 }, 0);
@@ -252,11 +261,11 @@
                 <div class="item-header">
                     <div class="item-platform-wrap">
                         <span class="platform-icon">${platformEmoji}</span>
-                        <div class="item-platform">${formatPlatform(platform)}</div>
+                        <div class="item-platform">${escapeHtml(formatPlatform(platform))}</div>
                     </div>
-                    <div class="item-time">${timeAgo}</div>
+                    <div class="item-time">${escapeHtml(timeAgo)}</div>
                 </div>
-                <div class="item-preview">${previewText}</div>
+                <div class="item-preview">${escapeHtml(previewText)}</div>
                 <div class="item-footer">
                     <span class="msg-count-badge">${msgCount} msg${msgCount !== 1 ? 's' : ''}</span>
                     <div class="item-actions">
@@ -323,10 +332,8 @@
         // Messages
         messagesContainer.innerHTML = (conv.conversation || []).map(msg => {
             const role = (msg.role === 'user' || msg.type === 'human') ? 'user' : 'ai';
-            const content = msg.content || msg.text || '';
-            // Simple Markdown-ish processing (bold, code blocks)
-            const formattedContent = content
-                .replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            const content = String(msg.content || msg.text || '');
+            const formattedContent = escapeHtml(content)
                 .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
                 .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
                 .replace(/`([^`]+)`/g, '<code>$1</code>')
@@ -354,8 +361,10 @@
         document.querySelectorAll('.list-item').forEach(el => el.classList.remove('active'));
 
         // Reset mobile view
-        document.querySelector('.sidebar').style.display = '';
-        document.querySelector('.main').classList.remove('active');
+        const sidebarEl = getSidebarEl();
+        const mainEl = getMainEl();
+        if (sidebarEl) sidebarEl.style.display = '';
+        if (mainEl) mainEl.classList.remove('active');
         btnClose.style.display = 'none';
     }
 
@@ -374,7 +383,7 @@
         // Search
         const debouncedSearch = debounce((e) => {
             const query = e.target.value.toLowerCase();
-            filterConversations(query, document.querySelector('.chip.active').dataset.filter);
+            filterConversations(query, getActiveFilter());
         }, 180);
         searchInput.addEventListener('input', debouncedSearch);
 
@@ -428,8 +437,10 @@
         // Resize listener for responsive reset
         window.addEventListener('resize', () => {
             if (window.innerWidth >= 768) {
-                document.querySelector('.sidebar').style.display = '';
-                document.querySelector('.main').classList.remove('active');
+                const sidebarEl = getSidebarEl();
+                const mainEl = getMainEl();
+                if (sidebarEl) sidebarEl.style.display = '';
+                if (mainEl) mainEl.classList.remove('active');
                 btnClose.style.display = 'none';
             }
         });
@@ -475,8 +486,10 @@
 
         // Mobile view handling
         if (window.innerWidth < 768) {
-            document.querySelector('.sidebar').style.display = 'none';
-            document.querySelector('.main').classList.add('active');
+            const sidebarEl = getSidebarEl();
+            const mainEl = getMainEl();
+            if (sidebarEl) sidebarEl.style.display = 'none';
+            if (mainEl) mainEl.classList.add('active');
             btnClose.style.display = 'flex';
         }
     }
@@ -509,7 +522,7 @@
             selectedIndex--; // Adjust for item removed before selection
         }
 
-        filterConversations(searchInput.value.toLowerCase(), document.querySelector('.chip.active').dataset.filter);
+        filterConversations(searchInput.value.toLowerCase(), getActiveFilter());
         renderFilters();
     }
 

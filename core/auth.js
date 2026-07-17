@@ -63,14 +63,20 @@ export const auth = {
         let provider;
         if (providerName === 'google') {
           provider = new firebase.auth.GoogleAuthProvider();
-          const result = await firebase.auth().signInWithPopup(provider);
-          const session = await buildFirebaseSession(result.user);
-          return persistSession(session);
+        } else if (providerName === 'github') {
+          provider = new firebase.auth.GithubAuthProvider();
+        } else {
+          throw new Error('Unsupported provider: ' + providerName);
         }
-        throw new Error('Unsupported provider: ' + providerName);
+        const result = await firebase.auth().signInWithPopup(provider);
+        const session = await buildFirebaseSession(result.user);
+        return persistSession(session);
       } catch (error) {
-        if (providerName === 'google') {
-          return handleAuthFailure(error, 'google.user@chatbridge.local', 'google');
+        if (providerName === 'google' || providerName === 'github') {
+          const fallbackEmail = providerName === 'github'
+            ? 'github.user@chatbridge.local'
+            : 'google.user@chatbridge.local';
+          return handleAuthFailure(error, fallbackEmail, providerName);
         }
         throw error;
       }

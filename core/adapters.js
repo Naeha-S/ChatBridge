@@ -515,8 +515,19 @@ const SiteAdapters = [
           return msgCount >= 2;
         });
         if (candidates.length > 0) {
+          // Sort by nesting depth descending to get the deepest candidate (most specific container)
+          const getDepth = (el) => {
+            let depth = 0;
+            let current = el;
+            while (current) {
+              depth++;
+              current = current.parentElement;
+            }
+            return depth;
+          };
+          candidates.sort((a, b) => getDepth(b) - getDepth(a));
           container = candidates[0];
-          console.log('[Claude Debug] Found better container with', container.querySelectorAll('[data-testid*="message"]').length, 'message elements');
+          console.log('[Claude Debug] Found better container with', container.querySelectorAll('[data-testid*="message"], .message, p, .markdown').length, 'message-like elements at depth', getDepth(container));
         } else {
           container = document.body;
         }
@@ -589,6 +600,16 @@ const SiteAdapters = [
       // Now filter out descendants
       combinedWrappers = combinedWrappers.filter((el, idx, arr) => !arr.some((other, j) => j !== idx && other.contains(el)));
 
+      // Exclude layout containers that contain multiple distinct message elements or both roles
+      combinedWrappers = combinedWrappers.filter(el => {
+        const users = el.querySelectorAll(userSelectors.join(', '));
+        const assistants = el.querySelectorAll(assistantSelectors.join(', '));
+        if ((users.length > 0 && assistants.length > 0) || users.length > 1 || assistants.length > 1) {
+          return false;
+        }
+        return true;
+      });
+
       console.log('[Claude Debug] Wrapper sources -> user:', userWrappers.length, 'assistant:', assistantWrappers.length, 'struct:', structuralWrappers.length, 'combinedTopLevel:', combinedWrappers.length);
 
       // Helper to infer role using specific cues; avoid generic class traps
@@ -650,7 +671,7 @@ const SiteAdapters = [
         // Remove UI/system lines and echoes
         let t = (text || '').replace(/\u00A0/g, ' ');
         // Remove UI lines
-        t = t.split('\n').filter(line => !/continue the conversation|claude can make mistakes|new chat|system|tip:|regenerate|copy|share|model:|clear conversation|export|delete|upgrade|settings|custom instructions|beta|plus|team|help|log out|log in|sign up/i.test(line)).join('\n');
+        t = t.split('\n').filter(line => !/continue the conversation|use the up and down arrow keys|claude can make mistakes|new chat|system|tip:|regenerate|copy|share|model:|clear conversation|export|delete|upgrade|settings|custom instructions|beta|plus|team|help|log out|log in|sign up/i.test(line)).join('\n');
         if (role === 'assistant') {
           t = t.replace(/^User:\s.*$/gim, '');
         }
@@ -665,7 +686,25 @@ const SiteAdapters = [
       const messages = [];
       entries.forEach((entry, i) => {
         // Collect text nodes inside the wrapper
-        const nodes = entry.nodes || Array.from(entry.el.querySelectorAll('p, .whitespace-pre-wrap, .whitespace-normal, .break-words'));
+        let nodes = entry.nodes || Array.from(entry.el.querySelectorAll('p, .whitespace-pre-wrap, .whitespace-normal, .break-words'));
+        
+        // Filter out hidden/sr-only nodes
+        nodes = nodes.filter(n => {
+          try {
+            const style = window.getComputedStyle(n);
+            if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') return false;
+            if (n.classList.contains('sr-only') || n.classList.contains('invisible')) return false;
+            const rect = n.getBoundingClientRect();
+            if (rect.width <= 1 || rect.height <= 1) return false;
+            return true;
+          } catch (e) {
+            return true;
+          }
+        });
+
+        // Deduplicate nested nodes (keep the parent, discard descendants, to prevent repeating text)
+        nodes = nodes.filter((n, idx, arr) => !arr.some((other, j) => j !== idx && other.contains(n)));
+
         const rawText = nodes.length ? nodes.map(n => (n.innerText || '').trim()).filter(Boolean).join('\n') : (entry.el.innerText || '').trim();
         try {
           // Log pre-sanitize snapshot (trim newlines for compact logs)

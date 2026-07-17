@@ -128,6 +128,60 @@ describe('Adapters Unit Tests', () => {
     expect(input.className).toBe('composer-editable');
   });
 
+  test('Claude adapter handles nested wrappers, duplicates, and screen reader text correctly', () => {
+    setHostname('claude.ai');
+    const adapter = pickAdapter();
+
+    // Mock Claude DOM with a high-level layout div, screen reader text, and nested message nodes
+    document.body.innerHTML = `
+      <div class="layout-root">
+        <div class="sr-only">Use the up and down arrow keys to move between messages.</div>
+        <div data-testid="user-message" class="font-user">
+          <div class="whitespace-pre-wrap">
+            <p>ok can u make me a google form?</p>
+          </div>
+        </div>
+        <div data-testid="assistant-message" class="font-claude">
+          <div class="break-words">
+            <p>I can't create a Google Form directly</p>
+          </div>
+        </div>
+      </div>
+    `;
+
+    // Mock getBoundingClientRect for elements to simulate visibility
+    const elements = document.querySelectorAll('.whitespace-pre-wrap, .break-words, p, [data-testid]');
+    elements.forEach(el => {
+      el.getBoundingClientRect = () => ({
+        top: 0,
+        left: 0,
+        bottom: 100,
+        right: 100,
+        width: 100,
+        height: 100
+      });
+    });
+
+    // Mock getBoundingClientRect for the sr-only element to return 0x0 or 1x1 (hidden)
+    const srOnly = document.querySelector('.sr-only');
+    srOnly.getBoundingClientRect = () => ({
+      top: 0,
+      left: 0,
+      bottom: 0,
+      right: 0,
+      width: 1,
+      height: 1
+    });
+
+    const msgs = adapter.getMessages();
+    expect(msgs).toHaveLength(2);
+    expect(msgs[0].role).toBe('user');
+    expect(msgs[0].text).toBe('ok can u make me a google form?');
+    expect(msgs[1].role).toBe('assistant');
+    expect(msgs[1].text).toBe("I can't create a Google Form directly");
+  });
+
+
   test('Gemini adapter extracts messages correctly', () => {
     setHostname('gemini.google.com');
     const adapter = pickAdapter();

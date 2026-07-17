@@ -26,7 +26,24 @@ const ChatBridgePlatformRegistry = (() => {
     'app.writesonic.com': 'Writesonic',
     'forefront.ai': 'Forefront',
     'open-assistant.io': 'Open Assistant',
-    'kuki.ai': 'Kuki'
+    'kuki.ai': 'Kuki',
+    'duck.ai': 'DuckDuckGo AI Chat',
+    'duckduckgo.com': 'DuckDuckGo AI Chat',
+    'chat.cohere.com': 'Cohere Coral',
+    'coral.cohere.com': 'Cohere Coral',
+    'cohere.com': 'Cohere Coral',
+    'chat.qwen.ai': 'Qwen',
+    'qwen.ai': 'Qwen',
+    'chat.lmsys.org': 'LMSYS Chatbot Arena',
+    'arena.lmsys.org': 'LMSYS Chatbot Arena',
+    'openrouter.ai': 'OpenRouter',
+    'chat.deepinfra.com': 'DeepInfra Chat',
+    'deepinfra.com': 'DeepInfra Chat',
+    'kimi.com': 'Kimi Chat',
+    'kimi.la': 'Kimi Chat',
+    'kimi.moonshot.cn': 'Kimi Chat',
+    'doubao.com': 'Doubao',
+    'chatglm.cn': 'Zhipu Qingyan'
   };
 
   const approvedSites = [
@@ -56,7 +73,24 @@ const ChatBridgePlatformRegistry = (() => {
     'jasper.ai',
     'writesonic.com',
     'app.writesonic.com',
-    'kuki.ai'
+    'kuki.ai',
+    'duck.ai',
+    'duckduckgo.com',
+    'chat.cohere.com',
+    'coral.cohere.com',
+    'cohere.com',
+    'chat.qwen.ai',
+    'qwen.ai',
+    'chat.lmsys.org',
+    'arena.lmsys.org',
+    'openrouter.ai',
+    'chat.deepinfra.com',
+    'deepinfra.com',
+    'kimi.com',
+    'kimi.la',
+    'kimi.moonshot.cn',
+    'doubao.com',
+    'chatglm.cn'
   ];
 
   const targetHosts = {
@@ -69,7 +103,15 @@ const ChatBridgePlatformRegistry = (() => {
     poe: ['poe.com'],
     deepseek: ['chat.deepseek.com', 'deepseek.ai'],
     grok: ['x.ai', 'grok.com'],
-    meta: ['meta.ai']
+    meta: ['meta.ai'],
+    duckduckgo: ['duck.ai', 'duckduckgo.com'],
+    cohere: ['chat.cohere.com', 'coral.cohere.com', 'cohere.com'],
+    qwen: ['chat.qwen.ai', 'qwen.ai'],
+    lmsys: ['chat.lmsys.org', 'arena.lmsys.org'],
+    openrouter: ['openrouter.ai'],
+    kimi: ['kimi.com', 'kimi.la', 'kimi.moonshot.cn'],
+    doubao: ['doubao.com'],
+    zhipu: ['chatglm.cn']
   };
 
   const continueInsertSelectors = [

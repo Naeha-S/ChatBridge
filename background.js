@@ -67,7 +67,42 @@ const TIER_CREDIT_LIMITS = {
   max: 10000
 };
 
-const FREE_PROXY_GEMINI_MODEL = 'gemini-1.5-flash';
+// Free-tier user cap — first N logins get access to your API keys
+const FREE_USER_CAP = 1000;
+
+// Storage keys for waitlist and free-user slot tracking
+const FREE_TIER_STORAGE_KEYS = {
+  waitlisted: 'chatbridge_waitlisted',
+  freeSlotConfirmed: 'chatbridge_free_user_confirmed',
+  creditSyncTs: 'chatbridge_server_credit_sync_ts',
+};
+
+// ── Gemini model fallback chains ─────────────────────────────────────────────
+// Free/gateway chain: ordered by reliability given the developer's API quota.
+// Primary is gemini-2.5-flash-lite (10 RPM, 20 RPD, 250K TPM).
+// gemini-3.1-flash-lite is the best RPD fallback (15 RPM, 500 RPD).
+// gemma-4-26b is the emergency safety net (15 RPM, 1500 RPD, unlimited TPM).
+const GEMINI_FREE_MODEL_CHAIN = [
+  'gemini-2.5-flash-lite',   // Primary: balanced quota
+  'gemini-3.1-flash-lite',   // Best RPD fallback (500/day)
+  'gemini-3.5-flash',        // Fallback 3 (5 RPM, 20 RPD)
+  'gemini-3.0-flash',        // Fallback 4 (5 RPM, 20 RPD)
+  'gemini-2.5-flash',        // Fallback 5 (5 RPM, 20 RPD)
+  'gemma-4-26b',             // Emergency: 1500 RPD, unlimited TPM
+];
+
+// BYOK/paid chain: higher-quality models; user supplies their own key so no gateway limits apply.
+const GEMINI_PREMIUM_MODEL_CHAIN = [
+  'gemini-2.5-flash',
+  'gemini-2.5-pro',
+  'gemini-3.1-flash-lite',
+  'gemini-3.1-pro',
+  'gemini-3.5-flash',
+  'gemini-2.5-flash-lite',   // final safety net
+];
+
+// Legacy alias used in a few places — points to the first free-chain model
+const FREE_PROXY_GEMINI_MODEL = GEMINI_FREE_MODEL_CHAIN[0];
 const FREE_PROXY_LLAMA_MODEL = 'meta-llama/Meta-Llama-3.1-8B-Instruct';
 
 const AI_CREDIT_COSTS = Object.freeze({
@@ -202,10 +237,12 @@ async function checkAndDeductCredits(action, provider) {
   const cost = getCreditCost(action);
   const billing = await getBillingState();
   const usingPersonalKey = provider ? await hasLocalProviderAccess(provider) : await hasAnyLocalProviderAccess();
-  
-  const data = await storageLocalGet(['chatbridge_logged_in']);
-  const isLoggedIn = !!data.chatbridge_logged_in;
 
+  const data = await storageLocalGet(['chatbridge_logged_in', FREE_TIER_STORAGE_KEYS.waitlisted]);
+  const isLoggedIn = !!data.chatbridge_logged_in;
+  const isWaitlisted = !!data[FREE_TIER_STORAGE_KEYS.waitlisted];
+
+  // Anonymous users (not logged in, no personal key) cannot use AI features
   if (!isLoggedIn && !usingPersonalKey && cost > 0) {
     return {
       ok: false,
@@ -213,6 +250,18 @@ async function checkAndDeductCredits(action, provider) {
       message: 'Login required to use free tier credits. Alternatively, provide your own API key.',
       action, provider, cost,
       tier: 'free', usingPersonalKey: false, forceFreeProxy: true,
+      deducted: false, balance: billing.balance, balanceAfter: billing.balance
+    };
+  }
+
+  // Waitlisted users (free-tier full) cannot use AI features without a personal key
+  if (isWaitlisted && !usingPersonalKey && cost > 0) {
+    return {
+      ok: false,
+      error: 'waitlisted',
+      message: 'ChatBridge free tier is currently full (1,000 users). Add your own API key in Options for unlimited access, or join the waitlist.',
+      action, provider, cost,
+      tier: 'free', usingPersonalKey: false, forceFreeProxy: false,
       deducted: false, balance: billing.balance, balanceAfter: billing.balance
     };
   }
@@ -228,6 +277,7 @@ async function checkAndDeductCredits(action, provider) {
       cost,
       tier: billing.tier,
       usingPersonalKey,
+      byok: usingPersonalKey,
       forceFreeProxy,
       deducted: false,
       balance: billing.balance,
@@ -235,20 +285,28 @@ async function checkAndDeductCredits(action, provider) {
     };
   }
 
+  // Compute credit-reset date for user-friendly messages
+  const resetDate = new Date(billing.lastReset || Date.now());
+  resetDate.setUTCMonth(resetDate.getUTCMonth() + 1);
+  resetDate.setUTCDate(1);
+  const resetStr = resetDate.toLocaleDateString(undefined, { month: 'long', day: 'numeric' });
+
   if (billing.balance < cost) {
     return {
       ok: false,
       error: 'insufficient_credits',
-      message: `This action requires ${cost} credits. You have ${billing.balance} remaining.`,
+      message: `You've used all ${TIER_CREDIT_LIMITS[billing.tier] || 100} free credits this month. Resets on ${resetStr}. Add your own API key in Options for unlimited access.`,
       action,
       provider,
       cost,
       tier: billing.tier,
       usingPersonalKey: false,
+      byok: false,
       forceFreeProxy: true,
       deducted: false,
       balance: billing.balance,
-      balanceAfter: billing.balance
+      balanceAfter: billing.balance,
+      resetDate: resetStr
     };
   }
 
@@ -260,6 +318,7 @@ async function checkAndDeductCredits(action, provider) {
     cost,
     tier: billing.tier,
     usingPersonalKey: false,
+    byok: false,
     forceFreeProxy: true,
     deducted: true,
     balance: billing.balance,
@@ -329,30 +388,41 @@ async function recordRequest(limiterName) {
 }
 
 // --- Model Failover State (persisted to chrome.storage.session) ---
-const GEMINI_MODEL_PRIORITY = [
-  'gemini-2.0-flash',         // Fastest & newest stable
-  'gemini-1.5-pro',           // High quality
-  'gemini-1.5-flash'          // Extremely reliable legacy fallback
-];
+// Kept for backward compatibility — actual chains are GEMINI_FREE_MODEL_CHAIN / GEMINI_PREMIUM_MODEL_CHAIN.
+const GEMINI_MODEL_PRIORITY = GEMINI_FREE_MODEL_CHAIN;
 
 const MAX_MODEL_FAILURES = 1;
 
-// In-memory mirror for model state
-let _modelStateCache = null; // { currentModelIndex: 0, modelFailureCount: {} }
+// Separate per-chain failure caches so BYOK failures don't poison free-chain state
+let _modelStateCache = null;         // free chain state
+let _modelStateCachePremium = null;  // premium/BYOK chain state
 
-async function _loadModelState() {
+async function _loadModelState(premium = false) {
+  const key = premium ? 'cb_modelStatePremium' : 'cb_modelState';
+  if (premium) {
+    if (_modelStateCachePremium) return _modelStateCachePremium;
+    try {
+      const data = await chrome.storage.session.get([key]);
+      _modelStateCachePremium = data[key] || { currentModelIndex: 0, modelFailureCount: {} };
+    } catch (_) {
+      _modelStateCachePremium = { currentModelIndex: 0, modelFailureCount: {} };
+    }
+    return _modelStateCachePremium;
+  }
   if (_modelStateCache) return _modelStateCache;
   try {
-    const data = await chrome.storage.session.get(['cb_modelState']);
-    _modelStateCache = data.cb_modelState || { currentModelIndex: 0, modelFailureCount: {} };
+    const data = await chrome.storage.session.get([key]);
+    _modelStateCache = data[key] || { currentModelIndex: 0, modelFailureCount: {} };
   } catch (_) {
     _modelStateCache = { currentModelIndex: 0, modelFailureCount: {} };
   }
   return _modelStateCache;
 }
 
-async function _saveModelState() {
-  try { await chrome.storage.session.set({ cb_modelState: _modelStateCache }); } catch (_) { }
+async function _saveModelState(premium = false) {
+  const key = premium ? 'cb_modelStatePremium' : 'cb_modelState';
+  const cache = premium ? _modelStateCachePremium : _modelStateCache;
+  try { await chrome.storage.session.set({ [key]: cache }); } catch (_) { }
 }
 
 // Centralized rewrite templates map
@@ -383,67 +453,64 @@ const REWRITE_TEMPLATES = {
   ${text}`
 };
 
-// Get next available model, skipping those with too many failures. Optionally accepts a preferredModel.
-async function getNextAvailableModel(preferredModel) {
-  const state = await _loadModelState();
+/**
+ * Get the next available Gemini model, automatically selecting from the
+ * correct chain based on whether the user is BYOK or using the free proxy.
+ *
+ * @param {string|null} preferredModel  Caller-requested model override.
+ * @param {{ byok?: boolean }} [opts]   byok=true selects from GEMINI_PREMIUM_MODEL_CHAIN.
+ */
+async function getNextAvailableModel(preferredModel, opts) {
+  const byok = !!(opts && opts.byok);
+  const chain = byok ? GEMINI_PREMIUM_MODEL_CHAIN : GEMINI_FREE_MODEL_CHAIN;
+  const premium = byok;
+  const state = await _loadModelState(premium);
+
   // If a preferred model is requested and it has not failed, try it first.
-  if (preferredModel && GEMINI_MODEL_PRIORITY.includes(preferredModel)) {
+  if (preferredModel && chain.includes(preferredModel)) {
     if ((state.modelFailureCount[preferredModel] || 0) < MAX_MODEL_FAILURES) {
       return preferredModel;
     }
   }
 
-  // Load balance generic requests across healthy flash models
-  const flashModels = ['gemini-2.0-flash', 'gemini-1.5-flash'];
-  const healthyFlash = flashModels.filter(m => (state.modelFailureCount[m] || 0) < MAX_MODEL_FAILURES);
-  if (healthyFlash.length > 1 && !preferredModel) {
-    const randIdx = Math.floor(Math.random() * healthyFlash.length);
-    const selected = healthyFlash[randIdx];
-    const priorityIdx = GEMINI_MODEL_PRIORITY.indexOf(selected);
-    if (priorityIdx !== -1) {
-      state.currentModelIndex = priorityIdx;
-      await _saveModelState();
-    }
-    return selected;
-  }
-
-  for (let i = 0; i < GEMINI_MODEL_PRIORITY.length; i++) {
-    const idx = (state.currentModelIndex + i) % GEMINI_MODEL_PRIORITY.length;
-    const model = GEMINI_MODEL_PRIORITY[idx];
+  for (let i = 0; i < chain.length; i++) {
+    const idx = (state.currentModelIndex + i) % chain.length;
+    const model = chain[idx];
     if ((state.modelFailureCount[model] || 0) < MAX_MODEL_FAILURES) {
       state.currentModelIndex = idx;
-      await _saveModelState();
+      await _saveModelState(premium);
       return model;
     }
   }
-  // All models have failures, reset and try again
+
+  // All models in chain have failures — reset and start fresh
   state.modelFailureCount = {};
   state.currentModelIndex = 0;
-  await _saveModelState();
-  if (preferredModel && GEMINI_MODEL_PRIORITY.includes(preferredModel)) {
-    return preferredModel;
-  }
-  return GEMINI_MODEL_PRIORITY[0];
+  await _saveModelState(premium);
+  return chain[0];
 }
 
-// Mark model as failed and switch to next
+// Mark model as failed and switch to next (auto-detects chain from model name)
 async function markModelFailed(model, statusCode) {
-  const state = await _loadModelState();
+  const premium = GEMINI_PREMIUM_MODEL_CHAIN.includes(model) && !GEMINI_FREE_MODEL_CHAIN.includes(model);
+  const chain = premium ? GEMINI_PREMIUM_MODEL_CHAIN : GEMINI_FREE_MODEL_CHAIN;
+  const state = await _loadModelState(premium);
   state.modelFailureCount[model] = (state.modelFailureCount[model] || 0) + 1;
   console.warn(`[Gemini] Model ${model} failed (${state.modelFailureCount[model]}/${MAX_MODEL_FAILURES})`, statusCode);
   if (state.modelFailureCount[model] >= MAX_MODEL_FAILURES) {
-    console.warn(`[Gemini] Switching from ${model} due to repeated failures`);
-    state.currentModelIndex = (state.currentModelIndex + 1) % GEMINI_MODEL_PRIORITY.length;
+    console.warn(`[Gemini] Switching from ${model} due to repeated failures (chain: ${premium ? 'premium' : 'free'})`);
+    state.currentModelIndex = (state.currentModelIndex + 1) % chain.length;
   }
-  await _saveModelState();
+  await _saveModelState(premium);
 }
 
-// Mark model as successful, reset ALL failure counts for clean slate
+// Mark model as successful, reset ALL failure counts for that chain
 async function markModelSuccess(model) {
-  const state = await _loadModelState();
+  const premium = GEMINI_PREMIUM_MODEL_CHAIN.includes(model) && !GEMINI_FREE_MODEL_CHAIN.includes(model);
+  const state = await _loadModelState(premium);
   state.modelFailureCount = {};
-  await _saveModelState();
-  console.log(`[Gemini] ✓ Success with ${model}, reset all failure counts`);
+  await _saveModelState(premium);
+  console.log(`[Gemini] ✓ Success with ${model}, reset failure counts (chain: ${premium ? 'premium' : 'free'})`);
 }
 
 // --- Phase 3 Reliability: structured error logging + recovery hooks ---------
@@ -531,8 +598,67 @@ async function configureUninstallFarewellUrl() {
   }
 }
 
+/**
+ * Sync credits and tier from the server DB to local storage on login.
+ * Prevents credit-reset abuse via extension reinstall.
+ * Skips if synced within the last 10 minutes to avoid hammering Firestore.
+ */
+async function syncCreditsFromServer() {
+  try {
+    const stored = await storageLocalGet(['chatbridge_session', FREE_TIER_STORAGE_KEYS.creditSyncTs]);
+    const session = stored.chatbridge_session;
+    if (!session || !session.access_token || !session.user?.id) return;
+
+    const lastSync = Number(stored[FREE_TIER_STORAGE_KEYS.creditSyncTs] || 0);
+    if (Date.now() - lastSync < 10 * 60 * 1000) return; // skip if synced < 10m ago
+
+    const profile = await dbAdapter.getCreditsAndTier(session);
+    if (!profile) return;
+
+    // Overwrite local credit balance with server-authoritative value
+    if (typeof profile.credits === 'number' && Number.isFinite(profile.credits)) {
+      const lastReset = profile.last_reset || Date.now();
+      await storageLocalSet({
+        [BILLING_STORAGE_KEYS.balance]: profile.credits,
+        [BILLING_STORAGE_KEYS.lastReset]: lastReset,
+        [FREE_TIER_STORAGE_KEYS.creditSyncTs]: Date.now(),
+      });
+      console.log('[ChatBridge] Credits synced from server:', profile.credits);
+    }
+    if (profile.tier && ['free', 'pro', 'max'].includes(profile.tier)) {
+      await storageLocalSet({ [BILLING_STORAGE_KEYS.tier]: profile.tier });
+    }
+  } catch (e) {
+    console.warn('[ChatBridge] syncCreditsFromServer failed:', e && e.message);
+  }
+}
+
+/**
+ * Checks Firestore to see if the logged-in user is waitlisted,
+ * and caches it in local storage.
+ */
+async function checkUserWaitlistStatus() {
+  try {
+    const data = await storageLocalGet(['chatbridge_session']);
+    const session = data.chatbridge_session;
+    if (!session || !session.access_token || !session.user?.id) {
+      await storageLocalSet({ [FREE_TIER_STORAGE_KEYS.waitlisted]: false });
+      return;
+    }
+    if (session.access_token.startsWith('local-')) {
+      await storageLocalSet({ [FREE_TIER_STORAGE_KEYS.waitlisted]: false });
+      return;
+    }
+    const waitlisted = await dbAdapter.isUserWaitlisted(session);
+    await storageLocalSet({ [FREE_TIER_STORAGE_KEYS.waitlisted]: waitlisted });
+    console.log('[ChatBridge] Waitlist status updated:', waitlisted);
+  } catch (e) {
+    console.warn('[ChatBridge] checkUserWaitlistStatus failed:', e && e.message);
+  }
+}
+
 chrome.runtime.onInstalled.addListener((details) => {
-  console.log("ChatBridge installed/updated");
+  console.log('ChatBridge installed/updated');
 
   configureUninstallFarewellUrl();
 
@@ -542,12 +668,16 @@ chrome.runtime.onInstalled.addListener((details) => {
   }
 
   recoverBackgroundState();
+  syncCreditsFromServer();
+  checkUserWaitlistStatus();
 });
 
 configureUninstallFarewellUrl();
 
 chrome.runtime.onStartup.addListener(() => {
   recoverBackgroundState();
+  syncCreditsFromServer();
+  checkUserWaitlistStatus();
 });
 
 // Migration endpoint: content script can send stored conversations to background for persistent storage
@@ -1266,6 +1396,11 @@ try {
             __cbSecurityMasterKey = null;
             __cbNvidiaKeyCache.value = null;
             __cbNvidiaKeyCache.ts = 0;
+          }
+          if (changes && changes.chatbridge_session) {
+            // Re-sync credits and waitlist status when login session changes
+            syncCreditsFromServer();
+            checkUserWaitlistStatus();
           }
         }
       } catch (_) { }
@@ -3468,11 +3603,23 @@ Return ONLY the rewritten text. No preamble. No explanation.`;
         // Record the request
         await recordRequest('gemini');
 
+        // Check credits and determine BYOK status before touching the API
+        const payload = msg.payload || {};
+        const creditCheck = await checkAndDeductCredits(payload.action || 'call_gemini', 'gemini');
+        if (!creditCheck.ok) {
+          return sendResponse({
+            ok: false,
+            error: creditCheck.error,
+            message: creditCheck.message,
+            resetDate: creditCheck.resetDate
+          });
+        }
+        const isByok = !!(creditCheck.byok || creditCheck.usingPersonalKey);
+
         let geminiApiKey = await getGeminiApiKey();
         if (!(await hasProviderAccess('gemini'))) {
           return sendResponse({ ok: false, error: 'no_api_key', message: 'Gemini API key not configured. Open ChatBridge Options to set it.' });
         }
-        const payload = msg.payload || {};
         let promptText = '';
         let systemInstruction = ''; // Add system instruction for better outputs
 
@@ -3802,13 +3949,14 @@ Rewritten conversation (optimized for ${tgt}):`;
           return sendResponse({ ok: false, error: 'no_api_key', message: 'Gemini API key not configured.' });
         }
 
-        // Try models with fallback
+        // Try models with fallback using the right chain for this user
         let lastError = null;
-        const maxRetries = GEMINI_MODEL_PRIORITY.length;
+        const activeChain = isByok ? GEMINI_PREMIUM_MODEL_CHAIN : GEMINI_FREE_MODEL_CHAIN;
+        const maxRetries = activeChain.length;
         const preferredModel = payload.model;
 
         for (let attempt = 0; attempt < maxRetries; attempt++) {
-          const currentModel = await getNextAvailableModel(preferredModel);
+          const currentModel = await getNextAvailableModel(preferredModel, { byok: isByok });
           const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${currentModel}:generateContent?key=${geminiApiKey || 'proxy'}`;
           const body = {
             systemInstruction: systemInstruction ? { parts: [{ text: systemInstruction }] } : undefined,

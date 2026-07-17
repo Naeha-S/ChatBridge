@@ -72,7 +72,20 @@
         "*://app.writesonic.com/*",
         "*://forefront.ai/*",
         "*://open-assistant.io/*",
-        "*://kuki.ai/*"
+        "*://kuki.ai/*",
+        "*://duck.ai/*",
+        "*://*.duckduckgo.com/*",
+        "*://*.cohere.com/*",
+        "*://*.qwen.ai/*",
+        "*://*.lmsys.org/*",
+        "*://openrouter.ai/*",
+        "*://*.openrouter.ai/*",
+        "*://*.deepinfra.com/*",
+        "*://*.kimi.com/*",
+        "*://*.kimi.la/*",
+        "*://*.kimi.moonshot.cn/*",
+        "*://*.doubao.com/*",
+        "*://*.chatglm.cn/*"
       ],
       "js": [
         "core/config.js",
@@ -151,7 +164,20 @@
         "*://app.writesonic.com/*",
         "*://forefront.ai/*",
         "*://open-assistant.io/*",
-        "*://kuki.ai/*"
+        "*://kuki.ai/*",
+        "*://duck.ai/*",
+        "*://*.duckduckgo.com/*",
+        "*://*.cohere.com/*",
+        "*://*.qwen.ai/*",
+        "*://*.lmsys.org/*",
+        "*://openrouter.ai/*",
+        "*://*.openrouter.ai/*",
+        "*://*.deepinfra.com/*",
+        "*://*.kimi.com/*",
+        "*://*.kimi.la/*",
+        "*://*.kimi.moonshot.cn/*",
+        "*://*.doubao.com/*",
+        "*://*.chatglm.cn/*"
       ]
     }
   ],

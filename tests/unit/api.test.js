@@ -178,7 +178,7 @@ describe('ChatBridge Core AI API Optimizations', () => {
       _modelStateCache = null;
     });
 
-    test('getNextAvailableModel distributes generic request across healthy flash models', async () => {
+    test('getNextAvailableModel distributes generic request across free chain models', async () => {
       const selectedModels = new Set();
       for (let i = 0; i < 20; i++) {
         // Clearing cache to simulate fresh load balance selection
@@ -186,20 +186,20 @@ describe('ChatBridge Core AI API Optimizations', () => {
         const model = await getNextAvailableModel(null);
         selectedModels.add(model);
       }
-      expect(selectedModels.has('gemini-2.0-flash')).toBe(true);
-      expect(selectedModels.has('gemini-1.5-flash')).toBe(true);
+      // First call always returns the first free-chain model
+      expect(selectedModels.has('gemini-2.5-flash-lite')).toBe(true);
     });
 
     test('getNextAvailableModel respects preferred model if healthy', async () => {
-      const model = await getNextAvailableModel('gemini-1.5-pro');
-      expect(model).toBe('gemini-1.5-pro');
+      const model = await getNextAvailableModel('gemini-3.1-flash-lite');
+      expect(model).toBe('gemini-3.1-flash-lite');
     });
 
     test('getNextAvailableModel falls back when preferred model fails', async () => {
-      await markModelFailed('gemini-1.5-pro', 429);
+      await markModelFailed('gemini-3.1-flash-lite', 429);
       _modelStateCache = null;
-      const model = await getNextAvailableModel('gemini-1.5-pro');
-      expect(model).not.toBe('gemini-1.5-pro');
+      const model = await getNextAvailableModel('gemini-3.1-flash-lite');
+      expect(model).not.toBe('gemini-3.1-flash-lite');
     });
   });
 

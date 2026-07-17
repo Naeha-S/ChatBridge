@@ -458,6 +458,15 @@
     if (el) el.textContent = tKey(key);
   }
 
+  function escapeHtml(value) {
+    return String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
   async function loadBillingPanel() {
     const data = await getLocal({
       [BILLING_KEYS.tier]: 'free',
@@ -717,8 +726,8 @@
         <div class="history-item" data-index="${i}">
           <div class="history-platform">${emoji}</div>
           <div class="history-info">
-            <div class="history-title">${platform}</div>
-            <div class="history-meta">${msgCount} ${t('messages', currentLang)} · ${timeAgo}</div>
+            <div class="history-title">${escapeHtml(platform)}</div>
+            <div class="history-meta">${msgCount} ${escapeHtml(t('messages', currentLang))} · ${escapeHtml(timeAgo)}</div>
           </div>
           <button class="history-delete" data-index="${i}" title="Delete">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
